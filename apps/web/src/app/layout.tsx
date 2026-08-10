@@ -2,12 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "SketchForge 3D editor",
-  description: "Browser-based SketchForge editor workspace",
-  icons: {
-    icon: "assets/sketchforge/sketchforge-logo.png",
-    apple: "assets/sketchforge/sketchforge-logo.png",
-  },
+  title: "eduCAD — CAD paramétrico para aprender",
+  description: "Editor CAD paramétrico, local y open source orientado a educación.",
 };
 
 export default function RootLayout({
@@ -16,7 +12,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" style={{ colorScheme: "light" }}>
+    <html lang="es" style={{ colorScheme: "light" }}>
       <body suppressHydrationWarning>{children}</body>
     </html>
   );
