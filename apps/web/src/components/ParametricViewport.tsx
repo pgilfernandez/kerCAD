@@ -5,20 +5,43 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { RenderMesh } from "@/types/parametric";
 
-export type CameraView = { name: "iso" | "top" | "front" | "right"; token: number };
+export type CameraView = { name: "iso" | "top" | "front" | "right" | "zoom-in" | "zoom-out" | "home"; token: number };
+
+export type ViewportSelection = {
+  id: string;
+  x: number;
+  y: number;
+  baseZ: number;
+  width: number;
+  depth: number;
+  height: number;
+};
 
 type Props = {
   mesh: RenderMesh | null;
   color: string;
   view: CameraView;
+  selection?: ViewportSelection | null;
+  snap?: number;
+  onSelectionMove?: (x: number, y: number) => void;
 };
 
-export function ParametricViewport({ mesh, color, view }: Props) {
+export function ParametricViewport({ mesh, color, view, selection = null, snap = 1, onSelectionMove }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const modelRef = useRef<THREE.Group | null>(null);
+  const selectionRootRef = useRef<THREE.Group | null>(null);
+  const selectionHitboxRef = useRef<THREE.Mesh | null>(null);
+  const selectionRef = useRef(selection);
+  const moveRef = useRef(onSelectionMove);
+  const snapRef = useRef(snap);
+  const hasFittedRef = useRef(false);
+
+  useEffect(() => { selectionRef.current = selection; }, [selection]);
+  useEffect(() => { moveRef.current = onSelectionMove; }, [onSelectionMove]);
+  useEffect(() => { snapRef.current = snap; }, [snap]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -32,7 +55,7 @@ export function ParametricViewport({ mesh, color, view }: Props) {
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     host.appendChild(renderer.domElement);
 
@@ -78,6 +101,62 @@ export function ParametricViewport({ mesh, color, view }: Props) {
     modelGroup.rotation.x = -Math.PI / 2;
     scene.add(modelGroup);
 
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const dragPoint = new THREE.Vector3();
+    const dragOffset = new THREE.Vector3();
+    let dragging = false;
+    let pendingPosition: { x: number; y: number } | null = null;
+    const setPointer = (event: PointerEvent) => {
+      const bounds = renderer.domElement.getBoundingClientRect();
+      pointer.set(((event.clientX - bounds.left) / bounds.width) * 2 - 1, -((event.clientY - bounds.top) / bounds.height) * 2 + 1);
+      raycaster.setFromCamera(pointer, camera);
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      const hitbox = selectionHitboxRef.current;
+      const selected = selectionRef.current;
+      if (!hitbox || !selected) return;
+      setPointer(event);
+      if (raycaster.intersectObject(hitbox, false).length === 0) return;
+      const center = new THREE.Vector3();
+      hitbox.getWorldPosition(center);
+      dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), center);
+      if (!raycaster.ray.intersectPlane(dragPlane, dragPoint)) return;
+      dragOffset.set(center.x - dragPoint.x, 0, center.z - dragPoint.z);
+      dragging = true;
+      pendingPosition = { x: selected.x, y: selected.y };
+      controls.enabled = false;
+      renderer.domElement.setPointerCapture(event.pointerId);
+      renderer.domElement.style.cursor = "grabbing";
+      event.preventDefault();
+    };
+    const onPointerMove = (event: PointerEvent) => {
+      if (!dragging) return;
+      setPointer(event);
+      if (!raycaster.ray.intersectPlane(dragPlane, dragPoint)) return;
+      const grid = Math.max(0.01, snapRef.current);
+      const x = Math.round((dragPoint.x + dragOffset.x) / grid) * grid;
+      const y = Math.round((-(dragPoint.z + dragOffset.z)) / grid) * grid;
+      pendingPosition = { x, y };
+      const root = selectionRootRef.current;
+      const selected = selectionRef.current;
+      if (root && selected) root.position.set(x, y, selected.baseZ + selected.height / 2);
+    };
+    const stopDragging = (event: PointerEvent) => {
+      if (!dragging) return;
+      dragging = false;
+      controls.enabled = true;
+      renderer.domElement.style.cursor = "default";
+      if (renderer.domElement.hasPointerCapture(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
+      if (pendingPosition) moveRef.current?.(pendingPosition.x, pendingPosition.y);
+      pendingPosition = null;
+    };
+    renderer.domElement.addEventListener("pointerdown", onPointerDown);
+    renderer.domElement.addEventListener("pointermove", onPointerMove);
+    renderer.domElement.addEventListener("pointerup", stopDragging);
+    renderer.domElement.addEventListener("pointercancel", stopDragging);
+
     const resize = () => {
       const width = Math.max(1, host.clientWidth);
       const height = Math.max(1, host.clientHeight);
@@ -105,6 +184,10 @@ export function ParametricViewport({ mesh, color, view }: Props) {
       cancelAnimationFrame(frame);
       observer.disconnect();
       controls.dispose();
+      renderer.domElement.removeEventListener("pointerdown", onPointerDown);
+      renderer.domElement.removeEventListener("pointermove", onPointerMove);
+      renderer.domElement.removeEventListener("pointerup", stopDragging);
+      renderer.domElement.removeEventListener("pointercancel", stopDragging);
       renderer.dispose();
       renderer.domElement.remove();
       scene.clear();
@@ -148,17 +231,62 @@ export function ParametricViewport({ mesh, color, view }: Props) {
     const edges = new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({ color: "#384c58", transparent: true, opacity: 0.68 }));
     group.add(edges);
 
-    const box = new THREE.Box3().setFromObject(group);
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
-    controls.target.copy(center);
-    const distance = Math.max(55, Math.max(size.x, size.y, size.z) * 2.35);
-    camera.position.copy(center).add(new THREE.Vector3(distance, distance * 0.72, distance));
-    camera.near = Math.max(0.1, distance / 1000);
-    camera.far = distance * 12;
-    camera.updateProjectionMatrix();
-    controls.update();
+    if (!hasFittedRef.current) {
+      const box = new THREE.Box3().setFromObject(group);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      controls.target.copy(center);
+      const distance = Math.max(55, Math.max(size.x, size.y, size.z) * 2.35);
+      camera.position.copy(center).add(new THREE.Vector3(distance, distance * 0.72, distance));
+      camera.near = Math.max(0.1, distance / 1000);
+      camera.far = distance * 12;
+      camera.updateProjectionMatrix();
+      controls.update();
+      hasFittedRef.current = true;
+    }
   }, [mesh, color]);
+
+  useEffect(() => {
+    const model = modelRef.current;
+    if (!model) return;
+    const previous = selectionRootRef.current;
+    if (previous) {
+      previous.traverse((child) => {
+        if (child instanceof THREE.Mesh || child instanceof THREE.LineSegments) {
+          child.geometry.dispose();
+          if (Array.isArray(child.material)) child.material.forEach((material) => material.dispose());
+          else child.material.dispose();
+        }
+      });
+      model.remove(previous);
+    }
+    selectionRootRef.current = null;
+    selectionHitboxRef.current = null;
+    if (!selection) return;
+    const root = new THREE.Group();
+    root.position.set(selection.x, selection.y, selection.baseZ + selection.height / 2);
+    const boxGeometry = new THREE.BoxGeometry(selection.width, selection.depth, selection.height);
+    const outline = new THREE.LineSegments(
+      new THREE.EdgesGeometry(boxGeometry),
+      new THREE.LineBasicMaterial({ color: "#00a6db", linewidth: 2, depthTest: false }),
+    );
+    outline.renderOrder = 20;
+    root.add(outline);
+    const hitbox = new THREE.Mesh(boxGeometry, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+    hitbox.renderOrder = 19;
+    root.add(hitbox);
+    const handleGeometry = new THREE.BoxGeometry(1.8, 1.8, 1.8);
+    const handleMaterial = new THREE.MeshBasicMaterial({ color: "#ffffff", depthTest: false });
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+      const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+      handle.position.set((selection.width / 2) * sx, (selection.depth / 2) * sy, -selection.height / 2);
+      handle.renderOrder = 21;
+      root.add(handle);
+    }
+    model.add(root);
+    selectionRootRef.current = root;
+    selectionHitboxRef.current = hitbox;
+  }, [selection]);
 
   useEffect(() => {
     const camera = cameraRef.current;
@@ -166,11 +294,18 @@ export function ParametricViewport({ mesh, color, view }: Props) {
     if (!camera || !controls) return;
     const target = controls.target;
     const distance = Math.max(75, camera.position.distanceTo(target));
-    const vectors: Record<CameraView["name"], THREE.Vector3> = {
+    if (view.name === "zoom-in" || view.name === "zoom-out") {
+      const offset = camera.position.clone().sub(target).multiplyScalar(view.name === "zoom-in" ? 0.72 : 1.32);
+      camera.position.copy(target).add(offset);
+      controls.update();
+      return;
+    }
+    const vectors: Record<"iso" | "top" | "front" | "right" | "home", THREE.Vector3> = {
       iso: new THREE.Vector3(1, 0.78, 1),
       top: new THREE.Vector3(0, 1, 0.001),
       front: new THREE.Vector3(0, 0.001, 1),
       right: new THREE.Vector3(1, 0.001, 0),
+      home: new THREE.Vector3(1, 0.78, 1),
     };
     camera.position.copy(target).add(vectors[view.name].normalize().multiplyScalar(distance));
     camera.up.set(0, 1, 0);

@@ -534,6 +534,265 @@ button {
   .pcad-concept-card { display: none; }
 }
 
+/* SketchForge-compatible parametric workspace ----------------------------- */
+
+.educad-reference-shell {
+  position: fixed;
+  inset: 0;
+  min-width: 920px;
+  overflow: hidden;
+  color: #31465d;
+  background: #f8fbfc;
+}
+
+.educad-project-name {
+  display: flex;
+  align-items: center;
+  max-width: 320px;
+  padding: 0 14px;
+  overflow: hidden;
+  color: #7b8fa1;
+  border-left: 1px solid #d7e0e8;
+  font-size: 10px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.educad-workplane-stage {
+  position: fixed;
+  inset: var(--editor-toolbar-height) 0 0;
+  overflow: hidden;
+  background: #f8fbfc;
+}
+
+.educad-initial-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  color: #61788a;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.educad-workplane-stage .parametric-viewport {
+  position: absolute;
+  inset: 0;
+}
+
+.educad-reference-shell .toolbar-section-tools > .action-buttons {
+  height: 48px;
+  padding: 0;
+}
+
+.educad-reference-shell .shape-menu-item span {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.educad-reference-shell .shape-menu-item small {
+  color: #8295a5;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.educad-shape-coming {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 11px;
+  color: #6a7e8e;
+  background: #eef4f7;
+  border: 1px dashed #bfd0db;
+  border-radius: 5px;
+}
+
+.educad-shape-coming strong { color: #405a6e; font-size: 11px; }
+.educad-shape-coming span { font-size: 9px; line-height: 1.4; }
+
+.educad-drag-tip {
+  position: absolute;
+  bottom: 17px;
+  left: 50%;
+  z-index: 4;
+  padding: 7px 13px;
+  color: #61788a;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #cad9e3;
+  border-radius: 999px;
+  box-shadow: 0 3px 10px rgba(32, 62, 81, 0.1);
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+}
+
+.educad-kernel-pill {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  z-index: 5;
+  padding: 7px 12px;
+  color: #476275;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #c7d7e1;
+  border-radius: 999px;
+  box-shadow: 0 3px 12px rgba(34, 62, 80, 0.11);
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.educad-rebuild-error {
+  position: absolute;
+  bottom: 54px;
+  left: 50%;
+  z-index: 7;
+  display: flex;
+  max-width: 520px;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 13px;
+  color: #914944;
+  background: rgba(255, 241, 239, 0.96);
+  border: 1px solid #e5bab6;
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(79, 45, 43, 0.14);
+  transform: translateX(-50%);
+  font-size: 10px;
+}
+
+.educad-reference-toast {
+  position: absolute;
+  bottom: 18px;
+  left: 88px;
+  z-index: 10;
+  padding: 12px 16px;
+  color: #29445b;
+  background: #fff;
+  border: 1px solid #d2dfe7;
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(30, 55, 73, 0.16);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.educad-reference-toast.ok { border-left: 3px solid #3aa675; }
+.educad-reference-toast.error { border-left: 3px solid #cd5b55; }
+
+.educad-history-drawer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 11;
+  display: flex;
+  width: 286px;
+  flex-direction: column;
+  color: #2d485e;
+  background: rgba(248, 251, 252, 0.98);
+  border-right: 1px solid #cbd9e3;
+  box-shadow: 8px 0 24px rgba(30, 54, 70, 0.13);
+  backdrop-filter: blur(12px);
+}
+
+.educad-history-drawer header {
+  display: flex;
+  min-height: 62px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px 0 15px;
+  background: #fff;
+  border-bottom: 1px solid #dbe5eb;
+}
+
+.educad-history-drawer header div { display: flex; flex-direction: column; gap: 3px; }
+.educad-history-drawer header strong { font-size: 14px; }
+.educad-history-drawer header span { color: #7a8e9d; font-size: 8px; }
+.educad-history-drawer header button { display: grid; width: 34px; height: 34px; place-items: center; color: #597084; background: transparent; }
+.educad-history-origin { display: flex; min-height: 38px; align-items: center; padding: 0 14px; color: #657d8f; border-bottom: 1px solid #e1e9ee; font-size: 11px; font-weight: 800; }
+.educad-history-origin small { margin-left: auto; color: #9aabb6; font-size: 8px; }
+.educad-history-list { flex: 1; padding: 8px; overflow-y: auto; }
+
+.educad-history-list button {
+  display: grid;
+  width: 100%;
+  min-height: 48px;
+  grid-template-columns: 28px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  color: #3b5568;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+}
+
+.educad-history-list button:hover { background: #edf5f8; }
+.educad-history-list button.selected { background: #e4f4fa; border-color: #99cfdf; }
+.educad-history-list button.suppressed { opacity: 0.45; }
+.educad-history-list button > span:nth-child(2) { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.educad-history-list button strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.educad-history-list button small { color: #8496a3; font-size: 8px; }
+.educad-history-list button i { color: #3b9e72; font-size: 11px; font-style: normal; }
+.educad-history-kind { display: grid; width: 26px; height: 26px; place-items: center; color: #247b9c; background: #dff2f8; border-radius: 5px; font-size: 9px; font-weight: 900; }
+.educad-history-kind.extrude { color: #8d651f; background: #fff0cf; }
+.educad-history-kind.hole { color: #944f4c; background: #fae5e4; }
+.educad-history-kind.fillet { color: #644c9b; background: #eee7fa; }
+.educad-history-lesson { margin: 10px; padding: 11px; color: #785b2d; background: #fff7e7; border: 1px solid #ead3a4; border-radius: 7px; }
+.educad-history-lesson strong { font-size: 10px; }
+.educad-history-lesson p { margin: 4px 0 0; font-size: 8px; line-height: 1.45; }
+
+.educad-export-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 14px;
+  background: #f5f8fa;
+}
+
+.educad-export-options button {
+  display: flex;
+  min-height: 118px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  padding: 14px;
+  color: #304b61;
+  text-align: left;
+  background: #fff;
+  border: 1px solid #cfdae3;
+  border-radius: 8px;
+}
+
+.educad-export-options button:hover:not(:disabled) { border-color: #67b8d4; box-shadow: 0 4px 14px rgba(28, 70, 91, 0.12); }
+.educad-export-options strong { margin-top: 5px; font-size: 12px; }
+.educad-export-options small { color: #7d8f9d; font-size: 9px; }
+.export-format-icon { display: grid; width: 44px; height: 36px; place-items: center; color: #3f7897; background: #e5f3f8; border-radius: 5px; font-size: 9px; font-weight: 900; }
+.export-format-icon.step { color: #8d621a; background: #fff0cf; }
+
+.educad-settings-panel { padding-bottom: 12px; }
+.educad-settings-panel label { display: flex; min-height: 46px; align-items: center; justify-content: space-between; gap: 12px; margin: 0 14px; color: #50677a; border-bottom: 1px solid #e2e9ee; font-size: 11px; font-weight: 800; }
+.educad-settings-panel input[type="text"],
+.educad-settings-panel input:not([type]) { width: 190px; padding: 7px; border: 1px solid #cbd9e2; border-radius: 5px; }
+.educad-settings-panel input[type="color"] { width: 48px; height: 29px; padding: 2px; border: 1px solid #cbd9e2; border-radius: 5px; }
+.educad-settings-panel p { margin: 11px 14px 0; color: #7b8f9e; font-size: 9px; }
+
+@media (max-width: 1120px) {
+  .educad-project-name { display: none; }
+  .educad-reference-shell .toolbar-section { min-width: 70px; }
+  .educad-reference-shell .toolbar-icon { width: 37px; }
+  .educad-reference-shell .toolbar-icon svg,
+  .educad-reference-shell .toolbar-icon .toolbar-command-icon,
+  .educad-reference-shell .toolbar-icon .toolbar-user-art-icon { width: 37px; }
+}
+
 .editor-stage {
   display: none;
 }

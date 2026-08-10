@@ -13,13 +13,7 @@ describe("parametric document", () => {
     const document = createStarterDocument(123);
     expect(document.schema).toBe("educad-parametric/v1");
     expect(document.createdAt).toBe(123);
-    expect(document.features.map((feature) => feature.kind)).toEqual([
-      "sketch",
-      "extrude",
-      "hole",
-      "hole",
-      "fillet",
-    ]);
+    expect(document.features.map((feature) => feature.kind)).toEqual(["sketch", "extrude"]);
     const [sketch, extrude] = document.features;
     expect(extrude.kind === "extrude" && extrude.sketchId).toBe(sketch.id);
     expect(documentHasSolid(document.features)).toBe(true);

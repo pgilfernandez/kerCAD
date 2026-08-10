@@ -1,5 +1,5 @@
-import { ParametricCadEditor } from "@/components/ParametricCadEditor";
+import { SketchForgeParametricEditor } from "@/components/SketchForgeParametricEditor";
 
 export default function Home() {
-  return <ParametricCadEditor />;
+  return <SketchForgeParametricEditor />;
 }
