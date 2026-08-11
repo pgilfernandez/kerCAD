@@ -5,6 +5,7 @@ import type {
   HoleFeature,
   ParametricDocument,
   ParametricFeature,
+  ParametricObject,
   RectangleProfile,
   SketchFeature,
 } from "@/types/parametric";
@@ -18,12 +19,14 @@ export function createFeatureId(prefix: string) {
 
 export function createStarterDocument(now = Date.now()): ParametricDocument {
   const sketchId = createFeatureId("sketch");
+  const object = createParametricObject(1);
   return {
     schema: "educad-parametric/v1",
     id: createFeatureId("project"),
     name: "Nuevo diseño",
     units: "mm",
     color: "#d41721",
+    objects: [object],
     createdAt: now,
     updatedAt: now,
     features: [
@@ -32,6 +35,7 @@ export function createStarterDocument(now = Date.now()): ParametricDocument {
         kind: "sketch",
         name: "Boceto de Caja",
         suppressed: false,
+        objectId: object.id,
         plane: "XY",
         x: 0,
         y: 0,
@@ -43,12 +47,26 @@ export function createStarterDocument(now = Date.now()): ParametricDocument {
         kind: "extrude",
         name: "Caja",
         suppressed: false,
+        objectId: object.id,
         sketchId,
         distance: 20,
         symmetric: false,
-        operation: "new",
+        operation: "add",
+        transform: operationTransform(),
       },
     ],
+  };
+}
+
+export function createParametricObject(index: number, position = { x: 0, y: 0, z: 0 }): ParametricObject {
+  return {
+    id: createFeatureId("object"),
+    name: `Objeto ${index}`,
+    transform: {
+      position: { ...position },
+      rotation: { x: 0, y: 0, z: 0 },
+      scale: { x: 1, y: 1, z: 1 },
+    },
   };
 }
 
@@ -68,7 +86,7 @@ export function createSketchFeature(shape: RectangleProfile["shape"] | CirclePro
   };
 }
 
-export function createExtrudeFeature(sketchId: string, index: number, hasSolid: boolean): ExtrudeFeature {
+export function createExtrudeFeature(sketchId: string, index: number, _hasSolid: boolean): ExtrudeFeature {
   return {
     id: createFeatureId("extrude"),
     kind: "extrude",
@@ -77,7 +95,15 @@ export function createExtrudeFeature(sketchId: string, index: number, hasSolid: 
     sketchId,
     distance: 10,
     symmetric: false,
-    operation: hasSolid ? "add" : "new",
+    operation: "add",
+    transform: operationTransform(),
+  };
+}
+
+function operationTransform() {
+  return {
+    position: { x: 0, y: 0, z: 0 },
+    rotation: { x: 0, y: 0, z: 0 },
   };
 }
 
@@ -112,8 +138,69 @@ export function validateDocument(value: unknown): value is ParametricDocument {
   return candidate.schema === "educad-parametric/v1"
     && typeof candidate.name === "string"
     && candidate.units === "mm"
+    && (candidate.objects === undefined || Array.isArray(candidate.objects))
     && Array.isArray(candidate.features)
     && candidate.features.every((feature) => feature && typeof feature.id === "string" && typeof feature.kind === "string");
+}
+
+export function normalizeParametricDocument(document: ParametricDocument): ParametricDocument {
+  const next = structuredClone(document) as ParametricDocument;
+  next.objects ??= [];
+  const objectIds = new Set(next.objects.map((object) => object.id));
+  const objectByExtrude = new Map<string, string>();
+
+  for (const feature of next.features) {
+    if (feature.kind === "extrude" && (feature.operation as string) === "new") feature.operation = "add";
+  }
+
+  for (const [index, feature] of next.features.entries()) {
+    if (feature.kind !== "extrude") continue;
+    const existingObject = feature.objectId ? next.objects.find((object) => object.id === feature.objectId) : null;
+    if (existingObject) {
+      objectByExtrude.set(feature.id, existingObject.id);
+      continue;
+    }
+    const sketch = next.features.find((candidate): candidate is SketchFeature => candidate.kind === "sketch" && candidate.id === feature.sketchId);
+    const object = createParametricObject(next.objects.length + 1, {
+      x: sketch?.x ?? 0,
+      y: sketch?.y ?? 0,
+      z: sketch?.offset ?? 0,
+    });
+    while (objectIds.has(object.id)) object.id = createFeatureId("object");
+    objectIds.add(object.id);
+    next.objects.push(object);
+    feature.objectId = object.id;
+    if (sketch) {
+      sketch.objectId = object.id;
+      sketch.x = 0;
+      sketch.y = 0;
+      sketch.offset = 0;
+    }
+    objectByExtrude.set(feature.id, object.id);
+
+    for (const candidate of next.features.slice(index + 1)) {
+      if (candidate.kind === "extrude") break;
+      if (candidate.objectId === feature.id || ((candidate.kind === "hole" || candidate.kind === "fillet") && !candidate.objectId)) {
+        candidate.objectId = object.id;
+      }
+    }
+  }
+
+  for (const feature of next.features) {
+    if (feature.objectId && objectByExtrude.has(feature.objectId)) feature.objectId = objectByExtrude.get(feature.objectId);
+    if (feature.kind !== "extrude") continue;
+    const legacy = feature as ExtrudeFeature & { transform?: ExtrudeFeature["transform"] };
+    if (legacy.transform) continue;
+    const sketch = next.features.find((candidate): candidate is SketchFeature => candidate.kind === "sketch" && candidate.id === feature.sketchId);
+    legacy.transform = operationTransform();
+    if (sketch) {
+      legacy.transform.position = { x: sketch.x, y: sketch.y, z: sketch.offset };
+      sketch.x = 0;
+      sketch.y = 0;
+      sketch.offset = 0;
+    }
+  }
+  return next;
 }
 
 export function previousSketch(features: ParametricFeature[], selectedId: string | null) {
@@ -123,7 +210,7 @@ export function previousSketch(features: ParametricFeature[], selectedId: string
 }
 
 export function documentHasSolid(features: ParametricFeature[]) {
-  return features.some((feature) => feature.kind === "extrude" && !feature.suppressed && feature.operation !== "cut");
+  return features.some((feature) => feature.kind === "extrude" && !feature.suppressed && feature.operation === "add");
 }
 
 export function cloneDocument(document: ParametricDocument): ParametricDocument {

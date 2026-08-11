@@ -15,6 +15,7 @@ export type ViewportSelection = {
   width: number;
   depth: number;
   height: number;
+  rotation: number;
 };
 
 type Props = {
@@ -24,9 +25,10 @@ type Props = {
   selection?: ViewportSelection | null;
   snap?: number;
   onSelectionMove?: (x: number, y: number) => void;
+  onSelectionRotate?: (rotation: number) => void;
 };
 
-export function ParametricViewport({ mesh, color, view, selection = null, snap = 1, onSelectionMove }: Props) {
+export function ParametricViewport({ mesh, color, view, selection = null, snap = 1, onSelectionMove, onSelectionRotate }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -34,13 +36,16 @@ export function ParametricViewport({ mesh, color, view, selection = null, snap =
   const modelRef = useRef<THREE.Group | null>(null);
   const selectionRootRef = useRef<THREE.Group | null>(null);
   const selectionHitboxRef = useRef<THREE.Mesh | null>(null);
+  const rotationHitboxRef = useRef<THREE.Mesh | null>(null);
   const selectionRef = useRef(selection);
   const moveRef = useRef(onSelectionMove);
+  const rotateRef = useRef(onSelectionRotate);
   const snapRef = useRef(snap);
   const hasFittedRef = useRef(false);
 
   useEffect(() => { selectionRef.current = selection; }, [selection]);
   useEffect(() => { moveRef.current = onSelectionMove; }, [onSelectionMove]);
+  useEffect(() => { rotateRef.current = onSelectionRotate; }, [onSelectionRotate]);
   useEffect(() => { snapRef.current = snap; }, [snap]);
 
   useEffect(() => {
@@ -106,8 +111,10 @@ export function ParametricViewport({ mesh, color, view, selection = null, snap =
     const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     const dragPoint = new THREE.Vector3();
     const dragOffset = new THREE.Vector3();
-    let dragging = false;
+    let interaction: "move" | "rotate" | null = null;
     let pendingPosition: { x: number; y: number } | null = null;
+    let pendingRotation: number | null = null;
+    let rotationOffset = 0;
     const setPointer = (event: PointerEvent) => {
       const bounds = renderer.domElement.getBoundingClientRect();
       pointer.set(((event.clientX - bounds.left) / bounds.width) * 2 - 1, -((event.clientY - bounds.top) / bounds.height) * 2 + 1);
@@ -115,42 +122,61 @@ export function ParametricViewport({ mesh, color, view, selection = null, snap =
     };
     const onPointerDown = (event: PointerEvent) => {
       const hitbox = selectionHitboxRef.current;
+      const rotationHitbox = rotationHitboxRef.current;
       const selected = selectionRef.current;
       if (!hitbox || !selected) return;
       setPointer(event);
-      if (raycaster.intersectObject(hitbox, false).length === 0) return;
       const center = new THREE.Vector3();
       hitbox.getWorldPosition(center);
       dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), center);
       if (!raycaster.ray.intersectPlane(dragPlane, dragPoint)) return;
-      dragOffset.set(center.x - dragPoint.x, 0, center.z - dragPoint.z);
-      dragging = true;
-      pendingPosition = { x: selected.x, y: selected.y };
+      if (rotationHitbox && raycaster.intersectObject(rotationHitbox, false).length > 0) {
+        interaction = "rotate";
+        const pointerAngle = Math.atan2(-(dragPoint.z - center.z), dragPoint.x - center.x) * 180 / Math.PI;
+        rotationOffset = selected.rotation - pointerAngle;
+        pendingRotation = selected.rotation;
+      } else {
+        if (raycaster.intersectObject(hitbox, false).length === 0) return;
+        interaction = "move";
+        dragOffset.set(center.x - dragPoint.x, 0, center.z - dragPoint.z);
+        pendingPosition = { x: selected.x, y: selected.y };
+      }
       controls.enabled = false;
       renderer.domElement.setPointerCapture(event.pointerId);
       renderer.domElement.style.cursor = "grabbing";
       event.preventDefault();
     };
     const onPointerMove = (event: PointerEvent) => {
-      if (!dragging) return;
+      if (!interaction) return;
       setPointer(event);
       if (!raycaster.ray.intersectPlane(dragPlane, dragPoint)) return;
-      const grid = Math.max(0.01, snapRef.current);
-      const x = Math.round((dragPoint.x + dragOffset.x) / grid) * grid;
-      const y = Math.round((-(dragPoint.z + dragOffset.z)) / grid) * grid;
-      pendingPosition = { x, y };
       const root = selectionRootRef.current;
       const selected = selectionRef.current;
-      if (root && selected) root.position.set(x, y, selected.baseZ + selected.height / 2);
+      if (!root || !selected) return;
+      if (interaction === "move") {
+        const grid = Math.max(0.01, snapRef.current);
+        const x = Math.round((dragPoint.x + dragOffset.x) / grid) * grid;
+        const y = Math.round((-(dragPoint.z + dragOffset.z)) / grid) * grid;
+        pendingPosition = { x, y };
+        root.position.set(x, y, selected.baseZ + selected.height / 2);
+      } else {
+        const center = new THREE.Vector3();
+        root.getWorldPosition(center);
+        const pointerAngle = Math.atan2(-(dragPoint.z - center.z), dragPoint.x - center.x) * 180 / Math.PI;
+        pendingRotation = Math.round((pointerAngle + rotationOffset) / 5) * 5;
+        root.rotation.z = THREE.MathUtils.degToRad(pendingRotation);
+      }
     };
     const stopDragging = (event: PointerEvent) => {
-      if (!dragging) return;
-      dragging = false;
+      if (!interaction) return;
+      interaction = null;
       controls.enabled = true;
       renderer.domElement.style.cursor = "default";
       if (renderer.domElement.hasPointerCapture(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
       if (pendingPosition) moveRef.current?.(pendingPosition.x, pendingPosition.y);
+      if (pendingRotation !== null) rotateRef.current?.(pendingRotation);
       pendingPosition = null;
+      pendingRotation = null;
     };
     renderer.domElement.addEventListener("pointerdown", onPointerDown);
     renderer.domElement.addEventListener("pointermove", onPointerMove);
@@ -262,9 +288,11 @@ export function ParametricViewport({ mesh, color, view, selection = null, snap =
     }
     selectionRootRef.current = null;
     selectionHitboxRef.current = null;
+    rotationHitboxRef.current = null;
     if (!selection) return;
     const root = new THREE.Group();
     root.position.set(selection.x, selection.y, selection.baseZ + selection.height / 2);
+    root.rotation.z = THREE.MathUtils.degToRad(selection.rotation);
     const boxGeometry = new THREE.BoxGeometry(selection.width, selection.depth, selection.height);
     const outline = new THREE.LineSegments(
       new THREE.EdgesGeometry(boxGeometry),
@@ -283,9 +311,34 @@ export function ParametricViewport({ mesh, color, view, selection = null, snap =
       handle.renderOrder = 21;
       root.add(handle);
     }
+    const rotationRadius = Math.max(selection.width, selection.depth) * 0.7 + 6;
+    const rotationPoints = Array.from({ length: 65 }, (_, index) => {
+      const angle = index / 64 * Math.PI * 2;
+      return new THREE.Vector3(Math.cos(angle) * rotationRadius, Math.sin(angle) * rotationRadius, selection.height / 2 + 1);
+    });
+    const rotationRing = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(rotationPoints),
+      new THREE.LineBasicMaterial({ color: "#00a6db", depthTest: false, transparent: true, opacity: 0.9 }),
+    );
+    rotationRing.renderOrder = 21;
+    root.add(rotationRing);
+    const rotationHandle = new THREE.Mesh(
+      new THREE.SphereGeometry(2, 18, 12),
+      new THREE.MeshBasicMaterial({ color: "#ffffff", depthTest: false }),
+    );
+    rotationHandle.position.set(rotationRadius, 0, selection.height / 2 + 1);
+    rotationHandle.renderOrder = 22;
+    root.add(rotationHandle);
+    const rotationHitbox = new THREE.Mesh(
+      new THREE.SphereGeometry(5, 12, 8),
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
+    );
+    rotationHitbox.position.copy(rotationHandle.position);
+    root.add(rotationHitbox);
     model.add(root);
     selectionRootRef.current = root;
     selectionHitboxRef.current = hitbox;
+    rotationHitboxRef.current = rotationHitbox;
   }, [selection]);
 
   useEffect(() => {

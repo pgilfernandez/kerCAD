@@ -2,17 +2,17 @@
 
 CAD paramétrico en el navegador, local-first y open source, pensado para aprender diseño y fabricación digital.
 
-eduCAD conserva el flujo directo de SketchForge —formas sencillas, botones grandes, arrastre sobre el plano e inspector visual— pero el documento no es una colección de mallas. Cada forma que el alumno añade crea por debajo un boceto y una operación CAD; la pieza completa se reconstruye con un núcleo OpenCascade B-Rep.
+eduCAD conserva el flujo directo de SketchForge —formas sencillas, botones grandes, arrastre sobre el plano e inspector visual— pero el documento no es una colección de mallas. Cada objeto es un contenedor de transformación y su geometría procede de una secuencia de operaciones CAD reconstruida con un núcleo OpenCascade B-Rep.
 
 ## Estado: MVP 0.1
 
 El primer incremento permite:
 
-- añadir cajas y cilindros desde el menú de formas, sin tener que conocer previamente el flujo de un CAD profesional;
+- crear primero un contenedor con `New Object` y añadir después cajas o cilindros como operaciones del objeto activo;
 - mover la forma seleccionada arrastrándola por el plano o con las flechas y editar sus cotas desde el inspector;
 - cambiar una forma entre `Solid` y `Hole`, manteniendo una operación booleana paramétrica y editable;
 - duplicar, copiar/pegar, ocultar, eliminar, deshacer y rehacer con la barra visual heredada de SketchForge;
-- abrir cuando se necesite el historial educativo que revela el boceto y la extrusión creados por cada forma;
+- desplegar en el panel derecho cada objeto como un árbol CAD: `Objeto (transformación) → Caja/Cilindro → modificadores`;
 - crear bocetos rectangulares y circulares totalmente acotados en el plano XY;
 - extruir como sólido nuevo, añadir material o quitar material;
 - crear taladros pasantes o ciegos por posición y diámetro;
@@ -29,7 +29,8 @@ La triangulación solo se genera como representación visual para Three.js. La f
 
 ```text
 Documento JSON paramétrico
-  └─ boceto → extrusión → taladro → redondeo
+  └─ objeto (posición, rotación, escala)
+       └─ caja/cilindro → taladro → redondeo
        └─ reconstrucción secuencial
             └─ brepjs + OpenCascade WASM (B-Rep exacto)
                  ├─ STEP
@@ -47,13 +48,13 @@ Piezas principales:
 
 ## Flujo de aprendizaje
 
-1. Pulsa `SHAPES` y añade una caja o un cilindro.
-2. Arrastra la selección sobre el plano o usa las flechas para colocarla con precisión.
-3. Cambia `Length`, `Width` y `Height` en el inspector de la derecha.
-4. Elige `Solid` para aportar material o `Hole` para retirarlo.
-5. Abre `HISTORY` para ver la idea CAD que hay debajo: **boceto → extrusión → combinación**.
+1. Pulsa `SHAPES → New Object` para crear un contenedor vacío.
+2. Selecciona el objeto —o cualquiera de sus operaciones— y añade una caja o un cilindro desde `SHAPES`.
+3. Arrastra el objeto sobre el plano o usa las flechas para colocarlo con precisión.
+4. Cambia las dimensiones y el modo aditivo/sustractivo seleccionando la operación en el árbol.
+5. Despliega el objeto en `MODELO` para editar la secuencia **Caja/Cilindro → modificadores**.
 
-La interfaz principal mantiene la baja barrera de entrada del proyecto de referencia. El historial no obliga al alumno a trabajar como un profesional desde el primer minuto: aparece como una segunda capa explicativa y permite comprobar que las formas siguen siendo paramétricas.
+La interfaz principal mantiene la baja barrera de entrada del proyecto de referencia. Seleccionar el objeto permite editar únicamente posición, rotación y escala; seleccionar la primera operación permite cambiar las dimensiones de la caja o el cilindro. Los perfiles técnicos internos necesarios para construir el B-Rep no se duplican en el árbol del alumno.
 
 ## Desarrollo local
 

@@ -5,6 +5,8 @@ export type BaseFeature = {
   name: string;
   kind: FeatureKind;
   suppressed: boolean;
+  /** Object/body that owns this operation in the model tree. */
+  objectId?: string;
 };
 
 export type RectangleProfile = {
@@ -27,12 +29,22 @@ export type SketchFeature = BaseFeature & {
   profile: RectangleProfile | CircleProfile;
 };
 
+export type ParametricVector3 = {
+  x: number;
+  y: number;
+  z: number;
+};
+
 export type ExtrudeFeature = BaseFeature & {
   kind: "extrude";
   sketchId: string;
   distance: number;
   symmetric: boolean;
-  operation: "new" | "add" | "cut";
+  operation: "add" | "cut" | "intersect";
+  transform: {
+    position: ParametricVector3;
+    rotation: ParametricVector3;
+  };
 };
 
 export type HoleFeature = BaseFeature & {
@@ -52,12 +64,23 @@ export type FilletFeature = BaseFeature & {
 
 export type ParametricFeature = SketchFeature | ExtrudeFeature | HoleFeature | FilletFeature;
 
+export type ParametricObject = {
+  id: string;
+  name: string;
+  transform: {
+    position: ParametricVector3;
+    rotation: ParametricVector3;
+    scale: ParametricVector3;
+  };
+};
+
 export type ParametricDocument = {
   schema: "educad-parametric/v1";
   id: string;
   name: string;
   units: "mm";
   color: string;
+  objects: ParametricObject[];
   features: ParametricFeature[];
   createdAt: number;
   updatedAt: number;

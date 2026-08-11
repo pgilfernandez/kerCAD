@@ -485,7 +485,7 @@ function FeatureInspector({ feature, features, onUpdate, onDelete }: {
             <label className="pcad-select-field"><span>Boceto</span><select value={feature.sketchId} onChange={(event) => patch({ sketchId: event.target.value })}>{features.filter((item) => item.kind === "sketch").map((sketch) => <option key={sketch.id} value={sketch.id}>{sketch.name}</option>)}</select></label>
           </section>
           <section className="pcad-property-section"><h3>Operación</h3>
-            <label className="pcad-select-field"><span>Resultado</span><select value={feature.operation} onChange={(event) => patch({ operation: event.target.value as "new" | "add" | "cut" })}><option value="new">Nuevo sólido</option><option value="add">Añadir material</option><option value="cut">Quitar material</option></select></label>
+            <label className="pcad-select-field"><span>Resultado</span><select value={feature.operation} onChange={(event) => patch({ operation: event.target.value as "add" | "cut" | "intersect" })}><option value="add">Añadir</option><option value="cut">Sustraer</option><option value="intersect">Intersección</option></select></label>
             <NumberField label="Distancia" value={feature.distance} min={0.1} onChange={(distance) => patch({ distance })} />
             <label className="pcad-toggle-row inset"><span>Simétrica al plano</span><input type="checkbox" checked={feature.symmetric} onChange={(event) => patch({ symmetric: event.target.checked })} /></label>
           </section>

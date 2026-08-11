@@ -4,6 +4,7 @@ import {
   createSketchFeature,
   createStarterDocument,
   documentHasSolid,
+  normalizeParametricDocument,
   previousSketch,
   validateDocument,
 } from "@/lib/parametricDocument";
@@ -13,9 +14,14 @@ describe("parametric document", () => {
     const document = createStarterDocument(123);
     expect(document.schema).toBe("educad-parametric/v1");
     expect(document.createdAt).toBe(123);
+    expect(document.objects).toHaveLength(1);
+    expect(document.objects[0]).toMatchObject({ name: "Objeto 1", transform: { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 } } });
     expect(document.features.map((feature) => feature.kind)).toEqual(["sketch", "extrude"]);
     const [sketch, extrude] = document.features;
     expect(extrude.kind === "extrude" && extrude.sketchId).toBe(sketch.id);
+    expect(extrude.kind === "extrude" && extrude.operation).toBe("add");
+    expect(extrude.kind === "extrude" && extrude.transform).toEqual({ position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 } });
+    expect(extrude.objectId).toBe(document.objects[0].id);
     expect(documentHasSolid(document.features)).toBe(true);
   });
 
@@ -33,10 +39,44 @@ describe("parametric document", () => {
     const extrusion = createExtrudeFeature(sketch.id, 1, false);
     expect(documentHasSolid([sketch, { ...extrusion, suppressed: true }])).toBe(false);
     expect(documentHasSolid([sketch, { ...extrusion, operation: "cut" }])).toBe(false);
+    expect(documentHasSolid([sketch, { ...extrusion, operation: "intersect" }])).toBe(false);
   });
 
   it("rejects unrelated JSON documents", () => {
     expect(validateDocument({ schema: "mesh-scene/v1", features: [] })).toBe(false);
     expect(validateDocument(createStarterDocument())).toBe(true);
+  });
+
+  it("migrates legacy feature positions into object transforms", () => {
+    const legacy = createStarterDocument(123);
+    const sketch = legacy.features[0];
+    if (sketch.kind !== "sketch") throw new Error("expected sketch");
+    sketch.x = 12;
+    sketch.y = -4;
+    sketch.offset = 3;
+    if (legacy.features[1].kind === "extrude") (legacy.features[1] as { operation: string }).operation = "new";
+    for (const feature of legacy.features) delete feature.objectId;
+    delete (legacy as Partial<typeof legacy>).objects;
+
+    const migrated = normalizeParametricDocument(legacy);
+    expect(migrated.objects[0].transform.position).toEqual({ x: 12, y: -4, z: 3 });
+    expect(migrated.features[0]).toMatchObject({ objectId: migrated.objects[0].id, x: 0, y: 0, offset: 0 });
+    expect(migrated.features[1].objectId).toBe(migrated.objects[0].id);
+    expect(migrated.features[1]).toMatchObject({ operation: "add" });
+  });
+
+  it("migrates stored sketch placement into an operation transform", () => {
+    const stored = createStarterDocument(123);
+    const sketch = stored.features[0];
+    const extrusion = stored.features[1];
+    if (sketch.kind !== "sketch" || extrusion.kind !== "extrude") throw new Error("expected primitive");
+    sketch.x = 7;
+    sketch.y = -2;
+    sketch.offset = 4;
+    delete (extrusion as Partial<typeof extrusion>).transform;
+
+    const migrated = normalizeParametricDocument(stored);
+    expect(migrated.features[0]).toMatchObject({ x: 0, y: 0, offset: 0 });
+    expect(migrated.features[1]).toMatchObject({ transform: { position: { x: 7, y: -2, z: 4 }, rotation: { x: 0, y: 0, z: 0 } } });
   });
 });

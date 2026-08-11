@@ -2,6 +2,7 @@
 
 import { ChevronLeft, ChevronUp, History, Home, Minus, Plus, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ParametricModelSidebar, type ModelSelectionKind } from "@/components/ParametricModelSidebar";
 import { ParametricViewport, type CameraView } from "@/components/ParametricViewport";
 import {
   ToolbarAlignIcon,
@@ -25,22 +26,25 @@ import {
   ToolbarUngroupIcon,
   ToolbarVectorExportIcon,
 } from "@/components/icons";
-import { ShapeInspector } from "@/components/workplane/ShapeInspector";
-import { cloneDocument, createFilletFeature, createStarterDocument, validateDocument } from "@/lib/parametricDocument";
+import { cloneDocument, createFilletFeature, createStarterDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { buildParametricModel, exportParametricStep } from "@/lib/parametricKernel";
 import {
   addPrimitive,
+  addParametricObject,
+  applyOperationWorldPosition,
+  applyOperationWorldRotation,
   applyWorkplanePatch,
   deleteParametricObject,
   duplicateParametricObject,
-  objectFeatures,
+  objectIdForFeature,
+  viewportSelectionForFeature,
   viewportSelectionForObject,
   workplaneShapeForObject,
   type SupportedPrimitive,
 } from "@/lib/parametricObjects";
 import { toolbarShapeAssets } from "@/lib/shapeCatalog";
-import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
-import type { BuildResult, ParametricDocument } from "@/types/parametric";
+import { DEFAULT_SNAP_GRID } from "@/lib/workplaneSettings";
+import type { BuildResult, ParametricDocument, ParametricFeature, ParametricObject } from "@/types/parametric";
 import type { GridSize, WorkplaneShape } from "@/types/sketchforge";
 
 const STORAGE_KEY = "educad.parametric.document.v1";
@@ -64,16 +68,16 @@ export function SketchForgeParametricEditor() {
   const initialDocument = useMemo(() => createStarterDocument(), []);
   const [history, setHistory] = useState<HistoryState>({ entries: [initialDocument], index: 0 });
   const document = history.entries[history.index];
-  const [selectedId, setSelectedId] = useState<string | null>(objectFeatures(initialDocument)[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialDocument.objects[0]?.id ?? null);
+  const [selectionKind, setSelectionKind] = useState<ModelSelectionKind>("object");
   const [build, setBuild] = useState<BuildResult>({ mesh: null, completedFeatureIds: [], warning: null });
   const [kernelBusy, setKernelBusy] = useState(true);
   const [shapesOpen, setShapesOpen] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [modelTreeOpen, setModelTreeOpen] = useState(true);
   const [exportOpen, setExportOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const [snap, setSnap] = useState<GridSize>(DEFAULT_SNAP_GRID);
-  const [snapOpen, setSnapOpen] = useState(false);
   const [view, setView] = useState<CameraView>({ name: "iso", token: 0 });
   const [clipboardId, setClipboardId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -87,8 +91,10 @@ export function SketchForgeParametricEditor() {
       if (stored) {
         const parsed = JSON.parse(stored) as unknown;
         if (validateDocument(parsed)) {
-          setHistory({ entries: [parsed], index: 0 });
-          setSelectedId(objectFeatures(parsed)[0]?.id ?? null);
+          const normalized = normalizeParametricDocument(parsed);
+          setHistory({ entries: [normalized], index: 0 });
+          setSelectedId(normalized.objects[0]?.id ?? null);
+          setSelectionKind("object");
         }
       }
     } catch {
@@ -138,61 +144,119 @@ export function SketchForgeParametricEditor() {
     commit(next);
   }, [commit, document]);
 
-  const selectedShape = workplaneShapeForObject(document, selectedId);
-  const selectedBox = viewportSelectionForObject(document, selectedId);
+  const selectedObjectId = objectIdForFeature(document, selectedId);
+  const selectedOperationId = selectionKind === "feature" && document.features.some((feature) => feature.id === selectedId && feature.kind === "extrude") ? selectedId : null;
+  const selectedShape = workplaneShapeForObject(document, selectedObjectId);
+  const selectedBox = selectedOperationId ? viewportSelectionForFeature(document, selectedOperationId) : viewportSelectionForObject(document, selectedObjectId);
   const snapAmount = snap === "Off" ? 0.01 : snap === "Brick" ? 8 : Number.parseFloat(snap) || 1;
 
   const addShape = (kind: SupportedPrimitive) => {
+    if (!selectedObjectId) {
+      setNotice({ type: "error", text: "Selecciona un objeto del árbol o crea uno nuevo" });
+      return;
+    }
+    let id: string | null = null;
+    mutate((draft) => {
+      const count = draft.features.filter((feature) => feature.kind === "extrude" && feature.objectId === selectedObjectId).length;
+      id = addPrimitive(draft, selectedObjectId, kind, { x: count === 0 ? 0 : count * 8, y: count === 0 ? 0 : count * 6 });
+    });
+    if (id) {
+      setSelectedId(id);
+      setSelectionKind("feature");
+    }
+    setShapesOpen(false);
+    setNotice({ type: "ok", text: `${kind === "box" ? "Caja" : "Cilindro"} añadido al objeto activo` });
+  };
+
+  const newObject = () => {
     let id = "";
     mutate((draft) => {
-      const count = objectFeatures(draft).length;
-      id = addPrimitive(draft, kind, { x: count === 0 ? 0 : count * 8, y: count === 0 ? 0 : count * 6 });
+      const count = draft.objects.length;
+      id = addParametricObject(draft, { x: count * 8, y: count * 6, z: 0 });
     });
     setSelectedId(id);
+    setSelectionKind("object");
     setShapesOpen(false);
-    setNotice({ type: "ok", text: `${kind === "box" ? "Caja" : "Cilindro"} añadido` });
+    setNotice({ type: "ok", text: "Nuevo objeto creado; añade su primera operación" });
   };
 
   const removeSelected = useCallback(() => {
-    if (!selectedId) return;
-    const ids = objectFeatures(document).map((feature) => feature.id);
-    const index = ids.indexOf(selectedId);
-    mutate((draft) => deleteParametricObject(draft, selectedId));
+    if (!selectedObjectId) return;
+    const ids = document.objects.map((object) => object.id);
+    const index = ids.indexOf(selectedObjectId);
+    mutate((draft) => deleteParametricObject(draft, selectedObjectId));
     setSelectedId(ids[index - 1] ?? ids[index + 1] ?? null);
-  }, [document, mutate, selectedId]);
+    setSelectionKind("object");
+  }, [document, mutate, selectedObjectId]);
 
-  const duplicateSelected = useCallback((sourceId = selectedId) => {
+  const duplicateSelected = useCallback((sourceId = selectedObjectId) => {
     if (!sourceId) return;
     let nextId: string | null = null;
     mutate((draft) => { nextId = duplicateParametricObject(draft, sourceId); });
-    if (nextId) setSelectedId(nextId);
+    if (nextId) {
+      setSelectedId(nextId);
+      setSelectionKind("object");
+    }
     setNotice({ type: "ok", text: "Forma duplicada" });
-  }, [mutate, selectedId]);
+  }, [mutate, selectedObjectId]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.matches("input, select, textarea")) return;
-      if ((event.key === "Delete" || event.key === "Backspace") && selectedId) {
+      if ((event.key === "Delete" || event.key === "Backspace") && selectedObjectId && selectionKind === "object") {
         event.preventDefault();
         removeSelected();
         return;
       }
-      if (!selectedId || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
+      if (!selectedObjectId || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
       event.preventDefault();
       const step = event.shiftKey ? snapAmount * 5 : snapAmount;
-      mutate((draft) => applyWorkplanePatch(draft, selectedId, {
-        x: (selectedShape?.x ?? 0) + (event.key === "ArrowLeft" ? -step : event.key === "ArrowRight" ? step : 0),
-        z: (selectedShape?.z ?? 0) + (event.key === "ArrowDown" ? -step : event.key === "ArrowUp" ? step : 0),
-      }));
+      const x = (selectedBox?.x ?? 0) + (event.key === "ArrowLeft" ? -step : event.key === "ArrowRight" ? step : 0);
+      const y = (selectedBox?.y ?? 0) + (event.key === "ArrowDown" ? -step : event.key === "ArrowUp" ? step : 0);
+      mutate((draft) => {
+        if (selectedOperationId) applyOperationWorldPosition(draft, selectedOperationId, x, y);
+        else applyWorkplanePatch(draft, selectedObjectId, { x, z: y });
+      });
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [mutate, removeSelected, selectedId, selectedShape?.x, selectedShape?.z, snapAmount]);
+  }, [mutate, removeSelected, selectedBox?.x, selectedBox?.y, selectedObjectId, selectedOperationId, selectionKind, snapAmount]);
 
   const updateSelected = (patch: Partial<WorkplaneShape>) => {
-    if (!selectedId) return;
-    mutate((draft) => applyWorkplanePatch(draft, selectedId, patch));
+    if (!selectedObjectId) return;
+    mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, patch));
+  };
+
+  const updateFeature = (id: string, update: (feature: ParametricFeature) => void) => {
+    mutate((draft) => {
+      const feature = draft.features.find((candidate) => candidate.id === id);
+      if (feature) update(feature);
+    });
+  };
+
+  const updateObject = (id: string, update: (object: ParametricObject) => void) => {
+    mutate((draft) => {
+      const object = draft.objects.find((candidate) => candidate.id === id);
+      if (object) update(object);
+    });
+  };
+
+  const deleteFeature = (id: string) => {
+    const objectId = objectIdForFeature(document, id);
+    const feature = document.features.find((candidate) => candidate.id === id);
+    if (!feature) return;
+    if (feature.kind === "sketch" || feature.kind === "extrude") {
+      if (objectId) {
+        mutate((draft) => deleteParametricObject(draft, objectId));
+        setSelectedId(document.objects.find((candidate) => candidate.id !== objectId)?.id ?? null);
+        setSelectionKind("object");
+      }
+      return;
+    }
+    mutate((draft) => { draft.features = draft.features.filter((candidate) => candidate.id !== id); });
+    setSelectedId(objectId);
+    setSelectionKind("object");
   };
 
   const setCamera = (name: CameraView["name"]) => setView((current) => ({ name, token: current.token + 1 }));
@@ -202,13 +266,22 @@ export function SketchForgeParametricEditor() {
   const newDocument = () => {
     const next = createStarterDocument();
     setHistory({ entries: [next], index: 0 });
-    setSelectedId(objectFeatures(next)[0]?.id ?? null);
+    setSelectedId(next.objects[0]?.id ?? null);
+    setSelectionKind("object");
     setNotice({ type: "info", text: "Nuevo diseño" });
   };
 
   const addFillet = () => {
-    if (!selectedShape || selectedShape.hole) return;
-    mutate((draft) => draft.features.push(createFilletFeature(draft.features.filter((feature) => feature.kind === "fillet").length + 1)));
+    if (!selectedShape || selectedShape.hole || !selectedObjectId) return;
+    let featureId = "";
+    mutate((draft) => {
+      const feature = createFilletFeature(draft.features.filter((candidate) => candidate.kind === "fillet").length + 1);
+      feature.objectId = selectedObjectId;
+      featureId = feature.id;
+      draft.features.push(feature);
+    });
+    setSelectedId(featureId);
+    setSelectionKind("feature");
     setNotice({ type: "ok", text: "Redondeo paramétrico añadido" });
   };
 
@@ -234,8 +307,10 @@ export function SketchForgeParametricEditor() {
     try {
       const parsed = JSON.parse(await file.text()) as unknown;
       if (!validateDocument(parsed)) throw new Error("Este no es un proyecto eduCAD compatible.");
-      setHistory({ entries: [parsed], index: 0 });
-      setSelectedId(objectFeatures(parsed)[0]?.id ?? null);
+      const normalized = normalizeParametricDocument(parsed);
+      setHistory({ entries: [normalized], index: 0 });
+      setSelectedId(normalized.objects[0]?.id ?? null);
+      setSelectionKind("object");
       setNotice({ type: "ok", text: "Proyecto abierto" });
     } catch (error) {
       setNotice({ type: "error", text: error instanceof Error ? error.message : "No se pudo abrir" });
@@ -258,23 +333,25 @@ export function SketchForgeParametricEditor() {
           <ToolbarSection label="Home" className="toolbar-home-section"><Tool label="Nuevo diseño" onClick={newDocument}><ToolbarHomeIcon /></Tool></ToolbarSection>
           <div className="tool-group left">
             <ToolbarSection label="Clipboard">
-              <Tool label="Copiar" enabled={Boolean(selectedId)} onClick={() => { setClipboardId(selectedId); setNotice({ type: "info", text: "Forma copiada" }); }}><ToolbarCopyIcon /></Tool>
+              <Tool label="Copiar" enabled={Boolean(selectedObjectId)} onClick={() => { setClipboardId(selectedObjectId); setNotice({ type: "info", text: "Objeto copiado" }); }}><ToolbarCopyIcon /></Tool>
               <Tool label="Pegar" enabled={Boolean(clipboardId)} onClick={() => duplicateSelected(clipboardId)}><ToolbarPasteIcon /></Tool>
-              <Tool label="Duplicar" enabled={Boolean(selectedId)} onClick={() => duplicateSelected()}><ToolbarDuplicateIcon /></Tool>
-              <Tool label="Eliminar" enabled={Boolean(selectedId)} onClick={removeSelected}><ToolbarTrashIcon /></Tool>
+              <Tool label="Duplicar" enabled={Boolean(selectedObjectId)} onClick={() => duplicateSelected()}><ToolbarDuplicateIcon /></Tool>
+              <Tool label="Eliminar objeto" enabled={Boolean(selectedObjectId)} onClick={removeSelected}><ToolbarTrashIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label="History">
               <Tool label="Deshacer" enabled={history.index > 0} onClick={undo}><ToolbarUndoIcon /></Tool>
               <Tool label="Rehacer" enabled={history.index < history.entries.length - 1} onClick={redo}><ToolbarRedoIcon /></Tool>
-              <Tool label="Historial paramétrico" enabled onClick={() => setHistoryOpen((value) => !value)} active={historyOpen}><History size={26} /></Tool>
+              <Tool label="Árbol paramétrico" enabled onClick={() => setModelTreeOpen((value) => !value)} active={modelTreeOpen}><History size={26} /></Tool>
             </ToolbarSection>
             <ToolbarSection label="Shapes" className="toolbar-shapes-section">
               <button className={`shape-menu-trigger ${shapesOpen ? "active" : ""}`} aria-label="Añadir forma" onClick={() => setShapesOpen((value) => !value)}><ToolbarShapeAddIcon /></button>
               {shapesOpen && (
                 <div className="shape-menu-dropdown">
-                  <div className="shape-menu-title">Formas básicas</div>
+                  <div className="shape-menu-title">Objetos y operaciones</div>
                   <div className="shape-menu-list">
-                    {toolbarShapeAssets.slice(0, 2).map((asset) => <button className="shape-menu-item" key={asset.id} onClick={() => addShape(asset.kind as SupportedPrimitive)}><img src={asset.menuIcon} alt="" /><span>{asset.name === "Box" ? "Caja" : "Cilindro"}<small>Boceto + extrusión</small></span></button>)}
+                    <button className="shape-menu-item educad-new-object-item" onClick={newObject}><Plus size={31} /><span>New Object<small>Contenedor de operaciones</small></span></button>
+                    <div className="educad-shape-target">{selectedObjectId ? `Añadir a ${document.objects.find((object) => object.id === selectedObjectId)?.name ?? "objeto activo"}` : "Selecciona primero un objeto"}</div>
+                    {toolbarShapeAssets.slice(0, 2).map((asset) => <button className="shape-menu-item" disabled={!selectedObjectId} key={asset.id} onClick={() => addShape(asset.kind as SupportedPrimitive)}><img src={asset.menuIcon} alt="" /><span>{asset.name === "Box" ? "Caja" : "Cilindro"}<small>Nueva operación en el objeto</small></span></button>)}
                     <div className="educad-shape-coming"><strong>Más operaciones CAD</strong><span>Revolución, cono y esfera llegarán como operaciones paramétricas.</span></div>
                   </div>
                 </div>
@@ -285,13 +362,13 @@ export function SketchForgeParametricEditor() {
           <div className="tool-group right">
             <ToolbarSection label="Visibility" className="compact toolbar-visibility-section"><Tool label="Ocultar" enabled={Boolean(selectedShape)} onClick={() => updateSelected({ hidden: !selectedShape?.hidden })} active={Boolean(selectedShape?.hidden)}><ToolbarHideSelectedIcon /></Tool></ToolbarSection>
             <ToolbarSection label="Combine">
-              <Tool label="Agrupar paramétricamente" enabled={objectFeatures(document).length > 1} onClick={() => setNotice({ type: "info", text: "Las formas se combinan según Solid/Hole y el orden del historial" })}><ToolbarGroupIcon /></Tool>
+              <Tool label="Agrupar paramétricamente" enabled={document.objects.length > 1} onClick={() => setNotice({ type: "info", text: "Las formas se combinan según Solid/Hole y el orden del historial" })}><ToolbarGroupIcon /></Tool>
               <Tool label="Desagrupar" enabled={false}><ToolbarUngroupIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label="Modify">
               <Tool label="Alinear" enabled={false}><ToolbarAlignIcon /></Tool>
-              <Tool label="Simetría" enabled={Boolean(selectedShape)} onClick={() => selectedId && mutate((draft) => applyWorkplanePatch(draft, selectedId, { x: -(selectedShape?.x ?? 0) }))}><ToolbarMirrorIcon /></Tool>
-              <Tool label="Ajustar a rejilla" enabled={Boolean(selectedShape)} onClick={() => selectedId && mutate((draft) => applyWorkplanePatch(draft, selectedId, { x: Math.round((selectedShape?.x ?? 0) / snapAmount) * snapAmount, z: Math.round((selectedShape?.z ?? 0) / snapAmount) * snapAmount }))}><ToolbarSnapGridIcon /></Tool>
+              <Tool label="Simetría" enabled={Boolean(selectedShape)} onClick={() => selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: -(selectedShape?.x ?? 0) }))}><ToolbarMirrorIcon /></Tool>
+              <Tool label="Ajustar a rejilla" enabled={Boolean(selectedShape)} onClick={() => selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: Math.round((selectedShape?.x ?? 0) / snapAmount) * snapAmount, z: Math.round((selectedShape?.z ?? 0) / snapAmount) * snapAmount }))}><ToolbarSnapGridIcon /></Tool>
               <Tool label="Chaflán" enabled={false}><ToolbarChamferIcon /></Tool>
               <Tool label="Redondeo" enabled={Boolean(selectedShape && !selectedShape.hole)} onClick={addFillet}><ToolbarFilletIcon /></Tool>
             </ToolbarSection>
@@ -316,7 +393,14 @@ export function SketchForgeParametricEditor() {
           view={view}
           selection={selectedBox}
           snap={snapAmount}
-          onSelectionMove={(x, y) => selectedId && mutate((draft) => applyWorkplanePatch(draft, selectedId, { x, z: y }))}
+          onSelectionMove={(x, y) => mutate((draft) => {
+            if (selectedOperationId) applyOperationWorldPosition(draft, selectedOperationId, x, y);
+            else if (selectedObjectId) applyWorkplanePatch(draft, selectedObjectId, { x, z: y });
+          })}
+          onSelectionRotate={(rotation) => mutate((draft) => {
+            if (selectedOperationId) applyOperationWorldRotation(draft, selectedOperationId, rotation);
+            else if (selectedObjectId) applyWorkplanePatch(draft, selectedObjectId, { rotation });
+          })}
         />
         <ViewCube onView={setCamera} />
         <div className="camera-controls" aria-label="Controles de cámara">
@@ -325,23 +409,22 @@ export function SketchForgeParametricEditor() {
           <button aria-label="Acercar" onClick={() => setCamera("zoom-in")}><Plus size={28} /></button>
           <button aria-label="Alejar" onClick={() => setCamera("zoom-out")}><Minus size={28} /></button>
         </div>
-        <div className="educad-drag-tip">Arrastra la forma seleccionada sobre el plano · usa las flechas para mover con precisión</div>
+        <div className="educad-drag-tip">Arrastra la operación para moverla · usa el tirador circular para girarla</div>
         {kernelBusy && <div className="educad-kernel-pill">Reconstruyendo OpenCascade…</div>}
         {build.warning && <div className="educad-rebuild-error"><strong>El historial se detuvo aquí</strong><span>{build.warning}</span></div>}
         {notice && <div className={`educad-reference-toast ${notice.type}`}>{notice.text}</div>}
 
-        {historyOpen && <ParametricHistory document={document} selectedId={selectedId} completed={build.completedFeatureIds} onSelect={setSelectedId} onClose={() => setHistoryOpen(false)} />}
-        {selectedShape && (
-          <ShapeInspector
-            shape={selectedShape}
-            snap={snap}
-            snapOpen={snapOpen}
-            workspace={DEFAULT_WORKPLANE_WORKSPACE}
-            onUpdate={updateSelected}
-            onSnapChange={setSnap}
-            onSnapOpenChange={setSnapOpen}
-          />
-        )}
+        <ParametricModelSidebar
+          document={document}
+          selectedId={selectedId}
+          selectionKind={selectionKind}
+          completedFeatureIds={build.completedFeatureIds}
+          treeOpen={modelTreeOpen}
+          onSelect={(id, kind) => { setSelectedId(id); setSelectionKind(kind); }}
+          onUpdateObject={updateObject}
+          onUpdateFeature={updateFeature}
+          onDeleteFeature={deleteFeature}
+        />
       </section>
 
       {exportOpen && (
@@ -378,8 +461,4 @@ function Tool({ label, enabled = true, active = false, onClick, children }: { la
 
 function ViewCube({ onView }: { onView: (view: CameraView["name"]) => void }) {
   return <div className="view-cube" aria-label="Cubo de vistas"><div className="view-cube-inner" style={{ transform: "rotateX(-22deg) rotateY(34deg)" }}><button className="cube-face cube-top" onClick={() => onView("top")}>TOP</button><button className="cube-face cube-bottom" onClick={() => onView("top")}>BOTTOM</button><button className="cube-face cube-front" onClick={() => onView("front")}>FRONT</button><button className="cube-face cube-back" onClick={() => onView("front")}>BACK</button><button className="cube-face cube-right" onClick={() => onView("right")}>RIGHT</button><button className="cube-face cube-left" onClick={() => onView("right")}>LEFT</button></div></div>;
-}
-
-function ParametricHistory({ document, selectedId, completed, onSelect, onClose }: { document: ParametricDocument; selectedId: string | null; completed: string[]; onSelect: (id: string) => void; onClose: () => void }) {
-  return <aside className="educad-history-drawer"><header><div><strong>Historial paramétrico</strong><span>El modelo se reconstruye de arriba abajo</span></div><button onClick={onClose}><X /></button></header><div className="educad-history-origin">Origen <small>XY · Z↑</small></div><div className="educad-history-list">{document.features.map((feature, index) => <button key={feature.id} className={`${selectedId === feature.id ? "selected" : ""} ${feature.suppressed ? "suppressed" : ""}`} onClick={() => onSelect(feature.id)}><span className={`educad-history-kind ${feature.kind}`}>{index + 1}</span><span><strong>{feature.name}</strong><small>{feature.kind === "sketch" ? "Boceto" : feature.kind === "extrude" ? "Extrusión" : feature.kind === "hole" ? "Taladro" : "Redondeo"}</small></span><i>{completed.includes(feature.id) ? "✓" : "·"}</i></button>)}</div><div className="educad-history-lesson"><strong>¿Por qué aparece un boceto?</strong><p>Cada forma sencilla sigue siendo CAD: primero se define un perfil 2D y después se crea volumen.</p></div></aside>;
 }
