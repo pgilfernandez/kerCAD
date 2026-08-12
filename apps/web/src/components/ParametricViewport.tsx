@@ -5,8 +5,9 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { RenderMesh } from "@/types/parametric";
 
-export type CameraView = { name: "iso" | "top" | "front" | "right" | "zoom-in" | "zoom-out" | "home" | "fit" | "selection"; token: number };
+export type CameraView = { name: "iso" | "top" | "front" | "right" | "zoom-in" | "zoom-out" | "home" | "fit" | "selection" | "custom"; token: number; direction?: [number, number, number] };
 export type CameraProjection = "perspective" | "orthographic";
+export type CameraOrientation = { azimuth: number; polar: number };
 
 export type ViewportSelection = {
   id: string;
@@ -30,9 +31,11 @@ type Props = {
   snap?: number;
   onSelectionMove?: (x: number, y: number) => void;
   onSelectionRotate?: (rotation: number) => void;
+  onCameraOrientation?: (orientation: CameraOrientation) => void;
+  onObjectSelect?: (objectId: string) => void;
 };
 
-export function ParametricViewport({ mesh, objectMeshes = [], color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "perspective", selection = null, snap = 1, onSelectionMove, onSelectionRotate }: Props) {
+export function ParametricViewport({ mesh, objectMeshes = [], color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "perspective", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onCameraOrientation, onObjectSelect }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | THREE.OrthographicCamera | null>(null);
@@ -45,12 +48,16 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
   const selectionRef = useRef(selection);
   const moveRef = useRef(onSelectionMove);
   const rotateRef = useRef(onSelectionRotate);
+  const orientationRef = useRef(onCameraOrientation);
+  const objectSelectRef = useRef(onObjectSelect);
   const snapRef = useRef(snap);
   const hasFittedRef = useRef(false);
 
   useEffect(() => { selectionRef.current = selection; }, [selection]);
   useEffect(() => { moveRef.current = onSelectionMove; }, [onSelectionMove]);
   useEffect(() => { rotateRef.current = onSelectionRotate; }, [onSelectionRotate]);
+  useEffect(() => { orientationRef.current = onCameraOrientation; }, [onCameraOrientation]);
+  useEffect(() => { objectSelectRef.current = onObjectSelect; }, [onObjectSelect]);
   useEffect(() => { snapRef.current = snap; }, [snap]);
 
   useEffect(() => {
@@ -79,6 +86,8 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
     controls.target.set(0, 5, 0);
     controls.minDistance = 18;
     controls.maxDistance = 420;
+    const emitOrientation = () => orientationRef.current?.({ azimuth: controls.getAzimuthalAngle(), polar: controls.getPolarAngle() });
+    controls.addEventListener("change", emitOrientation);
 
     scene.add(new THREE.HemisphereLight("#ffffff", "#9fb4bf", 2.1));
     const key = new THREE.DirectionalLight("#ffffff", 3.2);
@@ -107,31 +116,38 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
     let pendingPosition: { x: number; y: number } | null = null;
     let pendingRotation: number | null = null;
     let rotationOffset = 0;
+    let pickCandidate: { pointerId: number; x: number; y: number } | null = null;
     const setPointer = (event: PointerEvent) => {
       const bounds = renderer.domElement.getBoundingClientRect();
       pointer.set(((event.clientX - bounds.left) / bounds.width) * 2 - 1, -((event.clientY - bounds.top) / bounds.height) * 2 + 1);
       raycaster.setFromCamera(pointer, camera);
     };
     const onPointerDown = (event: PointerEvent) => {
+      if (event.button !== 0) return;
       const hitbox = selectionHitboxRef.current;
       const rotationHitbox = rotationHitboxRef.current;
       const selected = selectionRef.current;
-      if (!hitbox || !selected) return;
       setPointer(event);
-      const center = new THREE.Vector3();
-      hitbox.getWorldPosition(center);
-      dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), center);
-      if (!raycaster.ray.intersectPlane(dragPlane, dragPoint)) return;
-      if (rotationHitbox && raycaster.intersectObject(rotationHitbox, false).length > 0) {
-        interaction = "rotate";
-        const pointerAngle = Math.atan2(-(dragPoint.z - center.z), dragPoint.x - center.x) * 180 / Math.PI;
-        rotationOffset = selected.rotation - pointerAngle;
-        pendingRotation = selected.rotation;
-      } else {
-        if (raycaster.intersectObject(hitbox, false).length === 0) return;
-        interaction = "move";
-        dragOffset.set(center.x - dragPoint.x, 0, center.z - dragPoint.z);
-        pendingPosition = { x: selected.x, y: selected.y };
+      if (hitbox && selected) {
+        const center = new THREE.Vector3();
+        hitbox.getWorldPosition(center);
+        dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), center);
+        if (raycaster.ray.intersectPlane(dragPlane, dragPoint)) {
+          if (rotationHitbox && raycaster.intersectObject(rotationHitbox, false).length > 0) {
+            interaction = "rotate";
+            const pointerAngle = Math.atan2(-(dragPoint.z - center.z), dragPoint.x - center.x) * 180 / Math.PI;
+            rotationOffset = selected.rotation - pointerAngle;
+            pendingRotation = selected.rotation;
+          } else if (raycaster.intersectObject(hitbox, false).length > 0) {
+            interaction = "move";
+            dragOffset.set(center.x - dragPoint.x, 0, center.z - dragPoint.z);
+            pendingPosition = { x: selected.x, y: selected.y };
+          }
+        }
+      }
+      if (!interaction) {
+        pickCandidate = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+        return;
       }
       controls.enabled = false;
       renderer.domElement.setPointerCapture(event.pointerId);
@@ -139,7 +155,10 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
       event.preventDefault();
     };
     const onPointerMove = (event: PointerEvent) => {
-      if (!interaction) return;
+      if (!interaction) {
+        if (pickCandidate && pickCandidate.pointerId === event.pointerId && Math.hypot(event.clientX - pickCandidate.x, event.clientY - pickCandidate.y) > 5) pickCandidate = null;
+        return;
+      }
       setPointer(event);
       if (!raycaster.ray.intersectPlane(dragPlane, dragPoint)) return;
       const root = selectionRootRef.current;
@@ -159,9 +178,20 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
         root.rotation.z = THREE.MathUtils.degToRad(pendingRotation);
       }
     };
-    const stopDragging = (event: PointerEvent) => {
-      if (!interaction) return;
+    const stopDragging = (event: PointerEvent, cancelled = false) => {
+      if (!interaction) {
+        const candidate = pickCandidate;
+        pickCandidate = null;
+        if (cancelled || !candidate || candidate.pointerId !== event.pointerId) return;
+        setPointer(event);
+        const bodies = modelGroup.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh && typeof child.userData.objectId === "string");
+        const hit = raycaster.intersectObjects(bodies, false)[0];
+        const objectId = hit?.object.userData.objectId;
+        if (typeof objectId === "string") objectSelectRef.current?.(objectId);
+        return;
+      }
       interaction = null;
+      pickCandidate = null;
       controls.enabled = true;
       renderer.domElement.style.cursor = "default";
       if (renderer.domElement.hasPointerCapture(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
@@ -173,7 +203,8 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
     renderer.domElement.addEventListener("pointerdown", onPointerDown);
     renderer.domElement.addEventListener("pointermove", onPointerMove);
     renderer.domElement.addEventListener("pointerup", stopDragging);
-    renderer.domElement.addEventListener("pointercancel", stopDragging);
+    const cancelDragging = (event: PointerEvent) => stopDragging(event, true);
+    renderer.domElement.addEventListener("pointercancel", cancelDragging);
 
     const resize = () => {
       const width = Math.max(1, host.clientWidth);
@@ -210,10 +241,11 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
       cancelAnimationFrame(frame);
       observer.disconnect();
       controls.dispose();
+      controls.removeEventListener("change", emitOrientation);
       renderer.domElement.removeEventListener("pointerdown", onPointerDown);
       renderer.domElement.removeEventListener("pointermove", onPointerMove);
       renderer.domElement.removeEventListener("pointerup", stopDragging);
-      renderer.domElement.removeEventListener("pointercancel", stopDragging);
+      renderer.domElement.removeEventListener("pointercancel", cancelDragging);
       renderer.dispose();
       renderer.domElement.remove();
       scene.clear();
@@ -300,8 +332,8 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
     });
     group.clear();
     const renderItems = objectMeshes.length > 0
-      ? objectMeshes.map((item) => ({ mesh: item.mesh, color: item.color }))
-      : mesh ? [{ mesh, color }] : [];
+      ? objectMeshes.map((item) => ({ mesh: item.mesh, color: item.color, objectId: item.objectId as string | null }))
+      : mesh ? [{ mesh, color, objectId: null }] : [];
     if (renderItems.length === 0) return;
 
     for (const item of renderItems) {
@@ -316,6 +348,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
       );
       body.castShadow = true;
       body.receiveShadow = true;
+      if (item.objectId) body.userData.objectId = item.objectId;
       group.add(body);
 
       const edgeGeometry = new THREE.BufferGeometry();
@@ -444,6 +477,16 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
       }
       camera.lookAt(center);
       controls.update();
+      return;
+    }
+    if (view.name === "custom") {
+      if (view.direction) {
+        const direction = new THREE.Vector3(...view.direction).normalize();
+        camera.position.copy(target).add(direction.multiplyScalar(distance));
+        camera.up.set(0, 1, 0);
+        camera.lookAt(target);
+        controls.update();
+      }
       return;
     }
     const vectors: Record<"iso" | "top" | "front" | "right" | "home", THREE.Vector3> = {

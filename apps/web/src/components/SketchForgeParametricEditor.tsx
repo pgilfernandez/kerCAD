@@ -3,7 +3,7 @@
 import { Box, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Focus, Grid3X3, Home, Maximize2, Minus, Plus, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ParametricModelSidebar, type ModelSelectionKind, type ModelSidebarMode } from "@/components/ParametricModelSidebar";
-import { ParametricViewport, type CameraProjection, type CameraView } from "@/components/ParametricViewport";
+import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView } from "@/components/ParametricViewport";
 import {
   ToolbarAlignIcon,
   ToolbarChamferIcon,
@@ -33,6 +33,7 @@ import {
   applyWorkplanePatch,
   deleteParametricObject,
   duplicateParametricObject,
+  lastOperationForObject,
   objectIdForFeature,
   viewportSelectionForFeature,
   viewportSelectionForObject,
@@ -77,6 +78,7 @@ export function SketchForgeParametricEditor() {
   const [workplaneDraft, setWorkplaneDraft] = useState(document.workplane);
   const [view, setView] = useState<CameraView>({ name: "iso", token: 0 });
   const [projection, setProjection] = useState<CameraProjection>("perspective");
+  const [cameraOrientation, setCameraOrientation] = useState<CameraOrientation>({ azimuth: Math.PI / 4, polar: 1.02 });
   const [clipboardId, setClipboardId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [hydrated, setHydrated] = useState(false);
@@ -396,8 +398,16 @@ export function SketchForgeParametricEditor() {
             if (selectedOperationId) applyOperationWorldRotation(draft, selectedOperationId, rotation);
             else if (selectedObjectId) applyWorkplanePatch(draft, selectedObjectId, { rotation });
           })}
+          onCameraOrientation={setCameraOrientation}
+          onObjectSelect={(objectId) => {
+            const object = document.objects.find((candidate) => candidate.id === objectId);
+            if (!object || object.locked || !object.visible) return;
+            const operation = lastOperationForObject(document, objectId);
+            setSelectedId(operation?.id ?? objectId);
+            setSelectionKind(operation ? "feature" : "object");
+          }}
         />
-        <ViewCube onView={setCamera} />
+        <ViewCube orientation={cameraOrientation} onDirection={(direction) => setView((current) => ({ name: "custom", direction, token: current.token + 1 }))} />
         <button className={`educad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label="Ajustes del plano de trabajo" title="Plano de trabajo" onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><Grid3X3 size={22} /></button>
         {workplaneOpen ? <form className="educad-workplane-popover" onSubmit={(event) => { event.preventDefault(); mutate((draft) => { draft.workplane = workplaneDraft; }); setWorkplaneOpen(false); }}>
           <header><div><strong>Plano de trabajo</strong><span>Rejilla y ajuste de movimiento</span></div><button type="button" aria-label="Cerrar" onClick={() => setWorkplaneOpen(false)}><X size={17} /></button></header>
@@ -472,6 +482,39 @@ function Tool({ label, enabled = true, active = false, onClick, children }: { la
   return <button className={`toolbar-icon ${enabled ? "" : "disabled"} ${active ? "active" : ""}`} aria-label={label} title={label} disabled={!enabled} onClick={onClick}>{children}</button>;
 }
 
-function ViewCube({ onView }: { onView: (view: CameraView["name"]) => void }) {
-  return <div className="view-cube" aria-label="Cubo de vistas"><div className="view-cube-inner" style={{ transform: "rotateX(-22deg) rotateY(34deg)" }}><button className="cube-face cube-top" onClick={() => onView("top")}>TOP</button><button className="cube-face cube-bottom" onClick={() => onView("top")}>BOTTOM</button><button className="cube-face cube-front" onClick={() => onView("front")}>FRONT</button><button className="cube-face cube-back" onClick={() => onView("front")}>BACK</button><button className="cube-face cube-right" onClick={() => onView("right")}>RIGHT</button><button className="cube-face cube-left" onClick={() => onView("right")}>LEFT</button></div></div>;
+function ViewCube({ orientation, onDirection }: { orientation: CameraOrientation; onDirection: (direction: [number, number, number]) => void }) {
+  const dragRef = useRef<{ pointerId: number; x: number; y: number; azimuth: number; polar: number } | null>(null);
+  const draggedRef = useRef(false);
+  const cubeTransform = `rotateX(${orientation.polar * 180 / Math.PI - 90}deg) rotateY(${-orientation.azimuth * 180 / Math.PI}deg)`;
+  const chooseDirection = (direction: [number, number, number]) => {
+    if (!draggedRef.current) onDirection(direction);
+    draggedRef.current = false;
+  };
+  return <div
+    className="view-cube"
+    aria-label="Cubo de vistas interactivo"
+    onPointerDown={(event) => {
+      if (event.button !== 0) return;
+      dragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, azimuth: orientation.azimuth, polar: orientation.polar };
+      draggedRef.current = false;
+    }}
+    onPointerMove={(event) => {
+      const drag = dragRef.current;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      const dx = event.clientX - drag.x;
+      const dy = event.clientY - drag.y;
+      if (Math.abs(dx) + Math.abs(dy) < 3) return;
+      draggedRef.current = true;
+      if (!event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.setPointerCapture(event.pointerId);
+      const azimuth = drag.azimuth - dx * 0.012;
+      const polar = Math.min(Math.PI - 0.03, Math.max(0.03, drag.polar - dy * 0.012));
+      onDirection([Math.sin(polar) * Math.sin(azimuth), Math.cos(polar), Math.sin(polar) * Math.cos(azimuth)]);
+    }}
+    onPointerUp={(event) => {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+      dragRef.current = null;
+      window.setTimeout(() => { draggedRef.current = false; }, 0);
+    }}
+    onPointerCancel={() => { dragRef.current = null; draggedRef.current = false; }}
+  ><div className="view-cube-inner" style={{ transform: cubeTransform }}><button type="button" className="cube-face cube-top" aria-label="Vista inferior" onClick={() => chooseDirection([0, -1, 0.001])}>BOTTOM</button><button type="button" className="cube-face cube-bottom" aria-label="Vista superior" onClick={() => chooseDirection([0, 1, 0.001])}>TOP</button><button type="button" className="cube-face cube-front" aria-label="Vista frontal" onClick={() => chooseDirection([0, 0.001, 1])}>FRONT</button><button type="button" className="cube-face cube-back" aria-label="Vista trasera" onClick={() => chooseDirection([0, 0.001, -1])}>BACK</button><button type="button" className="cube-face cube-right" aria-label="Vista derecha" onClick={() => chooseDirection([1, 0.001, 0])}>RIGHT</button><button type="button" className="cube-face cube-left" aria-label="Vista izquierda" onClick={() => chooseDirection([-1, 0.001, 0])}>LEFT</button></div></div>;
 }

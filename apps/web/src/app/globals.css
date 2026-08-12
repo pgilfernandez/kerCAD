@@ -5018,7 +5018,11 @@ button {
   filter: drop-shadow(0 2px 3px rgba(45, 64, 82, 0.14));
   opacity: 0.9;
   pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
 }
+.view-cube:active { cursor: grabbing; }
 
 .view-cube-inner {
   position: relative;

@@ -7,6 +7,7 @@ import {
   applyWorkplanePatch,
   deleteParametricObject,
   duplicateParametricObject,
+  lastOperationForObject,
   objectIdForFeature,
   parametricObjectTree,
   sketchForExtrude,
@@ -146,5 +147,16 @@ describe("parametric object workflow", () => {
     deleteParametricObject(document, firstObject.id);
     expect(document.features.some((feature) => feature.id === fillet.id)).toBe(false);
     expect(parametricObjectTree(document).map((object) => object.id)).toEqual([secondObjectId]);
+  });
+
+  it("finds the last operation of an object for viewport selection", () => {
+    const document = createStarterDocument(123);
+    const objectId = document.objects[0].id;
+    const fillet = createFilletFeature(1);
+    fillet.objectId = objectId;
+    document.features.push(fillet);
+
+    expect(lastOperationForObject(document, objectId)?.id).toBe(fillet.id);
+    expect(lastOperationForObject(document, "missing-object")).toBeNull();
   });
 });

@@ -42,6 +42,10 @@ export function parametricObjectTree(document: ParametricDocument): ParametricOb
   });
 }
 
+export function lastOperationForObject(document: ParametricDocument, objectId: string) {
+  return document.features.findLast((feature) => feature.objectId === objectId && feature.kind !== "sketch") ?? null;
+}
+
 export function addParametricObject(document: ParametricDocument, position = { x: 0, y: 0, z: 0 }) {
   const object = createParametricObject(document.objects.length + 1, position);
   object.color = document.color;
