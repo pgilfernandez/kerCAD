@@ -135,14 +135,14 @@ export function workplaneShapeForObject(document: ParametricDocument, id: string
     rotation: object.transform.rotation.z,
     radius: sketch.profile.shape === "rectangle" ? 0 : undefined,
     sides: sketch.profile.shape === "circle" ? 96 : undefined,
-    hidden: feature.suppressed,
-    locked: false,
+    hidden: !object.visible || feature.suppressed,
+    locked: object.locked,
   };
 }
 
 export function viewportSelectionForObject(document: ParametricDocument, id: string | null): ViewportSelection | null {
   const shape = workplaneShapeForObject(document, id);
-  if (!shape || shape.hidden) return null;
+  if (!shape || shape.hidden || shape.locked) return null;
   return {
     id: shape.id,
     x: shape.x,
@@ -172,7 +172,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
   if (!feature || feature.suppressed) return null;
   const object = document.objects.find((candidate) => candidate.id === feature.objectId);
   const sketch = sketchForExtrude(document, feature);
-  if (!object || !sketch) return null;
+  if (!object || !object.visible || object.locked || !sketch) return null;
   const world = operationWorldTransform(object, feature);
   const width = (sketch.profile.shape === "rectangle" ? sketch.profile.width : sketch.profile.diameter) * object.transform.scale.x;
   const depth = (sketch.profile.shape === "rectangle" ? sketch.profile.depth : sketch.profile.diameter) * object.transform.scale.y;

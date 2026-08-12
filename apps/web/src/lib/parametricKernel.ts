@@ -69,6 +69,7 @@ export async function buildParametricModel(document: ParametricDocument): Promis
   try {
     for (const feature of document.features) {
       if (feature.suppressed) continue;
+      if (feature.objectId && objects.get(feature.objectId)?.visible === false) continue;
       if (feature.kind === "sketch") {
         sketches.set(feature.id, feature);
         completedFeatureIds.push(feature.id);

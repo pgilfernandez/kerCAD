@@ -1,8 +1,8 @@
 "use client";
 
-import { ChevronLeft, ChevronUp, History, Home, Minus, Plus, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Home, Minus, Plus, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ParametricModelSidebar, type ModelSelectionKind } from "@/components/ParametricModelSidebar";
+import { ParametricModelSidebar, type ModelSelectionKind, type ModelSidebarMode } from "@/components/ParametricModelSidebar";
 import { ParametricViewport, type CameraView } from "@/components/ParametricViewport";
 import {
   ToolbarAlignIcon,
@@ -11,8 +11,6 @@ import {
   ToolbarDropToWorkplaneIcon,
   ToolbarDuplicateIcon,
   ToolbarFilletIcon,
-  ToolbarGroupIcon,
-  ToolbarHideSelectedIcon,
   ToolbarHomeIcon,
   ToolbarImportIcon,
   ToolbarMirrorIcon,
@@ -23,7 +21,6 @@ import {
   ToolbarSnapGridIcon,
   ToolbarTrashIcon,
   ToolbarUndoIcon,
-  ToolbarUngroupIcon,
   ToolbarVectorExportIcon,
 } from "@/components/icons";
 import { cloneDocument, createFilletFeature, createStarterDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
@@ -73,7 +70,7 @@ export function SketchForgeParametricEditor() {
   const [build, setBuild] = useState<BuildResult>({ mesh: null, completedFeatureIds: [], warning: null });
   const [kernelBusy, setKernelBusy] = useState(true);
   const [shapesOpen, setShapesOpen] = useState(false);
-  const [modelTreeOpen, setModelTreeOpen] = useState(true);
+  const [modelSidebarMode, setModelSidebarMode] = useState<ModelSidebarMode | "hidden">("normal");
   const [exportOpen, setExportOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
@@ -341,7 +338,6 @@ export function SketchForgeParametricEditor() {
             <ToolbarSection label="History">
               <Tool label="Deshacer" enabled={history.index > 0} onClick={undo}><ToolbarUndoIcon /></Tool>
               <Tool label="Rehacer" enabled={history.index < history.entries.length - 1} onClick={redo}><ToolbarRedoIcon /></Tool>
-              <Tool label="Árbol paramétrico" enabled onClick={() => setModelTreeOpen((value) => !value)} active={modelTreeOpen}><History size={26} /></Tool>
             </ToolbarSection>
             <ToolbarSection label="Shapes" className="toolbar-shapes-section">
               <button className={`shape-menu-trigger ${shapesOpen ? "active" : ""}`} aria-label="Añadir forma" onClick={() => setShapesOpen((value) => !value)}><ToolbarShapeAddIcon /></button>
@@ -360,11 +356,6 @@ export function SketchForgeParametricEditor() {
           </div>
           <div className="toolbar-spacer" />
           <div className="tool-group right">
-            <ToolbarSection label="Visibility" className="compact toolbar-visibility-section"><Tool label="Ocultar" enabled={Boolean(selectedShape)} onClick={() => updateSelected({ hidden: !selectedShape?.hidden })} active={Boolean(selectedShape?.hidden)}><ToolbarHideSelectedIcon /></Tool></ToolbarSection>
-            <ToolbarSection label="Combine">
-              <Tool label="Agrupar paramétricamente" enabled={document.objects.length > 1} onClick={() => setNotice({ type: "info", text: "Las operaciones se evalúan como Añadir, Hueco o Común según el orden del historial" })}><ToolbarGroupIcon /></Tool>
-              <Tool label="Desagrupar" enabled={false}><ToolbarUngroupIcon /></Tool>
-            </ToolbarSection>
             <ToolbarSection label="Modify">
               <Tool label="Alinear" enabled={false}><ToolbarAlignIcon /></Tool>
               <Tool label="Simetría" enabled={Boolean(selectedShape)} onClick={() => selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: -(selectedShape?.x ?? 0) }))}><ToolbarMirrorIcon /></Tool>
@@ -403,6 +394,14 @@ export function SketchForgeParametricEditor() {
           })}
         />
         <ViewCube onView={setCamera} />
+        <button
+          className={`educad-sidebar-mode-control ${modelSidebarMode}`}
+          aria-label={modelSidebarMode === "normal" ? "Simplificar jerarquía" : modelSidebarMode === "simplified" ? "Ocultar jerarquía" : "Mostrar jerarquía"}
+          title={modelSidebarMode === "normal" ? "Panel visible" : modelSidebarMode === "simplified" ? "Panel simplificado" : "Panel oculto"}
+          onClick={() => setModelSidebarMode((current) => current === "normal" ? "simplified" : current === "simplified" ? "hidden" : "normal")}
+        >
+          {modelSidebarMode === "normal" ? <ChevronLeft size={23} /> : modelSidebarMode === "simplified" ? <ChevronDown size={23} /> : <ChevronRight size={23} />}
+        </button>
         <div className="camera-controls" aria-label="Controles de cámara">
           <button aria-label="Contraer"><ChevronLeft size={24} /></button>
           <button aria-label="Vista inicial" onClick={() => setCamera("home")}><Home size={24} /></button>
@@ -414,17 +413,16 @@ export function SketchForgeParametricEditor() {
         {build.warning && <div className="educad-rebuild-error"><strong>El historial se detuvo aquí</strong><span>{build.warning}</span></div>}
         {notice && <div className={`educad-reference-toast ${notice.type}`}>{notice.text}</div>}
 
-        <ParametricModelSidebar
+        {modelSidebarMode !== "hidden" ? <ParametricModelSidebar
           document={document}
           selectedId={selectedId}
           selectionKind={selectionKind}
-          completedFeatureIds={build.completedFeatureIds}
-          treeOpen={modelTreeOpen}
+          mode={modelSidebarMode}
           onSelect={(id, kind) => { setSelectedId(id); setSelectionKind(kind); }}
           onUpdateObject={updateObject}
           onUpdateFeature={updateFeature}
           onDeleteFeature={deleteFeature}
-        />
+        /> : null}
       </section>
 
       {exportOpen && (

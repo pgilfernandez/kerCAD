@@ -15,7 +15,7 @@ describe("parametric document", () => {
     expect(document.schema).toBe("educad-parametric/v1");
     expect(document.createdAt).toBe(123);
     expect(document.objects).toHaveLength(1);
-    expect(document.objects[0]).toMatchObject({ name: "Objeto 1", transform: { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 } } });
+    expect(document.objects[0]).toMatchObject({ name: "Objeto 1", visible: true, locked: false, transform: { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 } } });
     expect(document.features.map((feature) => feature.kind)).toEqual(["sketch", "extrude"]);
     const [sketch, extrude] = document.features;
     expect(extrude.kind === "extrude" && extrude.sketchId).toBe(sketch.id);
@@ -78,5 +78,13 @@ describe("parametric document", () => {
     const migrated = normalizeParametricDocument(stored);
     expect(migrated.features[0]).toMatchObject({ x: 0, y: 0, offset: 0 });
     expect(migrated.features[1]).toMatchObject({ transform: { position: { x: 7, y: -2, z: 4 }, rotation: { x: 0, y: 0, z: 0 } } });
+  });
+
+  it("adds visibility and locking defaults to stored objects", () => {
+    const stored = createStarterDocument(123);
+    delete (stored.objects[0] as Partial<typeof stored.objects[0]>).visible;
+    delete (stored.objects[0] as Partial<typeof stored.objects[0]>).locked;
+
+    expect(normalizeParametricDocument(stored).objects[0]).toMatchObject({ visible: true, locked: false });
   });
 });

@@ -89,6 +89,21 @@ describe("parametric object workflow", () => {
     expect(viewportSelectionForObject(document, box.id)).toMatchObject({ x: 5, y: -3, width: 20, depth: 20, height: 20 });
   });
 
+  it("hides or locks an object without suppressing its history", () => {
+    const document = createStarterDocument(123);
+    const object = document.objects[0];
+    const extrusion = document.features.find((feature) => feature.kind === "extrude");
+
+    object.visible = false;
+    expect(viewportSelectionForObject(document, object.id)).toBeNull();
+    expect(extrusion?.suppressed).toBe(false);
+
+    object.visible = true;
+    object.locked = true;
+    expect(viewportSelectionForObject(document, object.id)).toBeNull();
+    expect(extrusion?.suppressed).toBe(false);
+  });
+
   it("duplicates and deletes the sketch-operation pair together", () => {
     vi.spyOn(Date, "now").mockReturnValue(456);
     const document = createStarterDocument(123);

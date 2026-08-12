@@ -1,30 +1,34 @@
 "use client";
 
 import {
-  BadgeMinus,
-  BadgePlus,
   Box,
   ChevronDown,
   ChevronRight,
   CircleDot,
-  Combine,
+  CircleOff,
   DraftingCompass,
+  Eye,
+  EyeOff,
   Layers3,
+  LockKeyhole,
+  LockKeyholeOpen,
+  Pencil,
   Radius,
   Trash2,
+  X,
 } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { parametricObjectTree, sketchForExtrude } from "@/lib/parametricObjects";
 import type { ParametricDocument, ParametricFeature, ParametricObject } from "@/types/parametric";
 
 export type ModelSelectionKind = "object" | "feature";
+export type ModelSidebarMode = "normal" | "simplified";
 
 type Props = {
   document: ParametricDocument;
   selectedId: string | null;
   selectionKind: ModelSelectionKind;
-  completedFeatureIds: string[];
-  treeOpen: boolean;
+  mode: ModelSidebarMode;
   onSelect: (id: string, kind: ModelSelectionKind) => void;
   onUpdateObject: (id: string, update: (object: ParametricObject) => void) => void;
   onUpdateFeature: (id: string, update: (feature: ParametricFeature) => void) => void;
@@ -35,8 +39,7 @@ export function ParametricModelSidebar({
   document,
   selectedId,
   selectionKind,
-  completedFeatureIds,
-  treeOpen,
+  mode,
   onSelect,
   onUpdateObject,
   onUpdateFeature,
@@ -44,6 +47,8 @@ export function ParametricModelSidebar({
 }: Props) {
   const objects = parametricObjectTree(document);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(objects.map((object) => object.id)));
+  const [renameTarget, setRenameTarget] = useState<{ id: string; kind: ModelSelectionKind; name: string } | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
   const objectListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -68,22 +73,36 @@ export function ParametricModelSidebar({
     ? document.objects.find((object) => object.id === selectedId) ?? null
     : null;
 
+  const beginRename = (id: string, kind: ModelSelectionKind, name: string) => {
+    setRenameTarget({ id, kind, name });
+    setRenameDraft(name);
+  };
+
+  const closeRename = () => {
+    setRenameTarget(null);
+    setRenameDraft("");
+  };
+
+  const commitRename = () => {
+    if (!renameTarget) return;
+    const name = renameDraft.trim();
+    if (!name) return;
+    if (renameTarget.kind === "object") onUpdateObject(renameTarget.id, (object) => { object.name = name; });
+    else onUpdateFeature(renameTarget.id, (feature) => { feature.name = name; });
+    closeRename();
+  };
+
   return (
-    <aside className="educad-model-sidebar" aria-label="Modelo paramétrico">
-      {treeOpen ? (
+    <>
+    <aside className={`educad-model-sidebar ${mode}`} aria-label="Modelo paramétrico">
         <section className="educad-model-tree">
-          <header>
-            <div><Layers3 size={18} /><strong>Modelo</strong></div>
-            <span>{objects.length} {objects.length === 1 ? "objeto" : "objetos"}</span>
-          </header>
-          <div className="educad-model-origin"><DraftingCompass size={15} /><span>Origen</span><small>Plano XY</small></div>
           <div ref={objectListRef} className="educad-object-list">
             {objects.map((object) => {
               const isExpanded = expanded.has(object.id);
               const objectSelected = selectionKind === "object" && selectedId === object.id;
               return (
                 <div className="educad-object-node" key={object.id}>
-                  <div className={`educad-object-row ${objectSelected ? "selected" : ""}`}>
+                  <div className={`educad-object-row ${objectSelected ? "selected" : ""} ${object.object.visible ? "" : "hidden"} ${object.object.locked ? "locked" : ""}`}>
                     <button
                       className="educad-tree-toggle"
                       aria-label={isExpanded ? `Contraer ${object.name}` : `Desplegar ${object.name}`}
@@ -96,29 +115,30 @@ export function ParametricModelSidebar({
                     >
                       {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                     </button>
-                    <button className="educad-object-select" onClick={() => onSelect(object.id, "object")}>
+                    <button className="educad-object-select" title={object.name} onClick={() => onSelect(object.id, "object")}>
                       <Box size={17} />
-                      <span><strong>{object.name}</strong><small>Contenedor</small></span>
+                      <span><strong>{object.name}</strong></span>
                     </button>
+                    <div className="educad-tree-actions">
+                      <button aria-label={`Renombrar ${object.name}`} title="Renombrar" onClick={() => beginRename(object.id, "object", object.name)}><Pencil size={14} /></button>
+                      <button aria-label={object.object.visible ? `Ocultar ${object.name}` : `Mostrar ${object.name}`} title={object.object.visible ? "Ocultar" : "Mostrar"} aria-pressed={!object.object.visible} onClick={() => onUpdateObject(object.id, (draft) => { draft.visible = !draft.visible; })}>{object.object.visible ? <Eye size={15} /> : <EyeOff size={15} />}</button>
+                      <button aria-label={object.object.locked ? `Desbloquear ${object.name}` : `Bloquear ${object.name}`} title={object.object.locked ? "Desbloquear" : "Bloquear"} aria-pressed={object.object.locked} onClick={() => onUpdateObject(object.id, (draft) => { draft.locked = !draft.locked; })}>{object.object.locked ? <LockKeyhole size={15} /> : <LockKeyholeOpen size={15} />}</button>
+                    </div>
                   </div>
                   {isExpanded ? (
                     <div className="educad-operation-list" role="group" aria-label={`Operaciones de ${object.name}`}>
-                      {object.operations.map((feature, operationIndex) => (
-                        <button
-                          key={feature.id}
-                          className={`${selectionKind === "feature" && selectedId === feature.id ? "selected" : ""} ${feature.suppressed ? "suppressed" : ""} ${operationClass(feature)}`}
-                          onClick={() => onSelect(feature.id, "feature")}
-                        >
-                          <span className="educad-tree-branch" aria-hidden="true" />
-                          <FeatureIcon document={document} feature={feature} />
-                          <span className="educad-operation-name">
-                            <strong>{feature.name}</strong>
-                            <small>{operationIndex + 1}. {featureLabel(feature)}</small>
-                          </span>
-                          <i title={completedFeatureIds.includes(feature.id) ? "Reconstruida" : "Pendiente"}>
-                            {completedFeatureIds.includes(feature.id) ? "✓" : "·"}
-                          </i>
-                        </button>
+                      {object.operations.map((feature) => (
+                        <div key={feature.id} className={`educad-operation-row ${selectionKind === "feature" && selectedId === feature.id ? "selected" : ""} ${feature.suppressed ? "suppressed" : ""} ${operationClass(feature)}`}>
+                          <button className="educad-operation-select" title={feature.name} onClick={() => onSelect(feature.id, "feature")}>
+                            <span className="educad-tree-branch" aria-hidden="true" />
+                            <FeatureIcon document={document} feature={feature} />
+                            <span className="educad-operation-name"><strong>{feature.name}</strong></span>
+                          </button>
+                          <div className="educad-tree-actions">
+                            <button aria-label={`Renombrar ${feature.name}`} title="Renombrar" onClick={() => beginRename(feature.id, "feature", feature.name)}><Pencil size={14} /></button>
+                            <button aria-label={feature.suppressed ? `Activar ${feature.name}` : `Suprimir ${feature.name}`} title={feature.suppressed ? "Activar" : "Suprimir"} aria-pressed={feature.suppressed} onClick={() => onUpdateFeature(feature.id, (draft) => { draft.suppressed = !draft.suppressed; })}><CircleOff size={15} /></button>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   ) : null}
@@ -127,9 +147,8 @@ export function ParametricModelSidebar({
             })}
           </div>
         </section>
-      ) : null}
 
-      <section className="educad-sidebar-editor">
+      {mode === "normal" ? <section className="educad-sidebar-editor">
         {selectedObject ? (
           <ParametricObjectInspector object={selectedObject} onUpdate={(update) => onUpdateObject(selectedObject.id, update)} />
         ) : selectedFeature ? (
@@ -142,17 +161,28 @@ export function ParametricModelSidebar({
         ) : (
           <div className="educad-no-selection"><Layers3 size={28} /><strong>Selecciona un objeto u operación</strong><span>Despliega el árbol para editar el historial CAD.</span></div>
         )}
-      </section>
+      </section> : null}
     </aside>
+    {renameTarget ? (
+      <div className="educad-dialog-backdrop" role="presentation" onPointerDown={closeRename}>
+        <form className="educad-rename-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-rename-title" onPointerDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); commitRename(); }}>
+          <header><strong id="educad-rename-title">Renombrar {renameTarget.kind === "object" ? "objeto" : "operación"}</strong><button type="button" aria-label="Cancelar" onClick={closeRename}><X size={18} /></button></header>
+          <label><span>Nombre</span><input autoFocus value={renameDraft} maxLength={80} onChange={(event) => setRenameDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") closeRename(); }} /></label>
+          <footer><button type="button" onClick={closeRename}>Cancelar</button><button className="primary" type="submit" disabled={!renameDraft.trim()}>OK</button></footer>
+        </form>
+      </div>
+    ) : null}
+    </>
   );
 }
 
 function FeatureIcon({ document, feature }: { document: ParametricDocument; feature: ParametricFeature }) {
   if (feature.kind === "sketch") return <DraftingCompass className="sketch" size={16} />;
   if (feature.kind === "extrude") {
-    if (feature.operation === "cut") return <BadgeMinus className="boolean-hole" size={17} aria-label="Hueco" />;
-    if (feature.operation === "intersect") return <Combine className="boolean-common" size={17} aria-label="Común" />;
-    return <BadgePlus className="boolean-add" size={17} aria-label="Añadir" />;
+    const sketch = sketchForExtrude(document, feature);
+    const role = feature.operation === "cut" ? "hole" : feature.operation === "intersect" ? "common" : "add";
+    const label = feature.operation === "cut" ? "Hueco" : feature.operation === "intersect" ? "Común" : "Añadir";
+    return <span className={`educad-operation-icon ${role}`} role="img" aria-label={`${sketch?.profile.shape === "circle" ? "Cilindro" : "Caja"}: ${label}`}>{sketch?.profile.shape === "circle" ? <CircleDot size={17} /> : <Box size={17} />}<small aria-hidden="true">{role === "add" ? "+" : role === "hole" ? "−" : "∩"}</small></span>;
   }
   if (feature.kind === "hole") return <CircleDot className="drill-hole" size={16} />;
   return <Radius className="fillet" size={16} />;
@@ -251,10 +281,6 @@ function ParametricFeatureInspector({
         <FeatureIcon document={document} feature={feature} />
         <div><strong>{feature.name}</strong><span>{featureLabel(feature)}</span></div>
       </header>
-      <div className="educad-feature-card">
-        <label><span>Nombre</span><input value={feature.name} onChange={(event) => onUpdate((draft) => { draft.name = event.target.value; })} /></label>
-        <label className="educad-feature-check"><span>Suprimida</span><input type="checkbox" checked={feature.suppressed} onChange={(event) => onUpdate((draft) => { draft.suppressed = event.target.checked; })} /></label>
-      </div>
 
       {feature.kind === "sketch" ? (
         <div className="educad-feature-card">

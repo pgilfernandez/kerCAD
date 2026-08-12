@@ -67,6 +67,8 @@ export type ParametricFeature = SketchFeature | ExtrudeFeature | HoleFeature | F
 export type ParametricObject = {
   id: string;
   name: string;
+  visible: boolean;
+  locked: boolean;
   transform: {
     position: ParametricVector3;
     rotation: ParametricVector3;
