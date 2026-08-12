@@ -17,7 +17,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
 import { parametricObjectTree, sketchForExtrude } from "@/lib/parametricObjects";
 import type { ParametricDocument, ParametricFeature, ParametricObject } from "@/types/parametric";
 
@@ -311,13 +311,13 @@ function ParametricFeatureInspector({
             <h3>{primitiveSketch?.profile.shape === "circle" ? "Cilindro" : "Caja"}</h3>
             {primitiveSketch?.profile.shape === "rectangle" ? (
               <>
-                <NumberField label="Anchura" value={primitiveSketch.profile.width} min={0.01} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} />
-                <NumberField label="Profundidad" value={primitiveSketch.profile.depth} min={0.01} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} />
+                <BoundedNumberField label="Anchura" value={primitiveSketch.profile.width} min={0.01} max={200} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} />
+                <BoundedNumberField label="Profundidad" value={primitiveSketch.profile.depth} min={0.01} max={200} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} />
               </>
             ) : primitiveSketch?.profile.shape === "circle" ? (
-              <NumberField label="Diámetro" value={primitiveSketch.profile.diameter} min={0.01} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value); })} />
+              <BoundedNumberField label="Diámetro" value={primitiveSketch.profile.diameter} min={0.01} max={200} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value); })} />
             ) : null}
-            <NumberField label="Altura" value={feature.distance} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.distance = Math.max(0.01, value); })} />
+            <BoundedNumberField label="Altura" value={feature.distance} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.distance = Math.max(0.01, value); })} />
             <label><span>Operación</span><select value={feature.operation} onChange={(event) => onUpdate((draft) => { if (draft.kind === "extrude") draft.operation = event.target.value as typeof draft.operation; })}><option value="add">Añadir</option><option value="cut">Hueco</option><option value="intersect">Común</option></select></label>
           </div>
         </>
@@ -328,16 +328,16 @@ function ParametricFeatureInspector({
           <h3>Taladro</h3>
           <NumberField label="Posición X" value={feature.x} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.x = value; })} />
           <NumberField label="Posición Y" value={feature.y} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.y = value; })} />
-          <NumberField label="Diámetro" value={feature.diameter} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.diameter = Math.max(0.01, value); })} />
+          <BoundedNumberField label="Diámetro" value={feature.diameter} min={0.01} max={100} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.diameter = Math.max(0.01, value); })} />
           <label><span>Final</span><select value={feature.termination} onChange={(event) => onUpdate((draft) => { if (draft.kind === "hole") draft.termination = event.target.value as typeof draft.termination; })}><option value="through-all">Pasante</option><option value="blind">Ciego</option></select></label>
-          {feature.termination === "blind" ? <NumberField label="Profundidad" value={feature.depth} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.depth = Math.max(0.01, value); })} /> : null}
+          {feature.termination === "blind" ? <BoundedNumberField label="Profundidad" value={feature.depth} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.depth = Math.max(0.01, value); })} /> : null}
         </div>
       ) : null}
 
       {feature.kind === "fillet" ? (
         <div className="educad-feature-card">
           <h3>Redondeo</h3>
-          <NumberField label="Radio" value={feature.radius} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "fillet") draft.radius = Math.max(0.01, value); })} />
+          <BoundedNumberField label="Radio" value={feature.radius} min={0.01} max={50} onChange={(value) => onUpdate((draft) => { if (draft.kind === "fillet") draft.radius = Math.max(0.01, value); })} />
           <label><span>Aristas</span><select value={feature.edges} onChange={(event) => onUpdate((draft) => { if (draft.kind === "fillet") draft.edges = event.target.value as typeof draft.edges; })}><option value="vertical">Verticales</option><option value="all">Todas</option></select></label>
         </div>
       ) : null}
@@ -349,6 +349,28 @@ function ParametricFeatureInspector({
   function NumberField({ label, value, min, onChange }: { label: string; value: number; min?: number; onChange: (value: number) => void }) {
     return <label><span>{label}</span><span className="educad-number-input"><input type="number" value={value} min={min} step="0.01" onChange={(event) => setNumber(event.target.value, onChange)} /><small>mm</small></span></label>;
   }
+}
+
+function BoundedNumberField({ label, value, min, max, step = 0.01, onChange }: { label: string; value: number; min: number; max: number; step?: number; onChange: (value: number) => void }) {
+  const clampedValue = Math.min(max, Math.max(min, value));
+  const [draft, setDraft] = useState(clampedValue);
+  const [dragging, setDragging] = useState(false);
+  useEffect(() => {
+    if (!dragging) setDraft(clampedValue);
+  }, [clampedValue, dragging]);
+  const percent = ((draft - min) / Math.max(Number.EPSILON, max - min)) * 100;
+  const commit = () => {
+    setDragging(false);
+    const next = Math.min(max, Math.max(min, draft));
+    setDraft(next);
+    if (next !== value) onChange(next);
+  };
+  return (
+    <label className="educad-range-property" style={{ "--slider-pos": `${percent}%` } as CSSProperties}>
+      <span className="educad-range-header"><span>{label}</span><span className="educad-number-input"><input type="number" value={draft} min={min} max={max} step={step} onChange={(event) => { const next = Number(event.target.value); if (Number.isFinite(next)) setDraft(next); }} onBlur={commit} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); if (event.key === "Escape") { setDraft(clampedValue); event.currentTarget.blur(); } }} /><small>mm</small></span></span>
+      <span className="educad-range-control"><input type="range" aria-label={label} value={draft} min={min} max={max} step={step} onPointerDown={() => setDragging(true)} onPointerUp={commit} onPointerCancel={commit} onChange={(event) => setDraft(Number(event.target.value))} onBlur={commit} /></span>
+    </label>
+  );
 }
 
 function ReadOnlyField({ label, value, compact = false }: { label: string; value: string; compact?: boolean }) {
