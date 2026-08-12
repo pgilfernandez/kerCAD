@@ -1,16 +1,19 @@
 "use client";
 
 import {
+  BadgeMinus,
+  BadgePlus,
   Box,
   ChevronDown,
   ChevronRight,
   CircleDot,
+  Combine,
   DraftingCompass,
   Layers3,
   Radius,
   Trash2,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { parametricObjectTree, sketchForExtrude } from "@/lib/parametricObjects";
 import type { ParametricDocument, ParametricFeature, ParametricObject } from "@/types/parametric";
 
@@ -103,7 +106,7 @@ export function ParametricModelSidebar({
                       {object.operations.map((feature, operationIndex) => (
                         <button
                           key={feature.id}
-                          className={`${selectionKind === "feature" && selectedId === feature.id ? "selected" : ""} ${feature.suppressed ? "suppressed" : ""}`}
+                          className={`${selectionKind === "feature" && selectedId === feature.id ? "selected" : ""} ${feature.suppressed ? "suppressed" : ""} ${operationClass(feature)}`}
                           onClick={() => onSelect(feature.id, "feature")}
                         >
                           <span className="educad-tree-branch" aria-hidden="true" />
@@ -147,17 +150,23 @@ export function ParametricModelSidebar({
 function FeatureIcon({ document, feature }: { document: ParametricDocument; feature: ParametricFeature }) {
   if (feature.kind === "sketch") return <DraftingCompass className="sketch" size={16} />;
   if (feature.kind === "extrude") {
-    const sketch = sketchForExtrude(document, feature);
-    return sketch?.profile.shape === "circle" ? <CircleDot className={feature.operation === "cut" ? "cut" : "extrude"} size={16} /> : <Box className={feature.operation === "cut" ? "cut" : "extrude"} size={16} />;
+    if (feature.operation === "cut") return <BadgeMinus className="boolean-hole" size={17} aria-label="Hueco" />;
+    if (feature.operation === "intersect") return <Combine className="boolean-common" size={17} aria-label="Común" />;
+    return <BadgePlus className="boolean-add" size={17} aria-label="Añadir" />;
   }
-  if (feature.kind === "hole") return <CircleDot className="cut" size={16} />;
+  if (feature.kind === "hole") return <CircleDot className="drill-hole" size={16} />;
   return <Radius className="fillet" size={16} />;
+}
+
+function operationClass(feature: ParametricFeature) {
+  if (feature.kind !== "extrude") return `operation-${feature.kind}`;
+  return `operation-${feature.operation === "cut" ? "hole" : feature.operation === "intersect" ? "common" : "add"}`;
 }
 
 function featureLabel(feature: ParametricFeature) {
   if (feature.kind === "sketch") return `Boceto ${feature.profile.shape === "rectangle" ? "rectangular" : "circular"}`;
   if (feature.kind === "extrude") {
-    return feature.operation === "cut" ? "Operación sustractiva" : feature.operation === "intersect" ? "Intersección" : "Operación aditiva";
+    return feature.operation === "cut" ? "Hueco" : feature.operation === "intersect" ? "Común" : "Añadir";
   }
   if (feature.kind === "hole") return "Taladro";
   return "Redondeo";
@@ -173,11 +182,22 @@ function ParametricObjectInspector({
   return (
     <div className="educad-feature-inspector educad-object-inspector">
       <header><Box size={18} /><div><strong>{object.name}</strong><span>Contenedor de operaciones</span></div></header>
-      <TransformGroup label="Posición" values={object.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.position[axis] = value; })} />
-      <TransformGroup label="Rotación" values={object.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.rotation[axis] = value; })} />
-      <TransformGroup label="Escala" values={object.transform.scale} unit="×" min={0.01} onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.scale[axis] = Math.max(0.01, value); })} />
+      <TransformSection>
+        <TransformGroup label="Posición" values={object.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.position[axis] = value; })} />
+        <TransformGroup label="Rotación" values={object.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.rotation[axis] = value; })} />
+        <TransformGroup label="Escala" values={object.transform.scale} unit="×" min={0.01} onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.scale[axis] = Math.max(0.01, value); })} />
+      </TransformSection>
       <p className="educad-feature-note">El objeto solo transforma el resultado de sus operaciones. La geometría se edita desplegando el árbol.</p>
     </div>
+  );
+}
+
+function TransformSection({ children, description = "Posición · rotación · escala" }: { children: ReactNode; description?: string }) {
+  return (
+    <details className="educad-transform-section">
+      <summary><ChevronRight size={16} /><span>Transformación</span><small>{description}</small></summary>
+      <div>{children}</div>
+    </details>
   );
 }
 
@@ -257,8 +277,10 @@ function ParametricFeatureInspector({
 
       {feature.kind === "extrude" ? (
         <>
-          <TransformGroup label="Posición" values={feature.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.transform.position[axis] = value; })} />
-          <TransformGroup label="Rotación" values={feature.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.transform.rotation[axis] = value; })} />
+          <TransformSection description="Posición · rotación">
+            <TransformGroup label="Posición" values={feature.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.transform.position[axis] = value; })} />
+            <TransformGroup label="Rotación" values={feature.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.transform.rotation[axis] = value; })} />
+          </TransformSection>
           <div className="educad-feature-card">
             <h3>{primitiveSketch?.profile.shape === "circle" ? "Cilindro" : "Caja"}</h3>
             {primitiveSketch?.profile.shape === "rectangle" ? (
@@ -270,7 +292,7 @@ function ParametricFeatureInspector({
               <NumberField label="Diámetro" value={primitiveSketch.profile.diameter} min={0.01} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value); })} />
             ) : null}
             <NumberField label="Altura" value={feature.distance} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.distance = Math.max(0.01, value); })} />
-            <label><span>Operación</span><select value={feature.operation} onChange={(event) => onUpdate((draft) => { if (draft.kind === "extrude") draft.operation = event.target.value as typeof draft.operation; })}><option value="add">Añadir</option><option value="cut">Sustraer</option><option value="intersect">Intersección</option></select></label>
+            <label><span>Operación</span><select value={feature.operation} onChange={(event) => onUpdate((draft) => { if (draft.kind === "extrude") draft.operation = event.target.value as typeof draft.operation; })}><option value="add">Añadir</option><option value="cut">Hueco</option><option value="intersect">Común</option></select></label>
           </div>
         </>
       ) : null}

@@ -10,7 +10,7 @@ El primer incremento permite:
 
 - crear primero un contenedor con `New Object` y añadir después cajas o cilindros como operaciones del objeto activo;
 - mover la forma seleccionada arrastrándola por el plano o con las flechas y editar sus cotas desde el inspector;
-- cambiar una forma entre `Solid` y `Hole`, manteniendo una operación booleana paramétrica y editable;
+- cambiar una operación entre `Añadir`, `Hueco` y `Común`, manteniendo una booleana paramétrica y editable;
 - duplicar, copiar/pegar, ocultar, eliminar, deshacer y rehacer con la barra visual heredada de SketchForge;
 - desplegar en el panel derecho cada objeto como un árbol CAD: `Objeto (transformación) → Caja/Cilindro → modificadores`;
 - crear bocetos rectangulares y circulares totalmente acotados en el plano XY;

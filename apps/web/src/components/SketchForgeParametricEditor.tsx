@@ -362,7 +362,7 @@ export function SketchForgeParametricEditor() {
           <div className="tool-group right">
             <ToolbarSection label="Visibility" className="compact toolbar-visibility-section"><Tool label="Ocultar" enabled={Boolean(selectedShape)} onClick={() => updateSelected({ hidden: !selectedShape?.hidden })} active={Boolean(selectedShape?.hidden)}><ToolbarHideSelectedIcon /></Tool></ToolbarSection>
             <ToolbarSection label="Combine">
-              <Tool label="Agrupar paramétricamente" enabled={document.objects.length > 1} onClick={() => setNotice({ type: "info", text: "Las formas se combinan según Solid/Hole y el orden del historial" })}><ToolbarGroupIcon /></Tool>
+              <Tool label="Agrupar paramétricamente" enabled={document.objects.length > 1} onClick={() => setNotice({ type: "info", text: "Las operaciones se evalúan como Añadir, Hueco o Común según el orden del historial" })}><ToolbarGroupIcon /></Tool>
               <Tool label="Desagrupar" enabled={false}><ToolbarUngroupIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label="Modify">
