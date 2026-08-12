@@ -62,6 +62,7 @@ export function createParametricObject(index: number, position = { x: 0, y: 0, z
   return {
     id: createFeatureId("object"),
     name: `Objeto ${index}`,
+    color: "#d41721",
     visible: true,
     locked: false,
     transform: {
@@ -152,6 +153,7 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
   const objectByExtrude = new Map<string, string>();
 
   for (const object of next.objects) {
+    object.color ??= next.color;
     object.visible ??= true;
     object.locked ??= false;
   }

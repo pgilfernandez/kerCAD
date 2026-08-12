@@ -44,6 +44,7 @@ export function parametricObjectTree(document: ParametricDocument): ParametricOb
 
 export function addParametricObject(document: ParametricDocument, position = { x: 0, y: 0, z: 0 }) {
   const object = createParametricObject(document.objects.length + 1, position);
+  object.color = document.color;
   document.objects.push(object);
   return object.id;
 }
@@ -123,7 +124,7 @@ export function workplaneShapeForObject(document: ParametricDocument, id: string
     id: object.id,
     name: object.name,
     kind: sketch.profile.shape === "rectangle" ? "box" : "cylinder",
-    color: document.color,
+    color: object.color,
     hole: feature.operation === "cut",
     x: object.transform.position.x,
     z: object.transform.position.y,
@@ -209,7 +210,7 @@ export function applyWorkplanePatch(document: ParametricDocument, id: string, pa
   const object = document.objects.find((candidate) => candidate.id === id);
   if (!object) return;
   const feature = document.features.find((candidate): candidate is ExtrudeFeature => candidate.kind === "extrude" && candidate.objectId === id);
-  if (typeof patch.color === "string") document.color = patch.color;
+  if (typeof patch.color === "string") object.color = patch.color;
   if (typeof patch.hidden === "boolean" && feature) feature.suppressed = patch.hidden;
   if (typeof patch.x === "number") object.transform.position.x = patch.x;
   if (typeof patch.z === "number") object.transform.position.y = patch.z;

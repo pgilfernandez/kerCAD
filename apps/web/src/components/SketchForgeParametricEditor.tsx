@@ -67,7 +67,7 @@ export function SketchForgeParametricEditor() {
   const document = history.entries[history.index];
   const [selectedId, setSelectedId] = useState<string | null>(initialDocument.objects[0]?.id ?? null);
   const [selectionKind, setSelectionKind] = useState<ModelSelectionKind>("object");
-  const [build, setBuild] = useState<BuildResult>({ mesh: null, completedFeatureIds: [], warning: null });
+  const [build, setBuild] = useState<BuildResult>({ mesh: null, objectMeshes: [], completedFeatureIds: [], warning: null });
   const [kernelBusy, setKernelBusy] = useState(true);
   const [shapesOpen, setShapesOpen] = useState(false);
   const [modelSidebarMode, setModelSidebarMode] = useState<ModelSidebarMode | "hidden">("normal");
@@ -380,6 +380,7 @@ export function SketchForgeParametricEditor() {
       <section className="educad-workplane-stage">
         <ParametricViewport
           mesh={build.mesh}
+          objectMeshes={build.objectMeshes}
           color={document.color}
           view={view}
           selection={selectedBox}
@@ -439,7 +440,7 @@ export function SketchForgeParametricEditor() {
         <aside className="top-action-panel educad-settings-panel">
           <header><strong>Ajustes del diseño</strong><button onClick={() => setSettingsOpen(false)}><X /></button></header>
           <label><span>Nombre</span><input value={document.name} onChange={(event) => mutate((draft) => { draft.name = event.target.value; })} /></label>
-          <label><span>Color</span><input type="color" value={document.color} onChange={(event) => mutate((draft) => { draft.color = event.target.value; })} /></label>
+          <label><span>Color para nuevos objetos</span><input type="color" value={document.color} onChange={(event) => mutate((draft) => { draft.color = event.target.value; })} /></label>
           <p>El proyecto se guarda automáticamente en este navegador.</p>
         </aside>
       )}

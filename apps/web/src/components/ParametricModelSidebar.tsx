@@ -24,6 +24,11 @@ import type { ParametricDocument, ParametricFeature, ParametricObject } from "@/
 export type ModelSelectionKind = "object" | "feature";
 export type ModelSidebarMode = "normal" | "simplified";
 
+const OBJECT_COLORS = [
+  "#d41721", "#ff7a1a", "#f2cf10", "#33983d", "#18b99a", "#0098c7", "#3b82f6",
+  "#294c93", "#6e2786", "#c9009a", "#8a5a2b", "#ffffff", "#cfd8df", "#8a98a6", "#4b5563", "#111111",
+];
+
 type Props = {
   document: ParametricDocument;
   selectedId: string | null;
@@ -102,7 +107,7 @@ export function ParametricModelSidebar({
               const objectSelected = selectionKind === "object" && selectedId === object.id;
               return (
                 <div className="educad-object-node" key={object.id}>
-                  <div className={`educad-object-row ${objectSelected ? "selected" : ""} ${object.object.visible ? "" : "hidden"} ${object.object.locked ? "locked" : ""}`}>
+                  <div className={`educad-object-row ${objectSelected ? "selected" : ""} ${object.object.visible ? "" : "hidden"} ${object.object.locked ? "locked" : ""}`} style={{ "--object-color": object.object.color } as CSSProperties}>
                     <button
                       className="educad-tree-toggle"
                       aria-label={isExpanded ? `Contraer ${object.name}` : `Desplegar ${object.name}`}
@@ -209,6 +214,7 @@ function ParametricObjectInspector({
   object: ParametricObject;
   onUpdate: (update: (object: ParametricObject) => void) => void;
 }) {
+  const [colorOpen, setColorOpen] = useState(false);
   return (
     <div className="educad-feature-inspector educad-object-inspector">
       <header><Box size={18} /><div><strong>{object.name}</strong><span>Contenedor de operaciones</span></div></header>
@@ -217,6 +223,15 @@ function ParametricObjectInspector({
         <TransformGroup label="Rotación" values={object.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.rotation[axis] = value; })} />
         <TransformGroup label="Escala" values={object.transform.scale} unit="×" min={0.01} onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.scale[axis] = Math.max(0.01, value); })} />
       </TransformSection>
+      <div className="educad-feature-card educad-object-appearance">
+        <button className="educad-color-trigger" aria-expanded={colorOpen} onClick={() => setColorOpen((value) => !value)}>
+          <span>Color</span><span className="educad-color-preview" style={{ "--object-color": object.color } as CSSProperties} /><strong>{object.color.toUpperCase()}</strong><ChevronDown size={15} />
+        </button>
+        {colorOpen ? <div className="educad-color-palette" role="group" aria-label="Color del objeto">
+          {OBJECT_COLORS.map((color) => <button key={color} className={object.color.toLowerCase() === color ? "selected" : ""} aria-label={`Color ${color}`} title={color.toUpperCase()} style={{ "--object-color": color } as CSSProperties} onClick={() => { onUpdate((draft) => { draft.color = color; }); setColorOpen(false); }} />)}
+          <label className="educad-custom-color" title="Color personalizado"><input type="color" value={object.color} onChange={(event) => onUpdate((draft) => { draft.color = event.target.value; })} /><span>+</span></label>
+        </div> : null}
+      </div>
       <p className="educad-feature-note">El objeto solo transforma el resultado de sus operaciones. La geometría se edita desplegando el árbol.</p>
     </div>
   );

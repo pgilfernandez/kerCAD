@@ -58,6 +58,14 @@ function combinedObjectShape(brep: Brep, solids: Map<string, AnySolid>): Rendera
   return brep.compound(values);
 }
 
+function objectRenderMeshes(brep: Brep, solids: Map<string, AnySolid>, objects: Map<string, ParametricObject>) {
+  return [...solids].map(([objectId, solid]) => ({
+    objectId,
+    color: objects.get(objectId)?.color ?? "#d41721",
+    mesh: meshShape(brep, solid),
+  }));
+}
+
 export async function buildParametricModel(document: ParametricDocument): Promise<BuildResult> {
   const brep = await loadBrepWithOcct();
   const sketches = new Map<string, SketchFeature>();
@@ -119,11 +127,11 @@ export async function buildParametricModel(document: ParametricDocument): Promis
     }
   } catch (error) {
     const partial = combinedObjectShape(brep, solids);
-    return { mesh: partial ? meshShape(brep, partial) : null, completedFeatureIds, warning: errorMessage(error) };
+    return { mesh: partial ? meshShape(brep, partial) : null, objectMeshes: objectRenderMeshes(brep, solids, objects), completedFeatureIds, warning: errorMessage(error) };
   }
 
   const result = combinedObjectShape(brep, solids);
-  return { mesh: result ? meshShape(brep, result) : null, completedFeatureIds, warning: null };
+  return { mesh: result ? meshShape(brep, result) : null, objectMeshes: objectRenderMeshes(brep, solids, objects), completedFeatureIds, warning: null };
 }
 
 function meshShape(brep: Brep, shape: RenderableShape): RenderMesh {

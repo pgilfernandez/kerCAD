@@ -20,6 +20,7 @@ export type ViewportSelection = {
 
 type Props = {
   mesh: RenderMesh | null;
+  objectMeshes?: Array<{ objectId: string; color: string; mesh: RenderMesh }>;
   color: string;
   view: CameraView;
   selection?: ViewportSelection | null;
@@ -28,7 +29,7 @@ type Props = {
   onSelectionRotate?: (rotation: number) => void;
 };
 
-export function ParametricViewport({ mesh, color, view, selection = null, snap = 1, onSelectionMove, onSelectionRotate }: Props) {
+export function ParametricViewport({ mesh, objectMeshes = [], color, view, selection = null, snap = 1, onSelectionMove, onSelectionRotate }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -237,25 +238,30 @@ export function ParametricViewport({ mesh, color, view, selection = null, snap =
       }
     });
     group.clear();
-    if (!mesh) return;
+    const renderItems = objectMeshes.length > 0
+      ? objectMeshes.map((item) => ({ mesh: item.mesh, color: item.color }))
+      : mesh ? [{ mesh, color }] : [];
+    if (renderItems.length === 0) return;
 
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.BufferAttribute(mesh.positions, 3));
-    geometry.setAttribute("normal", new THREE.BufferAttribute(mesh.normals, 3));
-    geometry.setIndex(new THREE.BufferAttribute(mesh.indices, 1));
-    geometry.computeBoundingSphere();
-    const body = new THREE.Mesh(
-      geometry,
-      new THREE.MeshStandardMaterial({ color, roughness: 0.68, metalness: 0.03, polygonOffset: true, polygonOffsetFactor: 1 }),
-    );
-    body.castShadow = true;
-    body.receiveShadow = true;
-    group.add(body);
+    for (const item of renderItems) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.BufferAttribute(item.mesh.positions, 3));
+      geometry.setAttribute("normal", new THREE.BufferAttribute(item.mesh.normals, 3));
+      geometry.setIndex(new THREE.BufferAttribute(item.mesh.indices, 1));
+      geometry.computeBoundingSphere();
+      const body = new THREE.Mesh(
+        geometry,
+        new THREE.MeshStandardMaterial({ color: item.color, roughness: 0.68, metalness: 0.03, polygonOffset: true, polygonOffsetFactor: 1 }),
+      );
+      body.castShadow = true;
+      body.receiveShadow = true;
+      group.add(body);
 
-    const edgeGeometry = new THREE.BufferGeometry();
-    edgeGeometry.setAttribute("position", new THREE.BufferAttribute(mesh.edges, 3));
-    const edges = new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({ color: "#384c58", transparent: true, opacity: 0.68 }));
-    group.add(edges);
+      const edgeGeometry = new THREE.BufferGeometry();
+      edgeGeometry.setAttribute("position", new THREE.BufferAttribute(item.mesh.edges, 3));
+      const edges = new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({ color: "#384c58", transparent: true, opacity: 0.68 }));
+      group.add(edges);
+    }
 
     if (!hasFittedRef.current) {
       const box = new THREE.Box3().setFromObject(group);
@@ -270,7 +276,7 @@ export function ParametricViewport({ mesh, color, view, selection = null, snap =
       controls.update();
       hasFittedRef.current = true;
     }
-  }, [mesh, color]);
+  }, [mesh, objectMeshes, color]);
 
   useEffect(() => {
     const model = modelRef.current;

@@ -67,6 +67,7 @@ export type ParametricFeature = SketchFeature | ExtrudeFeature | HoleFeature | F
 export type ParametricObject = {
   id: string;
   name: string;
+  color: string;
   visible: boolean;
   locked: boolean;
   transform: {
@@ -105,6 +106,7 @@ export type RenderMesh = {
 
 export type BuildResult = {
   mesh: RenderMesh | null;
+  objectMeshes: Array<{ objectId: string; color: string; mesh: RenderMesh }>;
   completedFeatureIds: string[];
   warning: string | null;
 };

@@ -33,6 +33,7 @@ describe("parametric object workflow", () => {
     expect(parametricObjectTree(document)[0].operations.map((feature) => feature.name)).toEqual(["Caja", "Cilindro"]);
     expect(workplaneShapeForObject(document, objectId)).toMatchObject({
       kind: "box",
+      color: "#d41721",
       x: 0,
       z: 0,
       width: 20,
@@ -84,7 +85,8 @@ describe("parametric object workflow", () => {
       color: "#3b82f6",
     });
 
-    expect(document.color).toBe("#3b82f6");
+    expect(document.objects[0].color).toBe("#3b82f6");
+    expect(workplaneShapeForObject(document, box.id)?.color).toBe("#3b82f6");
     expect(document.objects[0].transform).toMatchObject({ position: { x: 5, y: -3, z: 7 }, rotation: { z: 25 }, scale: { x: 1, y: 1, z: 1 } });
     expect(viewportSelectionForObject(document, box.id)).toMatchObject({ x: 5, y: -3, width: 20, depth: 20, height: 20 });
   });
@@ -108,13 +110,14 @@ describe("parametric object workflow", () => {
     vi.spyOn(Date, "now").mockReturnValue(456);
     const document = createStarterDocument(123);
     const source = document.objects[0];
+    source.color = "#3b82f6";
     const copyId = duplicateParametricObject(document, source.id);
     const copy = document.objects.find((object) => object.id === copyId) ?? null;
     const copyExtrude = document.features.find((feature) => feature.kind === "extrude" && feature.objectId === copyId) ?? null;
     const copySketch = sketchForExtrude(document, copyExtrude);
 
     expect(copyId).not.toBe(source.id);
-    expect(copy).toMatchObject({ name: "Objeto 1 copia", transform: { position: { x: 10, y: 10, z: 0 } } });
+    expect(copy).toMatchObject({ name: "Objeto 1 copia", color: "#3b82f6", transform: { position: { x: 10, y: 10, z: 0 } } });
     expect(copyExtrude).toMatchObject({ kind: "extrude", name: "Caja", operation: "add" });
     expect(copySketch).toMatchObject({ x: 0, y: 0, objectId: copyId });
 
