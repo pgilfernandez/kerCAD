@@ -83,6 +83,12 @@ export type ParametricDocument = {
   name: string;
   units: "mm";
   color: string;
+  workplane: {
+    width: number;
+    depth: number;
+    gridStep: number;
+    snapToGrid: boolean;
+  };
   objects: ParametricObject[];
   features: ParametricFeature[];
   createdAt: number;

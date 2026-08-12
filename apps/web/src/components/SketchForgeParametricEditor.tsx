@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Home, Minus, Plus, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Grid3X3, Home, Minus, Plus, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ParametricModelSidebar, type ModelSelectionKind, type ModelSidebarMode } from "@/components/ParametricModelSidebar";
 import { ParametricViewport, type CameraView } from "@/components/ParametricViewport";
@@ -40,9 +40,8 @@ import {
   type SupportedPrimitive,
 } from "@/lib/parametricObjects";
 import { toolbarShapeAssets } from "@/lib/shapeCatalog";
-import { DEFAULT_SNAP_GRID } from "@/lib/workplaneSettings";
 import type { BuildResult, ParametricDocument, ParametricFeature, ParametricObject } from "@/types/parametric";
-import type { GridSize, WorkplaneShape } from "@/types/sketchforge";
+import type { WorkplaneShape } from "@/types/sketchforge";
 
 const STORAGE_KEY = "educad.parametric.document.v1";
 type HistoryState = { entries: ParametricDocument[]; index: number };
@@ -74,7 +73,8 @@ export function SketchForgeParametricEditor() {
   const [exportOpen, setExportOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
-  const [snap, setSnap] = useState<GridSize>(DEFAULT_SNAP_GRID);
+  const [workplaneOpen, setWorkplaneOpen] = useState(false);
+  const [workplaneDraft, setWorkplaneDraft] = useState(document.workplane);
   const [view, setView] = useState<CameraView>({ name: "iso", token: 0 });
   const [clipboardId, setClipboardId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -145,7 +145,7 @@ export function SketchForgeParametricEditor() {
   const selectedOperationId = selectionKind === "feature" && document.features.some((feature) => feature.id === selectedId && feature.kind === "extrude") ? selectedId : null;
   const selectedShape = workplaneShapeForObject(document, selectedObjectId);
   const selectedBox = selectedOperationId ? viewportSelectionForFeature(document, selectedOperationId) : viewportSelectionForObject(document, selectedObjectId);
-  const snapAmount = snap === "Off" ? 0.01 : snap === "Brick" ? 8 : Number.parseFloat(snap) || 1;
+  const snapAmount = document.workplane.snapToGrid ? document.workplane.gridStep : 0.01;
 
   const addShape = (kind: SupportedPrimitive) => {
     if (!selectedObjectId) {
@@ -359,7 +359,7 @@ export function SketchForgeParametricEditor() {
             <ToolbarSection label="Modify">
               <Tool label="Alinear" enabled={false}><ToolbarAlignIcon /></Tool>
               <Tool label="Simetría" enabled={Boolean(selectedShape)} onClick={() => selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: -(selectedShape?.x ?? 0) }))}><ToolbarMirrorIcon /></Tool>
-              <Tool label="Ajustar a rejilla" enabled={Boolean(selectedShape)} onClick={() => selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: Math.round((selectedShape?.x ?? 0) / snapAmount) * snapAmount, z: Math.round((selectedShape?.z ?? 0) / snapAmount) * snapAmount }))}><ToolbarSnapGridIcon /></Tool>
+              <Tool label="Ajustar a rejilla" enabled={Boolean(selectedShape && document.workplane.snapToGrid)} onClick={() => selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: Math.round((selectedShape?.x ?? 0) / snapAmount) * snapAmount, z: Math.round((selectedShape?.z ?? 0) / snapAmount) * snapAmount }))}><ToolbarSnapGridIcon /></Tool>
               <Tool label="Chaflán" enabled={false}><ToolbarChamferIcon /></Tool>
               <Tool label="Redondeo" enabled={Boolean(selectedShape && !selectedShape.hole)} onClick={addFillet}><ToolbarFilletIcon /></Tool>
             </ToolbarSection>
@@ -382,6 +382,7 @@ export function SketchForgeParametricEditor() {
           mesh={build.mesh}
           objectMeshes={build.objectMeshes}
           color={document.color}
+          workplane={document.workplane}
           view={view}
           selection={selectedBox}
           snap={snapAmount}
@@ -395,6 +396,15 @@ export function SketchForgeParametricEditor() {
           })}
         />
         <ViewCube onView={setCamera} />
+        <button className={`educad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label="Ajustes del plano de trabajo" title="Plano de trabajo" onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><Grid3X3 size={22} /></button>
+        {workplaneOpen ? <form className="educad-workplane-popover" onSubmit={(event) => { event.preventDefault(); mutate((draft) => { draft.workplane = workplaneDraft; }); setWorkplaneOpen(false); }}>
+          <header><div><strong>Plano de trabajo</strong><span>Rejilla y ajuste de movimiento</span></div><button type="button" aria-label="Cerrar" onClick={() => setWorkplaneOpen(false)}><X size={17} /></button></header>
+          <label><span>Ancho</span><span className="educad-number-input"><input type="number" min="60" max="2000" step="1" value={workplaneDraft.width} onChange={(event) => setWorkplaneDraft((current) => ({ ...current, width: Math.min(2000, Math.max(60, Number(event.target.value) || 60)) }))} /><small>mm</small></span></label>
+          <label><span>Largo</span><span className="educad-number-input"><input type="number" min="60" max="2000" step="1" value={workplaneDraft.depth} onChange={(event) => setWorkplaneDraft((current) => ({ ...current, depth: Math.min(2000, Math.max(60, Number(event.target.value) || 60)) }))} /><small>mm</small></span></label>
+          <label><span>Paso de líneas</span><span className="educad-number-input"><input type="number" min="0.1" max="200" step="0.1" value={workplaneDraft.gridStep} onChange={(event) => setWorkplaneDraft((current) => ({ ...current, gridStep: Math.min(200, Math.max(0.1, Number(event.target.value) || 0.1)) }))} /><small>mm</small></span></label>
+          <label className="educad-workplane-toggle"><span>Snap to grid</span><input type="checkbox" checked={workplaneDraft.snapToGrid} onChange={(event) => setWorkplaneDraft((current) => ({ ...current, snapToGrid: event.target.checked }))} /></label>
+          <footer><button type="button" onClick={() => setWorkplaneOpen(false)}>Cancelar</button><button className="primary" type="submit">Aplicar</button></footer>
+        </form> : null}
         <button
           className={`educad-sidebar-mode-control ${modelSidebarMode}`}
           aria-label={modelSidebarMode === "normal" ? "Simplificar jerarquía" : modelSidebarMode === "simplified" ? "Ocultar jerarquía" : "Mostrar jerarquía"}

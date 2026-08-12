@@ -14,6 +14,7 @@ describe("parametric document", () => {
     const document = createStarterDocument(123);
     expect(document.schema).toBe("educad-parametric/v1");
     expect(document.createdAt).toBe(123);
+    expect(document.workplane).toEqual({ width: 200, depth: 200, gridStep: 5, snapToGrid: true });
     expect(document.objects).toHaveLength(1);
     expect(document.objects[0]).toMatchObject({ name: "Objeto 1", color: "#d41721", visible: true, locked: false, transform: { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 } } });
     expect(document.features.map((feature) => feature.kind)).toEqual(["sketch", "extrude"]);
@@ -87,5 +88,15 @@ describe("parametric document", () => {
     delete (stored.objects[0] as Partial<typeof stored.objects[0]>).color;
 
     expect(normalizeParametricDocument(stored).objects[0]).toMatchObject({ color: stored.color, visible: true, locked: false });
+  });
+
+  it("migrates and clamps workplane settings", () => {
+    const stored = createStarterDocument(123);
+    delete (stored as Partial<typeof stored>).workplane;
+    expect(normalizeParametricDocument(stored).workplane).toEqual({ width: 200, depth: 200, gridStep: 5, snapToGrid: true });
+
+    const invalid = createStarterDocument(123);
+    invalid.workplane = { width: 10, depth: 9000, gridStep: 0, snapToGrid: false };
+    expect(normalizeParametricDocument(invalid).workplane).toEqual({ width: 60, depth: 2000, gridStep: 0.1, snapToGrid: false });
   });
 });

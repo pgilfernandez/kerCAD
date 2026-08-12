@@ -26,6 +26,7 @@ export function createStarterDocument(now = Date.now()): ParametricDocument {
     name: "Nuevo diseño",
     units: "mm",
     color: "#d41721",
+    workplane: { width: 200, depth: 200, gridStep: 5, snapToGrid: true },
     objects: [object],
     createdAt: now,
     updatedAt: now,
@@ -148,6 +149,11 @@ export function validateDocument(value: unknown): value is ParametricDocument {
 
 export function normalizeParametricDocument(document: ParametricDocument): ParametricDocument {
   const next = structuredClone(document) as ParametricDocument;
+  next.workplane ??= { width: 200, depth: 200, gridStep: 5, snapToGrid: true };
+  next.workplane.width = Math.min(2000, Math.max(60, Number.isFinite(next.workplane.width) ? next.workplane.width : 200));
+  next.workplane.depth = Math.min(2000, Math.max(60, Number.isFinite(next.workplane.depth) ? next.workplane.depth : 200));
+  next.workplane.gridStep = Math.min(200, Math.max(0.1, Number.isFinite(next.workplane.gridStep) ? next.workplane.gridStep : 5));
+  next.workplane.snapToGrid = typeof next.workplane.snapToGrid === "boolean" ? next.workplane.snapToGrid : true;
   next.objects ??= [];
   const objectIds = new Set(next.objects.map((object) => object.id));
   const objectByExtrude = new Map<string, string>();

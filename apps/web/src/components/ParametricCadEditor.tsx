@@ -369,7 +369,7 @@ export function ParametricCadEditor() {
         </aside>
 
         <div className="pcad-stage">
-          <ParametricViewport mesh={build.mesh} objectMeshes={build.objectMeshes} color={document.color} view={view} />
+          <ParametricViewport mesh={build.mesh} objectMeshes={build.objectMeshes} color={document.color} workplane={document.workplane} view={view} />
           <div className="pcad-view-buttons" aria-label="Vistas de cámara">
             <button onClick={() => setCamera("top")}>SUP</button>
             <button onClick={() => setCamera("front")}>FREN</button>

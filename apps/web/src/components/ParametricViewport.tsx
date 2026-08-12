@@ -22,6 +22,7 @@ type Props = {
   mesh: RenderMesh | null;
   objectMeshes?: Array<{ objectId: string; color: string; mesh: RenderMesh }>;
   color: string;
+  workplane?: { width: number; depth: number; gridStep: number };
   view: CameraView;
   selection?: ViewportSelection | null;
   snap?: number;
@@ -29,12 +30,13 @@ type Props = {
   onSelectionRotate?: (rotation: number) => void;
 };
 
-export function ParametricViewport({ mesh, objectMeshes = [], color, view, selection = null, snap = 1, onSelectionMove, onSelectionRotate }: Props) {
+export function ParametricViewport({ mesh, objectMeshes = [], color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, selection = null, snap = 1, onSelectionMove, onSelectionRotate }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const modelRef = useRef<THREE.Group | null>(null);
+  const workplaneRef = useRef<THREE.Group | null>(null);
   const selectionRootRef = useRef<THREE.Group | null>(null);
   const selectionHitboxRef = useRef<THREE.Mesh | null>(null);
   const rotationHitboxRef = useRef<THREE.Mesh | null>(null);
@@ -84,24 +86,8 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, view, selec
     key.shadow.camera.bottom = -120;
     scene.add(key);
 
-    const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(260, 260),
-      new THREE.MeshStandardMaterial({ color: "#e7f1f4", roughness: 1, metalness: 0 }),
-    );
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -0.08;
-    ground.receiveShadow = true;
-    scene.add(ground);
-
-    const fineGrid = new THREE.GridHelper(260, 52, "#9fc8d3", "#c8dce2");
-    fineGrid.position.y = 0;
-    const gridMaterials = Array.isArray(fineGrid.material) ? fineGrid.material : [fineGrid.material];
-    gridMaterials.forEach((material) => { material.opacity = 0.75; material.transparent = true; });
-    scene.add(fineGrid);
-
-    const axis = new THREE.AxesHelper(24);
-    axis.position.set(-108, 0.05, 108);
-    scene.add(axis);
+    const workplaneGroup = new THREE.Group();
+    scene.add(workplaneGroup);
 
     const modelGroup = new THREE.Group();
     modelGroup.rotation.x = -Math.PI / 2;
@@ -207,6 +193,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, view, selec
     cameraRef.current = camera;
     controlsRef.current = controls;
     modelRef.current = modelGroup;
+    workplaneRef.current = workplaneGroup;
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
@@ -222,8 +209,70 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, view, selec
       cameraRef.current = null;
       controlsRef.current = null;
       modelRef.current = null;
+      workplaneRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    const group = workplaneRef.current;
+    if (!group) return;
+    group.traverse((child) => {
+      if (child instanceof THREE.Mesh || child instanceof THREE.LineSegments) {
+        child.geometry.dispose();
+        if (Array.isArray(child.material)) child.material.forEach((material) => material.dispose()); else child.material.dispose();
+      }
+    });
+    group.clear();
+
+    const width = Math.max(60, workplane.width);
+    const depth = Math.max(60, workplane.depth);
+    const requestedStep = Math.max(0.1, workplane.gridStep);
+    const step = Math.max(requestedStep, Math.max(width, depth) / 1000);
+    const surface = new THREE.Mesh(
+      new THREE.PlaneGeometry(width, depth),
+      new THREE.MeshStandardMaterial({ color: "#ddf8ff", transparent: true, opacity: 0.68, roughness: 1, metalness: 0 }),
+    );
+    surface.rotation.x = -Math.PI / 2;
+    surface.position.y = -0.08;
+    surface.receiveShadow = true;
+    group.add(surface);
+
+    const minor: number[] = [];
+    const major: number[] = [];
+    const axes: number[] = [];
+    const border: number[] = [];
+    const pushLine = (target: number[], x1: number, z1: number, x2: number, z2: number) => target.push(x1, 0, z1, x2, 0, z2);
+    const halfWidth = width / 2;
+    const halfDepth = depth / 2;
+    const xCount = Math.floor(halfWidth / step);
+    const zCount = Math.floor(halfDepth / step);
+    for (let index = -xCount; index <= xCount; index += 1) {
+      const x = index * step;
+      if (index === 0) pushLine(axes, x, -halfDepth, x, halfDepth);
+      else pushLine(index % 5 === 0 ? major : minor, x, -halfDepth, x, halfDepth);
+    }
+    for (let index = -zCount; index <= zCount; index += 1) {
+      const z = index * step;
+      if (index === 0) pushLine(axes, -halfWidth, z, halfWidth, z);
+      else pushLine(index % 5 === 0 ? major : minor, -halfWidth, z, halfWidth, z);
+    }
+    pushLine(border, -halfWidth, -halfDepth, halfWidth, -halfDepth);
+    pushLine(border, halfWidth, -halfDepth, halfWidth, halfDepth);
+    pushLine(border, halfWidth, halfDepth, -halfWidth, halfDepth);
+    pushLine(border, -halfWidth, halfDepth, -halfWidth, -halfDepth);
+    const addLines = (positions: number[], color: string, opacity: number) => {
+      if (positions.length === 0) return;
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+      const lines = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color, transparent: true, opacity }));
+      lines.position.y = 0.01;
+      group.add(lines);
+    };
+    addLines(minor, "#91dff0", 0.55);
+    addLines(major, "#4bbddf", 0.7);
+    addLines(axes, "#34aad2", 0.88);
+    addLines(border, "#58c5e6", 0.9);
+  }, [workplane.depth, workplane.gridStep, workplane.width]);
 
   useEffect(() => {
     const group = modelRef.current;
