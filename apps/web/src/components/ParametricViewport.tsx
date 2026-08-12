@@ -5,7 +5,8 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { RenderMesh } from "@/types/parametric";
 
-export type CameraView = { name: "iso" | "top" | "front" | "right" | "zoom-in" | "zoom-out" | "home"; token: number };
+export type CameraView = { name: "iso" | "top" | "front" | "right" | "zoom-in" | "zoom-out" | "home" | "fit" | "selection"; token: number };
+export type CameraProjection = "perspective" | "orthographic";
 
 export type ViewportSelection = {
   id: string;
@@ -24,16 +25,17 @@ type Props = {
   color: string;
   workplane?: { width: number; depth: number; gridStep: number };
   view: CameraView;
+  projection?: CameraProjection;
   selection?: ViewportSelection | null;
   snap?: number;
   onSelectionMove?: (x: number, y: number) => void;
   onSelectionRotate?: (rotation: number) => void;
 };
 
-export function ParametricViewport({ mesh, objectMeshes = [], color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, selection = null, snap = 1, onSelectionMove, onSelectionRotate }: Props) {
+export function ParametricViewport({ mesh, objectMeshes = [], color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "perspective", selection = null, snap = 1, onSelectionMove, onSelectionRotate }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
-  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | THREE.OrthographicCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const modelRef = useRef<THREE.Group | null>(null);
   const workplaneRef = useRef<THREE.Group | null>(null);
@@ -58,7 +60,10 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
     const scene = new THREE.Scene();
     scene.background = new THREE.Color("#edf4f7");
     scene.fog = new THREE.Fog("#edf4f7", 210, 380);
-    const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 1000);
+    hasFittedRef.current = false;
+    const camera = projection === "orthographic"
+      ? new THREE.OrthographicCamera(-90, 90, 90, -90, 0.1, 2000)
+      : new THREE.PerspectiveCamera(38, 1, 0.1, 1000);
     camera.position.set(95, 78, 110);
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -174,7 +179,14 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
       const width = Math.max(1, host.clientWidth);
       const height = Math.max(1, host.clientHeight);
       renderer.setSize(width, height, false);
-      camera.aspect = width / height;
+      const aspect = width / height;
+      if (camera instanceof THREE.PerspectiveCamera) camera.aspect = aspect;
+      else {
+        camera.left = -90 * aspect;
+        camera.right = 90 * aspect;
+        camera.top = 90;
+        camera.bottom = -90;
+      }
       camera.updateProjectionMatrix();
     };
     const observer = new ResizeObserver(resize);
@@ -211,7 +223,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
       modelRef.current = null;
       workplaneRef.current = null;
     };
-  }, []);
+  }, [projection]);
 
   useEffect(() => {
     const group = workplaneRef.current;
@@ -272,7 +284,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
     addLines(major, "#4bbddf", 0.7);
     addLines(axes, "#34aad2", 0.88);
     addLines(border, "#58c5e6", 0.9);
-  }, [workplane.depth, workplane.gridStep, workplane.width]);
+  }, [projection, workplane.depth, workplane.gridStep, workplane.width]);
 
   useEffect(() => {
     const group = modelRef.current;
@@ -321,11 +333,12 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
       camera.position.copy(center).add(new THREE.Vector3(distance, distance * 0.72, distance));
       camera.near = Math.max(0.1, distance / 1000);
       camera.far = distance * 12;
+      if (camera instanceof THREE.OrthographicCamera) camera.zoom = Math.min(8, Math.max(0.1, 110 / Math.max(size.x, size.y, size.z, 1)));
       camera.updateProjectionMatrix();
       controls.update();
       hasFittedRef.current = true;
     }
-  }, [mesh, objectMeshes, color]);
+  }, [mesh, objectMeshes, color, projection]);
 
   useEffect(() => {
     const model = modelRef.current;
@@ -394,7 +407,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
     selectionRootRef.current = root;
     selectionHitboxRef.current = hitbox;
     rotationHitboxRef.current = rotationHitbox;
-  }, [selection]);
+  }, [selection, projection]);
 
   useEffect(() => {
     const camera = cameraRef.current;
@@ -403,8 +416,33 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
     const target = controls.target;
     const distance = Math.max(75, camera.position.distanceTo(target));
     if (view.name === "zoom-in" || view.name === "zoom-out") {
-      const offset = camera.position.clone().sub(target).multiplyScalar(view.name === "zoom-in" ? 0.72 : 1.32);
-      camera.position.copy(target).add(offset);
+      if (camera instanceof THREE.OrthographicCamera) {
+        camera.zoom *= view.name === "zoom-in" ? 1.32 : 0.76;
+        camera.zoom = Math.min(20, Math.max(0.05, camera.zoom));
+        camera.updateProjectionMatrix();
+      } else {
+        const offset = camera.position.clone().sub(target).multiplyScalar(view.name === "zoom-in" ? 0.72 : 1.32);
+        camera.position.copy(target).add(offset);
+      }
+      controls.update();
+      return;
+    }
+    if (view.name === "fit" || view.name === "selection") {
+      const source = view.name === "selection" ? selectionRootRef.current : modelRef.current;
+      if (!source) return;
+      const box = new THREE.Box3().setFromObject(source);
+      if (box.isEmpty()) return;
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const extent = Math.max(size.x, size.y, size.z, 1);
+      const direction = camera.position.clone().sub(target).normalize();
+      controls.target.copy(center);
+      camera.position.copy(center).add(direction.multiplyScalar(Math.max(55, extent * 2.35)));
+      if (camera instanceof THREE.OrthographicCamera) {
+        camera.zoom = Math.min(20, Math.max(0.05, 110 / extent));
+        camera.updateProjectionMatrix();
+      }
+      camera.lookAt(center);
       controls.update();
       return;
     }

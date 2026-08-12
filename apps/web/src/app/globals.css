@@ -5129,6 +5129,8 @@ button {
   outline: 2px solid #28a9d2;
   outline-offset: 1px;
 }
+.camera-controls button:disabled { opacity: 0.35; cursor: default; transform: none; }
+.camera-controls button:disabled:hover { color: #173b5a; background: transparent; border-color: transparent; transform: none; }
 
 .camera-controls.collapsed {
   border-radius: 17px;

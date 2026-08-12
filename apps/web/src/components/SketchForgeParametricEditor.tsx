@@ -1,9 +1,9 @@
 "use client";
 
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Grid3X3, Home, Minus, Plus, X } from "lucide-react";
+import { Box, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Focus, Grid3X3, Home, Maximize2, Minus, Plus, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ParametricModelSidebar, type ModelSelectionKind, type ModelSidebarMode } from "@/components/ParametricModelSidebar";
-import { ParametricViewport, type CameraView } from "@/components/ParametricViewport";
+import { ParametricViewport, type CameraProjection, type CameraView } from "@/components/ParametricViewport";
 import {
   ToolbarAlignIcon,
   ToolbarChamferIcon,
@@ -76,6 +76,7 @@ export function SketchForgeParametricEditor() {
   const [workplaneOpen, setWorkplaneOpen] = useState(false);
   const [workplaneDraft, setWorkplaneDraft] = useState(document.workplane);
   const [view, setView] = useState<CameraView>({ name: "iso", token: 0 });
+  const [projection, setProjection] = useState<CameraProjection>("perspective");
   const [clipboardId, setClipboardId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [hydrated, setHydrated] = useState(false);
@@ -384,6 +385,7 @@ export function SketchForgeParametricEditor() {
           color={document.color}
           workplane={document.workplane}
           view={view}
+          projection={projection}
           selection={selectedBox}
           snap={snapAmount}
           onSelectionMove={(x, y) => mutate((draft) => {
@@ -414,8 +416,10 @@ export function SketchForgeParametricEditor() {
           {modelSidebarMode === "normal" ? <ChevronLeft size={23} /> : modelSidebarMode === "simplified" ? <ChevronDown size={23} /> : <ChevronRight size={23} />}
         </button>
         <div className="camera-controls" aria-label="Controles de cámara">
-          <button aria-label="Contraer"><ChevronLeft size={24} /></button>
+          <button aria-label={projection === "perspective" ? "Cambiar a vista ortográfica" : "Cambiar a perspectiva"} title={projection === "perspective" ? "Perspectiva" : "Ortográfica"} aria-pressed={projection === "orthographic"} onClick={() => setProjection((current) => current === "perspective" ? "orthographic" : "perspective")}><Box size={22} /></button>
           <button aria-label="Vista inicial" onClick={() => setCamera("home")}><Home size={24} /></button>
+          <button aria-label="Encuadrar todo" title="Encuadrar todo" onClick={() => setCamera("fit")}><Maximize2 size={21} /></button>
+          <button aria-label="Zoom a la selección" title="Zoom a la selección" disabled={!selectedBox} onClick={() => setCamera("selection")}><Focus size={21} /></button>
           <button aria-label="Acercar" onClick={() => setCamera("zoom-in")}><Plus size={28} /></button>
           <button aria-label="Alejar" onClick={() => setCamera("zoom-out")}><Minus size={28} /></button>
         </div>
