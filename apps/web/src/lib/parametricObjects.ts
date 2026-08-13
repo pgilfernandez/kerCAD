@@ -230,6 +230,42 @@ export function applyOperationWorldRotation(document: ParametricDocument, id: st
   if (feature && object) feature.transform.rotation.z = rotation - object.transform.rotation.z;
 }
 
+export function resizeParametricSelection(
+  document: ParametricDocument,
+  id: string,
+  selectionKind: "object" | "feature",
+  x: number,
+  y: number,
+  width: number,
+  depth: number,
+) {
+  if (selectionKind === "object") {
+    const object = document.objects.find((candidate) => candidate.id === id);
+    const current = viewportSelectionForObject(document, id);
+    if (!object || !current) return;
+    object.transform.position.x = x;
+    object.transform.position.y = y;
+    object.transform.scale.x *= width / Math.max(0.01, current.width);
+    object.transform.scale.y *= depth / Math.max(0.01, current.depth);
+    return;
+  }
+  const feature = document.features.find((candidate): candidate is ExtrudeFeature => candidate.id === id && candidate.kind === "extrude");
+  const object = feature ? document.objects.find((candidate) => candidate.id === feature.objectId) : null;
+  const sketch = feature ? sketchForExtrude(document, feature) : null;
+  const current = viewportSelectionForFeature(document, id);
+  if (!feature || !object || !sketch || !current) return;
+  applyOperationWorldPosition(document, id, x, y);
+  if (sketch.profile.shape === "rectangle") {
+    sketch.profile.width = Math.max(0.1, width / Math.max(0.01, Math.abs(object.transform.scale.x)));
+    sketch.profile.depth = Math.max(0.1, depth / Math.max(0.01, Math.abs(object.transform.scale.y)));
+  } else {
+    const widthRatio = width / Math.max(0.01, current.width);
+    const depthRatio = depth / Math.max(0.01, current.depth);
+    const ratio = Math.abs(widthRatio - 1) >= Math.abs(depthRatio - 1) ? widthRatio : depthRatio;
+    sketch.profile.diameter = Math.max(0.1, sketch.profile.diameter * ratio);
+  }
+}
+
 export function applyWorkplanePatch(document: ParametricDocument, id: string, patch: Partial<WorkplaneShape>) {
   const object = document.objects.find((candidate) => candidate.id === id);
   if (!object) return;

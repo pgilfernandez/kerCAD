@@ -11,6 +11,7 @@ import {
   lastOperationForObject,
   objectIdForFeature,
   parametricObjectTree,
+  resizeParametricSelection,
   sketchForExtrude,
   viewportSelectionForObject,
   viewportSelectionForFeature,
@@ -87,6 +88,26 @@ describe("parametric object workflow", () => {
     expect(feature.transform.position.x).toBeCloseTo(4);
     expect(feature.transform.position.y).toBeCloseTo(-1);
     expect(feature.transform.rotation.z).toBe(30);
+  });
+
+  it("resizes an operation through its parametric profile", () => {
+    const document = createStarterDocument(123);
+    const feature = document.features.find((candidate) => candidate.kind === "extrude");
+    if (!feature || feature.kind !== "extrude") throw new Error("expected extrusion");
+
+    resizeParametricSelection(document, feature.id, "feature", 5, -3, 30, 12);
+
+    expect(viewportSelectionForFeature(document, feature.id)).toMatchObject({ x: 5, y: -3, width: 30, depth: 12 });
+    expect(sketchForExtrude(document, feature)?.profile).toEqual({ shape: "rectangle", width: 30, depth: 12 });
+  });
+
+  it("resizes an object through its container scale", () => {
+    const document = createStarterDocument(123);
+    const object = document.objects[0];
+
+    resizeParametricSelection(document, object.id, "object", 4, 6, 40, 10);
+
+    expect(object.transform).toMatchObject({ position: { x: 4, y: 6 }, scale: { x: 2, y: 0.5, z: 1 } });
   });
 
   it("keeps object edits limited to container transforms", () => {

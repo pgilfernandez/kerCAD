@@ -34,6 +34,7 @@ import {
   duplicateParametricObject,
   lastOperationForObject,
   objectIdForFeature,
+  resizeParametricSelection,
   viewportSelectionForFeature,
   viewportSelectionForObject,
   workplaneShapeForObject,
@@ -383,6 +384,10 @@ export function SketchForgeParametricEditor() {
             if (selectedOperationId) applyOperationWorldRotation(draft, selectedOperationId, rotation);
             else if (selectedObjectId) applyWorkplanePatch(draft, selectedObjectId, { rotation });
           })}
+          onSelectionResize={(x, y, width, depth) => {
+            if (!selectedId) return;
+            mutate((draft) => resizeParametricSelection(draft, selectedId, selectionKind, x, y, width, depth));
+          }}
           onCameraOrientation={setCameraOrientation}
           onObjectSelect={(objectId) => {
             const object = document.objects.find((candidate) => candidate.id === objectId);

@@ -31,12 +31,13 @@ type Props = {
   snap?: number;
   onSelectionMove?: (x: number, y: number) => void;
   onSelectionRotate?: (rotation: number) => void;
+  onSelectionResize?: (x: number, y: number, width: number, depth: number) => void;
   onCameraOrientation?: (orientation: CameraOrientation) => void;
   onObjectSelect?: (objectId: string) => void;
   onEmptySelect?: () => void;
 };
 
-export function ParametricViewport({ mesh, objectMeshes = [], color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "perspective", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onCameraOrientation, onObjectSelect, onEmptySelect }: Props) {
+export function ParametricViewport({ mesh, objectMeshes = [], color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "perspective", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionResize, onCameraOrientation, onObjectSelect, onEmptySelect }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | THREE.OrthographicCamera | null>(null);
@@ -46,9 +47,11 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
   const selectionRootRef = useRef<THREE.Group | null>(null);
   const selectionHitboxRef = useRef<THREE.Mesh | null>(null);
   const rotationHitboxRef = useRef<THREE.Mesh | null>(null);
+  const resizeHitboxesRef = useRef<THREE.Mesh[]>([]);
   const selectionRef = useRef(selection);
   const moveRef = useRef(onSelectionMove);
   const rotateRef = useRef(onSelectionRotate);
+  const resizeRef = useRef(onSelectionResize);
   const orientationRef = useRef(onCameraOrientation);
   const objectSelectRef = useRef(onObjectSelect);
   const emptySelectRef = useRef(onEmptySelect);
@@ -58,6 +61,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
   useEffect(() => { selectionRef.current = selection; }, [selection]);
   useEffect(() => { moveRef.current = onSelectionMove; }, [onSelectionMove]);
   useEffect(() => { rotateRef.current = onSelectionRotate; }, [onSelectionRotate]);
+  useEffect(() => { resizeRef.current = onSelectionResize; }, [onSelectionResize]);
   useEffect(() => { orientationRef.current = onCameraOrientation; }, [onCameraOrientation]);
   useEffect(() => { objectSelectRef.current = onObjectSelect; }, [onObjectSelect]);
   useEffect(() => { emptySelectRef.current = onEmptySelect; }, [onEmptySelect]);
@@ -115,10 +119,13 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
     const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     const dragPoint = new THREE.Vector3();
     const dragOffset = new THREE.Vector3();
-    let interaction: "move" | "rotate" | null = null;
+    let interaction: "move" | "rotate" | "resize" | null = null;
     let pendingPosition: { x: number; y: number } | null = null;
     let pendingRotation: number | null = null;
+    let pendingResize: { x: number; y: number; width: number; depth: number } | null = null;
     let rotationOffset = 0;
+    let resizeAxes = { x: 0, y: 0 };
+    let resizeStart: ViewportSelection | null = null;
     let pickCandidate: { pointerId: number; x: number; y: number } | null = null;
     const setPointer = (event: PointerEvent) => {
       const bounds = renderer.domElement.getBoundingClientRect();
@@ -129,6 +136,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
       if (event.button !== 0) return;
       const hitbox = selectionHitboxRef.current;
       const rotationHitbox = rotationHitboxRef.current;
+      const resizeHitboxes = resizeHitboxesRef.current;
       const selected = selectionRef.current;
       setPointer(event);
       if (hitbox && selected) {
@@ -141,7 +149,16 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
             const pointerAngle = Math.atan2(-(dragPoint.z - center.z), dragPoint.x - center.x) * 180 / Math.PI;
             rotationOffset = selected.rotation - pointerAngle;
             pendingRotation = selected.rotation;
-          } else if (raycaster.intersectObject(hitbox, false).length > 0) {
+          } else {
+            const resizeHit = raycaster.intersectObjects(resizeHitboxes, false)[0];
+            if (resizeHit) {
+              interaction = "resize";
+              resizeAxes = { x: Number(resizeHit.object.userData.resizeX), y: Number(resizeHit.object.userData.resizeY) };
+              resizeStart = { ...selected };
+              pendingResize = { x: selected.x, y: selected.y, width: selected.width, depth: selected.depth };
+            }
+          }
+          if (!interaction && raycaster.intersectObject(hitbox, false).length > 0) {
             interaction = "move";
             dragOffset.set(center.x - dragPoint.x, 0, center.z - dragPoint.z);
             pendingPosition = { x: selected.x, y: selected.y };
@@ -173,12 +190,30 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
         const y = Math.round((-(dragPoint.z + dragOffset.z)) / grid) * grid;
         pendingPosition = { x, y };
         root.position.set(x, y, selected.baseZ + selected.height / 2);
-      } else {
+      } else if (interaction === "rotate") {
         const center = new THREE.Vector3();
         root.getWorldPosition(center);
         const pointerAngle = Math.atan2(-(dragPoint.z - center.z), dragPoint.x - center.x) * 180 / Math.PI;
         pendingRotation = Math.round((pointerAngle + rotationOffset) / 5) * 5;
         root.rotation.z = THREE.MathUtils.degToRad(pendingRotation);
+      } else if (resizeStart) {
+        const grid = Math.max(0.01, snapRef.current);
+        const angle = THREE.MathUtils.degToRad(resizeStart.rotation);
+        const dx = dragPoint.x - resizeStart.x;
+        const dy = -dragPoint.z - resizeStart.y;
+        const localX = dx * Math.cos(angle) + dy * Math.sin(angle);
+        const localY = -dx * Math.sin(angle) + dy * Math.cos(angle);
+        const width = resizeAxes.x === 0 ? resizeStart.width : Math.max(grid, Math.round((resizeAxes.x * localX + resizeStart.width / 2) / grid) * grid);
+        const depth = resizeAxes.y === 0 ? resizeStart.depth : Math.max(grid, Math.round((resizeAxes.y * localY + resizeStart.depth / 2) / grid) * grid);
+        const shiftX = resizeAxes.x * (width - resizeStart.width) / 2;
+        const shiftY = resizeAxes.y * (depth - resizeStart.depth) / 2;
+        const x = resizeStart.x + shiftX * Math.cos(angle) - shiftY * Math.sin(angle);
+        const y = resizeStart.y + shiftX * Math.sin(angle) + shiftY * Math.cos(angle);
+        pendingResize = { x, y, width, depth };
+        root.position.x = x;
+        root.position.y = y;
+        root.scale.x = width / resizeStart.width;
+        root.scale.y = depth / resizeStart.depth;
       }
     };
     const stopDragging = (event: PointerEvent, cancelled = false) => {
@@ -201,8 +236,11 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
       if (renderer.domElement.hasPointerCapture(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
       if (pendingPosition) moveRef.current?.(pendingPosition.x, pendingPosition.y);
       if (pendingRotation !== null) rotateRef.current?.(pendingRotation);
+      if (pendingResize) resizeRef.current?.(pendingResize.x, pendingResize.y, pendingResize.width, pendingResize.depth);
       pendingPosition = null;
       pendingRotation = null;
+      pendingResize = null;
+      resizeStart = null;
     };
     renderer.domElement.addEventListener("pointerdown", onPointerDown);
     renderer.domElement.addEventListener("pointermove", onPointerMove);
@@ -394,27 +432,40 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
     selectionRootRef.current = null;
     selectionHitboxRef.current = null;
     rotationHitboxRef.current = null;
+    resizeHitboxesRef.current = [];
     if (!selection) return;
     const root = new THREE.Group();
     root.position.set(selection.x, selection.y, selection.baseZ + selection.height / 2);
     root.rotation.z = THREE.MathUtils.degToRad(selection.rotation);
-    const boxGeometry = new THREE.BoxGeometry(selection.width, selection.depth, selection.height);
+    const boxGeometry = axisColoredBoxGeometry(selection.width, selection.depth, selection.height);
     const outline = new THREE.LineSegments(
-      new THREE.EdgesGeometry(boxGeometry),
-      new THREE.LineBasicMaterial({ color: "#00a6db", linewidth: 2, depthTest: false }),
+      boxGeometry,
+      new THREE.LineBasicMaterial({ vertexColors: true, linewidth: 2, depthTest: false }),
     );
     outline.renderOrder = 20;
     root.add(outline);
-    const hitbox = new THREE.Mesh(boxGeometry, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+    const hitbox = new THREE.Mesh(new THREE.BoxGeometry(selection.width, selection.depth, selection.height), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
     hitbox.renderOrder = 19;
     root.add(hitbox);
     const handleGeometry = new THREE.BoxGeometry(1.8, 1.8, 1.8);
-    const handleMaterial = new THREE.MeshBasicMaterial({ color: "#ffffff", depthTest: false });
-    for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+    const cornerMaterial = new THREE.MeshBasicMaterial({ color: "#ffffff", depthTest: false });
+    const xHandleMaterial = new THREE.MeshBasicMaterial({ color: "#e25353", depthTest: false });
+    const yHandleMaterial = new THREE.MeshBasicMaterial({ color: "#42a866", depthTest: false });
+    for (const [sx, sy] of [[-1, -1], [-1, 1], [1, -1], [1, 1], [-1, 0], [1, 0], [0, -1], [0, 1]]) {
+      const handleMaterial = sy === 0 ? xHandleMaterial : sx === 0 ? yHandleMaterial : cornerMaterial;
       const handle = new THREE.Mesh(handleGeometry, handleMaterial);
       handle.position.set((selection.width / 2) * sx, (selection.depth / 2) * sy, -selection.height / 2);
       handle.renderOrder = 21;
       root.add(handle);
+      const resizeHitbox = new THREE.Mesh(
+        new THREE.BoxGeometry(6, 6, 6),
+        new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
+      );
+      resizeHitbox.position.copy(handle.position);
+      resizeHitbox.userData.resizeX = sx;
+      resizeHitbox.userData.resizeY = sy;
+      root.add(resizeHitbox);
+      resizeHitboxesRef.current.push(resizeHitbox);
     }
     const rotationRadius = Math.max(selection.width, selection.depth) * 0.7 + 6;
     const rotationPoints = Array.from({ length: 65 }, (_, index) => {
@@ -507,4 +558,29 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
   }, [view]);
 
   return <div className="parametric-viewport" ref={hostRef} aria-label="Vista 3D de la pieza" />;
+}
+
+function axisColoredBoxGeometry(width: number, depth: number, height: number) {
+  const x = width / 2;
+  const y = depth / 2;
+  const z = height / 2;
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const axisColors = {
+    x: new THREE.Color("#e25353"),
+    y: new THREE.Color("#42a866"),
+    z: new THREE.Color("#398bea"),
+  };
+  const addEdge = (start: [number, number, number], end: [number, number, number], axis: keyof typeof axisColors) => {
+    positions.push(...start, ...end);
+    const color = axisColors[axis];
+    colors.push(color.r, color.g, color.b, color.r, color.g, color.b);
+  };
+  for (const sy of [-1, 1]) for (const sz of [-1, 1]) addEdge([-x, sy * y, sz * z], [x, sy * y, sz * z], "x");
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) addEdge([sx * x, -y, sz * z], [sx * x, y, sz * z], "y");
+  for (const sx of [-1, 1]) for (const sy of [-1, 1]) addEdge([sx * x, sy * y, -z], [sx * x, sy * y, z], "z");
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  return geometry;
 }
