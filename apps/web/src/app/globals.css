@@ -603,7 +603,8 @@ button {
 .educad-sidebar-mode-control.hidden { right: 14px; }
 .educad-sidebar-mode-control:focus-visible { outline: 3px solid rgba(0, 166, 219, 0.25); outline-offset: 2px; }
 
-.educad-workplane-settings-button {
+.educad-workplane-settings-button,
+.educad-workplane-snap-button {
   position: absolute;
   bottom: 18px;
   left: 20px;
@@ -618,8 +619,12 @@ button {
   border-radius: 8px;
   box-shadow: 0 3px 14px rgba(38, 62, 79, 0.14);
 }
+.educad-workplane-snap-button { left: 70px; }
 .educad-workplane-settings-button:hover,
-.educad-workplane-settings-button.active { color: #0783a9; background: #effafe; border-color: #83c5d9; }
+.educad-workplane-settings-button.active,
+.educad-workplane-snap-button:hover { color: #0783a9; background: #effafe; border-color: #83c5d9; }
+.educad-workplane-snap-button.active { color: #fff; background: #079bc9; border-color: #0783a9; }
+.educad-workplane-snap-button:focus-visible { outline: 3px solid rgba(0, 166, 219, 0.25); outline-offset: 2px; }
 
 .educad-workplane-popover {
   position: absolute;
@@ -642,7 +647,6 @@ button {
 .educad-workplane-popover > label { display: grid; min-height: 42px; grid-template-columns: minmax(100px, 1fr) 120px; align-items: center; gap: 8px; margin: 0 13px; color: #607686; border-bottom: 1px solid #edf1f4; font-size: 9px; font-weight: 800; }
 .educad-workplane-popover input[type="number"] { width: 100%; height: 29px; padding: 0 27px 0 7px; color: #314c60; background: #fbfcfd; border: 1px solid #c8d6df; border-radius: 5px; font-size: 10px; font-weight: 750; }
 .educad-workplane-popover .educad-number-input small { right: 8px; }
-.educad-workplane-popover > label.educad-workplane-toggle input { justify-self: end; width: 18px; height: 18px; accent-color: #079bc9; }
 .educad-workplane-popover > footer { display: flex; justify-content: flex-end; gap: 7px; padding: 10px 13px; background: #f5f8fa; }
 .educad-workplane-popover > footer button { min-width: 70px; height: 31px; color: #5b7282; background: #fff; border: 1px solid #c8d6df; border-radius: 5px; font-size: 9px; font-weight: 800; }
 .educad-workplane-popover > footer button.primary { color: #fff; background: #079bc9; border-color: #079bc9; }

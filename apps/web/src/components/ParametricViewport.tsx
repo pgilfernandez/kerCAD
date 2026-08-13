@@ -33,9 +33,10 @@ type Props = {
   onSelectionRotate?: (rotation: number) => void;
   onCameraOrientation?: (orientation: CameraOrientation) => void;
   onObjectSelect?: (objectId: string) => void;
+  onEmptySelect?: () => void;
 };
 
-export function ParametricViewport({ mesh, objectMeshes = [], color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "perspective", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onCameraOrientation, onObjectSelect }: Props) {
+export function ParametricViewport({ mesh, objectMeshes = [], color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "perspective", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onCameraOrientation, onObjectSelect, onEmptySelect }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | THREE.OrthographicCamera | null>(null);
@@ -50,6 +51,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
   const rotateRef = useRef(onSelectionRotate);
   const orientationRef = useRef(onCameraOrientation);
   const objectSelectRef = useRef(onObjectSelect);
+  const emptySelectRef = useRef(onEmptySelect);
   const snapRef = useRef(snap);
   const hasFittedRef = useRef(false);
 
@@ -58,6 +60,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
   useEffect(() => { rotateRef.current = onSelectionRotate; }, [onSelectionRotate]);
   useEffect(() => { orientationRef.current = onCameraOrientation; }, [onCameraOrientation]);
   useEffect(() => { objectSelectRef.current = onObjectSelect; }, [onObjectSelect]);
+  useEffect(() => { emptySelectRef.current = onEmptySelect; }, [onEmptySelect]);
   useEffect(() => { snapRef.current = snap; }, [snap]);
 
   useEffect(() => {
@@ -188,6 +191,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
         const hit = raycaster.intersectObjects(bodies, false)[0];
         const objectId = hit?.object.userData.objectId;
         if (typeof objectId === "string") objectSelectRef.current?.(objectId);
+        else emptySelectRef.current?.();
         return;
       }
       interaction = null;

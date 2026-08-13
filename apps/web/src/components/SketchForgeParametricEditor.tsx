@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Focus, Grid3X3, Home, Maximize2, Minus, Plus, X } from "lucide-react";
+import { Box, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Plus, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ParametricModelSidebar, type ModelSelectionKind, type ModelSidebarMode } from "@/components/ParametricModelSidebar";
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView } from "@/components/ParametricViewport";
@@ -204,6 +204,10 @@ export function SketchForgeParametricEditor() {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.matches("input, select, textarea")) return;
+      if (event.key === "Escape") {
+        setSelectedId(null);
+        return;
+      }
       if ((event.key === "Delete" || event.key === "Backspace") && selectedObjectId && selectionKind === "object") {
         event.preventDefault();
         removeSelected();
@@ -406,15 +410,29 @@ export function SketchForgeParametricEditor() {
             setSelectedId(operation?.id ?? objectId);
             setSelectionKind(operation ? "feature" : "object");
           }}
+          onEmptySelect={() => {
+            setSelectedId(null);
+            setSelectionKind("object");
+          }}
         />
         <ViewCube orientation={cameraOrientation} onDirection={(direction) => setView((current) => ({ name: "custom", direction, token: current.token + 1 }))} />
         <button className={`educad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label="Ajustes del plano de trabajo" title="Plano de trabajo" onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><Grid3X3 size={22} /></button>
-        {workplaneOpen ? <form className="educad-workplane-popover" onSubmit={(event) => { event.preventDefault(); mutate((draft) => { draft.workplane = workplaneDraft; }); setWorkplaneOpen(false); }}>
-          <header><div><strong>Plano de trabajo</strong><span>Rejilla y ajuste de movimiento</span></div><button type="button" aria-label="Cerrar" onClick={() => setWorkplaneOpen(false)}><X size={17} /></button></header>
+        <button
+          className={`educad-workplane-snap-button ${document.workplane.snapToGrid ? "active" : ""}`}
+          aria-label={document.workplane.snapToGrid ? "Desactivar ajuste a rejilla" : "Activar ajuste a rejilla"}
+          aria-pressed={document.workplane.snapToGrid}
+          title={document.workplane.snapToGrid ? "Snap to grid: activado" : "Snap to grid: desactivado"}
+          onClick={() => {
+            const enabled = !document.workplane.snapToGrid;
+            mutate((draft) => { draft.workplane.snapToGrid = enabled; });
+            setWorkplaneDraft((current) => ({ ...current, snapToGrid: enabled }));
+          }}
+        ><Magnet size={21} /></button>
+        {workplaneOpen ? <form className="educad-workplane-popover" onSubmit={(event) => { event.preventDefault(); mutate((draft) => { draft.workplane = { ...workplaneDraft, snapToGrid: draft.workplane.snapToGrid }; }); setWorkplaneOpen(false); }}>
+          <header><div><strong>Plano de trabajo</strong><span>Dimensiones y paso de la rejilla</span></div><button type="button" aria-label="Cerrar" onClick={() => setWorkplaneOpen(false)}><X size={17} /></button></header>
           <label><span>Ancho</span><span className="educad-number-input"><input type="number" min="60" max="2000" step="1" value={workplaneDraft.width} onChange={(event) => setWorkplaneDraft((current) => ({ ...current, width: Math.min(2000, Math.max(60, Number(event.target.value) || 60)) }))} /><small>mm</small></span></label>
           <label><span>Largo</span><span className="educad-number-input"><input type="number" min="60" max="2000" step="1" value={workplaneDraft.depth} onChange={(event) => setWorkplaneDraft((current) => ({ ...current, depth: Math.min(2000, Math.max(60, Number(event.target.value) || 60)) }))} /><small>mm</small></span></label>
           <label><span>Paso de líneas</span><span className="educad-number-input"><input type="number" min="0.1" max="200" step="0.1" value={workplaneDraft.gridStep} onChange={(event) => setWorkplaneDraft((current) => ({ ...current, gridStep: Math.min(200, Math.max(0.1, Number(event.target.value) || 0.1)) }))} /><small>mm</small></span></label>
-          <label className="educad-workplane-toggle"><span>Snap to grid</span><input type="checkbox" checked={workplaneDraft.snapToGrid} onChange={(event) => setWorkplaneDraft((current) => ({ ...current, snapToGrid: event.target.checked }))} /></label>
           <footer><button type="button" onClick={() => setWorkplaneOpen(false)}>Cancelar</button><button className="primary" type="submit">Aplicar</button></footer>
         </form> : null}
         <button
