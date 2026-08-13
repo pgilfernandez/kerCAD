@@ -26,8 +26,7 @@ import {
 import { cloneDocument, createFilletFeature, createStarterDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { buildParametricModel, exportParametricStep } from "@/lib/parametricKernel";
 import {
-  addPrimitive,
-  addParametricObject,
+  addPrimitiveToSelection,
   applyOperationWorldPosition,
   applyOperationWorldRotation,
   applyWorkplanePatch,
@@ -151,33 +150,16 @@ export function SketchForgeParametricEditor() {
   const snapAmount = document.workplane.snapToGrid ? document.workplane.gridStep : 0.01;
 
   const addShape = (kind: SupportedPrimitive) => {
-    if (!selectedObjectId) {
-      setNotice({ type: "error", text: "Selecciona un objeto del árbol o crea uno nuevo" });
-      return;
-    }
-    let id: string | null = null;
+    let result: ReturnType<typeof addPrimitiveToSelection> = { objectId: "", featureId: null, createdObject: false };
     mutate((draft) => {
-      const count = draft.features.filter((feature) => feature.kind === "extrude" && feature.objectId === selectedObjectId).length;
-      id = addPrimitive(draft, selectedObjectId, kind, { x: count === 0 ? 0 : count * 8, y: count === 0 ? 0 : count * 6 });
+      result = addPrimitiveToSelection(draft, selectedObjectId, kind);
     });
-    if (id) {
-      setSelectedId(id);
+    if (result.featureId) {
+      setSelectedId(result.featureId);
       setSelectionKind("feature");
     }
     setShapesOpen(false);
-    setNotice({ type: "ok", text: `${kind === "box" ? "Caja" : "Cilindro"} añadido al objeto activo` });
-  };
-
-  const newObject = () => {
-    let id = "";
-    mutate((draft) => {
-      const count = draft.objects.length;
-      id = addParametricObject(draft, { x: count * 8, y: count * 6, z: 0 });
-    });
-    setSelectedId(id);
-    setSelectionKind("object");
-    setShapesOpen(false);
-    setNotice({ type: "ok", text: "Nuevo objeto creado; añade su primera operación" });
+    setNotice({ type: "ok", text: `${kind === "box" ? "Caja" : "Cilindro"} ${result.createdObject ? "creado en un objeto nuevo" : "añadido al final del objeto activo"}` });
   };
 
   const removeSelected = useCallback(() => {
@@ -350,11 +332,10 @@ export function SketchForgeParametricEditor() {
               <button className={`shape-menu-trigger ${shapesOpen ? "active" : ""}`} aria-label="Añadir forma" onClick={() => setShapesOpen((value) => !value)}><ToolbarShapeAddIcon /></button>
               {shapesOpen && (
                 <div className="shape-menu-dropdown">
-                  <div className="shape-menu-title">Objetos y operaciones</div>
+                  <div className="shape-menu-title">Formas</div>
                   <div className="shape-menu-list">
-                    <button className="shape-menu-item educad-new-object-item" onClick={newObject}><Plus size={31} /><span>New Object<small>Contenedor de operaciones</small></span></button>
-                    <div className="educad-shape-target">{selectedObjectId ? `Añadir a ${document.objects.find((object) => object.id === selectedObjectId)?.name ?? "objeto activo"}` : "Selecciona primero un objeto"}</div>
-                    {toolbarShapeAssets.slice(0, 2).map((asset) => <button className="shape-menu-item" disabled={!selectedObjectId} key={asset.id} onClick={() => addShape(asset.kind as SupportedPrimitive)}><img src={asset.menuIcon} alt="" /><span>{asset.name === "Box" ? "Caja" : "Cilindro"}<small>Nueva operación en el objeto</small></span></button>)}
+                    <div className="educad-shape-target">{selectedObjectId ? `Añadir al final de ${document.objects.find((object) => object.id === selectedObjectId)?.name ?? "objeto activo"}` : "Se creará un objeto nuevo"}</div>
+                    {toolbarShapeAssets.slice(0, 2).map((asset) => <button className="shape-menu-item" key={asset.id} onClick={() => addShape(asset.kind as SupportedPrimitive)}><img src={asset.menuIcon} alt="" /><span>{asset.name === "Box" ? "Caja" : "Cilindro"}<small>{selectedObjectId ? "Nueva operación en el objeto" : "Nuevo objeto con esta forma"}</small></span></button>)}
                     <div className="educad-shape-coming"><strong>Más operaciones CAD</strong><span>Revolución, cono y esfera llegarán como operaciones paramétricas.</span></div>
                   </div>
                 </div>

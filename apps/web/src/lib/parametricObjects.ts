@@ -83,6 +83,26 @@ export function addPrimitive(
   return extrusion.id;
 }
 
+export function addPrimitiveToSelection(
+  document: ParametricDocument,
+  selectedObjectId: string | null,
+  kind: SupportedPrimitive,
+) {
+  let objectId = selectedObjectId;
+  let createdObject = false;
+  if (!objectId || !document.objects.some((object) => object.id === objectId)) {
+    const count = document.objects.length;
+    objectId = addParametricObject(document, { x: count * 8, y: count * 6, z: 0 });
+    createdObject = true;
+  }
+  const operationCount = document.features.filter((feature) => feature.kind === "extrude" && feature.objectId === objectId).length;
+  const featureId = addPrimitive(document, objectId, kind, {
+    x: operationCount === 0 ? 0 : operationCount * 8,
+    y: operationCount === 0 ? 0 : operationCount * 6,
+  });
+  return { objectId, featureId, createdObject };
+}
+
 export function deleteParametricObject(document: ParametricDocument, id: string) {
   document.objects = document.objects.filter((object) => object.id !== id);
   document.features = document.features.filter((feature) => feature.objectId !== id);

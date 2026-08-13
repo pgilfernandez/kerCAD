@@ -669,14 +669,6 @@ button {
   font-weight: 700;
 }
 
-.educad-new-object-item svg {
-  flex: 0 0 auto;
-  padding: 4px;
-  color: #ffffff;
-  background: #129bc6;
-  border-radius: 6px;
-}
-
 .educad-shape-target {
   margin: 3px 0;
   padding: 6px 10px;

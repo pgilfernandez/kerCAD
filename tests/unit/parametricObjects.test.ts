@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   addPrimitive,
+  addPrimitiveToSelection,
   addParametricObject,
   applyOperationWorldPosition,
   applyOperationWorldRotation,
@@ -42,6 +43,20 @@ describe("parametric object workflow", () => {
       height: 20,
       hole: false,
     });
+  });
+
+  it("creates a new object only when a shape has no selected object", () => {
+    const document = createStarterDocument(123);
+    const existingObjectId = document.objects[0].id;
+
+    const appended = addPrimitiveToSelection(document, existingObjectId, "cylinder");
+    expect(appended).toMatchObject({ objectId: existingObjectId, createdObject: false });
+    expect(parametricObjectTree(document)[0].operations.map((feature) => feature.name)).toEqual(["Caja", "Cilindro"]);
+
+    const created = addPrimitiveToSelection(document, null, "box");
+    expect(created.createdObject).toBe(true);
+    expect(created.objectId).not.toBe(existingObjectId);
+    expect(parametricObjectTree(document).at(-1)?.operations.map((feature) => feature.name)).toEqual(["Caja"]);
   });
 
   it("targets and edits the selected operation in world coordinates", () => {
