@@ -3,7 +3,11 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
+import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
+import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import { acceleratedRaycast, MeshBVH } from "three-mesh-bvh";
+import { operationPreviewWireframePositions } from "@/lib/viewportGeometry";
 import type { RenderMesh } from "@/types/parametric";
 
 export type CameraView = { name: "iso" | "top" | "front" | "right" | "zoom-in" | "zoom-out" | "home" | "fit" | "selection" | "custom"; token: number; direction?: [number, number, number] };
@@ -19,11 +23,18 @@ export type ViewportSelection = {
   depth: number;
   height: number;
   rotation: number;
+  operationPreview?: {
+    shape: "box" | "cylinder";
+    mode: "add" | "hole" | "common";
+    color: string;
+    historical: boolean;
+  };
 };
 
 type Props = {
   mesh: RenderMesh | null;
   objectMeshes?: Array<{ objectId: string; color: string; mesh: RenderMesh }>;
+  operationContext?: { color: string; mesh: RenderMesh } | null;
   color: string;
   workplane?: { width: number; depth: number; gridStep: number };
   view: CameraView;
@@ -40,7 +51,7 @@ type Props = {
   onEmptySelect?: () => void;
 };
 
-export function ParametricViewport({ mesh, objectMeshes = [], color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "perspective", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionResize, onSelectionHeight, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect }: Props) {
+export function ParametricViewport({ mesh, objectMeshes = [], operationContext = null, color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "perspective", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionResize, onSelectionHeight, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -527,6 +538,23 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
       group.add(edges);
     }
 
+    if (operationContext) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.BufferAttribute(operationContext.mesh.positions, 3));
+      geometry.setAttribute("normal", new THREE.BufferAttribute(operationContext.mesh.normals, 3));
+      geometry.setIndex(new THREE.BufferAttribute(operationContext.mesh.indices, 1));
+      const contextBody = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
+        color: operationContext.color,
+        transparent: true,
+        opacity: 0.4,
+        depthTest: false,
+        depthWrite: false,
+        roughness: 0.7,
+      }));
+      contextBody.renderOrder = 16;
+      group.add(contextBody);
+    }
+
     if (!hasFittedRef.current) {
       const box = new THREE.Box3().setFromObject(group);
       const center = box.getCenter(new THREE.Vector3());
@@ -542,7 +570,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
       hasFittedRef.current = true;
     }
     invalidateRef.current();
-  }, [mesh, objectMeshes, color, projection]);
+  }, [mesh, objectMeshes, operationContext, color, projection]);
 
   useEffect(() => {
     const model = modelRef.current;
@@ -569,6 +597,36 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
     const root = new THREE.Group();
     root.position.set(selection.x, selection.y, selection.baseZ + selection.height / 2);
     root.rotation.z = THREE.MathUtils.degToRad(selection.rotation);
+    if (selection.operationPreview) {
+      const operationPreview = selection.operationPreview;
+      if (operationPreview.mode === "hole" && !operationPreview.historical) {
+        const previewGeometry = operationPreview.shape === "cylinder"
+          ? new THREE.CylinderGeometry(0.5, 0.5, selection.height, 64)
+          : new THREE.BoxGeometry(selection.width, selection.depth, selection.height);
+        if (operationPreview.shape === "cylinder") {
+          previewGeometry.rotateX(Math.PI / 2);
+          previewGeometry.scale(selection.width, selection.depth, 1);
+        }
+        const preview = new THREE.Mesh(previewGeometry, new THREE.MeshStandardMaterial({
+          color: operationPreview.color,
+          transparent: true,
+          opacity: 0.4,
+          depthTest: false,
+          depthWrite: false,
+          roughness: 0.7,
+        }));
+        preview.renderOrder = 17;
+        root.add(preview);
+      }
+      if (operationPreview.mode === "common" || operationPreview.historical) {
+        const roleColor = operationPreview.mode === "add" ? "#378451" : operationPreview.mode === "hole" ? "#b6524d" : "#7256aa";
+        const lineGeometry = new LineSegmentsGeometry();
+        lineGeometry.setPositions(operationPreviewWireframePositions(operationPreview.shape, selection.width, selection.depth, selection.height));
+        const preview = new LineSegments2(lineGeometry, new LineMaterial({ color: roleColor, linewidth: 2, depthTest: false, transparent: true, opacity: 1 }));
+        preview.renderOrder = 18;
+        root.add(preview);
+      }
+    }
     const boxGeometry = axisColoredBoxGeometry(selection.width, selection.depth, selection.height);
     const outline = new THREE.LineSegments(
       boxGeometry,

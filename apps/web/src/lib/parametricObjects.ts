@@ -267,6 +267,9 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
   const world = operationWorldTransform(object, feature);
   const width = (sketch.profile.shape === "rectangle" ? sketch.profile.width : sketch.profile.diameter) * object.transform.scale.x;
   const depth = (sketch.profile.shape === "rectangle" ? sketch.profile.depth : sketch.profile.diameter) * object.transform.scale.y;
+  const lastOperation = document.features.findLast((candidate) => candidate.objectId === object.id && candidate.kind !== "sketch");
+  const historical = lastOperation?.id !== feature.id;
+  const previewMode = feature.operation === "cut" ? "hole" : feature.operation === "intersect" ? "common" : "add";
   return {
     id: feature.id,
     x: world.x,
@@ -276,6 +279,12 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
     depth,
     height: feature.distance * object.transform.scale.z,
     rotation: world.rotation,
+    operationPreview: feature.operation === "add" && !historical ? undefined : {
+      shape: sketch.profile.shape === "rectangle" ? "box" : "cylinder",
+      mode: previewMode,
+      color: object.color,
+      historical,
+    },
   };
 }
 

@@ -120,6 +120,38 @@ describe("parametric object workflow", () => {
     expect(sketchForExtrude(document, feature)?.profile).toEqual({ shape: "rectangle", width: 30, depth: 12 });
   });
 
+  it("describes the selected Boolean operation preview", () => {
+    const document = createStarterDocument(123);
+    const object = document.objects[0];
+    object.color = "#3b82f6";
+    const feature = document.features.find((candidate) => candidate.kind === "extrude");
+    if (!feature || feature.kind !== "extrude") throw new Error("expected extrusion");
+
+    feature.operation = "cut";
+    expect(viewportSelectionForFeature(document, feature.id)?.operationPreview).toEqual({ shape: "box", mode: "hole", color: "#3b82f6", historical: false });
+
+    feature.operation = "intersect";
+    expect(viewportSelectionForFeature(document, feature.id)?.operationPreview).toEqual({ shape: "box", mode: "common", color: "#3b82f6", historical: false });
+
+    feature.operation = "add";
+    expect(viewportSelectionForFeature(document, feature.id)?.operationPreview).toBeUndefined();
+  });
+
+  it("marks an older additive operation for a simplified wireframe preview", () => {
+    const document = createStarterDocument(123);
+    const objectId = document.objects[0].id;
+    const first = document.features.find((candidate) => candidate.kind === "extrude");
+    if (!first || first.kind !== "extrude") throw new Error("expected extrusion");
+    addPrimitive(document, objectId, "cylinder");
+
+    expect(viewportSelectionForFeature(document, first.id)?.operationPreview).toEqual({
+      shape: "box",
+      mode: "add",
+      color: "#d41721",
+      historical: true,
+    });
+  });
+
   it("resizes an object through its container scale", () => {
     const document = createStarterDocument(123);
     const object = document.objects[0];

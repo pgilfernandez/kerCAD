@@ -66,12 +66,13 @@ function objectRenderMeshes(brep: Brep, solids: Map<string, AnySolid>, objects: 
   }));
 }
 
-export async function buildParametricModel(document: ParametricDocument): Promise<BuildResult> {
+export async function buildParametricModel(document: ParametricDocument, contextFeatureId: string | null = null): Promise<BuildResult> {
   const brep = await loadBrepWithOcct();
   const sketches = new Map<string, SketchFeature>();
   const objects = new Map(document.objects.map((object) => [object.id, object]));
   const completedFeatureIds: string[] = [];
   const solids = new Map<string, AnySolid>();
+  let operationContext: BuildResult["operationContext"] = null;
   let lastObjectId = "legacy";
 
   try {
@@ -90,6 +91,14 @@ export async function buildParametricModel(document: ParametricDocument): Promis
         const objectId = feature.objectId ?? "legacy";
         lastObjectId = objectId;
         const current = solids.get(objectId) ?? null;
+        if (feature.id === contextFeatureId && current) {
+          operationContext = {
+            featureId: feature.id,
+            objectId,
+            color: objects.get(objectId)?.color ?? "#d41721",
+            mesh: meshShape(brep, current),
+          };
+        }
         const tool = solidFromSketch(brep, sketch, feature, feature.objectId ? objects.get(feature.objectId) : undefined);
         if (!current) {
           if (feature.operation !== "add") throw new Error(`${feature.name}: la primera operación del objeto debe ser Añadir.`);
@@ -127,11 +136,11 @@ export async function buildParametricModel(document: ParametricDocument): Promis
     }
   } catch (error) {
     const partial = combinedObjectShape(brep, solids);
-    return { mesh: partial ? meshShape(brep, partial) : null, objectMeshes: objectRenderMeshes(brep, solids, objects), completedFeatureIds, warning: errorMessage(error) };
+    return { mesh: partial ? meshShape(brep, partial) : null, objectMeshes: objectRenderMeshes(brep, solids, objects), operationContext, completedFeatureIds, warning: errorMessage(error) };
   }
 
   const result = combinedObjectShape(brep, solids);
-  return { mesh: result ? meshShape(brep, result) : null, objectMeshes: objectRenderMeshes(brep, solids, objects), completedFeatureIds, warning: null };
+  return { mesh: result ? meshShape(brep, result) : null, objectMeshes: objectRenderMeshes(brep, solids, objects), operationContext, completedFeatureIds, warning: null };
 }
 
 function meshShape(brep: Brep, shape: RenderableShape): RenderMesh {

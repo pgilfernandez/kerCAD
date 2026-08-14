@@ -69,7 +69,7 @@ export function SketchForgeParametricEditor() {
   const [history, setHistory] = useState<HistoryState>({ entries: [initialDocument], index: 0 });
   const document = history.entries[history.index];
   const [modelSelection, setModelSelection] = useState<ModelTreeSelection[]>(initialDocument.objects[0] ? [{ id: initialDocument.objects[0].id, kind: "object" }] : []);
-  const [build, setBuild] = useState<BuildResult>({ mesh: null, objectMeshes: [], completedFeatureIds: [], warning: null });
+  const [build, setBuild] = useState<BuildResult>({ mesh: null, objectMeshes: [], operationContext: null, completedFeatureIds: [], warning: null });
   const [kernelBusy, setKernelBusy] = useState(true);
   const [shapesOpen, setShapesOpen] = useState(false);
   const [modelSidebarMode, setModelSidebarMode] = useState<ModelSidebarMode | "hidden">("normal");
@@ -86,6 +86,11 @@ export function SketchForgeParametricEditor() {
   const [hydrated, setHydrated] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
   const buildCounter = useRef(0);
+  const selectedCommonOperationId = useMemo(() => {
+    if (modelSelection.length !== 1 || modelSelection[0]?.kind !== "feature") return null;
+    const feature = document.features.find((candidate) => candidate.id === modelSelection[0]?.id);
+    return feature?.kind === "extrude" && feature.operation === "intersect" ? feature.id : null;
+  }, [document.features, modelSelection]);
 
   useEffect(() => {
     try {
@@ -111,8 +116,9 @@ export function SketchForgeParametricEditor() {
   useEffect(() => {
     const counter = ++buildCounter.current;
     setKernelBusy(true);
+    setBuild((current) => current.operationContext ? { ...current, operationContext: null } : current);
     const timeout = window.setTimeout(() => {
-      buildParametricModel(document).then((result) => {
+      buildParametricModel(document, selectedCommonOperationId).then((result) => {
         if (counter !== buildCounter.current) return;
         setBuild(result);
         setKernelBusy(false);
@@ -123,7 +129,7 @@ export function SketchForgeParametricEditor() {
       });
     }, 140);
     return () => window.clearTimeout(timeout);
-  }, [document]);
+  }, [document, selectedCommonOperationId]);
 
   useEffect(() => {
     if (!notice) return;
@@ -375,6 +381,7 @@ export function SketchForgeParametricEditor() {
         <ParametricViewport
           mesh={build.mesh}
           objectMeshes={build.objectMeshes}
+          operationContext={build.operationContext}
           color={document.color}
           workplane={document.workplane}
           view={view}
