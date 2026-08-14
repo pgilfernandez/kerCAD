@@ -1096,6 +1096,7 @@ button {
 .educad-transform-section > summary small { color: #8a9ba7; font-size: 7.5px; font-weight: 700; }
 .educad-transform-section > div { padding: 0 8px 8px; border-top: 1px solid #edf1f4; }
 .educad-transform-section .educad-transform-card { margin: 8px 0 0; padding: 7px 5px 4px; background: #fbfcfd; }
+.educad-transform-empty { margin: 8px 5px 0; padding: 9px; color: #7d909d; background: #fbfcfd; border-radius: 5px; font-size: 8px; line-height: 1.45; }
 
 .educad-object-appearance { padding: 6px; }
 .educad-color-trigger { display: grid; width: 100%; min-height: 38px; grid-template-columns: minmax(0, 1fr) 22px auto 18px; align-items: center; gap: 7px; padding: 0 7px; color: #526a7b; text-align: left; background: transparent; border-radius: 5px; font-size: 9px; font-weight: 800; }

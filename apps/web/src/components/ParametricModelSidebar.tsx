@@ -194,15 +194,6 @@ function operationClass(feature: ParametricFeature) {
   return `operation-${feature.operation === "cut" ? "hole" : feature.operation === "intersect" ? "common" : "add"}`;
 }
 
-function featureLabel(feature: ParametricFeature) {
-  if (feature.kind === "sketch") return `Boceto ${feature.profile.shape === "rectangle" ? "rectangular" : "circular"}`;
-  if (feature.kind === "extrude") {
-    return feature.operation === "cut" ? "Hueco" : feature.operation === "intersect" ? "Común" : "Añadir";
-  }
-  if (feature.kind === "hole") return "Taladro";
-  return "Redondeo";
-}
-
 function ParametricObjectInspector({
   object,
   onUpdate,
@@ -285,39 +276,30 @@ function ParametricFeatureInspector({
   };
 
   return (
-    <div className="educad-feature-inspector">
-      <header>
-        <FeatureIcon document={document} feature={feature} />
-        <div><strong>{feature.name}</strong><span>{featureLabel(feature)}</span></div>
-      </header>
+    <div className="educad-feature-inspector" aria-label={`Propiedades de ${feature.name}`}>
 
       {feature.kind === "sketch" ? (
-        <div className="educad-feature-card">
-          <h3>Boceto</h3>
-          <ReadOnlyField label="Plano" value={feature.plane} />
-          <ReadOnlyField label="Perfil" value={feature.profile.shape === "rectangle" ? "Rectángulo" : "Círculo"} />
-          <NumberField label="Posición X" value={feature.x} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch") draft.x = value; })} />
-          <NumberField label="Posición Y" value={feature.y} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch") draft.y = value; })} />
-          <NumberField label="Desfase Z" value={feature.offset} min={0} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch") draft.offset = value; })} />
-          {feature.profile.shape === "rectangle" ? (
-            <>
-              <NumberField label="Anchura" value={feature.profile.width} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} />
-              <NumberField label="Profundidad" value={feature.profile.depth} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} />
-            </>
-          ) : (
-            <NumberField label="Diámetro" value={feature.profile.diameter} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value); })} />
-          )}
-        </div>
+        <>
+          <div className="educad-feature-card"><h3>Operación</h3><ReadOnlyField label="Tipo" value="Boceto" /><ReadOnlyField label="Plano" value={feature.plane} /></div>
+          <div className="educad-feature-card">
+            <h3>Parámetros de la forma</h3>
+            <ReadOnlyField label="Perfil" value={feature.profile.shape === "rectangle" ? "Rectángulo" : "Círculo"} />
+            {feature.profile.shape === "rectangle" ? <><NumberField label="Anchura" value={feature.profile.width} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} /><NumberField label="Profundidad" value={feature.profile.depth} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} /></> : <NumberField label="Diámetro" value={feature.profile.diameter} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value); })} />}
+          </div>
+          <TransformSection description="Posición">
+            <div className="educad-feature-card educad-transform-card"><h3>Posición</h3><NumberField label="X" value={feature.x} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch") draft.x = value; })} /><NumberField label="Y" value={feature.y} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch") draft.y = value; })} /><NumberField label="Z" value={feature.offset} min={0} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch") draft.offset = value; })} /></div>
+          </TransformSection>
+        </>
       ) : null}
 
       {feature.kind === "extrude" ? (
         <>
-          <TransformSection description="Posición · rotación">
-            <TransformGroup label="Posición" values={feature.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.transform.position[axis] = value; })} />
-            <TransformGroup label="Rotación" values={feature.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.transform.rotation[axis] = value; })} />
-          </TransformSection>
           <div className="educad-feature-card">
-            <h3>{primitiveSketch?.profile.shape === "circle" ? "Cilindro" : "Caja"}</h3>
+            <h3>Operación</h3>
+            <label><span>Modo</span><select value={feature.operation} onChange={(event) => onUpdate((draft) => { if (draft.kind === "extrude") draft.operation = event.target.value as typeof draft.operation; })}><option value="add">Añadir</option><option value="cut">Hueco</option><option value="intersect">Común</option></select></label>
+          </div>
+          <div className="educad-feature-card">
+            <h3>Parámetros de la forma</h3>
             {primitiveSketch?.profile.shape === "rectangle" ? (
               <>
                 <BoundedNumberField label="Anchura" value={primitiveSketch.profile.width} min={0.01} max={200} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} />
@@ -327,28 +309,30 @@ function ParametricFeatureInspector({
               <BoundedNumberField label="Diámetro" value={primitiveSketch.profile.diameter} min={0.01} max={200} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value); })} />
             ) : null}
             <BoundedNumberField label="Altura" value={feature.distance} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.distance = Math.max(0.01, value); })} />
-            <label><span>Operación</span><select value={feature.operation} onChange={(event) => onUpdate((draft) => { if (draft.kind === "extrude") draft.operation = event.target.value as typeof draft.operation; })}><option value="add">Añadir</option><option value="cut">Hueco</option><option value="intersect">Común</option></select></label>
           </div>
+          <TransformSection description="Posición · rotación">
+            <TransformGroup label="Posición" values={feature.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.transform.position[axis] = value; })} />
+            <TransformGroup label="Rotación" values={feature.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.transform.rotation[axis] = value; })} />
+          </TransformSection>
         </>
       ) : null}
 
       {feature.kind === "hole" ? (
-        <div className="educad-feature-card">
-          <h3>Taladro</h3>
-          <NumberField label="Posición X" value={feature.x} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.x = value; })} />
-          <NumberField label="Posición Y" value={feature.y} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.y = value; })} />
-          <BoundedNumberField label="Diámetro" value={feature.diameter} min={0.01} max={100} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.diameter = Math.max(0.01, value); })} />
-          <label><span>Final</span><select value={feature.termination} onChange={(event) => onUpdate((draft) => { if (draft.kind === "hole") draft.termination = event.target.value as typeof draft.termination; })}><option value="through-all">Pasante</option><option value="blind">Ciego</option></select></label>
-          {feature.termination === "blind" ? <BoundedNumberField label="Profundidad" value={feature.depth} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.depth = Math.max(0.01, value); })} /> : null}
-        </div>
+        <>
+          <div className="educad-feature-card"><h3>Operación</h3><ReadOnlyField label="Tipo" value="Taladro" /><label><span>Final</span><select value={feature.termination} onChange={(event) => onUpdate((draft) => { if (draft.kind === "hole") draft.termination = event.target.value as typeof draft.termination; })}><option value="through-all">Pasante</option><option value="blind">Ciego</option></select></label></div>
+          <div className="educad-feature-card"><h3>Parámetros de la forma</h3><BoundedNumberField label="Diámetro" value={feature.diameter} min={0.01} max={100} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.diameter = Math.max(0.01, value); })} />{feature.termination === "blind" ? <BoundedNumberField label="Profundidad" value={feature.depth} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.depth = Math.max(0.01, value); })} /> : null}</div>
+          <TransformSection description="Posición">
+            <div className="educad-feature-card educad-transform-card"><h3>Posición</h3><NumberField label="X" value={feature.x} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.x = value; })} /><NumberField label="Y" value={feature.y} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.y = value; })} /></div>
+          </TransformSection>
+        </>
       ) : null}
 
       {feature.kind === "fillet" ? (
-        <div className="educad-feature-card">
-          <h3>Redondeo</h3>
-          <BoundedNumberField label="Radio" value={feature.radius} min={0.01} max={50} onChange={(value) => onUpdate((draft) => { if (draft.kind === "fillet") draft.radius = Math.max(0.01, value); })} />
-          <label><span>Aristas</span><select value={feature.edges} onChange={(event) => onUpdate((draft) => { if (draft.kind === "fillet") draft.edges = event.target.value as typeof draft.edges; })}><option value="vertical">Verticales</option><option value="all">Todas</option></select></label>
-        </div>
+        <>
+          <div className="educad-feature-card"><h3>Operación</h3><ReadOnlyField label="Tipo" value="Redondeo" /><label><span>Aristas</span><select value={feature.edges} onChange={(event) => onUpdate((draft) => { if (draft.kind === "fillet") draft.edges = event.target.value as typeof draft.edges; })}><option value="vertical">Verticales</option><option value="all">Todas</option></select></label></div>
+          <div className="educad-feature-card"><h3>Parámetros de la forma</h3><BoundedNumberField label="Radio" value={feature.radius} min={0.01} max={50} onChange={(value) => onUpdate((draft) => { if (draft.kind === "fillet") draft.radius = Math.max(0.01, value); })} /></div>
+          <TransformSection description="Sin transformación propia"><p className="educad-transform-empty">Esta operación actúa sobre el resultado anterior del objeto.</p></TransformSection>
+        </>
       ) : null}
 
     </div>
