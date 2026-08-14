@@ -150,8 +150,8 @@ export function SketchForgeParametricEditor() {
   const selectionKind = primarySelection?.kind ?? "object";
   const selectedObjectId = objectIdForFeature(document, selectedId);
   const selectedOperationId = selectionKind === "feature" && document.features.some((feature) => feature.id === selectedId && feature.kind === "extrude") ? selectedId : null;
-  const selectedShape = workplaneShapeForObject(document, selectedObjectId);
-  const selectedBox = modelSelection.length === 1 ? (selectedOperationId ? viewportSelectionForFeature(document, selectedOperationId) : viewportSelectionForObject(document, selectedObjectId)) : null;
+  const selectedShape = useMemo(() => workplaneShapeForObject(document, selectedObjectId), [document, selectedObjectId]);
+  const selectedBox = useMemo(() => modelSelection.length === 1 ? (selectedOperationId ? viewportSelectionForFeature(document, selectedOperationId) : viewportSelectionForObject(document, selectedObjectId)) : null, [document, modelSelection.length, selectedObjectId, selectedOperationId]);
   const snapAmount = document.workplane.snapToGrid ? document.workplane.gridStep : 0.01;
 
   const addShape = (kind: SupportedPrimitive) => {

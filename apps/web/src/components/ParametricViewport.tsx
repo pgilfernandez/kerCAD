@@ -42,6 +42,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
   const hostRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | THREE.OrthographicCamera | null>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const modelRef = useRef<THREE.Group | null>(null);
   const workplaneRef = useRef<THREE.Group | null>(null);
@@ -58,6 +59,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
   const objectSelectRef = useRef(onObjectSelect);
   const emptySelectRef = useRef(onEmptySelect);
   const snapRef = useRef(snap);
+  const invalidateRef = useRef<() => void>(() => undefined);
   const hasFittedRef = useRef(false);
 
   useEffect(() => { selectionRef.current = selection; }, [selection]);
@@ -86,6 +88,8 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
+    renderer.shadowMap.autoUpdate = false;
+    renderer.shadowMap.needsUpdate = true;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     host.appendChild(renderer.domElement);
 
@@ -96,14 +100,29 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
     controls.target.set(0, 5, 0);
     controls.minDistance = 18;
     controls.maxDistance = 420;
-    const emitOrientation = () => orientationRef.current?.({ azimuth: controls.getAzimuthalAngle(), polar: controls.getPolarAngle() });
-    controls.addEventListener("change", emitOrientation);
+    let frame = 0;
+    let disposed = false;
+    const requestRender = () => {
+      if (!disposed && frame === 0) frame = requestAnimationFrame(render);
+    };
+    const render = () => {
+      frame = 0;
+      const controlsChanged = controls.update();
+      renderer.render(scene, camera);
+      if (controlsChanged) requestRender();
+    };
+    const onControlsChange = () => {
+      orientationRef.current?.({ azimuth: controls.getAzimuthalAngle(), polar: controls.getPolarAngle() });
+      requestRender();
+    };
+    controls.addEventListener("change", onControlsChange);
+    invalidateRef.current = requestRender;
 
     scene.add(new THREE.HemisphereLight("#ffffff", "#9fb4bf", 2.1));
     const key = new THREE.DirectionalLight("#ffffff", 3.2);
     key.position.set(80, 130, 70);
     key.castShadow = true;
-    key.shadow.mapSize.set(2048, 2048);
+    key.shadow.mapSize.set(1024, 1024);
     key.shadow.camera.left = -120;
     key.shadow.camera.right = 120;
     key.shadow.camera.top = 120;
@@ -237,6 +256,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
         root.position.z = resizeStart.baseZ + height / 2;
         root.scale.z = height / resizeStart.height;
       }
+      requestRender();
     };
     const stopDragging = (event: PointerEvent, cancelled = false) => {
       if (!interaction) {
@@ -285,29 +305,26 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
         camera.bottom = -90;
       }
       camera.updateProjectionMatrix();
+      requestRender();
     };
     const observer = new ResizeObserver(resize);
     observer.observe(host);
     resize();
 
-    let frame = 0;
-    const render = () => {
-      controls.update();
-      renderer.render(scene, camera);
-      frame = requestAnimationFrame(render);
-    };
-    render();
+    requestRender();
 
     sceneRef.current = scene;
     cameraRef.current = camera;
+    rendererRef.current = renderer;
     controlsRef.current = controls;
     modelRef.current = modelGroup;
     workplaneRef.current = workplaneGroup;
     return () => {
-      cancelAnimationFrame(frame);
+      disposed = true;
+      if (frame !== 0) cancelAnimationFrame(frame);
       observer.disconnect();
       controls.dispose();
-      controls.removeEventListener("change", emitOrientation);
+      controls.removeEventListener("change", onControlsChange);
       renderer.domElement.removeEventListener("pointerdown", onPointerDown);
       renderer.domElement.removeEventListener("pointermove", onPointerMove);
       renderer.domElement.removeEventListener("pointerup", stopDragging);
@@ -317,9 +334,11 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
       scene.clear();
       sceneRef.current = null;
       cameraRef.current = null;
+      rendererRef.current = null;
       controlsRef.current = null;
       modelRef.current = null;
       workplaneRef.current = null;
+      invalidateRef.current = () => undefined;
     };
   }, [projection]);
 
@@ -382,6 +401,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
     addLines(major, "#4bbddf", 0.7);
     addLines(axes, "#34aad2", 0.88);
     addLines(border, "#58c5e6", 0.9);
+    invalidateRef.current();
   }, [projection, workplane.depth, workplane.gridStep, workplane.width]);
 
   useEffect(() => {
@@ -389,18 +409,25 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
     const camera = cameraRef.current;
     const controls = controlsRef.current;
     if (!group || !camera || !controls) return;
-    group.children.forEach((child) => {
-      if (child instanceof THREE.Mesh || child instanceof THREE.LineSegments) {
-        child.geometry.dispose();
-        if (Array.isArray(child.material)) child.material.forEach((material) => material.dispose());
-        else child.material.dispose();
-      }
+    const selectionRoot = selectionRootRef.current;
+    group.children.filter((child) => child !== selectionRoot).forEach((child) => {
+      child.traverse((descendant) => {
+        if (descendant instanceof THREE.Mesh || descendant instanceof THREE.LineSegments) {
+          descendant.geometry.dispose();
+          if (Array.isArray(descendant.material)) descendant.material.forEach((material) => material.dispose());
+          else descendant.material.dispose();
+        }
+      });
+      group.remove(child);
     });
-    group.clear();
+    if (rendererRef.current) rendererRef.current.shadowMap.needsUpdate = true;
     const renderItems = objectMeshes.length > 0
       ? objectMeshes.map((item) => ({ mesh: item.mesh, color: item.color, objectId: item.objectId as string | null }))
       : mesh ? [{ mesh, color, objectId: null }] : [];
-    if (renderItems.length === 0) return;
+    if (renderItems.length === 0) {
+      invalidateRef.current();
+      return;
+    }
 
     for (const item of renderItems) {
       const geometry = new THREE.BufferGeometry();
@@ -437,6 +464,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
       controls.update();
       hasFittedRef.current = true;
     }
+    invalidateRef.current();
   }, [mesh, objectMeshes, color, projection]);
 
   useEffect(() => {
@@ -457,7 +485,10 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
     selectionHitboxRef.current = null;
     rotationHitboxRef.current = null;
     resizeHitboxesRef.current = [];
-    if (!selection) return;
+    if (!selection) {
+      invalidateRef.current();
+      return;
+    }
     const root = new THREE.Group();
     root.position.set(selection.x, selection.y, selection.baseZ + selection.height / 2);
     root.rotation.z = THREE.MathUtils.degToRad(selection.rotation);
@@ -538,6 +569,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
     selectionRootRef.current = root;
     selectionHitboxRef.current = hitbox;
     rotationHitboxRef.current = rotationHitbox;
+    invalidateRef.current();
   }, [selection, projection]);
 
   useEffect(() => {
@@ -598,6 +630,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
     camera.up.set(0, 1, 0);
     camera.lookAt(target);
     controls.update();
+    invalidateRef.current();
   }, [view]);
 
   return <div className="parametric-viewport" ref={hostRef} aria-label="Vista 3D de la pieza" />;
