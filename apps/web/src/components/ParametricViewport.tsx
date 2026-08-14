@@ -32,12 +32,13 @@ type Props = {
   onSelectionMove?: (x: number, y: number) => void;
   onSelectionRotate?: (rotation: number) => void;
   onSelectionResize?: (x: number, y: number, width: number, depth: number) => void;
+  onSelectionHeight?: (height: number) => void;
   onCameraOrientation?: (orientation: CameraOrientation) => void;
   onObjectSelect?: (objectId: string) => void;
   onEmptySelect?: () => void;
 };
 
-export function ParametricViewport({ mesh, objectMeshes = [], color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "perspective", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionResize, onCameraOrientation, onObjectSelect, onEmptySelect }: Props) {
+export function ParametricViewport({ mesh, objectMeshes = [], color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "perspective", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionResize, onSelectionHeight, onCameraOrientation, onObjectSelect, onEmptySelect }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | THREE.OrthographicCamera | null>(null);
@@ -52,6 +53,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
   const moveRef = useRef(onSelectionMove);
   const rotateRef = useRef(onSelectionRotate);
   const resizeRef = useRef(onSelectionResize);
+  const heightRef = useRef(onSelectionHeight);
   const orientationRef = useRef(onCameraOrientation);
   const objectSelectRef = useRef(onObjectSelect);
   const emptySelectRef = useRef(onEmptySelect);
@@ -62,6 +64,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
   useEffect(() => { moveRef.current = onSelectionMove; }, [onSelectionMove]);
   useEffect(() => { rotateRef.current = onSelectionRotate; }, [onSelectionRotate]);
   useEffect(() => { resizeRef.current = onSelectionResize; }, [onSelectionResize]);
+  useEffect(() => { heightRef.current = onSelectionHeight; }, [onSelectionHeight]);
   useEffect(() => { orientationRef.current = onCameraOrientation; }, [onCameraOrientation]);
   useEffect(() => { objectSelectRef.current = onObjectSelect; }, [onObjectSelect]);
   useEffect(() => { emptySelectRef.current = onEmptySelect; }, [onEmptySelect]);
@@ -119,10 +122,11 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
     const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     const dragPoint = new THREE.Vector3();
     const dragOffset = new THREE.Vector3();
-    let interaction: "move" | "rotate" | "resize" | null = null;
+    let interaction: "move" | "rotate" | "resize" | "height" | null = null;
     let pendingPosition: { x: number; y: number } | null = null;
     let pendingRotation: number | null = null;
     let pendingResize: { x: number; y: number; width: number; depth: number } | null = null;
+    let pendingHeight: number | null = null;
     let rotationOffset = 0;
     let resizeAxes = { x: 0, y: 0 };
     let resizeStart: ViewportSelection | null = null;
@@ -142,15 +146,27 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
       if (hitbox && selected) {
         const center = new THREE.Vector3();
         hitbox.getWorldPosition(center);
-        dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), center);
-        if (raycaster.ray.intersectPlane(dragPlane, dragPoint)) {
+        const resizeHit = raycaster.intersectObjects(resizeHitboxes, false)[0];
+        if (resizeHit && resizeHit.object.userData.resizeZ) {
+          const normal = camera.getWorldDirection(new THREE.Vector3());
+          normal.y = 0;
+          if (normal.lengthSq() < 0.0001) normal.set(0, 0, 1);
+          dragPlane.setFromNormalAndCoplanarPoint(normal.normalize(), center);
+          if (raycaster.ray.intersectPlane(dragPlane, dragPoint)) {
+            interaction = "height";
+            resizeStart = { ...selected };
+            pendingHeight = selected.height;
+          }
+        } else {
+          dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), center);
+        }
+        if (!interaction && raycaster.ray.intersectPlane(dragPlane, dragPoint)) {
           if (rotationHitbox && raycaster.intersectObject(rotationHitbox, false).length > 0) {
             interaction = "rotate";
             const pointerAngle = Math.atan2(-(dragPoint.z - center.z), dragPoint.x - center.x) * 180 / Math.PI;
             rotationOffset = selected.rotation - pointerAngle;
             pendingRotation = selected.rotation;
           } else {
-            const resizeHit = raycaster.intersectObjects(resizeHitboxes, false)[0];
             if (resizeHit) {
               interaction = "resize";
               resizeAxes = { x: Number(resizeHit.object.userData.resizeX), y: Number(resizeHit.object.userData.resizeY) };
@@ -196,7 +212,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
         const pointerAngle = Math.atan2(-(dragPoint.z - center.z), dragPoint.x - center.x) * 180 / Math.PI;
         pendingRotation = Math.round((pointerAngle + rotationOffset) / 5) * 5;
         root.rotation.z = THREE.MathUtils.degToRad(pendingRotation);
-      } else if (resizeStart) {
+      } else if (interaction === "resize" && resizeStart) {
         const grid = Math.max(0.01, snapRef.current);
         const angle = THREE.MathUtils.degToRad(resizeStart.rotation);
         const dx = dragPoint.x - resizeStart.x;
@@ -214,6 +230,12 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
         root.position.y = y;
         root.scale.x = width / resizeStart.width;
         root.scale.y = depth / resizeStart.depth;
+      } else if (interaction === "height" && resizeStart) {
+        const grid = Math.max(0.01, snapRef.current);
+        const height = Math.max(grid, Math.round((dragPoint.y - resizeStart.baseZ) / grid) * grid);
+        pendingHeight = height;
+        root.position.z = resizeStart.baseZ + height / 2;
+        root.scale.z = height / resizeStart.height;
       }
     };
     const stopDragging = (event: PointerEvent, cancelled = false) => {
@@ -237,9 +259,11 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
       if (pendingPosition) moveRef.current?.(pendingPosition.x, pendingPosition.y);
       if (pendingRotation !== null) rotateRef.current?.(pendingRotation);
       if (pendingResize) resizeRef.current?.(pendingResize.x, pendingResize.y, pendingResize.width, pendingResize.depth);
+      if (pendingHeight !== null) heightRef.current?.(pendingHeight);
       pendingPosition = null;
       pendingRotation = null;
       pendingResize = null;
+      pendingHeight = null;
       resizeStart = null;
     };
     renderer.domElement.addEventListener("pointerdown", onPointerDown);
@@ -467,6 +491,25 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
       root.add(resizeHitbox);
       resizeHitboxesRef.current.push(resizeHitbox);
     }
+    const zGuideGeometry = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, 0, -selection.height / 2),
+      new THREE.Vector3(0, 0, selection.height / 2 + 5),
+    ]);
+    const zGuide = new THREE.Line(zGuideGeometry, new THREE.LineBasicMaterial({ color: "#398bea", depthTest: false }));
+    zGuide.renderOrder = 21;
+    root.add(zGuide);
+    const zHandle = new THREE.Mesh(handleGeometry, new THREE.MeshBasicMaterial({ color: "#398bea", depthTest: false }));
+    zHandle.position.set(0, 0, selection.height / 2 + 5);
+    zHandle.renderOrder = 22;
+    root.add(zHandle);
+    const zHitbox = new THREE.Mesh(
+      new THREE.SphereGeometry(5, 12, 8),
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
+    );
+    zHitbox.position.copy(zHandle.position);
+    zHitbox.userData.resizeZ = true;
+    root.add(zHitbox);
+    resizeHitboxesRef.current.push(zHitbox);
     const rotationRadius = Math.max(selection.width, selection.depth) * 0.7 + 6;
     const rotationPoints = Array.from({ length: 65 }, (_, index) => {
       const angle = index / 64 * Math.PI * 2;

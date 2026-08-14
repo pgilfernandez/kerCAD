@@ -35,6 +35,7 @@ import {
   lastOperationForObject,
   objectIdForFeature,
   resizeParametricSelection,
+  resizeParametricHeight,
   viewportSelectionForFeature,
   viewportSelectionForObject,
   workplaneShapeForObject,
@@ -387,6 +388,10 @@ export function SketchForgeParametricEditor() {
           onSelectionResize={(x, y, width, depth) => {
             if (!selectedId) return;
             mutate((draft) => resizeParametricSelection(draft, selectedId, selectionKind, x, y, width, depth));
+          }}
+          onSelectionHeight={(height) => {
+            if (!selectedId) return;
+            mutate((draft) => resizeParametricHeight(draft, selectedId, selectionKind, height));
           }}
           onCameraOrientation={setCameraOrientation}
           onObjectSelect={(objectId) => {

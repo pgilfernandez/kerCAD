@@ -12,6 +12,7 @@ import {
   objectIdForFeature,
   parametricObjectTree,
   resizeParametricSelection,
+  resizeParametricHeight,
   sketchForExtrude,
   viewportSelectionForObject,
   viewportSelectionForFeature,
@@ -108,6 +109,18 @@ describe("parametric object workflow", () => {
     resizeParametricSelection(document, object.id, "object", 4, 6, 40, 10);
 
     expect(object.transform).toMatchObject({ position: { x: 4, y: 6 }, scale: { x: 2, y: 0.5, z: 1 } });
+  });
+
+  it("resizes height through the extrusion or object scale", () => {
+    const document = createStarterDocument(123);
+    const object = document.objects[0];
+    const feature = document.features.find((candidate) => candidate.kind === "extrude");
+    if (!feature || feature.kind !== "extrude") throw new Error("expected extrusion");
+
+    resizeParametricHeight(document, feature.id, "feature", 35);
+    expect(feature.distance).toBe(35);
+    resizeParametricHeight(document, object.id, "object", 70);
+    expect(object.transform.scale.z).toBe(2);
   });
 
   it("keeps object edits limited to container transforms", () => {

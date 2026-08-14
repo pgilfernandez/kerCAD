@@ -266,6 +266,20 @@ export function resizeParametricSelection(
   }
 }
 
+export function resizeParametricHeight(document: ParametricDocument, id: string, selectionKind: "object" | "feature", height: number) {
+  if (selectionKind === "object") {
+    const object = document.objects.find((candidate) => candidate.id === id);
+    const current = viewportSelectionForObject(document, id);
+    if (!object || !current) return;
+    object.transform.scale.z *= Math.max(0.1, height) / Math.max(0.01, current.height);
+    return;
+  }
+  const feature = document.features.find((candidate): candidate is ExtrudeFeature => candidate.id === id && candidate.kind === "extrude");
+  const object = feature ? document.objects.find((candidate) => candidate.id === feature.objectId) : null;
+  if (!feature || !object) return;
+  feature.distance = Math.max(0.1, height / Math.max(0.01, Math.abs(object.transform.scale.z)));
+}
+
 export function applyWorkplanePatch(document: ParametricDocument, id: string, patch: Partial<WorkplaneShape>) {
   const object = document.objects.find((candidate) => candidate.id === id);
   if (!object) return;
