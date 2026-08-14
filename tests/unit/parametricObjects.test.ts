@@ -6,6 +6,7 @@ import {
   applyOperationWorldPosition,
   applyOperationWorldRotation,
   applyWorkplanePatch,
+  colorForNewParametricObject,
   deleteParametricObject,
   deleteParametricFeature,
   deleteParametricSelection,
@@ -62,6 +63,20 @@ describe("parametric object workflow", () => {
     expect(created.createdObject).toBe(true);
     expect(created.objectId).not.toBe(existingObjectId);
     expect(parametricObjectTree(document).at(-1)?.operations.map((feature) => feature.name)).toEqual(["Caja"]);
+  });
+
+  it("assigns unused varied palette colours to new objects", () => {
+    const document = createStarterDocument(123);
+    const firstColor = colorForNewParametricObject(document, () => 0);
+    const secondId = addParametricObject(document, { x: 20, y: 0, z: 0 }, () => 0);
+    const secondColor = document.objects.find((object) => object.id === secondId)!.color;
+    const thirdId = addParametricObject(document, { x: 40, y: 0, z: 0 }, () => 0);
+    const thirdColor = document.objects.find((object) => object.id === thirdId)!.color;
+
+    expect(firstColor).not.toBe(document.objects[0].color);
+    expect(secondColor).toBe(firstColor);
+    expect(new Set(document.objects.map((object) => object.color)).size).toBe(3);
+    expect(thirdColor).not.toBe(secondColor);
   });
 
   it("targets and edits the selected operation in world coordinates", () => {

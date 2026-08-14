@@ -5,6 +5,11 @@ import type { WorkplaneShape } from "@/types/sketchforge";
 
 export type SupportedPrimitive = "box" | "cylinder";
 export type ParametricTreeSelection = { id: string; kind: "object" | "feature" };
+export const OBJECT_COLOR_PALETTE = [
+  "#d41721", "#ff7a1a", "#f2cf10", "#33983d", "#18b99a", "#0098c7", "#3b82f6",
+  "#294c93", "#6e2786", "#c9009a", "#8a5a2b", "#ffffff", "#cfd8df", "#8a98a6", "#4b5563", "#111111",
+];
+const NEW_OBJECT_COLOR_PALETTE = OBJECT_COLOR_PALETTE.slice(0, 10);
 export type ParametricObjectNode = {
   id: string;
   name: string;
@@ -47,9 +52,20 @@ export function lastOperationForObject(document: ParametricDocument, objectId: s
   return document.features.findLast((feature) => feature.objectId === objectId && feature.kind !== "sketch") ?? null;
 }
 
-export function addParametricObject(document: ParametricDocument, position = { x: 0, y: 0, z: 0 }) {
+export function colorForNewParametricObject(document: ParametricDocument, random = Math.random) {
+  const used = new Set(document.objects.map((object) => object.color.toLowerCase()));
+  let candidates = NEW_OBJECT_COLOR_PALETTE.filter((color) => !used.has(color));
+  if (candidates.length === 0) {
+    const lastColor = document.objects.at(-1)?.color.toLowerCase();
+    candidates = NEW_OBJECT_COLOR_PALETTE.filter((color) => color !== lastColor);
+  }
+  const index = Math.min(candidates.length - 1, Math.floor(Math.max(0, Math.min(0.999999, random())) * candidates.length));
+  return candidates[Math.max(0, index)] ?? document.color;
+}
+
+export function addParametricObject(document: ParametricDocument, position = { x: 0, y: 0, z: 0 }, random = Math.random) {
   const object = createParametricObject(document.objects.length + 1, position);
-  object.color = document.color;
+  object.color = colorForNewParametricObject(document, random);
   document.objects.push(object);
   return object.id;
 }

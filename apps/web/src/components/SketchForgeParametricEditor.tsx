@@ -473,7 +473,6 @@ export function SketchForgeParametricEditor() {
         <aside className="top-action-panel educad-settings-panel">
           <header><strong>Ajustes del diseño</strong><button onClick={() => setSettingsOpen(false)}><X /></button></header>
           <label><span>Nombre</span><input value={document.name} onChange={(event) => mutate((draft) => { draft.name = event.target.value; })} /></label>
-          <label><span>Color para nuevos objetos</span><input type="color" value={document.color} onChange={(event) => mutate((draft) => { draft.color = event.target.value; })} /></label>
           <p>El proyecto se guarda automáticamente en este navegador.</p>
         </aside>
       )}
