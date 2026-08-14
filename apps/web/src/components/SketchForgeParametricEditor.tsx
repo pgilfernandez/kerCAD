@@ -404,6 +404,15 @@ export function SketchForgeParametricEditor() {
             const operation = lastOperationForObject(document, objectId);
             setModelSelection([{ id: operation?.id ?? objectId, kind: operation ? "feature" : "object" }]);
           }}
+          onObjectsSelect={(objectIds) => {
+            const selected = objectIds.flatMap<ModelTreeSelection>((objectId) => {
+              const object = document.objects.find((candidate) => candidate.id === objectId);
+              if (!object || object.locked || !object.visible) return [];
+              const operation = lastOperationForObject(document, objectId);
+              return [{ id: operation?.id ?? objectId, kind: operation ? "feature" : "object" }];
+            });
+            setModelSelection(selected);
+          }}
           onEmptySelect={() => {
             setModelSelection([]);
           }}

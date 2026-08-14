@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { acceleratedRaycast, MeshBVH } from "three-mesh-bvh";
 import type { RenderMesh } from "@/types/parametric";
 
 export type CameraView = { name: "iso" | "top" | "front" | "right" | "zoom-in" | "zoom-out" | "home" | "fit" | "selection" | "custom"; token: number; direction?: [number, number, number] };
@@ -35,11 +36,13 @@ type Props = {
   onSelectionHeight?: (height: number) => void;
   onCameraOrientation?: (orientation: CameraOrientation) => void;
   onObjectSelect?: (objectId: string) => void;
+  onObjectsSelect?: (objectIds: string[]) => void;
   onEmptySelect?: () => void;
 };
 
-export function ParametricViewport({ mesh, objectMeshes = [], color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "perspective", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionResize, onSelectionHeight, onCameraOrientation, onObjectSelect, onEmptySelect }: Props) {
+export function ParametricViewport({ mesh, objectMeshes = [], color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "perspective", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionResize, onSelectionHeight, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const selectionBoxRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | THREE.OrthographicCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -57,6 +60,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
   const heightRef = useRef(onSelectionHeight);
   const orientationRef = useRef(onCameraOrientation);
   const objectSelectRef = useRef(onObjectSelect);
+  const objectsSelectRef = useRef(onObjectsSelect);
   const emptySelectRef = useRef(onEmptySelect);
   const snapRef = useRef(snap);
   const invalidateRef = useRef<() => void>(() => undefined);
@@ -69,6 +73,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
   useEffect(() => { heightRef.current = onSelectionHeight; }, [onSelectionHeight]);
   useEffect(() => { orientationRef.current = onCameraOrientation; }, [onCameraOrientation]);
   useEffect(() => { objectSelectRef.current = onObjectSelect; }, [onObjectSelect]);
+  useEffect(() => { objectsSelectRef.current = onObjectsSelect; }, [onObjectsSelect]);
   useEffect(() => { emptySelectRef.current = onEmptySelect; }, [onEmptySelect]);
   useEffect(() => { snapRef.current = snap; }, [snap]);
 
@@ -78,7 +83,6 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color("#edf4f7");
-    scene.fog = new THREE.Fog("#edf4f7", 210, 380);
     hasFittedRef.current = false;
     const camera = projection === "orthographic"
       ? new THREE.OrthographicCamera(-90, 90, 90, -90, 0.1, 2000)
@@ -97,6 +101,9 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.screenSpacePanning = true;
+    controls.mouseButtons.LEFT = null;
+    controls.mouseButtons.MIDDLE = THREE.MOUSE.PAN;
+    controls.mouseButtons.RIGHT = THREE.MOUSE.ROTATE;
     controls.target.set(0, 5, 0);
     controls.minDistance = 18;
     controls.maxDistance = 420;
@@ -137,6 +144,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
     scene.add(modelGroup);
 
     const raycaster = new THREE.Raycaster();
+    raycaster.firstHitOnly = true;
     const pointer = new THREE.Vector2();
     const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     const dragPoint = new THREE.Vector3();
@@ -149,7 +157,62 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
     let rotationOffset = 0;
     let resizeAxes = { x: 0, y: 0 };
     let resizeStart: ViewportSelection | null = null;
-    let pickCandidate: { pointerId: number; x: number; y: number } | null = null;
+    let pickCandidate: { pointerId: number; x: number; y: number; boxSelecting: boolean } | null = null;
+    const updateSelectionBox = (candidate: NonNullable<typeof pickCandidate>, clientX: number, clientY: number) => {
+      const box = selectionBoxRef.current;
+      if (!box) return;
+      const bounds = renderer.domElement.getBoundingClientRect();
+      const left = Math.max(bounds.left, Math.min(candidate.x, clientX));
+      const top = Math.max(bounds.top, Math.min(candidate.y, clientY));
+      const right = Math.min(bounds.right, Math.max(candidate.x, clientX));
+      const bottom = Math.min(bounds.bottom, Math.max(candidate.y, clientY));
+      box.style.display = "block";
+      box.style.left = `${left - bounds.left}px`;
+      box.style.top = `${top - bounds.top}px`;
+      box.style.width = `${Math.max(0, right - left)}px`;
+      box.style.height = `${Math.max(0, bottom - top)}px`;
+    };
+    const hideSelectionBox = () => {
+      const box = selectionBoxRef.current;
+      if (box) box.style.display = "none";
+    };
+    const objectsInSelectionBox = (candidate: NonNullable<typeof pickCandidate>, clientX: number, clientY: number) => {
+      const bounds = renderer.domElement.getBoundingClientRect();
+      const selectionLeft = Math.max(bounds.left, Math.min(candidate.x, clientX));
+      const selectionTop = Math.max(bounds.top, Math.min(candidate.y, clientY));
+      const selectionRight = Math.min(bounds.right, Math.max(candidate.x, clientX));
+      const selectionBottom = Math.min(bounds.bottom, Math.max(candidate.y, clientY));
+      const cameraDirection = camera.getWorldDirection(new THREE.Vector3());
+      const corner = new THREE.Vector3();
+      const center = new THREE.Vector3();
+      const objectBounds = new THREE.Box3();
+      const ids: string[] = [];
+      for (const body of modelGroup.children) {
+        if (!(body instanceof THREE.Mesh) || typeof body.userData.objectId !== "string") continue;
+        objectBounds.setFromObject(body);
+        objectBounds.getCenter(center);
+        if (center.sub(camera.position).dot(cameraDirection) <= 0) continue;
+        let left = Number.POSITIVE_INFINITY;
+        let top = Number.POSITIVE_INFINITY;
+        let right = Number.NEGATIVE_INFINITY;
+        let bottom = Number.NEGATIVE_INFINITY;
+        for (let index = 0; index < 8; index += 1) {
+          corner.set(
+            index & 1 ? objectBounds.max.x : objectBounds.min.x,
+            index & 2 ? objectBounds.max.y : objectBounds.min.y,
+            index & 4 ? objectBounds.max.z : objectBounds.min.z,
+          ).project(camera);
+          const x = bounds.left + (corner.x + 1) * bounds.width / 2;
+          const y = bounds.top + (1 - corner.y) * bounds.height / 2;
+          left = Math.min(left, x);
+          top = Math.min(top, y);
+          right = Math.max(right, x);
+          bottom = Math.max(bottom, y);
+        }
+        if (right >= selectionLeft && left <= selectionRight && bottom >= selectionTop && top <= selectionBottom) ids.push(body.userData.objectId);
+      }
+      return ids;
+    };
     const setPointer = (event: PointerEvent) => {
       const bounds = renderer.domElement.getBoundingClientRect();
       pointer.set(((event.clientX - bounds.left) / bounds.width) * 2 - 1, -((event.clientY - bounds.top) / bounds.height) * 2 + 1);
@@ -201,7 +264,8 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
         }
       }
       if (!interaction) {
-        pickCandidate = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+        pickCandidate = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, boxSelecting: false };
+        renderer.domElement.setPointerCapture(event.pointerId);
         return;
       }
       controls.enabled = false;
@@ -211,7 +275,10 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
     };
     const onPointerMove = (event: PointerEvent) => {
       if (!interaction) {
-        if (pickCandidate && pickCandidate.pointerId === event.pointerId && Math.hypot(event.clientX - pickCandidate.x, event.clientY - pickCandidate.y) > 5) pickCandidate = null;
+        if (pickCandidate && pickCandidate.pointerId === event.pointerId && Math.hypot(event.clientX - pickCandidate.x, event.clientY - pickCandidate.y) > 5) {
+          pickCandidate.boxSelecting = true;
+          updateSelectionBox(pickCandidate, event.clientX, event.clientY);
+        }
         return;
       }
       setPointer(event);
@@ -262,7 +329,15 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
       if (!interaction) {
         const candidate = pickCandidate;
         pickCandidate = null;
+        hideSelectionBox();
+        if (renderer.domElement.hasPointerCapture(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
         if (cancelled || !candidate || candidate.pointerId !== event.pointerId) return;
+        if (candidate.boxSelecting) {
+          const objectIds = objectsInSelectionBox(candidate, event.clientX, event.clientY);
+          if (objectIds.length > 0) objectsSelectRef.current?.(objectIds);
+          else emptySelectRef.current?.();
+          return;
+        }
         setPointer(event);
         const bodies = modelGroup.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh && typeof child.userData.objectId === "string");
         const hit = raycaster.intersectObjects(bodies, false)[0];
@@ -435,10 +510,12 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
       geometry.setAttribute("normal", new THREE.BufferAttribute(item.mesh.normals, 3));
       geometry.setIndex(new THREE.BufferAttribute(item.mesh.indices, 1));
       geometry.computeBoundingSphere();
+      geometry.boundsTree = new MeshBVH(geometry);
       const body = new THREE.Mesh(
         geometry,
         new THREE.MeshStandardMaterial({ color: item.color, roughness: 0.68, metalness: 0.03, polygonOffset: true, polygonOffsetFactor: 1 }),
       );
+      body.raycast = acceleratedRaycast;
       body.castShadow = true;
       body.receiveShadow = true;
       if (item.objectId) body.userData.objectId = item.objectId;
@@ -633,7 +710,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], color, workplane =
     invalidateRef.current();
   }, [view]);
 
-  return <div className="parametric-viewport" ref={hostRef} aria-label="Vista 3D de la pieza" />;
+  return <div className="parametric-viewport" ref={hostRef} aria-label="Vista 3D de la pieza"><div ref={selectionBoxRef} className="parametric-selection-box" aria-hidden="true" /></div>;
 }
 
 function axisColoredBoxGeometry(width: number, depth: number, height: number) {
