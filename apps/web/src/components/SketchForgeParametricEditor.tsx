@@ -2,7 +2,7 @@
 
 import { Box, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Plus, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ParametricModelSidebar, type ModelSelectionKind, type ModelSidebarMode } from "@/components/ParametricModelSidebar";
+import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView } from "@/components/ParametricViewport";
 import {
   ToolbarAlignIcon,
@@ -32,6 +32,7 @@ import {
   applyWorkplanePatch,
   deleteParametricObject,
   deleteParametricFeature,
+  deleteParametricSelection,
   duplicateParametricObject,
   lastOperationForObject,
   objectIdForFeature,
@@ -67,8 +68,7 @@ export function SketchForgeParametricEditor() {
   const initialDocument = useMemo(() => createStarterDocument(), []);
   const [history, setHistory] = useState<HistoryState>({ entries: [initialDocument], index: 0 });
   const document = history.entries[history.index];
-  const [selectedId, setSelectedId] = useState<string | null>(initialDocument.objects[0]?.id ?? null);
-  const [selectionKind, setSelectionKind] = useState<ModelSelectionKind>("object");
+  const [modelSelection, setModelSelection] = useState<ModelTreeSelection[]>(initialDocument.objects[0] ? [{ id: initialDocument.objects[0].id, kind: "object" }] : []);
   const [build, setBuild] = useState<BuildResult>({ mesh: null, objectMeshes: [], completedFeatureIds: [], warning: null });
   const [kernelBusy, setKernelBusy] = useState(true);
   const [shapesOpen, setShapesOpen] = useState(false);
@@ -95,8 +95,7 @@ export function SketchForgeParametricEditor() {
         if (validateDocument(parsed)) {
           const normalized = normalizeParametricDocument(parsed);
           setHistory({ entries: [normalized], index: 0 });
-          setSelectedId(normalized.objects[0]?.id ?? null);
-          setSelectionKind("object");
+          setModelSelection(normalized.objects[0] ? [{ id: normalized.objects[0].id, kind: "object" }] : []);
         }
       }
     } catch {
@@ -146,10 +145,13 @@ export function SketchForgeParametricEditor() {
     commit(next);
   }, [commit, document]);
 
+  const primarySelection = modelSelection.at(-1) ?? null;
+  const selectedId = primarySelection?.id ?? null;
+  const selectionKind = primarySelection?.kind ?? "object";
   const selectedObjectId = objectIdForFeature(document, selectedId);
   const selectedOperationId = selectionKind === "feature" && document.features.some((feature) => feature.id === selectedId && feature.kind === "extrude") ? selectedId : null;
   const selectedShape = workplaneShapeForObject(document, selectedObjectId);
-  const selectedBox = selectedOperationId ? viewportSelectionForFeature(document, selectedOperationId) : viewportSelectionForObject(document, selectedObjectId);
+  const selectedBox = modelSelection.length === 1 ? (selectedOperationId ? viewportSelectionForFeature(document, selectedOperationId) : viewportSelectionForObject(document, selectedObjectId)) : null;
   const snapAmount = document.workplane.snapToGrid ? document.workplane.gridStep : 0.01;
 
   const addShape = (kind: SupportedPrimitive) => {
@@ -158,8 +160,7 @@ export function SketchForgeParametricEditor() {
       result = addPrimitiveToSelection(draft, selectedObjectId, kind);
     });
     if (result.featureId) {
-      setSelectedId(result.featureId);
-      setSelectionKind("feature");
+      setModelSelection([{ id: result.featureId, kind: "feature" }]);
     }
     setShapesOpen(false);
     setNotice({ type: "ok", text: `${kind === "box" ? "Caja" : "Cilindro"} ${result.createdObject ? "creado en un objeto nuevo" : "añadido al final del objeto activo"}` });
@@ -170,8 +171,8 @@ export function SketchForgeParametricEditor() {
     const ids = document.objects.map((object) => object.id);
     const index = ids.indexOf(selectedObjectId);
     mutate((draft) => deleteParametricObject(draft, selectedObjectId));
-    setSelectedId(ids[index - 1] ?? ids[index + 1] ?? null);
-    setSelectionKind("object");
+    const nextId = ids[index - 1] ?? ids[index + 1] ?? null;
+    setModelSelection(nextId ? [{ id: nextId, kind: "object" }] : []);
   }, [document, mutate, selectedObjectId]);
 
   const duplicateSelected = useCallback((sourceId = selectedObjectId) => {
@@ -179,8 +180,7 @@ export function SketchForgeParametricEditor() {
     let nextId: string | null = null;
     mutate((draft) => { nextId = duplicateParametricObject(draft, sourceId); });
     if (nextId) {
-      setSelectedId(nextId);
-      setSelectionKind("object");
+      setModelSelection([{ id: nextId, kind: "object" }]);
     }
     setNotice({ type: "ok", text: "Forma duplicada" });
   }, [mutate, selectedObjectId]);
@@ -190,23 +190,35 @@ export function SketchForgeParametricEditor() {
     mutate((draft) => {
       result = deleteParametricFeature(draft, id);
     });
-    setSelectedId(result.nextId ?? result.objectId);
-    setSelectionKind(result.nextId && result.nextId !== result.objectId ? "feature" : "object");
+    const nextId = result.nextId ?? result.objectId;
+    setModelSelection(nextId ? [{ id: nextId, kind: result.nextId && result.nextId !== result.objectId ? "feature" : "object" }] : []);
     setNotice({ type: "ok", text: "Operación eliminada" });
   }, [mutate]);
+
+  const deleteCurrentSelection = useCallback(() => {
+    if (modelSelection.length === 0) return;
+    if (modelSelection.length === 1) {
+      const item = modelSelection[0];
+      if (item.kind === "feature") deleteFeature(item.id);
+      else removeSelected();
+      return;
+    }
+    mutate((draft) => deleteParametricSelection(draft, modelSelection));
+    setModelSelection([]);
+    setNotice({ type: "ok", text: `${modelSelection.length} elementos eliminados` });
+  }, [deleteFeature, modelSelection, mutate, removeSelected]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.matches("input, select, textarea")) return;
       if (event.key === "Escape") {
-        setSelectedId(null);
+        setModelSelection([]);
         return;
       }
       if ((event.key === "Delete" || event.key === "Backspace") && selectedId) {
         event.preventDefault();
-        if (selectionKind === "feature") deleteFeature(selectedId);
-        else if (selectedObjectId) removeSelected();
+        deleteCurrentSelection();
         return;
       }
       if (!selectedObjectId || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
@@ -221,7 +233,7 @@ export function SketchForgeParametricEditor() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [deleteFeature, mutate, removeSelected, selectedBox?.x, selectedBox?.y, selectedId, selectedObjectId, selectedOperationId, selectionKind, snapAmount]);
+  }, [deleteCurrentSelection, mutate, selectedBox?.x, selectedBox?.y, selectedId, selectedObjectId, selectedOperationId, snapAmount]);
 
   const updateSelected = (patch: Partial<WorkplaneShape>) => {
     if (!selectedObjectId) return;
@@ -249,8 +261,7 @@ export function SketchForgeParametricEditor() {
   const newDocument = () => {
     const next = createStarterDocument();
     setHistory({ entries: [next], index: 0 });
-    setSelectedId(next.objects[0]?.id ?? null);
-    setSelectionKind("object");
+    setModelSelection(next.objects[0] ? [{ id: next.objects[0].id, kind: "object" }] : []);
     setNotice({ type: "info", text: "Nuevo diseño" });
   };
 
@@ -263,8 +274,7 @@ export function SketchForgeParametricEditor() {
       featureId = feature.id;
       draft.features.push(feature);
     });
-    setSelectedId(featureId);
-    setSelectionKind("feature");
+    setModelSelection([{ id: featureId, kind: "feature" }]);
     setNotice({ type: "ok", text: "Redondeo paramétrico añadido" });
   };
 
@@ -292,8 +302,7 @@ export function SketchForgeParametricEditor() {
       if (!validateDocument(parsed)) throw new Error("Este no es un proyecto eduCAD compatible.");
       const normalized = normalizeParametricDocument(parsed);
       setHistory({ entries: [normalized], index: 0 });
-      setSelectedId(normalized.objects[0]?.id ?? null);
-      setSelectionKind("object");
+      setModelSelection(normalized.objects[0] ? [{ id: normalized.objects[0].id, kind: "object" }] : []);
       setNotice({ type: "ok", text: "Proyecto abierto" });
     } catch (error) {
       setNotice({ type: "error", text: error instanceof Error ? error.message : "No se pudo abrir" });
@@ -319,7 +328,7 @@ export function SketchForgeParametricEditor() {
               <Tool label="Copiar" enabled={Boolean(selectedObjectId)} onClick={() => { setClipboardId(selectedObjectId); setNotice({ type: "info", text: "Objeto copiado" }); }}><ToolbarCopyIcon /></Tool>
               <Tool label="Pegar" enabled={Boolean(clipboardId)} onClick={() => duplicateSelected(clipboardId)}><ToolbarPasteIcon /></Tool>
               <Tool label="Duplicar" enabled={Boolean(selectedObjectId)} onClick={() => duplicateSelected()}><ToolbarDuplicateIcon /></Tool>
-              <Tool label={selectionKind === "feature" ? "Eliminar operación" : "Eliminar objeto"} enabled={Boolean(selectedId)} onClick={() => { if (selectionKind === "feature" && selectedId) deleteFeature(selectedId); else removeSelected(); }}><ToolbarTrashIcon /></Tool>
+              <Tool label={modelSelection.length > 1 ? "Eliminar selección" : selectionKind === "feature" ? "Eliminar operación" : "Eliminar objeto"} enabled={modelSelection.length > 0} onClick={deleteCurrentSelection}><ToolbarTrashIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label="History">
               <Tool label="Deshacer" enabled={history.index > 0} onClick={undo}><ToolbarUndoIcon /></Tool>
@@ -393,12 +402,10 @@ export function SketchForgeParametricEditor() {
             const object = document.objects.find((candidate) => candidate.id === objectId);
             if (!object || object.locked || !object.visible) return;
             const operation = lastOperationForObject(document, objectId);
-            setSelectedId(operation?.id ?? objectId);
-            setSelectionKind(operation ? "feature" : "object");
+            setModelSelection([{ id: operation?.id ?? objectId, kind: operation ? "feature" : "object" }]);
           }}
           onEmptySelect={() => {
-            setSelectedId(null);
-            setSelectionKind("object");
+            setModelSelection([]);
           }}
         />
         <ViewCube orientation={cameraOrientation} onDirection={(direction) => setView((current) => ({ name: "custom", direction, token: current.token + 1 }))} />
@@ -444,10 +451,9 @@ export function SketchForgeParametricEditor() {
 
         {modelSidebarMode !== "hidden" ? <ParametricModelSidebar
           document={document}
-          selectedId={selectedId}
-          selectionKind={selectionKind}
+          selection={modelSelection}
           mode={modelSidebarMode}
-          onSelect={(id, kind) => { setSelectedId(id); setSelectionKind(kind); }}
+          onSelectionChange={setModelSelection}
           onUpdateObject={updateObject}
           onUpdateFeature={updateFeature}
         /> : null}

@@ -4,6 +4,7 @@ import type { ExtrudeFeature, ParametricDocument, ParametricFeature, ParametricO
 import type { WorkplaneShape } from "@/types/sketchforge";
 
 export type SupportedPrimitive = "box" | "cylinder";
+export type ParametricTreeSelection = { id: string; kind: "object" | "feature" };
 export type ParametricObjectNode = {
   id: string;
   name: string;
@@ -125,6 +126,36 @@ export function deleteParametricFeature(document: ParametricDocument, id: string
   const remaining = operations.filter((candidate) => !ids.has(candidate.id));
   const nextId = remaining[Math.max(0, operationIndex - 1)]?.id ?? remaining[0]?.id ?? objectId;
   return { objectId, nextId };
+}
+
+export function deleteParametricSelection(document: ParametricDocument, selection: ParametricTreeSelection[]) {
+  const objectIds = new Set(selection.filter((item) => item.kind === "object").map((item) => item.id));
+  for (const objectId of objectIds) deleteParametricObject(document, objectId);
+  for (const item of selection) {
+    if (item.kind !== "feature") continue;
+    const ownerId = objectIdForFeature(document, item.id);
+    if (!ownerId || !objectIds.has(ownerId)) deleteParametricFeature(document, item.id);
+  }
+}
+
+export function updateParametricTreeSelection(
+  current: ParametricTreeSelection[],
+  node: ParametricTreeSelection,
+  visible: ParametricTreeSelection[],
+  anchor: ParametricTreeSelection | null,
+  modifiers: { range: boolean; toggle: boolean },
+) {
+  if (modifiers.range) {
+    const start = anchor ?? current.at(-1) ?? node;
+    const startIndex = visible.findIndex((candidate) => candidate.id === start.id && candidate.kind === start.kind);
+    const endIndex = visible.findIndex((candidate) => candidate.id === node.id && candidate.kind === node.kind);
+    if (startIndex >= 0 && endIndex >= 0) return visible.slice(Math.min(startIndex, endIndex), Math.max(startIndex, endIndex) + 1);
+  }
+  if (modifiers.toggle) {
+    const exists = current.some((candidate) => candidate.id === node.id && candidate.kind === node.kind);
+    return exists ? current.filter((candidate) => candidate.id !== node.id || candidate.kind !== node.kind) : [...current, node];
+  }
+  return [node];
 }
 
 export function duplicateParametricObject(document: ParametricDocument, id: string) {

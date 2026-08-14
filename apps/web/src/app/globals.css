@@ -1221,6 +1221,7 @@ button {
 .educad-no-selection { display: grid; width: 100%; place-content: center; justify-items: center; gap: 7px; padding: 20px; color: #7e909e; text-align: center; }
 .educad-no-selection strong { color: #536c7e; font-size: 11px; }
 .educad-no-selection span { max-width: 190px; font-size: 8px; line-height: 1.4; }
+.educad-multi-selection small { max-width: 210px; color: #8a9ba7; font-size: 7.5px; line-height: 1.45; }
 
 .educad-export-options {
   display: grid;

@@ -16,12 +16,13 @@ import {
   Radius,
   X,
 } from "lucide-react";
-import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
-import { parametricObjectTree, sketchForExtrude } from "@/lib/parametricObjects";
+import { type CSSProperties, type MouseEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import { parametricObjectTree, sketchForExtrude, updateParametricTreeSelection, type ParametricTreeSelection } from "@/lib/parametricObjects";
 import type { ParametricDocument, ParametricFeature, ParametricObject } from "@/types/parametric";
 
 export type ModelSelectionKind = "object" | "feature";
 export type ModelSidebarMode = "normal" | "simplified";
+export type ModelTreeSelection = ParametricTreeSelection;
 
 const OBJECT_COLORS = [
   "#d41721", "#ff7a1a", "#f2cf10", "#33983d", "#18b99a", "#0098c7", "#3b82f6",
@@ -30,20 +31,18 @@ const OBJECT_COLORS = [
 
 type Props = {
   document: ParametricDocument;
-  selectedId: string | null;
-  selectionKind: ModelSelectionKind;
+  selection: ModelTreeSelection[];
   mode: ModelSidebarMode;
-  onSelect: (id: string, kind: ModelSelectionKind) => void;
+  onSelectionChange: (selection: ModelTreeSelection[]) => void;
   onUpdateObject: (id: string, update: (object: ParametricObject) => void) => void;
   onUpdateFeature: (id: string, update: (feature: ParametricFeature) => void) => void;
 };
 
 export function ParametricModelSidebar({
   document,
-  selectedId,
-  selectionKind,
+  selection,
   mode,
-  onSelect,
+  onSelectionChange,
   onUpdateObject,
   onUpdateFeature,
 }: Props) {
@@ -52,6 +51,10 @@ export function ParametricModelSidebar({
   const [renameTarget, setRenameTarget] = useState<{ id: string; kind: ModelSelectionKind; name: string } | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const objectListRef = useRef<HTMLDivElement>(null);
+  const rangeAnchorRef = useRef<ModelTreeSelection | null>(null);
+  const primarySelection = selection.at(-1) ?? null;
+  const selectedId = primarySelection?.id ?? null;
+  const selectionKind = primarySelection?.kind ?? "object";
 
   useEffect(() => {
     setExpanded((current) => {
@@ -66,12 +69,21 @@ export function ParametricModelSidebar({
       objectListRef.current?.querySelector<HTMLElement>(".selected")?.scrollIntoView({ block: "nearest" });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [expanded, selectedId, selectionKind]);
+  }, [expanded, selectedId, selectionKind, selection.length]);
 
-  const selectedFeature = selectionKind === "feature"
+  const visibleNodes: ModelTreeSelection[] = objects.flatMap((object) => [
+    { id: object.id, kind: "object" as const },
+    ...(expanded.has(object.id) ? object.operations.map((feature) => ({ id: feature.id, kind: "feature" as const })) : []),
+  ]);
+  const selectNode = (node: ModelTreeSelection, event: MouseEvent) => {
+    onSelectionChange(updateParametricTreeSelection(selection, node, visibleNodes, rangeAnchorRef.current ?? primarySelection, { range: event.shiftKey, toggle: event.ctrlKey || event.metaKey }));
+    if (!event.shiftKey) rangeAnchorRef.current = node;
+  };
+
+  const selectedFeature = selection.length === 1 && selectionKind === "feature"
     ? document.features.find((feature) => feature.id === selectedId) ?? null
     : null;
-  const selectedObject = selectionKind === "object"
+  const selectedObject = selection.length === 1 && selectionKind === "object"
     ? document.objects.find((object) => object.id === selectedId) ?? null
     : null;
 
@@ -101,7 +113,7 @@ export function ParametricModelSidebar({
           <div ref={objectListRef} className="educad-object-list">
             {objects.map((object) => {
               const isExpanded = expanded.has(object.id);
-              const objectSelected = selectionKind === "object" && selectedId === object.id;
+              const objectSelected = selection.some((candidate) => candidate.kind === "object" && candidate.id === object.id);
               return (
                 <div className="educad-object-node" key={object.id}>
                   <div className={`educad-object-row ${objectSelected ? "selected" : ""} ${object.object.visible ? "" : "hidden"} ${object.object.locked ? "locked" : ""}`} style={{ "--object-color": object.object.color } as CSSProperties}>
@@ -117,7 +129,7 @@ export function ParametricModelSidebar({
                     >
                       {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                     </button>
-                    <button className="educad-object-select" title={object.name} onClick={() => onSelect(object.id, "object")}>
+                    <button className="educad-object-select" title={object.name} onClick={(event) => selectNode({ id: object.id, kind: "object" }, event)}>
                       <Box size={17} />
                       <span><strong>{object.name}</strong></span>
                     </button>
@@ -130,8 +142,8 @@ export function ParametricModelSidebar({
                   {isExpanded ? (
                     <div className="educad-operation-list" role="group" aria-label={`Operaciones de ${object.name}`}>
                       {object.operations.map((feature) => (
-                        <div key={feature.id} className={`educad-operation-row ${selectionKind === "feature" && selectedId === feature.id ? "selected" : ""} ${feature.suppressed ? "suppressed" : ""} ${operationClass(feature)}`}>
-                          <button className="educad-operation-select" title={feature.name} onClick={() => onSelect(feature.id, "feature")}>
+                        <div key={feature.id} className={`educad-operation-row ${selection.some((candidate) => candidate.kind === "feature" && candidate.id === feature.id) ? "selected" : ""} ${feature.suppressed ? "suppressed" : ""} ${operationClass(feature)}`}>
+                          <button className="educad-operation-select" title={feature.name} onClick={(event) => selectNode({ id: feature.id, kind: "feature" }, event)}>
                             <span className="educad-tree-branch" aria-hidden="true" />
                             <FeatureIcon document={document} feature={feature} />
                             <span className="educad-operation-name"><strong>{feature.name}</strong></span>
@@ -151,7 +163,9 @@ export function ParametricModelSidebar({
         </section>
 
       {mode === "normal" ? <section className="educad-sidebar-editor">
-        {selectedObject ? (
+        {selection.length > 1 ? (
+          <div className="educad-no-selection educad-multi-selection"><Layers3 size={28} /><strong>{selection.length} elementos seleccionados</strong><span>{selection.filter((item) => item.kind === "object").length} objetos · {selection.filter((item) => item.kind === "feature").length} operaciones</span><small>Usa Ctrl/Cmd para alternar elementos o Shift para seleccionar un rango.</small></div>
+        ) : selectedObject ? (
           <ParametricObjectInspector object={selectedObject} onUpdate={(update) => onUpdateObject(selectedObject.id, update)} />
         ) : selectedFeature ? (
           <ParametricFeatureInspector

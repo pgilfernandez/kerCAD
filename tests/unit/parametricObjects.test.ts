@@ -8,6 +8,7 @@ import {
   applyWorkplanePatch,
   deleteParametricObject,
   deleteParametricFeature,
+  deleteParametricSelection,
   duplicateParametricObject,
   lastOperationForObject,
   objectIdForFeature,
@@ -18,6 +19,7 @@ import {
   viewportSelectionForObject,
   viewportSelectionForFeature,
   workplaneShapeForObject,
+  updateParametricTreeSelection,
 } from "@/lib/parametricObjects";
 import { createFilletFeature, createStarterDocument } from "@/lib/parametricDocument";
 
@@ -192,6 +194,32 @@ describe("parametric object workflow", () => {
     expect(document.features.some((feature) => feature.id === baseExtrude.id || feature.id === baseSketchId)).toBe(false);
     expect(document.features.some((feature) => feature.id === cylinderId)).toBe(true);
     expect(result).toEqual({ objectId, nextId: cylinderId });
+  });
+
+  it("supports standard range and toggle tree selection", () => {
+    const visible = [
+      { id: "object-1", kind: "object" as const },
+      { id: "feature-1", kind: "feature" as const },
+      { id: "feature-2", kind: "feature" as const },
+      { id: "object-2", kind: "object" as const },
+    ];
+    const initial = updateParametricTreeSelection([], visible[0], visible, null, { range: false, toggle: false });
+    expect(updateParametricTreeSelection(initial, visible[2], visible, visible[0], { range: true, toggle: false })).toEqual(visible.slice(0, 3));
+    expect(updateParametricTreeSelection(initial, visible[3], visible, visible[0], { range: false, toggle: true })).toEqual([visible[0], visible[3]]);
+    expect(updateParametricTreeSelection([visible[0], visible[3]], visible[0], visible, visible[3], { range: false, toggle: true })).toEqual([visible[3]]);
+  });
+
+  it("deletes a mixed tree selection atomically", () => {
+    const document = createStarterDocument(123);
+    const firstObjectId = document.objects[0].id;
+    const firstFeatureId = document.features.find((feature) => feature.kind === "extrude")!.id;
+    const secondObjectId = addParametricObject(document, { x: 20, y: 0, z: 0 });
+    const secondFeatureId = addPrimitive(document, secondObjectId, "box")!;
+
+    deleteParametricSelection(document, [{ id: firstFeatureId, kind: "feature" }, { id: secondObjectId, kind: "object" }]);
+
+    expect(document.objects.map((object) => object.id)).toEqual([firstObjectId]);
+    expect(document.features.some((feature) => feature.id === firstFeatureId || feature.id === secondFeatureId)).toBe(false);
   });
 
   it("groups operations beneath their owning object in rebuild order", () => {
