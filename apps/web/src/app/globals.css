@@ -1216,23 +1216,6 @@ button {
 .educad-transform-card .educad-axis-label.z { background: #4387c5; }
 .educad-object-inspector > header svg { color: #477d98; }
 
-.educad-delete-operation {
-  display: flex;
-  width: calc(100% - 20px);
-  min-height: 36px;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  margin: 10px;
-  color: #a34f49;
-  background: #fff8f7;
-  border: 1px solid #e1b8b4;
-  border-radius: 5px;
-  font-size: 10px;
-  font-weight: 850;
-}
-
-.educad-delete-operation:hover { background: #fff0ee; border-color: #d8908a; }
 .educad-feature-note { margin: 10px 14px; color: #8495a2; font-size: 8px; line-height: 1.45; }
 .educad-no-selection { display: grid; width: 100%; place-content: center; justify-items: center; gap: 7px; padding: 20px; color: #7e909e; text-align: center; }
 .educad-no-selection strong { color: #536c7e; font-size: 11px; }

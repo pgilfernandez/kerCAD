@@ -7,6 +7,7 @@ import {
   applyOperationWorldRotation,
   applyWorkplanePatch,
   deleteParametricObject,
+  deleteParametricFeature,
   duplicateParametricObject,
   lastOperationForObject,
   objectIdForFeature,
@@ -175,6 +176,22 @@ describe("parametric object workflow", () => {
     expect(document.objects.some((object) => object.id === copyId)).toBe(false);
     expect(document.features.some((feature) => feature.objectId === copyId)).toBe(false);
     vi.restoreAllMocks();
+  });
+
+  it("deletes an operation without deleting its object container", () => {
+    const document = createStarterDocument(123);
+    const objectId = document.objects[0].id;
+    const baseExtrude = document.features.find((feature) => feature.kind === "extrude");
+    if (!baseExtrude || baseExtrude.kind !== "extrude") throw new Error("expected extrusion");
+    const baseSketchId = baseExtrude.sketchId;
+    const cylinderId = addPrimitive(document, objectId, "cylinder");
+
+    const result = deleteParametricFeature(document, baseExtrude.id);
+
+    expect(document.objects.map((object) => object.id)).toEqual([objectId]);
+    expect(document.features.some((feature) => feature.id === baseExtrude.id || feature.id === baseSketchId)).toBe(false);
+    expect(document.features.some((feature) => feature.id === cylinderId)).toBe(true);
+    expect(result).toEqual({ objectId, nextId: cylinderId });
   });
 
   it("groups operations beneath their owning object in rebuild order", () => {

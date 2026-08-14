@@ -14,7 +14,6 @@ import {
   LockKeyholeOpen,
   Pencil,
   Radius,
-  Trash2,
   X,
 } from "lucide-react";
 import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
@@ -37,7 +36,6 @@ type Props = {
   onSelect: (id: string, kind: ModelSelectionKind) => void;
   onUpdateObject: (id: string, update: (object: ParametricObject) => void) => void;
   onUpdateFeature: (id: string, update: (feature: ParametricFeature) => void) => void;
-  onDeleteFeature: (id: string) => void;
 };
 
 export function ParametricModelSidebar({
@@ -48,7 +46,6 @@ export function ParametricModelSidebar({
   onSelect,
   onUpdateObject,
   onUpdateFeature,
-  onDeleteFeature,
 }: Props) {
   const objects = parametricObjectTree(document);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(objects.map((object) => object.id)));
@@ -161,7 +158,6 @@ export function ParametricModelSidebar({
             document={document}
             feature={selectedFeature}
             onUpdateFeature={onUpdateFeature}
-            onDelete={() => onDeleteFeature(selectedFeature.id)}
           />
         ) : (
           <div className="educad-no-selection"><Layers3 size={28} /><strong>Selecciona un objeto u operación</strong><span>Despliega el árbol para editar el historial CAD.</span></div>
@@ -276,12 +272,10 @@ function ParametricFeatureInspector({
   document,
   feature,
   onUpdateFeature,
-  onDelete,
 }: {
   document: ParametricDocument;
   feature: ParametricFeature;
   onUpdateFeature: (id: string, update: (feature: ParametricFeature) => void) => void;
-  onDelete: () => void;
 }) {
   const onUpdate = (update: (feature: ParametricFeature) => void) => onUpdateFeature(feature.id, update);
   const primitiveSketch = feature.kind === "extrude" ? sketchForExtrude(document, feature) : null;
@@ -357,7 +351,6 @@ function ParametricFeatureInspector({
         </div>
       ) : null}
 
-      {(feature.kind === "hole" || feature.kind === "fillet") ? <button className="educad-delete-operation" onClick={onDelete}><Trash2 size={16} />Eliminar operación</button> : <p className="educad-feature-note">Esta es la operación base del objeto. Elimínala borrando el contenedor completo.</p>}
     </div>
   );
 

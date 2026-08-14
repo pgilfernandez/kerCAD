@@ -31,6 +31,7 @@ import {
   applyOperationWorldRotation,
   applyWorkplanePatch,
   deleteParametricObject,
+  deleteParametricFeature,
   duplicateParametricObject,
   lastOperationForObject,
   objectIdForFeature,
@@ -184,6 +185,16 @@ export function SketchForgeParametricEditor() {
     setNotice({ type: "ok", text: "Forma duplicada" });
   }, [mutate, selectedObjectId]);
 
+  const deleteFeature = useCallback((id: string) => {
+    let result: ReturnType<typeof deleteParametricFeature> = { objectId: null, nextId: null };
+    mutate((draft) => {
+      result = deleteParametricFeature(draft, id);
+    });
+    setSelectedId(result.nextId ?? result.objectId);
+    setSelectionKind(result.nextId && result.nextId !== result.objectId ? "feature" : "object");
+    setNotice({ type: "ok", text: "Operación eliminada" });
+  }, [mutate]);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -192,9 +203,10 @@ export function SketchForgeParametricEditor() {
         setSelectedId(null);
         return;
       }
-      if ((event.key === "Delete" || event.key === "Backspace") && selectedObjectId && selectionKind === "object") {
+      if ((event.key === "Delete" || event.key === "Backspace") && selectedId) {
         event.preventDefault();
-        removeSelected();
+        if (selectionKind === "feature") deleteFeature(selectedId);
+        else if (selectedObjectId) removeSelected();
         return;
       }
       if (!selectedObjectId || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
@@ -209,7 +221,7 @@ export function SketchForgeParametricEditor() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [mutate, removeSelected, selectedBox?.x, selectedBox?.y, selectedObjectId, selectedOperationId, selectionKind, snapAmount]);
+  }, [deleteFeature, mutate, removeSelected, selectedBox?.x, selectedBox?.y, selectedId, selectedObjectId, selectedOperationId, selectionKind, snapAmount]);
 
   const updateSelected = (patch: Partial<WorkplaneShape>) => {
     if (!selectedObjectId) return;
@@ -228,23 +240,6 @@ export function SketchForgeParametricEditor() {
       const object = draft.objects.find((candidate) => candidate.id === id);
       if (object) update(object);
     });
-  };
-
-  const deleteFeature = (id: string) => {
-    const objectId = objectIdForFeature(document, id);
-    const feature = document.features.find((candidate) => candidate.id === id);
-    if (!feature) return;
-    if (feature.kind === "sketch" || feature.kind === "extrude") {
-      if (objectId) {
-        mutate((draft) => deleteParametricObject(draft, objectId));
-        setSelectedId(document.objects.find((candidate) => candidate.id !== objectId)?.id ?? null);
-        setSelectionKind("object");
-      }
-      return;
-    }
-    mutate((draft) => { draft.features = draft.features.filter((candidate) => candidate.id !== id); });
-    setSelectedId(objectId);
-    setSelectionKind("object");
   };
 
   const setCamera = (name: CameraView["name"]) => setView((current) => ({ name, token: current.token + 1 }));
@@ -324,7 +319,7 @@ export function SketchForgeParametricEditor() {
               <Tool label="Copiar" enabled={Boolean(selectedObjectId)} onClick={() => { setClipboardId(selectedObjectId); setNotice({ type: "info", text: "Objeto copiado" }); }}><ToolbarCopyIcon /></Tool>
               <Tool label="Pegar" enabled={Boolean(clipboardId)} onClick={() => duplicateSelected(clipboardId)}><ToolbarPasteIcon /></Tool>
               <Tool label="Duplicar" enabled={Boolean(selectedObjectId)} onClick={() => duplicateSelected()}><ToolbarDuplicateIcon /></Tool>
-              <Tool label="Eliminar objeto" enabled={Boolean(selectedObjectId)} onClick={removeSelected}><ToolbarTrashIcon /></Tool>
+              <Tool label={selectionKind === "feature" ? "Eliminar operación" : "Eliminar objeto"} enabled={Boolean(selectedId)} onClick={() => { if (selectionKind === "feature" && selectedId) deleteFeature(selectedId); else removeSelected(); }}><ToolbarTrashIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label="History">
               <Tool label="Deshacer" enabled={history.index > 0} onClick={undo}><ToolbarUndoIcon /></Tool>
@@ -455,7 +450,6 @@ export function SketchForgeParametricEditor() {
           onSelect={(id, kind) => { setSelectedId(id); setSelectionKind(kind); }}
           onUpdateObject={updateObject}
           onUpdateFeature={updateFeature}
-          onDeleteFeature={deleteFeature}
         /> : null}
       </section>
 

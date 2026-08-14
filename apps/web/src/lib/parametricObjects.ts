@@ -108,6 +108,25 @@ export function deleteParametricObject(document: ParametricDocument, id: string)
   document.features = document.features.filter((feature) => feature.objectId !== id);
 }
 
+export function deleteParametricFeature(document: ParametricDocument, id: string): { objectId: string | null; nextId: string | null } {
+  const feature = document.features.find((candidate) => candidate.id === id);
+  if (!feature) return { objectId: null, nextId: null };
+  const objectId = objectIdForFeature(document, id);
+  const operations = document.features.filter((candidate) => candidate.objectId === objectId && candidate.kind !== "sketch");
+  const operationIndex = operations.findIndex((candidate) => candidate.id === id);
+  const ids = new Set([id]);
+  if (feature.kind === "extrude") ids.add(feature.sketchId);
+  if (feature.kind === "sketch") {
+    for (const candidate of document.features) {
+      if (candidate.kind === "extrude" && candidate.sketchId === feature.id) ids.add(candidate.id);
+    }
+  }
+  document.features = document.features.filter((candidate) => !ids.has(candidate.id));
+  const remaining = operations.filter((candidate) => !ids.has(candidate.id));
+  const nextId = remaining[Math.max(0, operationIndex - 1)]?.id ?? remaining[0]?.id ?? objectId;
+  return { objectId, nextId };
+}
+
 export function duplicateParametricObject(document: ParametricDocument, id: string) {
   const object = document.objects.find((candidate) => candidate.id === id);
   if (!object) return null;
