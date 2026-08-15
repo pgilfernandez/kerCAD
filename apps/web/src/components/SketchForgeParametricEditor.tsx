@@ -26,6 +26,7 @@ import {
 import { cloneDocument, createFilletFeature, createStarterDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint } from "@/lib/parametricBuildState";
 import { buildParametricModel, buildParametricOperationContext, exportParametricStep } from "@/lib/parametricKernel";
+import { binaryStlFromRenderMeshes } from "@/lib/stlExport";
 import {
   addPrimitiveToSelection,
   applyOperationWorldPosition,
@@ -62,7 +63,7 @@ function downloadBlob(blob: Blob, name: string) {
 }
 
 function fileName(value: string) {
-  return value.trim().toLowerCase().replace(/[^a-z0-9áéíóúüñ]+/gi, "-").replace(/^-|-$/g, "") || "modelo";
+  return value.trim().replace(/\.(?:educad\.json|json|step|stp|stl)$/i, "").toLowerCase().replace(/[^a-z0-9áéíóúüñ]+/gi, "-").replace(/^-|-$/g, "") || "modelo";
 }
 
 export function SketchForgeParametricEditor() {
@@ -76,6 +77,7 @@ export function SketchForgeParametricEditor() {
   const [shapesOpen, setShapesOpen] = useState(false);
   const [modelSidebarMode, setModelSidebarMode] = useState<ModelSidebarMode | "hidden">("normal");
   const [exportOpen, setExportOpen] = useState(false);
+  const [exportFileName, setExportFileName] = useState(document.name);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const [workplaneOpen, setWorkplaneOpen] = useState(false);
@@ -317,20 +319,31 @@ export function SketchForgeParametricEditor() {
   };
 
   const exportProject = () => {
-    downloadBlob(new Blob([JSON.stringify(document, null, 2)], { type: "application/json" }), `${fileName(document.name)}.educad.json`);
+    downloadBlob(new Blob([JSON.stringify(document, null, 2)], { type: "application/json" }), `${fileName(exportFileName)}.educad.json`);
     setNotice({ type: "ok", text: "Proyecto paramétrico exportado" });
   };
 
   const exportStep = async () => {
     setExporting(true);
     try {
-      downloadBlob(await exportParametricStep(document), `${fileName(document.name)}.step`);
+      downloadBlob(await exportParametricStep(document), `${fileName(exportFileName)}.step`);
       setNotice({ type: "ok", text: "STEP B-Rep exportado" });
       setExportOpen(false);
     } catch (error) {
       setNotice({ type: "error", text: error instanceof Error ? error.message : "No se pudo exportar" });
     } finally {
       setExporting(false);
+    }
+  };
+
+  const exportStl = () => {
+    try {
+      const buffer = binaryStlFromRenderMeshes(build.objectMeshes.map((item) => item.mesh), exportFileName);
+      downloadBlob(new Blob([buffer], { type: "model/stl" }), `${fileName(exportFileName)}.stl`);
+      setNotice({ type: "ok", text: `STL binario exportado · ${build.objectMeshes.length} objeto${build.objectMeshes.length === 1 ? "" : "s"}` });
+      setExportOpen(false);
+    } catch (error) {
+      setNotice({ type: "error", text: error instanceof Error ? error.message : "No se pudo exportar el STL" });
     }
   };
 
@@ -402,7 +415,7 @@ export function SketchForgeParametricEditor() {
           <ToolbarSection label="Manage" className="toolbar-actions-section">
             <div className="action-buttons">
               <button className="action-icon-button" aria-label="Importar" onClick={() => importRef.current?.click()}><ToolbarImportIcon /></button>
-              <button className="action-icon-button" aria-label="Exportar" onClick={() => setExportOpen((value) => !value)}><ToolbarVectorExportIcon /></button>
+              <button className="action-icon-button" aria-label="Exportar" onClick={() => { if (!exportOpen) setExportFileName(document.name); setExportOpen((value) => !value); }}><ToolbarVectorExportIcon /></button>
               <button className="action-icon-button" aria-label="Ajustes" onClick={() => setSettingsOpen((value) => !value)}><ToolbarSettingsIcon /></button>
             </div>
           </ToolbarSection>
@@ -512,9 +525,11 @@ export function SketchForgeParametricEditor() {
       {exportOpen && (
         <aside className="top-action-panel export-action-panel educad-export-panel">
           <header><div className="top-action-heading"><strong>Exportar</strong><span>Conserva los parámetros o fabrica la pieza</span></div><button onClick={() => setExportOpen(false)}><X /></button></header>
+          <label className="educad-export-name"><span>Nombre del archivo</span><input type="text" value={exportFileName} maxLength={120} placeholder="modelo" onChange={(event) => setExportFileName(event.target.value)} /></label>
           <div className="educad-export-options">
             <button onClick={exportProject}><span className="export-format-icon">JSON</span><strong>Proyecto eduCAD</strong><small>Historial editable y parámetros</small></button>
-            <button onClick={() => void exportStep()} disabled={exporting || !build.mesh}><span className="export-format-icon step">STEP</span><strong>{exporting ? "Exportando…" : "Modelo STEP"}</strong><small>B-Rep exacto para fabricación</small></button>
+            <button onClick={() => void exportStep()} disabled={exporting || kernelBusy || !build.mesh}><span className="export-format-icon step">STEP</span><strong>{exporting ? "Exportando…" : "Modelo STEP"}</strong><small>B-Rep exacto para fabricación</small></button>
+            <button onClick={exportStl} disabled={kernelBusy || build.objectMeshes.length === 0}><span className="export-format-icon">STL</span><strong>Modelo STL</strong><small>Binario, en milímetros y listo para imprimir</small></button>
           </div>
         </aside>
       )}
