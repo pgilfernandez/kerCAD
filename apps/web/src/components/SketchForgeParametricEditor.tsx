@@ -81,7 +81,7 @@ export function SketchForgeParametricEditor() {
   const [history, setHistory] = useState<ParametricHistoryState>(() => createParametricHistory(initialDocument));
   const document = currentHistoryDocument(history);
   const [modelSelection, setModelSelection] = useState<ModelTreeSelection[]>(initialDocument.objects[0] ? [{ id: initialDocument.objects[0].id, kind: "object" }] : []);
-  const [build, setBuild] = useState<BuildResult>({ mesh: null, objectMeshes: [], operationContext: null, completedFeatureIds: [], warning: null });
+  const [build, setBuild] = useState<BuildResult>({ mesh: null, objectRecords: [], operationContext: null, completedFeatureIds: [], warning: null });
   const [operationContext, setOperationContext] = useState<BuildResult["operationContext"]>(null);
   const [kernelBusy, setKernelBusy] = useState(true);
   const [shapesOpen, setShapesOpen] = useState(false);
@@ -349,9 +349,9 @@ export function SketchForgeParametricEditor() {
 
   const exportStl = () => {
     try {
-      const buffer = binaryStlFromRenderMeshes(build.objectMeshes.map((item) => item.mesh), exportFileName);
+      const buffer = binaryStlFromRenderMeshes(build.objectRecords.map((item) => item.mesh), exportFileName);
       downloadBlob(new Blob([buffer], { type: "model/stl" }), `${fileName(exportFileName)}.stl`);
-      setNotice({ type: "ok", text: `STL binario exportado · ${build.objectMeshes.length} objeto${build.objectMeshes.length === 1 ? "" : "s"}` });
+      setNotice({ type: "ok", text: `STL binario exportado · ${build.objectRecords.length} objeto${build.objectRecords.length === 1 ? "" : "s"}` });
       setExportOpen(false);
     } catch (error) {
       setNotice({ type: "error", text: error instanceof Error ? error.message : "No se pudo exportar el STL" });
@@ -436,7 +436,7 @@ export function SketchForgeParametricEditor() {
       <section className="educad-workplane-stage">
         <ParametricViewport
           mesh={build.mesh}
-          objectMeshes={build.objectMeshes}
+          objectRecords={build.objectRecords}
           objectColors={objectColors}
           operationContext={viewportOperationContext}
           isolatedHistoryObjectId={selectedOperationTimeline && selectedOperationTimeline.index < selectedOperationTimeline.count - 1 ? selectedOperationTimeline.objectId : null}
@@ -540,7 +540,7 @@ export function SketchForgeParametricEditor() {
           <div className="educad-export-options">
             <button onClick={exportProject}><span className="export-format-icon">JSON</span><strong>Proyecto eduCAD</strong><small>Historial editable y parámetros</small></button>
             <button onClick={() => void exportStep()} disabled={exporting || kernelBusy || !build.mesh}><span className="export-format-icon step">STEP</span><strong>{exporting ? "Exportando…" : "Modelo STEP"}</strong><small>B-Rep exacto para fabricación</small></button>
-            <button onClick={exportStl} disabled={kernelBusy || build.objectMeshes.length === 0}><span className="export-format-icon">STL</span><strong>Modelo STL</strong><small>Binario, en milímetros y listo para imprimir</small></button>
+            <button onClick={exportStl} disabled={kernelBusy || build.objectRecords.length === 0}><span className="export-format-icon">STL</span><strong>Modelo STL</strong><small>Binario, en milímetros y listo para imprimir</small></button>
           </div>
         </aside>
       )}

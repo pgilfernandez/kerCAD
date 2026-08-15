@@ -110,9 +110,17 @@ export type RenderMesh = {
   metrics: ModelMetrics;
 };
 
+export type ParametricObjectRenderRecord = {
+  objectId: string;
+  renderId: string;
+  color: string;
+  worldTransform: ParametricObject["transform"];
+  mesh: RenderMesh;
+};
+
 export type BuildResult = {
   mesh: RenderMesh | null;
-  objectMeshes: Array<{ objectId: string; color: string; mesh: RenderMesh }>;
+  objectRecords: ParametricObjectRenderRecord[];
   operationContext: { featureId: string; objectId: string; color: string; mesh: RenderMesh } | null;
   completedFeatureIds: string[];
   warning: string | null;

@@ -1,5 +1,5 @@
 import { loadBrepWithOcct, type Brep, type BrepSolid } from "@/lib/brepKernel";
-import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricObject, RenderMesh, SketchFeature } from "@/types/parametric";
+import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricObject, ParametricObjectRenderRecord, RenderMesh, SketchFeature } from "@/types/parametric";
 
 type AnySolid = BrepSolid;
 type CompoundShape = ReturnType<Brep["compound"]>;
@@ -9,7 +9,7 @@ function resultValue<T>(brep: Brep, result: ReturnType<Brep["cut"]> | ReturnType
   return brep.unwrap(result) as T;
 }
 
-function solidFromSketch(brep: Brep, sketch: SketchFeature, feature: ExtrudeFeature, object?: ParametricObject): AnySolid {
+function solidFromSketch(brep: Brep, sketch: SketchFeature, feature: ExtrudeFeature): AnySolid {
   const profile = sketch.profile;
   const centerZ = feature.symmetric ? sketch.offset : sketch.offset + feature.distance / 2;
   let solid: AnySolid;
@@ -31,6 +31,10 @@ function solidFromSketch(brep: Brep, sketch: SketchFeature, feature: ExtrudeFeat
   if (operation.position.x || operation.position.y || operation.position.z) {
     solid = brep.translate(solid, [operation.position.x, operation.position.y, operation.position.z]);
   }
+  return solid;
+}
+
+function applyObjectTransform(brep: Brep, solid: AnySolid, object?: ParametricObject): AnySolid {
   if (!object) return solid;
   const { position, rotation, scale } = object.transform;
   if (scale.x !== 1 || scale.y !== 1 || scale.z !== 1) {
@@ -58,12 +62,38 @@ function combinedObjectShape(brep: Brep, solids: Map<string, AnySolid>): Rendera
   return brep.compound(values);
 }
 
-function objectRenderMeshes(brep: Brep, solids: Map<string, AnySolid>, objects: Map<string, ParametricObject>) {
-  return [...solids].map(([objectId, solid]) => ({
-    objectId,
-    color: objects.get(objectId)?.color ?? "#d41721",
-    mesh: meshShape(brep, solid),
-  }));
+export function parametricObjectRenderId(objectId: string) {
+  return `object:${objectId}`;
+}
+
+function worldObjectSolids(brep: Brep, solids: Map<string, AnySolid>, objects: Map<string, ParametricObject>) {
+  return new Map([...solids].map(([objectId, solid]) => [objectId, applyObjectTransform(brep, solid, objects.get(objectId))]));
+}
+
+function objectRenderRecords(brep: Brep, worldSolids: Map<string, AnySolid>, objects: Map<string, ParametricObject>): ParametricObjectRenderRecord[] {
+  return [...worldSolids].map(([objectId, solid]) => {
+    const object = objects.get(objectId);
+    return {
+      objectId,
+      renderId: parametricObjectRenderId(objectId),
+      color: object?.color ?? "#d41721",
+      worldTransform: structuredClone(object?.transform ?? {
+        position: { x: 0, y: 0, z: 0 },
+        rotation: { x: 0, y: 0, z: 0 },
+        scale: { x: 1, y: 1, z: 1 },
+      }),
+      mesh: meshShape(brep, solid),
+    };
+  });
+}
+
+function buildRenderOutput(brep: Brep, solids: Map<string, AnySolid>, objects: Map<string, ParametricObject>) {
+  const worldSolids = worldObjectSolids(brep, solids, objects);
+  const combined = combinedObjectShape(brep, worldSolids);
+  return {
+    mesh: combined ? meshShape(brep, combined) : null,
+    objectRecords: objectRenderRecords(brep, worldSolids, objects),
+  };
 }
 
 async function buildParametricModelInternal(document: ParametricDocument, contextFeatureId: string | null, stopAtContext: boolean): Promise<BuildResult> {
@@ -91,7 +121,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         const objectId = feature.objectId ?? "legacy";
         lastObjectId = objectId;
         const current = solids.get(objectId) ?? null;
-        const tool = solidFromSketch(brep, sketch, feature, feature.objectId ? objects.get(feature.objectId) : undefined);
+        const tool = solidFromSketch(brep, sketch, feature);
         if (!current) {
           if (feature.operation !== "add") throw new Error(`${feature.name}: la primera operación del objeto debe ser Añadir.`);
           solids.set(objectId, tool);
@@ -105,9 +135,9 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
             featureId: feature.id,
             objectId,
             color: objects.get(objectId)?.color ?? "#d41721",
-            mesh: meshShape(brep, selectedResult),
+            mesh: meshShape(brep, applyObjectTransform(brep, selectedResult, objects.get(objectId))),
           } : null;
-          if (stopAtContext) return { mesh: null, objectMeshes: [], operationContext, completedFeatureIds, warning: null };
+          if (stopAtContext) return { mesh: null, objectRecords: [], operationContext, completedFeatureIds, warning: null };
         }
         continue;
       }
@@ -137,12 +167,10 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
       }
     }
   } catch (error) {
-    const partial = combinedObjectShape(brep, solids);
-    return { mesh: partial ? meshShape(brep, partial) : null, objectMeshes: objectRenderMeshes(brep, solids, objects), operationContext, completedFeatureIds, warning: errorMessage(error) };
+    return { ...buildRenderOutput(brep, solids, objects), operationContext, completedFeatureIds, warning: errorMessage(error) };
   }
 
-  const result = combinedObjectShape(brep, solids);
-  return { mesh: result ? meshShape(brep, result) : null, objectMeshes: objectRenderMeshes(brep, solids, objects), operationContext, completedFeatureIds, warning: null };
+  return { ...buildRenderOutput(brep, solids, objects), operationContext, completedFeatureIds, warning: null };
 }
 
 export function buildParametricModel(document: ParametricDocument): Promise<BuildResult> {
@@ -190,7 +218,7 @@ export async function exportParametricStep(document: ParametricDocument): Promis
       const objectId = feature.objectId ?? "legacy";
       lastObjectId = objectId;
       const current = solids.get(objectId) ?? null;
-      const tool = solidFromSketch(brep, sketch, feature, feature.objectId ? objects.get(feature.objectId) : undefined);
+      const tool = solidFromSketch(brep, sketch, feature);
       if (!current) {
         if (feature.operation !== "add") throw new Error(`${feature.name}: la primera operación del objeto debe ser Añadir.`);
         solids.set(objectId, tool);
@@ -214,7 +242,7 @@ export async function exportParametricStep(document: ParametricDocument): Promis
     }
     solids.set(objectId, current);
   }
-  const result = combinedObjectShape(brep, solids);
+  const result = combinedObjectShape(brep, worldObjectSolids(brep, solids, objects));
   if (!result) throw new Error("No hay ningún sólido para exportar.");
   return brep.unwrap(brep.exportSTEP(result));
 }

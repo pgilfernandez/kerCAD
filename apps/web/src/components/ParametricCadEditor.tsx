@@ -110,7 +110,7 @@ export function ParametricCadEditor() {
   const [history, setHistory] = useState<HistoryState>({ entries: [starter], index: 0 });
   const document = history.entries[history.index];
   const [selectedId, setSelectedId] = useState<string | null>(starter.features[0]?.id ?? null);
-  const [build, setBuild] = useState<BuildResult>({ mesh: null, objectMeshes: [], operationContext: null, completedFeatureIds: [], warning: null });
+  const [build, setBuild] = useState<BuildResult>({ mesh: null, objectRecords: [], operationContext: null, completedFeatureIds: [], warning: null });
   const [kernelState, setKernelState] = useState<"loading" | "ready" | "error">("loading");
   const [view, setView] = useState<CameraView>({ name: "iso", token: 0 });
   const [notice, setNotice] = useState<Notice>(null);
@@ -376,7 +376,7 @@ export function ParametricCadEditor() {
         </aside>
 
         <div className="pcad-stage">
-          <ParametricViewport mesh={build.mesh} objectMeshes={build.objectMeshes} objectColors={objectColors} color={document.color} workplane={document.workplane} view={view} />
+          <ParametricViewport mesh={build.mesh} objectRecords={build.objectRecords} objectColors={objectColors} color={document.color} workplane={document.workplane} view={view} />
           <div className="pcad-view-buttons" aria-label="Vistas de cámara">
             <button onClick={() => setCamera("top")}>SUP</button>
             <button onClick={() => setCamera("front")}>FREN</button>
