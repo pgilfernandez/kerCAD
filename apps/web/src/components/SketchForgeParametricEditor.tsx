@@ -28,6 +28,17 @@ import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricO
 import { buildParametricModel, buildParametricOperationContext, exportParametricStep } from "@/lib/parametricKernel";
 import { binaryStlFromRenderMeshes } from "@/lib/stlExport";
 import {
+  beginHistoryTransaction,
+  cancelHistoryTransaction,
+  commitHistoryDocument,
+  createParametricHistory,
+  currentHistoryDocument,
+  finishHistoryTransaction,
+  redoParametricHistory,
+  undoParametricHistory,
+  type ParametricHistoryState,
+} from "@/lib/parametricHistory";
+import {
   addPrimitiveToSelection,
   applyOperationWorldPosition,
   applyOperationWorldRotation,
@@ -50,7 +61,6 @@ import type { BuildResult, ParametricDocument, ParametricFeature, ParametricObje
 import type { WorkplaneShape } from "@/types/sketchforge";
 
 const STORAGE_KEY = "educad.parametric.document.v1";
-type HistoryState = { entries: ParametricDocument[]; index: number };
 type Notice = { type: "ok" | "info" | "error"; text: string } | null;
 
 function downloadBlob(blob: Blob, name: string) {
@@ -68,8 +78,8 @@ function fileName(value: string) {
 
 export function SketchForgeParametricEditor() {
   const initialDocument = useMemo(() => createStarterDocument(), []);
-  const [history, setHistory] = useState<HistoryState>({ entries: [initialDocument], index: 0 });
-  const document = history.entries[history.index];
+  const [history, setHistory] = useState<ParametricHistoryState>(() => createParametricHistory(initialDocument));
+  const document = currentHistoryDocument(history);
   const [modelSelection, setModelSelection] = useState<ModelTreeSelection[]>(initialDocument.objects[0] ? [{ id: initialDocument.objects[0].id, kind: "object" }] : []);
   const [build, setBuild] = useState<BuildResult>({ mesh: null, objectMeshes: [], operationContext: null, completedFeatureIds: [], warning: null });
   const [operationContext, setOperationContext] = useState<BuildResult["operationContext"]>(null);
@@ -118,7 +128,7 @@ export function SketchForgeParametricEditor() {
         const parsed = JSON.parse(stored) as unknown;
         if (validateDocument(parsed)) {
           const normalized = normalizeParametricDocument(parsed);
-          setHistory({ entries: [normalized], index: 0 });
+          setHistory(createParametricHistory(normalized));
           setModelSelection(normalized.objects[0] ? [{ id: normalized.objects[0].id, kind: "object" }] : []);
         }
       }
@@ -173,11 +183,12 @@ export function SketchForgeParametricEditor() {
 
   const commit = useCallback((next: ParametricDocument) => {
     next.updatedAt = Date.now();
-    setHistory((current) => {
-      const entries = [...current.entries.slice(0, current.index + 1), next].slice(-100);
-      return { entries, index: entries.length - 1 };
-    });
+    setHistory((current) => commitHistoryDocument(current, next));
   }, []);
+
+  const beginTransaction = useCallback(() => setHistory(beginHistoryTransaction), []);
+  const finishTransaction = useCallback(() => setHistory((current) => finishHistoryTransaction(current)), []);
+  const cancelTransaction = useCallback(() => setHistory(cancelHistoryTransaction), []);
 
   const mutate = useCallback((mutator: (draft: ParametricDocument) => void) => {
     const next = cloneDocument(document);
@@ -295,12 +306,12 @@ export function SketchForgeParametricEditor() {
   };
 
   const setCamera = (name: CameraView["name"]) => setView((current) => ({ name, token: current.token + 1 }));
-  const undo = () => setHistory((current) => ({ ...current, index: Math.max(0, current.index - 1) }));
-  const redo = () => setHistory((current) => ({ ...current, index: Math.min(current.entries.length - 1, current.index + 1) }));
+  const undo = () => setHistory(undoParametricHistory);
+  const redo = () => setHistory(redoParametricHistory);
 
   const newDocument = () => {
     const next = createStarterDocument();
-    setHistory({ entries: [next], index: 0 });
+    setHistory(createParametricHistory(next));
     setModelSelection(next.objects[0] ? [{ id: next.objects[0].id, kind: "object" }] : []);
     setNotice({ type: "info", text: "Nuevo diseño" });
   };
@@ -352,7 +363,7 @@ export function SketchForgeParametricEditor() {
       const parsed = JSON.parse(await file.text()) as unknown;
       if (!validateDocument(parsed)) throw new Error("Este no es un proyecto eduCAD compatible.");
       const normalized = normalizeParametricDocument(parsed);
-      setHistory({ entries: [normalized], index: 0 });
+      setHistory(createParametricHistory(normalized));
       setModelSelection(normalized.objects[0] ? [{ id: normalized.objects[0].id, kind: "object" }] : []);
       setNotice({ type: "ok", text: "Proyecto abierto" });
     } catch (error) {
@@ -537,7 +548,7 @@ export function SketchForgeParametricEditor() {
       {settingsOpen && (
         <aside className="top-action-panel educad-settings-panel">
           <header><strong>Ajustes del diseño</strong><button onClick={() => setSettingsOpen(false)}><X /></button></header>
-          <label><span>Nombre</span><input value={document.name} onChange={(event) => mutate((draft) => { draft.name = event.target.value; })} /></label>
+          <label><span>Nombre</span><input value={document.name} onFocus={beginTransaction} onBlur={finishTransaction} onChange={(event) => mutate((draft) => { draft.name = event.target.value; })} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); if (event.key === "Escape") { cancelTransaction(); event.currentTarget.blur(); } }} /></label>
           <p>El proyecto se guarda automáticamente en este navegador.</p>
         </aside>
       )}

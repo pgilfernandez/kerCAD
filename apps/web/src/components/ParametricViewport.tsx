@@ -367,10 +367,21 @@ export function ParametricViewport({ mesh, objectMeshes = [], objectColors, oper
       controls.enabled = true;
       renderer.domElement.style.cursor = "default";
       if (renderer.domElement.hasPointerCapture(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
-      if (pendingPosition) moveRef.current?.(pendingPosition.x, pendingPosition.y);
-      if (pendingRotation !== null) rotateRef.current?.(pendingRotation);
-      if (pendingResize) resizeRef.current?.(pendingResize.x, pendingResize.y, pendingResize.width, pendingResize.depth);
-      if (pendingHeight !== null) heightRef.current?.(pendingHeight);
+      if (cancelled) {
+        const selected = selectionRef.current;
+        const root = selectionRootRef.current;
+        if (selected && root) {
+          root.position.set(selected.x, selected.y, selected.baseZ + selected.height / 2);
+          root.rotation.z = THREE.MathUtils.degToRad(selected.rotation);
+          root.scale.set(1, 1, 1);
+          requestRender();
+        }
+      } else {
+        if (pendingPosition) moveRef.current?.(pendingPosition.x, pendingPosition.y);
+        if (pendingRotation !== null) rotateRef.current?.(pendingRotation);
+        if (pendingResize) resizeRef.current?.(pendingResize.x, pendingResize.y, pendingResize.width, pendingResize.depth);
+        if (pendingHeight !== null) heightRef.current?.(pendingHeight);
+      }
       pendingPosition = null;
       pendingRotation = null;
       pendingResize = null;
@@ -541,8 +552,13 @@ export function ParametricViewport({ mesh, objectMeshes = [], objectColors, oper
 
       const edgeGeometry = new THREE.BufferGeometry();
       edgeGeometry.setAttribute("position", new THREE.BufferAttribute(item.mesh.edges, 3));
-      const edges = new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({ color: "#000000", linewidth: 1, depthTest: false }));
+      const edges = new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({
+        color: "#000000",
+        linewidth: 1,
+        depthTest: !selectionRef.current?.operationPreview,
+      }));
       if (item.objectId) edges.userData.objectId = item.objectId;
+      edges.userData.finalReferenceWireframe = true;
       edges.renderOrder = 17;
       group.add(edges);
     }
@@ -563,6 +579,22 @@ export function ParametricViewport({ mesh, objectMeshes = [], objectColors, oper
     }
     invalidateRef.current();
   }, [mesh, objectMeshes, color, projection]);
+
+  useEffect(() => {
+    const group = modelRef.current;
+    if (!group) return;
+    const inspectOperation = Boolean(selection?.operationPreview);
+    for (const child of group.children) {
+      if (!(child instanceof THREE.LineSegments) || !child.userData.finalReferenceWireframe) continue;
+      child.visible = true;
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      for (const material of materials) {
+        material.depthTest = !inspectOperation;
+        material.needsUpdate = true;
+      }
+    }
+    invalidateRef.current();
+  }, [selection?.operationPreview]);
 
   useEffect(() => {
     const group = modelRef.current;
