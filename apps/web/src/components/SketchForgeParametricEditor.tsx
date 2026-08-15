@@ -24,6 +24,7 @@ import {
   ToolbarVectorExportIcon,
 } from "@/components/icons";
 import { cloneDocument, createFilletFeature, createStarterDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
+import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint } from "@/lib/parametricBuildState";
 import { buildParametricModel, buildParametricOperationContext, exportParametricStep } from "@/lib/parametricKernel";
 import {
   addPrimitiveToSelection,
@@ -88,6 +89,12 @@ export function SketchForgeParametricEditor() {
   const importRef = useRef<HTMLInputElement>(null);
   const buildCounter = useRef(0);
   const contextBuildCounter = useRef(0);
+  const geometryFingerprint = useMemo(() => parametricGeometryFingerprint(document), [document]);
+  const objectColorFingerprint = useMemo(() => parametricObjectColorFingerprint(document), [document]);
+  const objectColors = useMemo(() => objectColorsFromFingerprint(objectColorFingerprint), [objectColorFingerprint]);
+  const viewportOperationContext = useMemo(() => operationContext ? { ...operationContext, color: objectColors[operationContext.objectId] ?? operationContext.color } : null, [objectColors, operationContext]);
+  const buildDocumentRef = useRef(document);
+  buildDocumentRef.current = document;
   const selectedCommonOperationId = useMemo(() => {
     if (modelSelection.length !== 1 || modelSelection[0]?.kind !== "feature") return null;
     const feature = document.features.find((candidate) => candidate.id === modelSelection[0]?.id);
@@ -118,8 +125,9 @@ export function SketchForgeParametricEditor() {
   useEffect(() => {
     const counter = ++buildCounter.current;
     setKernelBusy(true);
+    const buildDocument = buildDocumentRef.current;
     const timeout = window.setTimeout(() => {
-      buildParametricModel(document).then((result) => {
+      buildParametricModel(buildDocument).then((result) => {
         if (counter !== buildCounter.current) return;
         setBuild(result);
         setKernelBusy(false);
@@ -130,21 +138,22 @@ export function SketchForgeParametricEditor() {
       });
     }, 140);
     return () => window.clearTimeout(timeout);
-  }, [document]);
+  }, [geometryFingerprint]);
 
   useEffect(() => {
     const counter = ++contextBuildCounter.current;
     setOperationContext(null);
     if (!selectedCommonOperationId) return;
+    const buildDocument = buildDocumentRef.current;
     const timeout = window.setTimeout(() => {
-      buildParametricOperationContext(document, selectedCommonOperationId).then((result) => {
+      buildParametricOperationContext(buildDocument, selectedCommonOperationId).then((result) => {
         if (counter === contextBuildCounter.current) setOperationContext(result);
       }).catch(() => {
         if (counter === contextBuildCounter.current) setOperationContext(null);
       });
     }, 80);
     return () => window.clearTimeout(timeout);
-  }, [document, selectedCommonOperationId]);
+  }, [geometryFingerprint, selectedCommonOperationId]);
 
   useEffect(() => {
     if (!notice) return;
@@ -396,7 +405,8 @@ export function SketchForgeParametricEditor() {
         <ParametricViewport
           mesh={build.mesh}
           objectMeshes={build.objectMeshes}
-          operationContext={operationContext}
+          objectColors={objectColors}
+          operationContext={viewportOperationContext}
           color={document.color}
           workplane={document.workplane}
           view={view}

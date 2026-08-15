@@ -42,6 +42,7 @@ import {
   validateDocument,
 } from "@/lib/parametricDocument";
 import { buildParametricModel, exportParametricStep } from "@/lib/parametricKernel";
+import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint } from "@/lib/parametricBuildState";
 import type { BuildResult, ParametricDocument, ParametricFeature } from "@/types/parametric";
 
 const STORAGE_KEY = "educad.parametric.document.v1";
@@ -118,6 +119,11 @@ export function ParametricCadEditor() {
   const [showLesson, setShowLesson] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
   const buildVersion = useRef(0);
+  const geometryFingerprint = useMemo(() => parametricGeometryFingerprint(document), [document]);
+  const objectColorFingerprint = useMemo(() => parametricObjectColorFingerprint(document), [document]);
+  const objectColors = useMemo(() => objectColorsFromFingerprint(objectColorFingerprint), [objectColorFingerprint]);
+  const buildDocumentRef = useRef(document);
+  buildDocumentRef.current = document;
 
   useEffect(() => {
     try {
@@ -143,8 +149,9 @@ export function ParametricCadEditor() {
   useEffect(() => {
     const version = ++buildVersion.current;
     setKernelState("loading");
+    const buildDocument = buildDocumentRef.current;
     const timer = window.setTimeout(() => {
-      buildParametricModel(document)
+      buildParametricModel(buildDocument)
         .then((next) => {
           if (version !== buildVersion.current) return;
           setBuild(next);
@@ -157,7 +164,7 @@ export function ParametricCadEditor() {
         });
     }, 180);
     return () => window.clearTimeout(timer);
-  }, [document]);
+  }, [geometryFingerprint]);
 
   useEffect(() => {
     if (!notice) return;
@@ -369,7 +376,7 @@ export function ParametricCadEditor() {
         </aside>
 
         <div className="pcad-stage">
-          <ParametricViewport mesh={build.mesh} objectMeshes={build.objectMeshes} color={document.color} workplane={document.workplane} view={view} />
+          <ParametricViewport mesh={build.mesh} objectMeshes={build.objectMeshes} objectColors={objectColors} color={document.color} workplane={document.workplane} view={view} />
           <div className="pcad-view-buttons" aria-label="Vistas de cámara">
             <button onClick={() => setCamera("top")}>SUP</button>
             <button onClick={() => setCamera("front")}>FREN</button>

@@ -34,6 +34,7 @@ export type ViewportSelection = {
 type Props = {
   mesh: RenderMesh | null;
   objectMeshes?: Array<{ objectId: string; color: string; mesh: RenderMesh }>;
+  objectColors?: Record<string, string>;
   operationContext?: { color: string; mesh: RenderMesh } | null;
   color: string;
   workplane?: { width: number; depth: number; gridStep: number };
@@ -51,7 +52,7 @@ type Props = {
   onEmptySelect?: () => void;
 };
 
-export function ParametricViewport({ mesh, objectMeshes = [], operationContext = null, color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "perspective", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionResize, onSelectionHeight, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect }: Props) {
+export function ParametricViewport({ mesh, objectMeshes = [], objectColors, operationContext = null, color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "perspective", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionResize, onSelectionHeight, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -556,6 +557,22 @@ export function ParametricViewport({ mesh, objectMeshes = [], operationContext =
     }
     invalidateRef.current();
   }, [mesh, objectMeshes, color, projection]);
+
+  useEffect(() => {
+    if (!objectColors) return;
+    const group = modelRef.current;
+    if (!group) return;
+    for (const child of group.children) {
+      if (!(child instanceof THREE.Mesh) || typeof child.userData.objectId !== "string") continue;
+      const nextColor = objectColors[child.userData.objectId];
+      if (!nextColor) continue;
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      for (const material of materials) {
+        if (material instanceof THREE.MeshStandardMaterial) material.color.set(nextColor);
+      }
+    }
+    invalidateRef.current();
+  }, [objectColors, projection]);
 
   useEffect(() => {
     const group = modelRef.current;
