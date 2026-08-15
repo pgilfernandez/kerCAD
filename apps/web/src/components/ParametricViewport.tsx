@@ -53,7 +53,7 @@ type Props = {
   onEmptySelect?: () => void;
 };
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "perspective", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionResize, onSelectionHeight, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "orthographic", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionResize, onSelectionHeight, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -723,7 +723,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
     hitbox.renderOrder = 19;
     root.add(hitbox);
     const handleGeometry = new THREE.BoxGeometry(1.8, 1.8, 1.8);
-    const cornerMaterial = new THREE.MeshBasicMaterial({ color: "#ffffff", depthTest: false });
+    const cornerMaterial = new THREE.MeshBasicMaterial({ color: "#f2c94c", depthTest: false });
     const xHandleMaterial = new THREE.MeshBasicMaterial({ color: "#e25353", depthTest: false });
     const yHandleMaterial = new THREE.MeshBasicMaterial({ color: "#42a866", depthTest: false });
     for (const [sx, sy] of [[-1, -1], [-1, 1], [1, -1], [1, 1], [-1, 0], [1, 0], [0, -1], [0, 1]]) {
@@ -762,21 +762,22 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
     root.add(zHitbox);
     resizeHitboxesRef.current.push(zHitbox);
     const rotationRadius = Math.max(selection.width, selection.depth) * 0.7 + 6;
+    const rotationPlaneZ = -selection.height / 2 + 0.2;
     const rotationPoints = Array.from({ length: 65 }, (_, index) => {
       const angle = index / 64 * Math.PI * 2;
-      return new THREE.Vector3(Math.cos(angle) * rotationRadius, Math.sin(angle) * rotationRadius, selection.height / 2 + 1);
+      return new THREE.Vector3(Math.cos(angle) * rotationRadius, Math.sin(angle) * rotationRadius, rotationPlaneZ);
     });
     const rotationRing = new THREE.Line(
       new THREE.BufferGeometry().setFromPoints(rotationPoints),
-      new THREE.LineBasicMaterial({ color: "#00a6db", depthTest: false, transparent: true, opacity: 0.9 }),
+      new THREE.LineBasicMaterial({ color: "#7256aa", depthTest: false, transparent: true, opacity: 0.95 }),
     );
     rotationRing.renderOrder = 21;
     root.add(rotationRing);
     const rotationHandle = new THREE.Mesh(
       new THREE.SphereGeometry(2, 18, 12),
-      new THREE.MeshBasicMaterial({ color: "#ffffff", depthTest: false }),
+      new THREE.MeshBasicMaterial({ color: "#7256aa", depthTest: false }),
     );
-    rotationHandle.position.set(rotationRadius, 0, selection.height / 2 + 1);
+    rotationHandle.position.set(rotationRadius, 0, rotationPlaneZ);
     rotationHandle.renderOrder = 22;
     root.add(rotationHandle);
     const rotationHitbox = new THREE.Mesh(

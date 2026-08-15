@@ -93,7 +93,7 @@ export function SketchForgeParametricEditor() {
   const [workplaneOpen, setWorkplaneOpen] = useState(false);
   const [workplaneDraft, setWorkplaneDraft] = useState(document.workplane);
   const [view, setView] = useState<CameraView>({ name: "iso", token: 0 });
-  const [projection, setProjection] = useState<CameraProjection>("perspective");
+  const [projection, setProjection] = useState<CameraProjection>("orthographic");
   const [cameraOrientation, setCameraOrientation] = useState<CameraOrientation>({ azimuth: Math.PI / 4, polar: 1.02 });
   const [clipboardId, setClipboardId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
