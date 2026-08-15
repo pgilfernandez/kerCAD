@@ -134,7 +134,7 @@ describe("parametric object workflow", () => {
     expect(viewportSelectionForFeature(document, feature.id)?.operationPreview).toEqual({ shape: "box", mode: "common", color: "#3b82f6", historical: false });
 
     feature.operation = "add";
-    expect(viewportSelectionForFeature(document, feature.id)?.operationPreview).toBeUndefined();
+    expect(viewportSelectionForFeature(document, feature.id)?.operationPreview).toEqual({ shape: "box", mode: "add", color: "#3b82f6", historical: false });
   });
 
   it("marks an older additive operation for a simplified wireframe preview", () => {
@@ -142,13 +142,19 @@ describe("parametric object workflow", () => {
     const objectId = document.objects[0].id;
     const first = document.features.find((candidate) => candidate.kind === "extrude");
     if (!first || first.kind !== "extrude") throw new Error("expected extrusion");
-    addPrimitive(document, objectId, "cylinder");
+    const lastId = addPrimitive(document, objectId, "cylinder");
 
     expect(viewportSelectionForFeature(document, first.id)?.operationPreview).toEqual({
       shape: "box",
       mode: "add",
       color: "#d41721",
       historical: true,
+    });
+    expect(viewportSelectionForFeature(document, lastId)?.operationPreview).toEqual({
+      shape: "cylinder",
+      mode: "add",
+      color: "#d41721",
+      historical: false,
     });
   });
 

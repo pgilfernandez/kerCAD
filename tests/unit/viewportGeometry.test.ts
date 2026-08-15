@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { operationPreviewWireframePositions } from "@/lib/viewportGeometry";
+import { operationPreviewStyle, operationPreviewWireframePositions } from "@/lib/viewportGeometry";
 
 describe("operation preview wireframes", () => {
   it("draws only the twelve structural edges of a box", () => {
@@ -18,5 +18,19 @@ describe("operation preview wireframes", () => {
     expect(generators[7]).toBeCloseTo(5);
     expect(generators[8]).toBe(-3);
     expect(generators[11]).toBe(3);
+  });
+});
+
+describe("operation preview styles", () => {
+  it("adds only the simplified wireframe when inspecting the final operation", () => {
+    expect(operationPreviewStyle("add", false)).toEqual({ fillOpacity: null, wireframe: true });
+    expect(operationPreviewStyle("hole", false)).toEqual({ fillOpacity: null, wireframe: true });
+    expect(operationPreviewStyle("common", false)).toEqual({ fillOpacity: null, wireframe: true });
+  });
+
+  it("keeps intermediate tools wireframe-only because the accumulated result supplies the fill", () => {
+    expect(operationPreviewStyle("add", true)).toEqual({ fillOpacity: null, wireframe: true });
+    expect(operationPreviewStyle("hole", true)).toEqual({ fillOpacity: null, wireframe: true });
+    expect(operationPreviewStyle("common", true)).toEqual({ fillOpacity: null, wireframe: true });
   });
 });

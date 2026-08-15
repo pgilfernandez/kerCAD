@@ -92,14 +92,22 @@ export function SketchForgeParametricEditor() {
   const geometryFingerprint = useMemo(() => parametricGeometryFingerprint(document), [document]);
   const objectColorFingerprint = useMemo(() => parametricObjectColorFingerprint(document), [document]);
   const objectColors = useMemo(() => objectColorsFromFingerprint(objectColorFingerprint), [objectColorFingerprint]);
-  const viewportOperationContext = useMemo(() => operationContext ? { ...operationContext, color: objectColors[operationContext.objectId] ?? operationContext.color } : null, [objectColors, operationContext]);
   const buildDocumentRef = useRef(document);
   buildDocumentRef.current = document;
-  const selectedCommonOperationId = useMemo(() => {
+  const selectedOperationTimeline = useMemo(() => {
     if (modelSelection.length !== 1 || modelSelection[0]?.kind !== "feature") return null;
-    const feature = document.features.find((candidate) => candidate.id === modelSelection[0]?.id);
-    return feature?.kind === "extrude" && feature.operation === "intersect" ? feature.id : null;
-  }, [document.features, modelSelection]);
+    const buildDocument = buildDocumentRef.current;
+    const feature = buildDocument.features.find((candidate) => candidate.id === modelSelection[0]?.id);
+    if (feature?.kind !== "extrude" || !feature.objectId) return null;
+    const operations = buildDocument.features.filter((candidate) => candidate.objectId === feature.objectId && candidate.kind !== "sketch");
+    const index = operations.findIndex((candidate) => candidate.id === feature.id);
+    return index < 0 ? null : { featureId: feature.id, objectId: feature.objectId, index, count: operations.length };
+  }, [geometryFingerprint, modelSelection]);
+  const viewportOperationContext = useMemo(() => operationContext ? {
+    ...operationContext,
+    color: objectColors[operationContext.objectId] ?? operationContext.color,
+    opacity: 0.4,
+  } : null, [objectColors, operationContext]);
 
   useEffect(() => {
     try {
@@ -143,17 +151,17 @@ export function SketchForgeParametricEditor() {
   useEffect(() => {
     const counter = ++contextBuildCounter.current;
     setOperationContext(null);
-    if (!selectedCommonOperationId) return;
+    if (!selectedOperationTimeline || selectedOperationTimeline.index === selectedOperationTimeline.count - 1) return;
     const buildDocument = buildDocumentRef.current;
     const timeout = window.setTimeout(() => {
-      buildParametricOperationContext(buildDocument, selectedCommonOperationId).then((result) => {
+      buildParametricOperationContext(buildDocument, selectedOperationTimeline.featureId).then((result) => {
         if (counter === contextBuildCounter.current) setOperationContext(result);
       }).catch(() => {
         if (counter === contextBuildCounter.current) setOperationContext(null);
       });
     }, 80);
     return () => window.clearTimeout(timeout);
-  }, [geometryFingerprint, selectedCommonOperationId]);
+  }, [geometryFingerprint, selectedOperationTimeline]);
 
   useEffect(() => {
     if (!notice) return;
@@ -407,6 +415,7 @@ export function SketchForgeParametricEditor() {
           objectMeshes={build.objectMeshes}
           objectColors={objectColors}
           operationContext={viewportOperationContext}
+          isolatedHistoryObjectId={selectedOperationTimeline && selectedOperationTimeline.index < selectedOperationTimeline.count - 1 ? selectedOperationTimeline.objectId : null}
           color={document.color}
           workplane={document.workplane}
           view={view}

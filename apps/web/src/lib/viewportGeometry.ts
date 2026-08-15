@@ -39,3 +39,7 @@ export function operationPreviewWireframePositions(shape: "box" | "cylinder", wi
   }
   return positions;
 }
+
+export function operationPreviewStyle(_mode: "add" | "hole" | "common", _historical: boolean) {
+  return { fillOpacity: null, wireframe: true };
+}

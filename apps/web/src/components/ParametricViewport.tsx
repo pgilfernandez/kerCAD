@@ -7,7 +7,7 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import { acceleratedRaycast, MeshBVH } from "three-mesh-bvh";
-import { operationPreviewWireframePositions } from "@/lib/viewportGeometry";
+import { operationPreviewStyle, operationPreviewWireframePositions } from "@/lib/viewportGeometry";
 import type { RenderMesh } from "@/types/parametric";
 
 export type CameraView = { name: "iso" | "top" | "front" | "right" | "zoom-in" | "zoom-out" | "home" | "fit" | "selection" | "custom"; token: number; direction?: [number, number, number] };
@@ -35,7 +35,8 @@ type Props = {
   mesh: RenderMesh | null;
   objectMeshes?: Array<{ objectId: string; color: string; mesh: RenderMesh }>;
   objectColors?: Record<string, string>;
-  operationContext?: { color: string; mesh: RenderMesh } | null;
+  operationContext?: { color: string; mesh: RenderMesh; opacity: number } | null;
+  isolatedHistoryObjectId?: string | null;
   color: string;
   workplane?: { width: number; depth: number; gridStep: number };
   view: CameraView;
@@ -52,7 +53,7 @@ type Props = {
   onEmptySelect?: () => void;
 };
 
-export function ParametricViewport({ mesh, objectMeshes = [], objectColors, operationContext = null, color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "perspective", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionResize, onSelectionHeight, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect }: Props) {
+export function ParametricViewport({ mesh, objectMeshes = [], objectColors, operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "perspective", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionResize, onSelectionHeight, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -76,6 +77,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], objectColors, oper
   const objectsSelectRef = useRef(onObjectsSelect);
   const emptySelectRef = useRef(onEmptySelect);
   const snapRef = useRef(snap);
+  const isolatedHistoryObjectIdRef = useRef(isolatedHistoryObjectId);
   const invalidateRef = useRef<() => void>(() => undefined);
   const hasFittedRef = useRef(false);
 
@@ -89,6 +91,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], objectColors, oper
   useEffect(() => { objectsSelectRef.current = onObjectsSelect; }, [onObjectsSelect]);
   useEffect(() => { emptySelectRef.current = onEmptySelect; }, [onEmptySelect]);
   useEffect(() => { snapRef.current = snap; }, [snap]);
+  useEffect(() => { isolatedHistoryObjectIdRef.current = isolatedHistoryObjectId; }, [isolatedHistoryObjectId]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -533,11 +536,14 @@ export function ParametricViewport({ mesh, objectMeshes = [], objectColors, oper
       body.castShadow = true;
       body.receiveShadow = true;
       if (item.objectId) body.userData.objectId = item.objectId;
+      body.visible = item.objectId !== isolatedHistoryObjectIdRef.current;
       group.add(body);
 
       const edgeGeometry = new THREE.BufferGeometry();
       edgeGeometry.setAttribute("position", new THREE.BufferAttribute(item.mesh.edges, 3));
-      const edges = new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({ color: "#384c58", transparent: true, opacity: 0.68 }));
+      const edges = new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({ color: "#000000", linewidth: 1, depthTest: false }));
+      if (item.objectId) edges.userData.objectId = item.objectId;
+      edges.renderOrder = 17;
       group.add(edges);
     }
 
@@ -557,6 +563,15 @@ export function ParametricViewport({ mesh, objectMeshes = [], objectColors, oper
     }
     invalidateRef.current();
   }, [mesh, objectMeshes, color, projection]);
+
+  useEffect(() => {
+    const group = modelRef.current;
+    if (!group) return;
+    for (const child of group.children) {
+      if (child instanceof THREE.Mesh && typeof child.userData.objectId === "string") child.visible = child.userData.objectId !== isolatedHistoryObjectId;
+    }
+    invalidateRef.current();
+  }, [isolatedHistoryObjectId, projection]);
 
   useEffect(() => {
     if (!objectColors) return;
@@ -595,8 +610,8 @@ export function ParametricViewport({ mesh, objectMeshes = [], objectColors, oper
     geometry.setIndex(new THREE.BufferAttribute(operationContext.mesh.indices, 1));
     const contextBody = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
       color: operationContext.color,
-      transparent: true,
-      opacity: 0.4,
+      transparent: operationContext.opacity < 1,
+      opacity: operationContext.opacity,
       depthTest: false,
       depthWrite: false,
       roughness: 0.7,
@@ -634,7 +649,8 @@ export function ParametricViewport({ mesh, objectMeshes = [], objectColors, oper
     root.rotation.z = THREE.MathUtils.degToRad(selection.rotation);
     if (selection.operationPreview) {
       const operationPreview = selection.operationPreview;
-      if (operationPreview.mode === "hole" && !operationPreview.historical) {
+      const previewStyle = operationPreviewStyle(operationPreview.mode, operationPreview.historical);
+      if (previewStyle.fillOpacity !== null) {
         const previewGeometry = operationPreview.shape === "cylinder"
           ? new THREE.CylinderGeometry(0.5, 0.5, selection.height, 64)
           : new THREE.BoxGeometry(selection.width, selection.depth, selection.height);
@@ -644,8 +660,8 @@ export function ParametricViewport({ mesh, objectMeshes = [], objectColors, oper
         }
         const preview = new THREE.Mesh(previewGeometry, new THREE.MeshStandardMaterial({
           color: operationPreview.color,
-          transparent: true,
-          opacity: 0.4,
+          transparent: previewStyle.fillOpacity < 1,
+          opacity: previewStyle.fillOpacity,
           depthTest: false,
           depthWrite: false,
           roughness: 0.7,
@@ -653,7 +669,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], objectColors, oper
         preview.renderOrder = 17;
         root.add(preview);
       }
-      if (operationPreview.mode === "common" || operationPreview.historical) {
+      if (previewStyle.wireframe) {
         const roleColor = operationPreview.mode === "add" ? "#378451" : operationPreview.mode === "hole" ? "#b6524d" : "#7256aa";
         const lineGeometry = new LineSegmentsGeometry();
         lineGeometry.setPositions(operationPreviewWireframePositions(operationPreview.shape, selection.width, selection.depth, selection.height));

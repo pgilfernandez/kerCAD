@@ -91,17 +91,6 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         const objectId = feature.objectId ?? "legacy";
         lastObjectId = objectId;
         const current = solids.get(objectId) ?? null;
-        if (feature.id === contextFeatureId && current) {
-          operationContext = {
-            featureId: feature.id,
-            objectId,
-            color: objects.get(objectId)?.color ?? "#d41721",
-            mesh: meshShape(brep, current),
-          };
-        }
-        if (feature.id === contextFeatureId && stopAtContext) {
-          return { mesh: null, objectMeshes: [], operationContext, completedFeatureIds, warning: null };
-        }
         const tool = solidFromSketch(brep, sketch, feature, feature.objectId ? objects.get(feature.objectId) : undefined);
         if (!current) {
           if (feature.operation !== "add") throw new Error(`${feature.name}: la primera operación del objeto debe ser Añadir.`);
@@ -110,6 +99,16 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         else if (feature.operation === "cut") solids.set(objectId, resultValue<AnySolid>(brep, brep.cut(current, tool)));
         else solids.set(objectId, resultValue<AnySolid>(brep, brep.intersect(current, tool)));
         completedFeatureIds.push(feature.id);
+        if (feature.id === contextFeatureId) {
+          const selectedResult = solids.get(objectId);
+          operationContext = selectedResult ? {
+            featureId: feature.id,
+            objectId,
+            color: objects.get(objectId)?.color ?? "#d41721",
+            mesh: meshShape(brep, selectedResult),
+          } : null;
+          if (stopAtContext) return { mesh: null, objectMeshes: [], operationContext, completedFeatureIds, warning: null };
+        }
         continue;
       }
       const objectId = feature.objectId ?? lastObjectId;
