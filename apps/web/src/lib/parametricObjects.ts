@@ -192,6 +192,9 @@ export function duplicateParametricObject(document: ParametricDocument, id: stri
     if (clone.kind === "extrude") {
       clone.sketchId = idMap.get(clone.sketchId) ?? clone.sketchId;
     }
+    clone.dependencies = clone.dependencies?.map((reference) => reference.type === "feature"
+      ? { ...reference, id: idMap.get(reference.id) ?? reference.id }
+      : { ...reference, id: reference.id === id ? objectClone.id : reference.id });
     return clone;
   });
   document.objects.push(objectClone);

@@ -24,6 +24,7 @@ import {
   ToolbarVectorExportIcon,
 } from "@/components/icons";
 import { cloneDocument, createFilletFeature, createStarterDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
+import { assertValidParametricDependencies } from "@/lib/parametricDependencyGraph";
 import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint } from "@/lib/parametricBuildState";
 import { buildParametricModel, buildParametricOperationContext, exportParametricStep } from "@/lib/parametricKernel";
 import { binaryStlFromRenderMeshes } from "@/lib/stlExport";
@@ -192,8 +193,15 @@ export function SketchForgeParametricEditor() {
 
   const mutate = useCallback((mutator: (draft: ParametricDocument) => void) => {
     const next = cloneDocument(document);
-    mutator(next);
-    commit(next);
+    try {
+      mutator(next);
+      assertValidParametricDependencies(next);
+      commit(next);
+      return true;
+    } catch (error) {
+      setNotice({ type: "error", text: error instanceof Error ? error.message : "La operación crearía una dependencia no válida." });
+      return false;
+    }
   }, [commit, document]);
 
   const primarySelection = modelSelection.at(-1) ?? null;
@@ -221,7 +229,7 @@ export function SketchForgeParametricEditor() {
     if (!selectedObjectId) return;
     const ids = document.objects.map((object) => object.id);
     const index = ids.indexOf(selectedObjectId);
-    mutate((draft) => deleteParametricObject(draft, selectedObjectId));
+    if (!mutate((draft) => deleteParametricObject(draft, selectedObjectId))) return;
     const nextId = ids[index - 1] ?? ids[index + 1] ?? null;
     setModelSelection(nextId ? [{ id: nextId, kind: "object" }] : []);
   }, [document, mutate, selectedObjectId]);
@@ -238,9 +246,10 @@ export function SketchForgeParametricEditor() {
 
   const deleteFeature = useCallback((id: string) => {
     let result: ReturnType<typeof deleteParametricFeature> = { objectId: null, nextId: null };
-    mutate((draft) => {
+    const deleted = mutate((draft) => {
       result = deleteParametricFeature(draft, id);
     });
+    if (!deleted) return;
     const nextId = result.nextId ?? result.objectId;
     setModelSelection(nextId ? [{ id: nextId, kind: result.nextId && result.nextId !== result.objectId ? "feature" : "object" }] : []);
     setNotice({ type: "ok", text: "Operación eliminada" });
@@ -254,7 +263,7 @@ export function SketchForgeParametricEditor() {
       else removeSelected();
       return;
     }
-    mutate((draft) => deleteParametricSelection(draft, modelSelection));
+    if (!mutate((draft) => deleteParametricSelection(draft, modelSelection))) return;
     setModelSelection([]);
     setNotice({ type: "ok", text: `${modelSelection.length} elementos eliminados` });
   }, [deleteFeature, modelSelection, mutate, removeSelected]);

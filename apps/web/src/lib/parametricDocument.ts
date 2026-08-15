@@ -9,6 +9,7 @@ import type {
   RectangleProfile,
   SketchFeature,
 } from "@/types/parametric";
+import { assertValidParametricDependencies } from "@/lib/parametricDependencyGraph";
 
 let localCounter = 0;
 export const CURRENT_PARAMETRIC_SCHEMA = "educad-parametric/v2" as const;
@@ -150,7 +151,13 @@ export function validateDocument(value: unknown): value is ParametricDocument {
     && candidate.units === "mm"
     && (candidate.objects === undefined || Array.isArray(candidate.objects))
     && Array.isArray(candidate.features)
-    && candidate.features.every((feature) => feature && typeof feature.id === "string" && typeof feature.kind === "string");
+    && candidate.features.every((feature) => {
+      if (!feature || typeof feature.id !== "string" || typeof feature.kind !== "string") return false;
+      if (feature.dependencies === undefined) return true;
+      return Array.isArray(feature.dependencies) && feature.dependencies.every((reference) => reference
+        && (reference.type === "feature" || reference.type === "object")
+        && typeof reference.id === "string");
+    });
 }
 
 export function migrateParametricDocument(document: ParametricDocument): ParametricDocument {
@@ -234,6 +241,7 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
       sketch.offset = 0;
     }
   }
+  assertValidParametricDependencies(next);
   return next;
 }
 

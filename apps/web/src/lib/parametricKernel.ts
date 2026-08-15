@@ -1,4 +1,5 @@
 import { loadBrepWithOcct, type Brep, type BrepSolid } from "@/lib/brepKernel";
+import { topologicallySortedParametricFeatures } from "@/lib/parametricDependencyGraph";
 import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricObject, ParametricObjectRenderRecord, RenderMesh, SketchFeature } from "@/types/parametric";
 
 type AnySolid = BrepSolid;
@@ -106,7 +107,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
   let lastObjectId = "legacy";
 
   try {
-    for (const feature of document.features) {
+    for (const feature of topologicallySortedParametricFeatures(document)) {
       if (feature.suppressed) continue;
       if (feature.objectId && objects.get(feature.objectId)?.visible === false) continue;
       if (feature.kind === "sketch") {
@@ -206,7 +207,7 @@ export async function exportParametricStep(document: ParametricDocument): Promis
   const objects = new Map(document.objects.map((object) => [object.id, object]));
   const solids = new Map<string, AnySolid>();
   let lastObjectId = "legacy";
-  for (const feature of document.features) {
+  for (const feature of topologicallySortedParametricFeatures(document)) {
     if (feature.suppressed) continue;
     if (feature.kind === "sketch") {
       sketches.set(feature.id, feature);

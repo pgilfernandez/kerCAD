@@ -1,5 +1,9 @@
 export type FeatureKind = "sketch" | "extrude" | "hole" | "fillet";
 
+export type ParametricDependencyReference =
+  | { type: "feature"; id: string }
+  | { type: "object"; id: string };
+
 export type BaseFeature = {
   id: string;
   name: string;
@@ -7,6 +11,8 @@ export type BaseFeature = {
   suppressed: boolean;
   /** Object/body that owns this operation in the model tree. */
   objectId?: string;
+  /** Explicit inputs outside the object's ordinary sequential history. */
+  dependencies?: ParametricDependencyReference[];
 };
 
 export type RectangleProfile = {
