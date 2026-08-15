@@ -24,7 +24,7 @@ import {
   ToolbarVectorExportIcon,
 } from "@/components/icons";
 import { cloneDocument, createFilletFeature, createStarterDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
-import { buildParametricModel, exportParametricStep } from "@/lib/parametricKernel";
+import { buildParametricModel, buildParametricOperationContext, exportParametricStep } from "@/lib/parametricKernel";
 import {
   addPrimitiveToSelection,
   applyOperationWorldPosition,
@@ -70,6 +70,7 @@ export function SketchForgeParametricEditor() {
   const document = history.entries[history.index];
   const [modelSelection, setModelSelection] = useState<ModelTreeSelection[]>(initialDocument.objects[0] ? [{ id: initialDocument.objects[0].id, kind: "object" }] : []);
   const [build, setBuild] = useState<BuildResult>({ mesh: null, objectMeshes: [], operationContext: null, completedFeatureIds: [], warning: null });
+  const [operationContext, setOperationContext] = useState<BuildResult["operationContext"]>(null);
   const [kernelBusy, setKernelBusy] = useState(true);
   const [shapesOpen, setShapesOpen] = useState(false);
   const [modelSidebarMode, setModelSidebarMode] = useState<ModelSidebarMode | "hidden">("normal");
@@ -86,6 +87,7 @@ export function SketchForgeParametricEditor() {
   const [hydrated, setHydrated] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
   const buildCounter = useRef(0);
+  const contextBuildCounter = useRef(0);
   const selectedCommonOperationId = useMemo(() => {
     if (modelSelection.length !== 1 || modelSelection[0]?.kind !== "feature") return null;
     const feature = document.features.find((candidate) => candidate.id === modelSelection[0]?.id);
@@ -116,9 +118,8 @@ export function SketchForgeParametricEditor() {
   useEffect(() => {
     const counter = ++buildCounter.current;
     setKernelBusy(true);
-    setBuild((current) => current.operationContext ? { ...current, operationContext: null } : current);
     const timeout = window.setTimeout(() => {
-      buildParametricModel(document, selectedCommonOperationId).then((result) => {
+      buildParametricModel(document).then((result) => {
         if (counter !== buildCounter.current) return;
         setBuild(result);
         setKernelBusy(false);
@@ -128,6 +129,20 @@ export function SketchForgeParametricEditor() {
         setKernelBusy(false);
       });
     }, 140);
+    return () => window.clearTimeout(timeout);
+  }, [document]);
+
+  useEffect(() => {
+    const counter = ++contextBuildCounter.current;
+    setOperationContext(null);
+    if (!selectedCommonOperationId) return;
+    const timeout = window.setTimeout(() => {
+      buildParametricOperationContext(document, selectedCommonOperationId).then((result) => {
+        if (counter === contextBuildCounter.current) setOperationContext(result);
+      }).catch(() => {
+        if (counter === contextBuildCounter.current) setOperationContext(null);
+      });
+    }, 80);
     return () => window.clearTimeout(timeout);
   }, [document, selectedCommonOperationId]);
 
@@ -381,7 +396,7 @@ export function SketchForgeParametricEditor() {
         <ParametricViewport
           mesh={build.mesh}
           objectMeshes={build.objectMeshes}
-          operationContext={build.operationContext}
+          operationContext={operationContext}
           color={document.color}
           workplane={document.workplane}
           view={view}

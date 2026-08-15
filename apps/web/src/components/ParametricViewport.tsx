@@ -61,6 +61,7 @@ export function ParametricViewport({ mesh, objectMeshes = [], operationContext =
   const modelRef = useRef<THREE.Group | null>(null);
   const workplaneRef = useRef<THREE.Group | null>(null);
   const selectionRootRef = useRef<THREE.Group | null>(null);
+  const operationContextRef = useRef<THREE.Mesh | null>(null);
   const selectionHitboxRef = useRef<THREE.Mesh | null>(null);
   const rotationHitboxRef = useRef<THREE.Mesh | null>(null);
   const resizeHitboxesRef = useRef<THREE.Mesh[]>([]);
@@ -496,7 +497,8 @@ export function ParametricViewport({ mesh, objectMeshes = [], operationContext =
     const controls = controlsRef.current;
     if (!group || !camera || !controls) return;
     const selectionRoot = selectionRootRef.current;
-    group.children.filter((child) => child !== selectionRoot).forEach((child) => {
+    const operationContextBody = operationContextRef.current;
+    group.children.filter((child) => child !== selectionRoot && child !== operationContextBody).forEach((child) => {
       child.traverse((descendant) => {
         if (descendant instanceof THREE.Mesh || descendant instanceof THREE.LineSegments) {
           descendant.geometry.dispose();
@@ -538,23 +540,6 @@ export function ParametricViewport({ mesh, objectMeshes = [], operationContext =
       group.add(edges);
     }
 
-    if (operationContext) {
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute("position", new THREE.BufferAttribute(operationContext.mesh.positions, 3));
-      geometry.setAttribute("normal", new THREE.BufferAttribute(operationContext.mesh.normals, 3));
-      geometry.setIndex(new THREE.BufferAttribute(operationContext.mesh.indices, 1));
-      const contextBody = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
-        color: operationContext.color,
-        transparent: true,
-        opacity: 0.4,
-        depthTest: false,
-        depthWrite: false,
-        roughness: 0.7,
-      }));
-      contextBody.renderOrder = 16;
-      group.add(contextBody);
-    }
-
     if (!hasFittedRef.current) {
       const box = new THREE.Box3().setFromObject(group);
       const center = box.getCenter(new THREE.Vector3());
@@ -570,7 +555,40 @@ export function ParametricViewport({ mesh, objectMeshes = [], operationContext =
       hasFittedRef.current = true;
     }
     invalidateRef.current();
-  }, [mesh, objectMeshes, operationContext, color, projection]);
+  }, [mesh, objectMeshes, color, projection]);
+
+  useEffect(() => {
+    const group = modelRef.current;
+    if (!group) return;
+    const previous = operationContextRef.current;
+    if (previous) {
+      previous.geometry.dispose();
+      if (Array.isArray(previous.material)) previous.material.forEach((material) => material.dispose());
+      else previous.material.dispose();
+      group.remove(previous);
+    }
+    operationContextRef.current = null;
+    if (!operationContext) {
+      invalidateRef.current();
+      return;
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(operationContext.mesh.positions, 3));
+    geometry.setAttribute("normal", new THREE.BufferAttribute(operationContext.mesh.normals, 3));
+    geometry.setIndex(new THREE.BufferAttribute(operationContext.mesh.indices, 1));
+    const contextBody = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
+      color: operationContext.color,
+      transparent: true,
+      opacity: 0.4,
+      depthTest: false,
+      depthWrite: false,
+      roughness: 0.7,
+    }));
+    contextBody.renderOrder = 16;
+    group.add(contextBody);
+    operationContextRef.current = contextBody;
+    invalidateRef.current();
+  }, [operationContext, projection]);
 
   useEffect(() => {
     const model = modelRef.current;

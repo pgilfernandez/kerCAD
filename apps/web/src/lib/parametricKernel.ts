@@ -66,7 +66,7 @@ function objectRenderMeshes(brep: Brep, solids: Map<string, AnySolid>, objects: 
   }));
 }
 
-export async function buildParametricModel(document: ParametricDocument, contextFeatureId: string | null = null): Promise<BuildResult> {
+async function buildParametricModelInternal(document: ParametricDocument, contextFeatureId: string | null, stopAtContext: boolean): Promise<BuildResult> {
   const brep = await loadBrepWithOcct();
   const sketches = new Map<string, SketchFeature>();
   const objects = new Map(document.objects.map((object) => [object.id, object]));
@@ -98,6 +98,9 @@ export async function buildParametricModel(document: ParametricDocument, context
             color: objects.get(objectId)?.color ?? "#d41721",
             mesh: meshShape(brep, current),
           };
+        }
+        if (feature.id === contextFeatureId && stopAtContext) {
+          return { mesh: null, objectMeshes: [], operationContext, completedFeatureIds, warning: null };
         }
         const tool = solidFromSketch(brep, sketch, feature, feature.objectId ? objects.get(feature.objectId) : undefined);
         if (!current) {
@@ -141,6 +144,14 @@ export async function buildParametricModel(document: ParametricDocument, context
 
   const result = combinedObjectShape(brep, solids);
   return { mesh: result ? meshShape(brep, result) : null, objectMeshes: objectRenderMeshes(brep, solids, objects), operationContext, completedFeatureIds, warning: null };
+}
+
+export function buildParametricModel(document: ParametricDocument): Promise<BuildResult> {
+  return buildParametricModelInternal(document, null, false);
+}
+
+export async function buildParametricOperationContext(document: ParametricDocument, featureId: string): Promise<BuildResult["operationContext"]> {
+  return (await buildParametricModelInternal(document, featureId, true)).operationContext;
 }
 
 function meshShape(brep: Brep, shape: RenderableShape): RenderMesh {
