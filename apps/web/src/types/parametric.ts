@@ -78,7 +78,7 @@ export type ParametricObject = {
 };
 
 export type ParametricDocument = {
-  schema: "educad-parametric/v1";
+  schema: "educad-parametric/v1" | "educad-parametric/v2";
   id: string;
   name: string;
   units: "mm";

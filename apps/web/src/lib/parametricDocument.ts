@@ -11,6 +11,12 @@ import type {
 } from "@/types/parametric";
 
 let localCounter = 0;
+export const CURRENT_PARAMETRIC_SCHEMA = "educad-parametric/v2" as const;
+type ParametricSchema = ParametricDocument["schema"];
+
+const documentMigrations: Partial<Record<ParametricSchema, (document: ParametricDocument) => ParametricDocument>> = {
+  "educad-parametric/v1": (document) => ({ ...document, schema: "educad-parametric/v2" }),
+};
 
 export function createFeatureId(prefix: string) {
   localCounter += 1;
@@ -21,7 +27,7 @@ export function createStarterDocument(now = Date.now()): ParametricDocument {
   const sketchId = createFeatureId("sketch");
   const object = createParametricObject(1);
   return {
-    schema: "educad-parametric/v1",
+    schema: CURRENT_PARAMETRIC_SCHEMA,
     id: createFeatureId("project"),
     name: "Nuevo diseño",
     units: "mm",
@@ -139,7 +145,7 @@ export function createFilletFeature(index: number): FilletFeature {
 export function validateDocument(value: unknown): value is ParametricDocument {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<ParametricDocument>;
-  return candidate.schema === "educad-parametric/v1"
+  return (candidate.schema === "educad-parametric/v1" || candidate.schema === CURRENT_PARAMETRIC_SCHEMA)
     && typeof candidate.name === "string"
     && candidate.units === "mm"
     && (candidate.objects === undefined || Array.isArray(candidate.objects))
@@ -147,8 +153,21 @@ export function validateDocument(value: unknown): value is ParametricDocument {
     && candidate.features.every((feature) => feature && typeof feature.id === "string" && typeof feature.kind === "string");
 }
 
+export function migrateParametricDocument(document: ParametricDocument): ParametricDocument {
+  let next = structuredClone(document);
+  const visited = new Set<ParametricSchema>();
+  while (next.schema !== CURRENT_PARAMETRIC_SCHEMA) {
+    if (visited.has(next.schema)) throw new Error(`Se ha detectado un ciclo de migración para ${next.schema}.`);
+    visited.add(next.schema);
+    const migration = documentMigrations[next.schema];
+    if (!migration) throw new Error(`La versión ${next.schema} no es compatible con esta versión de eduCAD.`);
+    next = migration(next);
+  }
+  return next;
+}
+
 export function normalizeParametricDocument(document: ParametricDocument): ParametricDocument {
-  const next = structuredClone(document) as ParametricDocument;
+  const next = migrateParametricDocument(document);
   next.workplane ??= { width: 200, depth: 200, gridStep: 5, snapToGrid: true };
   next.workplane.width = Math.min(2000, Math.max(60, Number.isFinite(next.workplane.width) ? next.workplane.width : 200));
   next.workplane.depth = Math.min(2000, Math.max(60, Number.isFinite(next.workplane.depth) ? next.workplane.depth : 200));
