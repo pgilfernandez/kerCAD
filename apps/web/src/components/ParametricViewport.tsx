@@ -60,6 +60,12 @@ type CachedObjectRender = {
   edges: THREE.LineSegments;
 };
 
+const VIEWPORT_SHADOW_MAP_SIZE = 512;
+
+function setMaterialColor(material: THREE.Material, color: THREE.ColorRepresentation) {
+  if (material instanceof THREE.MeshLambertMaterial) material.color.set(color);
+}
+
 function disposeCachedObjectRender(group: THREE.Group | null, cached: CachedObjectRender) {
   group?.remove(cached.body, cached.edges);
   cached.body.geometry.dispose();
@@ -123,10 +129,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
       : new THREE.PerspectiveCamera(38, 1, 0.1, 1000);
     camera.position.set(95, 78, 110);
     const resolution = new AdaptiveViewportResolution(window.devicePixelRatio);
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+    // The viewport already draws explicit silhouette/feature edges, so full-scene
+    // multisampling adds considerable fill cost without carrying the visual load.
+    const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false, powerPreference: "high-performance" });
     renderer.setPixelRatio(resolution.pixelRatio);
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFShadowMap;
+    renderer.shadowMap.type = THREE.BasicShadowMap;
     renderer.shadowMap.autoUpdate = false;
     renderer.shadowMap.needsUpdate = true;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -166,7 +174,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
     const key = new THREE.DirectionalLight("#ffffff", 3.2);
     key.position.set(80, 130, 70);
     key.castShadow = true;
-    key.shadow.mapSize.set(1024, 1024);
+    key.shadow.mapSize.set(VIEWPORT_SHADOW_MAP_SIZE, VIEWPORT_SHADOW_MAP_SIZE);
     key.shadow.camera.left = -120;
     key.shadow.camera.right = 120;
     key.shadow.camera.top = 120;
@@ -484,7 +492,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
     const step = Math.max(requestedStep, Math.max(width, depth) / 1000);
     const surface = new THREE.Mesh(
       new THREE.PlaneGeometry(width, depth),
-      new THREE.MeshStandardMaterial({ color: "#ddf8ff", transparent: true, opacity: 0.68, roughness: 1, metalness: 0 }),
+      new THREE.MeshLambertMaterial({ color: "#ddf8ff", transparent: true, opacity: 0.68 }),
     );
     surface.rotation.x = -Math.PI / 2;
     surface.position.y = -0.08;
@@ -556,7 +564,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
       if (cached && item.geometryFingerprint !== null && cached.geometryFingerprint === item.geometryFingerprint) {
         cached.body.visible = item.objectId !== isolatedHistoryObjectIdRef.current;
         const materials = Array.isArray(cached.body.material) ? cached.body.material : [cached.body.material];
-        for (const material of materials) if (material instanceof THREE.MeshStandardMaterial) material.color.set(item.color);
+        for (const material of materials) setMaterialColor(material, item.color);
         continue;
       }
       if (cached) disposeCachedObjectRender(group, cached);
@@ -568,7 +576,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
       geometry.boundsTree = new MeshBVH(geometry);
       const body = new THREE.Mesh(
         geometry,
-        new THREE.MeshStandardMaterial({ color: item.color, roughness: 0.68, metalness: 0.03, polygonOffset: true, polygonOffsetFactor: 1 }),
+        new THREE.MeshLambertMaterial({ color: item.color, polygonOffset: true, polygonOffsetFactor: 1 }),
       );
       body.raycast = acceleratedRaycast;
       body.castShadow = true;
@@ -648,7 +656,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
       if (!nextColor) continue;
       const materials = Array.isArray(child.material) ? child.material : [child.material];
       for (const material of materials) {
-        if (material instanceof THREE.MeshStandardMaterial) material.color.set(nextColor);
+        setMaterialColor(material, nextColor);
       }
     }
     invalidateRef.current();
@@ -673,13 +681,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
     geometry.setAttribute("position", new THREE.BufferAttribute(operationContext.mesh.positions, 3));
     geometry.setAttribute("normal", new THREE.BufferAttribute(operationContext.mesh.normals, 3));
     geometry.setIndex(new THREE.BufferAttribute(operationContext.mesh.indices, 1));
-    const contextBody = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
+    const contextBody = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({
       color: operationContext.color,
       transparent: operationContext.opacity < 1,
       opacity: operationContext.opacity,
       depthTest: false,
       depthWrite: false,
-      roughness: 0.7,
     }));
     contextBody.renderOrder = 16;
     group.add(contextBody);
@@ -723,13 +730,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
           previewGeometry.rotateX(Math.PI / 2);
           previewGeometry.scale(selection.width, selection.depth, 1);
         }
-        const preview = new THREE.Mesh(previewGeometry, new THREE.MeshStandardMaterial({
+        const preview = new THREE.Mesh(previewGeometry, new THREE.MeshLambertMaterial({
           color: operationPreview.color,
           transparent: previewStyle.fillOpacity < 1,
           opacity: previewStyle.fillOpacity,
           depthTest: false,
           depthWrite: false,
-          roughness: 0.7,
         }));
         preview.renderOrder = 17;
         root.add(preview);
