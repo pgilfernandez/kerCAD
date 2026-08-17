@@ -7,7 +7,7 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import { acceleratedRaycast, MeshBVH } from "three-mesh-bvh";
-import { formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, viewportDimensionsForHandle, type ViewportDimensionAxis } from "@/lib/viewportGeometry";
+import { constrainViewportResizeDimensions, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, viewportDimensionsForHandle, type ViewportDimensionAxis } from "@/lib/viewportGeometry";
 import { AdaptiveViewportResolution, viewportPerformanceOptions, viewportRenderProfile, type ViewportRenderQuality } from "@/lib/viewportPerformance";
 import { orthographicTouchTargetWorldSize, perspectiveTouchTargetWorldSize, viewportPointerDragIntent, type ViewportPointerDragIntent } from "@/lib/viewportPointer";
 import type { ParametricObjectRenderRecord, RenderMesh } from "@/types/parametric";
@@ -25,6 +25,7 @@ export type ViewportSelection = {
   depth: number;
   height: number;
   rotation: number;
+  resizeAspectRatio?: number;
   operationPreview?: {
     shape: "box" | "cylinder";
     mode: "add" | "hole" | "common";
@@ -523,8 +524,17 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
         const dy = -dragPoint.z - resizeStart.y;
         const localX = dx * Math.cos(angle) + dy * Math.sin(angle);
         const localY = -dx * Math.sin(angle) + dy * Math.cos(angle);
-        const width = resizeAxes.x === 0 ? resizeStart.width : Math.max(grid, Math.round((resizeAxes.x * localX + resizeStart.width / 2) / grid) * grid);
-        const depth = resizeAxes.y === 0 ? resizeStart.depth : Math.max(grid, Math.round((resizeAxes.y * localY + resizeStart.depth / 2) / grid) * grid);
+        const requestedWidth = resizeAxes.x === 0 ? resizeStart.width : Math.max(grid, Math.round((resizeAxes.x * localX + resizeStart.width / 2) / grid) * grid);
+        const requestedDepth = resizeAxes.y === 0 ? resizeStart.depth : Math.max(grid, Math.round((resizeAxes.y * localY + resizeStart.depth / 2) / grid) * grid);
+        const { width, depth } = constrainViewportResizeDimensions(
+          resizeStart.width,
+          resizeStart.depth,
+          resizeAxes.x,
+          resizeAxes.y,
+          requestedWidth,
+          requestedDepth,
+          resizeStart.resizeAspectRatio,
+        );
         const shiftX = resizeAxes.x * (width - resizeStart.width) / 2;
         const shiftY = resizeAxes.y * (depth - resizeStart.depth) / 2;
         const x = resizeStart.x + shiftX * Math.cos(angle) - shiftY * Math.sin(angle);

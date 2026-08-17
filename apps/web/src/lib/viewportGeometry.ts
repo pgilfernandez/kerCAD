@@ -55,3 +55,21 @@ export function viewportDimensionsForHandle(resizeX: number, resizeY: number, re
   if (resizeZ) return ["z"];
   return [resizeX !== 0 ? "x" as const : null, resizeY !== 0 ? "y" as const : null].filter((axis): axis is "x" | "y" => axis !== null);
 }
+
+export function constrainViewportResizeDimensions(
+  startWidth: number,
+  startDepth: number,
+  resizeX: number,
+  resizeY: number,
+  requestedWidth: number,
+  requestedDepth: number,
+  aspectRatio?: number,
+) {
+  if (!aspectRatio || !Number.isFinite(aspectRatio) || aspectRatio <= 0) return { width: requestedWidth, depth: requestedDepth };
+  const widthChange = Math.abs(requestedWidth / Math.max(0.01, startWidth) - 1);
+  const depthChange = Math.abs(requestedDepth / Math.max(0.01, startDepth) - 1);
+  const widthDrivesResize = resizeY === 0 || (resizeX !== 0 && widthChange >= depthChange);
+  return widthDrivesResize
+    ? { width: requestedWidth, depth: requestedWidth / aspectRatio }
+    : { width: requestedDepth * aspectRatio, depth: requestedDepth };
+}

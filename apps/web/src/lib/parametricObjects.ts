@@ -297,6 +297,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
     depth,
     height: feature.distance * object.transform.scale.z,
     rotation: world.rotation,
+    ...(sketch.profile.shape === "circle" ? { resizeAspectRatio: 1 } : {}),
     operationPreview: {
       shape: sketch.profile.shape === "rectangle" ? "box" : "cylinder",
       mode: previewMode,
@@ -332,6 +333,7 @@ export function resizeParametricSelection(
   width: number,
   depth: number,
 ) {
+  if (![x, y, width, depth].every(Number.isFinite) || width <= 0 || depth <= 0) return;
   if (selectionKind === "object") {
     const object = document.objects.find((candidate) => candidate.id === id);
     const current = viewportSelectionForObject(document, id);
@@ -360,6 +362,7 @@ export function resizeParametricSelection(
 }
 
 export function resizeParametricHeight(document: ParametricDocument, id: string, selectionKind: "object" | "feature", height: number) {
+  if (!Number.isFinite(height) || height <= 0) return;
   if (selectionKind === "object") {
     const object = document.objects.find((candidate) => candidate.id === id);
     const current = viewportSelectionForObject(document, id);

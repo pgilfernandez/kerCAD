@@ -120,6 +120,31 @@ describe("parametric object workflow", () => {
     expect(sketchForExtrude(document, feature)?.profile).toEqual({ shape: "rectangle", width: 30, depth: 12 });
   });
 
+  it("keeps cylinder resizing circular and edits its diameter parameter", () => {
+    const document = createStarterDocument(123);
+    const cylinderId = addPrimitive(document, document.objects[0].id, "cylinder");
+    if (!cylinderId) throw new Error("expected cylinder");
+
+    expect(viewportSelectionForFeature(document, cylinderId)).toMatchObject({ resizeAspectRatio: 1 });
+    resizeParametricSelection(document, cylinderId, "feature", 3, 4, 36, 20);
+
+    expect(viewportSelectionForFeature(document, cylinderId)).toMatchObject({ x: 3, y: 4, width: 36, depth: 36 });
+    expect(sketchForExtrude(document, document.features.find((feature) => feature.id === cylinderId) ?? null)?.profile).toEqual({ shape: "circle", diameter: 36 });
+  });
+
+  it("ignores invalid resize values instead of corrupting exact parameters", () => {
+    const document = createStarterDocument(123);
+    const feature = document.features.find((candidate) => candidate.kind === "extrude");
+    if (!feature || feature.kind !== "extrude") throw new Error("expected extrusion");
+    const before = structuredClone(sketchForExtrude(document, feature)?.profile);
+
+    resizeParametricSelection(document, feature.id, "feature", 0, 0, Number.NaN, 12);
+    resizeParametricHeight(document, feature.id, "feature", Number.POSITIVE_INFINITY);
+
+    expect(sketchForExtrude(document, feature)?.profile).toEqual(before);
+    expect(feature.distance).toBe(20);
+  });
+
   it("describes the selected Boolean operation preview", () => {
     const document = createStarterDocument(123);
     const object = document.objects[0];

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, viewportDimensionsForHandle } from "@/lib/viewportGeometry";
+import { constrainViewportResizeDimensions, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, viewportDimensionsForHandle } from "@/lib/viewportGeometry";
 
 describe("operation preview wireframes", () => {
   it("draws only the twelve structural edges of a box", () => {
@@ -47,5 +47,15 @@ describe("viewport dimensions", () => {
     expect(viewportDimensionsForHandle(1, 0)).toEqual(["x"]);
     expect(viewportDimensionsForHandle(-1, 1)).toEqual(["x", "y"]);
     expect(viewportDimensionsForHandle(0, 0, true)).toEqual(["z"]);
+  });
+
+  it("preserves a parametric circle while dragging edge and corner handles", () => {
+    expect(constrainViewportResizeDimensions(20, 20, 1, 0, 30, 20, 1)).toEqual({ width: 30, depth: 30 });
+    expect(constrainViewportResizeDimensions(20, 20, 0, -1, 20, 12, 1)).toEqual({ width: 12, depth: 12 });
+    expect(constrainViewportResizeDimensions(20, 20, 1, 1, 28, 25, 1)).toEqual({ width: 28, depth: 28 });
+  });
+
+  it("leaves independently parametric rectangle dimensions unconstrained", () => {
+    expect(constrainViewportResizeDimensions(20, 20, 1, 1, 30, 12)).toEqual({ width: 30, depth: 12 });
   });
 });
