@@ -8,6 +8,7 @@ import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import { acceleratedRaycast, MeshBVH } from "three-mesh-bvh";
 import { operationPreviewStyle, operationPreviewWireframePositions } from "@/lib/viewportGeometry";
+import { AdaptiveViewportResolution } from "@/lib/viewportPerformance";
 import type { ParametricObjectRenderRecord, RenderMesh } from "@/types/parametric";
 
 export type CameraView = { name: "iso" | "top" | "front" | "right" | "zoom-in" | "zoom-out" | "home" | "fit" | "selection" | "custom"; token: number; direction?: [number, number, number] };
@@ -104,8 +105,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
       ? new THREE.OrthographicCamera(-90, 90, 90, -90, 0.1, 2000)
       : new THREE.PerspectiveCamera(38, 1, 0.1, 1000);
     camera.position.set(95, 78, 110);
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const resolution = new AdaptiveViewportResolution(window.devicePixelRatio);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+    renderer.setPixelRatio(resolution.pixelRatio);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.shadowMap.autoUpdate = false;
@@ -128,9 +130,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
     const requestRender = () => {
       if (!disposed && frame === 0) frame = requestAnimationFrame(render);
     };
-    const render = () => {
+    const render = (now: number) => {
       frame = 0;
       const controlsChanged = controls.update();
+      const nextPixelRatio = resolution.recordFrame(now);
+      if (nextPixelRatio !== null) renderer.setPixelRatio(nextPixelRatio);
       renderer.render(scene, camera);
       if (controlsChanged) requestRender();
     };
