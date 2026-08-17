@@ -16,7 +16,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
@@ -27,3 +27,6 @@ jobs:
 
       - name: Unit tests
         run: npm test
+
+      - name: Parametric interaction performance budgets
+        run: npm run perf:parametric
