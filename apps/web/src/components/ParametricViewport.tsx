@@ -7,7 +7,7 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import { acceleratedRaycast, MeshBVH } from "three-mesh-bvh";
-import { constrainViewportResizeDimensions, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, viewportDimensionsForHandle, type ViewportDimensionAxis } from "@/lib/viewportGeometry";
+import { constrainViewportAxisDrag, constrainViewportResizeDimensions, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, viewportDimensionsForHandle, type ViewportDimensionAxis } from "@/lib/viewportGeometry";
 import { AdaptiveViewportResolution, viewportPerformanceOptions, viewportRenderProfile, type ViewportRenderQuality } from "@/lib/viewportPerformance";
 import { orthographicTouchTargetWorldSize, perspectiveTouchTargetWorldSize, viewportPointerDragIntent, type ViewportPointerDragIntent } from "@/lib/viewportPointer";
 import type { ParametricObjectRenderRecord, RenderMesh } from "@/types/parametric";
@@ -45,6 +45,7 @@ type Props = {
     rotation: { x: number; y: number; z: number };
   }>;
   editableOriginId?: string | null;
+  selectedObjectOriginId?: string | null;
   operationContext?: { color: string; mesh: RenderMesh; opacity: number } | null;
   isolatedHistoryObjectId?: string | null;
   color: string;
@@ -59,6 +60,7 @@ type Props = {
   onSelectionResize?: (x: number, y: number, width: number, depth: number) => void;
   onSelectionHeight?: (height: number) => void;
   onObjectOriginMove?: (objectId: string, position: { x: number; y: number; z: number }) => void;
+  onObjectAxisMove?: (objectId: string, position: { x: number; y: number; z: number }) => void;
   onCameraOrientation?: (orientation: CameraOrientation) => void;
   onObjectSelect?: (objectId: string) => void;
   onObjectsSelect?: (objectIds: string[]) => void;
@@ -129,7 +131,9 @@ function objectOriginMarker(objectId: string, editable: boolean) {
   ];
   for (const [axis, direction, color] of axes) {
     const arrow = new THREE.ArrowHelper(direction, undefined, 1, color, 0.28, 0.16);
-    arrow.traverse((child) => { child.userData.originAxis = axis; });
+    arrow.line.userData.originAxis = axis;
+    arrow.cone.userData.originAxis = axis;
+    arrow.cone.userData.originTip = true;
     marker.add(arrow);
   }
   const center = new THREE.Mesh(
@@ -150,7 +154,7 @@ function objectOriginMarker(objectId: string, editable: boolean) {
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], editableOriginId = null, operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionResize, onSelectionHeight, onObjectOriginMove, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], editableOriginId = null, selectedObjectOriginId = null, operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionResize, onSelectionHeight, onObjectOriginMove, onObjectAxisMove, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
@@ -179,7 +183,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const resizeRef = useRef(onSelectionResize);
   const heightRef = useRef(onSelectionHeight);
   const originMoveRef = useRef(onObjectOriginMove);
+  const objectAxisMoveRef = useRef(onObjectAxisMove);
   const editableOriginIdRef = useRef(editableOriginId);
+  const selectedObjectOriginIdRef = useRef(selectedObjectOriginId);
   const orientationRef = useRef(onCameraOrientation);
   const objectSelectRef = useRef(onObjectSelect);
   const objectsSelectRef = useRef(onObjectsSelect);
@@ -203,7 +209,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   useEffect(() => { resizeRef.current = onSelectionResize; }, [onSelectionResize]);
   useEffect(() => { heightRef.current = onSelectionHeight; }, [onSelectionHeight]);
   useEffect(() => { originMoveRef.current = onObjectOriginMove; }, [onObjectOriginMove]);
+  useEffect(() => { objectAxisMoveRef.current = onObjectAxisMove; }, [onObjectAxisMove]);
   useEffect(() => { editableOriginIdRef.current = editableOriginId; }, [editableOriginId]);
+  useEffect(() => { selectedObjectOriginIdRef.current = selectedObjectOriginId; }, [selectedObjectOriginId]);
   useEffect(() => { orientationRef.current = onCameraOrientation; }, [onCameraOrientation]);
   useEffect(() => { objectSelectRef.current = onObjectSelect; }, [onObjectSelect]);
   useEffect(() => { objectsSelectRef.current = onObjectsSelect; }, [onObjectsSelect]);
@@ -387,7 +395,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     const dragPoint = new THREE.Vector3();
     const dragOffset = new THREE.Vector3();
-    let interaction: "move" | "rotate" | "resize" | "height" | "origin" | null = null;
+    let interaction: "move" | "rotate" | "resize" | "height" | "origin" | "axisMove" | null = null;
     let pendingPosition: { x: number; y: number } | null = null;
     let pendingRotation: number | null = null;
     let pendingResize: { x: number; y: number; width: number; depth: number } | null = null;
@@ -401,6 +409,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     let originPointerStart: THREE.Vector3 | null = null;
     let originDragMarker: THREE.Object3D | null = null;
     let pendingOrigin: { objectId: string; position: { x: number; y: number; z: number } } | null = null;
+    let pendingObjectAxisMove: { objectId: string; position: { x: number; y: number; z: number } } | null = null;
+    let axisMoveRootStart: THREE.Vector3 | null = null;
     let pickCandidate: { pointerId: number; pointerType: string; x: number; y: number; dragIntent: ViewportPointerDragIntent } | null = null;
     const updateSelectionBox = (candidate: NonNullable<typeof pickCandidate>, clientX: number, clientY: number) => {
       const box = selectionBoxRef.current;
@@ -485,13 +495,19 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       dimensionHoverRef.current = new Set(axes);
       requestRender();
     };
+    const originHandleAtPointer = () => {
+      const editableId = editableOriginIdRef.current;
+      const objectId = editableId ?? selectedObjectOriginIdRef.current;
+      const marker = objectId ? originLayer.children.find((child) => child.userData.objectOriginId === objectId) ?? null : null;
+      if (!marker) return null;
+      const hits = raycaster.intersectObject(marker, true);
+      const hit = editableId ? hits[0] : hits.find((candidate) => candidate.object.userData.originTip);
+      return hit ? { editable: Boolean(editableId), hit, marker, objectId: objectId! } : null;
+    };
     const hoveredManipulatorDimensions = (event: PointerEvent): ViewportDimensionAxis[] => {
       if (event.pointerType === "touch") return [];
       setPointer(event);
-      const editableOrigin = editableOriginIdRef.current
-        ? originLayer.children.find((child) => child.userData.objectOriginId === editableOriginIdRef.current) ?? null
-        : null;
-      if (editableOrigin && raycaster.intersectObject(editableOrigin, true).length > 0) {
+      if (originHandleAtPointer()) {
         renderer.domElement.style.cursor = "crosshair";
         return [];
       }
@@ -517,21 +533,22 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       const resizeHitboxes = resizeHitboxesRef.current;
       const selected = selectionRef.current;
       setPointer(event);
-      const editableOrigin = editableOriginIdRef.current
-        ? originLayer.children.find((child) => child.userData.objectOriginId === editableOriginIdRef.current) ?? null
-        : null;
-      const originHit = editableOrigin ? raycaster.intersectObject(editableOrigin, true)[0] : null;
-      if (editableOrigin && originHit) {
-        const worldOrigin = editableOrigin.getWorldPosition(new THREE.Vector3());
+      const originHandle = originHandleAtPointer();
+      if (originHandle) {
+        const worldOrigin = originHandle.marker.getWorldPosition(new THREE.Vector3());
         dragPlane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()).normalize(), worldOrigin);
         if (raycaster.ray.intersectPlane(dragPlane, dragPoint)) {
-          interaction = "origin";
-          const hitAxis = originHit.object.userData.originAxis;
+          interaction = originHandle.editable ? "origin" : "axisMove";
+          const hitAxis = originHandle.hit.object.userData.originAxis;
           originDragAxis = hitAxis === "x" || hitAxis === "y" || hitAxis === "z" ? hitAxis : "xy";
-          originDragStart = editableOrigin.position.clone();
+          originDragStart = originHandle.marker.position.clone();
           originPointerStart = originLayer.worldToLocal(dragPoint.clone());
-          originDragMarker = editableOrigin;
-          pendingOrigin = { objectId: editableOriginIdRef.current!, position: { x: originDragStart.x, y: originDragStart.y, z: originDragStart.z } };
+          originDragMarker = originHandle.marker;
+          if (originHandle.editable) pendingOrigin = { objectId: originHandle.objectId, position: { x: originDragStart.x, y: originDragStart.y, z: originDragStart.z } };
+          else {
+            pendingObjectAxisMove = { objectId: originHandle.objectId, position: { x: originDragStart.x, y: originDragStart.y, z: originDragStart.z } };
+            axisMoveRootStart = selectionRootRef.current?.position.clone() ?? null;
+          }
         }
       }
       if (!interaction && hitbox && selected) {
@@ -602,16 +619,30 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       }
       setPointer(event);
       if (!raycaster.ray.intersectPlane(dragPlane, dragPoint)) return;
-      if (interaction === "origin" && originDragStart && originPointerStart && originDragMarker && pendingOrigin) {
+      if ((interaction === "origin" || interaction === "axisMove") && originDragStart && originPointerStart && originDragMarker) {
         const currentPointer = originLayer.worldToLocal(dragPoint.clone());
         const delta = currentPointer.sub(originPointerStart);
         const grid = Math.max(0.01, snapRef.current);
         const next = originDragStart.clone();
-        if (originDragAxis === "x" || originDragAxis === "xy") next.x = Math.round((originDragStart.x + delta.x) / grid) * grid;
-        if (originDragAxis === "y" || originDragAxis === "xy") next.y = Math.round((originDragStart.y + delta.y) / grid) * grid;
-        if (originDragAxis === "z") next.z = Math.round((originDragStart.z + delta.z) / grid) * grid;
+        if (originDragAxis === "xy") {
+          next.x = Math.round((originDragStart.x + delta.x) / grid) * grid;
+          next.y = Math.round((originDragStart.y + delta.y) / grid) * grid;
+        } else if (originDragAxis) {
+          const direction = new THREE.Vector3(
+            originDragAxis === "x" ? 1 : 0,
+            originDragAxis === "y" ? 1 : 0,
+            originDragAxis === "z" ? 1 : 0,
+          ).applyEuler(originDragMarker.rotation).normalize();
+          const constrained = constrainViewportAxisDrag(originDragStart, delta, direction, grid);
+          next.set(constrained.x, constrained.y, constrained.z);
+        }
         originDragMarker.position.copy(next);
-        pendingOrigin.position = { x: next.x, y: next.y, z: next.z };
+        if (interaction === "origin" && pendingOrigin) pendingOrigin.position = { x: next.x, y: next.y, z: next.z };
+        if (interaction === "axisMove" && pendingObjectAxisMove) {
+          pendingObjectAxisMove.position = { x: next.x, y: next.y, z: next.z };
+          const root = selectionRootRef.current;
+          if (root && axisMoveRootStart) root.position.copy(axisMoveRootStart).add(next.clone().sub(originDragStart));
+        }
         requestRender();
         return;
       }
@@ -697,7 +728,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       renderer.domElement.style.cursor = "default";
       if (renderer.domElement.hasPointerCapture(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
       if (cancelled) {
-        if (completedInteraction === "origin" && originDragMarker && originDragStart) originDragMarker.position.copy(originDragStart);
+        if ((completedInteraction === "origin" || completedInteraction === "axisMove") && originDragMarker && originDragStart) originDragMarker.position.copy(originDragStart);
         const selected = selectionRef.current;
         const root = selectionRootRef.current;
         if (selected && root) {
@@ -709,6 +740,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       } else {
         completedDimensions.forEach((axis) => dimensionPinnedRef.current.add(axis));
         if (completedInteraction === "origin" && pendingOrigin) originMoveRef.current?.(pendingOrigin.objectId, pendingOrigin.position);
+        if (completedInteraction === "axisMove" && pendingObjectAxisMove) objectAxisMoveRef.current?.(pendingObjectAxisMove.objectId, pendingObjectAxisMove.position);
         if (pendingPosition) moveRef.current?.(pendingPosition.x, pendingPosition.y);
         if (pendingRotation !== null) rotateRef.current?.(pendingRotation);
         if (pendingResize) resizeRef.current?.(pendingResize.x, pendingResize.y, pendingResize.width, pendingResize.depth);
@@ -719,10 +751,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       pendingResize = null;
       pendingHeight = null;
       pendingOrigin = null;
+      pendingObjectAxisMove = null;
       originDragAxis = null;
       originDragStart = null;
       originPointerStart = null;
       originDragMarker = null;
+      axisMoveRootStart = null;
       resizeStart = null;
       requestRender();
     };

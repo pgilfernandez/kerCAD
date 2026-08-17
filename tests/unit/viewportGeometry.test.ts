@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { constrainViewportResizeDimensions, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, viewportDimensionsForHandle } from "@/lib/viewportGeometry";
+import { constrainViewportAxisDrag, constrainViewportResizeDimensions, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, viewportDimensionsForHandle } from "@/lib/viewportGeometry";
 
 describe("operation preview wireframes", () => {
   it("draws only the twelve structural edges of a box", () => {
@@ -57,5 +57,19 @@ describe("viewport dimensions", () => {
 
   it("leaves independently parametric rectangle dimensions unconstrained", () => {
     expect(constrainViewportResizeDimensions(20, 20, 1, 1, 30, 12)).toEqual({ width: 30, depth: 12 });
+  });
+
+  it("projects and snaps object movement onto a rotated local axis", () => {
+    const diagonal = Math.SQRT1_2;
+    const position = constrainViewportAxisDrag(
+      { x: 10, y: 5, z: 2 },
+      { x: 8, y: 7, z: 3 },
+      { x: diagonal, y: diagonal, z: 0 },
+      5,
+    );
+
+    expect(position.x).toBeCloseTo(10 + diagonal * 10);
+    expect(position.y).toBeCloseTo(5 + diagonal * 10);
+    expect(position.z).toBe(2);
   });
 });

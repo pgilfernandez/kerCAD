@@ -563,6 +563,7 @@ export function SketchForgeParametricEditor() {
           objectColors={objectColors}
           objectOrigins={viewportObjectOrigins}
           editableOriginId={originEditObjectId}
+          selectedObjectOriginId={selectedOriginObjectId}
           operationContext={viewportOperationContext}
           isolatedHistoryObjectId={selectedOperationTimeline && selectedOperationTimeline.index < selectedOperationTimeline.count - 1 ? selectedOperationTimeline.objectId : null}
           color={document.color}
@@ -589,6 +590,10 @@ export function SketchForgeParametricEditor() {
             mutate((draft) => resizeParametricHeight(draft, selectedId, selectionKind, height));
           }}
           onObjectOriginMove={(objectId, position) => mutate((draft) => moveParametricObjectOrigin(draft, objectId, position))}
+          onObjectAxisMove={(objectId, position) => mutate((draft) => {
+            const object = draft.objects.find((candidate) => candidate.id === objectId);
+            if (object) object.transform.position = { ...position };
+          })}
           onCameraOrientation={setCameraOrientation}
           onObjectSelect={(objectId) => {
             const object = document.objects.find((candidate) => candidate.id === objectId);

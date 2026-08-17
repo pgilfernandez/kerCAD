@@ -73,3 +73,21 @@ export function constrainViewportResizeDimensions(
     ? { width: requestedWidth, depth: requestedWidth / aspectRatio }
     : { width: requestedDepth * aspectRatio, depth: requestedDepth };
 }
+
+export function constrainViewportAxisDrag(
+  start: { x: number; y: number; z: number },
+  delta: { x: number; y: number; z: number },
+  direction: { x: number; y: number; z: number },
+  step: number,
+) {
+  const length = Math.hypot(direction.x, direction.y, direction.z);
+  if (!Number.isFinite(length) || length < 1e-9) return { ...start };
+  const unit = { x: direction.x / length, y: direction.y / length, z: direction.z / length };
+  const distance = delta.x * unit.x + delta.y * unit.y + delta.z * unit.z;
+  const snappedDistance = Math.round(distance / Math.max(0.0001, step)) * Math.max(0.0001, step);
+  return {
+    x: start.x + unit.x * snappedDistance,
+    y: start.y + unit.y * snappedDistance,
+    z: start.z + unit.z * snappedDistance,
+  };
+}
