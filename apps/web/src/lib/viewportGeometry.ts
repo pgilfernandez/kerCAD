@@ -43,3 +43,15 @@ export function operationPreviewWireframePositions(shape: "box" | "cylinder", wi
 export function operationPreviewStyle(_mode: "add" | "hole" | "common", _historical: boolean) {
   return { fillOpacity: null, wireframe: true };
 }
+
+export function formatViewportDimension(value: number) {
+  if (!Number.isFinite(value)) return "0";
+  return Number(value.toFixed(2)).toString();
+}
+
+export type ViewportDimensionAxis = "x" | "y" | "z" | "rotation";
+
+export function viewportDimensionsForHandle(resizeX: number, resizeY: number, resizeZ = false): ViewportDimensionAxis[] {
+  if (resizeZ) return ["z"];
+  return [resizeX !== 0 ? "x" as const : null, resizeY !== 0 ? "y" as const : null].filter((axis): axis is "x" | "y" => axis !== null);
+}

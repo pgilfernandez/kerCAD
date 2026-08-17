@@ -7,7 +7,7 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import { acceleratedRaycast, MeshBVH } from "three-mesh-bvh";
-import { operationPreviewStyle, operationPreviewWireframePositions } from "@/lib/viewportGeometry";
+import { formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, viewportDimensionsForHandle, type ViewportDimensionAxis } from "@/lib/viewportGeometry";
 import { AdaptiveViewportResolution, viewportPerformanceOptions, viewportRenderProfile, type ViewportRenderQuality } from "@/lib/viewportPerformance";
 import { orthographicTouchTargetWorldSize, perspectiveTouchTargetWorldSize, viewportPointerDragIntent, type ViewportPointerDragIntent } from "@/lib/viewportPointer";
 import type { ParametricObjectRenderRecord, RenderMesh } from "@/types/parametric";
@@ -98,6 +98,14 @@ function disposeCachedObjectRender(group: THREE.Group | null, cached: CachedObje
 export function ParametricViewport({ mesh, objectRecords = [], objectColors, operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionResize, onSelectionHeight, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
+  const dimensionXRef = useRef<HTMLInputElement>(null);
+  const dimensionYRef = useRef<HTMLInputElement>(null);
+  const dimensionZRef = useRef<HTMLInputElement>(null);
+  const dimensionRotationRef = useRef<HTMLInputElement>(null);
+  const dimensionPinnedRef = useRef(new Set<ViewportDimensionAxis>());
+  const dimensionHoverRef = useRef(new Set<ViewportDimensionAxis>());
+  const dimensionHoverTimerRef = useRef<number | null>(null);
+  const dimensionSelectionIdRef = useRef<string | null>(selection?.id ?? null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | THREE.OrthographicCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -124,7 +132,14 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
   const hasFittedRef = useRef(false);
   const objectRenderCacheRef = useRef(new Map<string, CachedObjectRender>());
 
-  useEffect(() => { selectionRef.current = selection; }, [selection]);
+  useEffect(() => {
+    selectionRef.current = selection;
+    if ((selection?.id ?? null) !== dimensionSelectionIdRef.current) {
+      dimensionSelectionIdRef.current = selection?.id ?? null;
+      dimensionPinnedRef.current.clear();
+      dimensionHoverRef.current.clear();
+    }
+  }, [selection]);
   useEffect(() => { moveRef.current = onSelectionMove; }, [onSelectionMove]);
   useEffect(() => { rotateRef.current = onSelectionRotate; }, [onSelectionRotate]);
   useEffect(() => { resizeRef.current = onSelectionResize; }, [onSelectionResize]);
@@ -135,6 +150,48 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
   useEffect(() => { emptySelectRef.current = onEmptySelect; }, [onEmptySelect]);
   useEffect(() => { snapRef.current = snap; }, [snap]);
   useEffect(() => { isolatedHistoryObjectIdRef.current = isolatedHistoryObjectId; }, [isolatedHistoryObjectId]);
+
+  const setDimensionHover = (axis: ViewportDimensionAxis, active: boolean) => {
+    if (dimensionHoverTimerRef.current !== null) {
+      window.clearTimeout(dimensionHoverTimerRef.current);
+      dimensionHoverTimerRef.current = null;
+    }
+    if (active) dimensionHoverRef.current.add(axis); else dimensionHoverRef.current.delete(axis);
+    invalidateRef.current();
+  };
+
+  const dimensionValue = (axis: ViewportDimensionAxis) => {
+    const selected = selectionRef.current;
+    if (!selected) return 0;
+    if (axis === "x") return selected.width;
+    if (axis === "y") return selected.depth;
+    if (axis === "z") return selected.height;
+    return selected.rotation;
+  };
+
+  const beginDimensionEdit = (axis: ViewportDimensionAxis, input: HTMLInputElement) => {
+    dimensionPinnedRef.current.add(axis);
+    input.value = formatViewportDimension(dimensionValue(axis));
+    window.requestAnimationFrame(() => input.select());
+    invalidateRef.current();
+  };
+
+  const commitDimensionEdit = (axis: ViewportDimensionAxis, input: HTMLInputElement) => {
+    const selected = selectionRef.current;
+    const value = Number.parseFloat(input.value.replace(",", "."));
+    if (!selected || !Number.isFinite(value)) {
+      input.value = formatViewportDimension(dimensionValue(axis));
+      invalidateRef.current();
+      return;
+    }
+    if (axis === "rotation") rotateRef.current?.(value);
+    else if (value > 0 && axis === "z") heightRef.current?.(value);
+    else if (value > 0 && axis === "x") resizeRef.current?.(selected.x, selected.y, value, selected.depth);
+    else if (value > 0 && axis === "y") resizeRef.current?.(selected.x, selected.y, selected.width, value);
+    input.value = formatViewportDimension(dimensionValue(axis));
+    dimensionPinnedRef.current.add(axis);
+    invalidateRef.current();
+  };
 
   useEffect(() => {
     const host = hostRef.current;
@@ -172,6 +229,51 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
     controls.maxDistance = 420;
     let frame = 0;
     let disposed = false;
+    const updateDimensionLabels = () => {
+      const root = selectionRootRef.current;
+      const selected = selectionRef.current;
+      const labels = [dimensionXRef.current, dimensionYRef.current, dimensionZRef.current, dimensionRotationRef.current];
+      const visibleAxes = new Set([...dimensionPinnedRef.current, ...dimensionHoverRef.current]);
+      if (!root || !selected) {
+        labels.forEach((label) => { if (label) label.style.display = "none"; });
+        return;
+      }
+      root.updateWorldMatrix(true, false);
+      const points = [
+        new THREE.Vector3(0, -selected.depth / 2, -selected.height / 2),
+        new THREE.Vector3(-selected.width / 2, 0, -selected.height / 2),
+        new THREE.Vector3(selected.width / 2, selected.depth / 2, 0),
+        new THREE.Vector3(Math.max(selected.width, selected.depth) * 0.7 + 6, 0, -selected.height / 2 + 0.2),
+      ];
+      const values = [
+        selected.width * Math.abs(root.scale.x),
+        selected.depth * Math.abs(root.scale.y),
+        selected.height * Math.abs(root.scale.z),
+        THREE.MathUtils.radToDeg(root.rotation.z),
+      ];
+      const axes: ViewportDimensionAxis[] = ["x", "y", "z", "rotation"];
+      const names = ["X", "Y", "Z", "R"];
+      const units = ["mm", "mm", "mm", "°"];
+      const offsets = [[0, 18], [-24, 0], [22, 0], [20, 18]];
+      points.forEach((point, index) => {
+        const label = labels[index];
+        if (!label) return;
+        if (!visibleAxes.has(axes[index])) {
+          label.style.display = "none";
+          return;
+        }
+        const projected = root.localToWorld(point).project(camera);
+        if (projected.z < -1 || projected.z > 1) {
+          label.style.display = "none";
+          return;
+        }
+        label.style.display = "block";
+        label.style.left = `${(projected.x + 1) * host.clientWidth / 2}px`;
+        label.style.top = `${(1 - projected.y) * host.clientHeight / 2}px`;
+        label.style.transform = `translate(-50%, -50%) translate(${offsets[index][0]}px, ${offsets[index][1]}px)`;
+        if (document.activeElement !== label) label.value = `${names[index]} ${formatViewportDimension(values[index])} ${units[index]}`;
+      });
+    };
     const requestRender = () => {
       if (!disposed && frame === 0) frame = requestAnimationFrame(render);
     };
@@ -181,6 +283,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
       const nextPixelRatio = resolution.recordFrame(now);
       if (nextPixelRatio !== null) renderer.setPixelRatio(nextPixelRatio);
       renderer.render(scene, camera);
+      updateDimensionLabels();
       if (controlsChanged) requestRender();
     };
     const onControlsChange = () => {
@@ -222,6 +325,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
     let rotationOffset = 0;
     let resizeAxes = { x: 0, y: 0 };
     let resizeStart: ViewportSelection | null = null;
+    let interactionDimensions: ViewportDimensionAxis[] = [];
     let pickCandidate: { pointerId: number; pointerType: string; x: number; y: number; dragIntent: ViewportPointerDragIntent } | null = null;
     const updateSelectionBox = (candidate: NonNullable<typeof pickCandidate>, clientX: number, clientY: number) => {
       const box = selectionBoxRef.current;
@@ -300,6 +404,27 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
         target.updateMatrixWorld(true);
       }
     };
+    const replaceHoverDimensions = (axes: ViewportDimensionAxis[]) => {
+      const current = dimensionHoverRef.current;
+      if (current.size === axes.length && axes.every((axis) => current.has(axis))) return;
+      dimensionHoverRef.current = new Set(axes);
+      requestRender();
+    };
+    const hoveredManipulatorDimensions = (event: PointerEvent): ViewportDimensionAxis[] => {
+      if (!selectionRef.current || event.pointerType === "touch") return [];
+      updateManipulatorHitTargets(event.pointerType);
+      setPointer(event);
+      const resizeHit = raycaster.intersectObjects(resizeHitboxesRef.current, false)[0];
+      if (resizeHit) {
+        return viewportDimensionsForHandle(
+          Number(resizeHit.object.userData.resizeX),
+          Number(resizeHit.object.userData.resizeY),
+          Boolean(resizeHit.object.userData.resizeZ),
+        );
+      }
+      const rotationHitbox = rotationHitboxRef.current;
+      return rotationHitbox && raycaster.intersectObject(rotationHitbox, false).length > 0 ? ["rotation"] : [];
+    };
     const onPointerDown = (event: PointerEvent) => {
       if (event.button !== 0) return;
       updateManipulatorHitTargets(event.pointerType);
@@ -319,6 +444,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
           dragPlane.setFromNormalAndCoplanarPoint(normal.normalize(), center);
           if (raycaster.ray.intersectPlane(dragPlane, dragPoint)) {
             interaction = "height";
+            interactionDimensions = ["z"];
             resizeStart = { ...selected };
             pendingHeight = selected.height;
           }
@@ -328,6 +454,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
         if (!interaction && raycaster.ray.intersectPlane(dragPlane, dragPoint)) {
           if (rotationHitbox && raycaster.intersectObject(rotationHitbox, false).length > 0) {
             interaction = "rotate";
+            interactionDimensions = ["rotation"];
             const pointerAngle = Math.atan2(-(dragPoint.z - center.z), dragPoint.x - center.x) * 180 / Math.PI;
             rotationOffset = selected.rotation - pointerAngle;
             pendingRotation = selected.rotation;
@@ -335,6 +462,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
             if (resizeHit) {
               interaction = "resize";
               resizeAxes = { x: Number(resizeHit.object.userData.resizeX), y: Number(resizeHit.object.userData.resizeY) };
+              interactionDimensions = viewportDimensionsForHandle(resizeAxes.x, resizeAxes.y);
               resizeStart = { ...selected };
               pendingResize = { x: selected.x, y: selected.y, width: selected.width, depth: selected.depth };
             }
@@ -352,6 +480,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
         return;
       }
       controls.enabled = false;
+      replaceHoverDimensions(interactionDimensions);
       renderer.domElement.setPointerCapture(event.pointerId);
       renderer.domElement.style.cursor = "grabbing";
       event.preventDefault();
@@ -365,6 +494,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
           );
           if (pickCandidate.dragIntent === "marquee") updateSelectionBox(pickCandidate, event.clientX, event.clientY);
           else hideSelectionBox();
+        } else if (event.buttons === 0) {
+          replaceHoverDimensions(hoveredManipulatorDimensions(event));
         }
         return;
       }
@@ -434,7 +565,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
         else emptySelectRef.current?.();
         return;
       }
+      const completedDimensions = interactionDimensions;
       interaction = null;
+      interactionDimensions = [];
       pickCandidate = null;
       controls.enabled = true;
       renderer.domElement.style.cursor = "default";
@@ -449,6 +582,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
           requestRender();
         }
       } else {
+        completedDimensions.forEach((axis) => dimensionPinnedRef.current.add(axis));
         if (pendingPosition) moveRef.current?.(pendingPosition.x, pendingPosition.y);
         if (pendingRotation !== null) rotateRef.current?.(pendingRotation);
         if (pendingResize) resizeRef.current?.(pendingResize.x, pendingResize.y, pendingResize.width, pendingResize.depth);
@@ -459,9 +593,18 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
       pendingResize = null;
       pendingHeight = null;
       resizeStart = null;
+      requestRender();
+    };
+    const leaveManipulatorArea = () => {
+      if (interaction || dimensionHoverTimerRef.current !== null) return;
+      dimensionHoverTimerRef.current = window.setTimeout(() => {
+        dimensionHoverTimerRef.current = null;
+        replaceHoverDimensions([]);
+      }, 350);
     };
     renderer.domElement.addEventListener("pointerdown", onPointerDown);
     renderer.domElement.addEventListener("pointermove", onPointerMove);
+    renderer.domElement.addEventListener("pointerleave", leaveManipulatorArea);
     renderer.domElement.addEventListener("pointerup", stopDragging);
     const cancelDragging = (event: PointerEvent) => stopDragging(event, true);
     renderer.domElement.addEventListener("pointercancel", cancelDragging);
@@ -501,12 +644,14 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
       controls.removeEventListener("change", onControlsChange);
       renderer.domElement.removeEventListener("pointerdown", onPointerDown);
       renderer.domElement.removeEventListener("pointermove", onPointerMove);
+      renderer.domElement.removeEventListener("pointerleave", leaveManipulatorArea);
       renderer.domElement.removeEventListener("pointerup", stopDragging);
       renderer.domElement.removeEventListener("pointercancel", cancelDragging);
       for (const cached of objectRenderCacheRef.current.values()) disposeCachedObjectRender(modelGroup, cached);
       objectRenderCacheRef.current.clear();
       renderer.dispose();
       renderer.domElement.remove();
+      if (dimensionHoverTimerRef.current !== null) window.clearTimeout(dimensionHoverTimerRef.current);
       scene.clear();
       sceneRef.current = null;
       cameraRef.current = null;
@@ -514,6 +659,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
       controlsRef.current = null;
       modelRef.current = null;
       workplaneRef.current = null;
+      [dimensionXRef.current, dimensionYRef.current, dimensionZRef.current, dimensionRotationRef.current].forEach((label) => { if (label) label.style.display = "none"; });
       invalidateRef.current = () => undefined;
     };
   }, [projection, renderQuality]);
@@ -925,7 +1071,36 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
     invalidateRef.current();
   }, [view]);
 
-  return <div className="parametric-viewport" ref={hostRef} aria-label="Vista 3D de la pieza"><div ref={selectionBoxRef} className="parametric-selection-box" aria-hidden="true" /></div>;
+  const dimensionInput = (axis: ViewportDimensionAxis, ref: typeof dimensionXRef, className: string, label: string) => <input
+    ref={ref}
+    className={className}
+    type="text"
+    inputMode="decimal"
+    aria-label={label}
+    onFocus={(event) => beginDimensionEdit(axis, event.currentTarget)}
+    onBlur={(event) => commitDimensionEdit(axis, event.currentTarget)}
+    onKeyDown={(event) => {
+      if (event.key === "Enter") event.currentTarget.blur();
+      if (event.key === "Escape") {
+        event.currentTarget.value = formatViewportDimension(dimensionValue(axis));
+        event.currentTarget.blur();
+      }
+    }}
+    onPointerEnter={() => setDimensionHover(axis, true)}
+    onPointerLeave={(event) => {
+      if (document.activeElement !== event.currentTarget) setDimensionHover(axis, false);
+    }}
+  />;
+
+  return <div className="parametric-viewport" ref={hostRef} aria-label="Vista 3D de la pieza">
+    <div ref={selectionBoxRef} className="parametric-selection-box" aria-hidden="true" />
+    <div className="parametric-selection-dimensions">
+      {dimensionInput("x", dimensionXRef, "axis-x", "Editar dimensión X")}
+      {dimensionInput("y", dimensionYRef, "axis-y", "Editar dimensión Y")}
+      {dimensionInput("z", dimensionZRef, "axis-z", "Editar dimensión Z")}
+      {dimensionInput("rotation", dimensionRotationRef, "axis-r", "Editar ángulo de rotación")}
+    </div>
+  </div>;
 }
 
 function axisColoredBoxGeometry(width: number, depth: number, height: number) {

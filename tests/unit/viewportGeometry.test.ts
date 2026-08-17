@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { operationPreviewStyle, operationPreviewWireframePositions } from "@/lib/viewportGeometry";
+import { formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, viewportDimensionsForHandle } from "@/lib/viewportGeometry";
 
 describe("operation preview wireframes", () => {
   it("draws only the twelve structural edges of a box", () => {
@@ -32,5 +32,20 @@ describe("operation preview styles", () => {
     expect(operationPreviewStyle("add", true)).toEqual({ fillOpacity: null, wireframe: true });
     expect(operationPreviewStyle("hole", true)).toEqual({ fillOpacity: null, wireframe: true });
     expect(operationPreviewStyle("common", true)).toEqual({ fillOpacity: null, wireframe: true });
+  });
+});
+
+describe("viewport dimensions", () => {
+  it("shows concise millimetre values without floating point noise", () => {
+    expect(formatViewportDimension(20)).toBe("20");
+    expect(formatViewportDimension(12.3456)).toBe("12.35");
+    expect(formatViewportDimension(-0.004)).toBe("0");
+    expect(formatViewportDimension(-30)).toBe("-30");
+  });
+
+  it("maps edge, corner and height handles to their editable dimensions", () => {
+    expect(viewportDimensionsForHandle(1, 0)).toEqual(["x"]);
+    expect(viewportDimensionsForHandle(-1, 1)).toEqual(["x", "y"]);
+    expect(viewportDimensionsForHandle(0, 0, true)).toEqual(["z"]);
   });
 });
