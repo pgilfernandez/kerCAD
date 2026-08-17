@@ -5,6 +5,7 @@ import {
   addParametricObject,
   applyOperationWorldPosition,
   applyOperationWorldRotation,
+  applyObjectWorldPosition,
   applyWorkplanePatch,
   colorForNewParametricObject,
   deleteParametricObject,
@@ -12,6 +13,7 @@ import {
   deleteParametricSelection,
   duplicateParametricObject,
   lastOperationForObject,
+  moveParametricObjectOrigin,
   objectIdForFeature,
   parametricObjectTree,
   resizeParametricSelection,
@@ -107,6 +109,41 @@ describe("parametric object workflow", () => {
     expect(feature.transform.position.x).toBeCloseTo(4);
     expect(feature.transform.position.y).toBeCloseTo(-1);
     expect(feature.transform.rotation.z).toBe(30);
+  });
+
+  it("moves an object origin while preserving its operation in world space", () => {
+    const document = createStarterDocument(123);
+    const object = document.objects[0];
+    object.transform.position = { x: 10, y: -5, z: 2 };
+    object.transform.rotation.z = 90;
+    object.transform.scale = { x: 2, y: 3, z: 1.5 };
+    const feature = document.features.find((candidate) => candidate.kind === "extrude");
+    if (!feature || feature.kind !== "extrude") throw new Error("expected extrusion");
+    feature.transform.position = { x: 4, y: 2, z: 3 };
+    const before = viewportSelectionForFeature(document, feature.id);
+
+    moveParametricObjectOrigin(document, object.id, { x: 16, y: -2, z: 5 });
+
+    expect(object.transform.position).toEqual({ x: 16, y: -2, z: 5 });
+    expect(feature.transform.position.x).toBeCloseTo(2.5);
+    expect(feature.transform.position.y).toBeCloseTo(4);
+    expect(feature.transform.position.z).toBeCloseTo(1);
+    const after = viewportSelectionForFeature(document, feature.id);
+    expect(after?.x).toBeCloseTo(before!.x);
+    expect(after?.y).toBeCloseTo(before!.y);
+    expect(after?.baseZ).toBeCloseTo(before!.baseZ);
+    expect(after).toMatchObject({ width: before!.width, depth: before!.depth, height: before!.height, rotation: before!.rotation });
+  });
+
+  it("moves an object by its displayed bounds after its origin has been offset", () => {
+    const document = createStarterDocument(123);
+    const object = document.objects[0];
+    moveParametricObjectOrigin(document, object.id, { x: 8, y: 4, z: 0 });
+
+    applyObjectWorldPosition(document, object.id, 12, -3);
+
+    expect(viewportSelectionForObject(document, object.id)).toMatchObject({ x: 12, y: -3 });
+    expect(object.transform.position).toEqual({ x: 20, y: 1, z: 0 });
   });
 
   it("resizes an operation through its parametric profile", () => {

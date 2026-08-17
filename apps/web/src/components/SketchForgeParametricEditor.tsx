@@ -44,6 +44,7 @@ import {
 } from "@/lib/parametricHistory";
 import {
   addPrimitiveToSelection,
+  applyObjectWorldPosition,
   applyOperationWorldPosition,
   applyOperationWorldRotation,
   applyWorkplanePatch,
@@ -52,6 +53,7 @@ import {
   deleteParametricSelection,
   duplicateParametricObject,
   lastOperationForObject,
+  moveParametricObjectOrigin,
   objectIdForFeature,
   resizeParametricSelection,
   resizeParametricHeight,
@@ -103,6 +105,7 @@ export function SketchForgeParametricEditor() {
   const [projection, setProjection] = useState<CameraProjection>("orthographic");
   const [renderQuality, setRenderQuality] = useState<ViewportRenderQuality>("normal");
   const [showFps, setShowFps] = useState(false);
+  const [originEditObjectId, setOriginEditObjectId] = useState<string | null>(null);
   const [cameraOrientation, setCameraOrientation] = useState<CameraOrientation>({ azimuth: Math.PI / 4, polar: 1.02 });
   const [clipboardId, setClipboardId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -115,12 +118,6 @@ export function SketchForgeParametricEditor() {
   const geometryFingerprint = useMemo(() => parametricGeometryFingerprint(document), [document]);
   const objectColorFingerprint = useMemo(() => parametricObjectColorFingerprint(document), [document]);
   const objectColors = useMemo(() => objectColorsFromFingerprint(objectColorFingerprint), [objectColorFingerprint]);
-  const viewportObjectOrigins = useMemo(() => document.objects.map((object) => ({
-    objectId: object.id,
-    visible: object.originVisible,
-    position: object.transform.position,
-    rotation: object.transform.rotation,
-  })), [document.objects]);
   const buildDocumentRef = useRef(document);
   buildDocumentRef.current = document;
   const selectedOperationTimeline = useMemo(() => {
@@ -260,7 +257,21 @@ export function SketchForgeParametricEditor() {
   const selectedOperation = selectedOperationId ? document.features.find((feature) => feature.id === selectedOperationId && feature.kind === "extrude") : null;
   const selectedShape = useMemo(() => workplaneShapeForObject(document, selectedObjectId), [document, selectedObjectId]);
   const selectedBox = useMemo(() => modelSelection.length === 1 ? (selectedOperationId ? viewportSelectionForFeature(document, selectedOperationId) : viewportSelectionForObject(document, selectedObjectId)) : null, [document, modelSelection.length, selectedObjectId, selectedOperationId]);
+  const selectedOriginObjectId = modelSelection.length === 1 && selectionKind === "object" ? selectedObjectId : null;
+  const viewportObjectOrigins = useMemo(() => document.objects.map((object) => ({
+    objectId: object.id,
+    visible: object.id === selectedOriginObjectId,
+    position: object.transform.position,
+    rotation: object.transform.rotation,
+  })), [document.objects, selectedOriginObjectId]);
   const snapAmount = document.workplane.snapToGrid ? document.workplane.gridStep : 0.01;
+
+  useEffect(() => {
+    if (!originEditObjectId) return;
+    const selectedObject = modelSelection.length === 1 && selectionKind === "object" && selectedId === originEditObjectId;
+    const originAvailable = document.objects.some((object) => object.id === originEditObjectId && !object.locked);
+    if (!selectedObject || !originAvailable) setOriginEditObjectId(null);
+  }, [document.objects, modelSelection.length, originEditObjectId, selectedId, selectionKind]);
 
   const addShape = (kind: SupportedPrimitive) => {
     let result: ReturnType<typeof addPrimitiveToSelection> = { objectId: "", featureId: null, createdObject: false };
@@ -368,6 +379,17 @@ export function SketchForgeParametricEditor() {
       const object = draft.objects.find((candidate) => candidate.id === id);
       if (object) update(object);
     });
+  };
+
+  const toggleOriginEdit = (objectId: string) => {
+    if (originEditObjectId === objectId) {
+      setOriginEditObjectId(null);
+      return;
+    }
+    const object = document.objects.find((candidate) => candidate.id === objectId);
+    if (!object || object.locked) return;
+    setModelSelection([{ id: objectId, kind: "object" }]);
+    setOriginEditObjectId(objectId);
   };
 
   const setCamera = (name: CameraView["name"]) => setView((current) => ({ name, token: current.token + 1 }));
@@ -508,6 +530,7 @@ export function SketchForgeParametricEditor() {
           objectRecords={build.objectRecords}
           objectColors={objectColors}
           objectOrigins={viewportObjectOrigins}
+          editableOriginId={originEditObjectId}
           operationContext={viewportOperationContext}
           isolatedHistoryObjectId={selectedOperationTimeline && selectedOperationTimeline.index < selectedOperationTimeline.count - 1 ? selectedOperationTimeline.objectId : null}
           color={document.color}
@@ -515,11 +538,11 @@ export function SketchForgeParametricEditor() {
           view={view}
           projection={projection}
           renderQuality={renderQuality}
-          selection={selectedBox}
+          selection={originEditObjectId ? null : selectedBox}
           snap={snapAmount}
           onSelectionMove={(x, y) => mutate((draft) => {
             if (selectedOperationId) applyOperationWorldPosition(draft, selectedOperationId, x, y);
-            else if (selectedObjectId) applyWorkplanePatch(draft, selectedObjectId, { x, z: y });
+            else if (selectedObjectId) applyObjectWorldPosition(draft, selectedObjectId, x, y);
           })}
           onSelectionRotate={(rotation) => mutate((draft) => {
             if (selectedOperationId) applyOperationWorldRotation(draft, selectedOperationId, rotation);
@@ -533,6 +556,7 @@ export function SketchForgeParametricEditor() {
             if (!selectedId) return;
             mutate((draft) => resizeParametricHeight(draft, selectedId, selectionKind, height));
           }}
+          onObjectOriginMove={(objectId, position) => mutate((draft) => moveParametricObjectOrigin(draft, objectId, position))}
           onCameraOrientation={setCameraOrientation}
           onObjectSelect={(objectId) => {
             const object = document.objects.find((candidate) => candidate.id === objectId);
@@ -598,7 +622,9 @@ export function SketchForgeParametricEditor() {
           document={document}
           selection={modelSelection}
           mode={modelSidebarMode}
+          editingOriginObjectId={originEditObjectId}
           onSelectionChange={setModelSelection}
+          onToggleOriginEdit={toggleOriginEdit}
           onUpdateObject={updateObject}
           onUpdateFeature={updateFeature}
         /> : null}

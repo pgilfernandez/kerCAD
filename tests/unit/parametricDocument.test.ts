@@ -17,7 +17,7 @@ describe("parametric document", () => {
     expect(document.createdAt).toBe(123);
     expect(document.workplane).toEqual({ width: 200, depth: 200, gridStep: 5, snapToGrid: true });
     expect(document.objects).toHaveLength(1);
-    expect(document.objects[0]).toMatchObject({ name: "Objeto 1", color: "#d41721", visible: true, locked: false, originVisible: false, transform: { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 } } });
+    expect(document.objects[0]).toMatchObject({ name: "Objeto 1", color: "#d41721", visible: true, locked: false, transform: { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 } } });
     expect(document.features.map((feature) => feature.kind)).toEqual(["sketch", "extrude"]);
     const [sketch, extrude] = document.features;
     expect(extrude.kind === "extrude" && extrude.sketchId).toBe(sketch.id);
@@ -95,17 +95,15 @@ describe("parametric document", () => {
     expect(migrated.features[1]).toMatchObject({ transform: { position: { x: 7, y: -2, z: 4 }, rotation: { x: 0, y: 0, z: 0 } } });
   });
 
-  it("adds display and locking defaults to stored objects", () => {
+  it("adds visibility and locking defaults to stored objects", () => {
     const stored = createStarterDocument(123);
     delete (stored.objects[0] as Partial<typeof stored.objects[0]>).visible;
     delete (stored.objects[0] as Partial<typeof stored.objects[0]>).locked;
-    delete (stored.objects[0] as Partial<typeof stored.objects[0]>).originVisible;
     delete (stored.objects[0] as Partial<typeof stored.objects[0]>).color;
+    (stored.objects[0] as typeof stored.objects[0] & { originVisible?: boolean }).originVisible = true;
 
-    expect(normalizeParametricDocument(stored).objects[0]).toMatchObject({ color: stored.color, visible: true, locked: false, originVisible: false });
-
-    stored.objects[0].originVisible = true;
-    expect(normalizeParametricDocument(stored).objects[0].originVisible).toBe(true);
+    expect(normalizeParametricDocument(stored).objects[0]).toMatchObject({ color: stored.color, visible: true, locked: false });
+    expect("originVisible" in normalizeParametricDocument(stored).objects[0]).toBe(false);
   });
 
   it("migrates and clamps workplane settings", () => {

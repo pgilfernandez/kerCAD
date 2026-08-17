@@ -227,20 +227,21 @@ export function workplaneShapeForObject(document: ParametricDocument, id: string
   const baseDepth = sketch.profile.shape === "rectangle" ? sketch.profile.depth : sketch.profile.diameter;
   const width = baseWidth * object.transform.scale.x;
   const depth = baseDepth * object.transform.scale.y;
+  const world = operationWorldTransform(object, feature);
   return {
     id: object.id,
     name: object.name,
     kind: sketch.profile.shape === "rectangle" ? "box" : "cylinder",
     color: object.color,
     hole: feature.operation === "cut",
-    x: object.transform.position.x,
-    z: object.transform.position.y,
-    elevation: object.transform.position.z,
+    x: world.x,
+    z: world.y,
+    elevation: world.z,
     size: Math.max(width, depth),
     width,
     depth,
     height: feature.distance * object.transform.scale.z,
-    rotation: object.transform.rotation.z,
+    rotation: world.rotation,
     radius: sketch.profile.shape === "rectangle" ? 0 : undefined,
     sides: sketch.profile.shape === "circle" ? 96 : undefined,
     hidden: !object.visible || feature.suppressed,
@@ -324,6 +325,49 @@ export function applyOperationWorldRotation(document: ParametricDocument, id: st
   if (feature && object) feature.transform.rotation.z = rotation - object.transform.rotation.z;
 }
 
+export function applyObjectWorldPosition(document: ParametricDocument, id: string, x: number, y: number) {
+  const object = document.objects.find((candidate) => candidate.id === id);
+  const current = viewportSelectionForObject(document, id);
+  if (!object || !current || ![x, y].every(Number.isFinite)) return;
+  object.transform.position.x += x - current.x;
+  object.transform.position.y += y - current.y;
+}
+
+function inverseRotateVector(vector: { x: number; y: number; z: number }, rotation: { x: number; y: number; z: number }) {
+  const rz = -rotation.z * Math.PI / 180;
+  const afterZ = { x: vector.x * Math.cos(rz) - vector.y * Math.sin(rz), y: vector.x * Math.sin(rz) + vector.y * Math.cos(rz), z: vector.z };
+  const ry = -rotation.y * Math.PI / 180;
+  const afterY = { x: afterZ.x * Math.cos(ry) + afterZ.z * Math.sin(ry), y: afterZ.y, z: -afterZ.x * Math.sin(ry) + afterZ.z * Math.cos(ry) };
+  const rx = -rotation.x * Math.PI / 180;
+  return { x: afterY.x, y: afterY.y * Math.cos(rx) - afterY.z * Math.sin(rx), z: afterY.y * Math.sin(rx) + afterY.z * Math.cos(rx) };
+}
+
+export function moveParametricObjectOrigin(document: ParametricDocument, id: string, position: { x: number; y: number; z: number }) {
+  const object = document.objects.find((candidate) => candidate.id === id);
+  if (!object || ![position.x, position.y, position.z].every(Number.isFinite)) return;
+  const scale = object.transform.scale;
+  if ([scale.x, scale.y, scale.z].some((value) => !Number.isFinite(value) || Math.abs(value) < 0.0001)) return;
+  const worldDelta = {
+    x: position.x - object.transform.position.x,
+    y: position.y - object.transform.position.y,
+    z: position.z - object.transform.position.z,
+  };
+  const unrotated = inverseRotateVector(worldDelta, object.transform.rotation);
+  const localDelta = { x: unrotated.x / scale.x, y: unrotated.y / scale.y, z: unrotated.z / scale.z };
+  for (const feature of document.features) {
+    if (feature.objectId !== id) continue;
+    if (feature.kind === "extrude") {
+      feature.transform.position.x -= localDelta.x;
+      feature.transform.position.y -= localDelta.y;
+      feature.transform.position.z -= localDelta.z;
+    } else if (feature.kind === "hole") {
+      feature.x -= localDelta.x;
+      feature.y -= localDelta.y;
+    }
+  }
+  object.transform.position = { ...position };
+}
+
 export function resizeParametricSelection(
   document: ParametricDocument,
   id: string,
@@ -338,8 +382,8 @@ export function resizeParametricSelection(
     const object = document.objects.find((candidate) => candidate.id === id);
     const current = viewportSelectionForObject(document, id);
     if (!object || !current) return;
-    object.transform.position.x = x;
-    object.transform.position.y = y;
+    object.transform.position.x += x - current.x;
+    object.transform.position.y += y - current.y;
     object.transform.scale.x *= width / Math.max(0.01, current.width);
     object.transform.scale.y *= depth / Math.max(0.01, current.depth);
     return;
