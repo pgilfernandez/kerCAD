@@ -7,7 +7,7 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import { acceleratedRaycast, MeshBVH } from "three-mesh-bvh";
-import { constrainViewportAxisDrag, constrainViewportResizeDimensions, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, viewportDimensionsForHandle, type ViewportDimensionAxis } from "@/lib/viewportGeometry";
+import { constrainViewportAxisDrag, constrainViewportResizeDimensions, coplanarFaceRegion, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, viewportDimensionsForHandle, type ViewportDimensionAxis } from "@/lib/viewportGeometry";
 import { AdaptiveViewportResolution, viewportPerformanceOptions, viewportRenderProfile, type ViewportRenderQuality } from "@/lib/viewportPerformance";
 import { orthographicTouchTargetWorldSize, perspectiveTouchTargetWorldSize, viewportPointerDragIntent, type ViewportPointerDragIntent } from "@/lib/viewportPointer";
 import { parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
@@ -129,28 +129,18 @@ function clearObjectOriginLayer(layer: THREE.Group) {
 function coplanarFaceGeometry(source: THREE.BufferGeometry, faceIndex: number) {
   const positions = source.getAttribute("position");
   const indices = source.getIndex();
-  if (!positions || faceIndex < 0) return new THREE.BufferGeometry();
-  const vertexIndex = (corner: number) => indices ? indices.getX(corner) : corner;
-  const vertex = (corner: number) => new THREE.Vector3().fromBufferAttribute(positions, vertexIndex(corner));
-  const first = faceIndex * 3;
-  const a = vertex(first);
-  const b = vertex(first + 1);
-  const c = vertex(first + 2);
-  const normal = b.clone().sub(a).cross(c.clone().sub(a)).normalize();
-  const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, a);
-  const result: number[] = [];
-  const triangleCount = (indices?.count ?? positions.count) / 3;
-  for (let triangle = 0; triangle < triangleCount; triangle += 1) {
-    const offset = triangle * 3;
-    const vertices = [vertex(offset), vertex(offset + 1), vertex(offset + 2)];
-    const candidateNormal = vertices[1].clone().sub(vertices[0]).cross(vertices[2].clone().sub(vertices[0])).normalize();
-    if (candidateNormal.dot(normal) < 0.9999 || vertices.some((point) => Math.abs(plane.distanceToPoint(point)) > 1e-4)) continue;
-    for (const point of vertices) result.push(point.x + normal.x * 0.02, point.y + normal.y * 0.02, point.z + normal.z * 0.02);
-  }
+  const region = positions && faceIndex >= 0 ? coplanarFaceRegion(positions.array, indices?.array ?? null, faceIndex) : null;
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(result, 3));
+  if (!region) return { geometry, region: null };
+  const highlighted = [...region.positions];
+  for (let index = 0; index < highlighted.length; index += 3) {
+    highlighted[index] += region.normal.x * 0.02;
+    highlighted[index + 1] += region.normal.y * 0.02;
+    highlighted[index + 2] += region.normal.z * 0.02;
+  }
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(highlighted, 3));
   geometry.computeVertexNormals();
-  return geometry;
+  return { geometry, region };
 }
 
 function objectOriginMarker(objectId: string, editable: boolean) {
@@ -550,13 +540,14 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const updateWorkplaneFaceHighlight = () => {
       const hit = faceAtPointer();
       faceHighlight.geometry.dispose();
-      faceHighlight.geometry = hit?.face && typeof hit.faceIndex === "number"
+      const selectedFace = hit?.face && typeof hit.faceIndex === "number"
         ? coplanarFaceGeometry((hit.object as THREE.Mesh).geometry, hit.faceIndex)
-        : new THREE.BufferGeometry();
-      faceHighlight.visible = Boolean(hit?.face);
-      renderer.domElement.style.cursor = hit ? "crosshair" : "not-allowed";
+        : { geometry: new THREE.BufferGeometry(), region: null };
+      faceHighlight.geometry = selectedFace.geometry;
+      faceHighlight.visible = Boolean(hit?.face && selectedFace.region);
+      renderer.domElement.style.cursor = hit && selectedFace.region ? "crosshair" : "not-allowed";
       requestRender();
-      return hit;
+      return hit && selectedFace.region ? { hit, region: selectedFace.region } : null;
     };
     const updateManipulatorHitTargets = (pointerType: string) => {
       const selected = selectionRef.current;
@@ -615,11 +606,13 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       if (event.button !== 0) return;
       if (workplaneFaceSelectionRef.current) {
         setPointer(event);
-        const hit = updateWorkplaneFaceHighlight();
-        if (hit?.face) {
+        const selectedFace = updateWorkplaneFaceHighlight();
+        if (selectedFace) {
+          const { hit, region } = selectedFace;
           const relativeMatrix = new THREE.Matrix4().copy(modelGroup.matrixWorld).invert().multiply(hit.object.matrixWorld);
-          const normal = hit.face.normal.clone().applyNormalMatrix(new THREE.Matrix3().getNormalMatrix(relativeMatrix)).normalize();
-          const origin = modelGroup.worldToLocal(hit.point.clone());
+          const normal = new THREE.Vector3(region.normal.x, region.normal.y, region.normal.z).applyNormalMatrix(new THREE.Matrix3().getNormalMatrix(relativeMatrix)).normalize();
+          const centroidInWorld = hit.object.localToWorld(new THREE.Vector3(region.centroid.x, region.centroid.y, region.centroid.z));
+          const origin = modelGroup.worldToLocal(centroidInWorld);
           workplaneFaceSelectRef.current?.({
             origin: { x: origin.x, y: origin.y, z: origin.z },
             normal: { x: normal.x, y: normal.y, z: normal.z },

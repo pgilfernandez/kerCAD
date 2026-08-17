@@ -1,5 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { constrainViewportAxisDrag, constrainViewportResizeDimensions, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, viewportDimensionsForHandle } from "@/lib/viewportGeometry";
+import { constrainViewportAxisDrag, constrainViewportResizeDimensions, coplanarFaceRegion, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, viewportDimensionsForHandle } from "@/lib/viewportGeometry";
+
+describe("workplane face centroids", () => {
+  it("uses the area-weighted centroid of an irregular coplanar face", () => {
+    const positions = new Float32Array([
+      0, 0, 0, 1, 0, 0, 1, 1, 0,
+      0, 0, 0, 1, 1, 0, 0, 1, 0,
+      1, 0, 0, 2, 0, 0, 2, 1, 0,
+      1, 0, 0, 2, 1, 0, 1, 1, 0,
+      0, 1, 0, 1, 1, 0, 1, 2, 0,
+      0, 1, 0, 1, 2, 0, 0, 2, 0,
+      10, 10, 0, 11, 10, 0, 10, 11, 0,
+      0, 0, 1, 2, 0, 1, 0, 2, 1,
+    ]);
+
+    const region = coplanarFaceRegion(positions, null, 0)!;
+
+    expect(region.area).toBeCloseTo(3);
+    expect(region.centroid.x).toBeCloseTo(5 / 6);
+    expect(region.centroid.y).toBeCloseTo(5 / 6);
+    expect(region.centroid.z).toBe(0);
+    expect(region.positions).toHaveLength(6 * 9);
+  });
+});
 
 describe("operation preview wireframes", () => {
   it("draws only the twelve structural edges of a box", () => {

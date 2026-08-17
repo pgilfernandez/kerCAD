@@ -40,6 +40,103 @@ export function operationPreviewWireframePositions(shape: "box" | "cylinder", wi
   return positions;
 }
 
+export function coplanarFaceRegion(
+  coordinates: ArrayLike<number>,
+  indices: ArrayLike<number> | null,
+  faceIndex: number,
+  tolerance = 1e-4,
+) {
+  const vertexIndex = (corner: number) => indices ? indices[corner] : corner;
+  const vertex = (corner: number) => {
+    const index = vertexIndex(corner) * 3;
+    return { x: coordinates[index], y: coordinates[index + 1], z: coordinates[index + 2] };
+  };
+  const cross = (a: ReturnType<typeof vertex>, b: ReturnType<typeof vertex>, c: ReturnType<typeof vertex>) => ({
+    x: (b.y - a.y) * (c.z - a.z) - (b.z - a.z) * (c.y - a.y),
+    y: (b.z - a.z) * (c.x - a.x) - (b.x - a.x) * (c.z - a.z),
+    z: (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x),
+  });
+  const first = faceIndex * 3;
+  const anchor = vertex(first);
+  const initialCross = cross(anchor, vertex(first + 1), vertex(first + 2));
+  const initialLength = Math.hypot(initialCross.x, initialCross.y, initialCross.z);
+  if (!Number.isFinite(initialLength) || initialLength < 1e-12) return null;
+  const normal = { x: initialCross.x / initialLength, y: initialCross.y / initialLength, z: initialCross.z / initialLength };
+  const candidates: Array<{
+    triangle: number;
+    vertices: Array<ReturnType<typeof vertex>>;
+    area: number;
+    centroid: { x: number; y: number; z: number };
+  }> = [];
+  const triangleCount = Math.floor((indices?.length ?? coordinates.length / 3) / 3);
+  for (let triangle = 0; triangle < triangleCount; triangle += 1) {
+    const offset = triangle * 3;
+    const vertices = [vertex(offset), vertex(offset + 1), vertex(offset + 2)];
+    const triangleCross = cross(vertices[0], vertices[1], vertices[2]);
+    const crossLength = Math.hypot(triangleCross.x, triangleCross.y, triangleCross.z);
+    if (crossLength < 1e-12) continue;
+    const alignment = (triangleCross.x * normal.x + triangleCross.y * normal.y + triangleCross.z * normal.z) / crossLength;
+    const coplanar = vertices.every((point) => Math.abs(
+      normal.x * (point.x - anchor.x) + normal.y * (point.y - anchor.y) + normal.z * (point.z - anchor.z),
+    ) <= tolerance);
+    if (alignment < 0.9999 || !coplanar) continue;
+    candidates.push({
+      triangle,
+      vertices,
+      area: crossLength / 2,
+      centroid: {
+      x: (vertices[0].x + vertices[1].x + vertices[2].x) / 3,
+      y: (vertices[0].y + vertices[1].y + vertices[2].y) / 3,
+      z: (vertices[0].z + vertices[1].z + vertices[2].z) / 3,
+      },
+    });
+  }
+  const selectedCandidate = candidates.findIndex((candidate) => candidate.triangle === faceIndex);
+  if (selectedCandidate < 0) return null;
+  const pointKey = (point: ReturnType<typeof vertex>) => [point.x, point.y, point.z].map((value) => Math.round(value / tolerance)).join(":");
+  const edgeKey = (a: ReturnType<typeof vertex>, b: ReturnType<typeof vertex>) => [pointKey(a), pointKey(b)].sort().join("|");
+  const edges = new Map<string, number[]>();
+  candidates.forEach((candidate, candidateIndex) => {
+    for (const [a, b] of [[0, 1], [1, 2], [2, 0]] as const) {
+      const key = edgeKey(candidate.vertices[a], candidate.vertices[b]);
+      const connected = edges.get(key) ?? [];
+      connected.push(candidateIndex);
+      edges.set(key, connected);
+    }
+  });
+  const connected = new Set([selectedCandidate]);
+  const queue = [selectedCandidate];
+  while (queue.length > 0) {
+    const candidateIndex = queue.pop()!;
+    const candidate = candidates[candidateIndex];
+    for (const [a, b] of [[0, 1], [1, 2], [2, 0]] as const) {
+      for (const neighbor of edges.get(edgeKey(candidate.vertices[a], candidate.vertices[b])) ?? []) {
+        if (connected.has(neighbor)) continue;
+        connected.add(neighbor);
+        queue.push(neighbor);
+      }
+    }
+  }
+  const positions: number[] = [];
+  const weighted = { x: 0, y: 0, z: 0 };
+  let totalArea = 0;
+  for (const candidateIndex of connected) {
+    const candidate = candidates[candidateIndex];
+    weighted.x += candidate.centroid.x * candidate.area;
+    weighted.y += candidate.centroid.y * candidate.area;
+    weighted.z += candidate.centroid.z * candidate.area;
+    totalArea += candidate.area;
+    for (const point of candidate.vertices) positions.push(point.x, point.y, point.z);
+  }
+  if (totalArea < 1e-12) return null;
+  return {
+    positions,
+    normal,
+    centroid: { x: weighted.x / totalArea, y: weighted.y / totalArea, z: weighted.z / totalArea },
+    area: totalArea,
+  };
+}
+
 export function operationPreviewStyle(_mode: "add" | "hole" | "common", _historical: boolean) {
   return { fillOpacity: null, wireframe: true };
 }
