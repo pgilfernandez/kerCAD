@@ -27,7 +27,8 @@ import { cloneDocument, createFilletFeature, createStarterDocument, normalizePar
 import { assertValidParametricDependencies } from "@/lib/parametricDependencyGraph";
 import { assertValidParametricTopology } from "@/lib/parametricTopology";
 import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint } from "@/lib/parametricBuildState";
-import { buildParametricModel, buildParametricOperationContext, exportParametricStep } from "@/lib/parametricKernel";
+import { exportParametricStep } from "@/lib/parametricKernel";
+import { ParametricBuildWorkerClient } from "@/lib/parametricBuildWorker";
 import { binaryStlFromRenderMeshes } from "@/lib/stlExport";
 import {
   beginHistoryTransaction,
@@ -103,6 +104,8 @@ export function SketchForgeParametricEditor() {
   const importRef = useRef<HTMLInputElement>(null);
   const buildCounter = useRef(0);
   const contextBuildCounter = useRef(0);
+  const buildWorkerRef = useRef<ParametricBuildWorkerClient | null>(null);
+  const contextWorkerRef = useRef<ParametricBuildWorkerClient | null>(null);
   const geometryFingerprint = useMemo(() => parametricGeometryFingerprint(document), [document]);
   const objectColorFingerprint = useMemo(() => parametricObjectColorFingerprint(document), [document]);
   const objectColors = useMemo(() => objectColorsFromFingerprint(objectColorFingerprint), [objectColorFingerprint]);
@@ -145,11 +148,25 @@ export function SketchForgeParametricEditor() {
   }, [document, hydrated]);
 
   useEffect(() => {
+    const createWorker = () => new Worker(new URL("../workers/parametricBuild.worker.ts", import.meta.url), { type: "module" });
+    const buildWorker = new ParametricBuildWorkerClient(createWorker);
+    const contextWorker = new ParametricBuildWorkerClient(createWorker);
+    buildWorkerRef.current = buildWorker;
+    contextWorkerRef.current = contextWorker;
+    return () => {
+      buildWorker.dispose();
+      contextWorker.dispose();
+      buildWorkerRef.current = null;
+      contextWorkerRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
     const counter = ++buildCounter.current;
     setKernelBusy(true);
     const buildDocument = buildDocumentRef.current;
     const timeout = window.setTimeout(() => {
-      buildParametricModel(buildDocument).then((result) => {
+      buildWorkerRef.current?.buildModel(buildDocument).then((result) => {
         if (counter !== buildCounter.current) return;
         setBuild(result);
         setKernelBusy(false);
@@ -159,7 +176,10 @@ export function SketchForgeParametricEditor() {
         setKernelBusy(false);
       });
     }, 140);
-    return () => window.clearTimeout(timeout);
+    return () => {
+      window.clearTimeout(timeout);
+      buildWorkerRef.current?.cancel();
+    };
   }, [geometryFingerprint]);
 
   useEffect(() => {
@@ -168,13 +188,16 @@ export function SketchForgeParametricEditor() {
     if (!selectedOperationTimeline || selectedOperationTimeline.index === selectedOperationTimeline.count - 1) return;
     const buildDocument = buildDocumentRef.current;
     const timeout = window.setTimeout(() => {
-      buildParametricOperationContext(buildDocument, selectedOperationTimeline.featureId).then((result) => {
+      contextWorkerRef.current?.buildContext(buildDocument, selectedOperationTimeline.featureId).then((result) => {
         if (counter === contextBuildCounter.current) setOperationContext(result);
       }).catch(() => {
         if (counter === contextBuildCounter.current) setOperationContext(null);
       });
     }, 80);
-    return () => window.clearTimeout(timeout);
+    return () => {
+      window.clearTimeout(timeout);
+      contextWorkerRef.current?.cancel();
+    };
   }, [geometryFingerprint, selectedOperationTimeline]);
 
   useEffect(() => {
