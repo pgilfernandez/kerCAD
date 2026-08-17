@@ -38,6 +38,12 @@ type Props = {
   mesh: RenderMesh | null;
   objectRecords?: ParametricObjectRenderRecord[];
   objectColors?: Record<string, string>;
+  objectOrigins?: Array<{
+    objectId: string;
+    visible: boolean;
+    position: { x: number; y: number; z: number };
+    rotation: { x: number; y: number; z: number };
+  }>;
   operationContext?: { color: string; mesh: RenderMesh; opacity: number } | null;
   isolatedHistoryObjectId?: string | null;
   color: string;
@@ -96,7 +102,47 @@ function disposeCachedObjectRender(group: THREE.Group | null, cached: CachedObje
   edgeMaterials.forEach((material) => material.dispose());
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionResize, onSelectionHeight, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect }: Props) {
+function disposeObjectOriginMarker(marker: THREE.Object3D) {
+  marker.traverse((child) => {
+    if (!(child instanceof THREE.Mesh || child instanceof THREE.Line)) return;
+    child.geometry.dispose();
+    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    materials.forEach((material) => material.dispose());
+  });
+}
+
+function clearObjectOriginLayer(layer: THREE.Group) {
+  [...layer.children].forEach(disposeObjectOriginMarker);
+  layer.clear();
+}
+
+function objectOriginMarker(objectId: string) {
+  const marker = new THREE.Group();
+  marker.name = `Origen ${objectId}`;
+  marker.userData.objectOriginId = objectId;
+  const axes: Array<[THREE.Vector3, number]> = [
+    [new THREE.Vector3(1, 0, 0), 0xd84b4b],
+    [new THREE.Vector3(0, 1, 0), 0x35a85b],
+    [new THREE.Vector3(0, 0, 1), 0x347fd1],
+  ];
+  for (const [direction, color] of axes) marker.add(new THREE.ArrowHelper(direction, undefined, 1, color, 0.28, 0.16));
+  marker.add(new THREE.Mesh(
+    new THREE.SphereGeometry(0.09, 10, 8),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false, depthWrite: false }),
+  ));
+  marker.traverse((child) => {
+    if (!(child instanceof THREE.Line || child instanceof THREE.Mesh)) return;
+    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    for (const material of materials) {
+      material.depthTest = false;
+      material.depthWrite = false;
+    }
+    child.renderOrder = 30;
+  });
+  return marker;
+}
+
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionResize, onSelectionHeight, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
@@ -112,6 +158,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const modelRef = useRef<THREE.Group | null>(null);
+  const originLayerRef = useRef<THREE.Group | null>(null);
   const workplaneRef = useRef<THREE.Group | null>(null);
   const selectionRootRef = useRef<THREE.Group | null>(null);
   const operationContextRef = useRef<THREE.Mesh | null>(null);
@@ -283,6 +330,13 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
       const controlsChanged = controls.update();
       const nextPixelRatio = resolution.recordFrame(now);
       if (nextPixelRatio !== null) renderer.setPixelRatio(nextPixelRatio);
+      for (const marker of originLayer.children) {
+        const worldPosition = marker.getWorldPosition(new THREE.Vector3());
+        const size = camera instanceof THREE.OrthographicCamera
+          ? orthographicTouchTargetWorldSize(camera.top - camera.bottom, camera.zoom, renderer.domElement.clientHeight, 102)
+          : perspectiveTouchTargetWorldSize(camera.position.distanceTo(worldPosition), camera.fov, renderer.domElement.clientHeight, 102);
+        marker.scale.setScalar(Math.max(0.35, size));
+      }
       renderer.render(scene, camera);
       updateDimensionLabels();
       if (controlsChanged) requestRender();
@@ -311,6 +365,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
     const modelGroup = new THREE.Group();
     modelGroup.rotation.x = -Math.PI / 2;
     scene.add(modelGroup);
+    const originLayer = new THREE.Group();
+    originLayer.name = "Orígenes de objetos";
+    modelGroup.add(originLayer);
 
     const raycaster = new THREE.Raycaster();
     raycaster.firstHitOnly = true;
@@ -645,6 +702,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
     rendererRef.current = renderer;
     controlsRef.current = controls;
     modelRef.current = modelGroup;
+    originLayerRef.current = originLayer;
     workplaneRef.current = workplaneGroup;
     return () => {
       disposed = true;
@@ -662,17 +720,37 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
       renderer.dispose();
       renderer.domElement.remove();
       if (dimensionHoverTimerRef.current !== null) window.clearTimeout(dimensionHoverTimerRef.current);
+      clearObjectOriginLayer(originLayer);
       scene.clear();
       sceneRef.current = null;
       cameraRef.current = null;
       rendererRef.current = null;
       controlsRef.current = null;
       modelRef.current = null;
+      originLayerRef.current = null;
       workplaneRef.current = null;
       [dimensionXRef.current, dimensionYRef.current, dimensionZRef.current, dimensionRotationRef.current].forEach((label) => { if (label) label.style.display = "none"; });
       invalidateRef.current = () => undefined;
     };
   }, [projection, renderQuality]);
+
+  useEffect(() => {
+    const layer = originLayerRef.current;
+    if (!layer) return;
+    clearObjectOriginLayer(layer);
+    for (const origin of objectOrigins) {
+      if (!origin.visible) continue;
+      const marker = objectOriginMarker(origin.objectId);
+      marker.position.set(origin.position.x, origin.position.y, origin.position.z);
+      marker.rotation.set(
+        THREE.MathUtils.degToRad(origin.rotation.x),
+        THREE.MathUtils.degToRad(origin.rotation.y),
+        THREE.MathUtils.degToRad(origin.rotation.z),
+      );
+      layer.add(marker);
+    }
+    invalidateRef.current();
+  }, [objectOrigins, projection, renderQuality]);
 
   useEffect(() => {
     const group = workplaneRef.current;

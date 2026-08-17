@@ -67,6 +67,7 @@ import type { WorkplaneShape } from "@/types/sketchforge";
 
 const STORAGE_KEY = "educad.parametric.document.v1";
 const RENDER_QUALITY_STORAGE_KEY = "educad.viewport.render-mode";
+const FPS_VISIBLE_STORAGE_KEY = "educad.viewport.show-fps";
 type Notice = { type: "ok" | "info" | "error"; text: string } | null;
 
 function downloadBlob(blob: Blob, name: string) {
@@ -101,6 +102,7 @@ export function SketchForgeParametricEditor() {
   const [view, setView] = useState<CameraView>({ name: "iso", token: 0 });
   const [projection, setProjection] = useState<CameraProjection>("orthographic");
   const [renderQuality, setRenderQuality] = useState<ViewportRenderQuality>("normal");
+  const [showFps, setShowFps] = useState(false);
   const [cameraOrientation, setCameraOrientation] = useState<CameraOrientation>({ azimuth: Math.PI / 4, polar: 1.02 });
   const [clipboardId, setClipboardId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -113,6 +115,12 @@ export function SketchForgeParametricEditor() {
   const geometryFingerprint = useMemo(() => parametricGeometryFingerprint(document), [document]);
   const objectColorFingerprint = useMemo(() => parametricObjectColorFingerprint(document), [document]);
   const objectColors = useMemo(() => objectColorsFromFingerprint(objectColorFingerprint), [objectColorFingerprint]);
+  const viewportObjectOrigins = useMemo(() => document.objects.map((object) => ({
+    objectId: object.id,
+    visible: object.originVisible,
+    position: object.transform.position,
+    rotation: object.transform.rotation,
+  })), [document.objects]);
   const buildDocumentRef = useRef(document);
   buildDocumentRef.current = document;
   const selectedOperationTimeline = useMemo(() => {
@@ -134,6 +142,7 @@ export function SketchForgeParametricEditor() {
     try {
       const storedQuality = localStorage.getItem(RENDER_QUALITY_STORAGE_KEY);
       if (storedQuality === "normal" || storedQuality === "optimized") setRenderQuality(storedQuality);
+      setShowFps(localStorage.getItem(FPS_VISIBLE_STORAGE_KEY) === "true");
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored) as unknown;
@@ -156,6 +165,10 @@ export function SketchForgeParametricEditor() {
   useEffect(() => {
     if (hydrated) localStorage.setItem(RENDER_QUALITY_STORAGE_KEY, renderQuality);
   }, [hydrated, renderQuality]);
+
+  useEffect(() => {
+    if (hydrated) localStorage.setItem(FPS_VISIBLE_STORAGE_KEY, String(showFps));
+  }, [hydrated, showFps]);
 
   useEffect(() => {
     const createWorker = () => new Worker(new URL("../workers/parametricBuild.worker.ts", import.meta.url), { type: "module" });
@@ -489,10 +502,12 @@ export function SketchForgeParametricEditor() {
       </div>
 
       <section className="educad-workplane-stage">
+        {showFps ? <FpsCounter rightOffset={modelSidebarMode === "normal" ? 332 : modelSidebarMode === "simplified" ? 80 : 12} /> : null}
         <ParametricViewport
           mesh={build.mesh}
           objectRecords={build.objectRecords}
           objectColors={objectColors}
+          objectOrigins={viewportObjectOrigins}
           operationContext={viewportOperationContext}
           isolatedHistoryObjectId={selectedOperationTimeline && selectedOperationTimeline.index < selectedOperationTimeline.count - 1 ? selectedOperationTimeline.objectId : null}
           color={document.color}
@@ -606,13 +621,37 @@ export function SketchForgeParametricEditor() {
           <header><strong>Ajustes del diseño</strong><button onClick={() => setSettingsOpen(false)}><X /></button></header>
           <label><span>Nombre</span><input value={document.name} onFocus={beginTransaction} onBlur={finishTransaction} onChange={(event) => mutate((draft) => { draft.name = event.target.value; })} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); if (event.key === "Escape") { cancelTransaction(); event.currentTarget.blur(); } }} /></label>
           <label><span>Renderizado</span><select value={renderQuality} onChange={(event) => setRenderQuality(event.target.value as ViewportRenderQuality)}><option value="normal">Normal (suavizado)</option><option value="optimized">Optimizar rendimiento</option></select></label>
-          <p>El proyecto se guarda automáticamente. El modo de renderizado se recuerda en este dispositivo.</p>
+          <label className="educad-settings-toggle"><span>Mostrar FPS</span><input type="checkbox" checked={showFps} onChange={(event) => setShowFps(event.target.checked)} /></label>
+          <p>El proyecto se guarda automáticamente. El renderizado y el contador FPS se recuerdan en este dispositivo.</p>
         </aside>
       )}
 
       <input ref={importRef} hidden type="file" accept=".json,.educad" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importProject(file); event.target.value = ""; }} />
     </main>
   );
+}
+
+function FpsCounter({ rightOffset }: { rightOffset: number }) {
+  const [fps, setFps] = useState(0);
+  useEffect(() => {
+    let frame = 0;
+    let frames = 0;
+    let sampleStarted = performance.now();
+    const measure = (now: number) => {
+      frames += 1;
+      const elapsed = now - sampleStarted;
+      if (elapsed >= 500) {
+        setFps(Math.round(frames * 1000 / elapsed));
+        frames = 0;
+        sampleStarted = now;
+      }
+      frame = window.requestAnimationFrame(measure);
+    };
+    frame = window.requestAnimationFrame(measure);
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+  const tone = fps > 0 && fps < 20 ? "low" : fps < 40 ? "medium" : "high";
+  return <output className={`educad-fps-counter ${tone}`} aria-label={`Rendimiento: ${fps} fotogramas por segundo`} style={{ right: rightOffset }}>{fps} FPS</output>;
 }
 
 function ToolbarSection({ label, className = "", children }: { label: string; className?: string; children: React.ReactNode }) {

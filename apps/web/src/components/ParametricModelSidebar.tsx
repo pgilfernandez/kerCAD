@@ -6,6 +6,7 @@ import {
   ChevronRight,
   CircleDot,
   CircleOff,
+  Crosshair,
   DraftingCompass,
   Eye,
   EyeOff,
@@ -130,6 +131,7 @@ export function ParametricModelSidebar({
                     </button>
                     <div className="educad-tree-actions">
                       <button aria-label={`Renombrar ${object.name}`} title="Renombrar" onClick={() => beginRename(object.id, "object", object.name)}><Pencil size={14} /></button>
+                      <button className="educad-origin-tree-button" aria-label={object.object.originVisible ? `Ocultar origen de ${object.name}` : `Mostrar origen de ${object.name}`} title={object.object.originVisible ? "Ocultar origen" : "Mostrar origen"} aria-pressed={object.object.originVisible} onClick={() => onUpdateObject(object.id, (draft) => { draft.originVisible = !draft.originVisible; })}><Crosshair size={15} /></button>
                       <button aria-label={object.object.visible ? `Ocultar ${object.name}` : `Mostrar ${object.name}`} title={object.object.visible ? "Ocultar" : "Mostrar"} aria-pressed={!object.object.visible} onClick={() => onUpdateObject(object.id, (draft) => { draft.visible = !draft.visible; })}>{object.object.visible ? <Eye size={15} /> : <EyeOff size={15} />}</button>
                       <button aria-label={object.object.locked ? `Desbloquear ${object.name}` : `Bloquear ${object.name}`} title={object.object.locked ? "Desbloquear" : "Bloquear"} aria-pressed={object.object.locked} onClick={() => onUpdateObject(object.id, (draft) => { draft.locked = !draft.locked; })}>{object.object.locked ? <LockKeyhole size={15} /> : <LockKeyholeOpen size={15} />}</button>
                     </div>

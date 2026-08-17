@@ -107,6 +107,7 @@ export type ParametricObject = {
   color: string;
   visible: boolean;
   locked: boolean;
+  originVisible: boolean;
   transform: {
     position: ParametricVector3;
     rotation: ParametricVector3;

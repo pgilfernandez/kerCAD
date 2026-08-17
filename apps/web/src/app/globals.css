@@ -985,6 +985,7 @@ button {
 
 .educad-tree-actions > button:hover { color: #217d9c; background: #dceef4; }
 .educad-tree-actions > button[aria-pressed="true"] { color: #a24d48; background: #f7e7e6; }
+.educad-tree-actions > button.educad-origin-tree-button[aria-pressed="true"] { color: #7b4dab; background: #f0e9f8; }
 
 .educad-operation-list {
   position: relative;
@@ -1295,7 +1296,12 @@ button {
 .educad-settings-panel input:not([type]) { width: 190px; padding: 7px; border: 1px solid #cbd9e2; border-radius: 5px; }
 .educad-settings-panel input[type="color"] { width: 48px; height: 29px; padding: 2px; border: 1px solid #cbd9e2; border-radius: 5px; }
 .educad-settings-panel select { width: 190px; padding: 7px; color: #304b61; background: #fff; border: 1px solid #cbd9e2; border-radius: 5px; }
+.educad-settings-panel .educad-settings-toggle input { width: 18px; height: 18px; accent-color: #079bc9; }
 .educad-settings-panel p { margin: 11px 14px 0; color: #7b8f9e; font-size: 9px; }
+
+.educad-fps-counter { position: absolute; bottom: 12px; z-index: 35; min-width: 66px; padding: 6px 9px; color: #16794c; background: rgba(255, 255, 255, 0.86); border: 1px solid rgba(22, 121, 76, 0.33); border-radius: 6px; box-shadow: 0 2px 8px rgba(28, 62, 78, 0.12); font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; pointer-events: none; transition: right 160ms ease; }
+.educad-fps-counter.medium { color: #9a6700; border-color: rgba(154, 103, 0, 0.33); }
+.educad-fps-counter.low { color: #b42318; border-color: rgba(180, 35, 24, 0.33); }
 
 @media (max-width: 1120px) {
   .educad-project-name { display: none; }

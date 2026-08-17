@@ -13,6 +13,7 @@ describe("parametric build state", () => {
     document.objects[0].name = "Renamed object";
     document.objects[0].color = "#3b82f6";
     document.objects[0].locked = true;
+    document.objects[0].originVisible = true;
     document.features[0].name = "Renamed feature";
 
     expect(parametricGeometryFingerprint(document)).toBe(initial);
