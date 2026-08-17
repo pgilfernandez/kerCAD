@@ -9,7 +9,7 @@ import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeome
 import { acceleratedRaycast, MeshBVH } from "three-mesh-bvh";
 import { operationPreviewStyle, operationPreviewWireframePositions } from "@/lib/viewportGeometry";
 import { AdaptiveViewportResolution, viewportPerformanceOptions, viewportRenderProfile, type ViewportRenderQuality } from "@/lib/viewportPerformance";
-import { viewportPointerDragIntent, type ViewportPointerDragIntent } from "@/lib/viewportPointer";
+import { orthographicTouchTargetWorldSize, perspectiveTouchTargetWorldSize, viewportPointerDragIntent, type ViewportPointerDragIntent } from "@/lib/viewportPointer";
 import type { ParametricObjectRenderRecord, RenderMesh } from "@/types/parametric";
 
 export type CameraView = { name: "iso" | "top" | "front" | "right" | "zoom-in" | "zoom-out" | "home" | "fit" | "selection" | "custom"; token: number; direction?: [number, number, number] };
@@ -283,8 +283,26 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
       pointer.set(((event.clientX - bounds.left) / bounds.width) * 2 - 1, -((event.clientY - bounds.top) / bounds.height) * 2 + 1);
       raycaster.setFromCamera(pointer, camera);
     };
+    const updateManipulatorHitTargets = (pointerType: string) => {
+      const selected = selectionRef.current;
+      if (!selected) return;
+      let targetSize = 0;
+      if (pointerType === "touch") {
+        targetSize = camera instanceof THREE.OrthographicCamera
+          ? orthographicTouchTargetWorldSize(camera.top - camera.bottom, camera.zoom, renderer.domElement.clientHeight)
+          : perspectiveTouchTargetWorldSize(camera.position.distanceTo(controls.target), camera.fov, renderer.domElement.clientHeight);
+        targetSize = Math.min(18, Math.max(8, targetSize));
+      }
+      for (const target of [...resizeHitboxesRef.current, rotationHitboxRef.current].filter((item): item is THREE.Mesh => Boolean(item))) {
+        const baseSize = Number(target.userData.hitTargetSize) || 1;
+        const scale = pointerType === "touch" ? Math.max(1, targetSize / baseSize) : 1;
+        target.scale.setScalar(scale);
+        target.updateMatrixWorld(true);
+      }
+    };
     const onPointerDown = (event: PointerEvent) => {
       if (event.button !== 0) return;
+      updateManipulatorHitTargets(event.pointerType);
       const hitbox = selectionHitboxRef.current;
       const rotationHitbox = rotationHitboxRef.current;
       const resizeHitboxes = resizeHitboxesRef.current;
@@ -789,6 +807,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
       resizeHitbox.position.copy(handle.position);
       resizeHitbox.userData.resizeX = sx;
       resizeHitbox.userData.resizeY = sy;
+      resizeHitbox.userData.hitTargetSize = 6;
       root.add(resizeHitbox);
       resizeHitboxesRef.current.push(resizeHitbox);
     }
@@ -809,6 +828,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
     );
     zHitbox.position.copy(zHandle.position);
     zHitbox.userData.resizeZ = true;
+    zHitbox.userData.hitTargetSize = 10;
     root.add(zHitbox);
     resizeHitboxesRef.current.push(zHitbox);
     const rotationRadius = Math.max(selection.width, selection.depth) * 0.7 + 6;
@@ -835,6 +855,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
       new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
     );
     rotationHitbox.position.copy(rotationHandle.position);
+    rotationHitbox.userData.hitTargetSize = 10;
     root.add(rotationHitbox);
     model.add(root);
     selectionRootRef.current = root;
