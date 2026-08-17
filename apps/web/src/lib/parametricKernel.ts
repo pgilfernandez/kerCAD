@@ -1,5 +1,6 @@
 import { loadBrepWithOcct, type Brep, type BrepSolid } from "@/lib/brepKernel";
 import type { Edge } from "brepjs";
+import { parametricObjectGeometryFingerprint } from "@/lib/parametricBuildState";
 import { topologicallySortedParametricFeatures } from "@/lib/parametricDependencyGraph";
 import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricObject, ParametricObjectRenderRecord, RenderMesh, SketchFeature } from "@/types/parametric";
 
@@ -72,12 +73,13 @@ function worldObjectSolids(brep: Brep, solids: Map<string, AnySolid>, objects: M
   return new Map([...solids].map(([objectId, solid]) => [objectId, applyObjectTransform(brep, solid, objects.get(objectId))]));
 }
 
-function objectRenderRecords(brep: Brep, worldSolids: Map<string, AnySolid>, objects: Map<string, ParametricObject>): ParametricObjectRenderRecord[] {
+function objectRenderRecords(brep: Brep, document: ParametricDocument, worldSolids: Map<string, AnySolid>, objects: Map<string, ParametricObject>): ParametricObjectRenderRecord[] {
   return [...worldSolids].map(([objectId, solid]) => {
     const object = objects.get(objectId);
     return {
       objectId,
       renderId: parametricObjectRenderId(objectId),
+      geometryFingerprint: parametricObjectGeometryFingerprint(document, objectId),
       color: object?.color ?? "#d41721",
       worldTransform: structuredClone(object?.transform ?? {
         position: { x: 0, y: 0, z: 0 },
@@ -89,12 +91,12 @@ function objectRenderRecords(brep: Brep, worldSolids: Map<string, AnySolid>, obj
   });
 }
 
-function buildRenderOutput(brep: Brep, solids: Map<string, AnySolid>, objects: Map<string, ParametricObject>) {
+function buildRenderOutput(brep: Brep, document: ParametricDocument, solids: Map<string, AnySolid>, objects: Map<string, ParametricObject>) {
   const worldSolids = worldObjectSolids(brep, solids, objects);
   const combined = combinedObjectShape(brep, worldSolids);
   return {
     mesh: combined ? meshShape(brep, combined) : null,
-    objectRecords: objectRenderRecords(brep, worldSolids, objects),
+    objectRecords: objectRenderRecords(brep, document, worldSolids, objects),
   };
 }
 
@@ -182,10 +184,10 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
       }
     }
   } catch (error) {
-    return { ...buildRenderOutput(brep, solids, objects), operationContext, completedFeatureIds, warning: errorMessage(error) };
+    return { ...buildRenderOutput(brep, document, solids, objects), operationContext, completedFeatureIds, warning: errorMessage(error) };
   }
 
-  return { ...buildRenderOutput(brep, solids, objects), operationContext, completedFeatureIds, warning: null };
+  return { ...buildRenderOutput(brep, document, solids, objects), operationContext, completedFeatureIds, warning: null };
 }
 
 export function buildParametricModel(document: ParametricDocument): Promise<BuildResult> {

@@ -62,6 +62,7 @@ describe("parametric build worker client", () => {
     result.objectRecords.push({
       objectId: "object-1",
       renderId: "object:object-1",
+      geometryFingerprint: "geometry-1",
       color: "#fff",
       worldTransform: { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 } },
       mesh: result.mesh!,

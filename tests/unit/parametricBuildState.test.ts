@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createStarterDocument } from "@/lib/parametricDocument";
-import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint } from "@/lib/parametricBuildState";
+import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint, parametricObjectGeometryFingerprint } from "@/lib/parametricBuildState";
+import { addPrimitiveToSelection } from "@/lib/parametricObjects";
 
 describe("parametric build state", () => {
   it("ignores edits that do not change B-Rep geometry", () => {
@@ -36,5 +37,18 @@ describe("parametric build state", () => {
 
     expect(parametricGeometryFingerprint(document)).toBe(initialGeometry);
     expect(colors[document.objects[0].id]).toBe("#3b82f6");
+  });
+
+  it("fingerprints each object's GPU geometry independently", () => {
+    const document = createStarterDocument(123);
+    const firstId = document.objects[0].id;
+    const second = addPrimitiveToSelection(document, null, "box");
+    const firstBefore = parametricObjectGeometryFingerprint(document, firstId);
+    const secondBefore = parametricObjectGeometryFingerprint(document, second.objectId);
+    const secondObject = document.objects.find((object) => object.id === second.objectId)!;
+    secondObject.transform.position.x += 12;
+
+    expect(parametricObjectGeometryFingerprint(document, firstId)).toBe(firstBefore);
+    expect(parametricObjectGeometryFingerprint(document, second.objectId)).not.toBe(secondBefore);
   });
 });

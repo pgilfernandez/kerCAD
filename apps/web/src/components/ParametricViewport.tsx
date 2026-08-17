@@ -54,6 +54,22 @@ type Props = {
   onEmptySelect?: () => void;
 };
 
+type CachedObjectRender = {
+  geometryFingerprint: string | null;
+  body: THREE.Mesh;
+  edges: THREE.LineSegments;
+};
+
+function disposeCachedObjectRender(group: THREE.Group | null, cached: CachedObjectRender) {
+  group?.remove(cached.body, cached.edges);
+  cached.body.geometry.dispose();
+  cached.edges.geometry.dispose();
+  const bodyMaterials = Array.isArray(cached.body.material) ? cached.body.material : [cached.body.material];
+  const edgeMaterials = Array.isArray(cached.edges.material) ? cached.edges.material : [cached.edges.material];
+  bodyMaterials.forEach((material) => material.dispose());
+  edgeMaterials.forEach((material) => material.dispose());
+}
+
 export function ParametricViewport({ mesh, objectRecords = [], objectColors, operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "orthographic", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionResize, onSelectionHeight, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
@@ -81,6 +97,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
   const isolatedHistoryObjectIdRef = useRef(isolatedHistoryObjectId);
   const invalidateRef = useRef<() => void>(() => undefined);
   const hasFittedRef = useRef(false);
+  const objectRenderCacheRef = useRef(new Map<string, CachedObjectRender>());
 
   useEffect(() => { selectionRef.current = selection; }, [selection]);
   useEffect(() => { moveRef.current = onSelectionMove; }, [onSelectionMove]);
@@ -435,6 +452,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
       renderer.domElement.removeEventListener("pointermove", onPointerMove);
       renderer.domElement.removeEventListener("pointerup", stopDragging);
       renderer.domElement.removeEventListener("pointercancel", cancelDragging);
+      for (const cached of objectRenderCacheRef.current.values()) disposeCachedObjectRender(modelGroup, cached);
+      objectRenderCacheRef.current.clear();
       renderer.dispose();
       renderer.domElement.remove();
       scene.clear();
@@ -515,28 +534,32 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
     const camera = cameraRef.current;
     const controls = controlsRef.current;
     if (!group || !camera || !controls) return;
-    const selectionRoot = selectionRootRef.current;
-    const operationContextBody = operationContextRef.current;
-    group.children.filter((child) => child !== selectionRoot && child !== operationContextBody).forEach((child) => {
-      child.traverse((descendant) => {
-        if (descendant instanceof THREE.Mesh || descendant instanceof THREE.LineSegments) {
-          descendant.geometry.dispose();
-          if (Array.isArray(descendant.material)) descendant.material.forEach((material) => material.dispose());
-          else descendant.material.dispose();
-        }
-      });
-      group.remove(child);
-    });
-    if (rendererRef.current) rendererRef.current.shadowMap.needsUpdate = true;
     const renderItems = objectRecords.length > 0
-      ? objectRecords.map((item) => ({ mesh: item.mesh, color: item.color, objectId: item.objectId as string | null, renderId: item.renderId }))
-      : mesh ? [{ mesh, color, objectId: null, renderId: "combined" }] : [];
+      ? objectRecords.map((item) => ({ mesh: item.mesh, color: item.color, objectId: item.objectId as string | null, renderId: item.renderId, geometryFingerprint: item.geometryFingerprint }))
+      : mesh ? [{ mesh, color, objectId: null, renderId: "combined", geometryFingerprint: null }] : [];
+    const requestedKeys = new Set(renderItems.map((item) => item.objectId ?? "__combined"));
+    let resourcesChanged = false;
+    for (const [key, cached] of objectRenderCacheRef.current) {
+      if (requestedKeys.has(key)) continue;
+      disposeCachedObjectRender(group, cached);
+      objectRenderCacheRef.current.delete(key);
+      resourcesChanged = true;
+    }
     if (renderItems.length === 0) {
       invalidateRef.current();
       return;
     }
 
     for (const item of renderItems) {
+      const key = item.objectId ?? "__combined";
+      const cached = objectRenderCacheRef.current.get(key);
+      if (cached && item.geometryFingerprint !== null && cached.geometryFingerprint === item.geometryFingerprint) {
+        cached.body.visible = item.objectId !== isolatedHistoryObjectIdRef.current;
+        const materials = Array.isArray(cached.body.material) ? cached.body.material : [cached.body.material];
+        for (const material of materials) if (material instanceof THREE.MeshStandardMaterial) material.color.set(item.color);
+        continue;
+      }
+      if (cached) disposeCachedObjectRender(group, cached);
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute("position", new THREE.BufferAttribute(item.mesh.positions, 3));
       geometry.setAttribute("normal", new THREE.BufferAttribute(item.mesh.normals, 3));
@@ -567,7 +590,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
       edges.userData.finalReferenceWireframe = true;
       edges.renderOrder = 17;
       group.add(edges);
+      objectRenderCacheRef.current.set(key, { geometryFingerprint: item.geometryFingerprint, body, edges });
+      resourcesChanged = true;
     }
+
+    if (resourcesChanged && rendererRef.current) rendererRef.current.shadowMap.needsUpdate = true;
 
     if (!hasFittedRef.current) {
       const box = new THREE.Box3().setFromObject(group);

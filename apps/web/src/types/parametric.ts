@@ -151,6 +151,7 @@ export type RenderMesh = {
 export type ParametricObjectRenderRecord = {
   objectId: string;
   renderId: string;
+  geometryFingerprint: string;
   color: string;
   worldTransform: ParametricObject["transform"];
   mesh: RenderMesh;
