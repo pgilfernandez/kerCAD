@@ -6,6 +6,8 @@ import {
   alignParametricSelections,
   applyOperationWorldPosition,
   applyOperationWorldRotation,
+  applyParametricSelectionWorldDelta,
+  applyParametricSelectionWorkplaneRotation,
   applyObjectWorldPosition,
   applyWorkplanePatch,
   colorForNewParametricObject,
@@ -134,6 +136,29 @@ describe("parametric object workflow", () => {
     expect(after?.y).toBeCloseTo(before!.y);
     expect(after?.baseZ).toBeCloseTo(before!.baseZ);
     expect(after).toMatchObject({ width: before!.width, depth: before!.depth, height: before!.height, rotation: before!.rotation });
+  });
+
+  it("moves objects and operations by a full world-space workplane delta", () => {
+    const document = createStarterDocument(123);
+    const object = document.objects[0];
+    const feature = document.features.find((candidate) => candidate.kind === "extrude")!;
+    object.transform.rotation.x = 90;
+    applyParametricSelectionWorldDelta(document, feature.id, "feature", { x: 0, y: 0, z: 5 });
+    const moved = viewportSelectionForFeature(document, feature.id)!;
+    expect(moved.baseZ).toBeCloseTo(5);
+    applyParametricSelectionWorldDelta(document, object.id, "object", { x: 2, y: 3, z: 4 });
+    expect(object.transform.position).toEqual({ x: 2, y: 3, z: 4 });
+  });
+
+  it("rotates a selection around the active workplane normal", () => {
+    const document = createStarterDocument(123);
+    const object = document.objects[0];
+    applyParametricSelectionWorkplaneRotation(document, object.id, "object", { x: 1, y: 0, z: 0 }, 90);
+    expect(object.transform.rotation.x).toBeCloseTo(90);
+    const feature = document.features.find((candidate) => candidate.kind === "extrude")!;
+    applyParametricSelectionWorkplaneRotation(document, feature.id, "feature", { x: 1, y: 0, z: 0 }, 45);
+    const selection = viewportSelectionForFeature(document, feature.id)!;
+    expect(selection.rotation3d?.x).toBeCloseTo(135);
   });
 
   it("moves an object by its displayed bounds after its origin has been offset", () => {

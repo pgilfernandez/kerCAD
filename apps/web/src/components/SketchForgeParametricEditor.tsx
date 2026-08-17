@@ -45,9 +45,9 @@ import {
 import {
   addPrimitiveToSelection,
   alignParametricSelections,
-  applyObjectWorldPosition,
-  applyOperationWorldPosition,
   applyOperationWorldRotation,
+  applyParametricSelectionWorldDelta,
+  applyParametricSelectionWorkplaneRotation,
   applyWorkplanePatch,
   deleteParametricObject,
   deleteParametricFeature,
@@ -283,6 +283,10 @@ export function SketchForgeParametricEditor() {
   })), [document.objects, selectedOriginObjectId]);
   const snapAmount = document.workplane.snapToGrid ? document.workplane.gridStep : 0.01;
   const hasActiveWorkplane = !parametricWorkplaneIsGlobal(document.workplane);
+  const updateGridSettings = (patch: Partial<Pick<ParametricDocument["workplane"], "width" | "depth" | "gridStep" | "gridVisible" | "activeSizePercent">>) => {
+    setWorkplaneDraft((current) => ({ ...current, ...patch }));
+    mutate((draft) => { Object.assign(draft.workplane, patch); });
+  };
 
   useEffect(() => {
     if (!originEditObjectId) return;
@@ -366,16 +370,18 @@ export function SketchForgeParametricEditor() {
       if (!selectedObjectId || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
       event.preventDefault();
       const step = event.shiftKey ? snapAmount * 5 : snapAmount;
-      const x = (selectedBox?.x ?? 0) + (event.key === "ArrowLeft" ? -step : event.key === "ArrowRight" ? step : 0);
-      const y = (selectedBox?.y ?? 0) + (event.key === "ArrowDown" ? -step : event.key === "ArrowUp" ? step : 0);
-      mutate((draft) => {
-        if (selectedOperationId) applyOperationWorldPosition(draft, selectedOperationId, x, y);
-        else applyWorkplanePatch(draft, selectedObjectId, { x, z: y });
-      });
+      const x = event.key === "ArrowLeft" ? -step : event.key === "ArrowRight" ? step : 0;
+      const y = event.key === "ArrowDown" ? -step : event.key === "ArrowUp" ? step : 0;
+      const plane = document.workplane;
+      mutate((draft) => applyParametricSelectionWorldDelta(draft, selectedId!, selectionKind, {
+        x: plane.xAxis.x * x + plane.yAxis.x * y,
+        y: plane.xAxis.y * x + plane.yAxis.y * y,
+        z: plane.xAxis.z * x + plane.yAxis.z * y,
+      }));
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [deleteCurrentSelection, mutate, selectedBox?.x, selectedBox?.y, selectedId, selectedObjectId, selectedOperationId, snapAmount]);
+  }, [deleteCurrentSelection, document.workplane, mutate, selectedId, selectedObjectId, selectionKind, snapAmount]);
 
   const updateSelected = (patch: Partial<WorkplaneShape>) => {
     if (!selectedObjectId) return;
@@ -598,17 +604,24 @@ export function SketchForgeParametricEditor() {
           renderQuality={renderQuality}
           selection={originEditObjectId || placingWorkplane ? null : selectedBox}
           snap={snapAmount}
-          onSelectionMove={(x, y) => mutate((draft) => {
-            if (selectedOperationId) applyOperationWorldPosition(draft, selectedOperationId, x, y);
-            else if (selectedObjectId) applyObjectWorldPosition(draft, selectedObjectId, x, y);
-          })}
+          onSelectionMove={(delta) => {
+            if (!selectedId) return;
+            mutate((draft) => applyParametricSelectionWorldDelta(draft, selectedId, selectionKind, delta));
+          }}
           onSelectionRotate={(rotation) => mutate((draft) => {
             if (selectedOperationId) applyOperationWorldRotation(draft, selectedOperationId, rotation);
             else if (selectedObjectId) applyWorkplanePatch(draft, selectedObjectId, { rotation });
           })}
-          onSelectionResize={(x, y, width, depth) => {
+          onSelectionRotateRelative={(deltaDegrees, axis) => {
             if (!selectedId) return;
-            mutate((draft) => resizeParametricSelection(draft, selectedId, selectionKind, x, y, width, depth));
+            mutate((draft) => applyParametricSelectionWorkplaneRotation(draft, selectedId, selectionKind, axis, deltaDegrees));
+          }}
+          onSelectionResize={(delta, width, depth) => {
+            if (!selectedId) return;
+            mutate((draft) => {
+              resizeParametricSelection(draft, selectedId, selectionKind, selectedBox?.x ?? 0, selectedBox?.y ?? 0, width, depth);
+              applyParametricSelectionWorldDelta(draft, selectedId, selectionKind, delta);
+            });
           }}
           onSelectionHeight={(height) => {
             if (!selectedId) return;
@@ -658,15 +671,14 @@ export function SketchForgeParametricEditor() {
             setWorkplaneDraft((current) => ({ ...current, snapToGrid: enabled }));
           }}
         ><Magnet size={21} /></button>
-        {workplaneOpen ? <form className="educad-workplane-popover" onSubmit={(event) => { event.preventDefault(); mutate((draft) => { draft.workplane = { ...workplaneDraft, snapToGrid: draft.workplane.snapToGrid }; }); setWorkplaneOpen(false); }}>
+        {workplaneOpen ? <div className="educad-workplane-popover">
           <header><div><strong>Rejilla</strong><span>Suelo global y tamaño del plano activo</span></div><button type="button" aria-label="Cerrar" onClick={() => setWorkplaneOpen(false)}><X size={17} /></button></header>
-          <label><span>Mostrar suelo XY</span><input type="checkbox" checked={workplaneDraft.gridVisible} onChange={(event) => setWorkplaneDraft((current) => ({ ...current, gridVisible: event.target.checked }))} /></label>
-          <label><span>Tamaño del plano activo</span><span className="educad-number-input"><input type="number" min="2" max="100" step="1" value={workplaneDraft.activeSizePercent} onChange={(event) => setWorkplaneDraft((current) => ({ ...current, activeSizePercent: Math.min(100, Math.max(2, Number(event.target.value) || 10)) }))} /><small>%</small></span></label>
-          <label><span>Ancho</span><span className="educad-number-input"><input type="number" min="60" max="2000" step="1" value={workplaneDraft.width} onChange={(event) => setWorkplaneDraft((current) => ({ ...current, width: Math.min(2000, Math.max(60, Number(event.target.value) || 60)) }))} /><small>mm</small></span></label>
-          <label><span>Largo</span><span className="educad-number-input"><input type="number" min="60" max="2000" step="1" value={workplaneDraft.depth} onChange={(event) => setWorkplaneDraft((current) => ({ ...current, depth: Math.min(2000, Math.max(60, Number(event.target.value) || 60)) }))} /><small>mm</small></span></label>
-          <label><span>Paso de líneas</span><span className="educad-number-input"><input type="number" min="0.1" max="200" step="0.1" value={workplaneDraft.gridStep} onChange={(event) => setWorkplaneDraft((current) => ({ ...current, gridStep: Math.min(200, Math.max(0.1, Number(event.target.value) || 0.1)) }))} /><small>mm</small></span></label>
-          <footer><button type="button" onClick={() => setWorkplaneOpen(false)}>Cancelar</button><button className="primary" type="submit">Aplicar</button></footer>
-        </form> : null}
+          <label><span>Mostrar suelo XY</span><input type="checkbox" checked={workplaneDraft.gridVisible} onChange={(event) => updateGridSettings({ gridVisible: event.target.checked })} /></label>
+          <label><span>Tamaño del plano activo</span><span className="educad-number-input"><input type="number" min="2" max="100" step="1" value={workplaneDraft.activeSizePercent} onChange={(event) => updateGridSettings({ activeSizePercent: Math.min(100, Math.max(2, Number(event.target.value) || 10)) })} /><small>%</small></span></label>
+          <label><span>Ancho</span><span className="educad-number-input"><input type="number" min="60" max="2000" step="1" value={workplaneDraft.width} onChange={(event) => updateGridSettings({ width: Math.min(2000, Math.max(60, Number(event.target.value) || 60)) })} /><small>mm</small></span></label>
+          <label><span>Largo</span><span className="educad-number-input"><input type="number" min="60" max="2000" step="1" value={workplaneDraft.depth} onChange={(event) => updateGridSettings({ depth: Math.min(2000, Math.max(60, Number(event.target.value) || 60)) })} /><small>mm</small></span></label>
+          <label><span>Paso de líneas</span><span className="educad-number-input"><input type="number" min="0.1" max="200" step="0.1" value={workplaneDraft.gridStep} onChange={(event) => updateGridSettings({ gridStep: Math.min(200, Math.max(0.1, Number(event.target.value) || 0.1)) })} /><small>mm</small></span></label>
+        </div> : null}
         <button
           className={`educad-sidebar-mode-control ${modelSidebarMode}`}
           aria-label={modelSidebarMode === "normal" ? "Simplificar jerarquía" : modelSidebarMode === "simplified" ? "Ocultar jerarquía" : "Mostrar jerarquía"}

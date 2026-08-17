@@ -112,19 +112,24 @@ function objectMatrix(object: ParametricObject) {
 
 function decomposePlacement(matrix: THREE.Matrix4) {
   const position = new THREE.Vector3();
+  matrix.decompose(position, new THREE.Quaternion(), new THREE.Vector3());
+  const rotation = parametricRotationFromMatrix(matrix);
+  return {
+    position: point(position),
+    rotation,
+  };
+}
+
+export function parametricRotationFromMatrix(matrix: THREE.Matrix4) {
   const quaternion = new THREE.Quaternion();
-  const scale = new THREE.Vector3();
-  matrix.decompose(position, quaternion, scale);
+  matrix.decompose(new THREE.Vector3(), quaternion, new THREE.Vector3());
   // OpenCascade applies our stored rotations X, then Y, then Z. ZYX is the
   // matching Euler decomposition for that matrix product (Rz * Ry * Rx).
   const rotation = new THREE.Euler().setFromQuaternion(quaternion, "ZYX");
   return {
-    position: point(position),
-    rotation: {
-      x: Number(THREE.MathUtils.radToDeg(rotation.x).toFixed(6)),
-      y: Number(THREE.MathUtils.radToDeg(rotation.y).toFixed(6)),
-      z: Number(THREE.MathUtils.radToDeg(rotation.z).toFixed(6)),
-    },
+    x: Number(THREE.MathUtils.radToDeg(rotation.x).toFixed(6)),
+    y: Number(THREE.MathUtils.radToDeg(rotation.y).toFixed(6)),
+    z: Number(THREE.MathUtils.radToDeg(rotation.z).toFixed(6)),
   };
 }
 

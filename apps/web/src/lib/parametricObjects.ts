@@ -2,7 +2,7 @@ import { createExtrudeFeature, createParametricObject, createSketchFeature } fro
 import type { ViewportSelection } from "@/components/ParametricViewport";
 import type { ExtrudeFeature, ParametricDocument, ParametricFeature, ParametricObject, SketchFeature } from "@/types/parametric";
 import type { WorkplaneShape } from "@/types/sketchforge";
-import { objectPlacementForWorkplane, operationPlacementForWorkplane, parametricTransformMatrix } from "@/lib/parametricWorkplane";
+import { objectPlacementForWorkplane, operationPlacementForWorkplane, parametricRotationFromMatrix, parametricTransformMatrix } from "@/lib/parametricWorkplane";
 import * as THREE from "three";
 
 export type SupportedPrimitive = "box" | "cylinder";
@@ -256,6 +256,11 @@ export function workplaneShapeForObject(document: ParametricDocument, id: string
 export function viewportSelectionForObject(document: ParametricDocument, id: string | null, includeUnavailable = false): ViewportSelection | null {
   const shape = workplaneShapeForObject(document, id);
   if (!shape || (!includeUnavailable && (shape.hidden || shape.locked))) return null;
+  const operations = document.features.filter((candidate): candidate is ExtrudeFeature => candidate.objectId === id && candidate.kind === "extrude" && !candidate.suppressed);
+  if (operations.length === 1) {
+    const operationSelection = viewportSelectionForFeature(document, operations[0].id, includeUnavailable);
+    if (operationSelection) return { ...operationSelection, id: shape.id, operationPreview: undefined };
+  }
   return {
     id: shape.id,
     x: shape.x,
@@ -335,6 +340,59 @@ export function applyOperationWorldPosition(document: ParametricDocument, id: st
   const dy = y - object.transform.position.y;
   feature.transform.position.x = (dx * Math.cos(angle) - dy * Math.sin(angle)) / object.transform.scale.x;
   feature.transform.position.y = (dx * Math.sin(angle) + dy * Math.cos(angle)) / object.transform.scale.y;
+}
+
+export function applyParametricSelectionWorldDelta(
+  document: ParametricDocument,
+  id: string,
+  kind: "object" | "feature",
+  delta: { x: number; y: number; z: number },
+) {
+  if (![delta.x, delta.y, delta.z].every(Number.isFinite)) return;
+  if (kind === "object") {
+    const object = document.objects.find((candidate) => candidate.id === id);
+    if (!object) return;
+    object.transform.position.x += delta.x;
+    object.transform.position.y += delta.y;
+    object.transform.position.z += delta.z;
+    return;
+  }
+  const feature = document.features.find((candidate): candidate is ExtrudeFeature => candidate.id === id && candidate.kind === "extrude");
+  const object = feature ? document.objects.find((candidate) => candidate.id === feature.objectId) : null;
+  if (!feature || !object) return;
+  const unrotated = inverseRotateVector(delta, object.transform.rotation);
+  feature.transform.position.x += unrotated.x / object.transform.scale.x;
+  feature.transform.position.y += unrotated.y / object.transform.scale.y;
+  feature.transform.position.z += unrotated.z / object.transform.scale.z;
+}
+
+export function applyParametricSelectionWorkplaneRotation(
+  document: ParametricDocument,
+  id: string,
+  kind: "object" | "feature",
+  axis: { x: number; y: number; z: number },
+  deltaDegrees: number,
+) {
+  if (![axis.x, axis.y, axis.z, deltaDegrees].every(Number.isFinite)) return;
+  const axisVector = new THREE.Vector3(axis.x, axis.y, axis.z);
+  if (axisVector.lengthSq() < 1e-10) return;
+  const delta = new THREE.Matrix4().makeRotationAxis(axisVector.normalize(), THREE.MathUtils.degToRad(deltaDegrees));
+  const rotationMatrix = (rotation: { x: number; y: number; z: number }) => parametricTransformMatrix({
+    position: { x: 0, y: 0, z: 0 },
+    rotation,
+  });
+  if (kind === "object") {
+    const object = document.objects.find((candidate) => candidate.id === id);
+    if (object) object.transform.rotation = parametricRotationFromMatrix(delta.multiply(rotationMatrix(object.transform.rotation)));
+    return;
+  }
+  const feature = document.features.find((candidate): candidate is ExtrudeFeature => candidate.id === id && candidate.kind === "extrude");
+  const object = feature ? document.objects.find((candidate) => candidate.id === feature.objectId) : null;
+  if (!feature || !object) return;
+  const objectRotation = rotationMatrix(object.transform.rotation);
+  const worldRotation = objectRotation.clone().multiply(rotationMatrix(feature.transform.rotation));
+  const nextLocal = objectRotation.clone().invert().multiply(delta.multiply(worldRotation));
+  feature.transform.rotation = parametricRotationFromMatrix(nextLocal);
 }
 
 export function applyOperationWorldRotation(document: ParametricDocument, id: string, rotation: number) {

@@ -58,9 +58,10 @@ type Props = {
   renderQuality?: ViewportRenderQuality;
   selection?: ViewportSelection | null;
   snap?: number;
-  onSelectionMove?: (x: number, y: number) => void;
+  onSelectionMove?: (delta: { x: number; y: number; z: number }) => void;
   onSelectionRotate?: (rotation: number) => void;
-  onSelectionResize?: (x: number, y: number, width: number, depth: number) => void;
+  onSelectionRotateRelative?: (deltaDegrees: number, axis: { x: number; y: number; z: number }) => void;
+  onSelectionResize?: (delta: { x: number; y: number; z: number }, width: number, depth: number) => void;
   onSelectionHeight?: (height: number) => void;
   onObjectOriginMove?: (objectId: string, position: { x: number; y: number; z: number }) => void;
   onObjectAxisMove?: (objectId: string, position: { x: number; y: number; z: number }) => void;
@@ -186,7 +187,7 @@ function objectOriginMarker(objectId: string, editable: boolean) {
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], editableOriginId = null, selectedObjectOriginId = null, operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionResize, onSelectionHeight, onObjectOriginMove, onObjectAxisMove, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], editableOriginId = null, selectedObjectOriginId = null, operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionRotateRelative, onSelectionResize, onSelectionHeight, onObjectOriginMove, onObjectAxisMove, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
@@ -213,6 +214,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const selectionRef = useRef(selection);
   const moveRef = useRef(onSelectionMove);
   const rotateRef = useRef(onSelectionRotate);
+  const rotateRelativeRef = useRef(onSelectionRotateRelative);
   const resizeRef = useRef(onSelectionResize);
   const heightRef = useRef(onSelectionHeight);
   const originMoveRef = useRef(onObjectOriginMove);
@@ -226,6 +228,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const workplaneFaceSelectionRef = useRef(workplaneFaceSelection);
   const workplaneFaceSelectRef = useRef(onWorkplaneFaceSelect);
   const snapRef = useRef(snap);
+  const activeWorkplaneRef = useRef(workplane);
   const isolatedHistoryObjectIdRef = useRef(isolatedHistoryObjectId);
   const invalidateRef = useRef<() => void>(() => undefined);
   const hasFittedRef = useRef(false);
@@ -241,6 +244,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   }, [selection]);
   useEffect(() => { moveRef.current = onSelectionMove; }, [onSelectionMove]);
   useEffect(() => { rotateRef.current = onSelectionRotate; }, [onSelectionRotate]);
+  useEffect(() => { rotateRelativeRef.current = onSelectionRotateRelative; }, [onSelectionRotateRelative]);
   useEffect(() => { resizeRef.current = onSelectionResize; }, [onSelectionResize]);
   useEffect(() => { heightRef.current = onSelectionHeight; }, [onSelectionHeight]);
   useEffect(() => { originMoveRef.current = onObjectOriginMove; }, [onObjectOriginMove]);
@@ -260,6 +264,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     invalidateRef.current();
   }, [workplaneFaceSelection]);
   useEffect(() => { snapRef.current = snap; }, [snap]);
+  useEffect(() => { activeWorkplaneRef.current = workplane; }, [workplane]);
   useEffect(() => { isolatedHistoryObjectIdRef.current = isolatedHistoryObjectId; }, [isolatedHistoryObjectId]);
 
   const setDimensionHover = (axis: ViewportDimensionAxis, active: boolean) => {
@@ -297,8 +302,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     }
     if (axis === "rotation") rotateRef.current?.(value);
     else if (value > 0 && axis === "z") heightRef.current?.(value);
-    else if (value > 0 && axis === "x") resizeRef.current?.(selected.x, selected.y, value, selected.depth);
-    else if (value > 0 && axis === "y") resizeRef.current?.(selected.x, selected.y, selected.width, value);
+    else if (value > 0 && axis === "x") resizeRef.current?.({ x: 0, y: 0, z: 0 }, value, selected.depth);
+    else if (value > 0 && axis === "y") resizeRef.current?.({ x: 0, y: 0, z: 0 }, selected.width, value);
     input.value = formatViewportDimension(dimensionValue(axis));
     dimensionPinnedRef.current.add(axis);
     invalidateRef.current();
@@ -445,15 +450,18 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const pointer = new THREE.Vector2();
     const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     const dragPoint = new THREE.Vector3();
-    const dragOffset = new THREE.Vector3();
     let interaction: "move" | "rotate" | "resize" | "height" | "origin" | "axisMove" | null = null;
-    let pendingPosition: { x: number; y: number } | null = null;
+    let pendingPosition: { x: number; y: number; z: number } | null = null;
     let pendingRotation: number | null = null;
-    let pendingResize: { x: number; y: number; width: number; depth: number } | null = null;
+    let pendingRotationDelta: number | null = null;
+    let pendingResize: { delta: { x: number; y: number; z: number }; width: number; depth: number } | null = null;
     let pendingHeight: number | null = null;
-    let rotationOffset = 0;
+    let rotationPointerStart = 0;
+    let rotationRootStart: THREE.Quaternion | null = null;
     let resizeAxes = { x: 0, y: 0 };
     let resizeStart: ViewportSelection | null = null;
+    let resizeRootStart: THREE.Vector3 | null = null;
+    let heightBasePoint: THREE.Vector3 | null = null;
     let interactionDimensions: ViewportDimensionAxis[] = [];
     let originDragAxis: "x" | "y" | "z" | "xy" | null = null;
     let originDragStart: THREE.Vector3 | null = null;
@@ -462,6 +470,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     let pendingOrigin: { objectId: string; position: { x: number; y: number; z: number } } | null = null;
     let pendingObjectAxisMove: { objectId: string; position: { x: number; y: number; z: number } } | null = null;
     let axisMoveRootStart: THREE.Vector3 | null = null;
+    let moveRootStart: THREE.Vector3 | null = null;
+    let movePointerStart: THREE.Vector3 | null = null;
     let pickCandidate: { pointerId: number; pointerType: string; x: number; y: number; dragIntent: ViewportPointerDragIntent } | null = null;
     const updateSelectionBox = (candidate: NonNullable<typeof pickCandidate>, clientX: number, clientY: number) => {
       const box = selectionBoxRef.current;
@@ -526,6 +536,16 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const faceAtPointer = () => {
       const bodies = modelGroup.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh && typeof child.userData.objectId === "string");
       return raycaster.intersectObjects(bodies, false)[0] ?? null;
+    };
+    const workplaneAngle = (pointInScene: THREE.Vector3, centerInScene: THREE.Vector3) => {
+      const point = modelGroup.worldToLocal(pointInScene.clone());
+      const center = modelGroup.worldToLocal(centerInScene.clone());
+      const delta = point.sub(center);
+      const plane = activeWorkplaneRef.current;
+      return Math.atan2(
+        delta.dot(new THREE.Vector3(plane.yAxis.x, plane.yAxis.y, plane.yAxis.z)),
+        delta.dot(new THREE.Vector3(plane.xAxis.x, plane.xAxis.y, plane.xAxis.z)),
+      ) * 180 / Math.PI;
     };
     const updateWorkplaneFaceHighlight = () => {
       const hit = faceAtPointer();
@@ -637,39 +657,51 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         hitbox.getWorldPosition(center);
         const resizeHit = raycaster.intersectObjects(resizeHitboxes, false)[0];
         if (resizeHit && resizeHit.object.userData.resizeZ) {
-          const normal = camera.getWorldDirection(new THREE.Vector3());
-          normal.y = 0;
-          if (normal.lengthSq() < 0.0001) normal.set(0, 0, 1);
+          const planeNormalCad = activeWorkplaneRef.current.normal;
+          const axis = new THREE.Vector3(planeNormalCad.x, planeNormalCad.z, -planeNormalCad.y).normalize();
+          const cameraDirection = camera.getWorldDirection(new THREE.Vector3()).normalize();
+          const normal = cameraDirection.clone().addScaledVector(axis, -cameraDirection.dot(axis));
+          if (normal.lengthSq() < 0.0001) normal.crossVectors(axis, new THREE.Vector3(1, 0, 0));
+          if (normal.lengthSq() < 0.0001) normal.crossVectors(axis, new THREE.Vector3(0, 0, 1));
           dragPlane.setFromNormalAndCoplanarPoint(normal.normalize(), center);
           if (raycaster.ray.intersectPlane(dragPlane, dragPoint)) {
             interaction = "height";
             interactionDimensions = ["z"];
             resizeStart = { ...selected };
             pendingHeight = selected.height;
+            const normalCad = new THREE.Vector3(planeNormalCad.x, planeNormalCad.y, planeNormalCad.z).normalize();
+            const rootPosition = selectionRootRef.current?.position.clone() ?? new THREE.Vector3(selected.x, selected.y, selected.baseZ + selected.height / 2);
+            heightBasePoint = rootPosition.addScaledVector(normalCad, -selected.height / 2);
           }
         } else {
-          dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), center);
+          const planeNormal = activeWorkplaneRef.current.normal;
+          dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(planeNormal.x, planeNormal.z, -planeNormal.y).normalize(), center);
         }
         if (!interaction && raycaster.ray.intersectPlane(dragPlane, dragPoint)) {
           if (rotationHitbox && raycaster.intersectObject(rotationHitbox, false).length > 0) {
             interaction = "rotate";
             interactionDimensions = ["rotation"];
-            const pointerAngle = Math.atan2(-(dragPoint.z - center.z), dragPoint.x - center.x) * 180 / Math.PI;
-            rotationOffset = selected.rotation - pointerAngle;
-            pendingRotation = selected.rotation;
+            rotationPointerStart = workplaneAngle(dragPoint, center);
+            rotationRootStart = selectionRootRef.current?.quaternion.clone() ?? null;
+            pendingRotationDelta = 0;
+            pendingRotation = null;
           } else {
             if (resizeHit) {
               interaction = "resize";
               resizeAxes = { x: Number(resizeHit.object.userData.resizeX), y: Number(resizeHit.object.userData.resizeY) };
               interactionDimensions = viewportDimensionsForHandle(resizeAxes.x, resizeAxes.y);
               resizeStart = { ...selected };
-              pendingResize = { x: selected.x, y: selected.y, width: selected.width, depth: selected.depth };
+              resizeRootStart = selectionRootRef.current?.position.clone() ?? null;
+              pendingResize = { delta: { x: 0, y: 0, z: 0 }, width: selected.width, depth: selected.depth };
             }
           }
           if (!interaction && raycaster.intersectObject(hitbox, false).length > 0) {
+            const root = selectionRootRef.current;
+            if (!root) return;
             interaction = "move";
-            dragOffset.set(center.x - dragPoint.x, 0, center.z - dragPoint.z);
-            pendingPosition = { x: selected.x, y: selected.y };
+            moveRootStart = root.position.clone();
+            movePointerStart = modelGroup.worldToLocal(dragPoint.clone());
+            pendingPosition = { x: 0, y: 0, z: 0 };
           }
         }
       }
@@ -737,27 +769,43 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       if (!root || !selected) return;
       if (interaction === "move") {
         const grid = Math.max(0.01, snapRef.current);
-        const x = Math.round((dragPoint.x + dragOffset.x) / grid) * grid;
-        const y = Math.round((-(dragPoint.z + dragOffset.z)) / grid) * grid;
-        pendingPosition = { x, y };
-        root.position.set(
-          (selected.center?.x ?? selected.x) + x - selected.x,
-          (selected.center?.y ?? selected.y) + y - selected.y,
-          selected.center?.z ?? selected.baseZ + selected.height / 2,
-        );
+        if (!moveRootStart || !movePointerStart) return;
+        const pointerCad = modelGroup.worldToLocal(dragPoint.clone());
+        const rawTarget = moveRootStart.clone().add(pointerCad.sub(movePointerStart));
+        const activePlane = activeWorkplaneRef.current;
+        const origin = new THREE.Vector3(activePlane.origin.x, activePlane.origin.y, activePlane.origin.z);
+        const xAxis = new THREE.Vector3(activePlane.xAxis.x, activePlane.xAxis.y, activePlane.xAxis.z);
+        const yAxis = new THREE.Vector3(activePlane.yAxis.x, activePlane.yAxis.y, activePlane.yAxis.z);
+        const normal = new THREE.Vector3(activePlane.normal.x, activePlane.normal.y, activePlane.normal.z);
+        const relative = rawTarget.clone().sub(origin);
+        const x = Math.round(relative.dot(xAxis) / grid) * grid;
+        const y = Math.round(relative.dot(yAxis) / grid) * grid;
+        const normalDistance = moveRootStart.clone().sub(origin).dot(normal);
+        const target = origin.clone().addScaledVector(xAxis, x).addScaledVector(yAxis, y).addScaledVector(normal, normalDistance);
+        const delta = target.clone().sub(moveRootStart);
+        pendingPosition = { x: delta.x, y: delta.y, z: delta.z };
+        root.position.copy(target);
       } else if (interaction === "rotate") {
         const center = new THREE.Vector3();
         root.getWorldPosition(center);
-        const pointerAngle = Math.atan2(-(dragPoint.z - center.z), dragPoint.x - center.x) * 180 / Math.PI;
-        pendingRotation = Math.round((pointerAngle + rotationOffset) / 5) * 5;
-        root.rotation.z = THREE.MathUtils.degToRad(pendingRotation);
-      } else if (interaction === "resize" && resizeStart) {
+        const pointerAngle = workplaneAngle(dragPoint, center);
+        let delta = pointerAngle - rotationPointerStart;
+        delta = ((delta + 540) % 360) - 180;
+        pendingRotationDelta = Math.round(delta / 5) * 5;
+        if (rotationRootStart) {
+          const plane = activeWorkplaneRef.current;
+          const axis = new THREE.Vector3(plane.normal.x, plane.normal.y, plane.normal.z).normalize();
+          root.quaternion.copy(new THREE.Quaternion().setFromAxisAngle(axis, THREE.MathUtils.degToRad(pendingRotationDelta)).multiply(rotationRootStart));
+        }
+      } else if (interaction === "resize" && resizeStart && resizeRootStart) {
         const grid = Math.max(0.01, snapRef.current);
-        const angle = THREE.MathUtils.degToRad(resizeStart.rotation);
-        const dx = dragPoint.x - resizeStart.x;
-        const dy = -dragPoint.z - resizeStart.y;
-        const localX = dx * Math.cos(angle) + dy * Math.sin(angle);
-        const localY = -dx * Math.sin(angle) + dy * Math.cos(angle);
+        const pointerCad = modelGroup.worldToLocal(dragPoint.clone());
+        const pointerDelta = pointerCad.sub(resizeRootStart);
+        const plane = activeWorkplaneRef.current;
+        const xAxis = new THREE.Vector3(plane.xAxis.x, plane.xAxis.y, plane.xAxis.z);
+        const yAxis = new THREE.Vector3(plane.yAxis.x, plane.yAxis.y, plane.yAxis.z);
+        const localX = pointerDelta.dot(xAxis);
+        const localY = pointerDelta.dot(yAxis);
         const requestedWidth = resizeAxes.x === 0 ? resizeStart.width : Math.max(grid, Math.round((resizeAxes.x * localX + resizeStart.width / 2) / grid) * grid);
         const requestedDepth = resizeAxes.y === 0 ? resizeStart.depth : Math.max(grid, Math.round((resizeAxes.y * localY + resizeStart.depth / 2) / grid) * grid);
         const { width, depth } = constrainViewportResizeDimensions(
@@ -771,18 +819,19 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         );
         const shiftX = resizeAxes.x * (width - resizeStart.width) / 2;
         const shiftY = resizeAxes.y * (depth - resizeStart.depth) / 2;
-        const x = resizeStart.x + shiftX * Math.cos(angle) - shiftY * Math.sin(angle);
-        const y = resizeStart.y + shiftX * Math.sin(angle) + shiftY * Math.cos(angle);
-        pendingResize = { x, y, width, depth };
-        root.position.x = x;
-        root.position.y = y;
+        const shift = xAxis.multiplyScalar(shiftX).add(yAxis.multiplyScalar(shiftY));
+        pendingResize = { delta: { x: shift.x, y: shift.y, z: shift.z }, width, depth };
+        root.position.copy(resizeRootStart).add(shift);
         root.scale.x = width / resizeStart.width;
         root.scale.y = depth / resizeStart.depth;
-      } else if (interaction === "height" && resizeStart) {
+      } else if (interaction === "height" && resizeStart && heightBasePoint) {
         const grid = Math.max(0.01, snapRef.current);
-        const height = Math.max(grid, Math.round((dragPoint.y - resizeStart.baseZ) / grid) * grid);
+        const pointerCad = modelGroup.worldToLocal(dragPoint.clone());
+        const planeNormal = activeWorkplaneRef.current.normal;
+        const normal = new THREE.Vector3(planeNormal.x, planeNormal.y, planeNormal.z).normalize();
+        const height = Math.max(grid, Math.round(pointerCad.sub(heightBasePoint).dot(normal) / grid) * grid);
         pendingHeight = height;
-        root.position.z = resizeStart.baseZ + height / 2;
+        root.position.copy(heightBasePoint).addScaledVector(normal, height / 2);
         root.scale.z = height / resizeStart.height;
       }
       requestRender();
@@ -823,12 +872,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         const root = selectionRootRef.current;
         if (selected && root) {
           root.position.set(selected.center?.x ?? selected.x, selected.center?.y ?? selected.y, selected.center?.z ?? selected.baseZ + selected.height / 2);
-          root.rotation.set(
-            THREE.MathUtils.degToRad(selected.rotation3d?.x ?? 0),
-            THREE.MathUtils.degToRad(selected.rotation3d?.y ?? 0),
-            THREE.MathUtils.degToRad(selected.rotation3d?.z ?? selected.rotation),
-            "ZYX",
-          );
+          const plane = activeWorkplaneRef.current;
+          root.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(
+            new THREE.Vector3(plane.xAxis.x, plane.xAxis.y, plane.xAxis.z),
+            new THREE.Vector3(plane.yAxis.x, plane.yAxis.y, plane.yAxis.z),
+            new THREE.Vector3(plane.normal.x, plane.normal.y, plane.normal.z),
+          ));
           root.scale.set(1, 1, 1);
           requestRender();
         }
@@ -836,13 +885,18 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         completedDimensions.forEach((axis) => dimensionPinnedRef.current.add(axis));
         if (completedInteraction === "origin" && pendingOrigin) originMoveRef.current?.(pendingOrigin.objectId, pendingOrigin.position);
         if (completedInteraction === "axisMove" && pendingObjectAxisMove) objectAxisMoveRef.current?.(pendingObjectAxisMove.objectId, pendingObjectAxisMove.position);
-        if (pendingPosition) moveRef.current?.(pendingPosition.x, pendingPosition.y);
+        if (pendingPosition) moveRef.current?.(pendingPosition);
+        if (pendingRotationDelta !== null) {
+          const normal = activeWorkplaneRef.current.normal;
+          rotateRelativeRef.current?.(pendingRotationDelta, normal);
+        }
         if (pendingRotation !== null) rotateRef.current?.(pendingRotation);
-        if (pendingResize) resizeRef.current?.(pendingResize.x, pendingResize.y, pendingResize.width, pendingResize.depth);
+        if (pendingResize) resizeRef.current?.(pendingResize.delta, pendingResize.width, pendingResize.depth);
         if (pendingHeight !== null) heightRef.current?.(pendingHeight);
       }
       pendingPosition = null;
       pendingRotation = null;
+      pendingRotationDelta = null;
       pendingResize = null;
       pendingHeight = null;
       pendingOrigin = null;
@@ -852,7 +906,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       originPointerStart = null;
       originDragMarker = null;
       axisMoveRootStart = null;
+      moveRootStart = null;
+      movePointerStart = null;
       resizeStart = null;
+      resizeRootStart = null;
+      heightBasePoint = null;
+      rotationRootStart = null;
       requestRender();
     };
     const leaveManipulatorArea = () => {
@@ -1197,13 +1256,22 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     }
     const root = new THREE.Group();
     root.position.set(selection.center?.x ?? selection.x, selection.center?.y ?? selection.y, selection.center?.z ?? selection.baseZ + selection.height / 2);
-    root.rotation.order = "ZYX";
-    root.rotation.set(
+    const selectionQuaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(
       THREE.MathUtils.degToRad(selection.rotation3d?.x ?? 0),
       THREE.MathUtils.degToRad(selection.rotation3d?.y ?? 0),
       THREE.MathUtils.degToRad(selection.rotation3d?.z ?? selection.rotation),
       "ZYX",
-    );
+    ));
+    const plane = activeWorkplaneRef.current;
+    const planeQuaternion = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(
+      new THREE.Vector3(plane.xAxis.x, plane.xAxis.y, plane.xAxis.z),
+      new THREE.Vector3(plane.yAxis.x, plane.yAxis.y, plane.yAxis.z),
+      new THREE.Vector3(plane.normal.x, plane.normal.y, plane.normal.z),
+    ));
+    root.quaternion.copy(planeQuaternion);
+    const previewRoot = new THREE.Group();
+    previewRoot.quaternion.copy(planeQuaternion.clone().invert().multiply(selectionQuaternion));
+    root.add(previewRoot);
     if (selection.operationPreview) {
       const operationPreview = selection.operationPreview;
       const previewStyle = operationPreviewStyle(operationPreview.mode, operationPreview.historical);
@@ -1217,7 +1285,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         }
         const preview = new THREE.Mesh(previewGeometry, previewMaterial(renderQuality, operationPreview.color, previewStyle.fillOpacity));
         preview.renderOrder = 17;
-        root.add(preview);
+        previewRoot.add(preview);
       }
       if (previewStyle.wireframe) {
         const roleColor = operationPreview.mode === "add" ? "#378451" : operationPreview.mode === "hole" ? "#b6524d" : "#7256aa";
@@ -1225,7 +1293,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         lineGeometry.setPositions(operationPreviewWireframePositions(operationPreview.shape, selection.width, selection.depth, selection.height));
         const preview = new LineSegments2(lineGeometry, new LineMaterial({ color: roleColor, linewidth: 2, depthTest: false, transparent: true, opacity: 1 }));
         preview.renderOrder = 18;
-        root.add(preview);
+        previewRoot.add(preview);
       }
     }
     const boxGeometry = axisColoredBoxGeometry(selection.width, selection.depth, selection.height);
@@ -1310,7 +1378,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     selectionHitboxRef.current = hitbox;
     rotationHitboxRef.current = rotationHitbox;
     invalidateRef.current();
-  }, [selection, projection, renderQuality]);
+  }, [selection, projection, renderQuality, workplane.normal.x, workplane.normal.y, workplane.normal.z, workplane.xAxis.x, workplane.xAxis.y, workplane.xAxis.z, workplane.yAxis.x, workplane.yAxis.y, workplane.yAxis.z]);
 
   useEffect(() => {
     const camera = cameraRef.current;

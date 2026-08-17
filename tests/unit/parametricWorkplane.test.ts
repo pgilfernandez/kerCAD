@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createStarterDocument, normalizeParametricDocument } from "@/lib/parametricDocument";
-import { addPrimitiveToSelection, viewportSelectionForFeature } from "@/lib/parametricObjects";
+import { addPrimitiveToSelection, viewportSelectionForFeature, viewportSelectionForObject } from "@/lib/parametricObjects";
 import {
   normalizeParametricWorkplanePlacement,
   parametricTransformMatrix,
@@ -88,6 +88,9 @@ describe("parametric workplanes", () => {
     expect(previewMatrix.elements[8]).toBeCloseTo(1);
     expect(previewMatrix.elements[9]).toBeCloseTo(0);
     expect(previewMatrix.elements[10]).toBeCloseTo(0);
+    const objectSelection = viewportSelectionForObject(document, object.id)!;
+    expect(objectSelection.center).toEqual(preview.center);
+    expect(objectSelection.rotation3d).toEqual(preview.rotation3d);
     expect(feature.transform.position).toEqual({ x: 0, y: 0, z: 0 });
     expect(feature.transform.rotation).toEqual({ x: 0, y: 0, z: 0 });
   });
