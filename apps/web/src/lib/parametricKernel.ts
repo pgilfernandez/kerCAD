@@ -1,4 +1,5 @@
 import { loadBrepWithOcct, type Brep, type BrepSolid } from "@/lib/brepKernel";
+import type { Edge } from "brepjs";
 import { topologicallySortedParametricFeatures } from "@/lib/parametricDependencyGraph";
 import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricObject, ParametricObjectRenderRecord, RenderMesh, SketchFeature } from "@/types/parametric";
 
@@ -97,6 +98,23 @@ function buildRenderOutput(brep: Brep, solids: Map<string, AnySolid>, objects: M
   };
 }
 
+function applyFilletFeature(brep: Brep, document: ParametricDocument, current: AnySolid, feature: Extract<ParametricDocument["features"][number], { kind: "fillet" }>) {
+  if (feature.edgeReferenceIds?.length) {
+    const edges: Edge[] = [];
+    for (const referenceId of feature.edgeReferenceIds) {
+      const stored = document.topologyReferences.find((reference) => reference.id === referenceId);
+      if (!stored) throw new Error(`${feature.name}: la arista seleccionada ya no existe.`);
+      const resolution = brep.resolveRefIn(stored.reference as Parameters<Brep["resolveRefIn"]>[0], current);
+      if (!resolution.ok) throw new Error(`${feature.name}: no se pudo recuperar una arista (${resolution.reason}).`);
+      edges.push(resolution.entity as Edge);
+    }
+    return resultValue<AnySolid>(brep, brep.fillet(current, edges, feature.radius));
+  }
+  return resultValue<AnySolid>(brep, feature.edges === "vertical"
+    ? brep.fillet(current, brep.edgeFinder().inDirection("Z"), feature.radius)
+    : brep.fillet(current, feature.radius));
+}
+
 async function buildParametricModelInternal(document: ParametricDocument, contextFeatureId: string | null, stopAtContext: boolean): Promise<BuildResult> {
   const brep = await loadBrepWithOcct();
   const sketches = new Map<string, SketchFeature>();
@@ -158,11 +176,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
       }
       if (feature.kind === "fillet") {
         if (feature.radius <= 0) throw new Error(`${feature.name}: el radio debe ser mayor que cero.`);
-        if (feature.edges === "vertical") {
-          current = resultValue<AnySolid>(brep, brep.fillet(current, brep.edgeFinder().inDirection("Z"), feature.radius));
-        } else {
-          current = resultValue<AnySolid>(brep, brep.fillet(current, feature.radius));
-        }
+        current = applyFilletFeature(brep, document, current, feature);
         solids.set(objectId, current);
         completedFeatureIds.push(feature.id);
       }
@@ -236,11 +250,7 @@ export async function exportParametricStep(document: ParametricDocument): Promis
       const baseZ = feature.termination === "through-all" ? bounds.zMin - 1 : bounds.zMax - feature.depth;
       const height = feature.termination === "through-all" ? bounds.zMax - bounds.zMin + 2 : feature.depth + 1;
       current = resultValue<AnySolid>(brep, brep.cut(current, brep.cylinder(feature.diameter / 2, height, { at: [feature.x, feature.y, baseZ] })));
-    } else {
-      current = resultValue<AnySolid>(brep, feature.edges === "vertical"
-        ? brep.fillet(current, brep.edgeFinder().inDirection("Z"), feature.radius)
-        : brep.fillet(current, feature.radius));
-    }
+    } else current = applyFilletFeature(brep, document, current, feature);
     solids.set(objectId, current);
   }
   const result = combinedObjectShape(brep, worldObjectSolids(brep, solids, objects));

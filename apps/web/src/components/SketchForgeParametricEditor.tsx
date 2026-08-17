@@ -25,6 +25,7 @@ import {
 } from "@/components/icons";
 import { cloneDocument, createFilletFeature, createStarterDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { assertValidParametricDependencies } from "@/lib/parametricDependencyGraph";
+import { assertValidParametricTopology } from "@/lib/parametricTopology";
 import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint } from "@/lib/parametricBuildState";
 import { buildParametricModel, buildParametricOperationContext, exportParametricStep } from "@/lib/parametricKernel";
 import { binaryStlFromRenderMeshes } from "@/lib/stlExport";
@@ -196,6 +197,7 @@ export function SketchForgeParametricEditor() {
     try {
       mutator(next);
       assertValidParametricDependencies(next);
+      assertValidParametricTopology(next);
       commit(next);
       return true;
     } catch (error) {

@@ -123,6 +123,7 @@ export function addPrimitiveToSelection(
 export function deleteParametricObject(document: ParametricDocument, id: string) {
   document.objects = document.objects.filter((object) => object.id !== id);
   document.features = document.features.filter((feature) => feature.objectId !== id);
+  document.topologyReferences = document.topologyReferences.filter((reference) => reference.objectId !== id);
 }
 
 export function deleteParametricFeature(document: ParametricDocument, id: string): { objectId: string | null; nextId: string | null } {
@@ -139,6 +140,7 @@ export function deleteParametricFeature(document: ParametricDocument, id: string
     }
   }
   document.features = document.features.filter((candidate) => !ids.has(candidate.id));
+  document.topologyReferences = document.topologyReferences.filter((reference) => !ids.has(reference.sourceFeatureId));
   const remaining = operations.filter((candidate) => !ids.has(candidate.id));
   const nextId = remaining[Math.max(0, operationIndex - 1)]?.id ?? remaining[0]?.id ?? objectId;
   return { objectId, nextId };
@@ -185,6 +187,8 @@ export function duplicateParametricObject(document: ParametricDocument, id: stri
 
   const sourceFeatures = document.features.filter((feature) => feature.objectId === id);
   const idMap = new Map(sourceFeatures.map((feature, index) => [feature.id, `${feature.id}-copy-${Date.now().toString(36)}-${index}`]));
+  const sourceTopology = document.topologyReferences.filter((reference) => reference.objectId === id);
+  const topologyIdMap = new Map(sourceTopology.map((reference, index) => [reference.id, `${reference.id}-copy-${Date.now().toString(36)}-${index}`]));
   const featureClones = sourceFeatures.map((feature) => {
     const clone = structuredClone(feature);
     clone.id = idMap.get(feature.id)!;
@@ -195,10 +199,20 @@ export function duplicateParametricObject(document: ParametricDocument, id: stri
     clone.dependencies = clone.dependencies?.map((reference) => reference.type === "feature"
       ? { ...reference, id: idMap.get(reference.id) ?? reference.id }
       : { ...reference, id: reference.id === id ? objectClone.id : reference.id });
+    if (clone.kind === "fillet") clone.edgeReferenceIds = clone.edgeReferenceIds?.map((referenceId) => topologyIdMap.get(referenceId) ?? referenceId);
+    return clone;
+  });
+  const topologyClones = sourceTopology.map((reference) => {
+    const clone = structuredClone(reference);
+    clone.id = topologyIdMap.get(reference.id)!;
+    clone.objectId = objectClone.id;
+    clone.sourceFeatureId = idMap.get(reference.sourceFeatureId) ?? reference.sourceFeatureId;
+    if (clone.reference.origin === reference.sourceFeatureId) clone.reference.origin = clone.sourceFeatureId;
     return clone;
   });
   document.objects.push(objectClone);
   document.features.push(...featureClones);
+  document.topologyReferences.push(...topologyClones);
   return objectClone.id;
 }
 

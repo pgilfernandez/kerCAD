@@ -4,6 +4,36 @@ export type ParametricDependencyReference =
   | { type: "feature"; id: string }
   | { type: "object"; id: string };
 
+export type ParametricFaceReference = {
+  origin: string;
+  role: string;
+  hint: {
+    entityType: "face";
+    surfaceType?: string;
+    normal?: [number, number, number];
+    centroid?: [number, number, number];
+    area?: number;
+  };
+};
+
+export type ParametricEdgeReference = {
+  origin: string;
+  faceRoles: [string, string];
+  hint: {
+    entityType: "edge";
+    length?: number;
+    midpoint?: [number, number, number];
+  };
+};
+
+export type ParametricTopologyReference = {
+  id: string;
+  name: string;
+  objectId: string;
+  sourceFeatureId: string;
+  reference: ParametricFaceReference | ParametricEdgeReference;
+};
+
 export type BaseFeature = {
   id: string;
   name: string;
@@ -66,6 +96,7 @@ export type FilletFeature = BaseFeature & {
   kind: "fillet";
   radius: number;
   edges: "vertical" | "all";
+  edgeReferenceIds?: string[];
 };
 
 export type ParametricFeature = SketchFeature | ExtrudeFeature | HoleFeature | FilletFeature;
@@ -97,6 +128,7 @@ export type ParametricDocument = {
   };
   objects: ParametricObject[];
   features: ParametricFeature[];
+  topologyReferences: ParametricTopologyReference[];
   createdAt: number;
   updatedAt: number;
 };

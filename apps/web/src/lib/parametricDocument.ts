@@ -10,13 +10,14 @@ import type {
   SketchFeature,
 } from "@/types/parametric";
 import { assertValidParametricDependencies } from "@/lib/parametricDependencyGraph";
+import { assertValidParametricTopology, isParametricTopologyReference } from "@/lib/parametricTopology";
 
 let localCounter = 0;
 export const CURRENT_PARAMETRIC_SCHEMA = "educad-parametric/v2" as const;
 type ParametricSchema = ParametricDocument["schema"];
 
 const documentMigrations: Partial<Record<ParametricSchema, (document: ParametricDocument) => ParametricDocument>> = {
-  "educad-parametric/v1": (document) => ({ ...document, schema: "educad-parametric/v2" }),
+  "educad-parametric/v1": (document) => ({ ...document, schema: "educad-parametric/v2", topologyReferences: document.topologyReferences ?? [] }),
 };
 
 export function createFeatureId(prefix: string) {
@@ -35,6 +36,7 @@ export function createStarterDocument(now = Date.now()): ParametricDocument {
     color: "#d41721",
     workplane: { width: 200, depth: 200, gridStep: 5, snapToGrid: true },
     objects: [object],
+    topologyReferences: [],
     createdAt: now,
     updatedAt: now,
     features: [
@@ -150,6 +152,7 @@ export function validateDocument(value: unknown): value is ParametricDocument {
     && typeof candidate.name === "string"
     && candidate.units === "mm"
     && (candidate.objects === undefined || Array.isArray(candidate.objects))
+    && (candidate.topologyReferences === undefined || (Array.isArray(candidate.topologyReferences) && candidate.topologyReferences.every(isParametricTopologyReference)))
     && Array.isArray(candidate.features)
     && candidate.features.every((feature) => {
       if (!feature || typeof feature.id !== "string" || typeof feature.kind !== "string") return false;
@@ -181,6 +184,7 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
   next.workplane.gridStep = Math.min(200, Math.max(0.1, Number.isFinite(next.workplane.gridStep) ? next.workplane.gridStep : 5));
   next.workplane.snapToGrid = typeof next.workplane.snapToGrid === "boolean" ? next.workplane.snapToGrid : true;
   next.objects ??= [];
+  next.topologyReferences ??= [];
   const objectIds = new Set(next.objects.map((object) => object.id));
   const objectByExtrude = new Map<string, string>();
 
@@ -242,6 +246,7 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
     }
   }
   assertValidParametricDependencies(next);
+  assertValidParametricTopology(next);
   return next;
 }
 
