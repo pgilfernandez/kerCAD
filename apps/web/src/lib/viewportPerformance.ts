@@ -4,6 +4,31 @@ export type ViewportPerformanceOptions = {
   sampleFrames?: number;
 };
 
+export type ViewportRenderQuality = "normal" | "optimized";
+
+export type ViewportRenderProfile = {
+  antialias: boolean;
+  maximumPixelRatio: number;
+  shadowMapSize: number;
+  physicallyBasedMaterials: boolean;
+};
+
+export function viewportRenderProfile(quality: ViewportRenderQuality): ViewportRenderProfile {
+  return quality === "optimized"
+    ? { antialias: false, maximumPixelRatio: 1, shadowMapSize: 512, physicallyBasedMaterials: false }
+    : { antialias: true, maximumPixelRatio: 1.5, shadowMapSize: 1024, physicallyBasedMaterials: true };
+}
+
+export function viewportPerformanceOptions(quality: ViewportRenderQuality): ViewportPerformanceOptions {
+  const profile = viewportRenderProfile(quality);
+  return {
+    maximumPixelRatio: profile.maximumPixelRatio,
+    // Explicit render modes must not visibly change resolution when camera
+    // interaction begins. The selected mode owns a fixed pixel-density target.
+    minimumPixelRatio: profile.maximumPixelRatio,
+  };
+}
+
 export class AdaptiveViewportResolution {
   readonly maximumPixelRatio: number;
   readonly minimumPixelRatio: number;

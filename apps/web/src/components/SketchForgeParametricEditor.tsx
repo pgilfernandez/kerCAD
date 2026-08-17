@@ -6,6 +6,7 @@ import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection 
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView } from "@/components/ParametricViewport";
 import {
   ToolbarAlignIcon,
+  ToolbarBooleanModeIcon,
   ToolbarChamferIcon,
   ToolbarCopyIcon,
   ToolbarDropToWorkplaneIcon,
@@ -60,10 +61,12 @@ import {
   type SupportedPrimitive,
 } from "@/lib/parametricObjects";
 import { toolbarShapeAssets } from "@/lib/shapeCatalog";
+import type { ViewportRenderQuality } from "@/lib/viewportPerformance";
 import type { BuildResult, ParametricDocument, ParametricFeature, ParametricObject } from "@/types/parametric";
 import type { WorkplaneShape } from "@/types/sketchforge";
 
 const STORAGE_KEY = "educad.parametric.document.v1";
+const RENDER_QUALITY_STORAGE_KEY = "educad.viewport.render-mode";
 type Notice = { type: "ok" | "info" | "error"; text: string } | null;
 
 function downloadBlob(blob: Blob, name: string) {
@@ -97,6 +100,7 @@ export function SketchForgeParametricEditor() {
   const [workplaneDraft, setWorkplaneDraft] = useState(document.workplane);
   const [view, setView] = useState<CameraView>({ name: "iso", token: 0 });
   const [projection, setProjection] = useState<CameraProjection>("orthographic");
+  const [renderQuality, setRenderQuality] = useState<ViewportRenderQuality>("normal");
   const [cameraOrientation, setCameraOrientation] = useState<CameraOrientation>({ azimuth: Math.PI / 4, polar: 1.02 });
   const [clipboardId, setClipboardId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -128,6 +132,8 @@ export function SketchForgeParametricEditor() {
 
   useEffect(() => {
     try {
+      const storedQuality = localStorage.getItem(RENDER_QUALITY_STORAGE_KEY);
+      if (storedQuality === "normal" || storedQuality === "optimized") setRenderQuality(storedQuality);
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored) as unknown;
@@ -146,6 +152,10 @@ export function SketchForgeParametricEditor() {
   useEffect(() => {
     if (hydrated) localStorage.setItem(STORAGE_KEY, JSON.stringify(document));
   }, [document, hydrated]);
+
+  useEffect(() => {
+    if (hydrated) localStorage.setItem(RENDER_QUALITY_STORAGE_KEY, renderQuality);
+  }, [hydrated, renderQuality]);
 
   useEffect(() => {
     const createWorker = () => new Worker(new URL("../workers/parametricBuild.worker.ts", import.meta.url), { type: "module" });
@@ -234,6 +244,7 @@ export function SketchForgeParametricEditor() {
   const selectionKind = primarySelection?.kind ?? "object";
   const selectedObjectId = objectIdForFeature(document, selectedId);
   const selectedOperationId = selectionKind === "feature" && document.features.some((feature) => feature.id === selectedId && feature.kind === "extrude") ? selectedId : null;
+  const selectedOperation = selectedOperationId ? document.features.find((feature) => feature.id === selectedOperationId && feature.kind === "extrude") : null;
   const selectedShape = useMemo(() => workplaneShapeForObject(document, selectedObjectId), [document, selectedObjectId]);
   const selectedBox = useMemo(() => modelSelection.length === 1 ? (selectedOperationId ? viewportSelectionForFeature(document, selectedOperationId) : viewportSelectionForObject(document, selectedObjectId)) : null, [document, modelSelection.length, selectedObjectId, selectedOperationId]);
   const snapAmount = document.workplane.snapToGrid ? document.workplane.gridStep : 0.01;
@@ -329,6 +340,13 @@ export function SketchForgeParametricEditor() {
     mutate((draft) => {
       const feature = draft.features.find((candidate) => candidate.id === id);
       if (feature) update(feature);
+    });
+  };
+
+  const setSelectedOperationMode = (operation: "add" | "cut" | "intersect") => {
+    if (!selectedOperationId || selectedOperation?.kind !== "extrude" || selectedOperation.operation === operation) return;
+    updateFeature(selectedOperationId, (feature) => {
+      if (feature.kind === "extrude") feature.operation = operation;
     });
   };
 
@@ -447,6 +465,9 @@ export function SketchForgeParametricEditor() {
           <div className="toolbar-spacer" />
           <div className="tool-group right">
             <ToolbarSection label="Modify">
+              <Tool label="Añadir" enabled={Boolean(selectedOperationId)} active={selectedOperation?.kind === "extrude" && selectedOperation.operation === "add"} onClick={() => setSelectedOperationMode("add")}><ToolbarBooleanModeIcon mode="add" /></Tool>
+              <Tool label="Hueco" enabled={Boolean(selectedOperationId)} active={selectedOperation?.kind === "extrude" && selectedOperation.operation === "cut"} onClick={() => setSelectedOperationMode("cut")}><ToolbarBooleanModeIcon mode="hole" /></Tool>
+              <Tool label="Común" enabled={Boolean(selectedOperationId)} active={selectedOperation?.kind === "extrude" && selectedOperation.operation === "intersect"} onClick={() => setSelectedOperationMode("intersect")}><ToolbarBooleanModeIcon mode="common" /></Tool>
               <Tool label="Alinear" enabled={false}><ToolbarAlignIcon /></Tool>
               <Tool label="Simetría" enabled={Boolean(selectedShape)} onClick={() => selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: -(selectedShape?.x ?? 0) }))}><ToolbarMirrorIcon /></Tool>
               <Tool label="Ajustar a rejilla" enabled={Boolean(selectedShape && document.workplane.snapToGrid)} onClick={() => selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: Math.round((selectedShape?.x ?? 0) / snapAmount) * snapAmount, z: Math.round((selectedShape?.z ?? 0) / snapAmount) * snapAmount }))}><ToolbarSnapGridIcon /></Tool>
@@ -478,6 +499,7 @@ export function SketchForgeParametricEditor() {
           workplane={document.workplane}
           view={view}
           projection={projection}
+          renderQuality={renderQuality}
           selection={selectedBox}
           snap={snapAmount}
           onSelectionMove={(x, y) => mutate((draft) => {
@@ -583,7 +605,8 @@ export function SketchForgeParametricEditor() {
         <aside className="top-action-panel educad-settings-panel">
           <header><strong>Ajustes del diseño</strong><button onClick={() => setSettingsOpen(false)}><X /></button></header>
           <label><span>Nombre</span><input value={document.name} onFocus={beginTransaction} onBlur={finishTransaction} onChange={(event) => mutate((draft) => { draft.name = event.target.value; })} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); if (event.key === "Escape") { cancelTransaction(); event.currentTarget.blur(); } }} /></label>
-          <p>El proyecto se guarda automáticamente en este navegador.</p>
+          <label><span>Renderizado</span><select value={renderQuality} onChange={(event) => setRenderQuality(event.target.value as ViewportRenderQuality)}><option value="normal">Normal (suavizado)</option><option value="optimized">Optimizar rendimiento</option></select></label>
+          <p>El proyecto se guarda automáticamente. El modo de renderizado se recuerda en este dispositivo.</p>
         </aside>
       )}
 
@@ -596,8 +619,8 @@ function ToolbarSection({ label, className = "", children }: { label: string; cl
   return <div className={`toolbar-section ${className}`}><div className="toolbar-section-label">{label}</div><div className="toolbar-section-tools">{children}</div></div>;
 }
 
-function Tool({ label, enabled = true, active = false, onClick, children }: { label: string; enabled?: boolean; active?: boolean; onClick?: () => void; children: React.ReactNode }) {
-  return <button className={`toolbar-icon ${enabled ? "" : "disabled"} ${active ? "active" : ""}`} aria-label={label} title={label} disabled={!enabled} onClick={onClick}>{children}</button>;
+function Tool({ label, enabled = true, active, onClick, children }: { label: string; enabled?: boolean; active?: boolean; onClick?: () => void; children: React.ReactNode }) {
+  return <button className={`toolbar-icon ${enabled ? "" : "disabled"} ${active ? "active" : ""}`} aria-label={label} aria-pressed={active === undefined ? undefined : active} title={label} disabled={!enabled} onClick={onClick}>{children}</button>;
 }
 
 function ViewCube({ orientation, onDirection }: { orientation: CameraOrientation; onDirection: (direction: [number, number, number]) => void }) {

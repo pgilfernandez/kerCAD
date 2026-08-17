@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AdaptiveViewportResolution } from "@/lib/viewportPerformance";
+import { AdaptiveViewportResolution, viewportPerformanceOptions, viewportRenderProfile } from "@/lib/viewportPerformance";
 
 function frames(controller: AdaptiveViewportResolution, start: number, milliseconds: number, count = 4) {
   controller.recordFrame(start);
@@ -7,6 +7,22 @@ function frames(controller: AdaptiveViewportResolution, start: number, milliseco
 }
 
 describe("adaptive viewport resolution", () => {
+  it("keeps antialiasing in normal mode and caps fill cost in optimized mode", () => {
+    expect(viewportRenderProfile("normal")).toMatchObject({ antialias: true, shadowMapSize: 1024, physicallyBasedMaterials: true });
+    expect(viewportRenderProfile("optimized")).toMatchObject({ antialias: false, shadowMapSize: 512, physicallyBasedMaterials: false });
+    expect(new AdaptiveViewportResolution(2, viewportPerformanceOptions("normal")).pixelRatio).toBe(1.5);
+    expect(new AdaptiveViewportResolution(2, viewportPerformanceOptions("optimized")).pixelRatio).toBe(1);
+  });
+
+  it("keeps an explicitly selected render mode stable during slow interaction", () => {
+    const normal = new AdaptiveViewportResolution(2, { ...viewportPerformanceOptions("normal"), sampleFrames: 4 });
+    const optimized = new AdaptiveViewportResolution(2, { ...viewportPerformanceOptions("optimized"), sampleFrames: 4 });
+    frames(normal, 0, 80);
+    frames(optimized, 0, 80);
+    expect(normal.pixelRatio).toBe(1.5);
+    expect(optimized.pixelRatio).toBe(1);
+  });
+
   it("starts below excessive Retina resolution", () => {
     expect(new AdaptiveViewportResolution(3).pixelRatio).toBe(1.5);
     expect(new AdaptiveViewportResolution(1).pixelRatio).toBe(1);

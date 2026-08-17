@@ -8,7 +8,7 @@ import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import { acceleratedRaycast, MeshBVH } from "three-mesh-bvh";
 import { operationPreviewStyle, operationPreviewWireframePositions } from "@/lib/viewportGeometry";
-import { AdaptiveViewportResolution } from "@/lib/viewportPerformance";
+import { AdaptiveViewportResolution, viewportPerformanceOptions, viewportRenderProfile, type ViewportRenderQuality } from "@/lib/viewportPerformance";
 import type { ParametricObjectRenderRecord, RenderMesh } from "@/types/parametric";
 
 export type CameraView = { name: "iso" | "top" | "front" | "right" | "zoom-in" | "zoom-out" | "home" | "fit" | "selection" | "custom"; token: number; direction?: [number, number, number] };
@@ -42,6 +42,7 @@ type Props = {
   workplane?: { width: number; depth: number; gridStep: number };
   view: CameraView;
   projection?: CameraProjection;
+  renderQuality?: ViewportRenderQuality;
   selection?: ViewportSelection | null;
   snap?: number;
   onSelectionMove?: (x: number, y: number) => void;
@@ -60,10 +61,27 @@ type CachedObjectRender = {
   edges: THREE.LineSegments;
 };
 
-const VIEWPORT_SHADOW_MAP_SIZE = 512;
-
 function setMaterialColor(material: THREE.Material, color: THREE.ColorRepresentation) {
-  if (material instanceof THREE.MeshLambertMaterial) material.color.set(color);
+  if (material instanceof THREE.MeshLambertMaterial || material instanceof THREE.MeshStandardMaterial) material.color.set(color);
+}
+
+function workplaneMaterial(quality: ViewportRenderQuality) {
+  return quality === "normal"
+    ? new THREE.MeshStandardMaterial({ color: "#ddf8ff", transparent: true, opacity: 0.68, roughness: 1, metalness: 0 })
+    : new THREE.MeshLambertMaterial({ color: "#ddf8ff", transparent: true, opacity: 0.68 });
+}
+
+function objectMaterial(quality: ViewportRenderQuality, color: THREE.ColorRepresentation) {
+  return quality === "normal"
+    ? new THREE.MeshStandardMaterial({ color, roughness: 0.68, metalness: 0.03, polygonOffset: true, polygonOffsetFactor: 1 })
+    : new THREE.MeshLambertMaterial({ color, polygonOffset: true, polygonOffsetFactor: 1 });
+}
+
+function previewMaterial(quality: ViewportRenderQuality, color: THREE.ColorRepresentation, opacity: number) {
+  const shared = { color, transparent: opacity < 1, opacity, depthTest: false, depthWrite: false };
+  return quality === "normal"
+    ? new THREE.MeshStandardMaterial({ ...shared, roughness: 0.7 })
+    : new THREE.MeshLambertMaterial(shared);
 }
 
 function disposeCachedObjectRender(group: THREE.Group | null, cached: CachedObjectRender) {
@@ -76,7 +94,7 @@ function disposeCachedObjectRender(group: THREE.Group | null, cached: CachedObje
   edgeMaterials.forEach((material) => material.dispose());
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "orthographic", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionResize, onSelectionHeight, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionResize, onSelectionHeight, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -128,13 +146,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
       ? new THREE.OrthographicCamera(-90, 90, 90, -90, 0.1, 2000)
       : new THREE.PerspectiveCamera(38, 1, 0.1, 1000);
     camera.position.set(95, 78, 110);
-    const resolution = new AdaptiveViewportResolution(window.devicePixelRatio);
-    // The viewport already draws explicit silhouette/feature edges, so full-scene
-    // multisampling adds considerable fill cost without carrying the visual load.
-    const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false, powerPreference: "high-performance" });
+    const renderProfile = viewportRenderProfile(renderQuality);
+    const resolution = new AdaptiveViewportResolution(window.devicePixelRatio, viewportPerformanceOptions(renderQuality));
+    const renderer = new THREE.WebGLRenderer({ antialias: renderProfile.antialias, alpha: false, powerPreference: "high-performance" });
     renderer.setPixelRatio(resolution.pixelRatio);
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.BasicShadowMap;
+    renderer.shadowMap.type = renderQuality === "normal" ? THREE.PCFShadowMap : THREE.BasicShadowMap;
     renderer.shadowMap.autoUpdate = false;
     renderer.shadowMap.needsUpdate = true;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -174,7 +191,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
     const key = new THREE.DirectionalLight("#ffffff", 3.2);
     key.position.set(80, 130, 70);
     key.castShadow = true;
-    key.shadow.mapSize.set(VIEWPORT_SHADOW_MAP_SIZE, VIEWPORT_SHADOW_MAP_SIZE);
+    key.shadow.mapSize.set(renderProfile.shadowMapSize, renderProfile.shadowMapSize);
     key.shadow.camera.left = -120;
     key.shadow.camera.right = 120;
     key.shadow.camera.top = 120;
@@ -473,7 +490,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
       workplaneRef.current = null;
       invalidateRef.current = () => undefined;
     };
-  }, [projection]);
+  }, [projection, renderQuality]);
 
   useEffect(() => {
     const group = workplaneRef.current;
@@ -492,7 +509,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
     const step = Math.max(requestedStep, Math.max(width, depth) / 1000);
     const surface = new THREE.Mesh(
       new THREE.PlaneGeometry(width, depth),
-      new THREE.MeshLambertMaterial({ color: "#ddf8ff", transparent: true, opacity: 0.68 }),
+      workplaneMaterial(renderQuality),
     );
     surface.rotation.x = -Math.PI / 2;
     surface.position.y = -0.08;
@@ -535,7 +552,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
     addLines(axes, "#34aad2", 0.88);
     addLines(border, "#58c5e6", 0.9);
     invalidateRef.current();
-  }, [projection, workplane.depth, workplane.gridStep, workplane.width]);
+  }, [projection, renderQuality, workplane.depth, workplane.gridStep, workplane.width]);
 
   useEffect(() => {
     const group = modelRef.current;
@@ -576,7 +593,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
       geometry.boundsTree = new MeshBVH(geometry);
       const body = new THREE.Mesh(
         geometry,
-        new THREE.MeshLambertMaterial({ color: item.color, polygonOffset: true, polygonOffsetFactor: 1 }),
+        objectMaterial(renderQuality, item.color),
       );
       body.raycast = acceleratedRaycast;
       body.castShadow = true;
@@ -619,7 +636,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
       hasFittedRef.current = true;
     }
     invalidateRef.current();
-  }, [mesh, objectRecords, color, projection]);
+  }, [mesh, objectRecords, color, projection, renderQuality]);
 
   useEffect(() => {
     const group = modelRef.current;
@@ -644,7 +661,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
       if (child instanceof THREE.Mesh && typeof child.userData.objectId === "string") child.visible = child.userData.objectId !== isolatedHistoryObjectId;
     }
     invalidateRef.current();
-  }, [isolatedHistoryObjectId, projection]);
+  }, [isolatedHistoryObjectId, projection, renderQuality]);
 
   useEffect(() => {
     if (!objectColors) return;
@@ -660,7 +677,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
       }
     }
     invalidateRef.current();
-  }, [objectColors, projection]);
+  }, [objectColors, projection, renderQuality]);
 
   useEffect(() => {
     const group = modelRef.current;
@@ -681,18 +698,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
     geometry.setAttribute("position", new THREE.BufferAttribute(operationContext.mesh.positions, 3));
     geometry.setAttribute("normal", new THREE.BufferAttribute(operationContext.mesh.normals, 3));
     geometry.setIndex(new THREE.BufferAttribute(operationContext.mesh.indices, 1));
-    const contextBody = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({
-      color: operationContext.color,
-      transparent: operationContext.opacity < 1,
-      opacity: operationContext.opacity,
-      depthTest: false,
-      depthWrite: false,
-    }));
+    const contextBody = new THREE.Mesh(geometry, previewMaterial(renderQuality, operationContext.color, operationContext.opacity));
     contextBody.renderOrder = 16;
     group.add(contextBody);
     operationContextRef.current = contextBody;
     invalidateRef.current();
-  }, [operationContext, projection]);
+  }, [operationContext, projection, renderQuality]);
 
   useEffect(() => {
     const model = modelRef.current;
@@ -730,13 +741,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
           previewGeometry.rotateX(Math.PI / 2);
           previewGeometry.scale(selection.width, selection.depth, 1);
         }
-        const preview = new THREE.Mesh(previewGeometry, new THREE.MeshLambertMaterial({
-          color: operationPreview.color,
-          transparent: previewStyle.fillOpacity < 1,
-          opacity: previewStyle.fillOpacity,
-          depthTest: false,
-          depthWrite: false,
-        }));
+        const preview = new THREE.Mesh(previewGeometry, previewMaterial(renderQuality, operationPreview.color, previewStyle.fillOpacity));
         preview.renderOrder = 17;
         root.add(preview);
       }
@@ -828,7 +833,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
     selectionHitboxRef.current = hitbox;
     rotationHitboxRef.current = rotationHitbox;
     invalidateRef.current();
-  }, [selection, projection]);
+  }, [selection, projection, renderQuality]);
 
   useEffect(() => {
     const camera = cameraRef.current;

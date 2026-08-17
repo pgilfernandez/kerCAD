@@ -110,6 +110,19 @@ export function ToolbarShapeAddIcon(props: IconProps) {
   return <VectorToolbarSpriteIcon rect={{ x: 104, y: 0, width: 29, height: 27 }} {...props} />;
 }
 
+export function ToolbarBooleanModeIcon({ mode, ...props }: IconProps & { mode: "add" | "hole" | "common" }) {
+  const color = mode === "add" ? "#378451" : mode === "hole" ? "#b6524d" : "#7256aa";
+  const symbol = mode === "add" ? "+" : mode === "hole" ? "−" : "∩";
+  return (
+    <svg viewBox="0 0 48 48" aria-hidden="true" {...props}>
+      <rect x="8" y="12" width="23" height="23" rx="3" fill={color} opacity="0.22" stroke={color} strokeWidth="2.4" />
+      <rect x="17" y="8" width="23" height="23" rx="3" fill={mode === "common" ? color : "white"} fillOpacity={mode === "common" ? 0.38 : 0.8} stroke={color} strokeWidth="2.4" strokeDasharray={mode === "hole" ? "4 2" : undefined} />
+      <circle cx="34" cy="34" r="9" fill={color} stroke="white" strokeWidth="1.5" />
+      <text x="34" y="38" fill="white" fontSize="14" fontWeight="900" textAnchor="middle">{symbol}</text>
+    </svg>
+  );
+}
+
 export function ToolbarHideSelectedIcon(props: IconProps) {
   return <VectorToolbarSpriteIcon rect={{ x: 138, y: 0, width: 27, height: 27 }} {...props} />;
 }
