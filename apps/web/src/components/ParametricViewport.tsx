@@ -9,6 +9,7 @@ import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeome
 import { acceleratedRaycast, MeshBVH } from "three-mesh-bvh";
 import { operationPreviewStyle, operationPreviewWireframePositions } from "@/lib/viewportGeometry";
 import { AdaptiveViewportResolution, viewportPerformanceOptions, viewportRenderProfile, type ViewportRenderQuality } from "@/lib/viewportPerformance";
+import { viewportPointerDragIntent, type ViewportPointerDragIntent } from "@/lib/viewportPointer";
 import type { ParametricObjectRenderRecord, RenderMesh } from "@/types/parametric";
 
 export type CameraView = { name: "iso" | "top" | "front" | "right" | "zoom-in" | "zoom-out" | "home" | "fit" | "selection" | "custom"; token: number; direction?: [number, number, number] };
@@ -164,6 +165,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
     controls.mouseButtons.LEFT = null;
     controls.mouseButtons.MIDDLE = THREE.MOUSE.PAN;
     controls.mouseButtons.RIGHT = THREE.MOUSE.ROTATE;
+    controls.touches.ONE = THREE.TOUCH.ROTATE;
+    controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
     controls.target.set(0, 5, 0);
     controls.minDistance = 18;
     controls.maxDistance = 420;
@@ -219,7 +222,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
     let rotationOffset = 0;
     let resizeAxes = { x: 0, y: 0 };
     let resizeStart: ViewportSelection | null = null;
-    let pickCandidate: { pointerId: number; x: number; y: number; boxSelecting: boolean } | null = null;
+    let pickCandidate: { pointerId: number; pointerType: string; x: number; y: number; dragIntent: ViewportPointerDragIntent } | null = null;
     const updateSelectionBox = (candidate: NonNullable<typeof pickCandidate>, clientX: number, clientY: number) => {
       const box = selectionBoxRef.current;
       if (!box) return;
@@ -326,7 +329,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
         }
       }
       if (!interaction) {
-        pickCandidate = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, boxSelecting: false };
+        pickCandidate = { pointerId: event.pointerId, pointerType: event.pointerType, x: event.clientX, y: event.clientY, dragIntent: "pending" };
         renderer.domElement.setPointerCapture(event.pointerId);
         return;
       }
@@ -337,9 +340,13 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
     };
     const onPointerMove = (event: PointerEvent) => {
       if (!interaction) {
-        if (pickCandidate && pickCandidate.pointerId === event.pointerId && Math.hypot(event.clientX - pickCandidate.x, event.clientY - pickCandidate.y) > 5) {
-          pickCandidate.boxSelecting = true;
-          updateSelectionBox(pickCandidate, event.clientX, event.clientY);
+        if (pickCandidate && pickCandidate.pointerId === event.pointerId) {
+          pickCandidate.dragIntent = viewportPointerDragIntent(
+            pickCandidate.pointerType,
+            Math.hypot(event.clientX - pickCandidate.x, event.clientY - pickCandidate.y),
+          );
+          if (pickCandidate.dragIntent === "marquee") updateSelectionBox(pickCandidate, event.clientX, event.clientY);
+          else hideSelectionBox();
         }
         return;
       }
@@ -394,7 +401,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, ope
         hideSelectionBox();
         if (renderer.domElement.hasPointerCapture(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
         if (cancelled || !candidate || candidate.pointerId !== event.pointerId) return;
-        if (candidate.boxSelecting) {
+        if (candidate.dragIntent === "camera") return;
+        if (candidate.dragIntent === "marquee") {
           const objectIds = objectsInSelectionBox(candidate, event.clientX, event.clientY);
           if (objectIds.length > 0) objectsSelectRef.current?.(objectIds);
           else emptySelectRef.current?.();
