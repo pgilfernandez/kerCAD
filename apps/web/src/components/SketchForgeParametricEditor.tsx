@@ -44,6 +44,7 @@ import {
 } from "@/lib/parametricHistory";
 import {
   addPrimitiveToSelection,
+  alignParametricSelections,
   applyObjectWorldPosition,
   applyOperationWorldPosition,
   applyOperationWorldRotation,
@@ -60,6 +61,8 @@ import {
   viewportSelectionForFeature,
   viewportSelectionForObject,
   workplaneShapeForObject,
+  type ParametricAlignmentAnchor,
+  type ParametricAlignmentAxis,
   type SupportedPrimitive,
 } from "@/lib/parametricObjects";
 import { toolbarShapeAssets } from "@/lib/shapeCatalog";
@@ -106,6 +109,7 @@ export function SketchForgeParametricEditor() {
   const [renderQuality, setRenderQuality] = useState<ViewportRenderQuality>("normal");
   const [showFps, setShowFps] = useState(false);
   const [originEditObjectId, setOriginEditObjectId] = useState<string | null>(null);
+  const [alignOpen, setAlignOpen] = useState(false);
   const [cameraOrientation, setCameraOrientation] = useState<CameraOrientation>({ azimuth: Math.PI / 4, polar: 1.02 });
   const [clipboardId, setClipboardId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -273,6 +277,10 @@ export function SketchForgeParametricEditor() {
     if (!selectedObject || !originAvailable) setOriginEditObjectId(null);
   }, [document.objects, modelSelection.length, originEditObjectId, selectedId, selectionKind]);
 
+  useEffect(() => {
+    if (modelSelection.length < 2) setAlignOpen(false);
+  }, [modelSelection.length]);
+
   const addShape = (kind: SupportedPrimitive) => {
     let result: ReturnType<typeof addPrimitiveToSelection> = { objectId: "", featureId: null, createdObject: false };
     mutate((draft) => {
@@ -392,6 +400,22 @@ export function SketchForgeParametricEditor() {
     setOriginEditObjectId(objectId);
   };
 
+  const alignSelection = (axis: ParametricAlignmentAxis, anchor: ParametricAlignmentAnchor) => {
+    let moved = 0;
+    let referenceId: string | null = null;
+    mutate((draft) => {
+      const result = alignParametricSelections(draft, modelSelection, axis, anchor);
+      moved = result.moved;
+      referenceId = result.referenceId;
+    });
+    setAlignOpen(false);
+    const reference = document.objects.find((object) => object.id === referenceId)
+      ?? document.features.find((feature) => feature.id === referenceId);
+    setNotice(moved > 0
+      ? { type: "ok", text: `${moved} elemento${moved === 1 ? "" : "s"} alineado${moved === 1 ? "" : "s"} con ${reference?.name ?? "la referencia"}` }
+      : { type: "info", text: "No hay elementos móviles que alinear con esa referencia." });
+  };
+
   const setCamera = (name: CameraView["name"]) => setView((current) => ({ name, token: current.token + 1 }));
   const undo = () => setHistory(undoParametricHistory);
   const redo = () => setHistory(redoParametricHistory);
@@ -503,7 +527,15 @@ export function SketchForgeParametricEditor() {
               <Tool label="Añadir" enabled={Boolean(selectedOperationId)} active={selectedOperation?.kind === "extrude" && selectedOperation.operation === "add"} onClick={() => setSelectedOperationMode("add")}><ToolbarBooleanModeIcon mode="add" /></Tool>
               <Tool label="Hueco" enabled={Boolean(selectedOperationId)} active={selectedOperation?.kind === "extrude" && selectedOperation.operation === "cut"} onClick={() => setSelectedOperationMode("cut")}><ToolbarBooleanModeIcon mode="hole" /></Tool>
               <Tool label="Común" enabled={Boolean(selectedOperationId)} active={selectedOperation?.kind === "extrude" && selectedOperation.operation === "intersect"} onClick={() => setSelectedOperationMode("intersect")}><ToolbarBooleanModeIcon mode="common" /></Tool>
-              <Tool label="Alinear" enabled={false}><ToolbarAlignIcon /></Tool>
+              <div className="educad-align-tool">
+                <Tool label="Alinear" enabled={modelSelection.length > 1} active={alignOpen} onClick={() => setAlignOpen((value) => !value)}><ToolbarAlignIcon /></Tool>
+                {alignOpen ? <div className="educad-align-popover" role="dialog" aria-label="Alinear selección">
+                  <header><strong>Alinear</strong><span>Referencia: último seleccionado</span></header>
+                  <div className="educad-align-grid"><div className="educad-align-head"><span /><strong>Mín.</strong><strong>Centro</strong><strong>Máx.</strong></div>
+                    {(["x", "y", "z"] as const).map((axis) => <div className="educad-align-row" key={axis}><strong className={`axis-${axis}`}>{axis.toUpperCase()}</strong>{(["min", "center", "max"] as const).map((anchor) => <button key={anchor} onClick={() => alignSelection(axis, anchor)} aria-label={`Alinear ${axis.toUpperCase()} por ${anchor === "min" ? "mínimos" : anchor === "center" ? "centros" : "máximos"}`}>{anchor === "min" ? "◧←" : anchor === "center" ? "◫" : "→◧"}</button>)}</div>)}
+                  </div>
+                </div> : null}
+              </div>
               <Tool label="Simetría" enabled={Boolean(selectedShape)} onClick={() => selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: -(selectedShape?.x ?? 0) }))}><ToolbarMirrorIcon /></Tool>
               <Tool label="Ajustar a rejilla" enabled={Boolean(selectedShape && document.workplane.snapToGrid)} onClick={() => selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: Math.round((selectedShape?.x ?? 0) / snapAmount) * snapAmount, z: Math.round((selectedShape?.z ?? 0) / snapAmount) * snapAmount }))}><ToolbarSnapGridIcon /></Tool>
               <Tool label="Chaflán" enabled={false}><ToolbarChamferIcon /></Tool>

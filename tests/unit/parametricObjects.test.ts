@@ -3,6 +3,7 @@ import {
   addPrimitive,
   addPrimitiveToSelection,
   addParametricObject,
+  alignParametricSelections,
   applyOperationWorldPosition,
   applyOperationWorldRotation,
   applyObjectWorldPosition,
@@ -322,6 +323,52 @@ describe("parametric object workflow", () => {
     expect(updateParametricTreeSelection(initial, visible[2], visible, visible[0], { range: true, toggle: false })).toEqual(visible.slice(0, 3));
     expect(updateParametricTreeSelection(initial, visible[3], visible, visible[0], { range: false, toggle: true })).toEqual([visible[0], visible[3]]);
     expect(updateParametricTreeSelection([visible[0], visible[3]], visible[0], visible, visible[3], { range: false, toggle: true })).toEqual([visible[3]]);
+  });
+
+  it("aligns object minima to the last selected world-space reference", () => {
+    const document = createStarterDocument(123);
+    const firstId = document.objects[0].id;
+    const second = addPrimitiveToSelection(document, null, "box");
+    const secondObject = document.objects.find((object) => object.id === second.objectId)!;
+    secondObject.transform.position.x = 50;
+    const secondFeature = document.features.find((feature) => feature.id === second.featureId);
+    const secondSketch = sketchForExtrude(document, secondFeature ?? null);
+    if (!secondSketch || secondSketch.profile.shape !== "rectangle") throw new Error("expected rectangle");
+    secondSketch.profile.width = 40;
+
+    const result = alignParametricSelections(document, [{ id: firstId, kind: "object" }, { id: second.objectId, kind: "object" }], "x", "min");
+
+    expect(result).toEqual({ moved: 1, referenceId: second.objectId });
+    expect(viewportSelectionForObject(document, firstId)?.x).toBe(40);
+    expect(viewportSelectionForObject(document, second.objectId)?.x).toBe(50);
+  });
+
+  it("aligns operations independently inside the same object", () => {
+    const document = createStarterDocument(123);
+    const first = document.features.find((feature) => feature.kind === "extrude");
+    const secondId = addPrimitive(document, document.objects[0].id, "cylinder", { x: 30, y: 25 });
+    if (!first || first.kind !== "extrude" || !secondId) throw new Error("expected operations");
+
+    alignParametricSelections(document, [{ id: first.id, kind: "feature" }, { id: secondId, kind: "feature" }], "y", "center");
+
+    expect(viewportSelectionForFeature(document, first.id)?.y).toBe(25);
+    expect(viewportSelectionForFeature(document, secondId)?.y).toBe(25);
+    expect(document.objects[0].transform.position).toEqual({ x: 0, y: 0, z: 0 });
+  });
+
+  it("keeps a locked last-selected object fixed as the alignment reference", () => {
+    const document = createStarterDocument(123);
+    const firstId = document.objects[0].id;
+    const second = addPrimitiveToSelection(document, null, "box");
+    const reference = document.objects.find((object) => object.id === second.objectId)!;
+    reference.transform.position.x = 60;
+    reference.locked = true;
+
+    const result = alignParametricSelections(document, [{ id: firstId, kind: "object" }, { id: reference.id, kind: "object" }], "x", "center");
+
+    expect(result.moved).toBe(1);
+    expect(viewportSelectionForObject(document, firstId)?.x).toBe(60);
+    expect(reference.transform.position.x).toBe(60);
   });
 
   it("deletes a mixed tree selection atomically", () => {

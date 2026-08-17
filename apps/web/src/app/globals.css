@@ -1303,6 +1303,23 @@ button {
 .educad-fps-counter.medium { color: #9a6700; border-color: rgba(154, 103, 0, 0.33); }
 .educad-fps-counter.low { color: #b42318; border-color: rgba(180, 35, 24, 0.33); }
 
+.educad-align-tool { position: relative; display: flex; }
+.educad-align-popover { position: absolute; top: calc(100% + 9px); right: 0; z-index: 90; width: 252px; padding: 9px; color: #385267; background: rgba(255, 255, 255, 0.98); border: 1px solid #c8d8e2; border-radius: 8px; box-shadow: 0 12px 30px rgba(31, 56, 72, 0.2); }
+.educad-align-popover header { display: flex; align-items: baseline; justify-content: space-between; padding: 2px 3px 8px; border-bottom: 1px solid #e3ebef; }
+.educad-align-popover header strong { font-size: 12px; }
+.educad-align-popover header span { color: #7b8f9e; font-size: 7px; font-weight: 750; }
+.educad-align-grid { padding-top: 7px; }
+.educad-align-head,
+.educad-align-row { display: grid; grid-template-columns: 28px repeat(3, 1fr); align-items: center; gap: 5px; }
+.educad-align-head { min-height: 20px; color: #7d909d; text-align: center; font-size: 7px; }
+.educad-align-row + .educad-align-row { margin-top: 5px; }
+.educad-align-row > strong { text-align: center; font-size: 10px; }
+.educad-align-row > strong.axis-x { color: #b83d3d; }
+.educad-align-row > strong.axis-y { color: #287d43; }
+.educad-align-row > strong.axis-z { color: #236ebd; }
+.educad-align-row button { min-height: 34px; color: #456478; background: #f4f8fa; border: 1px solid #d3e0e7; border-radius: 5px; font-size: 13px; font-weight: 900; }
+.educad-align-row button:hover { color: #167c9e; background: #e5f4f8; border-color: #8fc7d9; }
+
 @media (max-width: 1120px) {
   .educad-project-name { display: none; }
   .educad-reference-shell .toolbar-section { min-width: 70px; }

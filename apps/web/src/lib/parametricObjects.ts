@@ -249,9 +249,9 @@ export function workplaneShapeForObject(document: ParametricDocument, id: string
   };
 }
 
-export function viewportSelectionForObject(document: ParametricDocument, id: string | null): ViewportSelection | null {
+export function viewportSelectionForObject(document: ParametricDocument, id: string | null, includeUnavailable = false): ViewportSelection | null {
   const shape = workplaneShapeForObject(document, id);
-  if (!shape || shape.hidden || shape.locked) return null;
+  if (!shape || (!includeUnavailable && (shape.hidden || shape.locked))) return null;
   return {
     id: shape.id,
     x: shape.x,
@@ -276,12 +276,12 @@ function operationWorldTransform(object: ParametricObject, feature: ExtrudeFeatu
   };
 }
 
-export function viewportSelectionForFeature(document: ParametricDocument, id: string | null): ViewportSelection | null {
+export function viewportSelectionForFeature(document: ParametricDocument, id: string | null, includeUnavailable = false): ViewportSelection | null {
   const feature = document.features.find((candidate): candidate is ExtrudeFeature => candidate.id === id && candidate.kind === "extrude");
   if (!feature || feature.suppressed) return null;
   const object = document.objects.find((candidate) => candidate.id === feature.objectId);
   const sketch = sketchForExtrude(document, feature);
-  if (!object || !object.visible || object.locked || !sketch) return null;
+  if (!object || (!includeUnavailable && (!object.visible || object.locked)) || !sketch) return null;
   const world = operationWorldTransform(object, feature);
   const width = (sketch.profile.shape === "rectangle" ? sketch.profile.width : sketch.profile.diameter) * object.transform.scale.x;
   const depth = (sketch.profile.shape === "rectangle" ? sketch.profile.depth : sketch.profile.diameter) * object.transform.scale.y;
@@ -366,6 +366,66 @@ export function moveParametricObjectOrigin(document: ParametricDocument, id: str
     }
   }
   object.transform.position = { ...position };
+}
+
+export type ParametricAlignmentAxis = "x" | "y" | "z";
+export type ParametricAlignmentAnchor = "min" | "center" | "max";
+
+function viewportSelectionAxisFrame(selection: ViewportSelection, axis: ParametricAlignmentAxis) {
+  if (axis === "z") {
+    const center = selection.baseZ + selection.height / 2;
+    return { min: selection.baseZ, center, max: selection.baseZ + selection.height };
+  }
+  const angle = selection.rotation * Math.PI / 180;
+  const half = axis === "x"
+    ? Math.abs(Math.cos(angle)) * selection.width / 2 + Math.abs(Math.sin(angle)) * selection.depth / 2
+    : Math.abs(Math.sin(angle)) * selection.width / 2 + Math.abs(Math.cos(angle)) * selection.depth / 2;
+  const center = axis === "x" ? selection.x : selection.y;
+  return { min: center - half, center, max: center + half };
+}
+
+export function alignParametricSelections(
+  document: ParametricDocument,
+  selection: ParametricTreeSelection[],
+  axis: ParametricAlignmentAxis,
+  anchor: ParametricAlignmentAnchor,
+) {
+  const selectedObjectIds = new Set(selection.filter((item) => item.kind === "object").map((item) => item.id));
+  const targets = selection.flatMap((item) => {
+    if (item.kind === "feature") {
+      const objectId = objectIdForFeature(document, item.id);
+      if (!objectId || selectedObjectIds.has(objectId)) return [];
+    }
+    const frame = item.kind === "object"
+      ? viewportSelectionForObject(document, item.id, true)
+      : viewportSelectionForFeature(document, item.id, true);
+    return frame ? [{ item, frame }] : [];
+  });
+  const reference = targets.at(-1);
+  if (!reference || targets.length < 2) return { moved: 0, referenceId: reference?.item.id ?? null };
+  const referenceValue = viewportSelectionAxisFrame(reference.frame, axis)[anchor];
+  let moved = 0;
+  for (const target of targets.slice(0, -1)) {
+    const objectId = target.item.kind === "object" ? target.item.id : objectIdForFeature(document, target.item.id);
+    const object = objectId ? document.objects.find((candidate) => candidate.id === objectId) : null;
+    if (!object || object.locked) continue;
+    const frame = viewportSelectionAxisFrame(target.frame, axis);
+    const delta = referenceValue - frame[anchor];
+    if (Math.abs(delta) < 1e-9) continue;
+    if (target.item.kind === "object") {
+      if (axis === "x") applyObjectWorldPosition(document, target.item.id, target.frame.x + delta, target.frame.y);
+      else if (axis === "y") applyObjectWorldPosition(document, target.item.id, target.frame.x, target.frame.y + delta);
+      else object.transform.position.z += delta;
+    } else {
+      const feature = document.features.find((candidate): candidate is ExtrudeFeature => candidate.id === target.item.id && candidate.kind === "extrude");
+      if (!feature) continue;
+      if (axis === "x") applyOperationWorldPosition(document, feature.id, target.frame.x + delta, target.frame.y);
+      else if (axis === "y") applyOperationWorldPosition(document, feature.id, target.frame.x, target.frame.y + delta);
+      else feature.transform.position.z += delta / Math.max(0.0001, Math.abs(object.transform.scale.z));
+    }
+    moved += 1;
+  }
+  return { moved, referenceId: reference.item.id };
 }
 
 export function resizeParametricSelection(
