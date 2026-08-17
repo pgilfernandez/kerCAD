@@ -12,6 +12,10 @@ function resultValue<T>(brep: Brep, result: ReturnType<Brep["cut"]> | ReturnType
   return brep.unwrap(result) as T;
 }
 
+function refinedBooleanSolid(brep: Brep, result: ReturnType<Brep["cut"]> | ReturnType<Brep["fuse"]> | ReturnType<Brep["intersect"]>) {
+  return brep.unwrap(brep.simplify(resultValue<AnySolid>(brep, result))) as AnySolid;
+}
+
 function solidFromSketch(brep: Brep, sketch: SketchFeature, feature: ExtrudeFeature): AnySolid {
   const profile = sketch.profile;
   const centerZ = feature.symmetric ? sketch.offset : sketch.offset + feature.distance / 2;
@@ -146,9 +150,9 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         if (!current) {
           if (feature.operation !== "add") throw new Error(`${feature.name}: la primera operación del objeto debe ser Añadir.`);
           solids.set(objectId, tool);
-        } else if (feature.operation === "add") solids.set(objectId, resultValue<AnySolid>(brep, brep.fuse(current, tool)));
-        else if (feature.operation === "cut") solids.set(objectId, resultValue<AnySolid>(brep, brep.cut(current, tool)));
-        else solids.set(objectId, resultValue<AnySolid>(brep, brep.intersect(current, tool)));
+        } else if (feature.operation === "add") solids.set(objectId, refinedBooleanSolid(brep, brep.fuse(current, tool)));
+        else if (feature.operation === "cut") solids.set(objectId, refinedBooleanSolid(brep, brep.cut(current, tool)));
+        else solids.set(objectId, refinedBooleanSolid(brep, brep.intersect(current, tool)));
         completedFeatureIds.push(feature.id);
         if (feature.id === contextFeatureId) {
           const selectedResult = solids.get(objectId);
@@ -171,7 +175,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         const baseZ = feature.termination === "through-all" ? bounds.zMin - 1 : bounds.zMax - feature.depth;
         const height = feature.termination === "through-all" ? bounds.zMax - bounds.zMin + 2 : feature.depth + 1;
         const cutter = brep.cylinder(feature.diameter / 2, Math.max(0.01, height), { at: [feature.x, feature.y, baseZ] });
-        current = resultValue<AnySolid>(brep, brep.cut(current, cutter));
+        current = refinedBooleanSolid(brep, brep.cut(current, cutter));
         solids.set(objectId, current);
         completedFeatureIds.push(feature.id);
         continue;
@@ -239,9 +243,9 @@ export async function exportParametricStep(document: ParametricDocument): Promis
       if (!current) {
         if (feature.operation !== "add") throw new Error(`${feature.name}: la primera operación del objeto debe ser Añadir.`);
         solids.set(objectId, tool);
-      } else if (feature.operation === "add") solids.set(objectId, resultValue<AnySolid>(brep, brep.fuse(current, tool)));
-      else if (feature.operation === "cut") solids.set(objectId, resultValue<AnySolid>(brep, brep.cut(current, tool)));
-      else solids.set(objectId, resultValue<AnySolid>(brep, brep.intersect(current, tool)));
+      } else if (feature.operation === "add") solids.set(objectId, refinedBooleanSolid(brep, brep.fuse(current, tool)));
+      else if (feature.operation === "cut") solids.set(objectId, refinedBooleanSolid(brep, brep.cut(current, tool)));
+      else solids.set(objectId, refinedBooleanSolid(brep, brep.intersect(current, tool)));
       continue;
     }
     const objectId = feature.objectId ?? lastObjectId;
@@ -251,7 +255,7 @@ export async function exportParametricStep(document: ParametricDocument): Promis
       const bounds = brep.getBounds(current);
       const baseZ = feature.termination === "through-all" ? bounds.zMin - 1 : bounds.zMax - feature.depth;
       const height = feature.termination === "through-all" ? bounds.zMax - bounds.zMin + 2 : feature.depth + 1;
-      current = resultValue<AnySolid>(brep, brep.cut(current, brep.cylinder(feature.diameter / 2, height, { at: [feature.x, feature.y, baseZ] })));
+      current = refinedBooleanSolid(brep, brep.cut(current, brep.cylinder(feature.diameter / 2, height, { at: [feature.x, feature.y, baseZ] })));
     } else current = applyFilletFeature(brep, document, current, feature);
     solids.set(objectId, current);
   }

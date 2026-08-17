@@ -2,6 +2,8 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import type { WorkplaneShape } from "@/types/sketchforge";
+import { createStarterDocument } from "@/lib/parametricDocument";
+import { addPrimitiveToSelection } from "@/lib/parametricObjects";
 
 // Drive the REAL exporter/importer against the REAL OpenCascade kernel, loaded
 // from node_modules instead of the browser-only /occt/ URL. Everything else in
@@ -158,5 +160,37 @@ describe("STEP import → re-export round-trip (real OCCT kernel)", () => {
     expect(reexport.exportedCount).toBe(1);
     expect(reexport.skipped).toEqual([]);
     expect(near(await reimportVolume(reexport.blob), 12 * 8 * 6)).toBe(true);
+  });
+});
+
+describe("parametric Boolean refinement (real OCCT kernel)", () => {
+  it("removes coplanar seams after additive operations", async () => {
+    const document = createStarterDocument(123);
+    const baseSketch = document.features[0];
+    const baseExtrude = document.features[1];
+    if (baseSketch.kind !== "sketch" || baseSketch.profile.shape !== "rectangle" || baseExtrude.kind !== "extrude") throw new Error("expected starter box");
+    baseSketch.profile.width = 20;
+    baseSketch.profile.depth = 20;
+    baseExtrude.distance = 10;
+
+    const added = addPrimitiveToSelection(document, document.objects[0].id, "box");
+    const secondExtrude = document.features.find((feature) => feature.id === added.featureId);
+    if (secondExtrude?.kind !== "extrude") throw new Error("expected added box");
+    const secondSketch = document.features.find((feature) => feature.id === secondExtrude.sketchId);
+    if (secondSketch?.kind !== "sketch" || secondSketch.profile.shape !== "rectangle") throw new Error("expected added box sketch");
+    secondSketch.profile.width = 20;
+    secondSketch.profile.depth = 20;
+    secondExtrude.distance = 10;
+    secondExtrude.transform.position.x = 10;
+    secondExtrude.transform.position.y = 0;
+
+    const { buildParametricModel } = await import("@/lib/parametricKernel");
+    const result = await buildParametricModel(document);
+    expect(result.warning).toBeNull();
+    expect(near(result.mesh?.metrics.width ?? 0, 30)).toBe(true);
+    expect(near(result.mesh?.metrics.depth ?? 0, 20)).toBe(true);
+    expect(near(result.mesh?.metrics.height ?? 0, 10)).toBe(true);
+    expect(near(result.mesh?.metrics.volume ?? 0, 6000)).toBe(true);
+    expect((result.mesh?.edges.length ?? 0) / 6).toBe(12);
   });
 });
