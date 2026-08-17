@@ -125,6 +125,12 @@ export type ParametricDocument = {
     depth: number;
     gridStep: number;
     snapToGrid: boolean;
+    gridVisible: boolean;
+    activeSizePercent: number;
+    origin: ParametricVector3;
+    xAxis: ParametricVector3;
+    yAxis: ParametricVector3;
+    normal: ParametricVector3;
   };
   objects: ParametricObject[];
   features: ParametricFeature[];

@@ -15,7 +15,18 @@ describe("parametric document", () => {
     const document = createStarterDocument(123);
     expect(document.schema).toBe("educad-parametric/v2");
     expect(document.createdAt).toBe(123);
-    expect(document.workplane).toEqual({ width: 200, depth: 200, gridStep: 5, snapToGrid: true });
+    expect(document.workplane).toEqual({
+      width: 200,
+      depth: 200,
+      gridStep: 5,
+      snapToGrid: true,
+      gridVisible: true,
+      activeSizePercent: 10,
+      origin: { x: 0, y: 0, z: 0 },
+      xAxis: { x: 1, y: 0, z: 0 },
+      yAxis: { x: 0, y: 1, z: 0 },
+      normal: { x: 0, y: 0, z: 1 },
+    });
     expect(document.objects).toHaveLength(1);
     expect(document.objects[0]).toMatchObject({ name: "Objeto 1", color: "#d41721", visible: true, locked: false, transform: { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 } } });
     expect(document.features.map((feature) => feature.kind)).toEqual(["sketch", "extrude"]);
@@ -109,10 +120,19 @@ describe("parametric document", () => {
   it("migrates and clamps workplane settings", () => {
     const stored = createStarterDocument(123);
     delete (stored as Partial<typeof stored>).workplane;
-    expect(normalizeParametricDocument(stored).workplane).toEqual({ width: 200, depth: 200, gridStep: 5, snapToGrid: true });
+    expect(normalizeParametricDocument(stored).workplane).toMatchObject({
+      width: 200,
+      depth: 200,
+      gridStep: 5,
+      snapToGrid: true,
+      gridVisible: true,
+      activeSizePercent: 10,
+      origin: { x: 0, y: 0, z: 0 },
+      normal: { x: 0, y: 0, z: 1 },
+    });
 
     const invalid = createStarterDocument(123);
-    invalid.workplane = { width: 10, depth: 9000, gridStep: 0, snapToGrid: false };
-    expect(normalizeParametricDocument(invalid).workplane).toEqual({ width: 60, depth: 2000, gridStep: 0.1, snapToGrid: false });
+    invalid.workplane = { width: 10, depth: 9000, gridStep: 0, snapToGrid: false } as typeof invalid.workplane;
+    expect(normalizeParametricDocument(invalid).workplane).toMatchObject({ width: 60, depth: 2000, gridStep: 0.1, snapToGrid: false });
   });
 });

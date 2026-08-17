@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Plus, X } from "lucide-react";
+import { Box, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Plus, RotateCcw, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView } from "@/components/ParametricViewport";
@@ -65,6 +65,7 @@ import {
   type ParametricAlignmentAxis,
   type SupportedPrimitive,
 } from "@/lib/parametricObjects";
+import { globalParametricWorkplanePlacement, parametricWorkplaneFromFace, parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
 import { toolbarShapeAssets } from "@/lib/shapeCatalog";
 import type { ViewportRenderQuality } from "@/lib/viewportPerformance";
 import type { BuildResult, ParametricDocument, ParametricFeature, ParametricObject } from "@/types/parametric";
@@ -104,6 +105,7 @@ export function SketchForgeParametricEditor() {
   const [notice, setNotice] = useState<Notice>(null);
   const [workplaneOpen, setWorkplaneOpen] = useState(false);
   const [workplaneDraft, setWorkplaneDraft] = useState(document.workplane);
+  const [placingWorkplane, setPlacingWorkplane] = useState(false);
   const [view, setView] = useState<CameraView>({ name: "iso", token: 0 });
   const [projection, setProjection] = useState<CameraProjection>("orthographic");
   const [renderQuality, setRenderQuality] = useState<ViewportRenderQuality>("normal");
@@ -112,6 +114,17 @@ export function SketchForgeParametricEditor() {
   const [alignOpen, setAlignOpen] = useState(false);
   const [cameraOrientation, setCameraOrientation] = useState<CameraOrientation>({ azimuth: Math.PI / 4, polar: 1.02 });
   const [clipboardId, setClipboardId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!placingWorkplane) return;
+    const cancel = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setPlacingWorkplane(false);
+      setNotice({ type: "info", text: "Colocación del plano de trabajo cancelada" });
+    };
+    window.addEventListener("keydown", cancel);
+    return () => window.removeEventListener("keydown", cancel);
+  }, [placingWorkplane]);
   const [exporting, setExporting] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
@@ -269,6 +282,7 @@ export function SketchForgeParametricEditor() {
     rotation: object.transform.rotation,
   })), [document.objects, selectedOriginObjectId]);
   const snapAmount = document.workplane.snapToGrid ? document.workplane.gridStep : 0.01;
+  const hasActiveWorkplane = !parametricWorkplaneIsGlobal(document.workplane);
 
   useEffect(() => {
     if (!originEditObjectId) return;
@@ -542,6 +556,17 @@ export function SketchForgeParametricEditor() {
               <Tool label="Redondeo" enabled={Boolean(selectedShape && !selectedShape.hole)} onClick={addFillet}><ToolbarFilletIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label="Arrange">
+              <Tool label={hasActiveWorkplane ? "Restaurar plano global" : placingWorkplane ? "Cancelar plano de trabajo" : "Colocar plano de trabajo"} active={placingWorkplane || hasActiveWorkplane} onClick={() => {
+                if (hasActiveWorkplane) {
+                  mutate((draft) => { Object.assign(draft.workplane, globalParametricWorkplanePlacement()); });
+                  setPlacingWorkplane(false);
+                  setNotice({ type: "ok", text: "Plano de trabajo global restaurado" });
+                  return;
+                }
+                setPlacingWorkplane((current) => !current);
+                setWorkplaneOpen(false);
+                setNotice({ type: "info", text: placingWorkplane ? "Colocación cancelada" : "Pasa sobre una cara y haz clic para colocar el plano de trabajo" });
+              }}>{hasActiveWorkplane ? <RotateCcw size={24} /> : <Grid3X3 size={24} />}</Tool>
               <Tool label="Bajar al plano" enabled={Boolean(selectedShape)} onClick={() => updateSelected({ elevation: 0 })}><ToolbarDropToWorkplaneIcon /></Tool>
             </ToolbarSection>
           </div>
@@ -571,7 +596,7 @@ export function SketchForgeParametricEditor() {
           view={view}
           projection={projection}
           renderQuality={renderQuality}
-          selection={originEditObjectId ? null : selectedBox}
+          selection={originEditObjectId || placingWorkplane ? null : selectedBox}
           snap={snapAmount}
           onSelectionMove={(x, y) => mutate((draft) => {
             if (selectedOperationId) applyOperationWorldPosition(draft, selectedOperationId, x, y);
@@ -613,9 +638,15 @@ export function SketchForgeParametricEditor() {
           onEmptySelect={() => {
             setModelSelection([]);
           }}
+          workplaneFaceSelection={placingWorkplane}
+          onWorkplaneFaceSelect={({ origin, normal }) => {
+            mutate((draft) => { Object.assign(draft.workplane, parametricWorkplaneFromFace(origin, normal)); });
+            setPlacingWorkplane(false);
+            setNotice({ type: "ok", text: "Plano de trabajo colocado sobre la cara" });
+          }}
         />
         <ViewCube orientation={cameraOrientation} onDirection={(direction) => setView((current) => ({ name: "custom", direction, token: current.token + 1 }))} />
-        <button className={`educad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label="Ajustes del plano de trabajo" title="Plano de trabajo" onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><Grid3X3 size={22} /></button>
+        <button className={`educad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label="Ajustes de rejilla" title="Rejilla" onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><Grid3X3 size={22} /></button>
         <button
           className={`educad-workplane-snap-button ${document.workplane.snapToGrid ? "active" : ""}`}
           aria-label={document.workplane.snapToGrid ? "Desactivar ajuste a rejilla" : "Activar ajuste a rejilla"}
@@ -628,7 +659,9 @@ export function SketchForgeParametricEditor() {
           }}
         ><Magnet size={21} /></button>
         {workplaneOpen ? <form className="educad-workplane-popover" onSubmit={(event) => { event.preventDefault(); mutate((draft) => { draft.workplane = { ...workplaneDraft, snapToGrid: draft.workplane.snapToGrid }; }); setWorkplaneOpen(false); }}>
-          <header><div><strong>Plano de trabajo</strong><span>Dimensiones y paso de la rejilla</span></div><button type="button" aria-label="Cerrar" onClick={() => setWorkplaneOpen(false)}><X size={17} /></button></header>
+          <header><div><strong>Rejilla</strong><span>Suelo global y tamaño del plano activo</span></div><button type="button" aria-label="Cerrar" onClick={() => setWorkplaneOpen(false)}><X size={17} /></button></header>
+          <label><span>Mostrar suelo XY</span><input type="checkbox" checked={workplaneDraft.gridVisible} onChange={(event) => setWorkplaneDraft((current) => ({ ...current, gridVisible: event.target.checked }))} /></label>
+          <label><span>Tamaño del plano activo</span><span className="educad-number-input"><input type="number" min="2" max="100" step="1" value={workplaneDraft.activeSizePercent} onChange={(event) => setWorkplaneDraft((current) => ({ ...current, activeSizePercent: Math.min(100, Math.max(2, Number(event.target.value) || 10)) }))} /><small>%</small></span></label>
           <label><span>Ancho</span><span className="educad-number-input"><input type="number" min="60" max="2000" step="1" value={workplaneDraft.width} onChange={(event) => setWorkplaneDraft((current) => ({ ...current, width: Math.min(2000, Math.max(60, Number(event.target.value) || 60)) }))} /><small>mm</small></span></label>
           <label><span>Largo</span><span className="educad-number-input"><input type="number" min="60" max="2000" step="1" value={workplaneDraft.depth} onChange={(event) => setWorkplaneDraft((current) => ({ ...current, depth: Math.min(2000, Math.max(60, Number(event.target.value) || 60)) }))} /><small>mm</small></span></label>
           <label><span>Paso de líneas</span><span className="educad-number-input"><input type="number" min="0.1" max="200" step="0.1" value={workplaneDraft.gridStep} onChange={(event) => setWorkplaneDraft((current) => ({ ...current, gridStep: Math.min(200, Math.max(0.1, Number(event.target.value) || 0.1)) }))} /><small>mm</small></span></label>

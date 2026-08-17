@@ -11,6 +11,7 @@ import type {
 } from "@/types/parametric";
 import { assertValidParametricDependencies } from "@/lib/parametricDependencyGraph";
 import { assertValidParametricTopology, isParametricTopologyReference } from "@/lib/parametricTopology";
+import { globalParametricWorkplanePlacement, normalizeParametricWorkplanePlacement } from "@/lib/parametricWorkplane";
 
 let localCounter = 0;
 export const CURRENT_PARAMETRIC_SCHEMA = "educad-parametric/v2" as const;
@@ -34,7 +35,7 @@ export function createStarterDocument(now = Date.now()): ParametricDocument {
     name: "Nuevo diseño",
     units: "mm",
     color: "#d41721",
-    workplane: { width: 200, depth: 200, gridStep: 5, snapToGrid: true },
+    workplane: { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, ...globalParametricWorkplanePlacement() },
     objects: [object],
     topologyReferences: [],
     createdAt: now,
@@ -178,11 +179,14 @@ export function migrateParametricDocument(document: ParametricDocument): Paramet
 
 export function normalizeParametricDocument(document: ParametricDocument): ParametricDocument {
   const next = migrateParametricDocument(document);
-  next.workplane ??= { width: 200, depth: 200, gridStep: 5, snapToGrid: true };
+  next.workplane ??= { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, ...globalParametricWorkplanePlacement() };
   next.workplane.width = Math.min(2000, Math.max(60, Number.isFinite(next.workplane.width) ? next.workplane.width : 200));
   next.workplane.depth = Math.min(2000, Math.max(60, Number.isFinite(next.workplane.depth) ? next.workplane.depth : 200));
   next.workplane.gridStep = Math.min(200, Math.max(0.1, Number.isFinite(next.workplane.gridStep) ? next.workplane.gridStep : 5));
   next.workplane.snapToGrid = typeof next.workplane.snapToGrid === "boolean" ? next.workplane.snapToGrid : true;
+  next.workplane.gridVisible = typeof next.workplane.gridVisible === "boolean" ? next.workplane.gridVisible : true;
+  next.workplane.activeSizePercent = Math.min(100, Math.max(2, Number.isFinite(next.workplane.activeSizePercent) ? next.workplane.activeSizePercent : 10));
+  Object.assign(next.workplane, normalizeParametricWorkplanePlacement(next.workplane));
   next.objects ??= [];
   next.topologyReferences ??= [];
   const objectIds = new Set(next.objects.map((object) => object.id));

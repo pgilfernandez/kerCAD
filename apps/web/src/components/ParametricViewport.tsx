@@ -10,7 +10,8 @@ import { acceleratedRaycast, MeshBVH } from "three-mesh-bvh";
 import { constrainViewportAxisDrag, constrainViewportResizeDimensions, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, viewportDimensionsForHandle, type ViewportDimensionAxis } from "@/lib/viewportGeometry";
 import { AdaptiveViewportResolution, viewportPerformanceOptions, viewportRenderProfile, type ViewportRenderQuality } from "@/lib/viewportPerformance";
 import { orthographicTouchTargetWorldSize, perspectiveTouchTargetWorldSize, viewportPointerDragIntent, type ViewportPointerDragIntent } from "@/lib/viewportPointer";
-import type { ParametricObjectRenderRecord, RenderMesh } from "@/types/parametric";
+import { parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
+import type { ParametricDocument, ParametricObjectRenderRecord, RenderMesh } from "@/types/parametric";
 
 export type CameraView = { name: "iso" | "top" | "front" | "right" | "zoom-in" | "zoom-out" | "home" | "fit" | "selection" | "custom"; token: number; direction?: [number, number, number] };
 export type CameraProjection = "perspective" | "orthographic";
@@ -25,6 +26,8 @@ export type ViewportSelection = {
   depth: number;
   height: number;
   rotation: number;
+  center?: { x: number; y: number; z: number };
+  rotation3d?: { x: number; y: number; z: number };
   resizeAspectRatio?: number;
   operationPreview?: {
     shape: "box" | "cylinder";
@@ -49,7 +52,7 @@ type Props = {
   operationContext?: { color: string; mesh: RenderMesh; opacity: number } | null;
   isolatedHistoryObjectId?: string | null;
   color: string;
-  workplane?: { width: number; depth: number; gridStep: number };
+  workplane?: ParametricDocument["workplane"];
   view: CameraView;
   projection?: CameraProjection;
   renderQuality?: ViewportRenderQuality;
@@ -65,6 +68,8 @@ type Props = {
   onObjectSelect?: (objectId: string) => void;
   onObjectsSelect?: (objectIds: string[]) => void;
   onEmptySelect?: () => void;
+  workplaneFaceSelection?: boolean;
+  onWorkplaneFaceSelect?: (face: { origin: { x: number; y: number; z: number }; normal: { x: number; y: number; z: number } }) => void;
 };
 
 type CachedObjectRender = {
@@ -77,10 +82,10 @@ function setMaterialColor(material: THREE.Material, color: THREE.ColorRepresenta
   if (material instanceof THREE.MeshLambertMaterial || material instanceof THREE.MeshStandardMaterial) material.color.set(color);
 }
 
-function workplaneMaterial(quality: ViewportRenderQuality) {
+function workplaneMaterial(quality: ViewportRenderQuality, color = "#ddf8ff", opacity = 0.68) {
   return quality === "normal"
-    ? new THREE.MeshStandardMaterial({ color: "#ddf8ff", transparent: true, opacity: 0.68, roughness: 1, metalness: 0 })
-    : new THREE.MeshLambertMaterial({ color: "#ddf8ff", transparent: true, opacity: 0.68 });
+    ? new THREE.MeshStandardMaterial({ color, transparent: true, opacity, roughness: 1, metalness: 0, side: THREE.DoubleSide })
+    : new THREE.MeshLambertMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide });
 }
 
 function objectMaterial(quality: ViewportRenderQuality, color: THREE.ColorRepresentation) {
@@ -120,6 +125,33 @@ function clearObjectOriginLayer(layer: THREE.Group) {
   layer.clear();
 }
 
+function coplanarFaceGeometry(source: THREE.BufferGeometry, faceIndex: number) {
+  const positions = source.getAttribute("position");
+  const indices = source.getIndex();
+  if (!positions || faceIndex < 0) return new THREE.BufferGeometry();
+  const vertexIndex = (corner: number) => indices ? indices.getX(corner) : corner;
+  const vertex = (corner: number) => new THREE.Vector3().fromBufferAttribute(positions, vertexIndex(corner));
+  const first = faceIndex * 3;
+  const a = vertex(first);
+  const b = vertex(first + 1);
+  const c = vertex(first + 2);
+  const normal = b.clone().sub(a).cross(c.clone().sub(a)).normalize();
+  const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, a);
+  const result: number[] = [];
+  const triangleCount = (indices?.count ?? positions.count) / 3;
+  for (let triangle = 0; triangle < triangleCount; triangle += 1) {
+    const offset = triangle * 3;
+    const vertices = [vertex(offset), vertex(offset + 1), vertex(offset + 2)];
+    const candidateNormal = vertices[1].clone().sub(vertices[0]).cross(vertices[2].clone().sub(vertices[0])).normalize();
+    if (candidateNormal.dot(normal) < 0.9999 || vertices.some((point) => Math.abs(plane.distanceToPoint(point)) > 1e-4)) continue;
+    for (const point of vertices) result.push(point.x + normal.x * 0.02, point.y + normal.y * 0.02, point.z + normal.z * 0.02);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(result, 3));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 function objectOriginMarker(objectId: string, editable: boolean) {
   const marker = new THREE.Group();
   marker.name = `Origen ${objectId}`;
@@ -154,7 +186,7 @@ function objectOriginMarker(objectId: string, editable: boolean) {
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], editableOriginId = null, selectedObjectOriginId = null, operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5 }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionResize, onSelectionHeight, onObjectOriginMove, onObjectAxisMove, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], editableOriginId = null, selectedObjectOriginId = null, operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionResize, onSelectionHeight, onObjectOriginMove, onObjectAxisMove, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
@@ -174,6 +206,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const workplaneRef = useRef<THREE.Group | null>(null);
   const selectionRootRef = useRef<THREE.Group | null>(null);
   const operationContextRef = useRef<THREE.Mesh | null>(null);
+  const faceHighlightRef = useRef<THREE.Mesh | null>(null);
   const selectionHitboxRef = useRef<THREE.Mesh | null>(null);
   const rotationHitboxRef = useRef<THREE.Mesh | null>(null);
   const resizeHitboxesRef = useRef<THREE.Mesh[]>([]);
@@ -190,6 +223,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const objectSelectRef = useRef(onObjectSelect);
   const objectsSelectRef = useRef(onObjectsSelect);
   const emptySelectRef = useRef(onEmptySelect);
+  const workplaneFaceSelectionRef = useRef(workplaneFaceSelection);
+  const workplaneFaceSelectRef = useRef(onWorkplaneFaceSelect);
   const snapRef = useRef(snap);
   const isolatedHistoryObjectIdRef = useRef(isolatedHistoryObjectId);
   const invalidateRef = useRef<() => void>(() => undefined);
@@ -216,6 +251,14 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   useEffect(() => { objectSelectRef.current = onObjectSelect; }, [onObjectSelect]);
   useEffect(() => { objectsSelectRef.current = onObjectsSelect; }, [onObjectsSelect]);
   useEffect(() => { emptySelectRef.current = onEmptySelect; }, [onEmptySelect]);
+  useEffect(() => { workplaneFaceSelectionRef.current = workplaneFaceSelection; }, [workplaneFaceSelection]);
+  useEffect(() => { workplaneFaceSelectRef.current = onWorkplaneFaceSelect; }, [onWorkplaneFaceSelect]);
+  useEffect(() => {
+    if (workplaneFaceSelection) return;
+    if (faceHighlightRef.current) faceHighlightRef.current.visible = false;
+    if (rendererRef.current) rendererRef.current.domElement.style.cursor = "default";
+    invalidateRef.current();
+  }, [workplaneFaceSelection]);
   useEffect(() => { snapRef.current = snap; }, [snap]);
   useEffect(() => { isolatedHistoryObjectIdRef.current = isolatedHistoryObjectId; }, [isolatedHistoryObjectId]);
 
@@ -388,6 +431,14 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const originLayer = new THREE.Group();
     originLayer.name = "Orígenes de objetos";
     modelGroup.add(originLayer);
+    const faceHighlight = new THREE.Mesh(
+      new THREE.BufferGeometry(),
+      new THREE.MeshBasicMaterial({ color: "#ffe47a", transparent: true, opacity: 0.58, side: THREE.DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }),
+    );
+    faceHighlight.visible = false;
+    faceHighlight.renderOrder = 25;
+    modelGroup.add(faceHighlight);
+    faceHighlightRef.current = faceHighlight;
 
     const raycaster = new THREE.Raycaster();
     raycaster.firstHitOnly = true;
@@ -472,6 +523,21 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       pointer.set(((event.clientX - bounds.left) / bounds.width) * 2 - 1, -((event.clientY - bounds.top) / bounds.height) * 2 + 1);
       raycaster.setFromCamera(pointer, camera);
     };
+    const faceAtPointer = () => {
+      const bodies = modelGroup.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh && typeof child.userData.objectId === "string");
+      return raycaster.intersectObjects(bodies, false)[0] ?? null;
+    };
+    const updateWorkplaneFaceHighlight = () => {
+      const hit = faceAtPointer();
+      faceHighlight.geometry.dispose();
+      faceHighlight.geometry = hit?.face && typeof hit.faceIndex === "number"
+        ? coplanarFaceGeometry((hit.object as THREE.Mesh).geometry, hit.faceIndex)
+        : new THREE.BufferGeometry();
+      faceHighlight.visible = Boolean(hit?.face);
+      renderer.domElement.style.cursor = hit ? "crosshair" : "not-allowed";
+      requestRender();
+      return hit;
+    };
     const updateManipulatorHitTargets = (pointerType: string) => {
       const selected = selectionRef.current;
       if (!selected) return;
@@ -527,6 +593,21 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     };
     const onPointerDown = (event: PointerEvent) => {
       if (event.button !== 0) return;
+      if (workplaneFaceSelectionRef.current) {
+        setPointer(event);
+        const hit = updateWorkplaneFaceHighlight();
+        if (hit?.face) {
+          const relativeMatrix = new THREE.Matrix4().copy(modelGroup.matrixWorld).invert().multiply(hit.object.matrixWorld);
+          const normal = hit.face.normal.clone().applyNormalMatrix(new THREE.Matrix3().getNormalMatrix(relativeMatrix)).normalize();
+          const origin = modelGroup.worldToLocal(hit.point.clone());
+          workplaneFaceSelectRef.current?.({
+            origin: { x: origin.x, y: origin.y, z: origin.z },
+            normal: { x: normal.x, y: normal.y, z: normal.z },
+          });
+        }
+        event.preventDefault();
+        return;
+      }
       updateManipulatorHitTargets(event.pointerType);
       const hitbox = selectionHitboxRef.current;
       const rotationHitbox = rotationHitboxRef.current;
@@ -605,6 +686,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     };
     const onPointerMove = (event: PointerEvent) => {
       if (!interaction) {
+        if (workplaneFaceSelectionRef.current && event.buttons === 0) {
+          setPointer(event);
+          updateWorkplaneFaceHighlight();
+          return;
+        }
         if (pickCandidate && pickCandidate.pointerId === event.pointerId) {
           pickCandidate.dragIntent = viewportPointerDragIntent(
             pickCandidate.pointerType,
@@ -654,7 +740,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         const x = Math.round((dragPoint.x + dragOffset.x) / grid) * grid;
         const y = Math.round((-(dragPoint.z + dragOffset.z)) / grid) * grid;
         pendingPosition = { x, y };
-        root.position.set(x, y, selected.baseZ + selected.height / 2);
+        root.position.set(
+          (selected.center?.x ?? selected.x) + x - selected.x,
+          (selected.center?.y ?? selected.y) + y - selected.y,
+          selected.center?.z ?? selected.baseZ + selected.height / 2,
+        );
       } else if (interaction === "rotate") {
         const center = new THREE.Vector3();
         root.getWorldPosition(center);
@@ -732,8 +822,13 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         const selected = selectionRef.current;
         const root = selectionRootRef.current;
         if (selected && root) {
-          root.position.set(selected.x, selected.y, selected.baseZ + selected.height / 2);
-          root.rotation.z = THREE.MathUtils.degToRad(selected.rotation);
+          root.position.set(selected.center?.x ?? selected.x, selected.center?.y ?? selected.y, selected.center?.z ?? selected.baseZ + selected.height / 2);
+          root.rotation.set(
+            THREE.MathUtils.degToRad(selected.rotation3d?.x ?? 0),
+            THREE.MathUtils.degToRad(selected.rotation3d?.y ?? 0),
+            THREE.MathUtils.degToRad(selected.rotation3d?.z ?? selected.rotation),
+            "ZYX",
+          );
           root.scale.set(1, 1, 1);
           requestRender();
         }
@@ -761,6 +856,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       requestRender();
     };
     const leaveManipulatorArea = () => {
+      if (workplaneFaceSelectionRef.current) {
+        faceHighlight.visible = false;
+        renderer.domElement.style.cursor = "default";
+        requestRender();
+      }
       if (interaction || dimensionHoverTimerRef.current !== null) return;
       dimensionHoverTimerRef.current = window.setTimeout(() => {
         dimensionHoverTimerRef.current = null;
@@ -819,6 +919,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       renderer.domElement.remove();
       if (dimensionHoverTimerRef.current !== null) window.clearTimeout(dimensionHoverTimerRef.current);
       clearObjectOriginLayer(originLayer);
+      faceHighlight.geometry.dispose();
+      (faceHighlight.material as THREE.Material).dispose();
       scene.clear();
       sceneRef.current = null;
       cameraRef.current = null;
@@ -827,6 +929,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       modelRef.current = null;
       originLayerRef.current = null;
       workplaneRef.current = null;
+      faceHighlightRef.current = null;
       [dimensionXRef.current, dimensionYRef.current, dimensionZRef.current, dimensionRotationRef.current].forEach((label) => { if (label) label.style.display = "none"; });
       invalidateRef.current = () => undefined;
     };
@@ -844,6 +947,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         THREE.MathUtils.degToRad(origin.rotation.x),
         THREE.MathUtils.degToRad(origin.rotation.y),
         THREE.MathUtils.degToRad(origin.rotation.z),
+        "ZYX",
       );
       layer.add(marker);
     }
@@ -860,57 +964,63 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       }
     });
     group.clear();
+    group.position.set(0, 0, 0);
+    group.rotation.set(0, 0, 0);
 
     const width = Math.max(60, workplane.width);
     const depth = Math.max(60, workplane.depth);
     const requestedStep = Math.max(0.1, workplane.gridStep);
-    const step = Math.max(requestedStep, Math.max(width, depth) / 1000);
-    const surface = new THREE.Mesh(
-      new THREE.PlaneGeometry(width, depth),
-      workplaneMaterial(renderQuality),
-    );
-    surface.rotation.x = -Math.PI / 2;
-    surface.position.y = -0.08;
-    surface.receiveShadow = true;
-    group.add(surface);
-
-    const minor: number[] = [];
-    const major: number[] = [];
-    const axes: number[] = [];
-    const border: number[] = [];
-    const pushLine = (target: number[], x1: number, z1: number, x2: number, z2: number) => target.push(x1, 0, z1, x2, 0, z2);
-    const halfWidth = width / 2;
-    const halfDepth = depth / 2;
-    const xCount = Math.floor(halfWidth / step);
-    const zCount = Math.floor(halfDepth / step);
-    for (let index = -xCount; index <= xCount; index += 1) {
-      const x = index * step;
-      if (index === 0) pushLine(axes, x, -halfDepth, x, halfDepth);
-      else pushLine(index % 5 === 0 ? major : minor, x, -halfDepth, x, halfDepth);
-    }
-    for (let index = -zCount; index <= zCount; index += 1) {
-      const z = index * step;
-      if (index === 0) pushLine(axes, -halfWidth, z, halfWidth, z);
-      else pushLine(index % 5 === 0 ? major : minor, -halfWidth, z, halfWidth, z);
-    }
-    pushLine(border, -halfWidth, -halfDepth, halfWidth, -halfDepth);
-    pushLine(border, halfWidth, -halfDepth, halfWidth, halfDepth);
-    pushLine(border, halfWidth, halfDepth, -halfWidth, halfDepth);
-    pushLine(border, -halfWidth, halfDepth, -halfWidth, -halfDepth);
-    const addLines = (positions: number[], color: string, opacity: number) => {
-      if (positions.length === 0) return;
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-      const lines = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color, transparent: true, opacity }));
-      lines.position.y = 0.01;
-      group.add(lines);
+    const addGrid = (target: THREE.Group, gridWidth: number, gridDepth: number, yellow = false) => {
+      const step = Math.max(requestedStep, Math.max(gridWidth, gridDepth) / 1000);
+      const surface = new THREE.Mesh(
+        new THREE.PlaneGeometry(gridWidth, gridDepth),
+        workplaneMaterial(renderQuality, yellow ? "#ffe99a" : "#ddf8ff", yellow ? 0.3 : 0.68),
+      );
+      surface.rotation.x = -Math.PI / 2;
+      surface.position.y = yellow ? 0.015 : -0.08;
+      surface.receiveShadow = !yellow;
+      target.add(surface);
+      const minor: number[] = [];
+      const major: number[] = [];
+      const axes: number[] = [];
+      const border: number[] = [];
+      const pushLine = (values: number[], x1: number, z1: number, x2: number, z2: number) => values.push(x1, 0, z1, x2, 0, z2);
+      const halfWidth = gridWidth / 2;
+      const halfDepth = gridDepth / 2;
+      for (let index = -Math.floor(halfWidth / step); index <= Math.floor(halfWidth / step); index += 1) {
+        const x = index * step;
+        if (index === 0) pushLine(axes, x, -halfDepth, x, halfDepth); else pushLine(index % 5 === 0 ? major : minor, x, -halfDepth, x, halfDepth);
+      }
+      for (let index = -Math.floor(halfDepth / step); index <= Math.floor(halfDepth / step); index += 1) {
+        const z = index * step;
+        if (index === 0) pushLine(axes, -halfWidth, z, halfWidth, z); else pushLine(index % 5 === 0 ? major : minor, -halfWidth, z, halfWidth, z);
+      }
+      pushLine(border, -halfWidth, -halfDepth, halfWidth, -halfDepth);
+      pushLine(border, halfWidth, -halfDepth, halfWidth, halfDepth);
+      pushLine(border, halfWidth, halfDepth, -halfWidth, halfDepth);
+      pushLine(border, -halfWidth, halfDepth, -halfWidth, -halfDepth);
+      const palette = yellow ? ["#ffeaa0", "#efc83e", "#d9a900", "#c38c00"] : ["#91dff0", "#4bbddf", "#34aad2", "#58c5e6"];
+      [minor, major, axes, border].forEach((values, index) => {
+        if (values.length === 0) return;
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute("position", new THREE.Float32BufferAttribute(values, 3));
+        const lines = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color: palette[index], transparent: true, opacity: [0.55, 0.7, 0.88, 0.9][index] }));
+        lines.position.y = 0.025;
+        target.add(lines);
+      });
     };
-    addLines(minor, "#91dff0", 0.55);
-    addLines(major, "#4bbddf", 0.7);
-    addLines(axes, "#34aad2", 0.88);
-    addLines(border, "#58c5e6", 0.9);
+    if (workplane.gridVisible) addGrid(group, width, depth);
+    if (!parametricWorkplaneIsGlobal(workplane)) {
+      const active = new THREE.Group();
+      const sceneVector = (value: { x: number; y: number; z: number }) => new THREE.Vector3(value.x, value.z, -value.y);
+      active.position.copy(sceneVector(workplane.origin));
+      active.setRotationFromMatrix(new THREE.Matrix4().makeBasis(sceneVector(workplane.xAxis), sceneVector(workplane.normal), sceneVector(workplane.yAxis).negate()));
+      const side = Math.max(requestedStep * 2, Math.min(width, depth) * workplane.activeSizePercent / 100);
+      addGrid(active, side, side, true);
+      group.add(active);
+    }
     invalidateRef.current();
-  }, [projection, renderQuality, workplane.depth, workplane.gridStep, workplane.width]);
+  }, [projection, renderQuality, workplane.activeSizePercent, workplane.depth, workplane.gridStep, workplane.gridVisible, workplane.normal.x, workplane.normal.y, workplane.normal.z, workplane.origin.x, workplane.origin.y, workplane.origin.z, workplane.width, workplane.xAxis.x, workplane.xAxis.y, workplane.xAxis.z, workplane.yAxis.x, workplane.yAxis.y, workplane.yAxis.z]);
 
   useEffect(() => {
     const group = modelRef.current;
@@ -1086,8 +1196,14 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       return;
     }
     const root = new THREE.Group();
-    root.position.set(selection.x, selection.y, selection.baseZ + selection.height / 2);
-    root.rotation.z = THREE.MathUtils.degToRad(selection.rotation);
+    root.position.set(selection.center?.x ?? selection.x, selection.center?.y ?? selection.y, selection.center?.z ?? selection.baseZ + selection.height / 2);
+    root.rotation.order = "ZYX";
+    root.rotation.set(
+      THREE.MathUtils.degToRad(selection.rotation3d?.x ?? 0),
+      THREE.MathUtils.degToRad(selection.rotation3d?.y ?? 0),
+      THREE.MathUtils.degToRad(selection.rotation3d?.z ?? selection.rotation),
+      "ZYX",
+    );
     if (selection.operationPreview) {
       const operationPreview = selection.operationPreview;
       const previewStyle = operationPreviewStyle(operationPreview.mode, operationPreview.historical);

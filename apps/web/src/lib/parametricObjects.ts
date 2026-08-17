@@ -2,6 +2,8 @@ import { createExtrudeFeature, createParametricObject, createSketchFeature } fro
 import type { ViewportSelection } from "@/components/ParametricViewport";
 import type { ExtrudeFeature, ParametricDocument, ParametricFeature, ParametricObject, SketchFeature } from "@/types/parametric";
 import type { WorkplaneShape } from "@/types/sketchforge";
+import { objectPlacementForWorkplane, operationPlacementForWorkplane, parametricTransformMatrix } from "@/lib/parametricWorkplane";
+import * as THREE from "three";
 
 export type SupportedPrimitive = "box" | "cylinder";
 export type ParametricTreeSelection = { id: string; kind: "object" | "feature" };
@@ -108,15 +110,17 @@ export function addPrimitiveToSelection(
   let objectId = selectedObjectId;
   let createdObject = false;
   if (!objectId || !document.objects.some((object) => object.id === objectId)) {
-    const count = document.objects.length;
-    objectId = addParametricObject(document, { x: count * 8, y: count * 6, z: 0 });
+    objectId = addParametricObject(document, document.workplane.origin);
+    const object = document.objects.find((candidate) => candidate.id === objectId)!;
+    const placement = objectPlacementForWorkplane(document.workplane);
+    object.transform.position = placement.position;
+    object.transform.rotation = placement.rotation;
     createdObject = true;
   }
-  const operationCount = document.features.filter((feature) => feature.kind === "extrude" && feature.objectId === objectId).length;
-  const featureId = addPrimitive(document, objectId, kind, {
-    x: operationCount === 0 ? 0 : operationCount * 8,
-    y: operationCount === 0 ? 0 : operationCount * 6,
-  });
+  const object = document.objects.find((candidate) => candidate.id === objectId)!;
+  const featureId = addPrimitive(document, objectId, kind);
+  const feature = document.features.find((candidate): candidate is ExtrudeFeature => candidate.id === featureId && candidate.kind === "extrude");
+  if (feature && !createdObject) feature.transform = operationPlacementForWorkplane(document.workplane, object);
   return { objectId, featureId, createdObject };
 }
 
@@ -265,14 +269,26 @@ export function viewportSelectionForObject(document: ParametricDocument, id: str
 }
 
 function operationWorldTransform(object: ParametricObject, feature: ExtrudeFeature) {
-  const angle = object.transform.rotation.z * Math.PI / 180;
-  const localX = feature.transform.position.x * object.transform.scale.x;
-  const localY = feature.transform.position.y * object.transform.scale.y;
+  const matrix = parametricTransformMatrix(object.transform).multiply(parametricTransformMatrix({ ...feature.transform, scale: { x: 1, y: 1, z: 1 } }));
+  const origin = new THREE.Vector3().applyMatrix4(matrix);
+  const center = new THREE.Vector3(0, 0, feature.distance / 2).applyMatrix4(matrix);
+  const rotationMatrix = parametricTransformMatrix({ ...object.transform, scale: { x: 1, y: 1, z: 1 } })
+    .multiply(parametricTransformMatrix({ ...feature.transform, scale: { x: 1, y: 1, z: 1 } }));
+  const quaternion = new THREE.Quaternion();
+  rotationMatrix.decompose(new THREE.Vector3(), quaternion, new THREE.Vector3());
+  const rotation = new THREE.Euler().setFromQuaternion(quaternion, "ZYX");
+  const clean = (value: number) => Math.abs(value) < 1e-10 ? 0 : Number(value.toFixed(10));
   return {
-    x: object.transform.position.x + localX * Math.cos(angle) - localY * Math.sin(angle),
-    y: object.transform.position.y + localX * Math.sin(angle) + localY * Math.cos(angle),
-    z: object.transform.position.z + feature.transform.position.z * object.transform.scale.z,
-    rotation: object.transform.rotation.z + feature.transform.rotation.z,
+    x: clean(origin.x),
+    y: clean(origin.y),
+    z: clean(origin.z),
+    center: { x: clean(center.x), y: clean(center.y), z: clean(center.z) },
+    rotation: clean(THREE.MathUtils.radToDeg(rotation.z)),
+    rotation3d: {
+      x: clean(THREE.MathUtils.radToDeg(rotation.x)),
+      y: clean(THREE.MathUtils.radToDeg(rotation.y)),
+      z: clean(THREE.MathUtils.radToDeg(rotation.z)),
+    },
   };
 }
 
@@ -298,6 +314,8 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
     depth,
     height: feature.distance * object.transform.scale.z,
     rotation: world.rotation,
+    center: world.center,
+    rotation3d: world.rotation3d,
     ...(sketch.profile.shape === "circle" ? { resizeAspectRatio: 1 } : {}),
     operationPreview: {
       shape: sketch.profile.shape === "rectangle" ? "box" : "cylinder",
