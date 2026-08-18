@@ -244,7 +244,6 @@ function ParametricObjectInspector({
   }, [colorOpen]);
   return (
     <div className="educad-feature-inspector educad-object-inspector">
-      <header><Box size={18} /><div><strong>{object.name}</strong><span>Contenedor de operaciones</span></div></header>
       <TransformSection>
         <TransformGroup label="Posición" values={object.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.position[axis] = value; })} />
         <TransformGroup label="Rotación" values={object.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.rotation[axis] = value; })} />

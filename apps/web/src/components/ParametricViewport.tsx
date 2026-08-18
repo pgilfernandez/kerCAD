@@ -1173,6 +1173,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       resourcesChanged = true;
     }
     if (renderItems.length === 0) {
+      if (resourcesChanged && rendererRef.current) rendererRef.current.shadowMap.needsUpdate = true;
       invalidateRef.current();
       return;
     }
