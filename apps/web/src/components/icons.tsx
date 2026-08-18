@@ -189,7 +189,11 @@ export function ToolbarExportIcon() {
 }
 
 export function ToolbarWorkplaneIcon() {
-  return <ToolbarCommandImage file="toolbar-workplane.png" className="toolbar-user-art-icon" />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/sketchforge/toolbar-workplane.svg" alt="" draggable={false} />;
+}
+
+export function ToolbarResetWorkplaneIcon() {
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/sketchforge/toolbar-reset-workplane.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarDropToWorkplaneIcon() {
