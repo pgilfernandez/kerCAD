@@ -47,7 +47,6 @@ export function ParametricModelSidebar({
   onUpdateFeature,
 }: Props) {
   const objects = parametricObjectTree(document);
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set(objects.map((object) => object.id)));
   const [renameTarget, setRenameTarget] = useState<{ id: string; kind: ModelSelectionKind; name: string } | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const objectListRef = useRef<HTMLDivElement>(null);
@@ -57,23 +56,15 @@ export function ParametricModelSidebar({
   const selectionKind = primarySelection?.kind ?? "object";
 
   useEffect(() => {
-    setExpanded((current) => {
-      const next = new Set(current);
-      for (const object of objects) next.add(object.id);
-      return next;
-    });
-  }, [document.features.length]);
-
-  useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
       objectListRef.current?.querySelector<HTMLElement>(".selected")?.scrollIntoView({ block: "nearest" });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [expanded, selectedId, selectionKind, selection.length]);
+  }, [document.objects, selectedId, selectionKind, selection.length]);
 
   const visibleNodes: ModelTreeSelection[] = objects.flatMap((object) => [
     { id: object.id, kind: "object" as const },
-    ...(expanded.has(object.id) ? object.operations.map((feature) => ({ id: feature.id, kind: "feature" as const })) : []),
+    ...(object.object.expanded ? object.operations.map((feature) => ({ id: feature.id, kind: "feature" as const })) : []),
   ]);
   const selectNode = (node: ModelTreeSelection, event: MouseEvent) => {
     onSelectionChange(updateParametricTreeSelection(selection, node, visibleNodes, rangeAnchorRef.current ?? primarySelection, { range: event.shiftKey, toggle: event.ctrlKey || event.metaKey }));
@@ -112,7 +103,7 @@ export function ParametricModelSidebar({
         <section className="educad-model-tree">
           <div ref={objectListRef} className="educad-object-list">
             {objects.map((object) => {
-              const isExpanded = expanded.has(object.id);
+              const isExpanded = object.object.expanded;
               const objectSelected = selection.some((candidate) => candidate.kind === "object" && candidate.id === object.id);
               return (
                 <div className="educad-object-node" key={object.id}>
@@ -121,11 +112,7 @@ export function ParametricModelSidebar({
                       className="educad-tree-toggle"
                       aria-label={isExpanded ? `Contraer ${object.name}` : `Desplegar ${object.name}`}
                       aria-expanded={isExpanded}
-                      onClick={() => setExpanded((current) => {
-                        const next = new Set(current);
-                        if (next.has(object.id)) next.delete(object.id); else next.add(object.id);
-                        return next;
-                      })}
+                      onClick={() => onUpdateObject(object.id, (draft) => { draft.expanded = !draft.expanded; })}
                     >
                       {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                     </button>

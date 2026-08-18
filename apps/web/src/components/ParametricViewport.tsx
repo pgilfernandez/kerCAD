@@ -47,8 +47,15 @@ type Props = {
     position: { x: number; y: number; z: number };
     rotation: { x: number; y: number; z: number };
   }>;
+  operationOrigins?: Array<{
+    featureId: string;
+    visible: boolean;
+    position: { x: number; y: number; z: number };
+    rotation: { x: number; y: number; z: number };
+  }>;
   editableOriginId?: string | null;
   selectedObjectOriginId?: string | null;
+  selectedOperationOriginId?: string | null;
   operationContext?: { color: string; mesh: RenderMesh; opacity: number } | null;
   isolatedHistoryObjectId?: string | null;
   color: string;
@@ -65,6 +72,7 @@ type Props = {
   onSelectionHeight?: (height: number) => void;
   onObjectOriginMove?: (objectId: string, position: { x: number; y: number; z: number }) => void;
   onObjectAxisMove?: (objectId: string, position: { x: number; y: number; z: number }) => void;
+  onOperationAxisMove?: (featureId: string, delta: { x: number; y: number; z: number }) => void;
   onCameraOrientation?: (orientation: CameraOrientation) => void;
   onObjectSelect?: (objectId: string) => void;
   onObjectsSelect?: (objectIds: string[]) => void;
@@ -143,10 +151,11 @@ function coplanarFaceGeometry(source: THREE.BufferGeometry, faceIndex: number) {
   return { geometry, region };
 }
 
-function objectOriginMarker(objectId: string, editable: boolean) {
+function objectOriginMarker(targetId: string, editable: boolean, targetKind: "object" | "feature" = "object") {
   const marker = new THREE.Group();
-  marker.name = `Origen ${objectId}`;
-  marker.userData.objectOriginId = objectId;
+  marker.name = `${targetKind === "object" ? "Origen" : "Operación"} ${targetId}`;
+  marker.userData.transformTargetId = targetId;
+  marker.userData.transformTargetKind = targetKind;
   const axes: Array<["x" | "y" | "z", THREE.Vector3, number]> = [
     ["x", new THREE.Vector3(1, 0, 0), 0xd84b4b],
     ["y", new THREE.Vector3(0, 1, 0), 0x35a85b],
@@ -177,7 +186,7 @@ function objectOriginMarker(objectId: string, editable: boolean) {
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], editableOriginId = null, selectedObjectOriginId = null, operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionRotateRelative, onSelectionResize, onSelectionHeight, onObjectOriginMove, onObjectAxisMove, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionRotateRelative, onSelectionResize, onSelectionHeight, onObjectOriginMove, onObjectAxisMove, onOperationAxisMove, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
@@ -209,8 +218,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const heightRef = useRef(onSelectionHeight);
   const originMoveRef = useRef(onObjectOriginMove);
   const objectAxisMoveRef = useRef(onObjectAxisMove);
+  const operationAxisMoveRef = useRef(onOperationAxisMove);
   const editableOriginIdRef = useRef(editableOriginId);
   const selectedObjectOriginIdRef = useRef(selectedObjectOriginId);
+  const selectedOperationOriginIdRef = useRef(selectedOperationOriginId);
   const orientationRef = useRef(onCameraOrientation);
   const objectSelectRef = useRef(onObjectSelect);
   const objectsSelectRef = useRef(onObjectsSelect);
@@ -239,8 +250,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   useEffect(() => { heightRef.current = onSelectionHeight; }, [onSelectionHeight]);
   useEffect(() => { originMoveRef.current = onObjectOriginMove; }, [onObjectOriginMove]);
   useEffect(() => { objectAxisMoveRef.current = onObjectAxisMove; }, [onObjectAxisMove]);
+  useEffect(() => { operationAxisMoveRef.current = onOperationAxisMove; }, [onOperationAxisMove]);
   useEffect(() => { editableOriginIdRef.current = editableOriginId; }, [editableOriginId]);
   useEffect(() => { selectedObjectOriginIdRef.current = selectedObjectOriginId; }, [selectedObjectOriginId]);
+  useEffect(() => { selectedOperationOriginIdRef.current = selectedOperationOriginId; }, [selectedOperationOriginId]);
   useEffect(() => { orientationRef.current = onCameraOrientation; }, [onCameraOrientation]);
   useEffect(() => { objectSelectRef.current = onObjectSelect; }, [onObjectSelect]);
   useEffect(() => { objectsSelectRef.current = onObjectsSelect; }, [onObjectsSelect]);
@@ -458,7 +471,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     let originPointerStart: THREE.Vector3 | null = null;
     let originDragMarker: THREE.Object3D | null = null;
     let pendingOrigin: { objectId: string; position: { x: number; y: number; z: number } } | null = null;
-    let pendingObjectAxisMove: { objectId: string; position: { x: number; y: number; z: number } } | null = null;
+    let pendingAxisMove: { targetId: string; targetKind: "object" | "feature"; start: { x: number; y: number; z: number }; position: { x: number; y: number; z: number } } | null = null;
     let axisMoveRootStart: THREE.Vector3 | null = null;
     let moveRootStart: THREE.Vector3 | null = null;
     let movePointerStart: THREE.Vector3 | null = null;
@@ -574,12 +587,13 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     };
     const originHandleAtPointer = () => {
       const editableId = editableOriginIdRef.current;
-      const objectId = editableId ?? selectedObjectOriginIdRef.current;
-      const marker = objectId ? originLayer.children.find((child) => child.userData.objectOriginId === objectId) ?? null : null;
+      const targetId = editableId ?? selectedOperationOriginIdRef.current ?? selectedObjectOriginIdRef.current;
+      const targetKind = editableId || (!selectedOperationOriginIdRef.current && selectedObjectOriginIdRef.current) ? "object" as const : "feature" as const;
+      const marker = targetId ? originLayer.children.find((child) => child.userData.transformTargetId === targetId && child.userData.transformTargetKind === targetKind) ?? null : null;
       if (!marker) return null;
       const hits = raycaster.intersectObject(marker, true);
       const hit = editableId ? hits[0] : hits.find((candidate) => candidate.object.userData.originTip);
-      return hit ? { editable: Boolean(editableId), hit, marker, objectId: objectId! } : null;
+      return hit ? { editable: Boolean(editableId), hit, marker, targetId: targetId!, targetKind } : null;
     };
     const hoveredManipulatorDimensions = (event: PointerEvent): ViewportDimensionAxis[] => {
       if (event.pointerType === "touch") return [];
@@ -638,9 +652,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           originDragStart = originHandle.marker.position.clone();
           originPointerStart = originLayer.worldToLocal(dragPoint.clone());
           originDragMarker = originHandle.marker;
-          if (originHandle.editable) pendingOrigin = { objectId: originHandle.objectId, position: { x: originDragStart.x, y: originDragStart.y, z: originDragStart.z } };
+          if (originHandle.editable) pendingOrigin = { objectId: originHandle.targetId, position: { x: originDragStart.x, y: originDragStart.y, z: originDragStart.z } };
           else {
-            pendingObjectAxisMove = { objectId: originHandle.objectId, position: { x: originDragStart.x, y: originDragStart.y, z: originDragStart.z } };
+            const start = { x: originDragStart.x, y: originDragStart.y, z: originDragStart.z };
+            pendingAxisMove = { targetId: originHandle.targetId, targetKind: originHandle.targetKind, start, position: { ...start } };
             axisMoveRootStart = selectionRootRef.current?.position.clone() ?? null;
           }
         }
@@ -749,8 +764,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         }
         originDragMarker.position.copy(next);
         if (interaction === "origin" && pendingOrigin) pendingOrigin.position = { x: next.x, y: next.y, z: next.z };
-        if (interaction === "axisMove" && pendingObjectAxisMove) {
-          pendingObjectAxisMove.position = { x: next.x, y: next.y, z: next.z };
+        if (interaction === "axisMove" && pendingAxisMove) {
+          pendingAxisMove.position = { x: next.x, y: next.y, z: next.z };
           const root = selectionRootRef.current;
           if (root && axisMoveRootStart) root.position.copy(axisMoveRootStart).add(next.clone().sub(originDragStart));
         }
@@ -877,7 +892,14 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       } else {
         completedDimensions.forEach((axis) => dimensionPinnedRef.current.add(axis));
         if (completedInteraction === "origin" && pendingOrigin) originMoveRef.current?.(pendingOrigin.objectId, pendingOrigin.position);
-        if (completedInteraction === "axisMove" && pendingObjectAxisMove) objectAxisMoveRef.current?.(pendingObjectAxisMove.objectId, pendingObjectAxisMove.position);
+        if (completedInteraction === "axisMove" && pendingAxisMove) {
+          if (pendingAxisMove.targetKind === "object") objectAxisMoveRef.current?.(pendingAxisMove.targetId, pendingAxisMove.position);
+          else operationAxisMoveRef.current?.(pendingAxisMove.targetId, {
+            x: pendingAxisMove.position.x - pendingAxisMove.start.x,
+            y: pendingAxisMove.position.y - pendingAxisMove.start.y,
+            z: pendingAxisMove.position.z - pendingAxisMove.start.z,
+          });
+        }
         if (pendingPosition) moveRef.current?.(pendingPosition);
         if (pendingRotationDelta !== null) {
           const normal = activeWorkplaneRef.current.normal;
@@ -893,7 +915,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       pendingResize = null;
       pendingHeight = null;
       pendingOrigin = null;
-      pendingObjectAxisMove = null;
+      pendingAxisMove = null;
       originDragAxis = null;
       originDragStart = null;
       originPointerStart = null;
@@ -993,7 +1015,19 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     clearObjectOriginLayer(layer);
     for (const origin of objectOrigins) {
       if (!origin.visible) continue;
-      const marker = objectOriginMarker(origin.objectId, origin.objectId === editableOriginId);
+      const marker = objectOriginMarker(origin.objectId, origin.objectId === editableOriginId, "object");
+      marker.position.set(origin.position.x, origin.position.y, origin.position.z);
+      marker.rotation.set(
+        THREE.MathUtils.degToRad(origin.rotation.x),
+        THREE.MathUtils.degToRad(origin.rotation.y),
+        THREE.MathUtils.degToRad(origin.rotation.z),
+        "ZYX",
+      );
+      layer.add(marker);
+    }
+    for (const origin of operationOrigins) {
+      if (!origin.visible) continue;
+      const marker = objectOriginMarker(origin.featureId, false, "feature");
       marker.position.set(origin.position.x, origin.position.y, origin.position.z);
       marker.rotation.set(
         THREE.MathUtils.degToRad(origin.rotation.x),
@@ -1004,7 +1038,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       layer.add(marker);
     }
     invalidateRef.current();
-  }, [editableOriginId, objectOrigins, projection, renderQuality]);
+  }, [editableOriginId, objectOrigins, operationOrigins, projection, renderQuality]);
 
   useEffect(() => {
     const group = workplaneRef.current;

@@ -28,7 +28,7 @@ describe("parametric document", () => {
       normal: { x: 0, y: 0, z: 1 },
     });
     expect(document.objects).toHaveLength(1);
-    expect(document.objects[0]).toMatchObject({ name: "Objeto 1", color: "#d41721", visible: true, locked: false, transform: { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 } } });
+    expect(document.objects[0]).toMatchObject({ name: "Objeto 1", color: "#d41721", visible: true, locked: false, expanded: true, transform: { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 } } });
     expect(document.features.map((feature) => feature.kind)).toEqual(["sketch", "extrude"]);
     const [sketch, extrude] = document.features;
     expect(extrude.kind === "extrude" && extrude.sketchId).toBe(sketch.id);
@@ -106,14 +106,15 @@ describe("parametric document", () => {
     expect(migrated.features[1]).toMatchObject({ transform: { position: { x: 7, y: -2, z: 4 }, rotation: { x: 0, y: 0, z: 0 } } });
   });
 
-  it("adds visibility and locking defaults to stored objects", () => {
+  it("adds visibility, locking and tree expansion defaults to stored objects", () => {
     const stored = createStarterDocument(123);
     delete (stored.objects[0] as Partial<typeof stored.objects[0]>).visible;
     delete (stored.objects[0] as Partial<typeof stored.objects[0]>).locked;
+    delete (stored.objects[0] as Partial<typeof stored.objects[0]>).expanded;
     delete (stored.objects[0] as Partial<typeof stored.objects[0]>).color;
     (stored.objects[0] as typeof stored.objects[0] & { originVisible?: boolean }).originVisible = true;
 
-    expect(normalizeParametricDocument(stored).objects[0]).toMatchObject({ color: stored.color, visible: true, locked: false });
+    expect(normalizeParametricDocument(stored).objects[0]).toMatchObject({ color: stored.color, visible: true, locked: false, expanded: true });
     expect("originVisible" in normalizeParametricDocument(stored).objects[0]).toBe(false);
   });
 

@@ -275,12 +275,19 @@ export function SketchForgeParametricEditor() {
   const selectedShape = useMemo(() => workplaneShapeForObject(document, selectedObjectId), [document, selectedObjectId]);
   const selectedBox = useMemo(() => modelSelection.length === 1 ? (selectedOperationId ? viewportSelectionForFeature(document, selectedOperationId) : viewportSelectionForObject(document, selectedObjectId)) : null, [document, modelSelection.length, selectedObjectId, selectedOperationId]);
   const selectedOriginObjectId = modelSelection.length === 1 && selectionKind === "object" ? selectedObjectId : null;
+  const selectedOperationOriginId = modelSelection.length === 1 ? selectedOperationId : null;
   const viewportObjectOrigins = useMemo(() => document.objects.map((object) => ({
     objectId: object.id,
     visible: object.id === selectedOriginObjectId,
     position: object.transform.position,
     rotation: object.transform.rotation,
   })), [document.objects, selectedOriginObjectId]);
+  const viewportOperationOrigins = useMemo(() => selectedOperationOriginId && selectedBox ? [{
+    featureId: selectedOperationOriginId,
+    visible: true,
+    position: { x: selectedBox.x, y: selectedBox.y, z: selectedBox.baseZ },
+    rotation: selectedBox.rotation3d ?? { x: 0, y: 0, z: selectedBox.rotation },
+  }] : [], [selectedBox, selectedOperationOriginId]);
   const snapAmount = document.workplane.snapToGrid ? document.workplane.gridStep : 0.01;
   const hasActiveWorkplane = !parametricWorkplaneIsGlobal(document.workplane);
   const updateGridSettings = (patch: Partial<Pick<ParametricDocument["workplane"], "width" | "depth" | "gridStep" | "gridVisible" | "activeSizePercent">>) => {
@@ -593,8 +600,10 @@ export function SketchForgeParametricEditor() {
           objectRecords={build.objectRecords}
           objectColors={objectColors}
           objectOrigins={viewportObjectOrigins}
+          operationOrigins={viewportOperationOrigins}
           editableOriginId={originEditObjectId}
           selectedObjectOriginId={selectedOriginObjectId}
+          selectedOperationOriginId={selectedOperationOriginId}
           operationContext={viewportOperationContext}
           isolatedHistoryObjectId={selectedOperationTimeline && selectedOperationTimeline.index < selectedOperationTimeline.count - 1 ? selectedOperationTimeline.objectId : null}
           color={document.color}
@@ -632,6 +641,7 @@ export function SketchForgeParametricEditor() {
             const object = draft.objects.find((candidate) => candidate.id === objectId);
             if (object) object.transform.position = { ...position };
           })}
+          onOperationAxisMove={(featureId, delta) => mutate((draft) => applyParametricSelectionWorldDelta(draft, featureId, "feature", delta))}
           onCameraOrientation={setCameraOrientation}
           onObjectSelect={(objectId) => {
             const object = document.objects.find((candidate) => candidate.id === objectId);

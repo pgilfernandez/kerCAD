@@ -76,6 +76,7 @@ export function createParametricObject(index: number, position = { x: 0, y: 0, z
     color: "#d41721",
     visible: true,
     locked: false,
+    expanded: true,
     transform: {
       position: { ...position },
       rotation: { x: 0, y: 0, z: 0 },
@@ -196,6 +197,7 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
     object.color ??= next.color;
     object.visible ??= true;
     object.locked ??= false;
+    object.expanded ??= true;
     delete (object as ParametricObject & { originVisible?: boolean }).originVisible;
   }
 
