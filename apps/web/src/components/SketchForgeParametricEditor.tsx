@@ -54,6 +54,9 @@ import {
   lastOperationForObject,
   moveParametricObjectOrigin,
   objectIdForFeature,
+  canReorderParametricSelection,
+  renameParametricSelection,
+  reorderParametricSelection,
   updateParametricShapeParameter,
   viewportSelectionForFeature,
   viewportSelectionForObject,
@@ -111,6 +114,20 @@ export function SketchForgeParametricEditor() {
   const [alignOpen, setAlignOpen] = useState(false);
   const [cameraOrientation, setCameraOrientation] = useState<CameraOrientation>({ azimuth: Math.PI / 4, polar: 1.02 });
   const [clipboardId, setClipboardId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const closePopoversOutside = (event: PointerEvent) => {
+      const target = event.target instanceof Element ? event.target : null;
+      const popup = target?.closest<HTMLElement>("[data-educad-popup]")?.dataset.educadPopup ?? null;
+      if (popup !== "shapes") setShapesOpen(false);
+      if (popup !== "align") setAlignOpen(false);
+      if (popup !== "grid") setWorkplaneOpen(false);
+      if (popup !== "export") setExportOpen(false);
+      if (popup !== "settings") setSettingsOpen(false);
+    };
+    window.document.addEventListener("pointerdown", closePopoversOutside);
+    return () => window.document.removeEventListener("pointerdown", closePopoversOutside);
+  }, []);
 
   useEffect(() => {
     if (!placingWorkplane) return;
@@ -428,6 +445,16 @@ export function SketchForgeParametricEditor() {
     setOriginEditObjectId(objectId);
   };
 
+  const reorderSelection = (direction: "up" | "down") => {
+    if (!canReorderParametricSelection(document, modelSelection, direction)) return;
+    mutate((draft) => { reorderParametricSelection(draft, modelSelection, direction); });
+  };
+
+  const renameSelection = (name: string) => {
+    if (!name.trim() || modelSelection.length === 0) return;
+    mutate((draft) => { renameParametricSelection(draft, modelSelection, name); });
+  };
+
   const alignSelection = (axis: ParametricAlignmentAxis, anchor: ParametricAlignmentAnchor) => {
     let moved = 0;
     let referenceId: string | null = null;
@@ -536,14 +563,14 @@ export function SketchForgeParametricEditor() {
               <Tool label="Rehacer" enabled={history.index < history.entries.length - 1} onClick={redo}><ToolbarRedoIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label="Shapes" className="toolbar-shapes-section">
-              <button className={`shape-menu-trigger ${shapesOpen ? "active" : ""}`} aria-label="Añadir forma" onClick={() => setShapesOpen((value) => !value)}><ToolbarShapeAddIcon /></button>
+              <button data-educad-popup="shapes" className={`shape-menu-trigger ${shapesOpen ? "active" : ""}`} aria-label="Añadir forma" onClick={() => setShapesOpen((value) => !value)}><ToolbarShapeAddIcon /></button>
               {shapesOpen && (
-                <div className="shape-menu-dropdown">
+                <div data-educad-popup="shapes" className="shape-menu-dropdown">
                   <div className="shape-menu-title">Formas</div>
                   <div className="shape-menu-list">
                     <div className="educad-shape-target">{selectedObjectId ? `Añadir al final de ${document.objects.find((object) => object.id === selectedObjectId)?.name ?? "objeto activo"}` : "Se creará un objeto nuevo"}</div>
                     {parametricOperationCatalog.map((asset) => <button className="shape-menu-item" key={asset.kind} onClick={() => addShape(asset.kind)}><img src={asset.menuIcon} alt="" /><span>{asset.name}<small>{selectedObjectId ? "Nueva operación en el objeto" : asset.description}</small></span></button>)}
-                    <div className="educad-shape-coming"><strong>Más operaciones CAD</strong><span>Cono, tubo y toro llegarán como operaciones paramétricas.</span></div>
+                    <div className="educad-shape-coming"><strong>Más operaciones CAD</strong><span>Tubo, toro y otras formas llegarán como operaciones paramétricas.</span></div>
                   </div>
                 </div>
               )}
@@ -555,7 +582,7 @@ export function SketchForgeParametricEditor() {
               <Tool label="Añadir" enabled={Boolean(selectedOperationId)} active={selectedOperation?.operation === "add"} onClick={() => setSelectedOperationMode("add")}><ToolbarBooleanModeIcon mode="add" /></Tool>
               <Tool label="Hueco" enabled={Boolean(selectedOperationId)} active={selectedOperation?.operation === "cut"} onClick={() => setSelectedOperationMode("cut")}><ToolbarBooleanModeIcon mode="hole" /></Tool>
               <Tool label="Común" enabled={Boolean(selectedOperationId)} active={selectedOperation?.operation === "intersect"} onClick={() => setSelectedOperationMode("intersect")}><ToolbarBooleanModeIcon mode="common" /></Tool>
-              <div className="educad-align-tool">
+              <div data-educad-popup="align" className="educad-align-tool">
                 <Tool label="Alinear" enabled={modelSelection.length > 1} active={alignOpen} onClick={() => setAlignOpen((value) => !value)}><ToolbarAlignIcon /></Tool>
                 {alignOpen ? <div className="educad-align-popover" role="dialog" aria-label="Alinear selección">
                   <header><strong>Alinear</strong><span>Referencia: último seleccionado</span></header>
@@ -587,8 +614,8 @@ export function SketchForgeParametricEditor() {
           <ToolbarSection label="Manage" className="toolbar-actions-section">
             <div className="action-buttons">
               <button className="action-icon-button" aria-label="Importar" onClick={() => importRef.current?.click()}><ToolbarImportIcon /></button>
-              <button className="action-icon-button" aria-label="Exportar" onClick={() => { if (!exportOpen) setExportFileName(document.name); setExportOpen((value) => !value); }}><ToolbarVectorExportIcon /></button>
-              <button className="action-icon-button" aria-label="Ajustes" onClick={() => setSettingsOpen((value) => !value)}><ToolbarSettingsIcon /></button>
+              <button data-educad-popup="export" className="action-icon-button" aria-label="Exportar" onClick={() => { if (!exportOpen) setExportFileName(document.name); setExportOpen((value) => !value); }}><ToolbarVectorExportIcon /></button>
+              <button data-educad-popup="settings" className="action-icon-button" aria-label="Ajustes" onClick={() => setSettingsOpen((value) => !value)}><ToolbarSettingsIcon /></button>
             </div>
           </ToolbarSection>
         </div>
@@ -652,7 +679,7 @@ export function SketchForgeParametricEditor() {
           }}
         />
         <ViewCube orientation={cameraOrientation} onDirection={(direction) => setView((current) => ({ name: "custom", direction, token: current.token + 1 }))} />
-        <button className={`educad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label="Ajustes de rejilla" title="Rejilla" onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><Grid3X3 size={22} /></button>
+        <button data-educad-popup="grid" className={`educad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label="Ajustes de rejilla" title="Rejilla" onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><Grid3X3 size={22} /></button>
         <button
           className={`educad-workplane-snap-button ${document.workplane.snapToGrid ? "active" : ""}`}
           aria-label={document.workplane.snapToGrid ? "Desactivar ajuste a rejilla" : "Activar ajuste a rejilla"}
@@ -664,7 +691,7 @@ export function SketchForgeParametricEditor() {
             setWorkplaneDraft((current) => ({ ...current, snapToGrid: enabled }));
           }}
         ><Magnet size={21} /></button>
-        {workplaneOpen ? <div className="educad-workplane-popover">
+        {workplaneOpen ? <div data-educad-popup="grid" className="educad-workplane-popover">
           <header><div><strong>Rejilla</strong><span>Suelo global y tamaño del plano activo</span></div><button type="button" aria-label="Cerrar" onClick={() => setWorkplaneOpen(false)}><X size={17} /></button></header>
           <label><span>Mostrar suelo XY</span><input type="checkbox" checked={workplaneDraft.gridVisible} onChange={(event) => updateGridSettings({ gridVisible: event.target.checked })} /></label>
           <label><span>Tamaño del plano activo</span><span className="educad-number-input"><input type="number" min="2" max="100" step="1" value={workplaneDraft.activeSizePercent} onChange={(event) => updateGridSettings({ activeSizePercent: Math.min(100, Math.max(2, Number(event.target.value) || 10)) })} /><small>%</small></span></label>
@@ -699,6 +726,9 @@ export function SketchForgeParametricEditor() {
           mode={modelSidebarMode}
           editingOriginObjectId={originEditObjectId}
           onSelectionChange={setModelSelection}
+          onReorderSelection={reorderSelection}
+          onRenameSelection={renameSelection}
+          onDeleteSelection={deleteCurrentSelection}
           onToggleOriginEdit={toggleOriginEdit}
           onUpdateObject={updateObject}
           onUpdateFeature={updateFeature}
@@ -706,7 +736,7 @@ export function SketchForgeParametricEditor() {
       </section>
 
       {exportOpen && (
-        <aside className="top-action-panel export-action-panel educad-export-panel">
+        <aside data-educad-popup="export" className="top-action-panel export-action-panel educad-export-panel">
           <header><div className="top-action-heading"><strong>Exportar</strong><span>Conserva los parámetros o fabrica la pieza</span></div><button onClick={() => setExportOpen(false)}><X /></button></header>
           <label className="educad-export-name"><span>Nombre del archivo</span><input type="text" value={exportFileName} maxLength={120} placeholder="modelo" onChange={(event) => setExportFileName(event.target.value)} /></label>
           <div className="educad-export-options">
@@ -718,7 +748,7 @@ export function SketchForgeParametricEditor() {
       )}
 
       {settingsOpen && (
-        <aside className="top-action-panel educad-settings-panel">
+        <aside data-educad-popup="settings" className="top-action-panel educad-settings-panel">
           <header><strong>Ajustes del diseño</strong><button onClick={() => setSettingsOpen(false)}><X /></button></header>
           <label><span>Nombre</span><input value={document.name} onFocus={beginTransaction} onBlur={finishTransaction} onChange={(event) => mutate((draft) => { draft.name = event.target.value; })} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); if (event.key === "Escape") { cancelTransaction(); event.currentTarget.blur(); } }} /></label>
           <label><span>Renderizado</span><select value={renderQuality} onChange={(event) => setRenderQuality(event.target.value as ViewportRenderQuality)}><option value="normal">Normal (suavizado)</option><option value="optimized">Optimizar rendimiento</option></select></label>

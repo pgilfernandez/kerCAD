@@ -912,7 +912,7 @@ button {
   flex: 0 1 380px;
   flex-direction: column;
   background: rgba(252, 253, 254, 0.98);
-  border-bottom: 1px solid #cbd8e1;
+  border-bottom: 0;
 }
 
 .educad-object-list {
@@ -1052,6 +1052,34 @@ button {
 .educad-operation-icon.common small { background: #7256aa; }
 .educad-operation-name { display: flex; min-width: 0; flex-direction: column; gap: 1px; }
 .educad-operation-name strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+
+.educad-tree-toolbar {
+  display: flex;
+  min-height: 38px;
+  flex: 0 0 38px;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 9px;
+  background: #f7fafb;
+  border-top: 1px solid #d8e2e8;
+  border-bottom: 1px solid #cbd8e1;
+}
+
+.educad-tree-toolbar > button {
+  display: grid;
+  width: 31px;
+  height: 30px;
+  place-items: center;
+  color: #61798a;
+  background: transparent;
+  border-radius: 5px;
+}
+
+.educad-tree-toolbar > button:hover:not(:disabled) { color: #167f9f; background: #dfeff4; }
+.educad-tree-toolbar > button.danger:hover:not(:disabled) { color: #b44540; background: #f8e5e4; }
+.educad-tree-toolbar > button:disabled { opacity: 0.28; cursor: default; }
+.educad-tree-toolbar > button[aria-pressed="true"] { color: #7b4dab; background: #f0e9f8; }
+.educad-tree-toolbar-separator { width: 1px; height: 22px; margin: 0 3px; background: #d3dee5; }
 
 .educad-sidebar-editor {
   position: relative;

@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  ArrowDown,
+  ArrowUp,
   Box,
   Circle,
   ChevronDown,
@@ -16,10 +18,11 @@ import {
   LockKeyholeOpen,
   Pencil,
   Radius,
+  Trash2,
   X,
 } from "lucide-react";
 import { type CSSProperties, type MouseEvent, type ReactNode, useEffect, useRef, useState } from "react";
-import { OBJECT_COLOR_PALETTE, parametricObjectTree, sketchForExtrude, updateParametricTreeSelection, type ParametricTreeSelection } from "@/lib/parametricObjects";
+import { canReorderParametricSelection, OBJECT_COLOR_PALETTE, parametricObjectTree, sketchForExtrude, updateParametricTreeSelection, type ParametricTreeSelection } from "@/lib/parametricObjects";
 import { parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import type { ParametricDocument, ParametricFeature, ParametricObject } from "@/types/parametric";
 
@@ -33,6 +36,9 @@ type Props = {
   mode: ModelSidebarMode;
   editingOriginObjectId: string | null;
   onSelectionChange: (selection: ModelTreeSelection[]) => void;
+  onReorderSelection: (direction: "up" | "down") => void;
+  onRenameSelection: (name: string) => void;
+  onDeleteSelection: () => void;
   onToggleOriginEdit: (objectId: string) => void;
   onUpdateObject: (id: string, update: (object: ParametricObject) => void) => void;
   onUpdateFeature: (id: string, update: (feature: ParametricFeature) => void) => void;
@@ -44,12 +50,15 @@ export function ParametricModelSidebar({
   mode,
   editingOriginObjectId,
   onSelectionChange,
+  onReorderSelection,
+  onRenameSelection,
+  onDeleteSelection,
   onToggleOriginEdit,
   onUpdateObject,
   onUpdateFeature,
 }: Props) {
   const objects = parametricObjectTree(document);
-  const [renameTarget, setRenameTarget] = useState<{ id: string; kind: ModelSelectionKind; name: string } | null>(null);
+  const [renameOpen, setRenameOpen] = useState(false);
   const [renameDraft, setRenameDraft] = useState("");
   const objectListRef = useRef<HTMLDivElement>(null);
   const rangeAnchorRef = useRef<ModelTreeSelection | null>(null);
@@ -80,22 +89,28 @@ export function ParametricModelSidebar({
     ? document.objects.find((object) => object.id === selectedId) ?? null
     : null;
 
-  const beginRename = (id: string, kind: ModelSelectionKind, name: string) => {
-    setRenameTarget({ id, kind, name });
-    setRenameDraft(name);
+  const beginRename = () => {
+    if (selection.length === 0) return;
+    const names = selection.flatMap((item) => {
+      const entry = item.kind === "object"
+        ? document.objects.find((object) => object.id === item.id)
+        : document.features.find((feature) => feature.id === item.id);
+      return entry ? [entry.name] : [];
+    });
+    setRenameDraft(names.length > 0 && names.every((name) => name === names[0]) ? names[0] : "");
+    setRenameOpen(true);
   };
 
   const closeRename = () => {
-    setRenameTarget(null);
+    setRenameOpen(false);
     setRenameDraft("");
   };
 
   const commitRename = () => {
-    if (!renameTarget) return;
+    if (!renameOpen) return;
     const name = renameDraft.trim();
     if (!name) return;
-    if (renameTarget.kind === "object") onUpdateObject(renameTarget.id, (object) => { object.name = name; });
-    else onUpdateFeature(renameTarget.id, (feature) => { feature.name = name; });
+    onRenameSelection(name);
     closeRename();
   };
 
@@ -123,8 +138,6 @@ export function ParametricModelSidebar({
                       <span><strong>{object.name}</strong></span>
                     </button>
                     <div className="educad-tree-actions">
-                      <button aria-label={`Renombrar ${object.name}`} title="Renombrar" onClick={() => beginRename(object.id, "object", object.name)}><Pencil size={14} /></button>
-                      <button className="educad-origin-tree-button" aria-label={editingOriginObjectId === object.id ? `Finalizar edición del origen de ${object.name}` : `Editar origen de ${object.name}`} title={editingOriginObjectId === object.id ? "Finalizar edición del origen" : "Editar origen"} aria-pressed={editingOriginObjectId === object.id} disabled={object.object.locked} onClick={() => onToggleOriginEdit(object.id)}><Crosshair size={15} /></button>
                       <button aria-label={object.object.visible ? `Ocultar ${object.name}` : `Mostrar ${object.name}`} title={object.object.visible ? "Ocultar" : "Mostrar"} aria-pressed={!object.object.visible} onClick={() => onUpdateObject(object.id, (draft) => { draft.visible = !draft.visible; })}>{object.object.visible ? <Eye size={15} /> : <EyeOff size={15} />}</button>
                       <button aria-label={object.object.locked ? `Desbloquear ${object.name}` : `Bloquear ${object.name}`} title={object.object.locked ? "Desbloquear" : "Bloquear"} aria-pressed={object.object.locked} onClick={() => onUpdateObject(object.id, (draft) => { draft.locked = !draft.locked; })}>{object.object.locked ? <LockKeyhole size={15} /> : <LockKeyholeOpen size={15} />}</button>
                     </div>
@@ -139,7 +152,6 @@ export function ParametricModelSidebar({
                             <span className="educad-operation-name"><strong>{feature.name}</strong></span>
                           </button>
                           <div className="educad-tree-actions">
-                            <button aria-label={`Renombrar ${feature.name}`} title="Renombrar" onClick={() => beginRename(feature.id, "feature", feature.name)}><Pencil size={14} /></button>
                             <button aria-label={feature.suppressed ? `Activar ${feature.name}` : `Suprimir ${feature.name}`} title={feature.suppressed ? "Activar" : "Suprimir"} aria-pressed={feature.suppressed} onClick={() => onUpdateFeature(feature.id, (draft) => { draft.suppressed = !draft.suppressed; })}><CircleOff size={15} /></button>
                           </div>
                         </div>
@@ -151,6 +163,16 @@ export function ParametricModelSidebar({
             })}
           </div>
         </section>
+
+      {mode === "normal" ? <div className="educad-tree-toolbar" role="toolbar" aria-label="Acciones de la jerarquía">
+        <button disabled={!canReorderParametricSelection(document, selection, "up")} aria-label="Subir selección" title="Subir en la jerarquía" onClick={() => onReorderSelection("up")}><ArrowUp size={16} /></button>
+        <button disabled={!canReorderParametricSelection(document, selection, "down")} aria-label="Bajar selección" title="Bajar en la jerarquía" onClick={() => onReorderSelection("down")}><ArrowDown size={16} /></button>
+        <span className="educad-tree-toolbar-separator" aria-hidden="true" />
+        <button disabled={selection.length === 0} aria-label="Editar nombre" title={selection.length > 1 ? "Renombrar todos los elementos seleccionados" : "Renombrar selección"} onClick={beginRename}><Pencil size={15} /></button>
+        <button className="educad-origin-tree-button" disabled={!selectedObject || selectedObject.locked} aria-label={editingOriginObjectId === selectedObject?.id ? "Finalizar edición del origen" : "Editar origen"} title={editingOriginObjectId === selectedObject?.id ? "Finalizar edición del origen" : "Editar origen"} aria-pressed={Boolean(selectedObject && editingOriginObjectId === selectedObject.id)} onClick={() => selectedObject && onToggleOriginEdit(selectedObject.id)}><Crosshair size={16} /></button>
+        <span className="educad-tree-toolbar-separator" aria-hidden="true" />
+        <button className="danger" disabled={selection.length === 0} aria-label="Eliminar selección" title={selection.length > 1 ? `Eliminar ${selection.length} elementos` : selectionKind === "feature" ? "Eliminar operación" : "Eliminar objeto"} onClick={onDeleteSelection}><Trash2 size={16} /></button>
+      </div> : null}
 
       {mode === "normal" ? <section className="educad-sidebar-editor">
         {selection.length > 1 ? (
@@ -168,11 +190,11 @@ export function ParametricModelSidebar({
         )}
       </section> : null}
     </aside>
-    {renameTarget ? (
+    {renameOpen ? (
       <div className="educad-dialog-backdrop" role="presentation" onPointerDown={closeRename}>
         <form className="educad-rename-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-rename-title" onPointerDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); commitRename(); }}>
-          <header><strong id="educad-rename-title">Renombrar {renameTarget.kind === "object" ? "objeto" : "operación"}</strong><button type="button" aria-label="Cancelar" onClick={closeRename}><X size={18} /></button></header>
-          <label><span>Nombre</span><input autoFocus value={renameDraft} maxLength={80} onChange={(event) => setRenameDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") closeRename(); }} /></label>
+          <header><strong id="educad-rename-title">{selection.length > 1 ? `Renombrar ${selection.length} elementos` : "Renombrar selección"}</strong><button type="button" aria-label="Cancelar" onClick={closeRename}><X size={18} /></button></header>
+          <label><span>{selection.length > 1 ? "Nombre común" : "Nombre"}</span><input autoFocus value={renameDraft} maxLength={80} placeholder={selection.length > 1 ? "Aplicar el mismo nombre a todos" : undefined} onChange={(event) => setRenameDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") closeRename(); }} /></label>
           <footer><button type="button" onClick={closeRename}>Cancelar</button><button className="primary" type="submit" disabled={!renameDraft.trim()}>OK</button></footer>
         </form>
       </div>
@@ -211,6 +233,15 @@ function ParametricObjectInspector({
   onUpdate: (update: (object: ParametricObject) => void) => void;
 }) {
   const [colorOpen, setColorOpen] = useState(false);
+  const colorPanelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!colorOpen) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !colorPanelRef.current?.contains(event.target)) setColorOpen(false);
+    };
+    window.document.addEventListener("pointerdown", closeOutside);
+    return () => window.document.removeEventListener("pointerdown", closeOutside);
+  }, [colorOpen]);
   return (
     <div className="educad-feature-inspector educad-object-inspector">
       <header><Box size={18} /><div><strong>{object.name}</strong><span>Contenedor de operaciones</span></div></header>
@@ -219,7 +250,7 @@ function ParametricObjectInspector({
         <TransformGroup label="Rotación" values={object.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.rotation[axis] = value; })} />
         <TransformGroup label="Escala" values={object.transform.scale} unit="×" min={0.01} onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.scale[axis] = Math.max(0.01, value); })} />
       </TransformSection>
-      <div className="educad-feature-card educad-object-appearance">
+      <div ref={colorPanelRef} className="educad-feature-card educad-object-appearance">
         <button className="educad-color-trigger" aria-expanded={colorOpen} onClick={() => setColorOpen((value) => !value)}>
           <span>Color</span><span className="educad-color-preview" style={{ "--object-color": object.color } as CSSProperties} /><strong>{object.color.toUpperCase()}</strong><ChevronDown size={15} />
         </button>

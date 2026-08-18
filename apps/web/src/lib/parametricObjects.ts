@@ -206,6 +206,97 @@ export function updateParametricTreeSelection(
   return [node];
 }
 
+function moveSelectedIds(ids: string[], selectedIds: Set<string>, direction: "up" | "down") {
+  const reordered = [...ids];
+  let moved = false;
+  if (direction === "up") {
+    for (let index = 1; index < reordered.length; index += 1) {
+      if (!selectedIds.has(reordered[index]) || selectedIds.has(reordered[index - 1])) continue;
+      [reordered[index - 1], reordered[index]] = [reordered[index], reordered[index - 1]];
+      moved = true;
+    }
+  } else {
+    for (let index = reordered.length - 2; index >= 0; index -= 1) {
+      if (!selectedIds.has(reordered[index]) || selectedIds.has(reordered[index + 1])) continue;
+      [reordered[index], reordered[index + 1]] = [reordered[index + 1], reordered[index]];
+      moved = true;
+    }
+  }
+  return { reordered, moved };
+}
+
+export function canReorderParametricSelection(document: ParametricDocument, selection: ParametricTreeSelection[], direction: "up" | "down") {
+  if (selection.length === 0) return false;
+  const selectedKind = selection[0].kind;
+  if (selection.some((item) => item.kind !== selectedKind)) return false;
+  if (selectedKind === "object") {
+    const ids = document.objects.map((object) => object.id);
+    return moveSelectedIds(ids, new Set(selection.map((item) => item.id)), direction).moved;
+  }
+  const ownerIds = new Set(selection.map((item) => objectIdForFeature(document, item.id)));
+  if (ownerIds.size !== 1 || ownerIds.has(null)) return false;
+  const objectId = [...ownerIds][0];
+  const ids = document.features.filter((feature) => feature.objectId === objectId && feature.kind !== "sketch").map((feature) => feature.id);
+  return moveSelectedIds(ids, new Set(selection.map((item) => item.id)), direction).moved;
+}
+
+export function reorderParametricSelection(document: ParametricDocument, selection: ParametricTreeSelection[], direction: "up" | "down") {
+  if (!canReorderParametricSelection(document, selection, direction)) return false;
+  const selectedIds = new Set(selection.map((item) => item.id));
+  if (selection[0].kind === "object") {
+    const { reordered } = moveSelectedIds(document.objects.map((object) => object.id), selectedIds, direction);
+    const byId = new Map(document.objects.map((object) => [object.id, object]));
+    document.objects = reordered.map((id) => byId.get(id)!);
+    return true;
+  }
+
+  const objectId = objectIdForFeature(document, selection[0].id);
+  if (!objectId) return false;
+  const ownedFeatures = document.features.filter((feature) => feature.objectId === objectId);
+  const operations = ownedFeatures.filter((feature) => feature.kind !== "sketch");
+  const { reordered } = moveSelectedIds(operations.map((feature) => feature.id), selectedIds, direction);
+  const byId = new Map(ownedFeatures.map((feature) => [feature.id, feature]));
+  const consumed = new Set<string>();
+  const orderedOwned = reordered.flatMap((id) => {
+    const operation = byId.get(id);
+    if (!operation) return [];
+    const group: ParametricFeature[] = [];
+    if (operation.kind === "extrude") {
+      const sketch = byId.get(operation.sketchId);
+      if (sketch) {
+        group.push(sketch);
+        consumed.add(sketch.id);
+      }
+    }
+    group.push(operation);
+    consumed.add(operation.id);
+    return group;
+  });
+  orderedOwned.push(...ownedFeatures.filter((feature) => !consumed.has(feature.id)));
+  let ownedIndex = 0;
+  document.features = document.features.map((feature) => feature.objectId === objectId ? orderedOwned[ownedIndex++] : feature);
+  return true;
+}
+
+export function renameParametricSelection(document: ParametricDocument, selection: ParametricTreeSelection[], name: string) {
+  const nextName = name.trim();
+  if (!nextName || selection.length === 0) return false;
+  const objectIds = new Set(selection.filter((item) => item.kind === "object").map((item) => item.id));
+  const featureIds = new Set(selection.filter((item) => item.kind === "feature").map((item) => item.id));
+  let renamed = false;
+  for (const object of document.objects) {
+    if (!objectIds.has(object.id)) continue;
+    object.name = nextName;
+    renamed = true;
+  }
+  for (const feature of document.features) {
+    if (!featureIds.has(feature.id)) continue;
+    feature.name = nextName;
+    renamed = true;
+  }
+  return renamed;
+}
+
 export function duplicateParametricObject(document: ParametricDocument, id: string) {
   const object = document.objects.find((candidate) => candidate.id === id);
   if (!object) return null;

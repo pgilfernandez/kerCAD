@@ -11,6 +11,7 @@ import {
   applyObjectWorldPosition,
   applyWorkplanePatch,
   colorForNewParametricObject,
+  canReorderParametricSelection,
   deleteParametricObject,
   deleteParametricFeature,
   deleteParametricSelection,
@@ -19,6 +20,8 @@ import {
   moveParametricObjectOrigin,
   objectIdForFeature,
   parametricObjectTree,
+  renameParametricSelection,
+  reorderParametricSelection,
   resizeParametricSelection,
   resizeParametricHeight,
   sketchForExtrude,
@@ -130,6 +133,50 @@ describe("parametric object workflow", () => {
     expect(created.createdObject).toBe(true);
     expect(created.objectId).not.toBe(existingObjectId);
     expect(parametricObjectTree(document).at(-1)?.operations.map((feature) => feature.name)).toEqual(["Caja"]);
+  });
+
+  it("reorders selected objects as a stable group", () => {
+    const document = createStarterDocument(123);
+    const secondId = addParametricObject(document);
+    const thirdId = addParametricObject(document);
+    const firstId = document.objects[0].id;
+    const selection = [{ id: secondId, kind: "object" as const }, { id: thirdId, kind: "object" as const }];
+
+    expect(canReorderParametricSelection(document, selection, "up")).toBe(true);
+    expect(reorderParametricSelection(document, selection, "up")).toBe(true);
+    expect(document.objects.map((object) => object.id)).toEqual([secondId, thirdId, firstId]);
+    expect(canReorderParametricSelection(document, selection, "up")).toBe(false);
+  });
+
+  it("reorders operations only inside their object and keeps extrusion sketches attached", () => {
+    const document = createStarterDocument(123);
+    const objectId = document.objects[0].id;
+    const cylinderId = addPrimitive(document, objectId, "cylinder")!;
+    const sphereId = addPrimitive(document, objectId, "sphere")!;
+    const secondObjectId = addParametricObject(document);
+    const otherOperationId = addPrimitive(document, secondObjectId, "box")!;
+
+    expect(reorderParametricSelection(document, [{ id: sphereId, kind: "feature" }], "up")).toBe(true);
+    expect(parametricObjectTree(document)[0].operations.map((feature) => feature.id)).toEqual([
+      document.features.find((feature) => feature.kind === "extrude" && feature.name === "Caja")!.id,
+      sphereId,
+      cylinderId,
+    ]);
+    const cylinder = document.features.find((feature) => feature.id === cylinderId)!;
+    const cylinderIndex = document.features.findIndex((feature) => feature.id === cylinderId);
+    expect(cylinder.kind).toBe("extrude");
+    expect(document.features[cylinderIndex - 1]).toMatchObject({ kind: "sketch", id: cylinder.kind === "extrude" ? cylinder.sketchId : "" });
+    expect(document.features.some((feature) => feature.id === otherOperationId && feature.objectId === secondObjectId)).toBe(true);
+  });
+
+  it("renames mixed multi-selection in one model operation", () => {
+    const document = createStarterDocument(123);
+    const objectId = document.objects[0].id;
+    const operation = parametricObjectTree(document)[0].operations[0];
+
+    expect(renameParametricSelection(document, [{ id: objectId, kind: "object" }, { id: operation.id, kind: "feature" }], "Grupo escolar")).toBe(true);
+    expect(document.objects[0].name).toBe("Grupo escolar");
+    expect(document.features.find((feature) => feature.id === operation.id)?.name).toBe("Grupo escolar");
   });
 
   it("assigns unused varied palette colours to new objects", () => {
