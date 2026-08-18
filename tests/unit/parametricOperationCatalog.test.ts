@@ -21,4 +21,11 @@ describe("parametric operation catalog", () => {
       expect(parameter.step).toBeGreaterThan(0);
     }
   });
+
+  it("defines an exact cone that can also become a frustum", () => {
+    const definition = parametricOperationDefinition("cone");
+
+    expect(definition.parameters.map((parameter) => parameter.key)).toEqual(["baseRadius", "topRadius", "height"]);
+    expect(definition.parameters.find((parameter) => parameter.key === "topRadius")).toMatchObject({ min: 0, defaultValue: 0 });
+  });
 });

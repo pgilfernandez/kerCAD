@@ -50,6 +50,18 @@ describe("operation preview wireframes", () => {
     expect(positions.slice(0, 3)).toEqual([10, 0, 0]);
     expect(positions.slice(64 * 6, 64 * 6 + 3)).toEqual([10, 0, 0]);
   });
+
+  it("draws cone caps and generators using the two radii", () => {
+    const positions = operationPreviewWireframePositions("cone", 20, 20, 30, 8);
+    const generators = positions.slice(-4 * 6);
+
+    expect(positions).toHaveLength((64 * 2 + 4) * 6);
+    expect(generators.slice(0, 6)).toEqual([10, 0, -15, 4, 0, 15]);
+    expect(generators[6]).toBeCloseTo(0);
+    expect(generators.slice(7, 9)).toEqual([10, -15]);
+    expect(generators[9]).toBeCloseTo(0);
+    expect(generators.slice(10, 12)).toEqual([4, 15]);
+  });
 });
 
 describe("operation preview styles", () => {

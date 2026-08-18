@@ -1,4 +1,4 @@
-export function operationPreviewWireframePositions(shape: "box" | "cylinder" | "sphere", width: number, depth: number, height: number) {
+export function operationPreviewWireframePositions(shape: "box" | "cylinder" | "sphere" | "cone", width: number, depth: number, height: number, topWidth = width) {
   const positions: number[] = [];
   const addSegment = (x1: number, y1: number, z1: number, x2: number, y2: number, z2: number) => positions.push(x1, y1, z1, x2, y2, z2);
   const halfWidth = width / 2;
@@ -35,24 +35,16 @@ export function operationPreviewWireframePositions(shape: "box" | "cylinder" | "
     }
     return positions;
   }
+  const topHalfWidth = shape === "cone" ? topWidth / 2 : halfWidth;
+  const topHalfDepth = shape === "cone" ? topWidth / 2 : halfDepth;
   for (let index = 0; index < segments; index += 1) {
     const angle = index / segments * Math.PI * 2;
     const nextAngle = (index + 1) / segments * Math.PI * 2;
-    for (const z of [bottom, top]) {
-      addSegment(
-        Math.cos(angle) * halfWidth,
-        Math.sin(angle) * halfDepth,
-        z,
-        Math.cos(nextAngle) * halfWidth,
-        Math.sin(nextAngle) * halfDepth,
-        z,
-      );
-    }
+    addSegment(Math.cos(angle) * halfWidth, Math.sin(angle) * halfDepth, bottom, Math.cos(nextAngle) * halfWidth, Math.sin(nextAngle) * halfDepth, bottom);
+    addSegment(Math.cos(angle) * topHalfWidth, Math.sin(angle) * topHalfDepth, top, Math.cos(nextAngle) * topHalfWidth, Math.sin(nextAngle) * topHalfDepth, top);
   }
   for (const angle of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
-    const x = Math.cos(angle) * halfWidth;
-    const y = Math.sin(angle) * halfDepth;
-    addSegment(x, y, bottom, x, y, top);
+    addSegment(Math.cos(angle) * halfWidth, Math.sin(angle) * halfDepth, bottom, Math.cos(angle) * topHalfWidth, Math.sin(angle) * topHalfDepth, top);
   }
   return positions;
 }

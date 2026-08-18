@@ -16,6 +16,7 @@ import type { ParametricDocument, ParametricObjectRenderRecord, RenderMesh } fro
 export type CameraView = { name: "iso" | "top" | "front" | "right" | "zoom-in" | "zoom-out" | "home" | "fit" | "selection" | "custom"; token: number; direction?: [number, number, number] };
 export type CameraProjection = "perspective" | "orthographic";
 export type CameraOrientation = { azimuth: number; polar: number };
+type ShapeParameter = "width" | "depth" | "height" | "radius" | "baseRadius" | "topRadius";
 
 export type ViewportSelection = {
   id: string;
@@ -33,9 +34,11 @@ export type ViewportSelection = {
   shapeParameters?:
     | { shape: "box"; width: number; depth: number; height: number }
     | { shape: "cylinder"; radius: number; height: number }
-    | { shape: "sphere"; radius: number };
+    | { shape: "sphere"; radius: number }
+    | { shape: "cone"; baseRadius: number; topRadius: number; height: number };
   operationPreview?: {
-    shape: "box" | "cylinder" | "sphere";
+    shape: "box" | "cylinder" | "sphere" | "cone";
+    topRadius?: number;
     mode: "add" | "hole" | "common";
     color: string;
     historical: boolean;
@@ -71,7 +74,7 @@ type Props = {
   renderQuality?: ViewportRenderQuality;
   selection?: ViewportSelection | null;
   snap?: number;
-  onShapeParameterChange?: (parameter: "width" | "depth" | "height" | "radius", value: number) => void;
+  onShapeParameterChange?: (parameter: ShapeParameter, value: number) => void;
   onObjectOriginMove?: (objectId: string, position: { x: number; y: number; z: number }) => void;
   onObjectAxisMove?: (objectId: string, position: { x: number; y: number; z: number }) => void;
   onOperationAxisMove?: (featureId: string, delta: { x: number; y: number; z: number }) => void;
@@ -198,6 +201,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const dimensionHoverRef = useRef(new Set<ViewportDimensionAxis>());
   const dimensionHoverTimerRef = useRef<number | null>(null);
   const dimensionSelectionIdRef = useRef<string | null>(selection?.id ?? null);
+  const shapeParameterPreviewRef = useRef<{ parameter: ShapeParameter; value: number } | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | THREE.OrthographicCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -275,9 +279,20 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const selected = selectionRef.current;
     if (!selected) return 0;
     const parameters = selected.shapeParameters;
-    if (axis === "x") return parameters?.shape === "box" ? parameters.width : parameters ? parameters.radius : selected.width;
-    if (axis === "y") return parameters?.shape === "box" ? parameters.depth : selected.depth;
-    if (axis === "z") return parameters && parameters.shape !== "sphere" ? parameters.height : selected.height;
+    const parameter = axis === "x" ? parameters?.shape === "box" ? "width" : parameters?.shape === "cone" ? "baseRadius" : parameters ? "radius" : null
+      : axis === "y" ? parameters?.shape === "cone" ? "topRadius" : parameters?.shape === "box" ? "depth" : null
+        : axis === "z" && parameters && parameters.shape !== "sphere" ? "height" : null;
+    const preview = shapeParameterPreviewRef.current;
+    if (parameter && preview?.parameter === parameter) return preview.value;
+    if (parameter === "width" && parameters?.shape === "box") return parameters.width;
+    if (parameter === "depth" && parameters?.shape === "box") return parameters.depth;
+    if (parameter === "radius" && (parameters?.shape === "cylinder" || parameters?.shape === "sphere")) return parameters.radius;
+    if (parameter === "baseRadius" && parameters?.shape === "cone") return parameters.baseRadius;
+    if (parameter === "topRadius" && parameters?.shape === "cone") return parameters.topRadius;
+    if (parameter === "height" && parameters && parameters.shape !== "sphere") return parameters.height;
+    if (axis === "x") return selected.width;
+    if (axis === "y") return selected.depth;
+    if (axis === "z") return selected.height;
     return selected.rotation;
   };
 
@@ -297,9 +312,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       return;
     }
     const parameters = selected.shapeParameters;
-    if (value > 0 && parameters) {
-      const parameter = axis === "x" ? parameters.shape === "box" ? "width" : "radius" : axis === "y" ? "depth" : axis === "z" ? "height" : null;
-      if (parameter) shapeParameterRef.current?.(parameter, value);
+    if (parameters) {
+      const parameter = axis === "x" ? parameters.shape === "box" ? "width" : parameters.shape === "cone" ? "baseRadius" : "radius" : axis === "y" ? parameters.shape === "cone" ? "topRadius" : "depth" : axis === "z" ? "height" : null;
+      if (parameter && (parameter === "topRadius" ? value >= 0 : value > 0)) shapeParameterRef.current?.(parameter, value);
     }
     input.value = formatViewportDimension(dimensionValue(axis));
     dimensionPinnedRef.current.add(axis);
@@ -353,19 +368,29 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         return;
       }
       visualRoot.updateWorldMatrix(true, false);
-      const points = [
-        new THREE.Vector3(0, -selected.depth / 2, -selected.height / 2),
-        new THREE.Vector3(-selected.width / 2, 0, -selected.height / 2),
-        new THREE.Vector3(selected.width / 2, selected.depth / 2, 0),
-      ];
       const parameters = selected.shapeParameters;
+      const coneRadialScale = parameters?.shape === "cone" ? selected.width / Math.max(0.01, parameters.baseRadius * 2) : 1;
+      const coneHeightScale = parameters?.shape === "cone" ? selected.height / Math.max(0.01, parameters.height) : 1;
+      const points = parameters?.shape === "cone"
+        ? [
+            new THREE.Vector3(dimensionValue("x") * coneRadialScale, 0, -dimensionValue("z") * coneHeightScale / 2),
+            new THREE.Vector3(dimensionValue("y") * coneRadialScale, 0, dimensionValue("z") * coneHeightScale / 2),
+            new THREE.Vector3(Math.max(dimensionValue("x"), dimensionValue("y")) * coneRadialScale, 0, 0),
+          ]
+        : [
+            new THREE.Vector3(0, -selected.depth / 2, -selected.height / 2),
+            new THREE.Vector3(-selected.width / 2, 0, -selected.height / 2),
+            new THREE.Vector3(selected.width / 2, selected.depth / 2, 0),
+          ];
       const values = [
         dimensionValue("x") * Math.abs(visualRoot.scale.x),
         dimensionValue("y") * Math.abs(visualRoot.scale.y),
         dimensionValue("z") * Math.abs(visualRoot.scale.z),
       ];
       const axes: ViewportDimensionAxis[] = ["x", "y", "z"];
-      const names = [parameters?.shape === "box" ? "Ancho" : "Radio", "Largo", "Alto"];
+      const names = parameters?.shape === "cone"
+        ? ["Radio inferior", "Radio superior", "Alto"]
+        : [parameters?.shape === "box" ? "Ancho" : "Radio", "Largo", "Alto"];
       const units = ["mm", "mm", "mm"];
       const offsets = [[0, 18], [-24, 0], [22, 0]];
       points.forEach((point, index) => {
@@ -448,8 +473,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     const dragPoint = new THREE.Vector3();
     let interaction: "parameter" | "origin" | "axisMove" | null = null;
-    let pendingShapeParameter: { parameter: "width" | "depth" | "height" | "radius"; value: number } | null = null;
+    let pendingShapeParameter: { parameter: ShapeParameter; value: number } | null = null;
     let shapeParameterStartValue = 0;
+    let shapeParameterWorldScale = 1;
     let parameterPointerOffset = 0;
     let parameterWorldToLocal: THREE.Matrix4 | null = null;
     let resizeStart: ViewportSelection | null = null;
@@ -589,6 +615,33 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       }
       return [];
     };
+    const updateConePreview = (selected: ViewportSelection, baseRadius: number, topRadius: number, height: number) => {
+      if (selected.shapeParameters?.shape !== "cone") return;
+      const radialScale = selected.width / Math.max(0.01, selected.shapeParameters.baseRadius * 2);
+      const heightScale = selected.height / Math.max(0.01, selected.shapeParameters.height);
+      const worldBaseRadius = baseRadius * radialScale;
+      const worldTopRadius = topRadius * radialScale;
+      const worldHeight = height * heightScale;
+      const visualRoot = selectionVisualRootRef.current;
+      if (!visualRoot) return;
+      visualRoot.traverse((child) => {
+        if (child.userData.operationPreviewWireframe && child instanceof LineSegments2) {
+          child.geometry.setPositions(operationPreviewWireframePositions("cone", worldBaseRadius * 2, worldBaseRadius * 2, worldHeight, worldTopRadius * 2));
+        }
+        const parameter = child.userData.shapeParameterVisual as ShapeParameter | undefined;
+        const role = child.userData.shapeParameterVisualRole as "guide" | "handle" | "target" | undefined;
+        if (!parameter || !role) return;
+        const end = parameter === "baseRadius"
+          ? new THREE.Vector3(worldBaseRadius + 3, 0, -worldHeight / 2)
+          : parameter === "topRadius"
+            ? new THREE.Vector3(worldTopRadius + 3, 0, worldHeight / 2)
+            : new THREE.Vector3(0, 0, worldHeight / 2 + 3);
+        if (role === "guide" && child instanceof THREE.Line) {
+          const start = parameter === "height" ? new THREE.Vector3(0, 0, -worldHeight / 2) : new THREE.Vector3(0, 0, end.z);
+          child.geometry.setFromPoints([start, end]);
+        } else if (role === "handle" || role === "target") child.position.copy(end);
+      });
+    };
     const onPointerDown = (event: PointerEvent) => {
       if (event.button !== 0) return;
       if (workplaneFaceSelectionRef.current) {
@@ -634,7 +687,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       if (!interaction && selected) {
         const root = selectionRootRef.current;
         const resizeHit = raycaster.intersectObjects(resizeHitboxes, false)[0];
-        const parameter = resizeHit?.object.userData.shapeParameter as "width" | "depth" | "height" | "radius" | undefined;
+        const parameter = resizeHit?.object.userData.shapeParameter as ShapeParameter | undefined;
         if (root && resizeHit && parameter) {
           const center = root.getWorldPosition(new THREE.Vector3());
           const rootQuaternion = root.getWorldQuaternion(new THREE.Quaternion());
@@ -649,22 +702,37 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           dragPlane.setFromNormalAndCoplanarPoint(planeNormal.normalize(), center);
           if (raycaster.ray.intersectPlane(dragPlane, dragPoint)) {
             interaction = "parameter";
-            interactionDimensions = [parameter === "depth" ? "y" : parameter === "height" ? "z" : "x"];
+            const dimensionAxis = resizeHit.object.userData.dimensionAxis;
+            interactionDimensions = [dimensionAxis === "y" ? "y" : dimensionAxis === "z" ? "z" : "x"];
             resizeStart = { ...selected };
             resizeRootStart = root.position.clone();
             root.updateWorldMatrix(true, false);
             parameterWorldToLocal = root.matrixWorld.clone().invert();
             const localPointer = dragPoint.clone().applyMatrix4(parameterWorldToLocal);
-            const visualHalfExtent = parameter === "depth" ? selected.depth / 2 : parameter === "height" ? selected.height / 2 : selected.width / 2;
+            const values = selected.shapeParameters;
+            shapeParameterWorldScale = values?.shape === "cone"
+              ? selected.width / Math.max(0.01, values.baseRadius * 2)
+              : parameter === "height" && values && values.shape !== "sphere"
+                ? selected.height / Math.max(0.01, values.height)
+                : parameter === "radius" && (values?.shape === "cylinder" || values?.shape === "sphere")
+                  ? selected.width / Math.max(0.01, values.radius * 2)
+                  : 1;
+            const visualHalfExtent = parameter === "topRadius" && values?.shape === "cone"
+              ? values.topRadius * shapeParameterWorldScale
+              : parameter === "baseRadius" && values?.shape === "cone"
+                ? values.baseRadius * shapeParameterWorldScale
+                : parameter === "depth" ? selected.depth / 2 : parameter === "height" ? selected.height / 2 : selected.width / 2;
             const pointerCoordinate = parameter === "depth" ? localPointer.y : parameter === "height" ? localPointer.z : localPointer.x;
             parameterPointerOffset = pointerCoordinate - visualHalfExtent;
-            const values = selected.shapeParameters;
             const value = parameter === "width" && values?.shape === "box" ? values.width
               : parameter === "depth" && values?.shape === "box" ? values.depth
                 : parameter === "height" && values && values.shape !== "sphere" ? values.height
-                  : parameter === "radius" && values && values.shape !== "box" ? values.radius
-                    : 0;
+                  : parameter === "radius" && (values?.shape === "cylinder" || values?.shape === "sphere") ? values.radius
+                    : parameter === "baseRadius" && values?.shape === "cone" ? values.baseRadius
+                      : parameter === "topRadius" && values?.shape === "cone" ? values.topRadius
+                        : 0;
             pendingShapeParameter = { parameter, value };
+            shapeParameterPreviewRef.current = pendingShapeParameter;
             shapeParameterStartValue = value;
           }
         }
@@ -741,14 +809,25 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         const adjusted = pointerCoordinate - parameterPointerOffset;
         const visualExtent = parameter === "height"
           ? Math.max(grid, Math.round((adjusted + resizeStart.height / 2) / grid) * grid)
-          : Math.max(grid, Math.round(Math.abs(adjusted) * 2 / grid) * grid);
+          : parameter === "topRadius"
+            ? Math.max(0, Math.round(Math.abs(adjusted) / grid) * grid)
+            : Math.max(grid, Math.round(Math.abs(adjusted) * 2 / grid) * grid);
         const startExtent = parameter === "depth" ? resizeStart.depth : parameter === "height" ? resizeStart.height : resizeStart.width;
         const ratio = visualExtent / Math.max(0.01, startExtent);
-        pendingShapeParameter.value = Math.max(0.1, shapeParameterStartValue * ratio);
+        pendingShapeParameter.value = parameter === "topRadius"
+          ? visualExtent / Math.max(0.0001, shapeParameterWorldScale)
+          : Math.max(0.1, shapeParameterStartValue * ratio);
+        shapeParameterPreviewRef.current = pendingShapeParameter;
         root.position.copy(resizeRootStart);
         visualRoot.position.set(0, 0, 0);
         visualRoot.scale.set(1, 1, 1);
-        if (parameter === "width") visualRoot.scale.x = ratio;
+        if (selected.shapeParameters?.shape === "cone") {
+          const baseRadius = parameter === "baseRadius" ? pendingShapeParameter.value : selected.shapeParameters.baseRadius;
+          const topRadius = parameter === "topRadius" ? pendingShapeParameter.value : selected.shapeParameters.topRadius;
+          const height = parameter === "height" ? pendingShapeParameter.value : selected.shapeParameters.height;
+          if (parameter === "height") visualRoot.position.z = (visualExtent - resizeStart.height) / 2;
+          updateConePreview(selected, baseRadius, topRadius, height);
+        } else if (parameter === "width") visualRoot.scale.x = ratio;
         else if (parameter === "depth") visualRoot.scale.y = ratio;
         else if (parameter === "height") {
           visualRoot.scale.z = ratio;
@@ -808,6 +887,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           root.scale.set(1, 1, 1);
           visualRoot?.position.set(0, 0, 0);
           visualRoot?.scale.set(1, 1, 1);
+          if (selected.shapeParameters?.shape === "cone") {
+            updateConePreview(selected, selected.shapeParameters.baseRadius, selected.shapeParameters.topRadius, selected.shapeParameters.height);
+          }
           requestRender();
         }
       } else {
@@ -824,7 +906,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         if (pendingShapeParameter) shapeParameterRef.current?.(pendingShapeParameter.parameter, pendingShapeParameter.value);
       }
       pendingShapeParameter = null;
+      shapeParameterPreviewRef.current = null;
       shapeParameterStartValue = 0;
+      shapeParameterWorldScale = 1;
       parameterPointerOffset = 0;
       parameterWorldToLocal = null;
       pendingOrigin = null;
@@ -1209,12 +1293,16 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       if (previewStyle.fillOpacity !== null) {
         const previewGeometry = operationPreview.shape === "cylinder"
           ? new THREE.CylinderGeometry(0.5, 0.5, selection.height, 64)
+          : operationPreview.shape === "cone"
+            ? new THREE.CylinderGeometry(operationPreview.topRadius ?? 0, selection.width / 2, selection.height, 64)
           : operationPreview.shape === "sphere"
             ? new THREE.SphereGeometry(0.5, 64, 32)
             : new THREE.BoxGeometry(selection.width, selection.depth, selection.height);
         if (operationPreview.shape === "cylinder") {
           previewGeometry.rotateX(Math.PI / 2);
           previewGeometry.scale(selection.width, selection.depth, 1);
+        } else if (operationPreview.shape === "cone") {
+          previewGeometry.rotateX(Math.PI / 2);
         } else if (operationPreview.shape === "sphere") {
           previewGeometry.scale(selection.width, selection.depth, selection.height);
         }
@@ -1225,15 +1313,16 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       if (previewStyle.wireframe) {
         const roleColor = operationPreview.mode === "add" ? "#378451" : operationPreview.mode === "hole" ? "#b6524d" : "#7256aa";
         const lineGeometry = new LineSegmentsGeometry();
-        lineGeometry.setPositions(operationPreviewWireframePositions(operationPreview.shape, selection.width, selection.depth, selection.height));
+        lineGeometry.setPositions(operationPreviewWireframePositions(operationPreview.shape, selection.width, selection.depth, selection.height, (operationPreview.topRadius ?? selection.width / 2) * 2));
         const preview = new LineSegments2(lineGeometry, new LineMaterial({ color: roleColor, linewidth: 2, depthTest: false, transparent: true, opacity: 1 }));
+        preview.userData.operationPreviewWireframe = true;
         preview.renderOrder = 18;
         previewRoot.add(preview);
       }
     }
     const parameters = selection.shapeParameters;
     const addParameterHandle = (
-      parameter: "width" | "depth" | "height" | "radius",
+      parameter: ShapeParameter,
       axis: ViewportDimensionAxis,
       start: THREE.Vector3,
       end: THREE.Vector3,
@@ -1243,6 +1332,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         new THREE.LineBasicMaterial({ color: "#d6a600", depthTest: false, transparent: true, opacity: 0.9 }),
       );
       guide.renderOrder = 21;
+      guide.userData.shapeParameterVisual = parameter;
+      guide.userData.shapeParameterVisualRole = "guide";
       visualRoot.add(guide);
       const handle = new THREE.Mesh(
         new THREE.SphereGeometry(2, 18, 12),
@@ -1250,6 +1341,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       );
       handle.position.copy(end);
       handle.renderOrder = 22;
+      handle.userData.shapeParameterVisual = parameter;
+      handle.userData.shapeParameterVisualRole = "handle";
       visualRoot.add(handle);
       const target = new THREE.Mesh(
         new THREE.SphereGeometry(5, 12, 8),
@@ -1259,6 +1352,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       target.userData.shapeParameter = parameter;
       target.userData.dimensionAxis = axis;
       target.userData.hitTargetSize = 10;
+      target.userData.shapeParameterVisual = parameter;
+      target.userData.shapeParameterVisualRole = "target";
       visualRoot.add(target);
       resizeHitboxesRef.current.push(target);
     };
@@ -1271,6 +1366,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       addParameterHandle("height", "z", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(0, 0, selection.height / 2 + 3));
     } else if (parameters?.shape === "sphere") {
       addParameterHandle("radius", "x", new THREE.Vector3(0, 0, 0), new THREE.Vector3(selection.width / 2 + 3, 0, 0));
+    } else if (parameters?.shape === "cone") {
+      const radialScale = selection.width / Math.max(0.01, parameters.baseRadius * 2);
+      const topRadius = parameters.topRadius * radialScale;
+      addParameterHandle("baseRadius", "x", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(selection.width / 2 + 3, 0, -selection.height / 2));
+      addParameterHandle("topRadius", "y", new THREE.Vector3(0, 0, selection.height / 2), new THREE.Vector3(topRadius + 3, 0, selection.height / 2));
+      addParameterHandle("height", "z", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(0, 0, selection.height / 2 + 3));
     }
     model.add(root);
     selectionRootRef.current = root;

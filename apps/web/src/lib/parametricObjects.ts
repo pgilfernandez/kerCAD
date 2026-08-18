@@ -88,7 +88,7 @@ export function addPrimitive(
   const object = document.objects.find((candidate) => candidate.id === objectId);
   if (!object) return null;
   const count = document.features.filter((feature) => feature.kind !== "sketch").length + 1;
-  if (kind === "sphere") {
+  if (kind === "sphere" || kind === "cone") {
     const definition = parametricOperationDefinition(kind);
     const primitive = createPrimitiveFeature(kind, count);
     primitive.objectId = objectId;
@@ -96,6 +96,12 @@ export function addPrimitive(
     primitive.width = definition.parameters.find((parameter) => parameter.key === "width")?.defaultValue ?? 20;
     primitive.depth = definition.parameters.find((parameter) => parameter.key === "depth")?.defaultValue ?? 20;
     primitive.height = definition.parameters.find((parameter) => parameter.key === "height")?.defaultValue ?? 20;
+    if (kind === "cone") {
+      const baseRadius = definition.parameters.find((parameter) => parameter.key === "baseRadius")?.defaultValue ?? 10;
+      primitive.width = baseRadius * 2;
+      primitive.depth = baseRadius * 2;
+      primitive.topRadius = definition.parameters.find((parameter) => parameter.key === "topRadius")?.defaultValue ?? 0;
+    }
     primitive.operation = "add";
     primitive.transform.position.x = position.x;
     primitive.transform.position.y = position.y;
@@ -256,7 +262,7 @@ export function workplaneShapeForObject(document: ParametricDocument, id: string
   return {
     id: object.id,
     name: object.name,
-    kind: feature.kind === "primitive" ? "sphere" : sketch!.profile.shape === "rectangle" ? "box" : "cylinder",
+    kind: feature.kind === "primitive" ? feature.primitive : sketch!.profile.shape === "rectangle" ? "box" : "cylinder",
     color: object.color,
     hole: feature.operation === "cut",
     x: world.x,
@@ -349,12 +355,15 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
     rotation3d: world.rotation3d,
     ...(feature.kind === "extrude" && sketch!.profile.shape === "circle" ? { resizeAspectRatio: 1 } : {}),
     shapeParameters: feature.kind === "primitive"
-      ? { shape: "sphere", radius: feature.width / 2 }
+      ? feature.primitive === "cone"
+        ? { shape: "cone", baseRadius: feature.width / 2, topRadius: feature.topRadius ?? 0, height: feature.height }
+        : { shape: "sphere", radius: feature.width / 2 }
       : sketch!.profile.shape === "circle"
         ? { shape: "cylinder", radius: sketch!.profile.diameter / 2, height: feature.distance }
         : { shape: "box", width: sketch!.profile.width, depth: sketch!.profile.depth, height: feature.distance },
     operationPreview: {
-      shape: feature.kind === "primitive" ? "sphere" : sketch!.profile.shape === "rectangle" ? "box" : "cylinder",
+      shape: feature.kind === "primitive" ? feature.primitive : sketch!.profile.shape === "rectangle" ? "box" : "cylinder",
+      ...(feature.kind === "primitive" && feature.primitive === "cone" ? { topRadius: feature.topRadius ?? 0 } : {}),
       mode: previewMode,
       color: object.color,
       historical,
@@ -594,18 +603,26 @@ export function resizeParametricHeight(document: ParametricDocument, id: string,
 export function updateParametricShapeParameter(
   document: ParametricDocument,
   id: string,
-  parameter: "width" | "depth" | "height" | "radius",
+  parameter: "width" | "depth" | "height" | "radius" | "baseRadius" | "topRadius",
   value: number,
 ) {
-  if (!Number.isFinite(value) || value <= 0) return;
+  if (!Number.isFinite(value) || (parameter === "topRadius" ? value < 0 : value <= 0)) return;
   const feature = document.features.find((candidate): candidate is TransformableOperation => candidate.id === id && isTransformableOperation(candidate));
   if (!feature) return;
   const next = Math.max(0.1, value);
   if (feature.kind === "primitive") {
-    if (parameter !== "radius") return;
-    feature.width = next * 2;
-    feature.depth = next * 2;
-    feature.height = next * 2;
+    if (feature.primitive === "sphere" && parameter === "radius") {
+      feature.width = next * 2;
+      feature.depth = next * 2;
+      feature.height = next * 2;
+    } else if (feature.primitive === "cone" && parameter === "baseRadius") {
+      feature.width = next * 2;
+      feature.depth = next * 2;
+    } else if (feature.primitive === "cone" && parameter === "topRadius") {
+      feature.topRadius = Math.max(0, value);
+    } else if (feature.primitive === "cone" && parameter === "height") {
+      feature.height = next;
+    }
     return;
   }
   const sketch = sketchForExtrude(document, feature);

@@ -1,8 +1,8 @@
-export type ParametricPrimitiveKind = "box" | "cylinder" | "sphere";
+export type ParametricPrimitiveKind = "box" | "cylinder" | "sphere" | "cone";
 export type ParametricBooleanRole = "add" | "cut" | "intersect";
 
 export type ParametricParameterDefinition = {
-  key: "width" | "depth" | "height" | "diameter" | "radius";
+  key: "width" | "depth" | "height" | "diameter" | "radius" | "baseRadius" | "topRadius";
   label: string;
   unit: "mm";
   min: number;
@@ -60,6 +60,18 @@ export const parametricOperationCatalog: ParametricOperationDefinition[] = [
     menuIcon: "assets/sketchforge/shape-icons-gray/sphere.png",
     roles: roles("sphere"),
     parameters: [dimension("radius", "Radio", 10)],
+  },
+  {
+    kind: "cone",
+    name: "Cono",
+    description: "Cono o tronco de cono paramétrico exacto",
+    menuIcon: "assets/sketchforge/shape-icons-gray/cone.png",
+    roles: roles("cone"),
+    parameters: [
+      dimension("baseRadius", "Radio inferior", 10),
+      { ...dimension("topRadius", "Radio superior", 0), min: 0 },
+      dimension("height", "Altura"),
+    ],
   },
 ];
 

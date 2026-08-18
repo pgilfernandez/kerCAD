@@ -79,6 +79,30 @@ describe("parametric object workflow", () => {
     expect(viewportSelectionForObject(document, result.objectId)).toMatchObject({ width: 30, depth: 30, height: 30 });
   });
 
+  it("adds and edits a native cone or frustum without a hidden sketch", () => {
+    const document = createStarterDocument(123);
+    const result = addPrimitiveToSelection(document, null, "cone");
+    const feature = document.features.find((candidate) => candidate.id === result.featureId);
+
+    expect(feature).toMatchObject({ kind: "primitive", primitive: "cone", width: 20, depth: 20, height: 20, topRadius: 0, operation: "add" });
+    expect(parametricObjectTree(document).at(-1)?.operations).toHaveLength(1);
+    expect(viewportSelectionForFeature(document, result.featureId)).toMatchObject({
+      baseZ: 0,
+      center: { x: 0, y: 0, z: 10 },
+      origin: { x: 0, y: 0, z: 0 },
+      shapeParameters: { shape: "cone", baseRadius: 10, topRadius: 0, height: 20 },
+      operationPreview: { shape: "cone", topRadius: 0, mode: "add", historical: false },
+    });
+
+    updateParametricShapeParameter(document, result.featureId!, "baseRadius", 14);
+    updateParametricShapeParameter(document, result.featureId!, "topRadius", 6);
+    updateParametricShapeParameter(document, result.featureId!, "height", 32);
+    expect(feature).toMatchObject({ width: 28, depth: 28, height: 32, topRadius: 6 });
+
+    updateParametricShapeParameter(document, result.featureId!, "topRadius", 0);
+    expect(feature).toMatchObject({ topRadius: 0 });
+  });
+
   it("edits only the defining visual parameters for boxes and cylinders", () => {
     const document = createStarterDocument(123);
     const box = document.features.find((feature) => feature.kind === "extrude")!;
