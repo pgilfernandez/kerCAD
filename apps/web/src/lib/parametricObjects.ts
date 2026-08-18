@@ -1,11 +1,18 @@
-import { createExtrudeFeature, createParametricObject, createSketchFeature } from "@/lib/parametricDocument";
+import { createExtrudeFeature, createParametricObject, createPrimitiveFeature, createSketchFeature } from "@/lib/parametricDocument";
 import type { ViewportSelection } from "@/components/ParametricViewport";
-import type { ExtrudeFeature, ParametricDocument, ParametricFeature, ParametricObject, SketchFeature } from "@/types/parametric";
+import type { ExtrudeFeature, ParametricDocument, ParametricFeature, ParametricObject, PrimitiveFeature, SketchFeature } from "@/types/parametric";
+import type { ParametricPrimitiveKind } from "@/lib/parametricOperationCatalog";
+import { parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import type { WorkplaneShape } from "@/types/sketchforge";
 import { objectPlacementForWorkplane, operationPlacementForWorkplane, parametricRotationFromMatrix, parametricTransformMatrix } from "@/lib/parametricWorkplane";
 import * as THREE from "three";
 
-export type SupportedPrimitive = "box" | "cylinder";
+export type SupportedPrimitive = ParametricPrimitiveKind;
+type TransformableOperation = ExtrudeFeature | PrimitiveFeature;
+
+function isTransformableOperation(feature: ParametricFeature): feature is TransformableOperation {
+  return feature.kind === "extrude" || feature.kind === "primitive";
+}
 export type ParametricTreeSelection = { id: string; kind: "object" | "feature" };
 export const OBJECT_COLOR_PALETTE = [
   "#d41721", "#ff7a1a", "#f2cf10", "#33983d", "#18b99a", "#0098c7", "#3b82f6",
@@ -80,8 +87,21 @@ export function addPrimitive(
 ) {
   const object = document.objects.find((candidate) => candidate.id === objectId);
   if (!object) return null;
-  const objectOperations = document.features.filter((feature) => feature.objectId === objectId && feature.kind === "extrude");
-  const count = document.features.filter((feature) => feature.kind === "extrude").length + 1;
+  const count = document.features.filter((feature) => feature.kind !== "sketch").length + 1;
+  if (kind === "sphere") {
+    const definition = parametricOperationDefinition(kind);
+    const primitive = createPrimitiveFeature(kind, count);
+    primitive.objectId = objectId;
+    primitive.name = definition.name;
+    primitive.width = definition.parameters.find((parameter) => parameter.key === "width")?.defaultValue ?? 20;
+    primitive.depth = definition.parameters.find((parameter) => parameter.key === "depth")?.defaultValue ?? 20;
+    primitive.height = definition.parameters.find((parameter) => parameter.key === "height")?.defaultValue ?? 20;
+    primitive.operation = "add";
+    primitive.transform.position.x = position.x;
+    primitive.transform.position.y = position.y;
+    document.features.push(primitive);
+    return primitive.id;
+  }
   const sketch = createSketchFeature(kind === "box" ? "rectangle" : "circle", count);
   sketch.name = `Perfil de ${kind === "box" ? "Caja" : "Cilindro"}`;
   sketch.objectId = objectId;
@@ -119,7 +139,7 @@ export function addPrimitiveToSelection(
   }
   const object = document.objects.find((candidate) => candidate.id === objectId)!;
   const featureId = addPrimitive(document, objectId, kind);
-  const feature = document.features.find((candidate): candidate is ExtrudeFeature => candidate.id === featureId && candidate.kind === "extrude");
+  const feature = document.features.find((candidate): candidate is TransformableOperation => candidate.id === featureId && isTransformableOperation(candidate));
   if (feature && !createdObject) feature.transform = operationPlacementForWorkplane(document.workplane, object);
   return { objectId, featureId, createdObject };
 }
@@ -223,19 +243,20 @@ export function duplicateParametricObject(document: ParametricDocument, id: stri
 export function workplaneShapeForObject(document: ParametricDocument, id: string | null): WorkplaneShape | null {
   const object = document.objects.find((candidate) => candidate.id === id);
   if (!object) return null;
-  const feature = document.features.find((candidate): candidate is ExtrudeFeature => candidate.kind === "extrude" && candidate.objectId === object.id) ?? null;
+  const feature = document.features.find((candidate): candidate is TransformableOperation => isTransformableOperation(candidate) && candidate.objectId === object.id) ?? null;
   if (!feature) return null;
-  const sketch = sketchForExtrude(document, feature);
-  if (!sketch) return null;
-  const baseWidth = sketch.profile.shape === "rectangle" ? sketch.profile.width : sketch.profile.diameter;
-  const baseDepth = sketch.profile.shape === "rectangle" ? sketch.profile.depth : sketch.profile.diameter;
+  const sketch = feature.kind === "extrude" ? sketchForExtrude(document, feature) : null;
+  if (feature.kind === "extrude" && !sketch) return null;
+  const baseWidth = feature.kind === "primitive" ? feature.width : sketch!.profile.shape === "rectangle" ? sketch!.profile.width : sketch!.profile.diameter;
+  const baseDepth = feature.kind === "primitive" ? feature.depth : sketch!.profile.shape === "rectangle" ? sketch!.profile.depth : sketch!.profile.diameter;
+  const baseHeight = feature.kind === "primitive" ? feature.height : feature.distance;
   const width = baseWidth * object.transform.scale.x;
   const depth = baseDepth * object.transform.scale.y;
-  const world = operationWorldTransform(object, feature);
+  const world = operationWorldTransform(object, feature, baseHeight);
   return {
     id: object.id,
     name: object.name,
-    kind: sketch.profile.shape === "rectangle" ? "box" : "cylinder",
+    kind: feature.kind === "primitive" ? "sphere" : sketch!.profile.shape === "rectangle" ? "box" : "cylinder",
     color: object.color,
     hole: feature.operation === "cut",
     x: world.x,
@@ -244,10 +265,10 @@ export function workplaneShapeForObject(document: ParametricDocument, id: string
     size: Math.max(width, depth),
     width,
     depth,
-    height: feature.distance * object.transform.scale.z,
+    height: baseHeight * object.transform.scale.z,
     rotation: world.rotation,
-    radius: sketch.profile.shape === "rectangle" ? 0 : undefined,
-    sides: sketch.profile.shape === "circle" ? 96 : undefined,
+    radius: feature.kind === "extrude" && sketch!.profile.shape === "rectangle" ? 0 : undefined,
+    sides: feature.kind === "extrude" && sketch!.profile.shape === "circle" ? 96 : undefined,
     hidden: !object.visible || feature.suppressed,
     locked: object.locked,
   };
@@ -256,7 +277,7 @@ export function workplaneShapeForObject(document: ParametricDocument, id: string
 export function viewportSelectionForObject(document: ParametricDocument, id: string | null, includeUnavailable = false): ViewportSelection | null {
   const shape = workplaneShapeForObject(document, id);
   if (!shape || (!includeUnavailable && (shape.hidden || shape.locked))) return null;
-  const operations = document.features.filter((candidate): candidate is ExtrudeFeature => candidate.objectId === id && candidate.kind === "extrude" && !candidate.suppressed);
+  const operations = document.features.filter((candidate): candidate is TransformableOperation => candidate.objectId === id && isTransformableOperation(candidate) && !candidate.suppressed);
   if (operations.length === 1) {
     const operationSelection = viewportSelectionForFeature(document, operations[0].id, includeUnavailable);
     if (operationSelection) return { ...operationSelection, id: shape.id, operationPreview: undefined };
@@ -273,10 +294,10 @@ export function viewportSelectionForObject(document: ParametricDocument, id: str
   };
 }
 
-function operationWorldTransform(object: ParametricObject, feature: ExtrudeFeature) {
+function operationWorldTransform(object: ParametricObject, feature: TransformableOperation, height: number) {
   const matrix = parametricTransformMatrix(object.transform).multiply(parametricTransformMatrix({ ...feature.transform, scale: { x: 1, y: 1, z: 1 } }));
   const origin = new THREE.Vector3().applyMatrix4(matrix);
-  const center = new THREE.Vector3(0, 0, feature.distance / 2).applyMatrix4(matrix);
+  const center = new THREE.Vector3(0, 0, height / 2).applyMatrix4(matrix);
   const rotationMatrix = parametricTransformMatrix({ ...object.transform, scale: { x: 1, y: 1, z: 1 } })
     .multiply(parametricTransformMatrix({ ...feature.transform, scale: { x: 1, y: 1, z: 1 } }));
   const quaternion = new THREE.Quaternion();
@@ -298,14 +319,17 @@ function operationWorldTransform(object: ParametricObject, feature: ExtrudeFeatu
 }
 
 export function viewportSelectionForFeature(document: ParametricDocument, id: string | null, includeUnavailable = false): ViewportSelection | null {
-  const feature = document.features.find((candidate): candidate is ExtrudeFeature => candidate.id === id && candidate.kind === "extrude");
+  const feature = document.features.find((candidate): candidate is TransformableOperation => candidate.id === id && isTransformableOperation(candidate));
   if (!feature || feature.suppressed) return null;
   const object = document.objects.find((candidate) => candidate.id === feature.objectId);
-  const sketch = sketchForExtrude(document, feature);
-  if (!object || (!includeUnavailable && (!object.visible || object.locked)) || !sketch) return null;
-  const world = operationWorldTransform(object, feature);
-  const width = (sketch.profile.shape === "rectangle" ? sketch.profile.width : sketch.profile.diameter) * object.transform.scale.x;
-  const depth = (sketch.profile.shape === "rectangle" ? sketch.profile.depth : sketch.profile.diameter) * object.transform.scale.y;
+  const sketch = feature.kind === "extrude" ? sketchForExtrude(document, feature) : null;
+  if (!object || (!includeUnavailable && (!object.visible || object.locked)) || (feature.kind === "extrude" && !sketch)) return null;
+  const baseWidth = feature.kind === "primitive" ? feature.width : sketch!.profile.shape === "rectangle" ? sketch!.profile.width : sketch!.profile.diameter;
+  const baseDepth = feature.kind === "primitive" ? feature.depth : sketch!.profile.shape === "rectangle" ? sketch!.profile.depth : sketch!.profile.diameter;
+  const baseHeight = feature.kind === "primitive" ? feature.height : feature.distance;
+  const world = operationWorldTransform(object, feature, baseHeight);
+  const width = baseWidth * object.transform.scale.x;
+  const depth = baseDepth * object.transform.scale.y;
   const operations = document.features.filter((candidate) => candidate.objectId === object.id && candidate.kind !== "sketch");
   const operationIndex = operations.findIndex((candidate) => candidate.id === feature.id);
   const historical = operationIndex >= 0 && operationIndex < operations.length - 1;
@@ -317,13 +341,13 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
     baseZ: world.z,
     width,
     depth,
-    height: feature.distance * object.transform.scale.z,
+    height: baseHeight * object.transform.scale.z,
     rotation: world.rotation,
     center: world.center,
     rotation3d: world.rotation3d,
-    ...(sketch.profile.shape === "circle" ? { resizeAspectRatio: 1 } : {}),
+    ...(feature.kind === "extrude" && sketch!.profile.shape === "circle" ? { resizeAspectRatio: 1 } : {}),
     operationPreview: {
-      shape: sketch.profile.shape === "rectangle" ? "box" : "cylinder",
+      shape: feature.kind === "primitive" ? "sphere" : sketch!.profile.shape === "rectangle" ? "box" : "cylinder",
       mode: previewMode,
       color: object.color,
       historical,
@@ -332,7 +356,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
 }
 
 export function applyOperationWorldPosition(document: ParametricDocument, id: string, x: number, y: number) {
-  const feature = document.features.find((candidate): candidate is ExtrudeFeature => candidate.id === id && candidate.kind === "extrude");
+  const feature = document.features.find((candidate): candidate is TransformableOperation => candidate.id === id && isTransformableOperation(candidate));
   const object = feature ? document.objects.find((candidate) => candidate.id === feature.objectId) : null;
   if (!feature || !object) return;
   const angle = -object.transform.rotation.z * Math.PI / 180;
@@ -357,7 +381,7 @@ export function applyParametricSelectionWorldDelta(
     object.transform.position.z += delta.z;
     return;
   }
-  const feature = document.features.find((candidate): candidate is ExtrudeFeature => candidate.id === id && candidate.kind === "extrude");
+  const feature = document.features.find((candidate): candidate is TransformableOperation => candidate.id === id && isTransformableOperation(candidate));
   const object = feature ? document.objects.find((candidate) => candidate.id === feature.objectId) : null;
   if (!feature || !object) return;
   const unrotated = inverseRotateVector(delta, object.transform.rotation);
@@ -386,7 +410,7 @@ export function applyParametricSelectionWorkplaneRotation(
     if (object) object.transform.rotation = parametricRotationFromMatrix(delta.multiply(rotationMatrix(object.transform.rotation)));
     return;
   }
-  const feature = document.features.find((candidate): candidate is ExtrudeFeature => candidate.id === id && candidate.kind === "extrude");
+  const feature = document.features.find((candidate): candidate is TransformableOperation => candidate.id === id && isTransformableOperation(candidate));
   const object = feature ? document.objects.find((candidate) => candidate.id === feature.objectId) : null;
   if (!feature || !object) return;
   const objectRotation = rotationMatrix(object.transform.rotation);
@@ -396,7 +420,7 @@ export function applyParametricSelectionWorkplaneRotation(
 }
 
 export function applyOperationWorldRotation(document: ParametricDocument, id: string, rotation: number) {
-  const feature = document.features.find((candidate): candidate is ExtrudeFeature => candidate.id === id && candidate.kind === "extrude");
+  const feature = document.features.find((candidate): candidate is TransformableOperation => candidate.id === id && isTransformableOperation(candidate));
   const object = feature ? document.objects.find((candidate) => candidate.id === feature.objectId) : null;
   if (feature && object) feature.transform.rotation.z = rotation - object.transform.rotation.z;
 }
@@ -432,7 +456,7 @@ export function moveParametricObjectOrigin(document: ParametricDocument, id: str
   const localDelta = { x: unrotated.x / scale.x, y: unrotated.y / scale.y, z: unrotated.z / scale.z };
   for (const feature of document.features) {
     if (feature.objectId !== id) continue;
-    if (feature.kind === "extrude") {
+    if (isTransformableOperation(feature)) {
       feature.transform.position.x -= localDelta.x;
       feature.transform.position.y -= localDelta.y;
       feature.transform.position.z -= localDelta.z;
@@ -493,7 +517,7 @@ export function alignParametricSelections(
       else if (axis === "y") applyObjectWorldPosition(document, target.item.id, target.frame.x, target.frame.y + delta);
       else object.transform.position.z += delta;
     } else {
-      const feature = document.features.find((candidate): candidate is ExtrudeFeature => candidate.id === target.item.id && candidate.kind === "extrude");
+      const feature = document.features.find((candidate): candidate is TransformableOperation => candidate.id === target.item.id && isTransformableOperation(candidate));
       if (!feature) continue;
       if (axis === "x") applyOperationWorldPosition(document, feature.id, target.frame.x + delta, target.frame.y);
       else if (axis === "y") applyOperationWorldPosition(document, feature.id, target.frame.x, target.frame.y + delta);
@@ -524,20 +548,23 @@ export function resizeParametricSelection(
     object.transform.scale.y *= depth / Math.max(0.01, current.depth);
     return;
   }
-  const feature = document.features.find((candidate): candidate is ExtrudeFeature => candidate.id === id && candidate.kind === "extrude");
+  const feature = document.features.find((candidate): candidate is TransformableOperation => candidate.id === id && isTransformableOperation(candidate));
   const object = feature ? document.objects.find((candidate) => candidate.id === feature.objectId) : null;
-  const sketch = feature ? sketchForExtrude(document, feature) : null;
+  const sketch = feature?.kind === "extrude" ? sketchForExtrude(document, feature) : null;
   const current = viewportSelectionForFeature(document, id);
-  if (!feature || !object || !sketch || !current) return;
+  if (!feature || !object || (feature.kind === "extrude" && !sketch) || !current) return;
   applyOperationWorldPosition(document, id, x, y);
-  if (sketch.profile.shape === "rectangle") {
-    sketch.profile.width = Math.max(0.1, width / Math.max(0.01, Math.abs(object.transform.scale.x)));
-    sketch.profile.depth = Math.max(0.1, depth / Math.max(0.01, Math.abs(object.transform.scale.y)));
+  if (feature.kind === "primitive") {
+    feature.width = Math.max(0.1, width / Math.max(0.01, Math.abs(object.transform.scale.x)));
+    feature.depth = Math.max(0.1, depth / Math.max(0.01, Math.abs(object.transform.scale.y)));
+  } else if (sketch!.profile.shape === "rectangle") {
+    sketch!.profile.width = Math.max(0.1, width / Math.max(0.01, Math.abs(object.transform.scale.x)));
+    sketch!.profile.depth = Math.max(0.1, depth / Math.max(0.01, Math.abs(object.transform.scale.y)));
   } else {
     const widthRatio = width / Math.max(0.01, current.width);
     const depthRatio = depth / Math.max(0.01, current.depth);
     const ratio = Math.abs(widthRatio - 1) >= Math.abs(depthRatio - 1) ? widthRatio : depthRatio;
-    sketch.profile.diameter = Math.max(0.1, sketch.profile.diameter * ratio);
+    sketch!.profile.diameter = Math.max(0.1, sketch!.profile.diameter * ratio);
   }
 }
 
@@ -550,10 +577,11 @@ export function resizeParametricHeight(document: ParametricDocument, id: string,
     object.transform.scale.z *= Math.max(0.1, height) / Math.max(0.01, current.height);
     return;
   }
-  const feature = document.features.find((candidate): candidate is ExtrudeFeature => candidate.id === id && candidate.kind === "extrude");
+  const feature = document.features.find((candidate): candidate is TransformableOperation => candidate.id === id && isTransformableOperation(candidate));
   const object = feature ? document.objects.find((candidate) => candidate.id === feature.objectId) : null;
   if (!feature || !object) return;
-  feature.distance = Math.max(0.1, height / Math.max(0.01, Math.abs(object.transform.scale.z)));
+  if (feature.kind === "primitive") feature.height = Math.max(0.1, height / Math.max(0.01, Math.abs(object.transform.scale.z)));
+  else feature.distance = Math.max(0.1, height / Math.max(0.01, Math.abs(object.transform.scale.z)));
 }
 
 export function applyWorkplanePatch(document: ParametricDocument, id: string, patch: Partial<WorkplaneShape>) {

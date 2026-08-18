@@ -2,7 +2,7 @@ import { loadBrepWithOcct, type Brep, type BrepSolid } from "@/lib/brepKernel";
 import type { Edge } from "brepjs";
 import { parametricObjectGeometryFingerprint } from "@/lib/parametricBuildState";
 import { topologicallySortedParametricFeatures } from "@/lib/parametricDependencyGraph";
-import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricObject, ParametricObjectRenderRecord, RenderMesh, SketchFeature } from "@/types/parametric";
+import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricObject, ParametricObjectRenderRecord, PrimitiveFeature, RenderMesh, SketchFeature } from "@/types/parametric";
 
 type AnySolid = BrepSolid;
 type CompoundShape = ReturnType<Brep["compound"]>;
@@ -31,7 +31,10 @@ function solidFromSketch(brep: Brep, sketch: SketchFeature, feature: ExtrudeFeat
       at: [sketch.x, sketch.y, centerZ],
     });
   }
-  const operation = feature.transform;
+  return applyOperationTransform(brep, solid, feature.transform);
+}
+
+function applyOperationTransform(brep: Brep, solid: AnySolid, operation: ExtrudeFeature["transform"]): AnySolid {
   if (operation.rotation.x) solid = brep.rotate(solid, operation.rotation.x, { axis: [1, 0, 0] });
   if (operation.rotation.y) solid = brep.rotate(solid, operation.rotation.y, { axis: [0, 1, 0] });
   if (operation.rotation.z) solid = brep.rotate(solid, operation.rotation.z, { axis: [0, 0, 1] });
@@ -39,6 +42,31 @@ function solidFromSketch(brep: Brep, sketch: SketchFeature, feature: ExtrudeFeat
     solid = brep.translate(solid, [operation.position.x, operation.position.y, operation.position.z]);
   }
   return solid;
+}
+
+function solidFromPrimitive(brep: Brep, feature: PrimitiveFeature): AnySolid {
+  if (feature.width <= 0 || feature.depth <= 0 || feature.height <= 0) {
+    throw new Error(`${feature.name}: todas las dimensiones deben ser mayores que cero.`);
+  }
+  const solid = brep.ellipsoid(feature.width / 2, feature.depth / 2, feature.height / 2, {
+    at: [0, 0, feature.height / 2],
+  });
+  return applyOperationTransform(brep, solid, feature.transform);
+}
+
+function applyBooleanOperation(
+  brep: Brep,
+  current: AnySolid | null,
+  tool: AnySolid,
+  feature: Pick<ExtrudeFeature | PrimitiveFeature, "name" | "operation">,
+) {
+  if (!current) {
+    if (feature.operation !== "add") throw new Error(`${feature.name}: la primera operación del objeto debe ser Añadir.`);
+    return tool;
+  }
+  if (feature.operation === "add") return refinedBooleanSolid(brep, brep.fuse(current, tool));
+  if (feature.operation === "cut") return refinedBooleanSolid(brep, brep.cut(current, tool));
+  return refinedBooleanSolid(brep, brep.intersect(current, tool));
 }
 
 function applyObjectTransform(brep: Brep, solid: AnySolid, object?: ParametricObject): AnySolid {
@@ -139,20 +167,15 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         completedFeatureIds.push(feature.id);
         continue;
       }
-      if (feature.kind === "extrude") {
-        const sketch = sketches.get(feature.sketchId);
-        if (!sketch) throw new Error(`${feature.name}: no se encuentra el boceto de origen.`);
-        if (feature.distance <= 0) throw new Error(`${feature.name}: la distancia debe ser mayor que cero.`);
+      if (feature.kind === "extrude" || feature.kind === "primitive") {
+        const sketch = feature.kind === "extrude" ? sketches.get(feature.sketchId) : null;
+        if (feature.kind === "extrude" && !sketch) throw new Error(`${feature.name}: no se encuentra el boceto de origen.`);
+        if (feature.kind === "extrude" && feature.distance <= 0) throw new Error(`${feature.name}: la distancia debe ser mayor que cero.`);
         const objectId = feature.objectId ?? "legacy";
         lastObjectId = objectId;
         const current = solids.get(objectId) ?? null;
-        const tool = solidFromSketch(brep, sketch, feature);
-        if (!current) {
-          if (feature.operation !== "add") throw new Error(`${feature.name}: la primera operación del objeto debe ser Añadir.`);
-          solids.set(objectId, tool);
-        } else if (feature.operation === "add") solids.set(objectId, refinedBooleanSolid(brep, brep.fuse(current, tool)));
-        else if (feature.operation === "cut") solids.set(objectId, refinedBooleanSolid(brep, brep.cut(current, tool)));
-        else solids.set(objectId, refinedBooleanSolid(brep, brep.intersect(current, tool)));
+        const tool = feature.kind === "primitive" ? solidFromPrimitive(brep, feature) : solidFromSketch(brep, sketch!, feature);
+        solids.set(objectId, applyBooleanOperation(brep, current, tool, feature));
         completedFeatureIds.push(feature.id);
         if (feature.id === contextFeatureId) {
           const selectedResult = solids.get(objectId);
@@ -233,19 +256,14 @@ export async function exportParametricStep(document: ParametricDocument): Promis
       sketches.set(feature.id, feature);
       continue;
     }
-    if (feature.kind === "extrude") {
-      const sketch = sketches.get(feature.sketchId);
-      if (!sketch) throw new Error("El historial contiene una referencia de boceto rota.");
+    if (feature.kind === "extrude" || feature.kind === "primitive") {
+      const sketch = feature.kind === "extrude" ? sketches.get(feature.sketchId) : null;
+      if (feature.kind === "extrude" && !sketch) throw new Error("El historial contiene una referencia de boceto rota.");
       const objectId = feature.objectId ?? "legacy";
       lastObjectId = objectId;
       const current = solids.get(objectId) ?? null;
-      const tool = solidFromSketch(brep, sketch, feature);
-      if (!current) {
-        if (feature.operation !== "add") throw new Error(`${feature.name}: la primera operación del objeto debe ser Añadir.`);
-        solids.set(objectId, tool);
-      } else if (feature.operation === "add") solids.set(objectId, refinedBooleanSolid(brep, brep.fuse(current, tool)));
-      else if (feature.operation === "cut") solids.set(objectId, refinedBooleanSolid(brep, brep.cut(current, tool)));
-      else solids.set(objectId, refinedBooleanSolid(brep, brep.intersect(current, tool)));
+      const tool = feature.kind === "primitive" ? solidFromPrimitive(brep, feature) : solidFromSketch(brep, sketch!, feature);
+      solids.set(objectId, applyBooleanOperation(brep, current, tool, feature));
       continue;
     }
     const objectId = feature.objectId ?? lastObjectId;

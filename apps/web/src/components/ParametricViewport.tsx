@@ -30,7 +30,7 @@ export type ViewportSelection = {
   rotation3d?: { x: number; y: number; z: number };
   resizeAspectRatio?: number;
   operationPreview?: {
-    shape: "box" | "cylinder";
+    shape: "box" | "cylinder" | "sphere";
     mode: "add" | "hole" | "common";
     color: string;
     historical: boolean;
@@ -1305,10 +1305,14 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       if (previewStyle.fillOpacity !== null) {
         const previewGeometry = operationPreview.shape === "cylinder"
           ? new THREE.CylinderGeometry(0.5, 0.5, selection.height, 64)
-          : new THREE.BoxGeometry(selection.width, selection.depth, selection.height);
+          : operationPreview.shape === "sphere"
+            ? new THREE.SphereGeometry(0.5, 64, 32)
+            : new THREE.BoxGeometry(selection.width, selection.depth, selection.height);
         if (operationPreview.shape === "cylinder") {
           previewGeometry.rotateX(Math.PI / 2);
           previewGeometry.scale(selection.width, selection.depth, 1);
+        } else if (operationPreview.shape === "sphere") {
+          previewGeometry.scale(selection.width, selection.depth, selection.height);
         }
         const preview = new THREE.Mesh(previewGeometry, previewMaterial(renderQuality, operationPreview.color, previewStyle.fillOpacity));
         preview.renderOrder = 17;

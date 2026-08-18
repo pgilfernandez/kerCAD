@@ -56,6 +56,26 @@ describe("parametric object workflow", () => {
     });
   });
 
+  it("adds and edits a native sphere or ellipsoid without a hidden sketch", () => {
+    const document = createStarterDocument(123);
+    const result = addPrimitiveToSelection(document, null, "sphere");
+    const feature = document.features.find((candidate) => candidate.id === result.featureId);
+
+    expect(feature).toMatchObject({ kind: "primitive", primitive: "sphere", width: 20, depth: 20, height: 20, operation: "add" });
+    expect(parametricObjectTree(document).at(-1)?.operations).toHaveLength(1);
+    expect(viewportSelectionForFeature(document, result.featureId)).toMatchObject({
+      width: 20,
+      depth: 20,
+      height: 20,
+      operationPreview: { shape: "sphere", mode: "add", historical: false },
+    });
+
+    resizeParametricSelection(document, result.featureId!, "feature", 4, 6, 30, 18);
+    resizeParametricHeight(document, result.featureId!, "feature", 12);
+    expect(feature).toMatchObject({ width: 30, depth: 18, height: 12 });
+    expect(viewportSelectionForObject(document, result.objectId)).toMatchObject({ width: 30, depth: 18, height: 12 });
+  });
+
   it("creates a new object only when a shape has no selected object", () => {
     const document = createStarterDocument(123);
     const existingObjectId = document.objects[0].id;

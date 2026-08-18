@@ -66,9 +66,9 @@ import {
   type SupportedPrimitive,
 } from "@/lib/parametricObjects";
 import { globalParametricWorkplanePlacement, parametricWorkplaneFromFace, parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
-import { toolbarShapeAssets } from "@/lib/shapeCatalog";
+import { parametricOperationCatalog, parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import type { ViewportRenderQuality } from "@/lib/viewportPerformance";
-import type { BuildResult, ParametricDocument, ParametricFeature, ParametricObject } from "@/types/parametric";
+import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricFeature, ParametricObject, PrimitiveFeature } from "@/types/parametric";
 import type { WorkplaneShape } from "@/types/sketchforge";
 
 const STORAGE_KEY = "educad.parametric.document.v1";
@@ -141,7 +141,7 @@ export function SketchForgeParametricEditor() {
     if (modelSelection.length !== 1 || modelSelection[0]?.kind !== "feature") return null;
     const buildDocument = buildDocumentRef.current;
     const feature = buildDocument.features.find((candidate) => candidate.id === modelSelection[0]?.id);
-    if (feature?.kind !== "extrude" || !feature.objectId) return null;
+    if ((feature?.kind !== "extrude" && feature?.kind !== "primitive") || !feature.objectId) return null;
     const operations = buildDocument.features.filter((candidate) => candidate.objectId === feature.objectId && candidate.kind !== "sketch");
     const index = operations.findIndex((candidate) => candidate.id === feature.id);
     return index < 0 ? null : { featureId: feature.id, objectId: feature.objectId, index, count: operations.length };
@@ -270,8 +270,8 @@ export function SketchForgeParametricEditor() {
   const selectedId = primarySelection?.id ?? null;
   const selectionKind = primarySelection?.kind ?? "object";
   const selectedObjectId = objectIdForFeature(document, selectedId);
-  const selectedOperationId = selectionKind === "feature" && document.features.some((feature) => feature.id === selectedId && feature.kind === "extrude") ? selectedId : null;
-  const selectedOperation = selectedOperationId ? document.features.find((feature) => feature.id === selectedOperationId && feature.kind === "extrude") : null;
+  const selectedOperationId = selectionKind === "feature" && document.features.some((feature) => feature.id === selectedId && (feature.kind === "extrude" || feature.kind === "primitive")) ? selectedId : null;
+  const selectedOperation = selectedOperationId ? document.features.find((feature): feature is ExtrudeFeature | PrimitiveFeature => feature.id === selectedOperationId && (feature.kind === "extrude" || feature.kind === "primitive")) : null;
   const selectedShape = useMemo(() => workplaneShapeForObject(document, selectedObjectId), [document, selectedObjectId]);
   const selectedBox = useMemo(() => modelSelection.length === 1 ? (selectedOperationId ? viewportSelectionForFeature(document, selectedOperationId) : viewportSelectionForObject(document, selectedObjectId)) : null, [document, modelSelection.length, selectedObjectId, selectedOperationId]);
   const selectedOriginObjectId = modelSelection.length === 1 && selectionKind === "object" ? selectedObjectId : null;
@@ -315,7 +315,7 @@ export function SketchForgeParametricEditor() {
       setModelSelection([{ id: result.featureId, kind: "feature" }]);
     }
     setShapesOpen(false);
-    setNotice({ type: "ok", text: `${kind === "box" ? "Caja" : "Cilindro"} ${result.createdObject ? "creado en un objeto nuevo" : "añadido al final del objeto activo"}` });
+    setNotice({ type: "ok", text: `${parametricOperationDefinition(kind).name} ${result.createdObject ? "creada en un objeto nuevo" : "añadida al final del objeto activo"}` });
   };
 
   const removeSelected = useCallback(() => {
@@ -403,9 +403,9 @@ export function SketchForgeParametricEditor() {
   };
 
   const setSelectedOperationMode = (operation: "add" | "cut" | "intersect") => {
-    if (!selectedOperationId || selectedOperation?.kind !== "extrude" || selectedOperation.operation === operation) return;
+    if (!selectedOperationId || !selectedOperation || selectedOperation.operation === operation) return;
     updateFeature(selectedOperationId, (feature) => {
-      if (feature.kind === "extrude") feature.operation = operation;
+      if (feature.kind === "extrude" || feature.kind === "primitive") feature.operation = operation;
     });
   };
 
@@ -541,8 +541,8 @@ export function SketchForgeParametricEditor() {
                   <div className="shape-menu-title">Formas</div>
                   <div className="shape-menu-list">
                     <div className="educad-shape-target">{selectedObjectId ? `Añadir al final de ${document.objects.find((object) => object.id === selectedObjectId)?.name ?? "objeto activo"}` : "Se creará un objeto nuevo"}</div>
-                    {toolbarShapeAssets.slice(0, 2).map((asset) => <button className="shape-menu-item" key={asset.id} onClick={() => addShape(asset.kind as SupportedPrimitive)}><img src={asset.menuIcon} alt="" /><span>{asset.name === "Box" ? "Caja" : "Cilindro"}<small>{selectedObjectId ? "Nueva operación en el objeto" : "Nuevo objeto con esta forma"}</small></span></button>)}
-                    <div className="educad-shape-coming"><strong>Más operaciones CAD</strong><span>Revolución, cono y esfera llegarán como operaciones paramétricas.</span></div>
+                    {parametricOperationCatalog.map((asset) => <button className="shape-menu-item" key={asset.kind} onClick={() => addShape(asset.kind)}><img src={asset.menuIcon} alt="" /><span>{asset.name}<small>{selectedObjectId ? "Nueva operación en el objeto" : asset.description}</small></span></button>)}
+                    <div className="educad-shape-coming"><strong>Más operaciones CAD</strong><span>Cono, tubo y toro llegarán como operaciones paramétricas.</span></div>
                   </div>
                 </div>
               )}
@@ -551,9 +551,9 @@ export function SketchForgeParametricEditor() {
           <div className="toolbar-spacer" />
           <div className="tool-group right">
             <ToolbarSection label="Modify">
-              <Tool label="Añadir" enabled={Boolean(selectedOperationId)} active={selectedOperation?.kind === "extrude" && selectedOperation.operation === "add"} onClick={() => setSelectedOperationMode("add")}><ToolbarBooleanModeIcon mode="add" /></Tool>
-              <Tool label="Hueco" enabled={Boolean(selectedOperationId)} active={selectedOperation?.kind === "extrude" && selectedOperation.operation === "cut"} onClick={() => setSelectedOperationMode("cut")}><ToolbarBooleanModeIcon mode="hole" /></Tool>
-              <Tool label="Común" enabled={Boolean(selectedOperationId)} active={selectedOperation?.kind === "extrude" && selectedOperation.operation === "intersect"} onClick={() => setSelectedOperationMode("intersect")}><ToolbarBooleanModeIcon mode="common" /></Tool>
+              <Tool label="Añadir" enabled={Boolean(selectedOperationId)} active={selectedOperation?.operation === "add"} onClick={() => setSelectedOperationMode("add")}><ToolbarBooleanModeIcon mode="add" /></Tool>
+              <Tool label="Hueco" enabled={Boolean(selectedOperationId)} active={selectedOperation?.operation === "cut"} onClick={() => setSelectedOperationMode("cut")}><ToolbarBooleanModeIcon mode="hole" /></Tool>
+              <Tool label="Común" enabled={Boolean(selectedOperationId)} active={selectedOperation?.operation === "intersect"} onClick={() => setSelectedOperationMode("intersect")}><ToolbarBooleanModeIcon mode="common" /></Tool>
               <div className="educad-align-tool">
                 <Tool label="Alinear" enabled={modelSelection.length > 1} active={alignOpen} onClick={() => setAlignOpen((value) => !value)}><ToolbarAlignIcon /></Tool>
                 {alignOpen ? <div className="educad-align-popover" role="dialog" aria-label="Alinear selección">

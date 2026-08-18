@@ -42,6 +42,14 @@ describe("operation preview wireframes", () => {
     expect(generators[8]).toBe(-3);
     expect(generators[11]).toBe(3);
   });
+
+  it("draws three great ellipses for a sphere or ellipsoid", () => {
+    const positions = operationPreviewWireframePositions("sphere", 20, 10, 6);
+
+    expect(positions).toHaveLength(3 * 64 * 6);
+    expect(positions.slice(0, 3)).toEqual([10, 0, 0]);
+    expect(positions.slice(64 * 6, 64 * 6 + 3)).toEqual([10, 0, 0]);
+  });
 });
 
 describe("operation preview styles", () => {

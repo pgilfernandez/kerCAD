@@ -1,4 +1,4 @@
-export type FeatureKind = "sketch" | "extrude" | "hole" | "fillet";
+export type FeatureKind = "sketch" | "extrude" | "primitive" | "hole" | "fillet";
 
 export type ParametricDependencyReference =
   | { type: "feature"; id: string }
@@ -83,6 +83,19 @@ export type ExtrudeFeature = BaseFeature & {
   };
 };
 
+export type PrimitiveFeature = BaseFeature & {
+  kind: "primitive";
+  primitive: "sphere";
+  width: number;
+  depth: number;
+  height: number;
+  operation: "add" | "cut" | "intersect";
+  transform: {
+    position: ParametricVector3;
+    rotation: ParametricVector3;
+  };
+};
+
 export type HoleFeature = BaseFeature & {
   kind: "hole";
   x: number;
@@ -99,7 +112,7 @@ export type FilletFeature = BaseFeature & {
   edgeReferenceIds?: string[];
 };
 
-export type ParametricFeature = SketchFeature | ExtrudeFeature | HoleFeature | FilletFeature;
+export type ParametricFeature = SketchFeature | ExtrudeFeature | PrimitiveFeature | HoleFeature | FilletFeature;
 
 export type ParametricObject = {
   id: string;

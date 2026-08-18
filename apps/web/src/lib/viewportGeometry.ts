@@ -1,4 +1,4 @@
-export function operationPreviewWireframePositions(shape: "box" | "cylinder", width: number, depth: number, height: number) {
+export function operationPreviewWireframePositions(shape: "box" | "cylinder" | "sphere", width: number, depth: number, height: number) {
   const positions: number[] = [];
   const addSegment = (x1: number, y1: number, z1: number, x2: number, y2: number, z2: number) => positions.push(x1, y1, z1, x2, y2, z2);
   const halfWidth = width / 2;
@@ -18,6 +18,23 @@ export function operationPreviewWireframePositions(shape: "box" | "cylinder", wi
     return positions;
   }
   const segments = 64;
+  if (shape === "sphere") {
+    for (const plane of ["xy", "xz", "yz"] as const) {
+      for (let index = 0; index < segments; index += 1) {
+        const angle = index / segments * Math.PI * 2;
+        const nextAngle = (index + 1) / segments * Math.PI * 2;
+        const point = (value: number) => plane === "xy"
+          ? [Math.cos(value) * halfWidth, Math.sin(value) * halfDepth, 0]
+          : plane === "xz"
+            ? [Math.cos(value) * halfWidth, 0, Math.sin(value) * height / 2]
+            : [0, Math.cos(value) * halfDepth, Math.sin(value) * height / 2];
+        const start = point(angle);
+        const end = point(nextAngle);
+        addSegment(start[0], start[1], start[2], end[0], end[1], end[2]);
+      }
+    }
+    return positions;
+  }
   for (let index = 0; index < segments; index += 1) {
     const angle = index / segments * Math.PI * 2;
     const nextAngle = (index + 1) / segments * Math.PI * 2;

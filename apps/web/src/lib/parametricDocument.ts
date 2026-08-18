@@ -6,6 +6,7 @@ import type {
   ParametricDocument,
   ParametricFeature,
   ParametricObject,
+  PrimitiveFeature,
   RectangleProfile,
   SketchFeature,
 } from "@/types/parametric";
@@ -115,6 +116,21 @@ export function createExtrudeFeature(sketchId: string, index: number, _hasSolid:
   };
 }
 
+export function createPrimitiveFeature(primitive: PrimitiveFeature["primitive"], index: number): PrimitiveFeature {
+  return {
+    id: createFeatureId("primitive"),
+    kind: "primitive",
+    primitive,
+    name: primitive === "sphere" ? "Esfera" : `Primitiva ${index}`,
+    suppressed: false,
+    width: 20,
+    depth: 20,
+    height: 20,
+    operation: "add",
+    transform: operationTransform(),
+  };
+}
+
 function operationTransform() {
   return {
     position: { x: 0, y: 0, z: 0 },
@@ -202,7 +218,13 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
   }
 
   for (const feature of next.features) {
-    if (feature.kind === "extrude" && (feature.operation as string) === "new") feature.operation = "add";
+    if ((feature.kind === "extrude" || feature.kind === "primitive") && (feature.operation as string) === "new") feature.operation = "add";
+    if (feature.kind === "primitive") {
+      feature.width = Math.max(0.1, Number.isFinite(feature.width) ? feature.width : 20);
+      feature.depth = Math.max(0.1, Number.isFinite(feature.depth) ? feature.depth : 20);
+      feature.height = Math.max(0.1, Number.isFinite(feature.height) ? feature.height : 20);
+      feature.transform ??= operationTransform();
+    }
   }
 
   for (const [index, feature] of next.features.entries()) {
@@ -264,7 +286,7 @@ export function previousSketch(features: ParametricFeature[], selectedId: string
 }
 
 export function documentHasSolid(features: ParametricFeature[]) {
-  return features.some((feature) => feature.kind === "extrude" && !feature.suppressed && feature.operation === "add");
+  return features.some((feature) => (feature.kind === "extrude" || feature.kind === "primitive") && !feature.suppressed && feature.operation === "add");
 }
 
 export function cloneDocument(document: ParametricDocument): ParametricDocument {
