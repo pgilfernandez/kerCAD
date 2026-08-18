@@ -28,4 +28,12 @@ describe("parametric operation catalog", () => {
     expect(definition.parameters.map((parameter) => parameter.key)).toEqual(["baseRadius", "topRadius", "height"]);
     expect(definition.parameters.find((parameter) => parameter.key === "topRadius")).toMatchObject({ min: 0, defaultValue: 0 });
   });
+
+  it("defines an exact tube by its two radii and height", () => {
+    const definition = parametricOperationDefinition("tube");
+
+    expect(definition.parameters.map((parameter) => parameter.key)).toEqual(["outerRadius", "innerRadius", "height"]);
+    expect(definition.parameters.find((parameter) => parameter.key === "innerRadius")?.defaultValue)
+      .toBeLessThan(definition.parameters.find((parameter) => parameter.key === "outerRadius")!.defaultValue);
+  });
 });

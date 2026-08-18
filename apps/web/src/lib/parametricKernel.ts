@@ -51,9 +51,19 @@ function solidFromPrimitive(brep: Brep, feature: PrimitiveFeature): AnySolid {
   if (feature.primitive === "cone" && (feature.topRadius ?? 0) < 0) {
     throw new Error(`${feature.name}: el radio superior no puede ser negativo.`);
   }
-  const solid = feature.primitive === "cone"
-    ? brep.cone(feature.width / 2, feature.topRadius ?? 0, feature.height, { at: [0, 0, 0] })
-    : brep.ellipsoid(feature.width / 2, feature.depth / 2, feature.height / 2, { at: [0, 0, 0] });
+  if (feature.primitive === "tube" && ((feature.innerRadius ?? 0) <= 0 || (feature.innerRadius ?? 0) >= feature.width / 2)) {
+    throw new Error(`${feature.name}: el radio interior debe ser mayor que cero y menor que el exterior.`);
+  }
+  let solid: AnySolid;
+  if (feature.primitive === "cone") {
+    solid = brep.cone(feature.width / 2, feature.topRadius ?? 0, feature.height, { at: [0, 0, 0] });
+  } else if (feature.primitive === "tube") {
+    const outer = brep.cylinder(feature.width / 2, feature.height, { at: [0, 0, 0] });
+    const inner = brep.cylinder(feature.innerRadius ?? 0, feature.height + 2, { at: [0, 0, -1] });
+    solid = refinedBooleanSolid(brep, brep.cut(outer, inner));
+  } else {
+    solid = brep.ellipsoid(feature.width / 2, feature.depth / 2, feature.height / 2, { at: [0, 0, 0] });
+  }
   return applyOperationTransform(brep, solid, feature.transform);
 }
 

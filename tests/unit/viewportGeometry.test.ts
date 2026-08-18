@@ -62,6 +62,14 @@ describe("operation preview wireframes", () => {
     expect(generators[9]).toBeCloseTo(0);
     expect(generators.slice(10, 12)).toEqual([4, 15]);
   });
+
+  it("draws the outer and inner structural edges of a tube", () => {
+    const positions = operationPreviewWireframePositions("tube", 20, 20, 30, 20, 12);
+    const innerGenerators = positions.slice(-4 * 6);
+
+    expect(positions).toHaveLength((64 * 4 + 8) * 6);
+    expect(innerGenerators.slice(0, 6)).toEqual([6, 0, -15, 6, 0, 15]);
+  });
 });
 
 describe("operation preview styles", () => {

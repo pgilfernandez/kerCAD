@@ -88,7 +88,7 @@ export function addPrimitive(
   const object = document.objects.find((candidate) => candidate.id === objectId);
   if (!object) return null;
   const count = document.features.filter((feature) => feature.kind !== "sketch").length + 1;
-  if (kind === "sphere" || kind === "cone") {
+  if (kind === "sphere" || kind === "cone" || kind === "tube") {
     const definition = parametricOperationDefinition(kind);
     const primitive = createPrimitiveFeature(kind, count);
     primitive.objectId = objectId;
@@ -101,6 +101,12 @@ export function addPrimitive(
       primitive.width = baseRadius * 2;
       primitive.depth = baseRadius * 2;
       primitive.topRadius = definition.parameters.find((parameter) => parameter.key === "topRadius")?.defaultValue ?? 0;
+    }
+    if (kind === "tube") {
+      const outerRadius = definition.parameters.find((parameter) => parameter.key === "outerRadius")?.defaultValue ?? 10;
+      primitive.width = outerRadius * 2;
+      primitive.depth = outerRadius * 2;
+      primitive.innerRadius = definition.parameters.find((parameter) => parameter.key === "innerRadius")?.defaultValue ?? 6;
     }
     primitive.operation = "add";
     primitive.transform.position.x = position.x;
@@ -448,6 +454,8 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
     shapeParameters: feature.kind === "primitive"
       ? feature.primitive === "cone"
         ? { shape: "cone", baseRadius: feature.width / 2, topRadius: feature.topRadius ?? 0, height: feature.height }
+        : feature.primitive === "tube"
+          ? { shape: "tube", outerRadius: feature.width / 2, innerRadius: feature.innerRadius ?? 6, height: feature.height }
         : { shape: "sphere", radius: feature.width / 2 }
       : sketch!.profile.shape === "circle"
         ? { shape: "cylinder", radius: sketch!.profile.diameter / 2, height: feature.distance }
@@ -455,6 +463,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
     operationPreview: {
       shape: feature.kind === "primitive" ? feature.primitive : sketch!.profile.shape === "rectangle" ? "box" : "cylinder",
       ...(feature.kind === "primitive" && feature.primitive === "cone" ? { topRadius: feature.topRadius ?? 0 } : {}),
+      ...(feature.kind === "primitive" && feature.primitive === "tube" ? { innerRadius: feature.innerRadius ?? 6 } : {}),
       mode: previewMode,
       color: object.color,
       historical,
@@ -694,7 +703,7 @@ export function resizeParametricHeight(document: ParametricDocument, id: string,
 export function updateParametricShapeParameter(
   document: ParametricDocument,
   id: string,
-  parameter: "width" | "depth" | "height" | "radius" | "baseRadius" | "topRadius",
+  parameter: "width" | "depth" | "height" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius",
   value: number,
 ) {
   if (!Number.isFinite(value) || (parameter === "topRadius" ? value < 0 : value <= 0)) return;
@@ -712,6 +721,14 @@ export function updateParametricShapeParameter(
     } else if (feature.primitive === "cone" && parameter === "topRadius") {
       feature.topRadius = Math.max(0, value);
     } else if (feature.primitive === "cone" && parameter === "height") {
+      feature.height = next;
+    } else if (feature.primitive === "tube" && parameter === "outerRadius") {
+      const radius = Math.max((feature.innerRadius ?? 0) + 0.1, next);
+      feature.width = radius * 2;
+      feature.depth = radius * 2;
+    } else if (feature.primitive === "tube" && parameter === "innerRadius") {
+      feature.innerRadius = Math.min(feature.width / 2 - 0.1, next);
+    } else if (feature.primitive === "tube" && parameter === "height") {
       feature.height = next;
     }
     return;

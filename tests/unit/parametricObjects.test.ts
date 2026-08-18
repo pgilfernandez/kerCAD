@@ -106,6 +106,28 @@ describe("parametric object workflow", () => {
     expect(feature).toMatchObject({ topRadius: 0 });
   });
 
+  it("adds and edits a native tube while preserving a positive wall", () => {
+    const document = createStarterDocument(123);
+    const result = addPrimitiveToSelection(document, null, "tube");
+    const feature = document.features.find((candidate) => candidate.id === result.featureId);
+
+    expect(feature).toMatchObject({ kind: "primitive", primitive: "tube", width: 20, depth: 20, height: 20, innerRadius: 6, operation: "add" });
+    expect(viewportSelectionForFeature(document, result.featureId)).toMatchObject({
+      baseZ: 0,
+      center: { x: 0, y: 0, z: 10 },
+      shapeParameters: { shape: "tube", outerRadius: 10, innerRadius: 6, height: 20 },
+      operationPreview: { shape: "tube", innerRadius: 6, mode: "add", historical: false },
+    });
+
+    updateParametricShapeParameter(document, result.featureId!, "innerRadius", 8);
+    updateParametricShapeParameter(document, result.featureId!, "outerRadius", 7);
+    updateParametricShapeParameter(document, result.featureId!, "height", 35);
+    expect(feature).toMatchObject({ width: 16.2, depth: 16.2, innerRadius: 8, height: 35 });
+
+    updateParametricShapeParameter(document, result.featureId!, "innerRadius", 20);
+    expect(feature).toMatchObject({ innerRadius: 8 });
+  });
+
   it("edits only the defining visual parameters for boxes and cylinders", () => {
     const document = createStarterDocument(123);
     const box = document.features.find((feature) => feature.kind === "extrude")!;

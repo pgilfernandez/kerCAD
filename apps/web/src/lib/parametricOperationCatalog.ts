@@ -1,8 +1,8 @@
-export type ParametricPrimitiveKind = "box" | "cylinder" | "sphere" | "cone";
+export type ParametricPrimitiveKind = "box" | "cylinder" | "sphere" | "cone" | "tube";
 export type ParametricBooleanRole = "add" | "cut" | "intersect";
 
 export type ParametricParameterDefinition = {
-  key: "width" | "depth" | "height" | "diameter" | "radius" | "baseRadius" | "topRadius";
+  key: "width" | "depth" | "height" | "diameter" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius";
   label: string;
   unit: "mm";
   min: number;
@@ -72,6 +72,14 @@ export const parametricOperationCatalog: ParametricOperationDefinition[] = [
       { ...dimension("topRadius", "Radio superior", 0), min: 0 },
       dimension("height", "Altura"),
     ],
+  },
+  {
+    kind: "tube",
+    name: "Tubo",
+    description: "Tubo paramétrico exacto con pared editable",
+    menuIcon: "assets/sketchforge/shape-icons-gray/tube.png",
+    roles: roles("tube"),
+    parameters: [dimension("outerRadius", "Radio exterior", 10), dimension("innerRadius", "Radio interior", 6), dimension("height", "Altura")],
   },
 ];
 

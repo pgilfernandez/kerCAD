@@ -85,11 +85,12 @@ export type ExtrudeFeature = BaseFeature & {
 
 export type PrimitiveFeature = BaseFeature & {
   kind: "primitive";
-  primitive: "sphere" | "cone";
+  primitive: "sphere" | "cone" | "tube";
   width: number;
   depth: number;
   height: number;
   topRadius?: number;
+  innerRadius?: number;
   operation: "add" | "cut" | "intersect";
   transform: {
     position: ParametricVector3;

@@ -369,10 +369,12 @@ function ParametricFeatureInspector({
               <BoundedNumberField
                 key={parameter.key}
                 label={parameter.label}
-                value={parameter.key === "radius" || parameter.key === "baseRadius"
+                value={parameter.key === "radius" || parameter.key === "baseRadius" || parameter.key === "outerRadius"
                   ? feature.width / 2
                   : parameter.key === "topRadius"
                     ? feature.topRadius ?? 0
+                    : parameter.key === "innerRadius"
+                      ? feature.innerRadius ?? 6
                     : feature[parameter.key as "width" | "depth" | "height"]}
                 min={parameter.min}
                 max={parameter.max}
@@ -388,6 +390,12 @@ function ParametricFeatureInspector({
                     draft.depth = value * 2;
                   } else if (parameter.key === "topRadius") {
                     draft.topRadius = Math.max(0, value);
+                  } else if (parameter.key === "outerRadius") {
+                    const radius = Math.max((draft.innerRadius ?? 0) + 0.1, value);
+                    draft.width = radius * 2;
+                    draft.depth = radius * 2;
+                  } else if (parameter.key === "innerRadius") {
+                    draft.innerRadius = Math.min(draft.width / 2 - 0.1, Math.max(0.1, value));
                   } else if (parameter.key !== "diameter") draft[parameter.key] = Math.max(parameter.min, value);
                 })}
               />
