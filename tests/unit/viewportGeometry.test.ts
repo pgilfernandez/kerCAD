@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { constrainViewportAxisDrag, constrainViewportResizeDimensions, coplanarFaceRegion, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, viewportDimensionsForHandle } from "@/lib/viewportGeometry";
+import { constrainViewportAxisDrag, constrainViewportResizeDimensions, coplanarFaceRegion, finalReferenceWireframeVisible, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, viewportDimensionsForHandle } from "@/lib/viewportGeometry";
 
 describe("workplane face centroids", () => {
   it("uses the area-weighted centroid of an irregular coplanar face", () => {
@@ -63,6 +63,15 @@ describe("operation preview styles", () => {
     expect(operationPreviewStyle("add", true)).toEqual({ fillOpacity: null, wireframe: true });
     expect(operationPreviewStyle("hole", true)).toEqual({ fillOpacity: null, wireframe: true });
     expect(operationPreviewStyle("common", true)).toEqual({ fillOpacity: null, wireframe: true });
+  });
+});
+
+describe("final reference wireframes", () => {
+  it("shows all outlines without a selection and only selected object outlines otherwise", () => {
+    expect(finalReferenceWireframeVisible("object-a", [])).toBe(true);
+    expect(finalReferenceWireframeVisible("object-a", ["object-a", "object-c"])).toBe(true);
+    expect(finalReferenceWireframeVisible("object-b", ["object-a", "object-c"])).toBe(false);
+    expect(finalReferenceWireframeVisible(null, ["object-a"])).toBe(false);
   });
 });
 

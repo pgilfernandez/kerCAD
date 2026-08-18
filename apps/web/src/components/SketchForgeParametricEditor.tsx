@@ -273,6 +273,10 @@ export function SketchForgeParametricEditor() {
   const selectedBox = useMemo(() => modelSelection.length === 1 ? (selectedOperationId ? viewportSelectionForFeature(document, selectedOperationId) : viewportSelectionForObject(document, selectedObjectId)) : null, [document, modelSelection.length, selectedObjectId, selectedOperationId]);
   const selectedOriginObjectId = modelSelection.length === 1 && selectionKind === "object" ? selectedObjectId : null;
   const selectedOperationOriginId = modelSelection.length === 1 ? selectedOperationId : null;
+  const viewportSelectedObjectIds = useMemo(() => [...new Set(modelSelection.flatMap((item) => {
+    const objectId = objectIdForFeature(document, item.id);
+    return objectId ? [objectId] : [];
+  }))], [document, modelSelection]);
   const viewportObjectOrigins = useMemo(() => document.objects.map((object) => ({
     objectId: object.id,
     visible: object.id === selectedOriginObjectId,
@@ -282,7 +286,7 @@ export function SketchForgeParametricEditor() {
   const viewportOperationOrigins = useMemo(() => selectedOperationOriginId && selectedBox ? [{
     featureId: selectedOperationOriginId,
     visible: true,
-    position: { x: selectedBox.x, y: selectedBox.y, z: selectedBox.baseZ },
+    position: selectedBox.origin ?? { x: selectedBox.x, y: selectedBox.y, z: selectedBox.baseZ },
     rotation: selectedBox.rotation3d ?? { x: 0, y: 0, z: selectedBox.rotation },
   }] : [], [selectedBox, selectedOperationOriginId]);
   const snapAmount = document.workplane.snapToGrid ? document.workplane.gridStep : 0.01;
@@ -601,6 +605,7 @@ export function SketchForgeParametricEditor() {
           editableOriginId={originEditObjectId}
           selectedObjectOriginId={selectedOriginObjectId}
           selectedOperationOriginId={selectedOperationOriginId}
+          selectedObjectIds={viewportSelectedObjectIds}
           operationContext={viewportOperationContext}
           isolatedHistoryObjectId={selectedOperationTimeline && selectedOperationTimeline.index < selectedOperationTimeline.count - 1 ? selectedOperationTimeline.objectId : null}
           color={document.color}

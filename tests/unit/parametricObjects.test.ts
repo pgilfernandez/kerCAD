@@ -65,6 +65,9 @@ describe("parametric object workflow", () => {
     expect(feature).toMatchObject({ kind: "primitive", primitive: "sphere", width: 20, depth: 20, height: 20, operation: "add" });
     expect(parametricObjectTree(document).at(-1)?.operations).toHaveLength(1);
     expect(viewportSelectionForFeature(document, result.featureId)).toMatchObject({
+      baseZ: -10,
+      center: { x: 0, y: 0, z: 0 },
+      origin: { x: 0, y: 0, z: 0 },
       width: 20,
       depth: 20,
       height: 20,

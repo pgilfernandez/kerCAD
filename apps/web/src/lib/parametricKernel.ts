@@ -48,9 +48,7 @@ function solidFromPrimitive(brep: Brep, feature: PrimitiveFeature): AnySolid {
   if (feature.width <= 0 || feature.depth <= 0 || feature.height <= 0) {
     throw new Error(`${feature.name}: todas las dimensiones deben ser mayores que cero.`);
   }
-  const solid = brep.ellipsoid(feature.width / 2, feature.depth / 2, feature.height / 2, {
-    at: [0, 0, feature.height / 2],
-  });
+  const solid = brep.ellipsoid(feature.width / 2, feature.depth / 2, feature.height / 2, { at: [0, 0, 0] });
   return applyOperationTransform(brep, solid, feature.transform);
 }
 

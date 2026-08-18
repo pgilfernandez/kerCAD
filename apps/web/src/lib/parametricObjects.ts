@@ -261,7 +261,7 @@ export function workplaneShapeForObject(document: ParametricDocument, id: string
     hole: feature.operation === "cut",
     x: world.x,
     z: world.y,
-    elevation: world.z,
+    elevation: feature.kind === "primitive" ? world.center.z - baseHeight * Math.abs(object.transform.scale.z) / 2 : world.z,
     size: Math.max(width, depth),
     width,
     depth,
@@ -297,7 +297,8 @@ export function viewportSelectionForObject(document: ParametricDocument, id: str
 function operationWorldTransform(object: ParametricObject, feature: TransformableOperation, height: number) {
   const matrix = parametricTransformMatrix(object.transform).multiply(parametricTransformMatrix({ ...feature.transform, scale: { x: 1, y: 1, z: 1 } }));
   const origin = new THREE.Vector3().applyMatrix4(matrix);
-  const center = new THREE.Vector3(0, 0, height / 2).applyMatrix4(matrix);
+  const centerOffset = feature.kind === "primitive" && feature.primitive === "sphere" ? 0 : height / 2;
+  const center = new THREE.Vector3(0, 0, centerOffset).applyMatrix4(matrix);
   const rotationMatrix = parametricTransformMatrix({ ...object.transform, scale: { x: 1, y: 1, z: 1 } })
     .multiply(parametricTransformMatrix({ ...feature.transform, scale: { x: 1, y: 1, z: 1 } }));
   const quaternion = new THREE.Quaternion();
@@ -338,12 +339,13 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
     id: feature.id,
     x: world.x,
     y: world.y,
-    baseZ: world.z,
+    baseZ: feature.kind === "primitive" ? world.center.z - baseHeight * Math.abs(object.transform.scale.z) / 2 : world.z,
     width,
     depth,
     height: baseHeight * object.transform.scale.z,
     rotation: world.rotation,
     center: world.center,
+    origin: { x: world.x, y: world.y, z: world.z },
     rotation3d: world.rotation3d,
     ...(feature.kind === "extrude" && sketch!.profile.shape === "circle" ? { resizeAspectRatio: 1 } : {}),
     shapeParameters: feature.kind === "primitive"

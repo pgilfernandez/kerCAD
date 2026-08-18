@@ -7,7 +7,7 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import { acceleratedRaycast, MeshBVH } from "three-mesh-bvh";
-import { constrainViewportAxisDrag, coplanarFaceRegion, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, type ViewportDimensionAxis } from "@/lib/viewportGeometry";
+import { constrainViewportAxisDrag, coplanarFaceRegion, finalReferenceWireframeVisible, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, type ViewportDimensionAxis } from "@/lib/viewportGeometry";
 import { AdaptiveViewportResolution, viewportPerformanceOptions, viewportRenderProfile, type ViewportRenderQuality } from "@/lib/viewportPerformance";
 import { orthographicTouchTargetWorldSize, perspectiveTouchTargetWorldSize, viewportPointerDragIntent, type ViewportPointerDragIntent } from "@/lib/viewportPointer";
 import { parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
@@ -27,6 +27,7 @@ export type ViewportSelection = {
   height: number;
   rotation: number;
   center?: { x: number; y: number; z: number };
+  origin?: { x: number; y: number; z: number };
   rotation3d?: { x: number; y: number; z: number };
   resizeAspectRatio?: number;
   shapeParameters?:
@@ -60,6 +61,7 @@ type Props = {
   editableOriginId?: string | null;
   selectedObjectOriginId?: string | null;
   selectedOperationOriginId?: string | null;
+  selectedObjectIds?: string[];
   operationContext?: { color: string; mesh: RenderMesh; opacity: number } | null;
   isolatedHistoryObjectId?: string | null;
   color: string;
@@ -186,7 +188,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onShapeParameterChange, onObjectOriginMove, onObjectAxisMove, onOperationAxisMove, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onShapeParameterChange, onObjectOriginMove, onObjectAxisMove, onOperationAxisMove, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
@@ -204,6 +206,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const originLayerRef = useRef<THREE.Group | null>(null);
   const workplaneRef = useRef<THREE.Group | null>(null);
   const selectionRootRef = useRef<THREE.Group | null>(null);
+  const selectionVisualRootRef = useRef<THREE.Group | null>(null);
   const operationContextRef = useRef<THREE.Mesh | null>(null);
   const faceHighlightRef = useRef<THREE.Mesh | null>(null);
   const resizeHitboxesRef = useRef<THREE.Mesh[]>([]);
@@ -341,14 +344,15 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     let disposed = false;
     const updateDimensionLabels = () => {
       const root = selectionRootRef.current;
+      const visualRoot = selectionVisualRootRef.current;
       const selected = selectionRef.current;
       const labels = [dimensionXRef.current, dimensionYRef.current, dimensionZRef.current];
       const visibleAxes = new Set([...dimensionPinnedRef.current, ...dimensionHoverRef.current]);
-      if (!root || !selected) {
+      if (!root || !visualRoot || !selected) {
         labels.forEach((label) => { if (label) label.style.display = "none"; });
         return;
       }
-      root.updateWorldMatrix(true, false);
+      visualRoot.updateWorldMatrix(true, false);
       const points = [
         new THREE.Vector3(0, -selected.depth / 2, -selected.height / 2),
         new THREE.Vector3(-selected.width / 2, 0, -selected.height / 2),
@@ -356,9 +360,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       ];
       const parameters = selected.shapeParameters;
       const values = [
-        dimensionValue("x") * (parameters?.shape === "sphere" ? Math.abs(root.scale.x) : parameters?.shape === "cylinder" ? Math.abs(root.scale.x) : Math.abs(root.scale.x)),
-        dimensionValue("y") * Math.abs(root.scale.y),
-        dimensionValue("z") * Math.abs(root.scale.z),
+        dimensionValue("x") * Math.abs(visualRoot.scale.x),
+        dimensionValue("y") * Math.abs(visualRoot.scale.y),
+        dimensionValue("z") * Math.abs(visualRoot.scale.z),
       ];
       const axes: ViewportDimensionAxis[] = ["x", "y", "z"];
       const names = [parameters?.shape === "box" ? "Ancho" : "Radio", "Largo", "Alto"];
@@ -371,7 +375,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           label.style.display = "none";
           return;
         }
-        const projected = root.localToWorld(point).project(camera);
+        const projected = visualRoot.localToWorld(point).project(camera);
         if (projected.z < -1 || projected.z > 1) {
           label.style.display = "none";
           return;
@@ -725,8 +729,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         return;
       }
       const root = selectionRootRef.current;
+      const visualRoot = selectionVisualRootRef.current;
       const selected = selectionRef.current;
-      if (!root || !selected) return;
+      if (!root || !visualRoot || !selected) return;
       if (interaction === "parameter" && resizeStart && resizeRootStart && pendingShapeParameter) {
         const grid = Math.max(0.01, snapRef.current);
         if (!parameterWorldToLocal) return;
@@ -741,18 +746,18 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         const ratio = visualExtent / Math.max(0.01, startExtent);
         pendingShapeParameter.value = Math.max(0.1, shapeParameterStartValue * ratio);
         root.position.copy(resizeRootStart);
-        root.scale.set(1, 1, 1);
-        if (parameter === "width") root.scale.x = ratio;
-        else if (parameter === "depth") root.scale.y = ratio;
+        visualRoot.position.set(0, 0, 0);
+        visualRoot.scale.set(1, 1, 1);
+        if (parameter === "width") visualRoot.scale.x = ratio;
+        else if (parameter === "depth") visualRoot.scale.y = ratio;
         else if (parameter === "height") {
-          root.scale.z = ratio;
-          root.position.add(new THREE.Vector3(0, 0, (visualExtent - resizeStart.height) / 2).applyQuaternion(root.quaternion));
+          visualRoot.scale.z = ratio;
+          visualRoot.position.z = (visualExtent - resizeStart.height) / 2;
         } else if (selected.shapeParameters?.shape === "sphere") {
-          root.scale.setScalar(ratio);
-          root.position.add(new THREE.Vector3(0, 0, (visualExtent - resizeStart.height) / 2).applyQuaternion(root.quaternion));
+          visualRoot.scale.setScalar(ratio);
         } else {
-          root.scale.x = ratio;
-          root.scale.y = ratio;
+          visualRoot.scale.x = ratio;
+          visualRoot.scale.y = ratio;
         }
       }
       requestRender();
@@ -791,6 +796,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         if ((completedInteraction === "origin" || completedInteraction === "axisMove") && originDragMarker && originDragStart) originDragMarker.position.copy(originDragStart);
         const selected = selectionRef.current;
         const root = selectionRootRef.current;
+        const visualRoot = selectionVisualRootRef.current;
         if (selected && root) {
           root.position.set(selected.center?.x ?? selected.x, selected.center?.y ?? selected.y, selected.center?.z ?? selected.baseZ + selected.height / 2);
           root.quaternion.setFromEuler(new THREE.Euler(
@@ -800,6 +806,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
             "ZYX",
           ));
           root.scale.set(1, 1, 1);
+          visualRoot?.position.set(0, 0, 0);
+          visualRoot?.scale.set(1, 1, 1);
           requestRender();
         }
       } else {
@@ -1099,7 +1107,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const inspectOperation = Boolean(selection?.operationPreview);
     for (const child of group.children) {
       if (!(child instanceof THREE.LineSegments) || !child.userData.finalReferenceWireframe) continue;
-      child.visible = true;
+      const objectId = typeof child.userData.objectId === "string" ? child.userData.objectId : null;
+      child.visible = finalReferenceWireframeVisible(objectId, selectedObjectIds);
       const materials = Array.isArray(child.material) ? child.material : [child.material];
       for (const material of materials) {
         material.depthTest = !inspectOperation;
@@ -1107,7 +1116,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       }
     }
     invalidateRef.current();
-  }, [selection?.operationPreview]);
+  }, [selectedObjectIds, selection?.operationPreview]);
 
   useEffect(() => {
     const group = modelRef.current;
@@ -1175,6 +1184,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       model.remove(previous);
     }
     selectionRootRef.current = null;
+    selectionVisualRootRef.current = null;
     resizeHitboxesRef.current = [];
     if (!selection) {
       invalidateRef.current();
@@ -1189,9 +1199,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       "ZYX",
     ));
     root.quaternion.copy(selectionQuaternion);
+    const visualRoot = new THREE.Group();
+    root.add(visualRoot);
     const previewRoot = new THREE.Group();
     previewRoot.quaternion.identity();
-    root.add(previewRoot);
+    visualRoot.add(previewRoot);
     if (selection.operationPreview) {
       const operationPreview = selection.operationPreview;
       const previewStyle = operationPreviewStyle(operationPreview.mode, operationPreview.historical);
@@ -1232,14 +1244,14 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         new THREE.LineBasicMaterial({ color: "#d6a600", depthTest: false, transparent: true, opacity: 0.9 }),
       );
       guide.renderOrder = 21;
-      root.add(guide);
+      visualRoot.add(guide);
       const handle = new THREE.Mesh(
         new THREE.SphereGeometry(2, 18, 12),
         new THREE.MeshBasicMaterial({ color: "#f2c94c", depthTest: false }),
       );
       handle.position.copy(end);
       handle.renderOrder = 22;
-      root.add(handle);
+      visualRoot.add(handle);
       const target = new THREE.Mesh(
         new THREE.SphereGeometry(5, 12, 8),
         new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
@@ -1248,7 +1260,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       target.userData.shapeParameter = parameter;
       target.userData.dimensionAxis = axis;
       target.userData.hitTargetSize = 10;
-      root.add(target);
+      visualRoot.add(target);
       resizeHitboxesRef.current.push(target);
     };
     if (parameters?.shape === "box") {
@@ -1263,6 +1275,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     }
     model.add(root);
     selectionRootRef.current = root;
+    selectionVisualRootRef.current = visualRoot;
     invalidateRef.current();
   }, [selection, projection, renderQuality, workplane.normal.x, workplane.normal.y, workplane.normal.z, workplane.xAxis.x, workplane.xAxis.y, workplane.xAxis.z, workplane.yAxis.x, workplane.yAxis.y, workplane.yAxis.z]);
 

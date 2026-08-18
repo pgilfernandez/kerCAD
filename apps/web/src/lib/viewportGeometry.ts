@@ -158,6 +158,10 @@ export function operationPreviewStyle(_mode: "add" | "hole" | "common", _histori
   return { fillOpacity: null, wireframe: true };
 }
 
+export function finalReferenceWireframeVisible(objectId: string | null, selectedObjectIds: readonly string[]) {
+  return selectedObjectIds.length === 0 || (objectId !== null && selectedObjectIds.includes(objectId));
+}
+
 export function formatViewportDimension(value: number) {
   if (!Number.isFinite(value)) return "0";
   return Number(value.toFixed(2)).toString();
