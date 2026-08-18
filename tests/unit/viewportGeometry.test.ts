@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { constrainViewportAxisDrag, constrainViewportResizeDimensions, coplanarFaceRegion, finalReferenceWireframeVisible, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, viewportDimensionsForHandle } from "@/lib/viewportGeometry";
+import { constrainViewportAxisDrag, constrainViewportResizeDimensions, coplanarFaceRegion, finalReferenceWireframeDepthTest, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, viewportDimensionsForHandle } from "@/lib/viewportGeometry";
 
 describe("workplane face centroids", () => {
   it("uses the area-weighted centroid of an irregular coplanar face", () => {
@@ -67,11 +67,11 @@ describe("operation preview styles", () => {
 });
 
 describe("final reference wireframes", () => {
-  it("shows all outlines without a selection and only selected object outlines otherwise", () => {
-    expect(finalReferenceWireframeVisible("object-a", [])).toBe(true);
-    expect(finalReferenceWireframeVisible("object-a", ["object-a", "object-c"])).toBe(true);
-    expect(finalReferenceWireframeVisible("object-b", ["object-a", "object-c"])).toBe(false);
-    expect(finalReferenceWireframeVisible(null, ["object-a"])).toBe(false);
+  it("overlays selected outlines while keeping other outlines depth-tested", () => {
+    expect(finalReferenceWireframeDepthTest("object-a", [])).toBe(true);
+    expect(finalReferenceWireframeDepthTest("object-a", ["object-a", "object-c"])).toBe(false);
+    expect(finalReferenceWireframeDepthTest("object-b", ["object-a", "object-c"])).toBe(true);
+    expect(finalReferenceWireframeDepthTest(null, ["object-a"])).toBe(true);
   });
 });
 

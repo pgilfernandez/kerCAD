@@ -7,7 +7,7 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import { acceleratedRaycast, MeshBVH } from "three-mesh-bvh";
-import { constrainViewportAxisDrag, coplanarFaceRegion, finalReferenceWireframeVisible, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, type ViewportDimensionAxis } from "@/lib/viewportGeometry";
+import { constrainViewportAxisDrag, coplanarFaceRegion, finalReferenceWireframeDepthTest, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, type ViewportDimensionAxis } from "@/lib/viewportGeometry";
 import { AdaptiveViewportResolution, viewportPerformanceOptions, viewportRenderProfile, type ViewportRenderQuality } from "@/lib/viewportPerformance";
 import { orthographicTouchTargetWorldSize, perspectiveTouchTargetWorldSize, viewportPointerDragIntent, type ViewportPointerDragIntent } from "@/lib/viewportPointer";
 import { parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
@@ -1071,7 +1071,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       const edges = new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({
         color: "#000000",
         linewidth: 1,
-        depthTest: !selectionRef.current?.operationPreview,
+        depthTest: true,
       }));
       if (item.objectId) edges.userData.objectId = item.objectId;
       edges.userData.renderId = item.renderId;
@@ -1104,19 +1104,18 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   useEffect(() => {
     const group = modelRef.current;
     if (!group) return;
-    const inspectOperation = Boolean(selection?.operationPreview);
     for (const child of group.children) {
       if (!(child instanceof THREE.LineSegments) || !child.userData.finalReferenceWireframe) continue;
       const objectId = typeof child.userData.objectId === "string" ? child.userData.objectId : null;
-      child.visible = finalReferenceWireframeVisible(objectId, selectedObjectIds);
+      child.visible = true;
       const materials = Array.isArray(child.material) ? child.material : [child.material];
       for (const material of materials) {
-        material.depthTest = !inspectOperation;
+        material.depthTest = finalReferenceWireframeDepthTest(objectId, selectedObjectIds);
         material.needsUpdate = true;
       }
     }
     invalidateRef.current();
-  }, [selectedObjectIds, selection?.operationPreview]);
+  }, [selectedObjectIds]);
 
   useEffect(() => {
     const group = modelRef.current;
