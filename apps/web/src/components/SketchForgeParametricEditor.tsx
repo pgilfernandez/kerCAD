@@ -45,9 +45,7 @@ import {
 import {
   addPrimitiveToSelection,
   alignParametricSelections,
-  applyOperationWorldRotation,
   applyParametricSelectionWorldDelta,
-  applyParametricSelectionWorkplaneRotation,
   applyWorkplanePatch,
   deleteParametricObject,
   deleteParametricFeature,
@@ -56,8 +54,7 @@ import {
   lastOperationForObject,
   moveParametricObjectOrigin,
   objectIdForFeature,
-  resizeParametricSelection,
-  resizeParametricHeight,
+  updateParametricShapeParameter,
   viewportSelectionForFeature,
   viewportSelectionForObject,
   workplaneShapeForObject,
@@ -613,28 +610,9 @@ export function SketchForgeParametricEditor() {
           renderQuality={renderQuality}
           selection={originEditObjectId || placingWorkplane ? null : selectedBox}
           snap={snapAmount}
-          onSelectionMove={(delta) => {
-            if (!selectedId) return;
-            mutate((draft) => applyParametricSelectionWorldDelta(draft, selectedId, selectionKind, delta));
-          }}
-          onSelectionRotate={(rotation) => mutate((draft) => {
-            if (selectedOperationId) applyOperationWorldRotation(draft, selectedOperationId, rotation);
-            else if (selectedObjectId) applyWorkplanePatch(draft, selectedObjectId, { rotation });
-          })}
-          onSelectionRotateRelative={(deltaDegrees, axis) => {
-            if (!selectedId) return;
-            mutate((draft) => applyParametricSelectionWorkplaneRotation(draft, selectedId, selectionKind, axis, deltaDegrees));
-          }}
-          onSelectionResize={(delta, width, depth) => {
-            if (!selectedId) return;
-            mutate((draft) => {
-              resizeParametricSelection(draft, selectedId, selectionKind, selectedBox?.x ?? 0, selectedBox?.y ?? 0, width, depth);
-              applyParametricSelectionWorldDelta(draft, selectedId, selectionKind, delta);
-            });
-          }}
-          onSelectionHeight={(height) => {
-            if (!selectedId) return;
-            mutate((draft) => resizeParametricHeight(draft, selectedId, selectionKind, height));
+          onShapeParameterChange={(parameter, value) => {
+            if (!selectedOperationId) return;
+            mutate((draft) => updateParametricShapeParameter(draft, selectedOperationId, parameter, value));
           }}
           onObjectOriginMove={(objectId, position) => mutate((draft) => moveParametricObjectOrigin(draft, objectId, position))}
           onObjectAxisMove={(objectId, position) => mutate((draft) => {

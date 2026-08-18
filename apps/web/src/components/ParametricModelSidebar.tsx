@@ -315,7 +315,7 @@ function ParametricFeatureInspector({
                 <BoundedNumberField label="Profundidad" value={primitiveSketch.profile.depth} min={0.01} max={200} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} />
               </>
             ) : primitiveSketch?.profile.shape === "circle" ? (
-              <BoundedNumberField label="Diámetro" value={primitiveSketch.profile.diameter} min={0.01} max={200} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value); })} />
+              <BoundedNumberField label="Radio" value={primitiveSketch.profile.diameter / 2} min={0.01} max={100} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value * 2); })} />
             ) : null}
             <BoundedNumberField label="Altura" value={feature.distance} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.distance = Math.max(0.01, value); })} />
           </div>
@@ -338,12 +338,17 @@ function ParametricFeatureInspector({
               <BoundedNumberField
                 key={parameter.key}
                 label={parameter.label}
-                value={feature[parameter.key as "width" | "depth" | "height"]}
+                value={parameter.key === "radius" ? feature.width / 2 : feature[parameter.key as "width" | "depth" | "height"]}
                 min={parameter.min}
                 max={parameter.max}
                 step={parameter.step}
                 onChange={(value) => onUpdate((draft) => {
-                  if (draft.kind === "primitive" && parameter.key !== "diameter") draft[parameter.key] = Math.max(parameter.min, value);
+                  if (draft.kind !== "primitive") return;
+                  if (parameter.key === "radius") {
+                    draft.width = value * 2;
+                    draft.depth = value * 2;
+                    draft.height = value * 2;
+                  } else if (parameter.key !== "diameter") draft[parameter.key] = Math.max(parameter.min, value);
                 })}
               />
             ))}

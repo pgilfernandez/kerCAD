@@ -7,7 +7,7 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import { acceleratedRaycast, MeshBVH } from "three-mesh-bvh";
-import { constrainViewportAxisDrag, constrainViewportResizeDimensions, coplanarFaceRegion, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, viewportDimensionsForHandle, type ViewportDimensionAxis } from "@/lib/viewportGeometry";
+import { constrainViewportAxisDrag, coplanarFaceRegion, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, type ViewportDimensionAxis } from "@/lib/viewportGeometry";
 import { AdaptiveViewportResolution, viewportPerformanceOptions, viewportRenderProfile, type ViewportRenderQuality } from "@/lib/viewportPerformance";
 import { orthographicTouchTargetWorldSize, perspectiveTouchTargetWorldSize, viewportPointerDragIntent, type ViewportPointerDragIntent } from "@/lib/viewportPointer";
 import { parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
@@ -29,6 +29,10 @@ export type ViewportSelection = {
   center?: { x: number; y: number; z: number };
   rotation3d?: { x: number; y: number; z: number };
   resizeAspectRatio?: number;
+  shapeParameters?:
+    | { shape: "box"; width: number; depth: number; height: number }
+    | { shape: "cylinder"; radius: number; height: number }
+    | { shape: "sphere"; radius: number };
   operationPreview?: {
     shape: "box" | "cylinder" | "sphere";
     mode: "add" | "hole" | "common";
@@ -65,11 +69,7 @@ type Props = {
   renderQuality?: ViewportRenderQuality;
   selection?: ViewportSelection | null;
   snap?: number;
-  onSelectionMove?: (delta: { x: number; y: number; z: number }) => void;
-  onSelectionRotate?: (rotation: number) => void;
-  onSelectionRotateRelative?: (deltaDegrees: number, axis: { x: number; y: number; z: number }) => void;
-  onSelectionResize?: (delta: { x: number; y: number; z: number }, width: number, depth: number) => void;
-  onSelectionHeight?: (height: number) => void;
+  onShapeParameterChange?: (parameter: "width" | "depth" | "height" | "radius", value: number) => void;
   onObjectOriginMove?: (objectId: string, position: { x: number; y: number; z: number }) => void;
   onObjectAxisMove?: (objectId: string, position: { x: number; y: number; z: number }) => void;
   onOperationAxisMove?: (featureId: string, delta: { x: number; y: number; z: number }) => void;
@@ -186,13 +186,12 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onSelectionMove, onSelectionRotate, onSelectionRotateRelative, onSelectionResize, onSelectionHeight, onObjectOriginMove, onObjectAxisMove, onOperationAxisMove, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onShapeParameterChange, onObjectOriginMove, onObjectAxisMove, onOperationAxisMove, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
   const dimensionYRef = useRef<HTMLInputElement>(null);
   const dimensionZRef = useRef<HTMLInputElement>(null);
-  const dimensionRotationRef = useRef<HTMLInputElement>(null);
   const dimensionPinnedRef = useRef(new Set<ViewportDimensionAxis>());
   const dimensionHoverRef = useRef(new Set<ViewportDimensionAxis>());
   const dimensionHoverTimerRef = useRef<number | null>(null);
@@ -207,15 +206,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const selectionRootRef = useRef<THREE.Group | null>(null);
   const operationContextRef = useRef<THREE.Mesh | null>(null);
   const faceHighlightRef = useRef<THREE.Mesh | null>(null);
-  const selectionHitboxRef = useRef<THREE.Mesh | null>(null);
-  const rotationHitboxRef = useRef<THREE.Mesh | null>(null);
   const resizeHitboxesRef = useRef<THREE.Mesh[]>([]);
   const selectionRef = useRef(selection);
-  const moveRef = useRef(onSelectionMove);
-  const rotateRef = useRef(onSelectionRotate);
-  const rotateRelativeRef = useRef(onSelectionRotateRelative);
-  const resizeRef = useRef(onSelectionResize);
-  const heightRef = useRef(onSelectionHeight);
+  const shapeParameterRef = useRef(onShapeParameterChange);
   const originMoveRef = useRef(onObjectOriginMove);
   const objectAxisMoveRef = useRef(onObjectAxisMove);
   const operationAxisMoveRef = useRef(onOperationAxisMove);
@@ -243,11 +236,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       dimensionHoverRef.current.clear();
     }
   }, [selection]);
-  useEffect(() => { moveRef.current = onSelectionMove; }, [onSelectionMove]);
-  useEffect(() => { rotateRef.current = onSelectionRotate; }, [onSelectionRotate]);
-  useEffect(() => { rotateRelativeRef.current = onSelectionRotateRelative; }, [onSelectionRotateRelative]);
-  useEffect(() => { resizeRef.current = onSelectionResize; }, [onSelectionResize]);
-  useEffect(() => { heightRef.current = onSelectionHeight; }, [onSelectionHeight]);
+  useEffect(() => { shapeParameterRef.current = onShapeParameterChange; }, [onShapeParameterChange]);
   useEffect(() => { originMoveRef.current = onObjectOriginMove; }, [onObjectOriginMove]);
   useEffect(() => { objectAxisMoveRef.current = onObjectAxisMove; }, [onObjectAxisMove]);
   useEffect(() => { operationAxisMoveRef.current = onOperationAxisMove; }, [onOperationAxisMove]);
@@ -282,9 +271,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const dimensionValue = (axis: ViewportDimensionAxis) => {
     const selected = selectionRef.current;
     if (!selected) return 0;
-    if (axis === "x") return selected.width;
-    if (axis === "y") return selected.depth;
-    if (axis === "z") return selected.height;
+    const parameters = selected.shapeParameters;
+    if (axis === "x") return parameters?.shape === "box" ? parameters.width : parameters ? parameters.radius : selected.width;
+    if (axis === "y") return parameters?.shape === "box" ? parameters.depth : selected.depth;
+    if (axis === "z") return parameters && parameters.shape !== "sphere" ? parameters.height : selected.height;
     return selected.rotation;
   };
 
@@ -303,10 +293,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       invalidateRef.current();
       return;
     }
-    if (axis === "rotation") rotateRef.current?.(value);
-    else if (value > 0 && axis === "z") heightRef.current?.(value);
-    else if (value > 0 && axis === "x") resizeRef.current?.({ x: 0, y: 0, z: 0 }, value, selected.depth);
-    else if (value > 0 && axis === "y") resizeRef.current?.({ x: 0, y: 0, z: 0 }, selected.width, value);
+    const parameters = selected.shapeParameters;
+    if (value > 0 && parameters) {
+      const parameter = axis === "x" ? parameters.shape === "box" ? "width" : "radius" : axis === "y" ? "depth" : axis === "z" ? "height" : null;
+      if (parameter) shapeParameterRef.current?.(parameter, value);
+    }
     input.value = formatViewportDimension(dimensionValue(axis));
     dimensionPinnedRef.current.add(axis);
     invalidateRef.current();
@@ -351,7 +342,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const updateDimensionLabels = () => {
       const root = selectionRootRef.current;
       const selected = selectionRef.current;
-      const labels = [dimensionXRef.current, dimensionYRef.current, dimensionZRef.current, dimensionRotationRef.current];
+      const labels = [dimensionXRef.current, dimensionYRef.current, dimensionZRef.current];
       const visibleAxes = new Set([...dimensionPinnedRef.current, ...dimensionHoverRef.current]);
       if (!root || !selected) {
         labels.forEach((label) => { if (label) label.style.display = "none"; });
@@ -362,18 +353,17 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         new THREE.Vector3(0, -selected.depth / 2, -selected.height / 2),
         new THREE.Vector3(-selected.width / 2, 0, -selected.height / 2),
         new THREE.Vector3(selected.width / 2, selected.depth / 2, 0),
-        new THREE.Vector3(Math.max(selected.width, selected.depth) * 0.7 + 6, 0, -selected.height / 2 + 0.2),
       ];
+      const parameters = selected.shapeParameters;
       const values = [
-        selected.width * Math.abs(root.scale.x),
-        selected.depth * Math.abs(root.scale.y),
-        selected.height * Math.abs(root.scale.z),
-        THREE.MathUtils.radToDeg(root.rotation.z),
+        dimensionValue("x") * (parameters?.shape === "sphere" ? Math.abs(root.scale.x) : parameters?.shape === "cylinder" ? Math.abs(root.scale.x) : Math.abs(root.scale.x)),
+        dimensionValue("y") * Math.abs(root.scale.y),
+        dimensionValue("z") * Math.abs(root.scale.z),
       ];
-      const axes: ViewportDimensionAxis[] = ["x", "y", "z", "rotation"];
-      const names = ["X", "Y", "Z", "R"];
-      const units = ["mm", "mm", "mm", "°"];
-      const offsets = [[0, 18], [-24, 0], [22, 0], [20, 18]];
+      const axes: ViewportDimensionAxis[] = ["x", "y", "z"];
+      const names = [parameters?.shape === "box" ? "Ancho" : "Radio", "Largo", "Alto"];
+      const units = ["mm", "mm", "mm"];
+      const offsets = [[0, 18], [-24, 0], [22, 0]];
       points.forEach((point, index) => {
         const label = labels[index];
         if (!label) return;
@@ -453,18 +443,13 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const pointer = new THREE.Vector2();
     const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     const dragPoint = new THREE.Vector3();
-    let interaction: "move" | "rotate" | "resize" | "height" | "origin" | "axisMove" | null = null;
-    let pendingPosition: { x: number; y: number; z: number } | null = null;
-    let pendingRotation: number | null = null;
-    let pendingRotationDelta: number | null = null;
-    let pendingResize: { delta: { x: number; y: number; z: number }; width: number; depth: number } | null = null;
-    let pendingHeight: number | null = null;
-    let rotationPointerStart = 0;
-    let rotationRootStart: THREE.Quaternion | null = null;
-    let resizeAxes = { x: 0, y: 0 };
+    let interaction: "parameter" | "origin" | "axisMove" | null = null;
+    let pendingShapeParameter: { parameter: "width" | "depth" | "height" | "radius"; value: number } | null = null;
+    let shapeParameterStartValue = 0;
+    let parameterPointerOffset = 0;
+    let parameterWorldToLocal: THREE.Matrix4 | null = null;
     let resizeStart: ViewportSelection | null = null;
     let resizeRootStart: THREE.Vector3 | null = null;
-    let heightBasePoint: THREE.Vector3 | null = null;
     let interactionDimensions: ViewportDimensionAxis[] = [];
     let originDragAxis: "x" | "y" | "z" | "xy" | null = null;
     let originDragStart: THREE.Vector3 | null = null;
@@ -473,8 +458,6 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     let pendingOrigin: { objectId: string; position: { x: number; y: number; z: number } } | null = null;
     let pendingAxisMove: { targetId: string; targetKind: "object" | "feature"; start: { x: number; y: number; z: number }; position: { x: number; y: number; z: number } } | null = null;
     let axisMoveRootStart: THREE.Vector3 | null = null;
-    let moveRootStart: THREE.Vector3 | null = null;
-    let movePointerStart: THREE.Vector3 | null = null;
     let pickCandidate: { pointerId: number; pointerType: string; x: number; y: number; dragIntent: ViewportPointerDragIntent } | null = null;
     const updateSelectionBox = (candidate: NonNullable<typeof pickCandidate>, clientX: number, clientY: number) => {
       const box = selectionBoxRef.current;
@@ -540,16 +523,6 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       const bodies = modelGroup.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh && typeof child.userData.objectId === "string");
       return raycaster.intersectObjects(bodies, false)[0] ?? null;
     };
-    const workplaneAngle = (pointInScene: THREE.Vector3, centerInScene: THREE.Vector3) => {
-      const point = modelGroup.worldToLocal(pointInScene.clone());
-      const center = modelGroup.worldToLocal(centerInScene.clone());
-      const delta = point.sub(center);
-      const plane = activeWorkplaneRef.current;
-      return Math.atan2(
-        delta.dot(new THREE.Vector3(plane.yAxis.x, plane.yAxis.y, plane.yAxis.z)),
-        delta.dot(new THREE.Vector3(plane.xAxis.x, plane.xAxis.y, plane.xAxis.z)),
-      ) * 180 / Math.PI;
-    };
     const updateWorkplaneFaceHighlight = () => {
       const hit = faceAtPointer();
       faceHighlight.geometry.dispose();
@@ -572,7 +545,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           : perspectiveTouchTargetWorldSize(camera.position.distanceTo(controls.target), camera.fov, renderer.domElement.clientHeight);
         targetSize = Math.min(18, Math.max(8, targetSize));
       }
-      for (const target of [...resizeHitboxesRef.current, rotationHitboxRef.current].filter((item): item is THREE.Mesh => Boolean(item))) {
+      for (const target of resizeHitboxesRef.current) {
         const baseSize = Number(target.userData.hitTargetSize) || 1;
         const scale = pointerType === "touch" ? Math.max(1, targetSize / baseSize) : 1;
         target.scale.setScalar(scale);
@@ -607,14 +580,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       updateManipulatorHitTargets(event.pointerType);
       const resizeHit = raycaster.intersectObjects(resizeHitboxesRef.current, false)[0];
       if (resizeHit) {
-        return viewportDimensionsForHandle(
-          Number(resizeHit.object.userData.resizeX),
-          Number(resizeHit.object.userData.resizeY),
-          Boolean(resizeHit.object.userData.resizeZ),
-        );
+        const axis = resizeHit.object.userData.dimensionAxis;
+        return axis === "x" || axis === "y" || axis === "z" ? [axis] : [];
       }
-      const rotationHitbox = rotationHitboxRef.current;
-      return rotationHitbox && raycaster.intersectObject(rotationHitbox, false).length > 0 ? ["rotation"] : [];
+      return [];
     };
     const onPointerDown = (event: PointerEvent) => {
       if (event.button !== 0) return;
@@ -636,8 +605,6 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         return;
       }
       updateManipulatorHitTargets(event.pointerType);
-      const hitbox = selectionHitboxRef.current;
-      const rotationHitbox = rotationHitboxRef.current;
       const resizeHitboxes = resizeHitboxesRef.current;
       const selected = selectionRef.current;
       setPointer(event);
@@ -660,56 +627,41 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           }
         }
       }
-      if (!interaction && hitbox && selected) {
-        const center = new THREE.Vector3();
-        hitbox.getWorldPosition(center);
+      if (!interaction && selected) {
+        const root = selectionRootRef.current;
         const resizeHit = raycaster.intersectObjects(resizeHitboxes, false)[0];
-        if (resizeHit && resizeHit.object.userData.resizeZ) {
-          const planeNormalCad = activeWorkplaneRef.current.normal;
-          const axis = new THREE.Vector3(planeNormalCad.x, planeNormalCad.z, -planeNormalCad.y).normalize();
+        const parameter = resizeHit?.object.userData.shapeParameter as "width" | "depth" | "height" | "radius" | undefined;
+        if (root && resizeHit && parameter) {
+          const center = root.getWorldPosition(new THREE.Vector3());
+          const rootQuaternion = root.getWorldQuaternion(new THREE.Quaternion());
+          const localAxis = parameter === "depth" ? new THREE.Vector3(0, 1, 0) : parameter === "height" ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(1, 0, 0);
+          const axis = localAxis.applyQuaternion(rootQuaternion).normalize();
           const cameraDirection = camera.getWorldDirection(new THREE.Vector3()).normalize();
-          const normal = cameraDirection.clone().addScaledVector(axis, -cameraDirection.dot(axis));
-          if (normal.lengthSq() < 0.0001) normal.crossVectors(axis, new THREE.Vector3(1, 0, 0));
-          if (normal.lengthSq() < 0.0001) normal.crossVectors(axis, new THREE.Vector3(0, 0, 1));
-          dragPlane.setFromNormalAndCoplanarPoint(normal.normalize(), center);
+          const planeNormal = parameter === "height"
+            ? cameraDirection.clone().addScaledVector(axis, -cameraDirection.dot(axis))
+            : new THREE.Vector3(0, 0, 1).applyQuaternion(rootQuaternion);
+          if (planeNormal.lengthSq() < 0.0001) planeNormal.crossVectors(axis, new THREE.Vector3(1, 0, 0));
+          if (planeNormal.lengthSq() < 0.0001) planeNormal.crossVectors(axis, new THREE.Vector3(0, 1, 0));
+          dragPlane.setFromNormalAndCoplanarPoint(planeNormal.normalize(), center);
           if (raycaster.ray.intersectPlane(dragPlane, dragPoint)) {
-            interaction = "height";
-            interactionDimensions = ["z"];
+            interaction = "parameter";
+            interactionDimensions = [parameter === "depth" ? "y" : parameter === "height" ? "z" : "x"];
             resizeStart = { ...selected };
-            pendingHeight = selected.height;
-            const normalCad = new THREE.Vector3(planeNormalCad.x, planeNormalCad.y, planeNormalCad.z).normalize();
-            const rootPosition = selectionRootRef.current?.position.clone() ?? new THREE.Vector3(selected.x, selected.y, selected.baseZ + selected.height / 2);
-            heightBasePoint = rootPosition.addScaledVector(normalCad, -selected.height / 2);
-          }
-        } else {
-          const planeNormal = activeWorkplaneRef.current.normal;
-          dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(planeNormal.x, planeNormal.z, -planeNormal.y).normalize(), center);
-        }
-        if (!interaction && raycaster.ray.intersectPlane(dragPlane, dragPoint)) {
-          if (rotationHitbox && raycaster.intersectObject(rotationHitbox, false).length > 0) {
-            interaction = "rotate";
-            interactionDimensions = ["rotation"];
-            rotationPointerStart = workplaneAngle(dragPoint, center);
-            rotationRootStart = selectionRootRef.current?.quaternion.clone() ?? null;
-            pendingRotationDelta = 0;
-            pendingRotation = null;
-          } else {
-            if (resizeHit) {
-              interaction = "resize";
-              resizeAxes = { x: Number(resizeHit.object.userData.resizeX), y: Number(resizeHit.object.userData.resizeY) };
-              interactionDimensions = viewportDimensionsForHandle(resizeAxes.x, resizeAxes.y);
-              resizeStart = { ...selected };
-              resizeRootStart = selectionRootRef.current?.position.clone() ?? null;
-              pendingResize = { delta: { x: 0, y: 0, z: 0 }, width: selected.width, depth: selected.depth };
-            }
-          }
-          if (!interaction && raycaster.intersectObject(hitbox, false).length > 0) {
-            const root = selectionRootRef.current;
-            if (!root) return;
-            interaction = "move";
-            moveRootStart = root.position.clone();
-            movePointerStart = modelGroup.worldToLocal(dragPoint.clone());
-            pendingPosition = { x: 0, y: 0, z: 0 };
+            resizeRootStart = root.position.clone();
+            root.updateWorldMatrix(true, false);
+            parameterWorldToLocal = root.matrixWorld.clone().invert();
+            const localPointer = dragPoint.clone().applyMatrix4(parameterWorldToLocal);
+            const visualHalfExtent = parameter === "depth" ? selected.depth / 2 : parameter === "height" ? selected.height / 2 : selected.width / 2;
+            const pointerCoordinate = parameter === "depth" ? localPointer.y : parameter === "height" ? localPointer.z : localPointer.x;
+            parameterPointerOffset = pointerCoordinate - visualHalfExtent;
+            const values = selected.shapeParameters;
+            const value = parameter === "width" && values?.shape === "box" ? values.width
+              : parameter === "depth" && values?.shape === "box" ? values.depth
+                : parameter === "height" && values && values.shape !== "sphere" ? values.height
+                  : parameter === "radius" && values && values.shape !== "box" ? values.radius
+                    : 0;
+            pendingShapeParameter = { parameter, value };
+            shapeParameterStartValue = value;
           }
         }
       }
@@ -775,72 +727,33 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       const root = selectionRootRef.current;
       const selected = selectionRef.current;
       if (!root || !selected) return;
-      if (interaction === "move") {
+      if (interaction === "parameter" && resizeStart && resizeRootStart && pendingShapeParameter) {
         const grid = Math.max(0.01, snapRef.current);
-        if (!moveRootStart || !movePointerStart) return;
-        const pointerCad = modelGroup.worldToLocal(dragPoint.clone());
-        const rawTarget = moveRootStart.clone().add(pointerCad.sub(movePointerStart));
-        const activePlane = activeWorkplaneRef.current;
-        const origin = new THREE.Vector3(activePlane.origin.x, activePlane.origin.y, activePlane.origin.z);
-        const xAxis = new THREE.Vector3(activePlane.xAxis.x, activePlane.xAxis.y, activePlane.xAxis.z);
-        const yAxis = new THREE.Vector3(activePlane.yAxis.x, activePlane.yAxis.y, activePlane.yAxis.z);
-        const normal = new THREE.Vector3(activePlane.normal.x, activePlane.normal.y, activePlane.normal.z);
-        const relative = rawTarget.clone().sub(origin);
-        const x = Math.round(relative.dot(xAxis) / grid) * grid;
-        const y = Math.round(relative.dot(yAxis) / grid) * grid;
-        const normalDistance = moveRootStart.clone().sub(origin).dot(normal);
-        const target = origin.clone().addScaledVector(xAxis, x).addScaledVector(yAxis, y).addScaledVector(normal, normalDistance);
-        const delta = target.clone().sub(moveRootStart);
-        pendingPosition = { x: delta.x, y: delta.y, z: delta.z };
-        root.position.copy(target);
-      } else if (interaction === "rotate") {
-        const center = new THREE.Vector3();
-        root.getWorldPosition(center);
-        const pointerAngle = workplaneAngle(dragPoint, center);
-        let delta = pointerAngle - rotationPointerStart;
-        delta = ((delta + 540) % 360) - 180;
-        pendingRotationDelta = Math.round(delta / 5) * 5;
-        if (rotationRootStart) {
-          const plane = activeWorkplaneRef.current;
-          const axis = new THREE.Vector3(plane.normal.x, plane.normal.y, plane.normal.z).normalize();
-          root.quaternion.copy(new THREE.Quaternion().setFromAxisAngle(axis, THREE.MathUtils.degToRad(pendingRotationDelta)).multiply(rotationRootStart));
+        if (!parameterWorldToLocal) return;
+        const localPointer = dragPoint.clone().applyMatrix4(parameterWorldToLocal);
+        const parameter = pendingShapeParameter.parameter;
+        const pointerCoordinate = parameter === "depth" ? localPointer.y : parameter === "height" ? localPointer.z : localPointer.x;
+        const adjusted = pointerCoordinate - parameterPointerOffset;
+        const visualExtent = parameter === "height"
+          ? Math.max(grid, Math.round((adjusted + resizeStart.height / 2) / grid) * grid)
+          : Math.max(grid, Math.round(Math.abs(adjusted) * 2 / grid) * grid);
+        const startExtent = parameter === "depth" ? resizeStart.depth : parameter === "height" ? resizeStart.height : resizeStart.width;
+        const ratio = visualExtent / Math.max(0.01, startExtent);
+        pendingShapeParameter.value = Math.max(0.1, shapeParameterStartValue * ratio);
+        root.position.copy(resizeRootStart);
+        root.scale.set(1, 1, 1);
+        if (parameter === "width") root.scale.x = ratio;
+        else if (parameter === "depth") root.scale.y = ratio;
+        else if (parameter === "height") {
+          root.scale.z = ratio;
+          root.position.add(new THREE.Vector3(0, 0, (visualExtent - resizeStart.height) / 2).applyQuaternion(root.quaternion));
+        } else if (selected.shapeParameters?.shape === "sphere") {
+          root.scale.setScalar(ratio);
+          root.position.add(new THREE.Vector3(0, 0, (visualExtent - resizeStart.height) / 2).applyQuaternion(root.quaternion));
+        } else {
+          root.scale.x = ratio;
+          root.scale.y = ratio;
         }
-      } else if (interaction === "resize" && resizeStart && resizeRootStart) {
-        const grid = Math.max(0.01, snapRef.current);
-        const pointerCad = modelGroup.worldToLocal(dragPoint.clone());
-        const pointerDelta = pointerCad.sub(resizeRootStart);
-        const plane = activeWorkplaneRef.current;
-        const xAxis = new THREE.Vector3(plane.xAxis.x, plane.xAxis.y, plane.xAxis.z);
-        const yAxis = new THREE.Vector3(plane.yAxis.x, plane.yAxis.y, plane.yAxis.z);
-        const localX = pointerDelta.dot(xAxis);
-        const localY = pointerDelta.dot(yAxis);
-        const requestedWidth = resizeAxes.x === 0 ? resizeStart.width : Math.max(grid, Math.round((resizeAxes.x * localX + resizeStart.width / 2) / grid) * grid);
-        const requestedDepth = resizeAxes.y === 0 ? resizeStart.depth : Math.max(grid, Math.round((resizeAxes.y * localY + resizeStart.depth / 2) / grid) * grid);
-        const { width, depth } = constrainViewportResizeDimensions(
-          resizeStart.width,
-          resizeStart.depth,
-          resizeAxes.x,
-          resizeAxes.y,
-          requestedWidth,
-          requestedDepth,
-          resizeStart.resizeAspectRatio,
-        );
-        const shiftX = resizeAxes.x * (width - resizeStart.width) / 2;
-        const shiftY = resizeAxes.y * (depth - resizeStart.depth) / 2;
-        const shift = xAxis.multiplyScalar(shiftX).add(yAxis.multiplyScalar(shiftY));
-        pendingResize = { delta: { x: shift.x, y: shift.y, z: shift.z }, width, depth };
-        root.position.copy(resizeRootStart).add(shift);
-        root.scale.x = width / resizeStart.width;
-        root.scale.y = depth / resizeStart.depth;
-      } else if (interaction === "height" && resizeStart && heightBasePoint) {
-        const grid = Math.max(0.01, snapRef.current);
-        const pointerCad = modelGroup.worldToLocal(dragPoint.clone());
-        const planeNormal = activeWorkplaneRef.current.normal;
-        const normal = new THREE.Vector3(planeNormal.x, planeNormal.y, planeNormal.z).normalize();
-        const height = Math.max(grid, Math.round(pointerCad.sub(heightBasePoint).dot(normal) / grid) * grid);
-        pendingHeight = height;
-        root.position.copy(heightBasePoint).addScaledVector(normal, height / 2);
-        root.scale.z = height / resizeStart.height;
       }
       requestRender();
     };
@@ -880,11 +793,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         const root = selectionRootRef.current;
         if (selected && root) {
           root.position.set(selected.center?.x ?? selected.x, selected.center?.y ?? selected.y, selected.center?.z ?? selected.baseZ + selected.height / 2);
-          const plane = activeWorkplaneRef.current;
-          root.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(
-            new THREE.Vector3(plane.xAxis.x, plane.xAxis.y, plane.xAxis.z),
-            new THREE.Vector3(plane.yAxis.x, plane.yAxis.y, plane.yAxis.z),
-            new THREE.Vector3(plane.normal.x, plane.normal.y, plane.normal.z),
+          root.quaternion.setFromEuler(new THREE.Euler(
+            THREE.MathUtils.degToRad(selected.rotation3d?.x ?? 0),
+            THREE.MathUtils.degToRad(selected.rotation3d?.y ?? 0),
+            THREE.MathUtils.degToRad(selected.rotation3d?.z ?? selected.rotation),
+            "ZYX",
           ));
           root.scale.set(1, 1, 1);
           requestRender();
@@ -900,20 +813,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
             z: pendingAxisMove.position.z - pendingAxisMove.start.z,
           });
         }
-        if (pendingPosition) moveRef.current?.(pendingPosition);
-        if (pendingRotationDelta !== null) {
-          const normal = activeWorkplaneRef.current.normal;
-          rotateRelativeRef.current?.(pendingRotationDelta, normal);
-        }
-        if (pendingRotation !== null) rotateRef.current?.(pendingRotation);
-        if (pendingResize) resizeRef.current?.(pendingResize.delta, pendingResize.width, pendingResize.depth);
-        if (pendingHeight !== null) heightRef.current?.(pendingHeight);
+        if (pendingShapeParameter) shapeParameterRef.current?.(pendingShapeParameter.parameter, pendingShapeParameter.value);
       }
-      pendingPosition = null;
-      pendingRotation = null;
-      pendingRotationDelta = null;
-      pendingResize = null;
-      pendingHeight = null;
+      pendingShapeParameter = null;
+      shapeParameterStartValue = 0;
+      parameterPointerOffset = 0;
+      parameterWorldToLocal = null;
       pendingOrigin = null;
       pendingAxisMove = null;
       originDragAxis = null;
@@ -921,12 +826,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       originPointerStart = null;
       originDragMarker = null;
       axisMoveRootStart = null;
-      moveRootStart = null;
-      movePointerStart = null;
       resizeStart = null;
       resizeRootStart = null;
-      heightBasePoint = null;
-      rotationRootStart = null;
       requestRender();
     };
     const leaveManipulatorArea = () => {
@@ -1004,7 +905,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       originLayerRef.current = null;
       workplaneRef.current = null;
       faceHighlightRef.current = null;
-      [dimensionXRef.current, dimensionYRef.current, dimensionZRef.current, dimensionRotationRef.current].forEach((label) => { if (label) label.style.display = "none"; });
+      [dimensionXRef.current, dimensionYRef.current, dimensionZRef.current].forEach((label) => { if (label) label.style.display = "none"; });
       invalidateRef.current = () => undefined;
     };
   }, [projection, renderQuality]);
@@ -1274,8 +1175,6 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       model.remove(previous);
     }
     selectionRootRef.current = null;
-    selectionHitboxRef.current = null;
-    rotationHitboxRef.current = null;
     resizeHitboxesRef.current = [];
     if (!selection) {
       invalidateRef.current();
@@ -1289,15 +1188,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       THREE.MathUtils.degToRad(selection.rotation3d?.z ?? selection.rotation),
       "ZYX",
     ));
-    const plane = activeWorkplaneRef.current;
-    const planeQuaternion = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(
-      new THREE.Vector3(plane.xAxis.x, plane.xAxis.y, plane.xAxis.z),
-      new THREE.Vector3(plane.yAxis.x, plane.yAxis.y, plane.yAxis.z),
-      new THREE.Vector3(plane.normal.x, plane.normal.y, plane.normal.z),
-    ));
-    root.quaternion.copy(planeQuaternion);
+    root.quaternion.copy(selectionQuaternion);
     const previewRoot = new THREE.Group();
-    previewRoot.quaternion.copy(planeQuaternion.clone().invert().multiply(selectionQuaternion));
+    previewRoot.quaternion.identity();
     root.add(previewRoot);
     if (selection.operationPreview) {
       const operationPreview = selection.operationPreview;
@@ -1327,87 +1220,49 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         previewRoot.add(preview);
       }
     }
-    const boxGeometry = axisColoredBoxGeometry(selection.width, selection.depth, selection.height);
-    const outline = new THREE.LineSegments(
-      boxGeometry,
-      new THREE.LineBasicMaterial({ vertexColors: true, linewidth: 2, depthTest: false }),
-    );
-    outline.renderOrder = 20;
-    root.add(outline);
-    const hitbox = new THREE.Mesh(new THREE.BoxGeometry(selection.width, selection.depth, selection.height), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
-    hitbox.renderOrder = 19;
-    root.add(hitbox);
-    const handleGeometry = new THREE.BoxGeometry(1.8, 1.8, 1.8);
-    const cornerMaterial = new THREE.MeshBasicMaterial({ color: "#f2c94c", depthTest: false });
-    const xHandleMaterial = new THREE.MeshBasicMaterial({ color: "#e25353", depthTest: false });
-    const yHandleMaterial = new THREE.MeshBasicMaterial({ color: "#42a866", depthTest: false });
-    for (const [sx, sy] of [[-1, -1], [-1, 1], [1, -1], [1, 1], [-1, 0], [1, 0], [0, -1], [0, 1]]) {
-      const handleMaterial = sy === 0 ? xHandleMaterial : sx === 0 ? yHandleMaterial : cornerMaterial;
-      const handle = new THREE.Mesh(handleGeometry, handleMaterial);
-      handle.position.set((selection.width / 2) * sx, (selection.depth / 2) * sy, -selection.height / 2);
-      handle.renderOrder = 21;
+    const parameters = selection.shapeParameters;
+    const addParameterHandle = (
+      parameter: "width" | "depth" | "height" | "radius",
+      axis: ViewportDimensionAxis,
+      start: THREE.Vector3,
+      end: THREE.Vector3,
+    ) => {
+      const guide = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([start, end]),
+        new THREE.LineBasicMaterial({ color: "#d6a600", depthTest: false, transparent: true, opacity: 0.9 }),
+      );
+      guide.renderOrder = 21;
+      root.add(guide);
+      const handle = new THREE.Mesh(
+        new THREE.SphereGeometry(2, 18, 12),
+        new THREE.MeshBasicMaterial({ color: "#f2c94c", depthTest: false }),
+      );
+      handle.position.copy(end);
+      handle.renderOrder = 22;
       root.add(handle);
-      const resizeHitbox = new THREE.Mesh(
-        new THREE.BoxGeometry(6, 6, 6),
+      const target = new THREE.Mesh(
+        new THREE.SphereGeometry(5, 12, 8),
         new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
       );
-      resizeHitbox.position.copy(handle.position);
-      resizeHitbox.userData.resizeX = sx;
-      resizeHitbox.userData.resizeY = sy;
-      resizeHitbox.userData.hitTargetSize = 6;
-      root.add(resizeHitbox);
-      resizeHitboxesRef.current.push(resizeHitbox);
+      target.position.copy(end);
+      target.userData.shapeParameter = parameter;
+      target.userData.dimensionAxis = axis;
+      target.userData.hitTargetSize = 10;
+      root.add(target);
+      resizeHitboxesRef.current.push(target);
+    };
+    if (parameters?.shape === "box") {
+      addParameterHandle("width", "x", new THREE.Vector3(0, 0, 0), new THREE.Vector3(selection.width / 2 + 3, 0, 0));
+      addParameterHandle("depth", "y", new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, selection.depth / 2 + 3, 0));
+      addParameterHandle("height", "z", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(0, 0, selection.height / 2 + 3));
+    } else if (parameters?.shape === "cylinder") {
+      addParameterHandle("radius", "x", new THREE.Vector3(0, 0, 0), new THREE.Vector3(selection.width / 2 + 3, 0, 0));
+      addParameterHandle("height", "z", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(0, 0, selection.height / 2 + 3));
+    } else if (parameters?.shape === "sphere") {
+      addParameterHandle("radius", "x", new THREE.Vector3(0, 0, 0), new THREE.Vector3(selection.width / 2 + 3, 0, 0));
     }
-    const zGuideGeometry = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(0, 0, -selection.height / 2),
-      new THREE.Vector3(0, 0, selection.height / 2 + 5),
-    ]);
-    const zGuide = new THREE.Line(zGuideGeometry, new THREE.LineBasicMaterial({ color: "#398bea", depthTest: false }));
-    zGuide.renderOrder = 21;
-    root.add(zGuide);
-    const zHandle = new THREE.Mesh(handleGeometry, new THREE.MeshBasicMaterial({ color: "#398bea", depthTest: false }));
-    zHandle.position.set(0, 0, selection.height / 2 + 5);
-    zHandle.renderOrder = 22;
-    root.add(zHandle);
-    const zHitbox = new THREE.Mesh(
-      new THREE.SphereGeometry(5, 12, 8),
-      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
-    );
-    zHitbox.position.copy(zHandle.position);
-    zHitbox.userData.resizeZ = true;
-    zHitbox.userData.hitTargetSize = 10;
-    root.add(zHitbox);
-    resizeHitboxesRef.current.push(zHitbox);
-    const rotationRadius = Math.max(selection.width, selection.depth) * 0.7 + 6;
-    const rotationPlaneZ = -selection.height / 2 + 0.2;
-    const rotationPoints = Array.from({ length: 65 }, (_, index) => {
-      const angle = index / 64 * Math.PI * 2;
-      return new THREE.Vector3(Math.cos(angle) * rotationRadius, Math.sin(angle) * rotationRadius, rotationPlaneZ);
-    });
-    const rotationRing = new THREE.Line(
-      new THREE.BufferGeometry().setFromPoints(rotationPoints),
-      new THREE.LineBasicMaterial({ color: "#7256aa", depthTest: false, transparent: true, opacity: 0.95 }),
-    );
-    rotationRing.renderOrder = 21;
-    root.add(rotationRing);
-    const rotationHandle = new THREE.Mesh(
-      new THREE.SphereGeometry(2, 18, 12),
-      new THREE.MeshBasicMaterial({ color: "#7256aa", depthTest: false }),
-    );
-    rotationHandle.position.set(rotationRadius, 0, rotationPlaneZ);
-    rotationHandle.renderOrder = 22;
-    root.add(rotationHandle);
-    const rotationHitbox = new THREE.Mesh(
-      new THREE.SphereGeometry(5, 12, 8),
-      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
-    );
-    rotationHitbox.position.copy(rotationHandle.position);
-    rotationHitbox.userData.hitTargetSize = 10;
-    root.add(rotationHitbox);
     model.add(root);
     selectionRootRef.current = root;
-    selectionHitboxRef.current = hitbox;
-    rotationHitboxRef.current = rotationHitbox;
     invalidateRef.current();
   }, [selection, projection, renderQuality, workplane.normal.x, workplane.normal.y, workplane.normal.z, workplane.xAxis.x, workplane.xAxis.y, workplane.xAxis.z, workplane.yAxis.x, workplane.yAxis.y, workplane.yAxis.z]);
 
@@ -1499,32 +1354,6 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       {dimensionInput("x", dimensionXRef, "axis-x", "Editar dimensión X")}
       {dimensionInput("y", dimensionYRef, "axis-y", "Editar dimensión Y")}
       {dimensionInput("z", dimensionZRef, "axis-z", "Editar dimensión Z")}
-      {dimensionInput("rotation", dimensionRotationRef, "axis-r", "Editar ángulo de rotación")}
     </div>
   </div>;
-}
-
-function axisColoredBoxGeometry(width: number, depth: number, height: number) {
-  const x = width / 2;
-  const y = depth / 2;
-  const z = height / 2;
-  const positions: number[] = [];
-  const colors: number[] = [];
-  const axisColors = {
-    x: new THREE.Color("#e25353"),
-    y: new THREE.Color("#42a866"),
-    z: new THREE.Color("#398bea"),
-  };
-  const addEdge = (start: [number, number, number], end: [number, number, number], axis: keyof typeof axisColors) => {
-    positions.push(...start, ...end);
-    const color = axisColors[axis];
-    colors.push(color.r, color.g, color.b, color.r, color.g, color.b);
-  };
-  for (const sy of [-1, 1]) for (const sz of [-1, 1]) addEdge([-x, sy * y, sz * z], [x, sy * y, sz * z], "x");
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) addEdge([sx * x, -y, sz * z], [sx * x, y, sz * z], "y");
-  for (const sx of [-1, 1]) for (const sy of [-1, 1]) addEdge([sx * x, sy * y, -z], [sx * x, sy * y, z], "z");
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-  return geometry;
 }

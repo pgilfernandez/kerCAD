@@ -111,7 +111,7 @@ export function addPrimitive(
   } else {
     sketch.profile.diameter = 20;
   }
-  const extrusion = createExtrudeFeature(sketch.id, count, objectOperations.length > 0);
+  const extrusion = createExtrudeFeature(sketch.id, count, false);
   extrusion.name = kind === "box" ? "Caja" : "Cilindro";
   extrusion.objectId = objectId;
   extrusion.distance = 20;
@@ -280,7 +280,7 @@ export function viewportSelectionForObject(document: ParametricDocument, id: str
   const operations = document.features.filter((candidate): candidate is TransformableOperation => candidate.objectId === id && isTransformableOperation(candidate) && !candidate.suppressed);
   if (operations.length === 1) {
     const operationSelection = viewportSelectionForFeature(document, operations[0].id, includeUnavailable);
-    if (operationSelection) return { ...operationSelection, id: shape.id, operationPreview: undefined };
+    if (operationSelection) return { ...operationSelection, id: shape.id, operationPreview: undefined, shapeParameters: undefined };
   }
   return {
     id: shape.id,
@@ -346,6 +346,11 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
     center: world.center,
     rotation3d: world.rotation3d,
     ...(feature.kind === "extrude" && sketch!.profile.shape === "circle" ? { resizeAspectRatio: 1 } : {}),
+    shapeParameters: feature.kind === "primitive"
+      ? { shape: "sphere", radius: feature.width / 2 }
+      : sketch!.profile.shape === "circle"
+        ? { shape: "cylinder", radius: sketch!.profile.diameter / 2, height: feature.distance }
+        : { shape: "box", width: sketch!.profile.width, depth: sketch!.profile.depth, height: feature.distance },
     operationPreview: {
       shape: feature.kind === "primitive" ? "sphere" : sketch!.profile.shape === "rectangle" ? "box" : "cylinder",
       mode: previewMode,
@@ -582,6 +587,36 @@ export function resizeParametricHeight(document: ParametricDocument, id: string,
   if (!feature || !object) return;
   if (feature.kind === "primitive") feature.height = Math.max(0.1, height / Math.max(0.01, Math.abs(object.transform.scale.z)));
   else feature.distance = Math.max(0.1, height / Math.max(0.01, Math.abs(object.transform.scale.z)));
+}
+
+export function updateParametricShapeParameter(
+  document: ParametricDocument,
+  id: string,
+  parameter: "width" | "depth" | "height" | "radius",
+  value: number,
+) {
+  if (!Number.isFinite(value) || value <= 0) return;
+  const feature = document.features.find((candidate): candidate is TransformableOperation => candidate.id === id && isTransformableOperation(candidate));
+  if (!feature) return;
+  const next = Math.max(0.1, value);
+  if (feature.kind === "primitive") {
+    if (parameter !== "radius") return;
+    feature.width = next * 2;
+    feature.depth = next * 2;
+    feature.height = next * 2;
+    return;
+  }
+  const sketch = sketchForExtrude(document, feature);
+  if (!sketch) return;
+  if (parameter === "height") {
+    feature.distance = next;
+  } else if (sketch.profile.shape === "rectangle" && parameter === "width") {
+    sketch.profile.width = next;
+  } else if (sketch.profile.shape === "rectangle" && parameter === "depth") {
+    sketch.profile.depth = next;
+  } else if (sketch.profile.shape === "circle" && parameter === "radius") {
+    sketch.profile.diameter = next * 2;
+  }
 }
 
 export function applyWorkplanePatch(document: ParametricDocument, id: string, patch: Partial<WorkplaneShape>) {

@@ -26,6 +26,7 @@ import {
   viewportSelectionForFeature,
   workplaneShapeForObject,
   updateParametricTreeSelection,
+  updateParametricShapeParameter,
 } from "@/lib/parametricObjects";
 import { createFilletFeature, createStarterDocument } from "@/lib/parametricDocument";
 
@@ -56,7 +57,7 @@ describe("parametric object workflow", () => {
     });
   });
 
-  it("adds and edits a native sphere or ellipsoid without a hidden sketch", () => {
+  it("adds and edits a native sphere without a hidden sketch", () => {
     const document = createStarterDocument(123);
     const result = addPrimitiveToSelection(document, null, "sphere");
     const feature = document.features.find((candidate) => candidate.id === result.featureId);
@@ -70,10 +71,24 @@ describe("parametric object workflow", () => {
       operationPreview: { shape: "sphere", mode: "add", historical: false },
     });
 
-    resizeParametricSelection(document, result.featureId!, "feature", 4, 6, 30, 18);
-    resizeParametricHeight(document, result.featureId!, "feature", 12);
-    expect(feature).toMatchObject({ width: 30, depth: 18, height: 12 });
-    expect(viewportSelectionForObject(document, result.objectId)).toMatchObject({ width: 30, depth: 18, height: 12 });
+    updateParametricShapeParameter(document, result.featureId!, "radius", 15);
+    expect(feature).toMatchObject({ width: 30, depth: 30, height: 30 });
+    expect(viewportSelectionForObject(document, result.objectId)).toMatchObject({ width: 30, depth: 30, height: 30 });
+  });
+
+  it("edits only the defining visual parameters for boxes and cylinders", () => {
+    const document = createStarterDocument(123);
+    const box = document.features.find((feature) => feature.kind === "extrude")!;
+    const cylinderId = addPrimitive(document, document.objects[0].id, "cylinder")!;
+
+    updateParametricShapeParameter(document, box.id, "width", 32);
+    updateParametricShapeParameter(document, box.id, "depth", 14);
+    updateParametricShapeParameter(document, box.id, "height", 26);
+    updateParametricShapeParameter(document, cylinderId, "radius", 7);
+    updateParametricShapeParameter(document, cylinderId, "height", 31);
+
+    expect(viewportSelectionForFeature(document, box.id)?.shapeParameters).toEqual({ shape: "box", width: 32, depth: 14, height: 26 });
+    expect(viewportSelectionForFeature(document, cylinderId)?.shapeParameters).toEqual({ shape: "cylinder", radius: 7, height: 31 });
   });
 
   it("creates a new object only when a shape has no selected object", () => {

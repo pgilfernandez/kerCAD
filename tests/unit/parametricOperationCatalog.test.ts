@@ -14,7 +14,7 @@ describe("parametric operation catalog", () => {
   it("provides bounded editable dimensions for the exact sphere or ellipsoid", () => {
     const definition = parametricOperationDefinition("sphere");
 
-    expect(definition.parameters.map((parameter) => parameter.key)).toEqual(["width", "depth", "height"]);
+    expect(definition.parameters.map((parameter) => parameter.key)).toEqual(["radius"]);
     for (const parameter of definition.parameters) {
       expect(parameter.min).toBeLessThan(parameter.defaultValue);
       expect(parameter.defaultValue).toBeLessThan(parameter.max);

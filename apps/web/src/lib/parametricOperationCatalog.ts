@@ -2,7 +2,7 @@ export type ParametricPrimitiveKind = "box" | "cylinder" | "sphere";
 export type ParametricBooleanRole = "add" | "cut" | "intersect";
 
 export type ParametricParameterDefinition = {
-  key: "width" | "depth" | "height" | "diameter";
+  key: "width" | "depth" | "height" | "diameter" | "radius";
   label: string;
   unit: "mm";
   min: number;
@@ -51,15 +51,15 @@ export const parametricOperationCatalog: ParametricOperationDefinition[] = [
     description: "Cilindro circular paramétrico",
     menuIcon: "assets/sketchforge/shape-icons-gray/cylinder.png",
     roles: roles("cylinder"),
-    parameters: [dimension("diameter", "Diámetro"), dimension("height", "Altura")],
+    parameters: [dimension("radius", "Radio", 10), dimension("height", "Altura")],
   },
   {
     kind: "sphere",
     name: "Esfera",
-    description: "Esfera o elipsoide exacto",
+    description: "Esfera paramétrica exacta",
     menuIcon: "assets/sketchforge/shape-icons-gray/sphere.png",
     roles: roles("sphere"),
-    parameters: [dimension("width", "Anchura"), dimension("depth", "Profundidad"), dimension("height", "Altura")],
+    parameters: [dimension("radius", "Radio", 10)],
   },
 ];
 
