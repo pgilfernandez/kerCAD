@@ -61,6 +61,10 @@ function solidFromPrimitive(brep: Brep, feature: PrimitiveFeature): AnySolid {
     const outer = brep.cylinder(feature.width / 2, feature.height, { at: [0, 0, 0] });
     const inner = brep.cylinder(feature.innerRadius ?? 0, feature.height + 2, { at: [0, 0, -1] });
     solid = refinedBooleanSolid(brep, brep.cut(outer, inner));
+  } else if (feature.primitive === "halfSphere") {
+    const ellipsoid = brep.ellipsoid(feature.width / 2, feature.depth / 2, feature.height, { at: [0, 0, 0] });
+    const clip = brep.box(feature.width + 2, feature.depth + 2, feature.height + 1, { centered: true, at: [0, 0, (feature.height + 1) / 2] });
+    solid = refinedBooleanSolid(brep, brep.intersect(ellipsoid, clip));
   } else {
     solid = brep.ellipsoid(feature.width / 2, feature.depth / 2, feature.height / 2, { at: [0, 0, 0] });
   }

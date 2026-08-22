@@ -383,7 +383,7 @@ function ParametricFeatureInspector({
                   if (parameter.key === "radius") {
                     draft.width = value * 2;
                     draft.depth = value * 2;
-                    draft.height = value * 2;
+                    if (draft.primitive === "sphere") draft.height = value * 2;
                   } else if (parameter.key === "baseRadius") {
                     draft.width = value * 2;
                     draft.depth = value * 2;

@@ -128,6 +128,24 @@ describe("parametric object workflow", () => {
     expect(feature).toMatchObject({ innerRadius: 8 });
   });
 
+  it("adds and edits an exact half sphere from its flat base", () => {
+    const document = createStarterDocument(123);
+    const result = addPrimitiveToSelection(document, null, "halfSphere");
+    const feature = document.features.find((candidate) => candidate.id === result.featureId);
+
+    expect(feature).toMatchObject({ kind: "primitive", primitive: "halfSphere", width: 20, depth: 20, height: 10, operation: "add" });
+    expect(viewportSelectionForFeature(document, result.featureId)).toMatchObject({
+      baseZ: 0,
+      center: { x: 0, y: 0, z: 5 },
+      shapeParameters: { shape: "halfSphere", radius: 10, height: 10 },
+      operationPreview: { shape: "halfSphere", mode: "add", historical: false },
+    });
+
+    updateParametricShapeParameter(document, result.featureId!, "radius", 16);
+    updateParametricShapeParameter(document, result.featureId!, "height", 9);
+    expect(feature).toMatchObject({ width: 32, depth: 32, height: 9 });
+  });
+
   it("edits only the defining visual parameters for boxes and cylinders", () => {
     const document = createStarterDocument(123);
     const box = document.features.find((feature) => feature.kind === "extrude")!;

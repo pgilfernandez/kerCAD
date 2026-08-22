@@ -1,4 +1,4 @@
-export type ParametricPrimitiveKind = "box" | "cylinder" | "sphere" | "cone" | "tube";
+export type ParametricPrimitiveKind = "box" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere";
 export type ParametricBooleanRole = "add" | "cut" | "intersect";
 
 export type ParametricParameterDefinition = {
@@ -80,6 +80,14 @@ export const parametricOperationCatalog: ParametricOperationDefinition[] = [
     menuIcon: "assets/sketchforge/shape-icons-gray/tube.png",
     roles: roles("tube"),
     parameters: [dimension("outerRadius", "Radio exterior", 10), dimension("innerRadius", "Radio interior", 6), dimension("height", "Altura")],
+  },
+  {
+    kind: "halfSphere",
+    name: "Semiesfera",
+    description: "Media esfera o semielipsoide paramétrico exacto",
+    menuIcon: "assets/sketchforge/shape-icons-gray/half-sphere.png",
+    roles: roles("halfSphere"),
+    parameters: [dimension("radius", "Radio", 10), dimension("height", "Altura", 10)],
   },
 ];
 

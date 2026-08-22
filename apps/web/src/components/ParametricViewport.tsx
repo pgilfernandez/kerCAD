@@ -36,9 +36,10 @@ export type ViewportSelection = {
     | { shape: "cylinder"; radius: number; height: number }
     | { shape: "sphere"; radius: number }
     | { shape: "cone"; baseRadius: number; topRadius: number; height: number }
-    | { shape: "tube"; outerRadius: number; innerRadius: number; height: number };
+    | { shape: "tube"; outerRadius: number; innerRadius: number; height: number }
+    | { shape: "halfSphere"; radius: number; height: number };
   operationPreview?: {
-    shape: "box" | "cylinder" | "sphere" | "cone" | "tube";
+    shape: "box" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere";
     topRadius?: number;
     innerRadius?: number;
     mode: "add" | "hole" | "common";
@@ -288,7 +289,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     if (parameter && preview?.parameter === parameter) return preview.value;
     if (parameter === "width" && parameters?.shape === "box") return parameters.width;
     if (parameter === "depth" && parameters?.shape === "box") return parameters.depth;
-    if (parameter === "radius" && (parameters?.shape === "cylinder" || parameters?.shape === "sphere")) return parameters.radius;
+    if (parameter === "radius" && (parameters?.shape === "cylinder" || parameters?.shape === "sphere" || parameters?.shape === "halfSphere")) return parameters.radius;
     if (parameter === "baseRadius" && parameters?.shape === "cone") return parameters.baseRadius;
     if (parameter === "topRadius" && parameters?.shape === "cone") return parameters.topRadius;
     if (parameter === "outerRadius" && parameters?.shape === "tube") return parameters.outerRadius;
@@ -753,7 +754,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
               ? selected.width / Math.max(0.01, (values.shape === "cone" ? values.baseRadius : values.outerRadius) * 2)
               : parameter === "height" && values && values.shape !== "sphere"
                 ? selected.height / Math.max(0.01, values.height)
-                : parameter === "radius" && (values?.shape === "cylinder" || values?.shape === "sphere")
+                : parameter === "radius" && (values?.shape === "cylinder" || values?.shape === "sphere" || values?.shape === "halfSphere")
                   ? selected.width / Math.max(0.01, values.radius * 2)
                   : 1;
             const visualHalfExtent = parameter === "topRadius" && values?.shape === "cone"
@@ -770,7 +771,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
             const value = parameter === "width" && values?.shape === "box" ? values.width
               : parameter === "depth" && values?.shape === "box" ? values.depth
                 : parameter === "height" && values && values.shape !== "sphere" ? values.height
-                  : parameter === "radius" && (values?.shape === "cylinder" || values?.shape === "sphere") ? values.radius
+                  : parameter === "radius" && (values?.shape === "cylinder" || values?.shape === "sphere" || values?.shape === "halfSphere") ? values.radius
                     : parameter === "baseRadius" && values?.shape === "cone" ? values.baseRadius
                       : parameter === "topRadius" && values?.shape === "cone" ? values.topRadius
                         : parameter === "outerRadius" && values?.shape === "tube" ? values.outerRadius
@@ -1440,6 +1441,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       const innerRadius = parameters.innerRadius * radialScale;
       addParameterHandle("outerRadius", "x", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(selection.width / 2 + 3, 0, -selection.height / 2));
       addParameterHandle("innerRadius", "y", new THREE.Vector3(0, 0, selection.height / 2), new THREE.Vector3(innerRadius + 3, 0, selection.height / 2));
+      addParameterHandle("height", "z", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(0, 0, selection.height / 2 + 3));
+    } else if (parameters?.shape === "halfSphere") {
+      addParameterHandle("radius", "x", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(selection.width / 2 + 3, 0, -selection.height / 2));
       addParameterHandle("height", "z", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(0, 0, selection.height / 2 + 3));
     }
     model.add(root);

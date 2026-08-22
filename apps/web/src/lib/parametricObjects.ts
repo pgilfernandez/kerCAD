@@ -88,7 +88,7 @@ export function addPrimitive(
   const object = document.objects.find((candidate) => candidate.id === objectId);
   if (!object) return null;
   const count = document.features.filter((feature) => feature.kind !== "sketch").length + 1;
-  if (kind === "sphere" || kind === "cone" || kind === "tube") {
+  if (kind === "sphere" || kind === "cone" || kind === "tube" || kind === "halfSphere") {
     const definition = parametricOperationDefinition(kind);
     const primitive = createPrimitiveFeature(kind, count);
     primitive.objectId = objectId;
@@ -107,6 +107,11 @@ export function addPrimitive(
       primitive.width = outerRadius * 2;
       primitive.depth = outerRadius * 2;
       primitive.innerRadius = definition.parameters.find((parameter) => parameter.key === "innerRadius")?.defaultValue ?? 6;
+    }
+    if (kind === "halfSphere") {
+      const radius = definition.parameters.find((parameter) => parameter.key === "radius")?.defaultValue ?? 10;
+      primitive.width = radius * 2;
+      primitive.depth = radius * 2;
     }
     primitive.operation = "add";
     primitive.transform.position.x = position.x;
@@ -456,6 +461,8 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
         ? { shape: "cone", baseRadius: feature.width / 2, topRadius: feature.topRadius ?? 0, height: feature.height }
         : feature.primitive === "tube"
           ? { shape: "tube", outerRadius: feature.width / 2, innerRadius: feature.innerRadius ?? 6, height: feature.height }
+          : feature.primitive === "halfSphere"
+            ? { shape: "halfSphere", radius: feature.width / 2, height: feature.height }
         : { shape: "sphere", radius: feature.width / 2 }
       : sketch!.profile.shape === "circle"
         ? { shape: "cylinder", radius: sketch!.profile.diameter / 2, height: feature.distance }
@@ -715,6 +722,11 @@ export function updateParametricShapeParameter(
       feature.width = next * 2;
       feature.depth = next * 2;
       feature.height = next * 2;
+    } else if (feature.primitive === "halfSphere" && parameter === "radius") {
+      feature.width = next * 2;
+      feature.depth = next * 2;
+    } else if (feature.primitive === "halfSphere" && parameter === "height") {
+      feature.height = next;
     } else if (feature.primitive === "cone" && parameter === "baseRadius") {
       feature.width = next * 2;
       feature.depth = next * 2;

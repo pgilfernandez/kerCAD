@@ -70,6 +70,15 @@ describe("operation preview wireframes", () => {
     expect(positions).toHaveLength((64 * 4 + 8) * 6);
     expect(innerGenerators.slice(0, 6)).toEqual([6, 0, -15, 6, 0, 15]);
   });
+
+  it("draws the flat base and four meridians of a half sphere", () => {
+    const positions = operationPreviewWireframePositions("halfSphere", 20, 20, 10);
+
+    expect(positions).toHaveLength(5 * 64 * 6);
+    expect(positions.slice(0, 3)).toEqual([10, 0, -5]);
+    expect(positions.slice(64 * 6, 64 * 6 + 3)).toEqual([10, 0, -5]);
+    expect(positions.slice(-3)[2]).toBeCloseTo(5);
+  });
 });
 
 describe("operation preview styles", () => {

@@ -36,4 +36,11 @@ describe("parametric operation catalog", () => {
     expect(definition.parameters.find((parameter) => parameter.key === "innerRadius")?.defaultValue)
       .toBeLessThan(definition.parameters.find((parameter) => parameter.key === "outerRadius")!.defaultValue);
   });
+
+  it("defines a half sphere with independent radius and height", () => {
+    const definition = parametricOperationDefinition("halfSphere");
+
+    expect(definition.parameters.map((parameter) => parameter.key)).toEqual(["radius", "height"]);
+    expect(definition.parameters.map((parameter) => parameter.defaultValue)).toEqual([10, 10]);
+  });
 });

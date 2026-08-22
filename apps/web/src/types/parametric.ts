@@ -85,7 +85,7 @@ export type ExtrudeFeature = BaseFeature & {
 
 export type PrimitiveFeature = BaseFeature & {
   kind: "primitive";
-  primitive: "sphere" | "cone" | "tube";
+  primitive: "sphere" | "cone" | "tube" | "halfSphere";
   width: number;
   depth: number;
   height: number;
