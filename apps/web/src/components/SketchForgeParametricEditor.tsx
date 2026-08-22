@@ -28,7 +28,7 @@ import {
 } from "@/components/icons";
 import { cloneDocument, createFilletFeature, createStarterDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { assertValidParametricDependencies } from "@/lib/parametricDependencyGraph";
-import { assertValidParametricTopology, parametricTopologyReferenceIsAvailable } from "@/lib/parametricTopology";
+import { assertValidParametricTopology, recoverParametricTopologyReferenceInRecords } from "@/lib/parametricTopology";
 import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint } from "@/lib/parametricBuildState";
 import { exportParametricStep } from "@/lib/parametricKernel";
 import { ParametricBuildWorkerClient } from "@/lib/parametricBuildWorker";
@@ -112,6 +112,10 @@ export function SketchForgeParametricEditor() {
   const [selectedTopologyFaces, setSelectedTopologyFaces] = useState<ParametricTopologyReference[]>([]);
   const [selectingTopologyEdges, setSelectingTopologyEdges] = useState(false);
   const [selectedTopologyEdges, setSelectedTopologyEdges] = useState<ParametricTopologyReference[]>([]);
+  const [pendingEdgeTreatment, setPendingEdgeTreatment] = useState<"fillet" | "chamfer" | null>(null);
+  const [editingEdgeTreatmentId, setEditingEdgeTreatmentId] = useState<string | null>(null);
+  const [edgeTreatmentRadius, setEdgeTreatmentRadius] = useState(2);
+  const [topologySelectionBuild, setTopologySelectionBuild] = useState<BuildResult | null>(null);
   const [view, setView] = useState<CameraView>({ name: "iso", token: 0 });
   const [projection, setProjection] = useState<CameraProjection>("orthographic");
   const [renderQuality, setRenderQuality] = useState<ViewportRenderQuality>("normal");
@@ -144,6 +148,8 @@ export function SketchForgeParametricEditor() {
       setSelectingTopologyEdges(false);
       setSelectedTopologyFaces([]);
       setSelectedTopologyEdges([]);
+      setPendingEdgeTreatment(null);
+      setEditingEdgeTreatmentId(null);
       setNotice({ type: "info", text: placingWorkplane ? "Colocación del plano de trabajo cancelada" : "Selección topológica cancelada" });
     };
     window.addEventListener("keydown", cancel);
@@ -156,6 +162,7 @@ export function SketchForgeParametricEditor() {
   const contextBuildCounter = useRef(0);
   const buildWorkerRef = useRef<ParametricBuildWorkerClient | null>(null);
   const contextWorkerRef = useRef<ParametricBuildWorkerClient | null>(null);
+  const topologySelectionWorkerRef = useRef<ParametricBuildWorkerClient | null>(null);
   const geometryFingerprint = useMemo(() => parametricGeometryFingerprint(document), [document]);
   const objectColorFingerprint = useMemo(() => parametricObjectColorFingerprint(document), [document]);
   const objectColors = useMemo(() => objectColorsFromFingerprint(objectColorFingerprint), [objectColorFingerprint]);
@@ -212,15 +219,33 @@ export function SketchForgeParametricEditor() {
     const createWorker = () => new Worker(new URL("../workers/parametricBuild.worker.ts", import.meta.url), { type: "module" });
     const buildWorker = new ParametricBuildWorkerClient(createWorker);
     const contextWorker = new ParametricBuildWorkerClient(createWorker);
+    const topologySelectionWorker = new ParametricBuildWorkerClient(createWorker);
     buildWorkerRef.current = buildWorker;
     contextWorkerRef.current = contextWorker;
+    topologySelectionWorkerRef.current = topologySelectionWorker;
     return () => {
       buildWorker.dispose();
       contextWorker.dispose();
+      topologySelectionWorker.dispose();
       buildWorkerRef.current = null;
       contextWorkerRef.current = null;
+      topologySelectionWorkerRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    setTopologySelectionBuild(null);
+    if (!editingEdgeTreatmentId) return;
+    const target = document.features.find((feature) => feature.id === editingEdgeTreatmentId);
+    if (!target?.objectId) return;
+    const preview = cloneDocument(document);
+    const operations = preview.features.filter((feature) => feature.objectId === target.objectId && feature.kind !== "sketch");
+    const targetIndex = operations.findIndex((feature) => feature.id === editingEdgeTreatmentId);
+    for (const feature of operations.slice(Math.max(0, targetIndex))) feature.suppressed = true;
+    let active = true;
+    topologySelectionWorkerRef.current?.buildModel(preview).then((result) => { if (active) setTopologySelectionBuild(result); }).catch(() => { if (active) setTopologySelectionBuild(null); });
+    return () => { active = false; topologySelectionWorkerRef.current?.cancel(); };
+  }, [document, editingEdgeTreatmentId]);
 
   useEffect(() => {
     const counter = ++buildCounter.current;
@@ -269,14 +294,18 @@ export function SketchForgeParametricEditor() {
 
   useEffect(() => {
     if (selectedTopologyFaces.length === 0 && selectedTopologyEdges.length === 0) return;
-    const availableFaces = selectedTopologyFaces.filter((reference) => parametricTopologyReferenceIsAvailable(reference, build.objectRecords));
-    const availableEdges = selectedTopologyEdges.filter((reference) => parametricTopologyReferenceIsAvailable(reference, build.objectRecords));
+    if (editingEdgeTreatmentId && !topologySelectionBuild) return;
+    const topologyRecords = editingEdgeTreatmentId ? topologySelectionBuild?.objectRecords ?? [] : build.objectRecords;
+    const availableFaces = selectedTopologyFaces.map((reference) => recoverParametricTopologyReferenceInRecords(reference, topologyRecords)).filter((reference): reference is ParametricTopologyReference => Boolean(reference));
+    const availableEdges = selectedTopologyEdges.map((reference) => recoverParametricTopologyReferenceInRecords(reference, topologyRecords)).filter((reference): reference is ParametricTopologyReference => Boolean(reference));
     const removed = selectedTopologyFaces.length - availableFaces.length + selectedTopologyEdges.length - availableEdges.length;
-    if (removed === 0) return;
+    const changed = availableFaces.some((reference, index) => reference !== selectedTopologyFaces[index]) || availableEdges.some((reference, index) => reference !== selectedTopologyEdges[index]);
+    if (removed === 0 && !changed) return;
     setSelectedTopologyFaces(availableFaces);
     setSelectedTopologyEdges(availableEdges);
+    if (removed === 0) return;
     setNotice({ type: "error", text: `${removed} referencia${removed === 1 ? "" : "s"} topológica${removed === 1 ? "" : "s"} ya no existe${removed === 1 ? "" : "n"} tras reconstruir la pieza` });
-  }, [build.objectRecords, selectedTopologyEdges, selectedTopologyFaces]);
+  }, [build.objectRecords, editingEdgeTreatmentId, selectedTopologyEdges, selectedTopologyFaces, topologySelectionBuild]);
 
   const commit = useCallback((next: ParametricDocument) => {
     next.updatedAt = Date.now();
@@ -503,21 +532,72 @@ export function SketchForgeParametricEditor() {
     setNotice({ type: "info", text: "Nuevo diseño" });
   };
 
-  const addFillet = () => {
-    if (!selectedShape || selectedShape.hole || !selectedObjectId) return;
+  const beginEdgeTreatment = (treatment: "fillet" | "chamfer", featureId: string | null = null) => {
+    const feature = featureId ? document.features.find((candidate) => candidate.id === featureId && candidate.kind === "fillet") : null;
+    const savedReferences = feature?.kind === "fillet"
+      ? (feature.selectionReferenceIds ?? feature.edgeReferenceIds ?? []).map((id) => document.topologyReferences.find((reference) => reference.id === id)).filter((reference): reference is ParametricTopologyReference => Boolean(reference))
+      : [];
+    setPendingEdgeTreatment(treatment);
+    setModelSidebarMode("normal");
+    setEdgeTreatmentRadius(feature?.kind === "fillet" ? feature.radius : 2);
+    setEditingEdgeTreatmentId(featureId);
+    setSelectingTopologyFaces(true);
+    setSelectingTopologyEdges(true);
+    setSelectedTopologyFaces(savedReferences.filter((reference) => reference.reference.hint.entityType === "face"));
+    setSelectedTopologyEdges(savedReferences.filter((reference) => reference.reference.hint.entityType === "edge"));
+    setPlacingWorkplane(false);
+    setOriginEditObjectId(null);
+    setNotice({ type: "info", text: "Selecciona caras o aristas · Ctrl/Cmd para selección múltiple" });
+  };
+
+  const cancelEdgeTreatment = () => {
+    setSelectingTopologyFaces(false);
+    setSelectingTopologyEdges(false);
+    setSelectedTopologyFaces([]);
+    setSelectedTopologyEdges([]);
+    setPendingEdgeTreatment(null);
+    setEditingEdgeTreatmentId(null);
+    setNotice({ type: "info", text: "Operación temporal cancelada" });
+  };
+
+  const acceptEdgeTreatment = () => {
+    const selection = [...selectedTopologyFaces, ...selectedTopologyEdges];
+    const objectIds = [...new Set(selection.map((reference) => reference.objectId))];
+    if (!pendingEdgeTreatment || selection.length === 0 || objectIds.length !== 1) {
+      setNotice({ type: "error", text: "Selecciona una o varias caras o aristas del mismo objeto." });
+      return;
+    }
     let featureId = "";
-    mutate((draft) => {
-      const feature = createFilletFeature(draft.features.filter((candidate) => candidate.kind === "fillet").length + 1);
-      feature.objectId = selectedObjectId;
+    const created = mutate((draft) => {
+      const existing = editingEdgeTreatmentId ? draft.features.find((candidate) => candidate.id === editingEdgeTreatmentId && candidate.kind === "fillet") : null;
+      const feature = existing && existing.kind === "fillet" ? existing : createFilletFeature(draft.features.filter((candidate) => candidate.kind === "fillet").length + 1, pendingEdgeTreatment);
+      const previousIds = new Set(feature.kind === "fillet" ? [...(feature.selectionReferenceIds ?? []), ...(feature.edgeReferenceIds ?? [])] : []);
+      draft.topologyReferences = draft.topologyReferences.filter((reference) => !previousIds.has(reference.id));
+      feature.treatment = pendingEdgeTreatment;
+      feature.radius = Math.max(0.01, edgeTreatmentRadius);
+      feature.objectId = objectIds[0];
       featureId = feature.id;
-      draft.features.push(feature);
+      const references = selection.map((reference, index) => ({ ...structuredClone(reference), id: `${feature.id}:selection:${index + 1}` }));
+      feature.selectionReferenceIds = references.map((reference) => reference.id);
+      feature.edgeReferenceIds = undefined;
+      draft.topologyReferences.push(...references);
+      if (!existing) draft.features.push(feature);
     });
+    if (!created || !featureId) return;
     setModelSelection([{ id: featureId, kind: "feature" }]);
-    setNotice({ type: "ok", text: "Redondeo paramétrico añadido" });
+    setSelectingTopologyFaces(false);
+    setSelectingTopologyEdges(false);
+    setSelectedTopologyFaces([]);
+    setSelectedTopologyEdges([]);
+    setPendingEdgeTreatment(null);
+    setEditingEdgeTreatmentId(null);
+    setNotice({ type: "ok", text: `${pendingEdgeTreatment === "chamfer" ? "Chaflán" : "Redondeo"} paramétrico ${editingEdgeTreatmentId ? "actualizado" : "añadido"} sobre ${selection.length} elemento${selection.length === 1 ? "" : "s"}` });
   };
 
   const selectTopologyFace = (face: TopologyFacePick) => {
-    const source = lastOperationForObject(document, face.objectId);
+    const objectOperations = document.features.filter((feature) => feature.objectId === face.objectId && feature.kind !== "sketch");
+    const editingIndex = editingEdgeTreatmentId ? objectOperations.findIndex((feature) => feature.id === editingEdgeTreatmentId) : -1;
+    const source = editingIndex >= 0 ? objectOperations[editingIndex - 1] ?? null : lastOperationForObject(document, face.objectId);
     if (!source) return;
     const reference: ParametricTopologyReference = {
       id: `selected-face-${face.key}`,
@@ -537,6 +617,7 @@ export function SketchForgeParametricEditor() {
         },
       },
     };
+    if (!face.additive) setSelectedTopologyEdges([]);
     setSelectedTopologyFaces((current) => {
       if (!face.additive) return face.selected ? [reference] : [];
       if (!face.selected) return current.filter((candidate) => candidate.id !== reference.id);
@@ -545,7 +626,9 @@ export function SketchForgeParametricEditor() {
   };
 
   const selectTopologyEdge = (edge: TopologyEdgePick) => {
-    const source = lastOperationForObject(document, edge.objectId);
+    const objectOperations = document.features.filter((feature) => feature.objectId === edge.objectId && feature.kind !== "sketch");
+    const editingIndex = editingEdgeTreatmentId ? objectOperations.findIndex((feature) => feature.id === editingEdgeTreatmentId) : -1;
+    const source = editingIndex >= 0 ? objectOperations[editingIndex - 1] ?? null : lastOperationForObject(document, edge.objectId);
     if (!source) return;
     const reference: ParametricTopologyReference = {
       id: `selected-edge-${edge.key}`,
@@ -563,6 +646,7 @@ export function SketchForgeParametricEditor() {
         },
       },
     };
+    if (!edge.additive) setSelectedTopologyFaces([]);
     setSelectedTopologyEdges((current) => {
       if (!edge.additive) return edge.selected ? [reference] : [];
       if (!edge.selected) return current.filter((candidate) => candidate.id !== reference.id);
@@ -668,28 +752,8 @@ export function SketchForgeParametricEditor() {
               </div>
               <Tool label="Simetría" enabled={Boolean(selectedShape)} onClick={() => selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: -(selectedShape?.x ?? 0) }))}><ToolbarMirrorIcon /></Tool>
               <Tool label="Ajustar a rejilla" enabled={Boolean(selectedShape && document.workplane.snapToGrid)} onClick={() => selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: Math.round((selectedShape?.x ?? 0) / snapAmount) * snapAmount, z: Math.round((selectedShape?.z ?? 0) / snapAmount) * snapAmount }))}><ToolbarSnapGridIcon /></Tool>
-              <Tool label="Seleccionar caras" active={selectingTopologyFaces} onClick={() => {
-                const active = !selectingTopologyFaces;
-                setSelectingTopologyFaces(active);
-                setSelectingTopologyEdges(false);
-                setSelectedTopologyFaces([]);
-                setSelectedTopologyEdges([]);
-                setPlacingWorkplane(false);
-                setOriginEditObjectId(null);
-                setNotice({ type: "info", text: active ? "Selecciona una cara plana · Ctrl/Cmd para añadir o quitar" : "Selección de caras finalizada" });
-              }}><Focus size={20} /></Tool>
-              <Tool label="Seleccionar aristas" active={selectingTopologyEdges} onClick={() => {
-                const active = !selectingTopologyEdges;
-                setSelectingTopologyEdges(active);
-                setSelectingTopologyFaces(false);
-                setSelectedTopologyFaces([]);
-                setSelectedTopologyEdges([]);
-                setPlacingWorkplane(false);
-                setOriginEditObjectId(null);
-                setNotice({ type: "info", text: active ? "Selecciona una arista · Ctrl/Cmd para añadir o quitar" : "Selección de aristas finalizada" });
-              }}><Minus size={20} /></Tool>
-              <Tool label="Chaflán" enabled={false}><ToolbarChamferIcon /></Tool>
-              <Tool label="Redondeo" enabled={Boolean(selectedShape && !selectedShape.hole)} onClick={addFillet}><ToolbarFilletIcon /></Tool>
+              <Tool label="Chaflán" active={pendingEdgeTreatment === "chamfer"} onClick={() => beginEdgeTreatment("chamfer")}><ToolbarChamferIcon /></Tool>
+              <Tool label="Redondeo" active={pendingEdgeTreatment === "fillet"} onClick={() => beginEdgeTreatment("fillet")}><ToolbarFilletIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label="Arrange">
               <Tool label={hasActiveWorkplane ? "Restaurar plano global" : placingWorkplane ? "Cancelar plano de trabajo" : "Colocar plano de trabajo"} active={placingWorkplane || hasActiveWorkplane} onClick={() => {
@@ -727,8 +791,8 @@ export function SketchForgeParametricEditor() {
       <section className="educad-workplane-stage">
         {showFps ? <FpsCounter rightOffset={modelSidebarMode === "normal" ? 332 : modelSidebarMode === "simplified" ? 80 : 12} /> : null}
         <ParametricViewport
-          mesh={build.mesh}
-          objectRecords={build.objectRecords}
+          mesh={(editingEdgeTreatmentId && topologySelectionBuild ? topologySelectionBuild : build).mesh}
+          objectRecords={(editingEdgeTreatmentId && topologySelectionBuild ? topologySelectionBuild : build).objectRecords}
           objectColors={objectColors}
           objectOrigins={viewportObjectOrigins}
           operationOrigins={viewportOperationOrigins}
@@ -784,6 +848,7 @@ export function SketchForgeParametricEditor() {
           onTopologyFaceSelect={selectTopologyFace}
           topologyEdgeSelection={selectingTopologyEdges}
           onTopologyEdgeSelect={selectTopologyEdge}
+          topologySelections={editingEdgeTreatmentId && !topologySelectionBuild ? [] : [...selectedTopologyFaces, ...selectedTopologyEdges]}
         />
         <ViewCube orientation={cameraOrientation} onDirection={(direction) => setView((current) => ({ name: "custom", direction, token: current.token + 1 }))} />
         <button data-educad-popup="grid" className={`educad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label="Ajustes de rejilla" title="Rejilla" onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><Grid3X3 size={22} /></button>
@@ -826,8 +891,6 @@ export function SketchForgeParametricEditor() {
         {kernelBusy && <div className="educad-kernel-pill">Reconstruyendo OpenCascade…</div>}
         {build.warning && <div className="educad-rebuild-error"><strong>El historial se detuvo aquí</strong><span>{build.warning}</span></div>}
         {notice && <div className={`educad-reference-toast ${notice.type}`}>{notice.text}</div>}
-        {selectingTopologyFaces || selectingTopologyEdges ? <div className="educad-topology-selection-status"><strong>{selectingTopologyFaces ? "Selección de caras" : "Selección de aristas"}</strong><span>{selectingTopologyFaces ? selectedTopologyFaces.length : selectedTopologyEdges.length} seleccionada{(selectingTopologyFaces ? selectedTopologyFaces.length : selectedTopologyEdges.length) === 1 ? "" : "s"} · Ctrl/Cmd para selección múltiple · Esc para salir</span></div> : null}
-
         {modelSidebarMode !== "hidden" ? <ParametricModelSidebar
           document={document}
           selection={modelSelection}
@@ -838,6 +901,17 @@ export function SketchForgeParametricEditor() {
           onRenameSelection={renameSelection}
           onDeleteSelection={deleteCurrentSelection}
           onToggleOriginEdit={toggleOriginEdit}
+          onEditFeatureSelection={(featureId) => {
+            const feature = document.features.find((candidate) => candidate.id === featureId);
+            if (feature?.kind === "fillet") beginEdgeTreatment(feature.treatment, feature.id);
+          }}
+          edgeTreatmentDraft={pendingEdgeTreatment ? { treatment: pendingEdgeTreatment, radius: edgeTreatmentRadius, faceCount: selectedTopologyFaces.length, edgeCount: selectedTopologyEdges.length, editing: Boolean(editingEdgeTreatmentId) } : null}
+          onEdgeTreatmentDraftChange={(update) => {
+            if (update.treatment) setPendingEdgeTreatment(update.treatment);
+            if (update.radius !== undefined) setEdgeTreatmentRadius(Math.max(0.01, update.radius));
+          }}
+          onAcceptEdgeTreatment={acceptEdgeTreatment}
+          onCancelEdgeTreatment={cancelEdgeTreatment}
           onUpdateObject={updateObject}
           onUpdateFeature={updateFeature}
         /> : null}

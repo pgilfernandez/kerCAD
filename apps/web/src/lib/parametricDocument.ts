@@ -157,12 +157,13 @@ export function createHoleFeature(index: number): HoleFeature {
   };
 }
 
-export function createFilletFeature(index: number): FilletFeature {
+export function createFilletFeature(index: number, treatment: FilletFeature["treatment"] = "fillet"): FilletFeature {
   return {
     id: createFeatureId("fillet"),
     kind: "fillet",
-    name: `Redondeo ${index}`,
+    name: `${treatment === "chamfer" ? "Chaflán" : "Redondeo"} ${index}`,
     suppressed: false,
+    treatment,
     radius: 2,
     edges: "vertical",
   };
@@ -224,6 +225,10 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
 
   for (const feature of next.features) {
     if ((feature.kind === "extrude" || feature.kind === "primitive") && (feature.operation as string) === "new") feature.operation = "add";
+    if (feature.kind === "fillet") {
+      feature.treatment ??= "fillet";
+      feature.selectionReferenceIds ??= feature.edgeReferenceIds;
+    }
     if (feature.kind === "primitive") {
       feature.width = Math.max(0.1, Number.isFinite(feature.width) ? feature.width : 20);
       feature.depth = Math.max(0.1, Number.isFinite(feature.depth) ? feature.depth : 20);

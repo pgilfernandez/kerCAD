@@ -11,7 +11,7 @@ import { constrainViewportAxisDrag, coplanarFaceRegion, exactEdgeRegion, exactFa
 import { AdaptiveViewportResolution, viewportPerformanceOptions, viewportRenderProfile, type ViewportRenderQuality } from "@/lib/viewportPerformance";
 import { orthographicTouchTargetWorldSize, perspectiveTouchTargetWorldSize, viewportPointerDragIntent, type ViewportPointerDragIntent } from "@/lib/viewportPointer";
 import { parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
-import type { ParametricDocument, ParametricObjectRenderRecord, RenderMesh } from "@/types/parametric";
+import type { ParametricDocument, ParametricObjectRenderRecord, ParametricTopologyReference, RenderMesh } from "@/types/parametric";
 
 export type CameraView = { name: "iso" | "top" | "front" | "right" | "zoom-in" | "zoom-out" | "home" | "fit" | "selection" | "custom"; token: number; direction?: [number, number, number] };
 export type CameraProjection = "perspective" | "orthographic";
@@ -119,6 +119,7 @@ type Props = {
   onTopologyFaceSelect?: (face: TopologyFacePick) => void;
   topologyEdgeSelection?: boolean;
   onTopologyEdgeSelect?: (edge: TopologyEdgePick) => void;
+  topologySelections?: ParametricTopologyReference[];
 };
 
 type CachedObjectRender = {
@@ -229,7 +230,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onShapeParameterChange, onObjectOriginMove, onObjectAxisMove, onOperationAxisMove, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onShapeParameterChange, onObjectOriginMove, onObjectAxisMove, onOperationAxisMove, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [] }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
@@ -665,8 +666,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     };
     const edgeAtPointer = () => {
       const edges = modelGroup.children.filter((child): child is THREE.LineSegments => child instanceof THREE.LineSegments && typeof child.userData.objectId === "string" && child.userData.finalReferenceWireframe);
-      raycaster.params.Line = { threshold: camera instanceof THREE.OrthographicCamera ? Math.max(0.4, (camera.top - camera.bottom) / camera.zoom / Math.max(1, renderer.domElement.clientHeight) * 7) : 0.8 };
-      return raycaster.intersectObjects(edges, false)[0] ?? null;
+      const threshold = camera instanceof THREE.OrthographicCamera ? Math.max(0.4, (camera.top - camera.bottom) / camera.zoom / Math.max(1, renderer.domElement.clientHeight) * 7) : 0.8;
+      raycaster.params.Line = { threshold };
+      const hit = raycaster.intersectObjects(edges, false)[0] ?? null;
+      if (!hit) return null;
+      const surface = faceAtPointer();
+      return surface && hit.distance > surface.distance + threshold * 1.5 ? null : hit;
     };
     const relativeObjectTransform = (object: THREE.Object3D) => new THREE.Matrix4().copy(modelGroup.matrixWorld).invert().multiply(object.matrixWorld);
     const applyRelativeTransform = (target: THREE.Object3D, object: THREE.Object3D) => {
@@ -950,9 +955,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         setPointer(event);
         if (topologyEdgeSelectionRef.current) {
           const selectedEdge = updateTopologyEdgeHighlight();
-          if (selectedEdge) toggleTopologyEdge(selectedEdge.hit, selectedEdge.region, event.ctrlKey || event.metaKey);
-          event.preventDefault();
-          return;
+          if (selectedEdge) {
+            toggleTopologyEdge(selectedEdge.hit, selectedEdge.region, event.ctrlKey || event.metaKey);
+            event.preventDefault();
+            return;
+          }
         }
         const selectedFace = updateWorkplaneFaceHighlight();
         if (selectedFace) {
@@ -1086,7 +1093,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       if (!interaction) {
         if ((workplaneFaceSelectionRef.current || topologyFaceSelectionRef.current || topologyEdgeSelectionRef.current) && event.buttons === 0) {
           setPointer(event);
-          if (topologyEdgeSelectionRef.current) updateTopologyEdgeHighlight(); else updateWorkplaneFaceHighlight();
+          const edge = topologyEdgeSelectionRef.current ? updateTopologyEdgeHighlight() : null;
+          if (!edge && (workplaneFaceSelectionRef.current || topologyFaceSelectionRef.current)) updateWorkplaneFaceHighlight();
           return;
         }
         if (pickCandidate && pickCandidate.pointerId === event.pointerId) {
@@ -1553,6 +1561,68 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     }
     invalidateRef.current();
   }, [mesh, objectRecords, color, projection, renderQuality]);
+
+  useEffect(() => {
+    const layer = topologyFaceLayerRef.current;
+    const renderer = rendererRef.current;
+    if (!layer || !renderer || (!topologyFaceSelection && !topologyEdgeSelection)) return;
+    for (const child of [...layer.children]) {
+      layer.remove(child);
+      child.traverse((item) => {
+        if (!(item instanceof THREE.Mesh || item instanceof THREE.LineSegments || item instanceof LineSegments2)) return;
+        item.geometry.dispose();
+        const materials = Array.isArray(item.material) ? item.material : [item.material];
+        materials.forEach((material) => material.dispose());
+      });
+    }
+    for (const reference of topologySelections) {
+      const cached = objectRenderCacheRef.current.get(reference.objectId);
+      const topologyId = reference.reference.hint.topologyId;
+      if (!cached || topologyId === undefined) continue;
+      if (reference.reference.hint.entityType === "face") {
+        const faceHint = reference.reference.hint;
+        const geometry = cached.body.geometry;
+        const positions = geometry.getAttribute("position");
+        const indices = geometry.getIndex();
+        const groups = geometry.userData.faceGroups as ViewportFaceGroup[] | undefined;
+        const group = groups?.find((candidate) => candidate.faceId === topologyId && (faceHint.originId === undefined || candidate.origin === faceHint.originId));
+        if (!positions || !indices || !groups || !group) continue;
+        const region = exactFaceRegion(positions.array, indices.array, group.start / 3, groups);
+        if (!region) continue;
+        const highlight = new THREE.Group();
+        const fillGeometry = new THREE.BufferGeometry();
+        fillGeometry.setAttribute("position", new THREE.Float32BufferAttribute(region.positions, 3));
+        const fill = new THREE.Mesh(fillGeometry, new THREE.MeshBasicMaterial({ color: "#43b9e8", transparent: true, opacity: 0.62, side: THREE.DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 }));
+        const boundaryGeometry = new LineSegmentsGeometry();
+        boundaryGeometry.setPositions(faceBoundaryPositions(region.positions));
+        const boundaryMaterial = new LineMaterial({ color: "#168ebf", linewidth: 2, depthTest: false });
+        boundaryMaterial.resolution.set(Math.max(1, renderer.domElement.clientWidth), Math.max(1, renderer.domElement.clientHeight));
+        const boundary = new LineSegments2(boundaryGeometry, boundaryMaterial);
+        fill.renderOrder = 26;
+        boundary.renderOrder = 27;
+        highlight.userData.topologyFaceKey = `${reference.objectId}:face:${region.faceId}:origin:${region.origin}`;
+        highlight.add(fill, boundary);
+        layer.add(highlight);
+      } else {
+        const geometry = cached.edges.geometry;
+        const positions = geometry.getAttribute("position");
+        const groups = geometry.userData.edgeGroups as ViewportEdgeGroup[] | undefined;
+        const group = groups?.find((candidate) => candidate.edgeId === topologyId);
+        if (!positions || !groups || !group) continue;
+        const region = exactEdgeRegion(positions.array, group.start, groups);
+        if (!region) continue;
+        const lineGeometry = new LineSegmentsGeometry();
+        lineGeometry.setPositions(region.positions);
+        const material = new LineMaterial({ color: "#43b9e8", linewidth: 2, depthTest: false });
+        material.resolution.set(Math.max(1, renderer.domElement.clientWidth), Math.max(1, renderer.domElement.clientHeight));
+        const highlight = new LineSegments2(lineGeometry, material);
+        highlight.userData.topologyEdgeKey = `${reference.objectId}:edge:${region.edgeId}`;
+        highlight.renderOrder = 28;
+        layer.add(highlight);
+      }
+    }
+    invalidateRef.current();
+  }, [objectRecords, topologyEdgeSelection, topologyFaceSelection, topologySelections]);
 
   useEffect(() => {
     const group = modelRef.current;

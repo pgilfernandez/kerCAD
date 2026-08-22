@@ -829,6 +829,16 @@ button {
 
 .educad-topology-selection-status strong { font-size: 11px; }
 
+.educad-topology-selection-actions { display: flex; justify-content: center; gap: 8px; margin-top: 7px; }
+.educad-topology-selection-actions button { min-width: 82px; padding: 5px 12px; border: 1px solid #8fb9cb; border-radius: 4px; background: #fff; color: #25566f; font: inherit; font-weight: 800; cursor: pointer; }
+.educad-topology-selection-actions button.primary { border-color: #258fbd; background: #43b9e8; color: #fff; }
+.educad-topology-selection-actions button:disabled { cursor: default; opacity: 0.45; }
+.educad-edge-treatment-draft { padding-bottom: 14px; }
+.educad-topology-selection-count { margin: 8px 12px 0; color: #405f6d; font-size: 11px; font-weight: 700; text-align: center; }
+.educad-edit-topology-selection { width: calc(100% - 24px); margin: 0 12px 8px; padding: 8px 10px; border: 1px solid #66b8da; border-radius: 5px; background: #eefaff; color: #236b89; font-size: 11px; font-weight: 800; cursor: pointer; }
+.educad-edit-topology-selection:hover { background: #ddf4fd; }
+.educad-topology-selection-summary { margin-top: 0; }
+
 .educad-history-drawer {
   position: absolute;
   top: 0;

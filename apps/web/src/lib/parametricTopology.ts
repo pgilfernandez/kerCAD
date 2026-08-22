@@ -1,4 +1,5 @@
 import type { ParametricDocument, ParametricObjectRenderRecord, ParametricTopologyReference } from "@/types/parametric";
+import { exactEdgeRegion, exactFaceRegion } from "@/lib/viewportGeometry";
 
 export class ParametricTopologyError extends Error {
   constructor(message: string) {
@@ -36,13 +37,51 @@ export function isParametricTopologyReference(value: unknown): value is Parametr
 }
 
 export function parametricTopologyReferenceIsAvailable(reference: ParametricTopologyReference, records: readonly ParametricObjectRenderRecord[]) {
+  return recoverParametricTopologyReferenceInRecords(reference, records) !== null;
+}
+
+export function recoverParametricTopologyReferenceInRecords(reference: ParametricTopologyReference, records: readonly ParametricObjectRenderRecord[]) {
   const record = records.find((candidate) => candidate.objectId === reference.objectId);
-  if (!record) return false;
-  const topologyId = reference.reference.hint.topologyId;
-  if (topologyId === undefined) return true;
-  return reference.reference.hint.entityType === "face"
-    ? (record.mesh.faceGroups ?? []).some((group) => group.faceId === topologyId)
-    : (record.mesh.edgeGroups ?? []).some((group) => group.edgeId === topologyId);
+  if (!record) return null;
+  const hint = reference.reference.hint;
+  if (hint.entityType === "face") {
+    const groups = record.mesh.faceGroups ?? [];
+    const candidates = groups.flatMap((group) => {
+      const region = exactFaceRegion(record.mesh.positions, record.mesh.indices, group.start / 3, groups);
+      if (!region) return [];
+      if (!hint.centroid || hint.area === undefined || !hint.normal) return group.faceId === hint.topologyId ? [{ group, score: 0 }] : [];
+      const scale = Math.max(1, Math.sqrt(Math.abs(hint.area)));
+      const centerDistance = Math.hypot(region.centroid.x - hint.centroid[0], region.centroid.y - hint.centroid[1], region.centroid.z - hint.centroid[2]) / scale;
+      const areaDifference = Math.abs(region.area - hint.area) / Math.max(1, Math.abs(hint.area));
+      const normalAgreement = Math.abs(region.normal.x * hint.normal[0] + region.normal.y * hint.normal[1] + region.normal.z * hint.normal[2]);
+      return [{ group, score: centerDistance + areaDifference + (1 - normalAgreement) }];
+    }).sort((a, b) => a.score - b.score);
+    const match = candidates[0];
+    if (!match || match.score > 0.25) return null;
+    if (hint.topologyId === match.group.faceId && hint.originId === match.group.origin) return reference;
+    const recovered = structuredClone(reference);
+    if (recovered.reference.hint.entityType === "face") {
+      recovered.reference.hint.topologyId = match.group.faceId;
+      recovered.reference.hint.originId = match.group.origin;
+    }
+    return recovered;
+  }
+  const groups = record.mesh.edgeGroups ?? [];
+  const candidates = groups.flatMap((group) => {
+    const region = exactEdgeRegion(record.mesh.edges, group.start, groups);
+    if (!region) return [];
+    if (!hint.midpoint || hint.length === undefined) return group.edgeId === hint.topologyId ? [{ group, score: 0 }] : [];
+    const scale = Math.max(1, Math.abs(hint.length));
+    const midpointDistance = Math.hypot(region.midpoint.x - hint.midpoint[0], region.midpoint.y - hint.midpoint[1], region.midpoint.z - hint.midpoint[2]) / scale;
+    const lengthDifference = Math.abs(region.length - hint.length) / scale;
+    return [{ group, score: midpointDistance + lengthDifference }];
+  }).sort((a, b) => a.score - b.score);
+  const match = candidates[0];
+  if (!match || match.score > 0.25) return null;
+  if (hint.topologyId === match.group.edgeId) return reference;
+  const recovered = structuredClone(reference);
+  if (recovered.reference.hint.entityType === "edge") recovered.reference.hint.topologyId = match.group.edgeId;
+  return recovered;
 }
 
 export function assertValidParametricTopology(document: ParametricDocument) {
@@ -60,11 +99,11 @@ export function assertValidParametricTopology(document: ParametricDocument) {
   }
   for (const feature of document.features) {
     if (feature.kind !== "fillet") continue;
-    for (const referenceId of feature.edgeReferenceIds ?? []) {
+    const selectionIds = feature.selectionReferenceIds ?? feature.edgeReferenceIds ?? [];
+    for (const referenceId of selectionIds) {
       const reference = references.get(referenceId);
-      if (!reference) throw new ParametricTopologyError(`${feature.name}: la arista referenciada ya no existe.`);
-      if (reference.reference.hint.entityType !== "edge") throw new ParametricTopologyError(`${feature.name}: la referencia seleccionada no es una arista.`);
-      if (feature.objectId && reference.objectId !== feature.objectId) throw new ParametricTopologyError(`${feature.name}: la arista pertenece a otro objeto.`);
+      if (!reference) throw new ParametricTopologyError(`${feature.name}: la entidad referenciada ya no existe.`);
+      if (feature.objectId && reference.objectId !== feature.objectId) throw new ParametricTopologyError(`${feature.name}: la selección pertenece a otro objeto.`);
     }
   }
 }

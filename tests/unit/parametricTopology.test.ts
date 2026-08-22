@@ -64,6 +64,11 @@ describe("stable parametric topology references", () => {
     expect(() => assertValidParametricTopology(document)).not.toThrow();
   });
 
+  it("keeps one editable edge-treatment feature for fillet and chamfer", () => {
+    expect(createFilletFeature(1)).toMatchObject({ treatment: "fillet", name: "Redondeo 1", radius: 2 });
+    expect(createFilletFeature(2, "chamfer")).toMatchObject({ treatment: "chamfer", name: "Chaflán 2", radius: 2 });
+  });
+
   it("reports broken references instead of silently selecting another edge", () => {
     const document = createStarterDocument(1);
     const object = document.objects[0];
@@ -78,6 +83,22 @@ describe("stable parametric topology references", () => {
 
     deleteParametricFeature(document, source.id);
     expect(() => assertValidParametricTopology(document)).toThrow(ParametricTopologyError);
+  });
+
+  it("removes references owned by a deleted edge-treatment operation", () => {
+    const document = createStarterDocument(1);
+    const object = document.objects[0];
+    const source = document.features.find((feature) => feature.kind === "extrude")!;
+    const stored = edgeReference(object.id, source.id);
+    document.topologyReferences.push(stored);
+    const treatment = createFilletFeature(1, "chamfer");
+    treatment.objectId = object.id;
+    treatment.edgeReferenceIds = [stored.id];
+    document.features.push(treatment);
+
+    deleteParametricFeature(document, treatment.id);
+
+    expect(document.topologyReferences).toHaveLength(0);
   });
 
   it("supports explicit manual recovery while preserving the stable reference id", () => {

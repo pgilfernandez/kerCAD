@@ -1,5 +1,5 @@
 import { loadBrepWithOcct, type Brep, type BrepSolid } from "@/lib/brepKernel";
-import type { Edge } from "brepjs";
+import type { Edge, Face } from "brepjs";
 import { parametricObjectGeometryFingerprint } from "@/lib/parametricBuildState";
 import { topologicallySortedParametricFeatures } from "@/lib/parametricDependencyGraph";
 import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricObject, ParametricObjectRenderRecord, PrimitiveFeature, RenderMesh, SketchFeature } from "@/types/parametric";
@@ -235,20 +235,67 @@ function buildRenderOutput(brep: Brep, document: ParametricDocument, solids: Map
 }
 
 function applyFilletFeature(brep: Brep, document: ParametricDocument, current: AnySolid, feature: Extract<ParametricDocument["features"][number], { kind: "fillet" }>) {
-  if (feature.edgeReferenceIds?.length) {
+  const selectionReferenceIds = feature.selectionReferenceIds ?? feature.edgeReferenceIds ?? [];
+  if (selectionReferenceIds.length) {
     const edges: Edge[] = [];
-    for (const referenceId of feature.edgeReferenceIds) {
+    const object = document.objects.find((candidate) => candidate.id === feature.objectId);
+    const localPoint = (point: [number, number, number]) => {
+      if (!object) return point;
+      let [x, y, z] = [point[0] - object.transform.position.x, point[1] - object.transform.position.y, point[2] - object.transform.position.z];
+      for (const [angle, axis] of [[-object.transform.rotation.z, "z"], [-object.transform.rotation.y, "y"], [-object.transform.rotation.x, "x"]] as const) {
+        const radians = angle * Math.PI / 180;
+        const cosine = Math.cos(radians);
+        const sine = Math.sin(radians);
+        if (axis === "z") [x, y] = [x * cosine - y * sine, x * sine + y * cosine];
+        if (axis === "y") [x, z] = [x * cosine + z * sine, -x * sine + z * cosine];
+        if (axis === "x") [y, z] = [y * cosine - z * sine, y * sine + z * cosine];
+      }
+      return [x / object.transform.scale.x, y / object.transform.scale.y, z / object.transform.scale.z] as [number, number, number];
+    };
+    for (const referenceId of selectionReferenceIds) {
       const stored = document.topologyReferences.find((reference) => reference.id === referenceId);
-      if (!stored) throw new Error(`${feature.name}: la arista seleccionada ya no existe.`);
-      const resolution = brep.resolveRefIn(stored.reference as Parameters<Brep["resolveRefIn"]>[0], current);
-      if (!resolution.ok) throw new Error(`${feature.name}: no se pudo recuperar una arista (${resolution.reason}).`);
-      edges.push(resolution.entity as Edge);
+      if (!stored) throw new Error(`${feature.name}: la selección ya no existe.`);
+      if (stored.reference.hint.entityType === "face") {
+        const faces = brep.getFaces(current);
+        const topologyId = stored.reference.hint.topologyId;
+        let face = topologyId === undefined ? undefined : faces.find((candidate) => brep.getHashCode(candidate) === topologyId);
+        if (!face) {
+          const resolution = brep.resolveRefIn(stored.reference as Parameters<Brep["resolveRefIn"]>[0], current);
+          if (!resolution.ok) throw new Error(`${feature.name}: no se pudo recuperar una cara (${resolution.reason}).`);
+          face = resolution.entity as Face;
+        }
+        edges.push(...brep.getEdges(face) as Edge[]);
+        continue;
+      }
+      const candidates = brep.getEdges(current) as Edge[];
+      const topologyId = stored.reference.hint.topologyId;
+      let edge = topologyId === undefined ? undefined : candidates.find((candidate) => brep.getHashCode(candidate) === topologyId);
+      if (!edge && stored.reference.hint.entityType === "edge" && stored.reference.hint.midpoint) {
+        const target = localPoint(stored.reference.hint.midpoint);
+        const averageScale = object ? (Math.abs(object.transform.scale.x) + Math.abs(object.transform.scale.y) + Math.abs(object.transform.scale.z)) / 3 : 1;
+        const targetLength = stored.reference.hint.length === undefined ? 1 : stored.reference.hint.length / Math.max(0.0001, averageScale);
+        const nearest = candidates.map((candidate) => {
+          const midpoint = brep.curvePointAt(candidate, 0.5);
+          const midpointDistance = Math.hypot(midpoint[0] - target[0], midpoint[1] - target[1], midpoint[2] - target[2]);
+          const length = brep.unwrapOr(brep.measureLength(candidate), targetLength);
+          return { candidate, score: (midpointDistance + Math.abs(length - targetLength)) / Math.max(1, targetLength) };
+        }).sort((a, b) => a.score - b.score)[0];
+        if (nearest && nearest.score <= 0.35) edge = nearest.candidate;
+      }
+      if (!edge) {
+        const resolution = brep.resolveRefIn(stored.reference as Parameters<Brep["resolveRefIn"]>[0], current);
+        if (!resolution.ok) throw new Error(`${feature.name}: no se pudo recuperar una arista (${resolution.reason}).`);
+        edge = resolution.entity as Edge;
+      }
+      edges.push(edge);
     }
-    return resultValue<AnySolid>(brep, brep.fillet(current, edges, feature.radius));
+    const uniqueEdges = [...new Map(edges.map((edge) => [brep.getHashCode(edge), edge])).values()];
+    return resultValue<AnySolid>(brep, feature.treatment === "chamfer" ? brep.chamfer(current, uniqueEdges, feature.radius) : brep.fillet(current, uniqueEdges, feature.radius));
   }
-  return resultValue<AnySolid>(brep, feature.edges === "vertical"
-    ? brep.fillet(current, brep.edgeFinder().inDirection("Z"), feature.radius)
-    : brep.fillet(current, feature.radius));
+  const selection = feature.edges === "vertical" ? brep.edgeFinder().inDirection("Z") : undefined;
+  return resultValue<AnySolid>(brep, feature.treatment === "chamfer"
+    ? selection ? brep.chamfer(current, selection, feature.radius) : brep.chamfer(current, feature.radius)
+    : selection ? brep.fillet(current, selection, feature.radius) : brep.fillet(current, feature.radius));
 }
 
 async function buildParametricModelInternal(document: ParametricDocument, contextFeatureId: string | null, stopAtContext: boolean): Promise<BuildResult> {

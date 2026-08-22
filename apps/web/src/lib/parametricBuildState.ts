@@ -7,6 +7,7 @@ export function parametricGeometryFingerprint(document: ParametricDocument) {
     geometryVersion: PARAMETRIC_GEOMETRY_VERSION,
     objects: document.objects.map((object) => ({ id: object.id, visible: object.visible, transform: object.transform })),
     features: document.features.map(({ name: _name, ...feature }) => feature),
+    topologyReferences: document.topologyReferences,
   });
 }
 

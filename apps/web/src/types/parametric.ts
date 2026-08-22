@@ -118,9 +118,11 @@ export type HoleFeature = BaseFeature & {
 
 export type FilletFeature = BaseFeature & {
   kind: "fillet";
+  treatment: "fillet" | "chamfer";
   radius: number;
   edges: "vertical" | "all";
   edgeReferenceIds?: string[];
+  selectionReferenceIds?: string[];
 };
 
 export type ParametricFeature = SketchFeature | ExtrudeFeature | PrimitiveFeature | HoleFeature | FilletFeature;

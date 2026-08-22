@@ -195,6 +195,7 @@ export function deleteParametricFeature(document: ParametricDocument, id: string
   const operations = document.features.filter((candidate) => candidate.objectId === objectId && candidate.kind !== "sketch");
   const operationIndex = operations.findIndex((candidate) => candidate.id === id);
   const ids = new Set([id]);
+  const ownedReferenceIds = new Set(feature.kind === "fillet" ? [...(feature.edgeReferenceIds ?? []), ...(feature.selectionReferenceIds ?? [])] : []);
   if (feature.kind === "extrude") ids.add(feature.sketchId);
   if (feature.kind === "sketch") {
     for (const candidate of document.features) {
@@ -202,7 +203,7 @@ export function deleteParametricFeature(document: ParametricDocument, id: string
     }
   }
   document.features = document.features.filter((candidate) => !ids.has(candidate.id));
-  document.topologyReferences = document.topologyReferences.filter((reference) => !ids.has(reference.sourceFeatureId));
+  document.topologyReferences = document.topologyReferences.filter((reference) => !ids.has(reference.sourceFeatureId) && !ownedReferenceIds.has(reference.id));
   const remaining = operations.filter((candidate) => !ids.has(candidate.id));
   const nextId = remaining[Math.max(0, operationIndex - 1)]?.id ?? remaining[0]?.id ?? objectId;
   return { objectId, nextId };
@@ -352,7 +353,10 @@ export function duplicateParametricObject(document: ParametricDocument, id: stri
     clone.dependencies = clone.dependencies?.map((reference) => reference.type === "feature"
       ? { ...reference, id: idMap.get(reference.id) ?? reference.id }
       : { ...reference, id: reference.id === id ? objectClone.id : reference.id });
-    if (clone.kind === "fillet") clone.edgeReferenceIds = clone.edgeReferenceIds?.map((referenceId) => topologyIdMap.get(referenceId) ?? referenceId);
+    if (clone.kind === "fillet") {
+      clone.edgeReferenceIds = clone.edgeReferenceIds?.map((referenceId) => topologyIdMap.get(referenceId) ?? referenceId);
+      clone.selectionReferenceIds = clone.selectionReferenceIds?.map((referenceId) => topologyIdMap.get(referenceId) ?? referenceId);
+    }
     return clone;
   });
   const topologyClones = sourceTopology.map((reference) => {
