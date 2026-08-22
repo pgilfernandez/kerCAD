@@ -44,6 +44,40 @@ function applyOperationTransform(brep: Brep, solid: AnySolid, operation: Extrude
   return solid;
 }
 
+function polyhedronSolid(brep: Brep, points: Array<[number, number, number]>, faces: number[][]): AnySolid {
+  return brep.unwrap(brep.polyhedron(points, faces)) as AnySolid;
+}
+
+function angularPrimitiveSolid(brep: Brep, feature: PrimitiveFeature): AnySolid {
+  const halfWidth = feature.width / 2;
+  const halfDepth = feature.depth / 2;
+  if (feature.primitive === "pyramid") {
+    return polyhedronSolid(brep, [
+      [-halfWidth, -halfDepth, 0], [halfWidth, -halfDepth, 0], [halfWidth, halfDepth, 0], [-halfWidth, halfDepth, 0], [0, 0, feature.height],
+    ], [[0, 3, 2, 1], [0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4]]);
+  }
+  if (feature.primitive === "wedge") {
+    return polyhedronSolid(brep, [
+      [-halfWidth, -halfDepth, 0], [halfWidth, -halfDepth, 0], [halfWidth, halfDepth, 0], [-halfWidth, halfDepth, 0],
+      [-halfWidth, -halfDepth, feature.height], [-halfWidth, halfDepth, feature.height],
+    ], [[0, 3, 2, 1], [0, 1, 4], [3, 5, 2], [0, 4, 5, 3], [1, 2, 5, 4]]);
+  }
+  return polyhedronSolid(brep, [
+    [-halfWidth, -halfDepth, 0], [halfWidth, -halfDepth, 0], [-halfWidth, halfDepth, 0], [halfWidth, halfDepth, 0],
+    [0, -halfDepth, feature.height], [0, halfDepth, feature.height],
+  ], [[0, 2, 3, 1], [0, 1, 4], [2, 5, 3], [0, 4, 5, 2], [1, 3, 5, 4]]);
+}
+
+function roundRoofSolid(brep: Brep, feature: PrimitiveFeature): AnySolid {
+  const unitCylinder = brep.cylinder(1, feature.depth, { axis: [0, 1, 0], at: [0, -feature.depth / 2, 0] });
+  const ellipticalCylinder = brep.unwrap(brep.applyMatrix(unitCylinder, {
+    linear: [feature.width / 2, 0, 0, 0, 1, 0, 0, 0, feature.height],
+    translation: [0, 0, 0],
+  })) as AnySolid;
+  const clip = brep.box(feature.width + 2, feature.depth + 2, feature.height + 1, { centered: true, at: [0, 0, (feature.height + 1) / 2] });
+  return refinedBooleanSolid(brep, brep.intersect(ellipticalCylinder, clip));
+}
+
 function solidFromPrimitive(brep: Brep, feature: PrimitiveFeature): AnySolid {
   if (feature.width <= 0 || feature.depth <= 0 || feature.height <= 0) {
     throw new Error(`${feature.name}: todas las dimensiones deben ser mayores que cero.`);
@@ -70,7 +104,11 @@ function solidFromPrimitive(brep: Brep, feature: PrimitiveFeature): AnySolid {
     solid = refinedBooleanSolid(brep, brep.intersect(ellipsoid, clip));
   } else if (feature.primitive === "torus") {
     const tubeRadius = feature.tubeRadius ?? 4;
-    solid = brep.torus(feature.majorRadius ?? 12, tubeRadius, { at: [0, 0, tubeRadius] });
+    solid = brep.torus(feature.majorRadius ?? 12, tubeRadius, { at: [0, 0, 0] });
+  } else if (feature.primitive === "pyramid" || feature.primitive === "wedge" || feature.primitive === "roof") {
+    solid = angularPrimitiveSolid(brep, feature);
+  } else if (feature.primitive === "roundRoof") {
+    solid = roundRoofSolid(brep, feature);
   } else {
     solid = brep.ellipsoid(feature.width / 2, feature.depth / 2, feature.height / 2, { at: [0, 0, 0] });
   }

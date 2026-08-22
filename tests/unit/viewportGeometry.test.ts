@@ -88,6 +88,26 @@ describe("operation preview wireframes", () => {
     expect(positions.slice(64 * 6, 64 * 6 + 3)).toEqual([16, 0, 0]);
     expect(positions.slice(2 * 64 * 6, 2 * 64 * 6 + 3)).toEqual([16, 0, 0]);
   });
+
+  it("draws the eight structural edges of a pyramid", () => {
+    const positions = operationPreviewWireframePositions("pyramid", 20, 10, 12);
+
+    expect(positions).toHaveLength(8 * 6);
+    expect(positions.slice(0, 6)).toEqual([-10, -5, -6, 10, -5, -6]);
+    expect(positions.slice(6, 12)).toEqual([-10, -5, -6, 0, 0, 6]);
+  });
+
+  it.each(["wedge", "roof"] as const)("draws the nine structural edges of a %s", (shape) => {
+    expect(operationPreviewWireframePositions(shape, 20, 10, 12)).toHaveLength(9 * 6);
+  });
+
+  it("draws two semicircular ends and five reference edges for a round roof", () => {
+    const positions = operationPreviewWireframePositions("roundRoof", 20, 10, 8);
+
+    expect(positions).toHaveLength((64 * 2 + 5) * 6);
+    expect(positions.slice(0, 6)).toEqual([-10, -5, -4, 10, -5, -4]);
+    expect(positions.slice(-6)).toEqual([0, -5, 4, 0, 5, 4]);
+  });
 });
 
 describe("operation preview styles", () => {

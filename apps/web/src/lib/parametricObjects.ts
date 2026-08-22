@@ -88,7 +88,7 @@ export function addPrimitive(
   const object = document.objects.find((candidate) => candidate.id === objectId);
   if (!object) return null;
   const count = document.features.filter((feature) => feature.kind !== "sketch").length + 1;
-  if (kind === "sphere" || kind === "cone" || kind === "tube" || kind === "halfSphere" || kind === "torus") {
+  if (kind === "sphere" || kind === "cone" || kind === "tube" || kind === "halfSphere" || kind === "torus" || kind === "pyramid" || kind === "wedge" || kind === "roof" || kind === "roundRoof") {
     const definition = parametricOperationDefinition(kind);
     const primitive = createPrimitiveFeature(kind, count);
     primitive.objectId = objectId;
@@ -412,7 +412,7 @@ export function viewportSelectionForObject(document: ParametricDocument, id: str
 function operationWorldTransform(object: ParametricObject, feature: TransformableOperation, height: number) {
   const matrix = parametricTransformMatrix(object.transform).multiply(parametricTransformMatrix({ ...feature.transform, scale: { x: 1, y: 1, z: 1 } }));
   const origin = new THREE.Vector3().applyMatrix4(matrix);
-  const centerOffset = feature.kind === "primitive" && feature.primitive === "sphere" ? 0 : height / 2;
+  const centerOffset = feature.kind === "primitive" && (feature.primitive === "sphere" || feature.primitive === "torus") ? 0 : height / 2;
   const center = new THREE.Vector3(0, 0, centerOffset).applyMatrix4(matrix);
   const rotationMatrix = parametricTransformMatrix({ ...object.transform, scale: { x: 1, y: 1, z: 1 } })
     .multiply(parametricTransformMatrix({ ...feature.transform, scale: { x: 1, y: 1, z: 1 } }));
@@ -470,6 +470,8 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
           ? { shape: "tube", outerRadius: feature.width / 2, innerRadius: feature.innerRadius ?? 6, height: feature.height }
           : feature.primitive === "torus"
             ? { shape: "torus", majorRadius: feature.majorRadius ?? 12, tubeRadius: feature.tubeRadius ?? 4 }
+          : feature.primitive === "pyramid" || feature.primitive === "wedge" || feature.primitive === "roof" || feature.primitive === "roundRoof"
+            ? { shape: feature.primitive, width: feature.width, depth: feature.depth, height: feature.height }
           : feature.primitive === "halfSphere"
             ? { shape: "halfSphere", radius: feature.width / 2, height: feature.height }
         : { shape: "sphere", radius: feature.width / 2 }
@@ -760,6 +762,12 @@ export function updateParametricShapeParameter(
       feature.width = ((feature.majorRadius ?? 12) + feature.tubeRadius) * 2;
       feature.depth = feature.width;
       feature.height = feature.tubeRadius * 2;
+    } else if ((feature.primitive === "pyramid" || feature.primitive === "wedge" || feature.primitive === "roof" || feature.primitive === "roundRoof") && parameter === "width") {
+      feature.width = next;
+    } else if ((feature.primitive === "pyramid" || feature.primitive === "wedge" || feature.primitive === "roof" || feature.primitive === "roundRoof") && parameter === "depth") {
+      feature.depth = next;
+    } else if ((feature.primitive === "pyramid" || feature.primitive === "wedge" || feature.primitive === "roof" || feature.primitive === "roundRoof") && parameter === "height") {
+      feature.height = next;
     }
     return;
   }

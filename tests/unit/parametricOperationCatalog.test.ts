@@ -49,5 +49,17 @@ describe("parametric operation catalog", () => {
 
     expect(definition.parameters.map((parameter) => parameter.key)).toEqual(["majorRadius", "tubeRadius"]);
     expect(definition.parameters.map((parameter) => parameter.defaultValue)).toEqual([12, 4]);
+    expect(definition.parameters.map((parameter) => parameter.label)).toEqual(["Radio", "Espesor"]);
+  });
+
+  it.each([
+    ["pyramid", ["width", "depth", "height"]],
+    ["wedge", ["width", "depth", "height"]],
+    ["roof", ["width", "depth", "height"]],
+    ["roundRoof", ["width", "depth", "height"]],
+  ] as const)("defines the remaining exact %s primitive", (kind, keys) => {
+    const parameters = parametricOperationDefinition(kind).parameters;
+    expect(parameters.map((parameter) => parameter.key)).toEqual(keys);
+    expect(parameters.map((parameter) => parameter.label)).toEqual(["Ancho", "Largo", "Altura"]);
   });
 });

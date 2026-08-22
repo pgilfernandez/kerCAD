@@ -1,4 +1,4 @@
-export type ParametricPrimitiveKind = "box" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus";
+export type ParametricPrimitiveKind = "box" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof";
 export type ParametricBooleanRole = "add" | "cut" | "intersect";
 
 export type ParametricParameterDefinition = {
@@ -95,7 +95,39 @@ export const parametricOperationCatalog: ParametricOperationDefinition[] = [
     description: "Toro paramétrico exacto con radios mayor y de tubo editables",
     menuIcon: "assets/sketchforge/shape-icons-gray/torus.png",
     roles: roles("torus"),
-    parameters: [dimension("majorRadius", "Radio mayor", 12), dimension("tubeRadius", "Radio del tubo", 4)],
+    parameters: [dimension("majorRadius", "Radio", 12), dimension("tubeRadius", "Espesor", 4)],
+  },
+  {
+    kind: "pyramid",
+    name: "Pirámide",
+    description: "Pirámide rectangular paramétrica exacta",
+    menuIcon: "assets/sketchforge/shape-icons-gray/pyramid.png",
+    roles: roles("pyramid"),
+    parameters: [dimension("width", "Ancho"), dimension("depth", "Largo"), dimension("height", "Altura")],
+  },
+  {
+    kind: "wedge",
+    name: "Cuña",
+    description: "Prisma triangular paramétrico exacto",
+    menuIcon: "assets/sketchforge/shape-icons-gray/wedge.png",
+    roles: roles("wedge"),
+    parameters: [dimension("width", "Ancho"), dimension("depth", "Largo"), dimension("height", "Altura")],
+  },
+  {
+    kind: "roof",
+    name: "Tejado",
+    description: "Tejado a dos aguas paramétrico exacto",
+    menuIcon: "assets/sketchforge/shape-icons-gray/pyramid.png",
+    roles: roles("roof"),
+    parameters: [dimension("width", "Ancho"), dimension("depth", "Largo"), dimension("height", "Altura", 12)],
+  },
+  {
+    kind: "roundRoof",
+    name: "Tejado redondo",
+    description: "Tejado semicilíndrico o semielíptico paramétrico exacto",
+    menuIcon: "assets/sketchforge/shape-icons-gray/round-roof.png",
+    roles: roles("roundRoof"),
+    parameters: [dimension("width", "Ancho"), dimension("depth", "Largo"), dimension("height", "Altura", 10)],
   },
 ];
 

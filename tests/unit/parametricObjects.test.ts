@@ -153,8 +153,8 @@ describe("parametric object workflow", () => {
 
     expect(feature).toMatchObject({ kind: "primitive", primitive: "torus", majorRadius: 12, tubeRadius: 4, width: 32, depth: 32, height: 8, operation: "add" });
     expect(viewportSelectionForFeature(document, result.featureId)).toMatchObject({
-      baseZ: 0,
-      center: { x: 0, y: 0, z: 4 },
+      baseZ: -4,
+      center: { x: 0, y: 0, z: 0 },
       shapeParameters: { shape: "torus", majorRadius: 12, tubeRadius: 4 },
       operationPreview: { shape: "torus", mode: "add", historical: false },
     });
@@ -165,6 +165,30 @@ describe("parametric object workflow", () => {
 
     updateParametricShapeParameter(document, result.featureId!, "majorRadius", 4);
     expect(feature).toMatchObject({ majorRadius: 6.1, tubeRadius: 6, width: 24.2, depth: 24.2, height: 12 });
+  });
+
+  it.each([
+    ["pyramid", "Pirámide", 20],
+    ["wedge", "Cuña", 20],
+    ["roof", "Tejado", 12],
+    ["roundRoof", "Tejado redondo", 10],
+  ] as const)("adds and edits a native %s with direct dimensions", (kind, name, defaultHeight) => {
+    const document = createStarterDocument(123);
+    const result = addPrimitiveToSelection(document, null, kind);
+    const feature = document.features.find((candidate) => candidate.id === result.featureId);
+
+    expect(feature).toMatchObject({ kind: "primitive", primitive: kind, name, width: 20, depth: 20, height: defaultHeight, operation: "add" });
+    expect(viewportSelectionForFeature(document, result.featureId)).toMatchObject({
+      baseZ: 0,
+      center: { x: 0, y: 0, z: defaultHeight / 2 },
+      shapeParameters: { shape: kind, width: 20, depth: 20, height: defaultHeight },
+      operationPreview: { shape: kind, mode: "add", historical: false },
+    });
+
+    updateParametricShapeParameter(document, result.featureId!, "width", 28);
+    updateParametricShapeParameter(document, result.featureId!, "depth", 18);
+    updateParametricShapeParameter(document, result.featureId!, "height", 14);
+    expect(feature).toMatchObject({ width: 28, depth: 18, height: 14 });
   });
 
   it("edits only the defining visual parameters for boxes and cylinders", () => {

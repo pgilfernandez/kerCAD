@@ -1,4 +1,4 @@
-export function operationPreviewWireframePositions(shape: "box" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus", width: number, depth: number, height: number, topWidth = width, innerWidth = 0) {
+export function operationPreviewWireframePositions(shape: "box" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof", width: number, depth: number, height: number, topWidth = width, innerWidth = 0) {
   const positions: number[] = [];
   const addSegment = (x1: number, y1: number, z1: number, x2: number, y2: number, z2: number) => positions.push(x1, y1, z1, x2, y2, z2);
   const halfWidth = width / 2;
@@ -17,7 +17,55 @@ export function operationPreviewWireframePositions(shape: "box" | "cylinder" | "
     }
     return positions;
   }
+  if (shape === "pyramid") {
+    const base = [[-halfWidth, -halfDepth, bottom], [halfWidth, -halfDepth, bottom], [halfWidth, halfDepth, bottom], [-halfWidth, halfDepth, bottom]] as const;
+    for (let index = 0; index < 4; index += 1) {
+      const start = base[index];
+      const end = base[(index + 1) % 4];
+      addSegment(...start, ...end);
+      addSegment(...start, 0, 0, top);
+    }
+    return positions;
+  }
+  if (shape === "wedge") {
+    const points = [
+      [-halfWidth, -halfDepth, bottom], [halfWidth, -halfDepth, bottom], [-halfWidth, -halfDepth, top],
+      [-halfWidth, halfDepth, bottom], [halfWidth, halfDepth, bottom], [-halfWidth, halfDepth, top],
+    ] as const;
+    for (const [start, end] of [[0, 1], [1, 2], [2, 0], [3, 4], [4, 5], [5, 3], [0, 3], [1, 4], [2, 5]] as const) {
+      const a = points[start];
+      const b = points[end];
+      addSegment(a[0], a[1], a[2], b[0], b[1], b[2]);
+    }
+    return positions;
+  }
+  if (shape === "roof") {
+    const points = [
+      [-halfWidth, -halfDepth, bottom], [halfWidth, -halfDepth, bottom], [0, -halfDepth, top],
+      [-halfWidth, halfDepth, bottom], [halfWidth, halfDepth, bottom], [0, halfDepth, top],
+    ] as const;
+    for (const [start, end] of [[0, 1], [1, 2], [2, 0], [3, 4], [4, 5], [5, 3], [0, 3], [1, 4], [2, 5]] as const) {
+      const a = points[start];
+      const b = points[end];
+      addSegment(a[0], a[1], a[2], b[0], b[1], b[2]);
+    }
+    return positions;
+  }
   const segments = 64;
+  if (shape === "roundRoof") {
+    for (const y of [-halfDepth, halfDepth]) {
+      addSegment(-halfWidth, y, bottom, halfWidth, y, bottom);
+      for (let index = 0; index < segments; index += 1) {
+        const angle = Math.PI - index / segments * Math.PI;
+        const nextAngle = Math.PI - (index + 1) / segments * Math.PI;
+        addSegment(Math.cos(angle) * halfWidth, y, bottom + Math.sin(angle) * height, Math.cos(nextAngle) * halfWidth, y, bottom + Math.sin(nextAngle) * height);
+      }
+    }
+    addSegment(-halfWidth, -halfDepth, bottom, -halfWidth, halfDepth, bottom);
+    addSegment(halfWidth, -halfDepth, bottom, halfWidth, halfDepth, bottom);
+    addSegment(0, -halfDepth, top, 0, halfDepth, top);
+    return positions;
+  }
   if (shape === "sphere") {
     for (const plane of ["xy", "xz", "yz"] as const) {
       for (let index = 0; index < segments; index += 1) {
