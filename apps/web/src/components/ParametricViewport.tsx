@@ -97,7 +97,7 @@ type Props = {
   selectedObjectOriginId?: string | null;
   selectedOperationOriginId?: string | null;
   selectedObjectIds?: string[];
-  operationContext?: { color: string; mesh: RenderMesh; opacity: number } | null;
+  operationContext?: { color: string; mesh: RenderMesh; opacity: number; selectionMesh?: RenderMesh } | null;
   isolatedHistoryObjectId?: string | null;
   color: string;
   workplane?: ParametricDocument["workplane"];
@@ -122,6 +122,8 @@ type Props = {
   onTopologyEdgeSelect?: (edge: TopologyEdgePick) => void;
   topologySelections?: ParametricTopologyReference[];
   topologyMultiSelection?: boolean;
+  historicalTopologySelections?: ParametricTopologyReference[];
+  historicalTopologyRecords?: ParametricObjectRenderRecord[];
 };
 
 type CachedObjectRender = {
@@ -232,7 +234,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onShapeParameterChange, onObjectOriginMove, onObjectAxisMove, onOperationAxisMove, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onShapeParameterChange, onObjectOriginMove, onObjectAxisMove, onOperationAxisMove, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [] }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
@@ -1570,7 +1572,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   useEffect(() => {
     const layer = topologyFaceLayerRef.current;
     const renderer = rendererRef.current;
-    if (!layer || !renderer || (!topologyFaceSelection && !topologyEdgeSelection)) return;
+    if (!layer || !renderer) return;
     for (const child of [...layer.children]) {
       layer.remove(child);
       child.traverse((item) => {
@@ -1580,24 +1582,27 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         materials.forEach((material) => material.dispose());
       });
     }
-    for (const reference of topologySelections) {
+    const interactiveTopologySelection = topologyFaceSelection || topologyEdgeSelection;
+    const displayedSelections = interactiveTopologySelection ? topologySelections : historicalTopologySelections;
+    for (const reference of displayedSelections) {
       const cached = objectRenderCacheRef.current.get(reference.objectId);
+      const sourceRecord = historicalTopologyRecords.find((record) => record.objectId === reference.objectId);
       const topologyId = reference.reference.hint.topologyId;
-      if (!cached || topologyId === undefined) continue;
+      if ((!cached && !sourceRecord) || topologyId === undefined) continue;
       if (reference.reference.hint.entityType === "face") {
         const faceHint = reference.reference.hint;
-        const geometry = cached.body.geometry;
-        const positions = geometry.getAttribute("position");
-        const indices = geometry.getIndex();
-        const groups = geometry.userData.faceGroups as ViewportFaceGroup[] | undefined;
+        const geometry = cached?.body.geometry;
+        const positions = sourceRecord?.mesh.positions ?? geometry?.getAttribute("position")?.array;
+        const indices = sourceRecord?.mesh.indices ?? geometry?.getIndex()?.array;
+        const groups = sourceRecord?.mesh.faceGroups ?? geometry?.userData.faceGroups as ViewportFaceGroup[] | undefined;
         const group = groups?.find((candidate) => candidate.faceId === topologyId && (faceHint.originId === undefined || candidate.origin === faceHint.originId));
         if (!positions || !indices || !groups || !group) continue;
-        const region = exactFaceRegion(positions.array, indices.array, group.start / 3, groups);
+        const region = exactFaceRegion(positions, indices, group.start / 3, groups);
         if (!region) continue;
         const highlight = new THREE.Group();
         const fillGeometry = new THREE.BufferGeometry();
         fillGeometry.setAttribute("position", new THREE.Float32BufferAttribute(region.positions, 3));
-        const fill = new THREE.Mesh(fillGeometry, new THREE.MeshBasicMaterial({ color: "#43b9e8", transparent: true, opacity: 0.62, side: THREE.DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 }));
+        const fill = new THREE.Mesh(fillGeometry, new THREE.MeshBasicMaterial({ color: "#43b9e8", transparent: interactiveTopologySelection, opacity: interactiveTopologySelection ? 0.62 : 1, side: THREE.DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 }));
         const boundaryGeometry = new LineSegmentsGeometry();
         boundaryGeometry.setPositions(faceBoundaryPositions(region.positions));
         const boundaryMaterial = new LineMaterial({ color: "#168ebf", linewidth: 2, depthTest: false });
@@ -1609,12 +1614,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         highlight.add(fill, boundary);
         layer.add(highlight);
       } else {
-        const geometry = cached.edges.geometry;
-        const positions = geometry.getAttribute("position");
-        const groups = geometry.userData.edgeGroups as ViewportEdgeGroup[] | undefined;
+        const geometry = cached?.edges.geometry;
+        const positions = sourceRecord?.mesh.edges ?? geometry?.getAttribute("position")?.array;
+        const groups = sourceRecord?.mesh.edgeGroups ?? geometry?.userData.edgeGroups as ViewportEdgeGroup[] | undefined;
         const group = groups?.find((candidate) => candidate.edgeId === topologyId);
         if (!positions || !groups || !group) continue;
-        const region = exactEdgeRegion(positions.array, group.start, groups);
+        const region = exactEdgeRegion(positions, group.start, groups);
         if (!region) continue;
         const lineGeometry = new LineSegmentsGeometry();
         lineGeometry.setPositions(region.positions);
@@ -1627,7 +1632,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       }
     }
     invalidateRef.current();
-  }, [objectRecords, topologyEdgeSelection, topologyFaceSelection, topologySelections]);
+  }, [historicalTopologyRecords, historicalTopologySelections, objectRecords, topologyEdgeSelection, topologyFaceSelection, topologySelections]);
 
   useEffect(() => {
     const group = modelRef.current;

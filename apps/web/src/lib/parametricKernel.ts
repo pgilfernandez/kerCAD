@@ -372,6 +372,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
       const objectId = feature.objectId ?? lastObjectId;
       let current = solids.get(objectId) ?? null;
       if (!current) throw new Error(`${feature.name}: primero hace falta crear un sólido.`);
+      const selectionMesh = feature.id === contextFeatureId ? meshShape(brep, applyObjectTransform(brep, current, objects.get(objectId))) : undefined;
       if (feature.kind === "hole") {
         if (feature.diameter <= 0) throw new Error(`${feature.name}: el diámetro debe ser mayor que cero.`);
         const bounds = brep.getBounds(current);
@@ -388,13 +389,22 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         current = applyFilletFeature(brep, document, current, feature);
         solids.set(objectId, current);
         completedFeatureIds.push(feature.id);
-        continue;
-      }
-      if (feature.kind === "faceExtrude") {
+      } else if (feature.kind === "faceExtrude") {
         if (feature.distance <= 0) throw new Error(`${feature.name}: la longitud debe ser mayor que cero.`);
         current = applyFaceExtrudeFeature(brep, document, current, feature);
         solids.set(objectId, current);
         completedFeatureIds.push(feature.id);
+      }
+      if (feature.id === contextFeatureId) {
+        const selectedResult = solids.get(objectId);
+        operationContext = selectedResult ? {
+          featureId: feature.id,
+          objectId,
+          color: objects.get(objectId)?.color ?? "#d41721",
+          mesh: meshShape(brep, applyObjectTransform(brep, selectedResult, objects.get(objectId))),
+          selectionMesh,
+        } : null;
+        if (stopAtContext) return { mesh: null, objectRecords: [], operationContext, completedFeatureIds, warning: null };
       }
     }
   } catch (error) {

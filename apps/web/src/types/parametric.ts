@@ -202,7 +202,7 @@ export type ParametricObjectRenderRecord = {
 export type BuildResult = {
   mesh: RenderMesh | null;
   objectRecords: ParametricObjectRenderRecord[];
-  operationContext: { featureId: string; objectId: string; color: string; mesh: RenderMesh } | null;
+  operationContext: { featureId: string; objectId: string; color: string; mesh: RenderMesh; selectionMesh?: RenderMesh } | null;
   completedFeatureIds: string[];
   warning: string | null;
 };

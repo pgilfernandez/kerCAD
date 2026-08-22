@@ -70,7 +70,7 @@ import {
 import { globalParametricWorkplanePlacement, parametricWorkplaneFromFace, parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
 import { parametricOperationCatalog, parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import type { ViewportRenderQuality } from "@/lib/viewportPerformance";
-import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricFeature, ParametricObject, ParametricTopologyReference, PrimitiveFeature } from "@/types/parametric";
+import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricFeature, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, PrimitiveFeature } from "@/types/parametric";
 import type { WorkplaneShape } from "@/types/sketchforge";
 
 const STORAGE_KEY = "educad.parametric.document.v1";
@@ -176,7 +176,7 @@ export function SketchForgeParametricEditor() {
     if (modelSelection.length !== 1 || modelSelection[0]?.kind !== "feature") return null;
     const buildDocument = buildDocumentRef.current;
     const feature = buildDocument.features.find((candidate) => candidate.id === modelSelection[0]?.id);
-    if ((feature?.kind !== "extrude" && feature?.kind !== "primitive") || !feature.objectId) return null;
+    if ((feature?.kind !== "extrude" && feature?.kind !== "primitive" && feature?.kind !== "fillet" && feature?.kind !== "faceExtrude") || !feature.objectId) return null;
     const operations = buildDocument.features.filter((candidate) => candidate.objectId === feature.objectId && candidate.kind !== "sketch");
     const index = operations.findIndex((candidate) => candidate.id === feature.id);
     return index < 0 ? null : { featureId: feature.id, objectId: feature.objectId, index, count: operations.length };
@@ -186,6 +186,21 @@ export function SketchForgeParametricEditor() {
     color: objectColors[operationContext.objectId] ?? operationContext.color,
     opacity: 0.4,
   } : null, [objectColors, operationContext]);
+  const storedHistoricalTopologyReferences = useMemo(() => {
+    if (!selectedOperationTimeline || selectedOperationTimeline.index >= selectedOperationTimeline.count - 1) return [];
+    const feature = document.features.find((candidate) => candidate.id === selectedOperationTimeline.featureId);
+    const ids = feature?.kind === "fillet" ? feature.selectionReferenceIds ?? feature.edgeReferenceIds ?? [] : feature?.kind === "faceExtrude" ? [feature.faceReferenceId] : [];
+    return ids.map((id) => document.topologyReferences.find((reference) => reference.id === id)).filter((reference): reference is ParametricTopologyReference => Boolean(reference));
+  }, [document, selectedOperationTimeline]);
+  const historicalTopologyRecords = useMemo<ParametricObjectRenderRecord[]>(() => {
+    if (!operationContext?.selectionMesh) return [];
+    const object = document.objects.find((candidate) => candidate.id === operationContext.objectId);
+    if (!object) return [];
+    return [{ objectId: object.id, renderId: `${operationContext.featureId}:selection-source`, geometryFingerprint: `${geometryFingerprint}:selection-source:${operationContext.featureId}`, color: object.color, worldTransform: object.transform, mesh: operationContext.selectionMesh }];
+  }, [document.objects, geometryFingerprint, operationContext]);
+  const historicalTopologyReferences = useMemo(() => storedHistoricalTopologyReferences
+    .map((reference) => recoverParametricTopologyReferenceInRecords(reference, historicalTopologyRecords))
+    .filter((reference): reference is ParametricTopologyReference => Boolean(reference)), [historicalTopologyRecords, storedHistoricalTopologyReferences]);
 
   useEffect(() => {
     try {
@@ -869,8 +884,8 @@ export function SketchForgeParametricEditor() {
           selectedObjectOriginId={selectedOriginObjectId}
           selectedOperationOriginId={selectedOperationOriginId}
           selectedObjectIds={viewportSelectedObjectIds}
-          operationContext={viewportOperationContext}
-          isolatedHistoryObjectId={selectedOperationTimeline && selectedOperationTimeline.index < selectedOperationTimeline.count - 1 ? selectedOperationTimeline.objectId : null}
+          operationContext={editingEdgeTreatmentId || editingFaceExtrudeId ? null : viewportOperationContext}
+          isolatedHistoryObjectId={!editingEdgeTreatmentId && !editingFaceExtrudeId && selectedOperationTimeline && selectedOperationTimeline.index < selectedOperationTimeline.count - 1 ? selectedOperationTimeline.objectId : null}
           color={document.color}
           workplane={document.workplane}
           view={view}
@@ -919,6 +934,8 @@ export function SketchForgeParametricEditor() {
           onTopologyEdgeSelect={selectTopologyEdge}
           topologySelections={(editingEdgeTreatmentId || editingFaceExtrudeId) && !topologySelectionBuild ? [] : [...selectedTopologyFaces, ...selectedTopologyEdges]}
           topologyMultiSelection={!pendingFaceExtrude}
+          historicalTopologySelections={editingEdgeTreatmentId || editingFaceExtrudeId ? [] : historicalTopologyReferences}
+          historicalTopologyRecords={editingEdgeTreatmentId || editingFaceExtrudeId ? [] : historicalTopologyRecords}
         />
         <ViewCube orientation={cameraOrientation} onDirection={(direction) => setView((current) => ({ name: "custom", direction, token: current.token + 1 }))} />
         <button data-educad-popup="grid" className={`educad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label="Ajustes de rejilla" title="Rejilla" onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><Grid3X3 size={22} /></button>
