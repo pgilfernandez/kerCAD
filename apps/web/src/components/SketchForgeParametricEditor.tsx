@@ -429,6 +429,22 @@ export function SketchForgeParametricEditor() {
     rotation: selectedBox.rotation3d ?? { x: 0, y: 0, z: selectedBox.rotation },
   }] : [], [selectedBox, selectedOperationOriginId]);
   const snapAmount = document.workplane.snapToGrid ? document.workplane.gridStep : 0.01;
+  const faceExtrudeHandle = useMemo(() => {
+    const pendingReference = pendingFaceExtrude ? selectedTopologyFaces[0] : null;
+    const selectedFeature = !pendingFaceExtrude && modelSelection.length === 1 && modelSelection[0]?.kind === "feature"
+      ? document.features.find((feature) => feature.id === modelSelection[0]?.id && feature.kind === "faceExtrude")
+      : null;
+    const reference = pendingReference ?? (selectedFeature?.kind === "faceExtrude" ? document.topologyReferences.find((candidate) => candidate.id === selectedFeature.faceReferenceId) : null);
+    const hint = reference?.reference.hint;
+    if (!hint || hint.entityType !== "face" || !hint.centroid || !hint.normal) return null;
+    return {
+      origin: { x: hint.centroid[0], y: hint.centroid[1], z: hint.centroid[2] },
+      normal: { x: hint.normal[0], y: hint.normal[1], z: hint.normal[2] },
+      distance: pendingFaceExtrude?.distance ?? (selectedFeature?.kind === "faceExtrude" ? selectedFeature.distance : 0),
+      operation: pendingFaceExtrude?.operation ?? (selectedFeature?.kind === "faceExtrude" ? selectedFeature.operation : "add" as const),
+      featureId: selectedFeature?.kind === "faceExtrude" ? selectedFeature.id : null,
+    };
+  }, [document, modelSelection, pendingFaceExtrude, selectedTopologyFaces]);
   const hasActiveWorkplane = !parametricWorkplaneIsGlobal(document.workplane);
   const updateGridSettings = (patch: Partial<Pick<ParametricDocument["workplane"], "width" | "depth" | "gridStep" | "gridVisible" | "activeSizePercent">>) => {
     setWorkplaneDraft((current) => ({ ...current, ...patch }));
@@ -987,6 +1003,11 @@ export function SketchForgeParametricEditor() {
           topologyMultiSelection={!pendingFaceExtrude}
           historicalTopologySelections={editingEdgeTreatmentId || editingFaceExtrudeId || operationContext?.detailMesh ? [] : historicalTopologyReferences}
           historicalTopologyRecords={editingEdgeTreatmentId || editingFaceExtrudeId || operationContext?.detailMesh ? [] : historicalTopologyRecords}
+          faceExtrudeHandle={faceExtrudeHandle}
+          onFaceExtrudeDistanceChange={(distance) => {
+            if (pendingFaceExtrude) setPendingFaceExtrude((current) => current ? { ...current, distance } : current);
+            else if (faceExtrudeHandle?.featureId) updateFeature(faceExtrudeHandle.featureId, (feature) => { if (feature.kind === "faceExtrude") feature.distance = distance; });
+          }}
         />
         <ViewCube orientation={cameraOrientation} onDirection={(direction) => setView((current) => ({ name: "custom", direction, token: current.token + 1 }))} />
         <button data-educad-popup="grid" className={`educad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label="Ajustes de rejilla" title="Rejilla" onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><Grid3X3 size={22} /></button>

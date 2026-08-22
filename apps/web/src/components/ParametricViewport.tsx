@@ -124,6 +124,8 @@ type Props = {
   topologyMultiSelection?: boolean;
   historicalTopologySelections?: ParametricTopologyReference[];
   historicalTopologyRecords?: ParametricObjectRenderRecord[];
+  faceExtrudeHandle?: { origin: { x: number; y: number; z: number }; normal: { x: number; y: number; z: number }; distance: number; operation: "add" | "cut" } | null;
+  onFaceExtrudeDistanceChange?: (distance: number) => void;
 };
 
 type CachedObjectRender = {
@@ -234,7 +236,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onShapeParameterChange, onObjectOriginMove, onObjectAxisMove, onOperationAxisMove, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [] }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onShapeParameterChange, onObjectOriginMove, onObjectAxisMove, onOperationAxisMove, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
@@ -258,6 +260,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const faceHighlightRef = useRef<THREE.Mesh | null>(null);
   const edgeHighlightRef = useRef<THREE.LineSegments | null>(null);
   const topologyFaceLayerRef = useRef<THREE.Group | null>(null);
+  const faceExtrudeHandleRef = useRef<THREE.Group | null>(null);
+  const faceExtrudeDistanceChangeRef = useRef(onFaceExtrudeDistanceChange);
   const resizeHitboxesRef = useRef<THREE.Mesh[]>([]);
   const selectionRef = useRef(selection);
   const shapeParameterRef = useRef(onShapeParameterChange);
@@ -310,6 +314,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   useEffect(() => { topologyFaceSelectRef.current = onTopologyFaceSelect; }, [onTopologyFaceSelect]);
   useEffect(() => { topologyEdgeSelectionRef.current = topologyEdgeSelection; }, [topologyEdgeSelection]);
   useEffect(() => { topologyMultiSelectionRef.current = topologyMultiSelection; }, [topologyMultiSelection]);
+  useEffect(() => { faceExtrudeDistanceChangeRef.current = onFaceExtrudeDistanceChange; }, [onFaceExtrudeDistanceChange]);
   useEffect(() => { topologyEdgeSelectRef.current = onTopologyEdgeSelect; }, [onTopologyEdgeSelect]);
   useEffect(() => {
     if (workplaneFaceSelection || topologyFaceSelection || topologyEdgeSelection) return;
@@ -582,13 +587,22 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     topologyFaceLayer.name = "Caras seleccionadas";
     modelGroup.add(topologyFaceLayer);
     topologyFaceLayerRef.current = topologyFaceLayer;
+    const faceExtrudeHandleLayer = new THREE.Group();
+    faceExtrudeHandleLayer.name = "Longitud de extrusión";
+    modelGroup.add(faceExtrudeHandleLayer);
+    faceExtrudeHandleRef.current = faceExtrudeHandleLayer;
 
     const raycaster = new THREE.Raycaster();
     raycaster.firstHitOnly = true;
     const pointer = new THREE.Vector2();
     const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     const dragPoint = new THREE.Vector3();
-    let interaction: "parameter" | "origin" | "axisMove" | null = null;
+    let interaction: "parameter" | "origin" | "axisMove" | "faceExtrude" | null = null;
+    let faceExtrudeAxis: THREE.Vector3 | null = null;
+    let faceExtrudeOriginWorld: THREE.Vector3 | null = null;
+    let faceExtrudePointerOffset = 0;
+    let faceExtrudeStartDistance = 0;
+    let pendingFaceExtrudeDistance: number | null = null;
     let pendingShapeParameter: { parameter: ShapeParameter; value: number } | null = null;
     let shapeParameterStartValue = 0;
     let shapeParameterWorldScale = 1;
@@ -958,8 +972,27 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     };
     const onPointerDown = (event: PointerEvent) => {
       if (event.button !== 0) return;
-      if (workplaneFaceSelectionRef.current || topologyFaceSelectionRef.current || topologyEdgeSelectionRef.current) {
-        setPointer(event);
+      setPointer(event);
+      const faceExtrudeLayer = faceExtrudeHandleRef.current;
+      const faceExtrudeHit = faceExtrudeLayer ? raycaster.intersectObject(faceExtrudeLayer, true).find((hit) => hit.object.userData.faceExtrudeHandle) : null;
+      if (faceExtrudeLayer && faceExtrudeHit) {
+        const localDirection = (faceExtrudeLayer.userData.direction as THREE.Vector3).clone().normalize();
+        const localOrigin = (faceExtrudeLayer.userData.origin as THREE.Vector3).clone();
+        faceExtrudeAxis = localDirection.applyQuaternion(modelGroup.getWorldQuaternion(new THREE.Quaternion())).normalize();
+        faceExtrudeOriginWorld = modelGroup.localToWorld(localOrigin);
+        const cameraDirection = camera.getWorldDirection(new THREE.Vector3()).normalize();
+        const planeNormal = cameraDirection.clone().addScaledVector(faceExtrudeAxis, -cameraDirection.dot(faceExtrudeAxis));
+        if (planeNormal.lengthSq() < 0.0001) planeNormal.crossVectors(faceExtrudeAxis, new THREE.Vector3(1, 0, 0));
+        if (planeNormal.lengthSq() < 0.0001) planeNormal.crossVectors(faceExtrudeAxis, new THREE.Vector3(0, 1, 0));
+        dragPlane.setFromNormalAndCoplanarPoint(planeNormal.normalize(), faceExtrudeOriginWorld);
+        if (raycaster.ray.intersectPlane(dragPlane, dragPoint)) {
+          interaction = "faceExtrude";
+          faceExtrudeStartDistance = Number(faceExtrudeLayer.userData.distance) || 0.01;
+          faceExtrudePointerOffset = dragPoint.clone().sub(faceExtrudeOriginWorld).dot(faceExtrudeAxis) - faceExtrudeStartDistance;
+          pendingFaceExtrudeDistance = faceExtrudeStartDistance;
+        }
+      }
+      if (!interaction && (workplaneFaceSelectionRef.current || topologyFaceSelectionRef.current || topologyEdgeSelectionRef.current)) {
         if (topologyEdgeSelectionRef.current) {
           const selectedEdge = updateTopologyEdgeHighlight();
           if (selectedEdge) {
@@ -988,11 +1021,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         event.preventDefault();
         return;
       }
-      updateManipulatorHitTargets(event.pointerType);
+      if (!interaction) updateManipulatorHitTargets(event.pointerType);
       const resizeHitboxes = resizeHitboxesRef.current;
       const selected = selectionRef.current;
-      setPointer(event);
-      const originHandle = originHandleAtPointer();
+      const originHandle = interaction ? null : originHandleAtPointer();
       if (originHandle) {
         const worldOrigin = originHandle.marker.getWorldPosition(new THREE.Vector3());
         dragPlane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()).normalize(), worldOrigin);
@@ -1118,6 +1150,23 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       }
       setPointer(event);
       if (!raycaster.ray.intersectPlane(dragPlane, dragPoint)) return;
+      if (interaction === "faceExtrude" && faceExtrudeAxis && faceExtrudeOriginWorld) {
+        const grid = Math.max(0.01, snapRef.current);
+        const coordinate = dragPoint.clone().sub(faceExtrudeOriginWorld).dot(faceExtrudeAxis) - faceExtrudePointerOffset;
+        pendingFaceExtrudeDistance = Math.max(grid, Math.round(coordinate / grid) * grid);
+        const layer = faceExtrudeHandleRef.current;
+        if (layer) {
+          const origin = layer.userData.origin as THREE.Vector3;
+          const direction = layer.userData.direction as THREE.Vector3;
+          const end = origin.clone().addScaledVector(direction, pendingFaceExtrudeDistance + 2);
+          const guide = layer.children.find((child) => child.userData.faceExtrudeGuide);
+          const handle = layer.children.find((child) => child.userData.faceExtrudeHandle);
+          if (guide instanceof THREE.Line) guide.geometry.setFromPoints([origin, end]);
+          if (handle) handle.position.copy(end);
+        }
+        requestRender();
+        return;
+      }
       if ((interaction === "origin" || interaction === "axisMove") && originDragStart && originPointerStart && originDragMarker) {
         const currentPointer = originLayer.worldToLocal(dragPoint.clone());
         const delta = currentPointer.sub(originPointerStart);
@@ -1277,8 +1326,14 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           });
         }
         if (pendingShapeParameter) shapeParameterRef.current?.(pendingShapeParameter.parameter, pendingShapeParameter.value);
+        if (completedInteraction === "faceExtrude" && pendingFaceExtrudeDistance !== null) faceExtrudeDistanceChangeRef.current?.(pendingFaceExtrudeDistance);
       }
       pendingShapeParameter = null;
+      pendingFaceExtrudeDistance = null;
+      faceExtrudeAxis = null;
+      faceExtrudeOriginWorld = null;
+      faceExtrudePointerOffset = 0;
+      faceExtrudeStartDistance = 0;
       shapeParameterPreviewRef.current = null;
       shapeParameterStartValue = 0;
       shapeParameterWorldScale = 1;
@@ -1376,10 +1431,44 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       faceHighlightRef.current = null;
       edgeHighlightRef.current = null;
       topologyFaceLayerRef.current = null;
+      faceExtrudeHandleRef.current = null;
       [dimensionXRef.current, dimensionYRef.current, dimensionZRef.current].forEach((label) => { if (label) label.style.display = "none"; });
       invalidateRef.current = () => undefined;
     };
   }, [projection, renderQuality]);
+
+  useEffect(() => {
+    const layer = faceExtrudeHandleRef.current;
+    if (!layer) return;
+    for (const child of [...layer.children]) {
+      layer.remove(child);
+      if (child instanceof THREE.Mesh || child instanceof THREE.Line) {
+        child.geometry.dispose();
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        materials.forEach((material) => material.dispose());
+      }
+    }
+    if (!faceExtrudeHandle) {
+      invalidateRef.current();
+      return;
+    }
+    const origin = new THREE.Vector3(faceExtrudeHandle.origin.x, faceExtrudeHandle.origin.y, faceExtrudeHandle.origin.z);
+    const sign = faceExtrudeHandle.operation === "cut" ? -1 : 1;
+    const direction = new THREE.Vector3(faceExtrudeHandle.normal.x, faceExtrudeHandle.normal.y, faceExtrudeHandle.normal.z).normalize().multiplyScalar(sign);
+    const end = origin.clone().addScaledVector(direction, faceExtrudeHandle.distance + 2);
+    const guide = new THREE.Line(new THREE.BufferGeometry().setFromPoints([origin, end]), new THREE.LineBasicMaterial({ color: 0xf0b83f, depthTest: false, depthWrite: false }));
+    guide.userData.faceExtrudeGuide = true;
+    guide.renderOrder = 31;
+    const handle = new THREE.Mesh(new THREE.SphereGeometry(1.25, 18, 12), new THREE.MeshBasicMaterial({ color: 0xf0b83f, depthTest: false, depthWrite: false }));
+    handle.position.copy(end);
+    handle.userData.faceExtrudeHandle = true;
+    handle.renderOrder = 32;
+    layer.userData.origin = origin;
+    layer.userData.direction = direction;
+    layer.userData.distance = faceExtrudeHandle.distance;
+    layer.add(guide, handle);
+    invalidateRef.current();
+  }, [faceExtrudeHandle]);
 
   useEffect(() => {
     const layer = originLayerRef.current;
