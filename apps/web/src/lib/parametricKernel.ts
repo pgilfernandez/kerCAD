@@ -337,6 +337,8 @@ function meshShape(brep: Brep, shape: RenderableShape): RenderMesh {
     normals: triangles.normals,
     indices: triangles.triangles,
     edges: edgeMesh.lines,
+    faceGroups: triangles.faceGroups.map((group) => ({ ...group })),
+    edgeGroups: edgeMesh.edgeGroups.map((group) => ({ ...group })),
     metrics: {
       width: bounds.xMax - bounds.xMin,
       depth: bounds.yMax - bounds.yMin,

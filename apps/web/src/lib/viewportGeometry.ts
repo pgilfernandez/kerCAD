@@ -301,6 +301,105 @@ export function coplanarFaceRegion(
   };
 }
 
+export type ViewportFaceGroup = { start: number; count: number; faceId: number; origin: number };
+export type ViewportEdgeGroup = { start: number; count: number; edgeId: number };
+
+export function exactFaceRegion(
+  coordinates: ArrayLike<number>,
+  indices: ArrayLike<number>,
+  faceIndex: number,
+  groups: readonly ViewportFaceGroup[],
+) {
+  const triangleOffset = faceIndex * 3;
+  const group = groups.find((candidate) => triangleOffset >= candidate.start && triangleOffset < candidate.start + candidate.count);
+  if (!group) return null;
+  const positions: number[] = [];
+  const weighted = { x: 0, y: 0, z: 0 };
+  const normal = { x: 0, y: 0, z: 0 };
+  let area = 0;
+  for (let offset = group.start; offset + 2 < group.start + group.count; offset += 3) {
+    const points = [indices[offset], indices[offset + 1], indices[offset + 2]].map((vertexIndex) => {
+      const start = vertexIndex * 3;
+      return { x: coordinates[start], y: coordinates[start + 1], z: coordinates[start + 2] };
+    });
+    const cross = {
+      x: (points[1].y - points[0].y) * (points[2].z - points[0].z) - (points[1].z - points[0].z) * (points[2].y - points[0].y),
+      y: (points[1].z - points[0].z) * (points[2].x - points[0].x) - (points[1].x - points[0].x) * (points[2].z - points[0].z),
+      z: (points[1].x - points[0].x) * (points[2].y - points[0].y) - (points[1].y - points[0].y) * (points[2].x - points[0].x),
+    };
+    const triangleArea = Math.hypot(cross.x, cross.y, cross.z) / 2;
+    if (triangleArea <= 1e-12) continue;
+    const centroid = {
+      x: (points[0].x + points[1].x + points[2].x) / 3,
+      y: (points[0].y + points[1].y + points[2].y) / 3,
+      z: (points[0].z + points[1].z + points[2].z) / 3,
+    };
+    weighted.x += centroid.x * triangleArea;
+    weighted.y += centroid.y * triangleArea;
+    weighted.z += centroid.z * triangleArea;
+    normal.x += cross.x;
+    normal.y += cross.y;
+    normal.z += cross.z;
+    area += triangleArea;
+    for (const point of points) positions.push(point.x, point.y, point.z);
+  }
+  if (area <= 1e-12) return null;
+  const normalLength = Math.hypot(normal.x, normal.y, normal.z);
+  return {
+    positions,
+    faceId: group.faceId,
+    origin: group.origin,
+    area,
+    centroid: { x: weighted.x / area, y: weighted.y / area, z: weighted.z / area },
+    normal: normalLength > 1e-12 ? { x: normal.x / normalLength, y: normal.y / normalLength, z: normal.z / normalLength } : { x: 0, y: 0, z: 1 },
+  };
+}
+
+export function exactEdgeRegion(lines: ArrayLike<number>, intersectionIndex: number, groups: readonly ViewportEdgeGroup[]) {
+  const vertexOffset = intersectionIndex;
+  const group = groups.find((candidate) => vertexOffset >= candidate.start && vertexOffset < candidate.start + candidate.count);
+  if (!group) return null;
+  const start = group.start * 3;
+  const end = (group.start + group.count) * 3;
+  const positions = Array.from({ length: Math.max(0, end - start) }, (_, index) => lines[start + index]);
+  let length = 0;
+  for (let offset = 0; offset + 5 < positions.length; offset += 6) {
+    length += Math.hypot(positions[offset + 3] - positions[offset], positions[offset + 4] - positions[offset + 1], positions[offset + 5] - positions[offset + 2]);
+  }
+  const midpointOffset = Math.max(0, Math.floor(group.count / 4) * 6);
+  return {
+    positions,
+    edgeId: group.edgeId,
+    length,
+    midpoint: {
+      x: (positions[midpointOffset] + positions[Math.min(positions.length - 3, midpointOffset + 3)]) / 2,
+      y: (positions[midpointOffset + 1] + positions[Math.min(positions.length - 2, midpointOffset + 4)]) / 2,
+      z: (positions[midpointOffset + 2] + positions[Math.min(positions.length - 1, midpointOffset + 5)]) / 2,
+    },
+  };
+}
+
+export function faceBoundaryPositions(trianglePositions: ArrayLike<number>, tolerance = 1e-4) {
+  type Point = { x: number; y: number; z: number };
+  const pointKey = (point: Point) => [point.x, point.y, point.z].map((value) => Math.round(value / tolerance)).join(":");
+  const edges = new Map<string, { count: number; a: Point; b: Point }>();
+  for (let offset = 0; offset + 8 < trianglePositions.length; offset += 9) {
+    const points = [0, 3, 6].map((corner) => ({
+      x: trianglePositions[offset + corner],
+      y: trianglePositions[offset + corner + 1],
+      z: trianglePositions[offset + corner + 2],
+    }));
+    for (const [start, end] of [[0, 1], [1, 2], [2, 0]] as const) {
+      const a = points[start];
+      const b = points[end];
+      const key = [pointKey(a), pointKey(b)].sort().join("|");
+      const existing = edges.get(key);
+      if (existing) existing.count += 1; else edges.set(key, { count: 1, a, b });
+    }
+  }
+  return [...edges.values()].filter((edge) => edge.count === 1).flatMap((edge) => [edge.a.x, edge.a.y, edge.a.z, edge.b.x, edge.b.y, edge.b.z]);
+}
+
 export function operationPreviewStyle(_mode: "add" | "hole" | "common", _historical: boolean) {
   return { fillOpacity: null, wireframe: true };
 }

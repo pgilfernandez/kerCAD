@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { constrainViewportAxisDrag, constrainViewportResizeDimensions, coplanarFaceRegion, finalReferenceWireframeDepthTest, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, viewportDimensionsForHandle } from "@/lib/viewportGeometry";
+import { constrainViewportAxisDrag, constrainViewportResizeDimensions, coplanarFaceRegion, exactEdgeRegion, exactFaceRegion, faceBoundaryPositions, finalReferenceWireframeDepthTest, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, viewportDimensionsForHandle } from "@/lib/viewportGeometry";
 
 describe("workplane face centroids", () => {
   it("uses the area-weighted centroid of an irregular coplanar face", () => {
@@ -21,6 +21,46 @@ describe("workplane face centroids", () => {
     expect(region.centroid.y).toBeCloseTo(5 / 6);
     expect(region.centroid.z).toBe(0);
     expect(region.positions).toHaveLength(6 * 9);
+  });
+});
+
+describe("exact viewport topology groups", () => {
+  it("returns every triangle assigned to one CAD face, including a curved tessellation", () => {
+    const positions = new Float32Array([
+      0, 0, 0, 1, 0, 0, 0, 1, 0,
+      0, 0, 0, 0, 1, 0, 0, 0, 1,
+    ]);
+    const indices = new Uint32Array([0, 1, 2, 3, 4, 5]);
+    const region = exactFaceRegion(positions, indices, 1, [{ start: 0, count: 6, faceId: 42, origin: 7 }])!;
+
+    expect(region).toMatchObject({ faceId: 42, origin: 7 });
+    expect(region.positions).toHaveLength(18);
+    expect(region.area).toBeCloseTo(1);
+  });
+
+  it("returns the complete CAD edge polyline from an intersected segment", () => {
+    const lines = new Float32Array([
+      0, 0, 0, 1, 0, 0,
+      1, 0, 0, 2, 0, 0,
+      0, 1, 0, 1, 1, 0,
+    ]);
+    const region = exactEdgeRegion(lines, 2, [
+      { start: 0, count: 4, edgeId: 11 },
+      { start: 4, count: 2, edgeId: 12 },
+    ])!;
+
+    expect(region.edgeId).toBe(11);
+    expect(region.positions).toHaveLength(12);
+    expect(region.length).toBeCloseTo(2);
+  });
+
+  it("keeps only a selected face perimeter and removes triangulation diagonals", () => {
+    const positions = [
+      0, 0, 0, 1, 0, 0, 1, 1, 0,
+      0, 0, 0, 1, 1, 0, 0, 1, 0,
+    ];
+
+    expect(faceBoundaryPositions(positions)).toHaveLength(4 * 6);
   });
 });
 

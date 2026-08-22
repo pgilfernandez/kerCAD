@@ -3,7 +3,7 @@
 import { Box, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Plus, RotateCcw, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
-import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyFacePick } from "@/components/ParametricViewport";
+import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyEdgePick, type TopologyFacePick } from "@/components/ParametricViewport";
 import {
   ToolbarAlignIcon,
   ToolbarBooleanModeIcon,
@@ -110,6 +110,8 @@ export function SketchForgeParametricEditor() {
   const [placingWorkplane, setPlacingWorkplane] = useState(false);
   const [selectingTopologyFaces, setSelectingTopologyFaces] = useState(false);
   const [selectedTopologyFaces, setSelectedTopologyFaces] = useState<ParametricTopologyReference[]>([]);
+  const [selectingTopologyEdges, setSelectingTopologyEdges] = useState(false);
+  const [selectedTopologyEdges, setSelectedTopologyEdges] = useState<ParametricTopologyReference[]>([]);
   const [view, setView] = useState<CameraView>({ name: "iso", token: 0 });
   const [projection, setProjection] = useState<CameraProjection>("orthographic");
   const [renderQuality, setRenderQuality] = useState<ViewportRenderQuality>("normal");
@@ -134,17 +136,19 @@ export function SketchForgeParametricEditor() {
   }, []);
 
   useEffect(() => {
-    if (!placingWorkplane && !selectingTopologyFaces) return;
+    if (!placingWorkplane && !selectingTopologyFaces && !selectingTopologyEdges) return;
     const cancel = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       setPlacingWorkplane(false);
       setSelectingTopologyFaces(false);
+      setSelectingTopologyEdges(false);
       setSelectedTopologyFaces([]);
-      setNotice({ type: "info", text: placingWorkplane ? "Colocación del plano de trabajo cancelada" : "Selección de caras cancelada" });
+      setSelectedTopologyEdges([]);
+      setNotice({ type: "info", text: placingWorkplane ? "Colocación del plano de trabajo cancelada" : "Selección topológica cancelada" });
     };
     window.addEventListener("keydown", cancel);
     return () => window.removeEventListener("keydown", cancel);
-  }, [placingWorkplane, selectingTopologyFaces]);
+  }, [placingWorkplane, selectingTopologyEdges, selectingTopologyFaces]);
   const [exporting, setExporting] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
@@ -514,7 +518,7 @@ export function SketchForgeParametricEditor() {
         role: `planar:${face.key}`,
         hint: {
           entityType: "face",
-          surfaceType: "plane",
+          ...(face.faceId === undefined ? { surfaceType: "plane" } : {}),
           normal: [face.normal.x, face.normal.y, face.normal.z],
           centroid: [face.centroid.x, face.centroid.y, face.centroid.z],
           area: face.area,
@@ -524,6 +528,31 @@ export function SketchForgeParametricEditor() {
     setSelectedTopologyFaces((current) => {
       if (!face.additive) return face.selected ? [reference] : [];
       if (!face.selected) return current.filter((candidate) => candidate.id !== reference.id);
+      return current.some((candidate) => candidate.id === reference.id) ? current : [...current, reference];
+    });
+  };
+
+  const selectTopologyEdge = (edge: TopologyEdgePick) => {
+    const source = lastOperationForObject(document, edge.objectId);
+    if (!source) return;
+    const reference: ParametricTopologyReference = {
+      id: `selected-edge-${edge.key}`,
+      name: `Arista de ${source.name}`,
+      objectId: edge.objectId,
+      sourceFeatureId: source.id,
+      reference: {
+        origin: `${source.id}:result`,
+        faceRoles: [`edge:${edge.edgeId}:side-a`, `edge:${edge.edgeId}:side-b`],
+        hint: {
+          entityType: "edge",
+          length: edge.length,
+          midpoint: [edge.midpoint.x, edge.midpoint.y, edge.midpoint.z],
+        },
+      },
+    };
+    setSelectedTopologyEdges((current) => {
+      if (!edge.additive) return edge.selected ? [reference] : [];
+      if (!edge.selected) return current.filter((candidate) => candidate.id !== reference.id);
       return current.some((candidate) => candidate.id === reference.id) ? current : [...current, reference];
     });
   };
@@ -629,11 +658,23 @@ export function SketchForgeParametricEditor() {
               <Tool label="Seleccionar caras" active={selectingTopologyFaces} onClick={() => {
                 const active = !selectingTopologyFaces;
                 setSelectingTopologyFaces(active);
+                setSelectingTopologyEdges(false);
                 setSelectedTopologyFaces([]);
+                setSelectedTopologyEdges([]);
                 setPlacingWorkplane(false);
                 setOriginEditObjectId(null);
                 setNotice({ type: "info", text: active ? "Selecciona una cara plana · Ctrl/Cmd para añadir o quitar" : "Selección de caras finalizada" });
               }}><Focus size={20} /></Tool>
+              <Tool label="Seleccionar aristas" active={selectingTopologyEdges} onClick={() => {
+                const active = !selectingTopologyEdges;
+                setSelectingTopologyEdges(active);
+                setSelectingTopologyFaces(false);
+                setSelectedTopologyFaces([]);
+                setSelectedTopologyEdges([]);
+                setPlacingWorkplane(false);
+                setOriginEditObjectId(null);
+                setNotice({ type: "info", text: active ? "Selecciona una arista · Ctrl/Cmd para añadir o quitar" : "Selección de aristas finalizada" });
+              }}><Minus size={20} /></Tool>
               <Tool label="Chaflán" enabled={false}><ToolbarChamferIcon /></Tool>
               <Tool label="Redondeo" enabled={Boolean(selectedShape && !selectedShape.hole)} onClick={addFillet}><ToolbarFilletIcon /></Tool>
             </ToolbarSection>
@@ -642,10 +683,18 @@ export function SketchForgeParametricEditor() {
                 if (hasActiveWorkplane) {
                   mutate((draft) => { Object.assign(draft.workplane, globalParametricWorkplanePlacement()); });
                   setPlacingWorkplane(false);
+                  setSelectingTopologyFaces(false);
+                  setSelectingTopologyEdges(false);
+                  setSelectedTopologyFaces([]);
+                  setSelectedTopologyEdges([]);
                   setNotice({ type: "ok", text: "Plano de trabajo global restaurado" });
                   return;
                 }
                 setPlacingWorkplane((current) => !current);
+                setSelectingTopologyFaces(false);
+                setSelectingTopologyEdges(false);
+                setSelectedTopologyFaces([]);
+                setSelectedTopologyEdges([]);
                 setWorkplaneOpen(false);
                 setNotice({ type: "info", text: placingWorkplane ? "Colocación cancelada" : "Pasa sobre una cara y haz clic para colocar el plano de trabajo" });
               }}>{hasActiveWorkplane ? <ToolbarResetWorkplaneIcon /> : <ToolbarWorkplaneIcon />}</Tool>
@@ -681,7 +730,7 @@ export function SketchForgeParametricEditor() {
           view={view}
           projection={projection}
           renderQuality={renderQuality}
-          selection={originEditObjectId || placingWorkplane || selectingTopologyFaces ? null : selectedBox}
+          selection={originEditObjectId || placingWorkplane || selectingTopologyFaces || selectingTopologyEdges ? null : selectedBox}
           snap={snapAmount}
           onShapeParameterChange={(parameter, value) => {
             if (!selectedOperationId) return;
@@ -720,6 +769,8 @@ export function SketchForgeParametricEditor() {
           }}
           topologyFaceSelection={selectingTopologyFaces}
           onTopologyFaceSelect={selectTopologyFace}
+          topologyEdgeSelection={selectingTopologyEdges}
+          onTopologyEdgeSelect={selectTopologyEdge}
         />
         <ViewCube orientation={cameraOrientation} onDirection={(direction) => setView((current) => ({ name: "custom", direction, token: current.token + 1 }))} />
         <button data-educad-popup="grid" className={`educad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label="Ajustes de rejilla" title="Rejilla" onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><Grid3X3 size={22} /></button>
@@ -762,7 +813,7 @@ export function SketchForgeParametricEditor() {
         {kernelBusy && <div className="educad-kernel-pill">Reconstruyendo OpenCascade…</div>}
         {build.warning && <div className="educad-rebuild-error"><strong>El historial se detuvo aquí</strong><span>{build.warning}</span></div>}
         {notice && <div className={`educad-reference-toast ${notice.type}`}>{notice.text}</div>}
-        {selectingTopologyFaces ? <div className="educad-topology-selection-status"><strong>Selección de caras</strong><span>{selectedTopologyFaces.length} seleccionada{selectedTopologyFaces.length === 1 ? "" : "s"} · Ctrl/Cmd para selección múltiple · Esc para salir</span></div> : null}
+        {selectingTopologyFaces || selectingTopologyEdges ? <div className="educad-topology-selection-status"><strong>{selectingTopologyFaces ? "Selección de caras" : "Selección de aristas"}</strong><span>{selectingTopologyFaces ? selectedTopologyFaces.length : selectedTopologyEdges.length} seleccionada{(selectingTopologyFaces ? selectedTopologyFaces.length : selectedTopologyEdges.length) === 1 ? "" : "s"} · Ctrl/Cmd para selección múltiple · Esc para salir</span></div> : null}
 
         {modelSidebarMode !== "hidden" ? <ParametricModelSidebar
           document={document}

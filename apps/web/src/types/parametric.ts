@@ -173,6 +173,8 @@ export type RenderMesh = {
   normals: Float32Array;
   indices: Uint32Array;
   edges: Float32Array;
+  faceGroups?: Array<{ start: number; count: number; faceId: number; origin: number }>;
+  edgeGroups?: Array<{ start: number; count: number; edgeId: number }>;
   metrics: ModelMetrics;
 };
 
