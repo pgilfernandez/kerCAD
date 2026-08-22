@@ -121,13 +121,14 @@ export function createPrimitiveFeature(primitive: PrimitiveFeature["primitive"],
     id: createFeatureId("primitive"),
     kind: "primitive",
     primitive,
-    name: primitive === "sphere" ? "Esfera" : primitive === "cone" ? "Cono" : primitive === "tube" ? "Tubo" : primitive === "halfSphere" ? "Semiesfera" : `Primitiva ${index}`,
+    name: primitive === "sphere" ? "Esfera" : primitive === "cone" ? "Cono" : primitive === "tube" ? "Tubo" : primitive === "halfSphere" ? "Semiesfera" : primitive === "torus" ? "Toro" : `Primitiva ${index}`,
     suppressed: false,
     width: 20,
     depth: 20,
     height: 20,
     ...(primitive === "cone" ? { topRadius: 0 } : {}),
     ...(primitive === "tube" ? { innerRadius: 6 } : {}),
+    ...(primitive === "torus" ? { majorRadius: 12, tubeRadius: 4, width: 32, depth: 32, height: 8 } : {}),
     operation: "add",
     transform: operationTransform(),
   };
@@ -225,6 +226,13 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
       feature.width = Math.max(0.1, Number.isFinite(feature.width) ? feature.width : 20);
       feature.depth = Math.max(0.1, Number.isFinite(feature.depth) ? feature.depth : 20);
       feature.height = Math.max(0.1, Number.isFinite(feature.height) ? feature.height : 20);
+      if (feature.primitive === "torus") {
+        feature.majorRadius = Math.max(0.2, Number.isFinite(feature.majorRadius) ? feature.majorRadius! : 12);
+        feature.tubeRadius = Math.min(feature.majorRadius - 0.1, Math.max(0.1, Number.isFinite(feature.tubeRadius) ? feature.tubeRadius! : 4));
+        feature.width = (feature.majorRadius + feature.tubeRadius) * 2;
+        feature.depth = feature.width;
+        feature.height = feature.tubeRadius * 2;
+      }
       feature.transform ??= operationTransform();
     }
   }

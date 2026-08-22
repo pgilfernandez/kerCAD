@@ -23,6 +23,8 @@ import {
   ToolbarTrashIcon,
   ToolbarUndoIcon,
   ToolbarVectorExportIcon,
+  ToolbarWorkplaneIcon,
+  ToolbarResetWorkplaneIcon,
 } from "@/components/icons";
 import { cloneDocument, createFilletFeature, createStarterDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { assertValidParametricDependencies } from "@/lib/parametricDependencyGraph";
@@ -607,7 +609,7 @@ export function SketchForgeParametricEditor() {
                 setPlacingWorkplane((current) => !current);
                 setWorkplaneOpen(false);
                 setNotice({ type: "info", text: placingWorkplane ? "Colocación cancelada" : "Pasa sobre una cara y haz clic para colocar el plano de trabajo" });
-              }}>{hasActiveWorkplane ? <RotateCcw size={24} /> : <Grid3X3 size={24} />}</Tool>
+              }}>{hasActiveWorkplane ? <ToolbarResetWorkplaneIcon /> : <ToolbarWorkplaneIcon />}</Tool>
               <Tool label="Bajar al plano" enabled={Boolean(selectedShape)} onClick={() => updateSelected({ elevation: 0 })}><ToolbarDropToWorkplaneIcon /></Tool>
             </ToolbarSection>
           </div>

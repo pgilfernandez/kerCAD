@@ -43,4 +43,11 @@ describe("parametric operation catalog", () => {
     expect(definition.parameters.map((parameter) => parameter.key)).toEqual(["radius", "height"]);
     expect(definition.parameters.map((parameter) => parameter.defaultValue)).toEqual([10, 10]);
   });
+
+  it("defines an exact torus by its major and tube radii", () => {
+    const definition = parametricOperationDefinition("torus");
+
+    expect(definition.parameters.map((parameter) => parameter.key)).toEqual(["majorRadius", "tubeRadius"]);
+    expect(definition.parameters.map((parameter) => parameter.defaultValue)).toEqual([12, 4]);
+  });
 });

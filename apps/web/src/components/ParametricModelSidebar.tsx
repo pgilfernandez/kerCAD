@@ -370,6 +370,10 @@ function ParametricFeatureInspector({
                 label={parameter.label}
                 value={parameter.key === "radius" || parameter.key === "baseRadius" || parameter.key === "outerRadius"
                   ? feature.width / 2
+                  : parameter.key === "majorRadius"
+                    ? feature.majorRadius ?? 12
+                    : parameter.key === "tubeRadius"
+                      ? feature.tubeRadius ?? 4
                   : parameter.key === "topRadius"
                     ? feature.topRadius ?? 0
                     : parameter.key === "innerRadius"
@@ -395,6 +399,15 @@ function ParametricFeatureInspector({
                     draft.depth = radius * 2;
                   } else if (parameter.key === "innerRadius") {
                     draft.innerRadius = Math.min(draft.width / 2 - 0.1, Math.max(0.1, value));
+                  } else if (parameter.key === "majorRadius") {
+                    draft.majorRadius = Math.max((draft.tubeRadius ?? 4) + 0.1, value);
+                    draft.width = (draft.majorRadius + (draft.tubeRadius ?? 4)) * 2;
+                    draft.depth = draft.width;
+                  } else if (parameter.key === "tubeRadius") {
+                    draft.tubeRadius = Math.min((draft.majorRadius ?? 12) - 0.1, Math.max(0.1, value));
+                    draft.width = ((draft.majorRadius ?? 12) + draft.tubeRadius) * 2;
+                    draft.depth = draft.width;
+                    draft.height = draft.tubeRadius * 2;
                   } else if (parameter.key !== "diameter") draft[parameter.key] = Math.max(parameter.min, value);
                 })}
               />

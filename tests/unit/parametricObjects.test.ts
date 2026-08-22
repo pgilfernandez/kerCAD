@@ -146,6 +146,27 @@ describe("parametric object workflow", () => {
     expect(feature).toMatchObject({ width: 32, depth: 32, height: 9 });
   });
 
+  it("adds and edits an exact torus while preserving a ring profile", () => {
+    const document = createStarterDocument(123);
+    const result = addPrimitiveToSelection(document, null, "torus");
+    const feature = document.features.find((candidate) => candidate.id === result.featureId);
+
+    expect(feature).toMatchObject({ kind: "primitive", primitive: "torus", majorRadius: 12, tubeRadius: 4, width: 32, depth: 32, height: 8, operation: "add" });
+    expect(viewportSelectionForFeature(document, result.featureId)).toMatchObject({
+      baseZ: 0,
+      center: { x: 0, y: 0, z: 4 },
+      shapeParameters: { shape: "torus", majorRadius: 12, tubeRadius: 4 },
+      operationPreview: { shape: "torus", mode: "add", historical: false },
+    });
+
+    updateParametricShapeParameter(document, result.featureId!, "majorRadius", 18);
+    updateParametricShapeParameter(document, result.featureId!, "tubeRadius", 6);
+    expect(feature).toMatchObject({ majorRadius: 18, tubeRadius: 6, width: 48, depth: 48, height: 12 });
+
+    updateParametricShapeParameter(document, result.featureId!, "majorRadius", 4);
+    expect(feature).toMatchObject({ majorRadius: 6.1, tubeRadius: 6, width: 24.2, depth: 24.2, height: 12 });
+  });
+
   it("edits only the defining visual parameters for boxes and cylinders", () => {
     const document = createStarterDocument(123);
     const box = document.features.find((feature) => feature.kind === "extrude")!;

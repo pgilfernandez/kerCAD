@@ -79,6 +79,15 @@ describe("operation preview wireframes", () => {
     expect(positions.slice(64 * 6, 64 * 6 + 3)).toEqual([10, 0, -5]);
     expect(positions.slice(-3)[2]).toBeCloseTo(5);
   });
+
+  it("draws two equators and four tube sections for a torus", () => {
+    const positions = operationPreviewWireframePositions("torus", 32, 32, 8);
+
+    expect(positions).toHaveLength(6 * 64 * 6);
+    expect(positions.slice(0, 3)).toEqual([8, 0, 0]);
+    expect(positions.slice(64 * 6, 64 * 6 + 3)).toEqual([16, 0, 0]);
+    expect(positions.slice(2 * 64 * 6, 2 * 64 * 6 + 3)).toEqual([16, 0, 0]);
+  });
 });
 
 describe("operation preview styles", () => {

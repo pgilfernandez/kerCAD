@@ -1,4 +1,4 @@
-export function operationPreviewWireframePositions(shape: "box" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere", width: number, depth: number, height: number, topWidth = width, innerWidth = 0) {
+export function operationPreviewWireframePositions(shape: "box" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus", width: number, depth: number, height: number, topWidth = width, innerWidth = 0) {
   const positions: number[] = [];
   const addSegment = (x1: number, y1: number, z1: number, x2: number, y2: number, z2: number) => positions.push(x1, y1, z1, x2, y2, z2);
   const halfWidth = width / 2;
@@ -53,6 +53,37 @@ export function operationPreviewWireframePositions(shape: "box" | "cylinder" | "
           Math.sin(direction) * halfDepth * Math.cos(nextAngle),
           bottom + height * Math.sin(nextAngle),
         );
+      }
+    }
+    return positions;
+  }
+  if (shape === "torus") {
+    const minorX = height / 2;
+    const minorY = height / 2;
+    const majorX = Math.max(0.01, halfWidth - minorX);
+    const majorY = Math.max(0.01, halfDepth - minorY);
+    for (const radialSign of [-1, 1]) {
+      for (let index = 0; index < segments; index += 1) {
+        const angle = index / segments * Math.PI * 2;
+        const nextAngle = (index + 1) / segments * Math.PI * 2;
+        addSegment(
+          Math.cos(angle) * (majorX + radialSign * minorX), Math.sin(angle) * (majorY + radialSign * minorY), 0,
+          Math.cos(nextAngle) * (majorX + radialSign * minorX), Math.sin(nextAngle) * (majorY + radialSign * minorY), 0,
+        );
+      }
+    }
+    for (const direction of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
+      for (let index = 0; index < segments; index += 1) {
+        const angle = index / segments * Math.PI * 2;
+        const nextAngle = (index + 1) / segments * Math.PI * 2;
+        const point = (value: number) => [
+          Math.cos(direction) * (majorX + Math.cos(value) * minorX),
+          Math.sin(direction) * (majorY + Math.cos(value) * minorY),
+          Math.sin(value) * height / 2,
+        ];
+        const start = point(angle);
+        const end = point(nextAngle);
+        addSegment(start[0], start[1], start[2], end[0], end[1], end[2]);
       }
     }
     return positions;

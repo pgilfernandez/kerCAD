@@ -88,7 +88,7 @@ export function addPrimitive(
   const object = document.objects.find((candidate) => candidate.id === objectId);
   if (!object) return null;
   const count = document.features.filter((feature) => feature.kind !== "sketch").length + 1;
-  if (kind === "sphere" || kind === "cone" || kind === "tube" || kind === "halfSphere") {
+  if (kind === "sphere" || kind === "cone" || kind === "tube" || kind === "halfSphere" || kind === "torus") {
     const definition = parametricOperationDefinition(kind);
     const primitive = createPrimitiveFeature(kind, count);
     primitive.objectId = objectId;
@@ -112,6 +112,13 @@ export function addPrimitive(
       const radius = definition.parameters.find((parameter) => parameter.key === "radius")?.defaultValue ?? 10;
       primitive.width = radius * 2;
       primitive.depth = radius * 2;
+    }
+    if (kind === "torus") {
+      primitive.majorRadius = definition.parameters.find((parameter) => parameter.key === "majorRadius")?.defaultValue ?? 12;
+      primitive.tubeRadius = definition.parameters.find((parameter) => parameter.key === "tubeRadius")?.defaultValue ?? 4;
+      primitive.width = (primitive.majorRadius + primitive.tubeRadius) * 2;
+      primitive.depth = primitive.width;
+      primitive.height = primitive.tubeRadius * 2;
     }
     primitive.operation = "add";
     primitive.transform.position.x = position.x;
@@ -461,6 +468,8 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
         ? { shape: "cone", baseRadius: feature.width / 2, topRadius: feature.topRadius ?? 0, height: feature.height }
         : feature.primitive === "tube"
           ? { shape: "tube", outerRadius: feature.width / 2, innerRadius: feature.innerRadius ?? 6, height: feature.height }
+          : feature.primitive === "torus"
+            ? { shape: "torus", majorRadius: feature.majorRadius ?? 12, tubeRadius: feature.tubeRadius ?? 4 }
           : feature.primitive === "halfSphere"
             ? { shape: "halfSphere", radius: feature.width / 2, height: feature.height }
         : { shape: "sphere", radius: feature.width / 2 }
@@ -710,7 +719,7 @@ export function resizeParametricHeight(document: ParametricDocument, id: string,
 export function updateParametricShapeParameter(
   document: ParametricDocument,
   id: string,
-  parameter: "width" | "depth" | "height" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius",
+  parameter: "width" | "depth" | "height" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "majorRadius" | "tubeRadius",
   value: number,
 ) {
   if (!Number.isFinite(value) || (parameter === "topRadius" ? value < 0 : value <= 0)) return;
@@ -742,6 +751,15 @@ export function updateParametricShapeParameter(
       feature.innerRadius = Math.min(feature.width / 2 - 0.1, next);
     } else if (feature.primitive === "tube" && parameter === "height") {
       feature.height = next;
+    } else if (feature.primitive === "torus" && parameter === "majorRadius") {
+      feature.majorRadius = Math.max((feature.tubeRadius ?? 4) + 0.1, next);
+      feature.width = (feature.majorRadius + (feature.tubeRadius ?? 4)) * 2;
+      feature.depth = feature.width;
+    } else if (feature.primitive === "torus" && parameter === "tubeRadius") {
+      feature.tubeRadius = Math.min((feature.majorRadius ?? 12) - 0.1, next);
+      feature.width = ((feature.majorRadius ?? 12) + feature.tubeRadius) * 2;
+      feature.depth = feature.width;
+      feature.height = feature.tubeRadius * 2;
     }
     return;
   }

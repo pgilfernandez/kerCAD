@@ -1,8 +1,8 @@
-export type ParametricPrimitiveKind = "box" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere";
+export type ParametricPrimitiveKind = "box" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus";
 export type ParametricBooleanRole = "add" | "cut" | "intersect";
 
 export type ParametricParameterDefinition = {
-  key: "width" | "depth" | "height" | "diameter" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius";
+  key: "width" | "depth" | "height" | "diameter" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "majorRadius" | "tubeRadius";
   label: string;
   unit: "mm";
   min: number;
@@ -88,6 +88,14 @@ export const parametricOperationCatalog: ParametricOperationDefinition[] = [
     menuIcon: "assets/sketchforge/shape-icons-gray/half-sphere.png",
     roles: roles("halfSphere"),
     parameters: [dimension("radius", "Radio", 10), dimension("height", "Altura", 10)],
+  },
+  {
+    kind: "torus",
+    name: "Toro",
+    description: "Toro paramétrico exacto con radios mayor y de tubo editables",
+    menuIcon: "assets/sketchforge/shape-icons-gray/torus.png",
+    roles: roles("torus"),
+    parameters: [dimension("majorRadius", "Radio mayor", 12), dimension("tubeRadius", "Radio del tubo", 4)],
   },
 ];
 
