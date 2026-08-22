@@ -1004,9 +1004,9 @@ export function SketchForgeParametricEditor() {
           historicalTopologySelections={editingEdgeTreatmentId || editingFaceExtrudeId || operationContext?.detailMesh ? [] : historicalTopologyReferences}
           historicalTopologyRecords={editingEdgeTreatmentId || editingFaceExtrudeId || operationContext?.detailMesh ? [] : historicalTopologyRecords}
           faceExtrudeHandle={faceExtrudeHandle}
-          onFaceExtrudeDistanceChange={(distance) => {
-            if (pendingFaceExtrude) setPendingFaceExtrude((current) => current ? { ...current, distance } : current);
-            else if (faceExtrudeHandle?.featureId) updateFeature(faceExtrudeHandle.featureId, (feature) => { if (feature.kind === "faceExtrude") feature.distance = distance; });
+          onFaceExtrudeDistanceChange={(distance, operation) => {
+            if (pendingFaceExtrude) setPendingFaceExtrude((current) => current ? { ...current, distance, operation } : current);
+            else if (faceExtrudeHandle?.featureId) updateFeature(faceExtrudeHandle.featureId, (feature) => { if (feature.kind === "faceExtrude") { feature.distance = distance; feature.operation = operation; } });
           }}
         />
         <ViewCube orientation={cameraOrientation} onDirection={(direction) => setView((current) => ({ name: "custom", direction, token: current.token + 1 }))} />

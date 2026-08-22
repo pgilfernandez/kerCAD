@@ -125,7 +125,7 @@ type Props = {
   historicalTopologySelections?: ParametricTopologyReference[];
   historicalTopologyRecords?: ParametricObjectRenderRecord[];
   faceExtrudeHandle?: { origin: { x: number; y: number; z: number }; normal: { x: number; y: number; z: number }; distance: number; operation: "add" | "cut" } | null;
-  onFaceExtrudeDistanceChange?: (distance: number) => void;
+  onFaceExtrudeDistanceChange?: (distance: number, operation: "add" | "cut") => void;
 };
 
 type CachedObjectRender = {
@@ -600,9 +600,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     let interaction: "parameter" | "origin" | "axisMove" | "faceExtrude" | null = null;
     let faceExtrudeAxis: THREE.Vector3 | null = null;
     let faceExtrudeOriginWorld: THREE.Vector3 | null = null;
-    let faceExtrudePointerOffset = 0;
     let faceExtrudeStartDistance = 0;
+    let faceExtrudeStartOperation: "add" | "cut" = "add";
     let pendingFaceExtrudeDistance: number | null = null;
+    let pendingFaceExtrudeOperation: "add" | "cut" | null = null;
     let pendingShapeParameter: { parameter: ShapeParameter; value: number } | null = null;
     let shapeParameterStartValue = 0;
     let shapeParameterWorldScale = 1;
@@ -988,8 +989,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         if (raycaster.ray.intersectPlane(dragPlane, dragPoint)) {
           interaction = "faceExtrude";
           faceExtrudeStartDistance = Number(faceExtrudeLayer.userData.distance) || 0.01;
-          faceExtrudePointerOffset = dragPoint.clone().sub(faceExtrudeOriginWorld).dot(faceExtrudeAxis) - faceExtrudeStartDistance;
+          faceExtrudeStartOperation = faceExtrudeLayer.userData.operation === "cut" ? "cut" : "add";
           pendingFaceExtrudeDistance = faceExtrudeStartDistance;
+          pendingFaceExtrudeOperation = faceExtrudeStartOperation;
         }
       }
       if (!interaction && (workplaneFaceSelectionRef.current || topologyFaceSelectionRef.current || topologyEdgeSelectionRef.current)) {
@@ -1152,12 +1154,16 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       if (!raycaster.ray.intersectPlane(dragPlane, dragPoint)) return;
       if (interaction === "faceExtrude" && faceExtrudeAxis && faceExtrudeOriginWorld) {
         const grid = Math.max(0.01, snapRef.current);
-        const coordinate = dragPoint.clone().sub(faceExtrudeOriginWorld).dot(faceExtrudeAxis) - faceExtrudePointerOffset;
-        pendingFaceExtrudeDistance = Math.max(grid, Math.round(coordinate / grid) * grid);
+        const coordinate = dragPoint.clone().sub(faceExtrudeOriginWorld).dot(faceExtrudeAxis);
+        const crossedOrigin = coordinate < 0;
+        const rawDistance = Math.max(0, Math.abs(coordinate) - 2);
+        pendingFaceExtrudeDistance = Math.max(grid, Math.round(rawDistance / grid) * grid);
+        pendingFaceExtrudeOperation = crossedOrigin ? (faceExtrudeStartOperation === "add" ? "cut" : "add") : faceExtrudeStartOperation;
         const layer = faceExtrudeHandleRef.current;
         if (layer) {
           const origin = layer.userData.origin as THREE.Vector3;
-          const direction = layer.userData.direction as THREE.Vector3;
+          const initialDirection = layer.userData.direction as THREE.Vector3;
+          const direction = crossedOrigin ? initialDirection.clone().negate() : initialDirection;
           const end = origin.clone().addScaledVector(direction, pendingFaceExtrudeDistance + 2);
           const guide = layer.children.find((child) => child.userData.faceExtrudeGuide);
           const handle = layer.children.find((child) => child.userData.faceExtrudeHandle);
@@ -1326,14 +1332,15 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           });
         }
         if (pendingShapeParameter) shapeParameterRef.current?.(pendingShapeParameter.parameter, pendingShapeParameter.value);
-        if (completedInteraction === "faceExtrude" && pendingFaceExtrudeDistance !== null) faceExtrudeDistanceChangeRef.current?.(pendingFaceExtrudeDistance);
+        if (completedInteraction === "faceExtrude" && pendingFaceExtrudeDistance !== null && pendingFaceExtrudeOperation) faceExtrudeDistanceChangeRef.current?.(pendingFaceExtrudeDistance, pendingFaceExtrudeOperation);
       }
       pendingShapeParameter = null;
       pendingFaceExtrudeDistance = null;
+      pendingFaceExtrudeOperation = null;
       faceExtrudeAxis = null;
       faceExtrudeOriginWorld = null;
-      faceExtrudePointerOffset = 0;
       faceExtrudeStartDistance = 0;
+      faceExtrudeStartOperation = "add";
       shapeParameterPreviewRef.current = null;
       shapeParameterStartValue = 0;
       shapeParameterWorldScale = 1;
@@ -1466,6 +1473,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     layer.userData.origin = origin;
     layer.userData.direction = direction;
     layer.userData.distance = faceExtrudeHandle.distance;
+    layer.userData.operation = faceExtrudeHandle.operation;
     layer.add(guide, handle);
     invalidateRef.current();
   }, [faceExtrudeHandle]);
