@@ -3,6 +3,7 @@ import type {
   ExtrudeFeature,
   FilletFeature,
   FaceExtrudeFeature,
+  ShellFeature,
   HoleFeature,
   ParametricDocument,
   ParametricFeature,
@@ -179,6 +180,17 @@ export function createFaceExtrudeFeature(index: number, operation: FaceExtrudeFe
     operation,
     distance: 10,
     faceReferenceId: "",
+  };
+}
+
+export function createShellFeature(index: number): ShellFeature {
+  return {
+    id: createFeatureId("shell"),
+    kind: "shell",
+    name: `Vaciado ${index}`,
+    suppressed: false,
+    thickness: 2,
+    faceReferenceIds: [],
   };
 }
 

@@ -329,6 +329,24 @@ function applyFaceExtrudeFeature(brep: Brep, document: ParametricDocument, curre
   return feature.operation === "cut" ? refinedBooleanSolid(brep, brep.cut(current, tool)) : refinedBooleanSolid(brep, brep.fuse(current, tool));
 }
 
+function applyShellFeature(brep: Brep, document: ParametricDocument, current: AnySolid, feature: Extract<ParametricDocument["features"][number], { kind: "shell" }>) {
+  const candidates = brep.getFaces(current);
+  const faces = feature.faceReferenceIds.map((referenceId) => {
+    const stored = document.topologyReferences.find((reference) => reference.id === referenceId);
+    if (!stored || stored.reference.hint.entityType !== "face") throw new Error(`${feature.name}: una cara abierta ya no existe.`);
+    const topologyId = stored.reference.hint.topologyId;
+    let face = topologyId === undefined ? undefined : candidates.find((candidate) => brep.getHashCode(candidate) === topologyId);
+    if (!face) {
+      const resolution = brep.resolveRefIn(stored.reference as Parameters<Brep["resolveRefIn"]>[0], current);
+      if (!resolution.ok) throw new Error(`${feature.name}: no se pudo recuperar una cara (${resolution.reason}).`);
+      face = resolution.entity as Face;
+    }
+    return face;
+  });
+  if (faces.length === 0) throw new Error(`${feature.name}: selecciona al menos una cara para abrir.`);
+  return resultValue<AnySolid>(brep, brep.shell(current, faces as Parameters<Brep["shell"]>[1], feature.thickness));
+}
+
 async function buildParametricModelInternal(document: ParametricDocument, contextFeatureId: string | null, stopAtContext: boolean): Promise<BuildResult> {
   const brep = await loadBrepWithOcct();
   const sketches = new Map<string, SketchFeature>();
@@ -395,10 +413,15 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         current = applyFaceExtrudeFeature(brep, document, current, feature);
         solids.set(objectId, current);
         completedFeatureIds.push(feature.id);
+      } else if (feature.kind === "shell") {
+        if (feature.thickness <= 0) throw new Error(`${feature.name}: el espesor debe ser mayor que cero.`);
+        current = applyShellFeature(brep, document, current, feature);
+        solids.set(objectId, current);
+        completedFeatureIds.push(feature.id);
       }
       if (feature.id === contextFeatureId) {
         const selectedResult = solids.get(objectId);
-        const removedMaterial = feature.kind === "fillet" || feature.operation === "cut";
+        const removedMaterial = feature.kind === "fillet" || feature.kind === "shell" || (feature.kind === "faceExtrude" && feature.operation === "cut");
         const detail = selectedResult ? resultValue<AnySolid>(brep, removedMaterial ? brep.cut(previousSolid, selectedResult) : brep.cut(selectedResult, previousSolid)) : null;
         operationContext = selectedResult ? {
           featureId: feature.id,
@@ -479,7 +502,8 @@ export async function exportParametricStep(document: ParametricDocument): Promis
       const height = feature.termination === "through-all" ? bounds.zMax - bounds.zMin + 2 : feature.depth + 1;
       current = refinedBooleanSolid(brep, brep.cut(current, brep.cylinder(feature.diameter / 2, height, { at: [feature.x, feature.y, baseZ] })));
     } else if (feature.kind === "fillet") current = applyFilletFeature(brep, document, current, feature);
-    else current = applyFaceExtrudeFeature(brep, document, current, feature);
+    else if (feature.kind === "faceExtrude") current = applyFaceExtrudeFeature(brep, document, current, feature);
+    else current = applyShellFeature(brep, document, current, feature);
     solids.set(objectId, current);
   }
   const result = combinedObjectShape(brep, worldObjectSolids(brep, solids, objects));

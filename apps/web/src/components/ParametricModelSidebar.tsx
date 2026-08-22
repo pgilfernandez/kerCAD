@@ -43,6 +43,7 @@ type Props = {
   onToggleOriginEdit: (objectId: string) => void;
   onEditFeatureSelection: (featureId: string) => void;
   onEditFaceExtrudeSelection: (featureId: string) => void;
+  onEditShellSelection: (featureId: string) => void;
   edgeTreatmentDraft: { treatment: "fillet" | "chamfer"; radius: number; faceCount: number; edgeCount: number; editing: boolean } | null;
   onEdgeTreatmentDraftChange: (update: Partial<{ treatment: "fillet" | "chamfer"; radius: number }>) => void;
   onAcceptEdgeTreatment: () => void;
@@ -51,6 +52,10 @@ type Props = {
   onFaceExtrudeDraftChange: (update: Partial<{ operation: "add" | "cut"; distance: number }>) => void;
   onAcceptFaceExtrude: () => void;
   onCancelFaceExtrude: () => void;
+  shellDraft: { thickness: number; faceCount: number; editing: boolean } | null;
+  onShellDraftChange: (thickness: number) => void;
+  onAcceptShell: () => void;
+  onCancelShell: () => void;
   onUpdateObject: (id: string, update: (object: ParametricObject) => void) => void;
   onUpdateFeature: (id: string, update: (feature: ParametricFeature) => void) => void;
 };
@@ -67,6 +72,7 @@ export function ParametricModelSidebar({
   onToggleOriginEdit,
   onEditFeatureSelection,
   onEditFaceExtrudeSelection,
+  onEditShellSelection,
   edgeTreatmentDraft,
   onEdgeTreatmentDraftChange,
   onAcceptEdgeTreatment,
@@ -75,6 +81,10 @@ export function ParametricModelSidebar({
   onFaceExtrudeDraftChange,
   onAcceptFaceExtrude,
   onCancelFaceExtrude,
+  shellDraft,
+  onShellDraftChange,
+  onAcceptShell,
+  onCancelShell,
   onUpdateObject,
   onUpdateFeature,
 }: Props) {
@@ -196,7 +206,13 @@ export function ParametricModelSidebar({
       </div> : null}
 
       {mode === "normal" ? <section className="educad-sidebar-editor">
-        {faceExtrudeDraft ? (
+        {shellDraft ? (
+          <div className="educad-feature-inspector educad-edge-treatment-draft" aria-label="Vaciado temporal">
+            <div className="educad-feature-card"><h3>{shellDraft.editing ? "Editar vaciado" : "Nuevo vaciado"}</h3><BoundedNumberField label="Espesor" value={shellDraft.thickness} min={0.01} max={50} onChange={onShellDraftChange} /></div>
+            <div className="educad-topology-selection-actions"><button type="button" onClick={onCancelShell}>Cancelar</button><button type="button" className="primary" disabled={shellDraft.faceCount === 0} onClick={onAcceptShell}>Aceptar</button></div>
+            <p className="educad-topology-selection-count">caras abiertas: {shellDraft.faceCount}</p>
+          </div>
+        ) : faceExtrudeDraft ? (
           <div className="educad-feature-inspector educad-edge-treatment-draft" aria-label="Extrusión temporal de cara">
             <div className="educad-feature-card"><h3>{faceExtrudeDraft.editing ? "Editar operación" : "Nueva operación"}</h3><label><span>Tipo</span><select value={faceExtrudeDraft.operation} onChange={(event) => onFaceExtrudeDraftChange({ operation: event.target.value as "add" | "cut" })}><option value="add">Añadir</option><option value="cut">Hueco</option></select></label><BoundedNumberField label="Longitud" value={faceExtrudeDraft.distance} min={0.01} max={200} onChange={(distance) => onFaceExtrudeDraftChange({ distance })} /></div>
             <div className="educad-topology-selection-actions"><button type="button" onClick={onCancelFaceExtrude}>Cancelar</button><button type="button" className="primary" disabled={faceExtrudeDraft.faceCount !== 1} onClick={onAcceptFaceExtrude}>Aceptar</button></div>
@@ -218,6 +234,7 @@ export function ParametricModelSidebar({
             onUpdateFeature={onUpdateFeature}
             onEditSelection={onEditFeatureSelection}
             onEditFaceExtrudeSelection={onEditFaceExtrudeSelection}
+            onEditShellSelection={onEditShellSelection}
           />
         ) : (
           <div className="educad-no-selection"><Layers3 size={28} /><strong>Selecciona un objeto u operación</strong><span>Despliega el árbol para editar el historial CAD.</span></div>
@@ -252,6 +269,7 @@ function FeatureIcon({ document, feature }: { document: ParametricDocument; feat
   }
   if (feature.kind === "hole") return <CircleDot className="drill-hole" size={16} />;
   if (feature.kind === "faceExtrude") return <span className={`educad-operation-icon ${feature.operation === "cut" ? "hole" : "add"}`} role="img" aria-label={feature.operation === "cut" ? "Hueco desde cara" : "Extrusión desde cara"}><Box size={17} /><small aria-hidden="true">{feature.operation === "cut" ? "−" : "+"}</small></span>;
+  if (feature.kind === "shell") return <Layers3 className="shell" size={16} />;
   return feature.treatment === "chamfer" ? <Triangle className="chamfer" size={16} /> : <Radius className="fillet" size={16} />;
 }
 
@@ -339,12 +357,14 @@ function ParametricFeatureInspector({
   onUpdateFeature,
   onEditSelection,
   onEditFaceExtrudeSelection,
+  onEditShellSelection,
 }: {
   document: ParametricDocument;
   feature: ParametricFeature;
   onUpdateFeature: (id: string, update: (feature: ParametricFeature) => void) => void;
   onEditSelection: (featureId: string) => void;
   onEditFaceExtrudeSelection: (featureId: string) => void;
+  onEditShellSelection: (featureId: string) => void;
 }) {
   const onUpdate = (update: (feature: ParametricFeature) => void) => onUpdateFeature(feature.id, update);
   const primitiveSketch = feature.kind === "extrude" ? sketchForExtrude(document, feature) : null;
@@ -506,6 +526,14 @@ function ParametricFeatureInspector({
           <div className="educad-feature-card"><h3>Operación</h3><label><span>Tipo</span><select value={feature.operation} onChange={(event) => onUpdate((draft) => { if (draft.kind === "faceExtrude") draft.operation = event.target.value as typeof draft.operation; })}><option value="add">Añadir</option><option value="cut">Hueco</option></select></label><BoundedNumberField label="Longitud" value={feature.distance} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "faceExtrude") draft.distance = Math.max(0.01, value); })} /></div>
           <button className="educad-edit-topology-selection" type="button" onClick={() => onEditFaceExtrudeSelection(feature.id)}>Editar cara</button>
           <TransformSection description="Dirección normal a la cara"><p className="educad-transform-empty">La longitud se aplica perpendicularmente a la cara seleccionada.</p></TransformSection>
+        </>
+      ) : null}
+
+      {feature.kind === "shell" ? (
+        <>
+          <div className="educad-feature-card"><h3>Operación</h3><ReadOnlyField label="Tipo" value="Vaciado" /><BoundedNumberField label="Espesor" value={feature.thickness} min={0.01} max={50} onChange={(value) => onUpdate((draft) => { if (draft.kind === "shell") draft.thickness = Math.max(0.01, value); })} /></div>
+          <button className="educad-edit-topology-selection" type="button" onClick={() => onEditShellSelection(feature.id)}>Editar caras abiertas</button>
+          <TransformSection description="Sin transformación propia"><p className="educad-transform-empty">El vaciado desplaza las paredes hacia el interior y elimina las caras seleccionadas.</p></TransformSection>
         </>
       ) : null}
 
