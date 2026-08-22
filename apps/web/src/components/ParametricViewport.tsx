@@ -26,6 +26,7 @@ export type TopologyFacePick = {
   area: number;
   faceId?: number;
   origin?: number;
+  planar: boolean;
 };
 export type TopologyEdgePick = {
   key: string;
@@ -120,6 +121,7 @@ type Props = {
   topologyEdgeSelection?: boolean;
   onTopologyEdgeSelect?: (edge: TopologyEdgePick) => void;
   topologySelections?: ParametricTopologyReference[];
+  topologyMultiSelection?: boolean;
 };
 
 type CachedObjectRender = {
@@ -230,7 +232,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onShapeParameterChange, onObjectOriginMove, onObjectAxisMove, onOperationAxisMove, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [] }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onShapeParameterChange, onObjectOriginMove, onObjectAxisMove, onOperationAxisMove, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
@@ -272,6 +274,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const topologyFaceSelectionRef = useRef(topologyFaceSelection);
   const topologyFaceSelectRef = useRef(onTopologyFaceSelect);
   const topologyEdgeSelectionRef = useRef(topologyEdgeSelection);
+  const topologyMultiSelectionRef = useRef(topologyMultiSelection);
   const topologyEdgeSelectRef = useRef(onTopologyEdgeSelect);
   const snapRef = useRef(snap);
   const activeWorkplaneRef = useRef(workplane);
@@ -304,6 +307,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   useEffect(() => { topologyFaceSelectionRef.current = topologyFaceSelection; }, [topologyFaceSelection]);
   useEffect(() => { topologyFaceSelectRef.current = onTopologyFaceSelect; }, [onTopologyFaceSelect]);
   useEffect(() => { topologyEdgeSelectionRef.current = topologyEdgeSelection; }, [topologyEdgeSelection]);
+  useEffect(() => { topologyMultiSelectionRef.current = topologyMultiSelection; }, [topologyMultiSelection]);
   useEffect(() => { topologyEdgeSelectRef.current = onTopologyEdgeSelect; }, [onTopologyEdgeSelect]);
   useEffect(() => {
     if (workplaneFaceSelection || topologyFaceSelection || topologyEdgeSelection) return;
@@ -768,6 +772,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         centroid: { x: centroid.x, y: centroid.y, z: centroid.z },
         normal: { x: normal.x, y: normal.y, z: normal.z },
         area: region.area,
+        planar: "planar" in region ? region.planar : true,
         ...exactIdentity,
       });
       requestRender();
@@ -956,7 +961,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         if (topologyEdgeSelectionRef.current) {
           const selectedEdge = updateTopologyEdgeHighlight();
           if (selectedEdge) {
-            toggleTopologyEdge(selectedEdge.hit, selectedEdge.region, event.ctrlKey || event.metaKey);
+            toggleTopologyEdge(selectedEdge.hit, selectedEdge.region, topologyMultiSelectionRef.current && (event.ctrlKey || event.metaKey));
             event.preventDefault();
             return;
           }
@@ -965,7 +970,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         if (selectedFace) {
           const { hit, region } = selectedFace;
           if (topologyFaceSelectionRef.current) {
-            toggleTopologyFace(hit, region, event.ctrlKey || event.metaKey);
+            toggleTopologyFace(hit, region, topologyMultiSelectionRef.current && (event.ctrlKey || event.metaKey));
             event.preventDefault();
             return;
           }

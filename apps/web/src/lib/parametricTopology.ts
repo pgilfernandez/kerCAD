@@ -98,6 +98,13 @@ export function assertValidParametricTopology(document: ParametricDocument) {
     references.set(reference.id, reference);
   }
   for (const feature of document.features) {
+    if (feature.kind === "faceExtrude") {
+      const reference = references.get(feature.faceReferenceId);
+      if (!reference) throw new ParametricTopologyError(`${feature.name}: la cara referenciada ya no existe.`);
+      if (reference.reference.hint.entityType !== "face") throw new ParametricTopologyError(`${feature.name}: la referencia seleccionada no es una cara.`);
+      if (feature.objectId && reference.objectId !== feature.objectId) throw new ParametricTopologyError(`${feature.name}: la cara pertenece a otro objeto.`);
+      continue;
+    }
     if (feature.kind !== "fillet") continue;
     const selectionIds = feature.selectionReferenceIds ?? feature.edgeReferenceIds ?? [];
     for (const referenceId of selectionIds) {

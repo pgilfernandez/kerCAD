@@ -345,13 +345,29 @@ export function exactFaceRegion(
   }
   if (area <= 1e-12) return null;
   const normalLength = Math.hypot(normal.x, normal.y, normal.z);
+  const unitNormal = normalLength > 1e-12 ? { x: normal.x / normalLength, y: normal.y / normalLength, z: normal.z / normalLength } : { x: 0, y: 0, z: 1 };
+  const origin = { x: positions[0], y: positions[1], z: positions[2] };
+  let xMin = origin.x; let xMax = origin.x;
+  let yMin = origin.y; let yMax = origin.y;
+  let zMin = origin.z; let zMax = origin.z;
+  let maxPlaneDistance = 0;
+  for (let offset = 0; offset + 2 < positions.length; offset += 3) {
+    const x = positions[offset]; const y = positions[offset + 1]; const z = positions[offset + 2];
+    xMin = Math.min(xMin, x); xMax = Math.max(xMax, x);
+    yMin = Math.min(yMin, y); yMax = Math.max(yMax, y);
+    zMin = Math.min(zMin, z); zMax = Math.max(zMax, z);
+    maxPlaneDistance = Math.max(maxPlaneDistance, Math.abs((x - origin.x) * unitNormal.x + (y - origin.y) * unitNormal.y + (z - origin.z) * unitNormal.z));
+  }
+  const extent = Math.max(1, xMax - xMin, yMax - yMin, zMax - zMin);
+  const planar = maxPlaneDistance <= extent * 1e-4;
   return {
     positions,
     faceId: group.faceId,
     origin: group.origin,
     area,
     centroid: { x: weighted.x / area, y: weighted.y / area, z: weighted.z / area },
-    normal: normalLength > 1e-12 ? { x: normal.x / normalLength, y: normal.y / normalLength, z: normal.z / normalLength } : { x: 0, y: 0, z: 1 },
+    normal: unitNormal,
+    planar,
   };
 }
 

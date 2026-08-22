@@ -298,6 +298,37 @@ function applyFilletFeature(brep: Brep, document: ParametricDocument, current: A
     : selection ? brep.fillet(current, selection, feature.radius) : brep.fillet(current, feature.radius));
 }
 
+function applyFaceExtrudeFeature(brep: Brep, document: ParametricDocument, current: AnySolid, feature: Extract<ParametricDocument["features"][number], { kind: "faceExtrude" }>) {
+  const stored = document.topologyReferences.find((reference) => reference.id === feature.faceReferenceId);
+  if (!stored || stored.reference.hint.entityType !== "face") throw new Error(`${feature.name}: la cara seleccionada ya no existe.`);
+  const faces = brep.getFaces(current);
+  const topologyId = stored.reference.hint.topologyId;
+  let face = topologyId === undefined ? undefined : faces.find((candidate) => brep.getHashCode(candidate) === topologyId);
+  if (!face) {
+    const resolution = brep.resolveRefIn(stored.reference as Parameters<Brep["resolveRefIn"]>[0], current);
+    if (!resolution.ok) throw new Error(`${feature.name}: no se pudo recuperar la cara (${resolution.reason}).`);
+    face = resolution.entity as Face;
+  }
+  const normal = stored.reference.hint.normal ?? [0, 0, 1];
+  const object = document.objects.find((candidate) => candidate.id === feature.objectId);
+  let [x, y, z] = normal;
+  if (object) {
+    for (const [angle, axis] of [[-object.transform.rotation.z, "z"], [-object.transform.rotation.y, "y"], [-object.transform.rotation.x, "x"]] as const) {
+      const radians = angle * Math.PI / 180;
+      const cosine = Math.cos(radians);
+      const sine = Math.sin(radians);
+      if (axis === "z") [x, y] = [x * cosine - y * sine, x * sine + y * cosine];
+      if (axis === "y") [x, z] = [x * cosine + z * sine, -x * sine + z * cosine];
+      if (axis === "x") [y, z] = [y * cosine - z * sine, y * sine + z * cosine];
+    }
+  }
+  const length = Math.hypot(x, y, z) || 1;
+  const sign = feature.operation === "cut" ? -1 : 1;
+  const vector: [number, number, number] = [x / length * feature.distance * sign, y / length * feature.distance * sign, z / length * feature.distance * sign];
+  const tool = brep.unwrap(brep.extrude(face as Parameters<Brep["extrude"]>[0], vector)) as AnySolid;
+  return feature.operation === "cut" ? refinedBooleanSolid(brep, brep.cut(current, tool)) : refinedBooleanSolid(brep, brep.fuse(current, tool));
+}
+
 async function buildParametricModelInternal(document: ParametricDocument, contextFeatureId: string | null, stopAtContext: boolean): Promise<BuildResult> {
   const brep = await loadBrepWithOcct();
   const sketches = new Map<string, SketchFeature>();
@@ -355,6 +386,13 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
       if (feature.kind === "fillet") {
         if (feature.radius <= 0) throw new Error(`${feature.name}: el radio debe ser mayor que cero.`);
         current = applyFilletFeature(brep, document, current, feature);
+        solids.set(objectId, current);
+        completedFeatureIds.push(feature.id);
+        continue;
+      }
+      if (feature.kind === "faceExtrude") {
+        if (feature.distance <= 0) throw new Error(`${feature.name}: la longitud debe ser mayor que cero.`);
+        current = applyFaceExtrudeFeature(brep, document, current, feature);
         solids.set(objectId, current);
         completedFeatureIds.push(feature.id);
       }
@@ -425,7 +463,8 @@ export async function exportParametricStep(document: ParametricDocument): Promis
       const baseZ = feature.termination === "through-all" ? bounds.zMin - 1 : bounds.zMax - feature.depth;
       const height = feature.termination === "through-all" ? bounds.zMax - bounds.zMin + 2 : feature.depth + 1;
       current = refinedBooleanSolid(brep, brep.cut(current, brep.cylinder(feature.diameter / 2, height, { at: [feature.x, feature.y, baseZ] })));
-    } else current = applyFilletFeature(brep, document, current, feature);
+    } else if (feature.kind === "fillet") current = applyFilletFeature(brep, document, current, feature);
+    else current = applyFaceExtrudeFeature(brep, document, current, feature);
     solids.set(objectId, current);
   }
   const result = combinedObjectShape(brep, worldObjectSolids(brep, solids, objects));

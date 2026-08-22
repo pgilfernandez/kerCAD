@@ -2,6 +2,7 @@ import type {
   CircleProfile,
   ExtrudeFeature,
   FilletFeature,
+  FaceExtrudeFeature,
   HoleFeature,
   ParametricDocument,
   ParametricFeature,
@@ -166,6 +167,18 @@ export function createFilletFeature(index: number, treatment: FilletFeature["tre
     treatment,
     radius: 2,
     edges: "vertical",
+  };
+}
+
+export function createFaceExtrudeFeature(index: number, operation: FaceExtrudeFeature["operation"] = "add"): FaceExtrudeFeature {
+  return {
+    id: createFeatureId("face-extrude"),
+    kind: "faceExtrude",
+    name: `${operation === "cut" ? "Hueco de cara" : "Extrusión de cara"} ${index}`,
+    suppressed: false,
+    operation,
+    distance: 10,
+    faceReferenceId: "",
   };
 }
 
