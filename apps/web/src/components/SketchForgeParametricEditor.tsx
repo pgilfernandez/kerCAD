@@ -28,7 +28,7 @@ import {
 } from "@/components/icons";
 import { cloneDocument, createFilletFeature, createStarterDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { assertValidParametricDependencies } from "@/lib/parametricDependencyGraph";
-import { assertValidParametricTopology } from "@/lib/parametricTopology";
+import { assertValidParametricTopology, parametricTopologyReferenceIsAvailable } from "@/lib/parametricTopology";
 import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint } from "@/lib/parametricBuildState";
 import { exportParametricStep } from "@/lib/parametricKernel";
 import { ParametricBuildWorkerClient } from "@/lib/parametricBuildWorker";
@@ -266,6 +266,17 @@ export function SketchForgeParametricEditor() {
     const timeout = window.setTimeout(() => setNotice(null), 2600);
     return () => window.clearTimeout(timeout);
   }, [notice]);
+
+  useEffect(() => {
+    if (selectedTopologyFaces.length === 0 && selectedTopologyEdges.length === 0) return;
+    const availableFaces = selectedTopologyFaces.filter((reference) => parametricTopologyReferenceIsAvailable(reference, build.objectRecords));
+    const availableEdges = selectedTopologyEdges.filter((reference) => parametricTopologyReferenceIsAvailable(reference, build.objectRecords));
+    const removed = selectedTopologyFaces.length - availableFaces.length + selectedTopologyEdges.length - availableEdges.length;
+    if (removed === 0) return;
+    setSelectedTopologyFaces(availableFaces);
+    setSelectedTopologyEdges(availableEdges);
+    setNotice({ type: "error", text: `${removed} referencia${removed === 1 ? "" : "s"} topológica${removed === 1 ? "" : "s"} ya no existe${removed === 1 ? "" : "n"} tras reconstruir la pieza` });
+  }, [build.objectRecords, selectedTopologyEdges, selectedTopologyFaces]);
 
   const commit = useCallback((next: ParametricDocument) => {
     next.updatedAt = Date.now();
@@ -522,6 +533,7 @@ export function SketchForgeParametricEditor() {
           normal: [face.normal.x, face.normal.y, face.normal.z],
           centroid: [face.centroid.x, face.centroid.y, face.centroid.z],
           area: face.area,
+          ...(face.faceId === undefined ? {} : { topologyId: face.faceId, originId: face.origin }),
         },
       },
     };
@@ -547,6 +559,7 @@ export function SketchForgeParametricEditor() {
           entityType: "edge",
           length: edge.length,
           midpoint: [edge.midpoint.x, edge.midpoint.y, edge.midpoint.z],
+          topologyId: edge.edgeId,
         },
       },
     };

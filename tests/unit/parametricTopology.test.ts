@@ -4,10 +4,11 @@ import { deleteParametricFeature, duplicateParametricObject } from "@/lib/parame
 import {
   assertValidParametricTopology,
   isParametricTopologyReference,
+  parametricTopologyReferenceIsAvailable,
   ParametricTopologyError,
   recoverParametricTopologyReference,
 } from "@/lib/parametricTopology";
-import type { ParametricTopologyReference } from "@/types/parametric";
+import type { ParametricObjectRenderRecord, ParametricTopologyReference } from "@/types/parametric";
 
 function edgeReference(objectId: string, sourceFeatureId: string): ParametricTopologyReference {
   return {
@@ -24,6 +25,29 @@ function edgeReference(objectId: string, sourceFeatureId: string): ParametricTop
 }
 
 describe("stable parametric topology references", () => {
+  it("detects an exact edge reference that disappeared after a rebuild", () => {
+    const document = createStarterDocument(1);
+    const source = document.features.find((feature) => feature.kind === "extrude")!;
+    const reference = edgeReference(document.objects[0].id, source.id);
+    reference.reference.hint.topologyId = 73;
+    const record: ParametricObjectRenderRecord = {
+      objectId: document.objects[0].id,
+      renderId: "object:test",
+      geometryFingerprint: "test",
+      color: "#fff",
+      worldTransform: document.objects[0].transform,
+      mesh: {
+        positions: new Float32Array(), normals: new Float32Array(), indices: new Uint32Array(), edges: new Float32Array(),
+        edgeGroups: [{ start: 0, count: 2, edgeId: 72 }],
+        metrics: { width: 0, depth: 0, height: 0, volume: 0 },
+      },
+    };
+
+    expect(parametricTopologyReferenceIsAvailable(reference, [record])).toBe(false);
+    record.mesh.edgeGroups![0].edgeId = 73;
+    expect(parametricTopologyReferenceIsAvailable(reference, [record])).toBe(true);
+  });
+
   it("stores lineage and geometric hints in a serializable document record", () => {
     const document = createStarterDocument(1);
     const object = document.objects[0];

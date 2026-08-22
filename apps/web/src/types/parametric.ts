@@ -13,6 +13,8 @@ export type ParametricFaceReference = {
     normal?: [number, number, number];
     centroid?: [number, number, number];
     area?: number;
+    topologyId?: number;
+    originId?: number;
   };
 };
 
@@ -23,6 +25,7 @@ export type ParametricEdgeReference = {
     entityType: "edge";
     length?: number;
     midpoint?: [number, number, number];
+    topologyId?: number;
   };
 };
 

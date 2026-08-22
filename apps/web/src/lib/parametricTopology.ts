@@ -1,4 +1,4 @@
-import type { ParametricDocument, ParametricTopologyReference } from "@/types/parametric";
+import type { ParametricDocument, ParametricObjectRenderRecord, ParametricTopologyReference } from "@/types/parametric";
 
 export class ParametricTopologyError extends Error {
   constructor(message: string) {
@@ -21,7 +21,9 @@ export function isParametricTopologyReference(value: unknown): value is Parametr
     return "role" in reference && typeof reference.role === "string"
       && (reference.hint.normal === undefined || finiteVector(reference.hint.normal))
       && (reference.hint.centroid === undefined || finiteVector(reference.hint.centroid))
-      && (reference.hint.area === undefined || Number.isFinite(reference.hint.area));
+      && (reference.hint.area === undefined || Number.isFinite(reference.hint.area))
+      && (reference.hint.topologyId === undefined || Number.isInteger(reference.hint.topologyId))
+      && (reference.hint.originId === undefined || Number.isInteger(reference.hint.originId));
   }
   return reference.hint.entityType === "edge"
     && "faceRoles" in reference
@@ -29,7 +31,18 @@ export function isParametricTopologyReference(value: unknown): value is Parametr
     && reference.faceRoles.length === 2
     && reference.faceRoles.every((role) => typeof role === "string")
     && (reference.hint.midpoint === undefined || finiteVector(reference.hint.midpoint))
-    && (reference.hint.length === undefined || Number.isFinite(reference.hint.length));
+    && (reference.hint.length === undefined || Number.isFinite(reference.hint.length))
+    && (reference.hint.topologyId === undefined || Number.isInteger(reference.hint.topologyId));
+}
+
+export function parametricTopologyReferenceIsAvailable(reference: ParametricTopologyReference, records: readonly ParametricObjectRenderRecord[]) {
+  const record = records.find((candidate) => candidate.objectId === reference.objectId);
+  if (!record) return false;
+  const topologyId = reference.reference.hint.topologyId;
+  if (topologyId === undefined) return true;
+  return reference.reference.hint.entityType === "face"
+    ? (record.mesh.faceGroups ?? []).some((group) => group.faceId === topologyId)
+    : (record.mesh.edgeGroups ?? []).some((group) => group.edgeId === topologyId);
 }
 
 export function assertValidParametricTopology(document: ParametricDocument) {
