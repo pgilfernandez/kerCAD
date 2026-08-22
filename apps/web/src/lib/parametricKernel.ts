@@ -372,6 +372,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
       const objectId = feature.objectId ?? lastObjectId;
       let current = solids.get(objectId) ?? null;
       if (!current) throw new Error(`${feature.name}: primero hace falta crear un sólido.`);
+      const previousSolid = current;
       const selectionMesh = feature.id === contextFeatureId ? meshShape(brep, applyObjectTransform(brep, current, objects.get(objectId))) : undefined;
       if (feature.kind === "hole") {
         if (feature.diameter <= 0) throw new Error(`${feature.name}: el diámetro debe ser mayor que cero.`);
@@ -397,12 +398,16 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
       }
       if (feature.id === contextFeatureId) {
         const selectedResult = solids.get(objectId);
+        const removedMaterial = feature.kind === "fillet" || feature.operation === "cut";
+        const detail = selectedResult ? resultValue<AnySolid>(brep, removedMaterial ? brep.cut(previousSolid, selectedResult) : brep.cut(selectedResult, previousSolid)) : null;
         operationContext = selectedResult ? {
           featureId: feature.id,
           objectId,
           color: objects.get(objectId)?.color ?? "#d41721",
           mesh: meshShape(brep, applyObjectTransform(brep, selectedResult, objects.get(objectId))),
           selectionMesh,
+          detailMesh: detail ? meshShape(brep, applyObjectTransform(brep, detail, objects.get(objectId))) : undefined,
+          detailColor: feature.kind === "faceExtrude" && feature.operation === "cut" ? "red" : "green",
         } : null;
         if (stopAtContext) return { mesh: null, objectRecords: [], operationContext, completedFeatureIds, warning: null };
       }

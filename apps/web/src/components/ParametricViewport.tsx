@@ -97,7 +97,7 @@ type Props = {
   selectedObjectOriginId?: string | null;
   selectedOperationOriginId?: string | null;
   selectedObjectIds?: string[];
-  operationContext?: { color: string; mesh: RenderMesh; opacity: number; selectionMesh?: RenderMesh } | null;
+  operationContext?: { color: string; mesh: RenderMesh; opacity: number; selectionMesh?: RenderMesh; detailMesh?: RenderMesh; detailColor?: "green" | "red" } | null;
   isolatedHistoryObjectId?: string | null;
   color: string;
   workplane?: ParametricDocument["workplane"];
@@ -254,7 +254,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const workplaneRef = useRef<THREE.Group | null>(null);
   const selectionRootRef = useRef<THREE.Group | null>(null);
   const selectionVisualRootRef = useRef<THREE.Group | null>(null);
-  const operationContextRef = useRef<THREE.Mesh | null>(null);
+  const operationContextRef = useRef<THREE.Group | null>(null);
   const faceHighlightRef = useRef<THREE.Mesh | null>(null);
   const edgeHighlightRef = useRef<THREE.LineSegments | null>(null);
   const topologyFaceLayerRef = useRef<THREE.Group | null>(null);
@@ -1680,9 +1680,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     if (!group) return;
     const previous = operationContextRef.current;
     if (previous) {
-      previous.geometry.dispose();
-      if (Array.isArray(previous.material)) previous.material.forEach((material) => material.dispose());
-      else previous.material.dispose();
+      previous.traverse((child) => {
+        if (!(child instanceof THREE.Mesh || child instanceof THREE.LineSegments || child instanceof LineSegments2)) return;
+        child.geometry.dispose();
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        materials.forEach((material) => material.dispose());
+      });
       group.remove(previous);
     }
     operationContextRef.current = null;
@@ -1690,14 +1693,34 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       invalidateRef.current();
       return;
     }
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.BufferAttribute(operationContext.mesh.positions, 3));
-    geometry.setAttribute("normal", new THREE.BufferAttribute(operationContext.mesh.normals, 3));
-    geometry.setIndex(new THREE.BufferAttribute(operationContext.mesh.indices, 1));
-    const contextBody = new THREE.Mesh(geometry, previewMaterial(renderQuality, operationContext.color, operationContext.opacity));
-    contextBody.renderOrder = 16;
-    group.add(contextBody);
-    operationContextRef.current = contextBody;
+    const contextGroup = new THREE.Group();
+    if (operationContext.opacity > 0) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.BufferAttribute(operationContext.mesh.positions, 3));
+      geometry.setAttribute("normal", new THREE.BufferAttribute(operationContext.mesh.normals, 3));
+      geometry.setIndex(new THREE.BufferAttribute(operationContext.mesh.indices, 1));
+      const contextBody = new THREE.Mesh(geometry, previewMaterial(renderQuality, operationContext.color, operationContext.opacity));
+      contextBody.renderOrder = 16;
+      contextGroup.add(contextBody);
+    }
+    if (operationContext.detailMesh) {
+      const detailColor = operationContext.detailColor === "red" ? "#e25353" : "#3fbe78";
+      const detailGeometry = new THREE.BufferGeometry();
+      detailGeometry.setAttribute("position", new THREE.BufferAttribute(operationContext.detailMesh.positions, 3));
+      detailGeometry.setAttribute("normal", new THREE.BufferAttribute(operationContext.detailMesh.normals, 3));
+      detailGeometry.setIndex(new THREE.BufferAttribute(operationContext.detailMesh.indices, 1));
+      const detailBody = new THREE.Mesh(detailGeometry, new THREE.MeshBasicMaterial({ color: detailColor, transparent: true, opacity: 0.52, side: THREE.DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }));
+      const detailEdgeGeometry = new LineSegmentsGeometry();
+      detailEdgeGeometry.setPositions(operationContext.detailMesh.edges);
+      const detailEdgeMaterial = new LineMaterial({ color: detailColor, linewidth: 2, depthTest: false });
+      detailEdgeMaterial.resolution.set(Math.max(1, rendererRef.current?.domElement.clientWidth ?? 1), Math.max(1, rendererRef.current?.domElement.clientHeight ?? 1));
+      const detailEdges = new LineSegments2(detailEdgeGeometry, detailEdgeMaterial);
+      detailBody.renderOrder = 29;
+      detailEdges.renderOrder = 30;
+      contextGroup.add(detailBody, detailEdges);
+    }
+    group.add(contextGroup);
+    operationContextRef.current = contextGroup;
     invalidateRef.current();
   }, [operationContext, projection, renderQuality]);
 

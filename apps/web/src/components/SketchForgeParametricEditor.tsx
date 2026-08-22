@@ -118,6 +118,7 @@ export function SketchForgeParametricEditor() {
   const [pendingFaceExtrude, setPendingFaceExtrude] = useState<{ operation: "add" | "cut"; distance: number } | null>(null);
   const [editingFaceExtrudeId, setEditingFaceExtrudeId] = useState<string | null>(null);
   const [topologySelectionBuild, setTopologySelectionBuild] = useState<BuildResult | null>(null);
+  const [topologyPreviewContext, setTopologyPreviewContext] = useState<BuildResult["operationContext"]>(null);
   const [view, setView] = useState<CameraView>({ name: "iso", token: 0 });
   const [projection, setProjection] = useState<CameraProjection>("orthographic");
   const [renderQuality, setRenderQuality] = useState<ViewportRenderQuality>("normal");
@@ -167,6 +168,7 @@ export function SketchForgeParametricEditor() {
   const buildWorkerRef = useRef<ParametricBuildWorkerClient | null>(null);
   const contextWorkerRef = useRef<ParametricBuildWorkerClient | null>(null);
   const topologySelectionWorkerRef = useRef<ParametricBuildWorkerClient | null>(null);
+  const topologyPreviewWorkerRef = useRef<ParametricBuildWorkerClient | null>(null);
   const geometryFingerprint = useMemo(() => parametricGeometryFingerprint(document), [document]);
   const objectColorFingerprint = useMemo(() => parametricObjectColorFingerprint(document), [document]);
   const objectColors = useMemo(() => objectColorsFromFingerprint(objectColorFingerprint), [objectColorFingerprint]);
@@ -186,6 +188,11 @@ export function SketchForgeParametricEditor() {
     color: objectColors[operationContext.objectId] ?? operationContext.color,
     opacity: 0.4,
   } : null, [objectColors, operationContext]);
+  const viewportTopologyPreviewContext = useMemo(() => topologyPreviewContext ? {
+    ...topologyPreviewContext,
+    color: objectColors[topologyPreviewContext.objectId] ?? topologyPreviewContext.color,
+    opacity: 0,
+  } : null, [objectColors, topologyPreviewContext]);
   const storedHistoricalTopologyReferences = useMemo(() => {
     if (!selectedOperationTimeline || selectedOperationTimeline.index >= selectedOperationTimeline.count - 1) return [];
     const feature = document.features.find((candidate) => candidate.id === selectedOperationTimeline.featureId);
@@ -239,18 +246,62 @@ export function SketchForgeParametricEditor() {
     const buildWorker = new ParametricBuildWorkerClient(createWorker);
     const contextWorker = new ParametricBuildWorkerClient(createWorker);
     const topologySelectionWorker = new ParametricBuildWorkerClient(createWorker);
+    const topologyPreviewWorker = new ParametricBuildWorkerClient(createWorker);
     buildWorkerRef.current = buildWorker;
     contextWorkerRef.current = contextWorker;
     topologySelectionWorkerRef.current = topologySelectionWorker;
+    topologyPreviewWorkerRef.current = topologyPreviewWorker;
     return () => {
       buildWorker.dispose();
       contextWorker.dispose();
       topologySelectionWorker.dispose();
+      topologyPreviewWorker.dispose();
       buildWorkerRef.current = null;
       contextWorkerRef.current = null;
       topologySelectionWorkerRef.current = null;
+      topologyPreviewWorkerRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    setTopologyPreviewContext(null);
+    const references = [...selectedTopologyFaces, ...selectedTopologyEdges];
+    if ((!pendingEdgeTreatment && !pendingFaceExtrude) || references.length === 0 || (pendingFaceExtrude && selectedTopologyFaces.length !== 1)) return;
+    const preview = cloneDocument(document);
+    let featureId = "";
+    if (pendingEdgeTreatment) {
+      const existing = editingEdgeTreatmentId ? preview.features.find((feature) => feature.id === editingEdgeTreatmentId && feature.kind === "fillet") : null;
+      const feature = existing?.kind === "fillet" ? existing : createFilletFeature(preview.features.filter((candidate) => candidate.kind === "fillet").length + 1, pendingEdgeTreatment);
+      const oldIds = new Set(feature.kind === "fillet" ? [...(feature.selectionReferenceIds ?? []), ...(feature.edgeReferenceIds ?? [])] : []);
+      preview.topologyReferences = preview.topologyReferences.filter((reference) => !oldIds.has(reference.id));
+      const stored = references.map((reference, index) => ({ ...structuredClone(reference), id: `${feature.id}:preview:${index + 1}` }));
+      feature.objectId = references[0].objectId;
+      feature.treatment = pendingEdgeTreatment;
+      feature.radius = edgeTreatmentRadius;
+      feature.selectionReferenceIds = stored.map((reference) => reference.id);
+      feature.edgeReferenceIds = undefined;
+      preview.topologyReferences.push(...stored);
+      if (!existing) preview.features.push(feature);
+      featureId = feature.id;
+    } else if (pendingFaceExtrude) {
+      const reference = selectedTopologyFaces[0];
+      const existing = editingFaceExtrudeId ? preview.features.find((feature) => feature.id === editingFaceExtrudeId && feature.kind === "faceExtrude") : null;
+      const feature = existing?.kind === "faceExtrude" ? existing : createFaceExtrudeFeature(preview.features.filter((candidate) => candidate.kind === "faceExtrude").length + 1, pendingFaceExtrude.operation);
+      if (existing?.kind === "faceExtrude") preview.topologyReferences = preview.topologyReferences.filter((candidate) => candidate.id !== existing.faceReferenceId);
+      const stored = { ...structuredClone(reference), id: `${feature.id}:preview-face` };
+      feature.objectId = reference.objectId;
+      feature.operation = pendingFaceExtrude.operation;
+      feature.distance = pendingFaceExtrude.distance;
+      feature.faceReferenceId = stored.id;
+      preview.topologyReferences.push(stored);
+      if (!existing) preview.features.push(feature);
+      featureId = feature.id;
+    }
+    if (!featureId) return;
+    let active = true;
+    const timeout = window.setTimeout(() => topologyPreviewWorkerRef.current?.buildContext(preview, featureId).then((result) => { if (active) setTopologyPreviewContext(result); }).catch(() => { if (active) setTopologyPreviewContext(null); }), 80);
+    return () => { active = false; window.clearTimeout(timeout); topologyPreviewWorkerRef.current?.cancel(); };
+  }, [document, edgeTreatmentRadius, editingEdgeTreatmentId, editingFaceExtrudeId, pendingEdgeTreatment, pendingFaceExtrude, selectedTopologyEdges, selectedTopologyFaces]);
 
   useEffect(() => {
     setTopologySelectionBuild(null);
@@ -884,7 +935,7 @@ export function SketchForgeParametricEditor() {
           selectedObjectOriginId={selectedOriginObjectId}
           selectedOperationOriginId={selectedOperationOriginId}
           selectedObjectIds={viewportSelectedObjectIds}
-          operationContext={editingEdgeTreatmentId || editingFaceExtrudeId ? null : viewportOperationContext}
+          operationContext={pendingEdgeTreatment || pendingFaceExtrude ? viewportTopologyPreviewContext : viewportOperationContext}
           isolatedHistoryObjectId={!editingEdgeTreatmentId && !editingFaceExtrudeId && selectedOperationTimeline && selectedOperationTimeline.index < selectedOperationTimeline.count - 1 ? selectedOperationTimeline.objectId : null}
           color={document.color}
           workplane={document.workplane}
@@ -934,8 +985,8 @@ export function SketchForgeParametricEditor() {
           onTopologyEdgeSelect={selectTopologyEdge}
           topologySelections={(editingEdgeTreatmentId || editingFaceExtrudeId) && !topologySelectionBuild ? [] : [...selectedTopologyFaces, ...selectedTopologyEdges]}
           topologyMultiSelection={!pendingFaceExtrude}
-          historicalTopologySelections={editingEdgeTreatmentId || editingFaceExtrudeId ? [] : historicalTopologyReferences}
-          historicalTopologyRecords={editingEdgeTreatmentId || editingFaceExtrudeId ? [] : historicalTopologyRecords}
+          historicalTopologySelections={editingEdgeTreatmentId || editingFaceExtrudeId || operationContext?.detailMesh ? [] : historicalTopologyReferences}
+          historicalTopologyRecords={editingEdgeTreatmentId || editingFaceExtrudeId || operationContext?.detailMesh ? [] : historicalTopologyRecords}
         />
         <ViewCube orientation={cameraOrientation} onDirection={(direction) => setView((current) => ({ name: "custom", direction, token: current.token + 1 }))} />
         <button data-educad-popup="grid" className={`educad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label="Ajustes de rejilla" title="Rejilla" onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><Grid3X3 size={22} /></button>

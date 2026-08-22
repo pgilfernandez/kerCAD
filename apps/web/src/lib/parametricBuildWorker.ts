@@ -43,9 +43,11 @@ export function parametricBuildTransferables(result: BuildResult | BuildResult["
     result.objectRecords.forEach((record) => addMesh(record.mesh));
     addMesh(result.operationContext?.mesh ?? null);
     addMesh(result.operationContext?.selectionMesh ?? null);
+    addMesh(result.operationContext?.detailMesh ?? null);
   } else {
     addMesh(result?.mesh ?? null);
     addMesh(result?.selectionMesh ?? null);
+    addMesh(result?.detailMesh ?? null);
   }
   return [...buffers];
 }
