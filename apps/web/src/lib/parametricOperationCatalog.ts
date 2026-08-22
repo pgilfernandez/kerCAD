@@ -1,10 +1,10 @@
-export type ParametricPrimitiveKind = "box" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof";
+export type ParametricPrimitiveKind = "box" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear";
 export type ParametricBooleanRole = "add" | "cut" | "intersect";
 
 export type ParametricParameterDefinition = {
-  key: "width" | "depth" | "height" | "diameter" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "majorRadius" | "tubeRadius";
+  key: "width" | "depth" | "height" | "diameter" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "majorRadius" | "tubeRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius";
   label: string;
-  unit: "mm";
+  unit: "mm" | "";
   min: number;
   max: number;
   step: number;
@@ -34,6 +34,10 @@ const dimension = (key: ParametricParameterDefinition["key"], label: string, def
   max: 200,
   step: 0.1,
   defaultValue,
+});
+
+const count = (key: "sides" | "teeth", label: string, defaultValue: number, min: number, max: number): ParametricParameterDefinition => ({
+  key, label, unit: "", min, max, step: 1, defaultValue,
 });
 
 export const parametricOperationCatalog: ParametricOperationDefinition[] = [
@@ -128,6 +132,22 @@ export const parametricOperationCatalog: ParametricOperationDefinition[] = [
     menuIcon: "assets/sketchforge/shape-icons-gray/round-roof.png",
     roles: roles("roundRoof"),
     parameters: [dimension("width", "Ancho"), dimension("depth", "Largo"), dimension("height", "Altura", 10)],
+  },
+  {
+    kind: "polygon",
+    name: "Polígono",
+    description: "Prisma poligonal regular paramétrico exacto",
+    menuIcon: "assets/sketchforge/shape-icons-gray/cylinder.png",
+    roles: roles("polygon"),
+    parameters: [dimension("radius", "Radio", 10), count("sides", "Lados", 6, 3, 32), dimension("height", "Altura")],
+  },
+  {
+    kind: "gear",
+    name: "Engranaje",
+    description: "Engranaje educativo paramétrico con dentado recto",
+    menuIcon: "assets/sketchforge/gear-types/spur.png",
+    roles: roles("gear"),
+    parameters: [dimension("outerRadius", "Radio exterior", 15), count("teeth", "Dientes", 12, 6, 64), dimension("toothDepth", "Profundidad del diente", 2.5), { ...dimension("boreRadius", "Radio del eje", 3), min: 0 }, dimension("height", "Altura", 6)],
   },
 ];
 

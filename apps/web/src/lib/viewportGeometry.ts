@@ -1,4 +1,4 @@
-export function operationPreviewWireframePositions(shape: "box" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof", width: number, depth: number, height: number, topWidth = width, innerWidth = 0) {
+export function operationPreviewWireframePositions(shape: "box" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear", width: number, depth: number, height: number, topWidth = width, innerWidth = 0, profileInsetWidth = 0, radialSegments = 64) {
   const positions: number[] = [];
   const addSegment = (x1: number, y1: number, z1: number, x2: number, y2: number, z2: number) => positions.push(x1, y1, z1, x2, y2, z2);
   const halfWidth = width / 2;
@@ -51,7 +51,48 @@ export function operationPreviewWireframePositions(shape: "box" | "cylinder" | "
     }
     return positions;
   }
+  if (shape === "polygon") {
+    const sides = Math.min(32, Math.max(3, Math.round(radialSegments)));
+    for (let index = 0; index < sides; index += 1) {
+      const angle = index / sides * Math.PI * 2;
+      const nextAngle = (index + 1) / sides * Math.PI * 2;
+      for (const z of [bottom, top]) addSegment(Math.cos(angle) * halfWidth, Math.sin(angle) * halfDepth, z, Math.cos(nextAngle) * halfWidth, Math.sin(nextAngle) * halfDepth, z);
+      addSegment(Math.cos(angle) * halfWidth, Math.sin(angle) * halfDepth, bottom, Math.cos(angle) * halfWidth, Math.sin(angle) * halfDepth, top);
+    }
+    return positions;
+  }
   const segments = 64;
+  if (shape === "gear") {
+    const teeth = Math.min(64, Math.max(6, Math.round(radialSegments)));
+    const rootWidth = Math.max(0.2, width - profileInsetWidth * 2);
+    const rootDepth = Math.max(0.2, depth - profileInsetWidth * 2);
+    const outlineCount = teeth * 4;
+    const point = (index: number, z: number) => {
+      const phase = index % 4;
+      const outer = phase === 1 || phase === 2;
+      const angle = index / outlineCount * Math.PI * 2;
+      return [Math.cos(angle) * (outer ? halfWidth : rootWidth / 2), Math.sin(angle) * (outer ? halfDepth : rootDepth / 2), z] as const;
+    };
+    for (let index = 0; index < outlineCount; index += 1) {
+      const next = (index + 1) % outlineCount;
+      const lower = point(index, bottom);
+      const lowerNext = point(next, bottom);
+      const upper = point(index, top);
+      const upperNext = point(next, top);
+      addSegment(...lower, ...lowerNext);
+      addSegment(...upper, ...upperNext);
+      addSegment(...lower, ...upper);
+    }
+    if (innerWidth > 0) {
+      const innerRadius = innerWidth / 2;
+      for (let index = 0; index < segments; index += 1) {
+        const angle = index / segments * Math.PI * 2;
+        const nextAngle = (index + 1) / segments * Math.PI * 2;
+        for (const z of [bottom, top]) addSegment(Math.cos(angle) * innerRadius, Math.sin(angle) * innerRadius, z, Math.cos(nextAngle) * innerRadius, Math.sin(nextAngle) * innerRadius, z);
+      }
+    }
+    return positions;
+  }
   if (shape === "roundRoof") {
     for (const y of [-halfDepth, halfDepth]) {
       addSegment(-halfWidth, y, bottom, halfWidth, y, bottom);

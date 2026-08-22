@@ -121,7 +121,7 @@ export function createPrimitiveFeature(primitive: PrimitiveFeature["primitive"],
     id: createFeatureId("primitive"),
     kind: "primitive",
     primitive,
-    name: primitive === "sphere" ? "Esfera" : primitive === "cone" ? "Cono" : primitive === "tube" ? "Tubo" : primitive === "halfSphere" ? "Semiesfera" : primitive === "torus" ? "Toro" : primitive === "pyramid" ? "Pirámide" : primitive === "wedge" ? "Cuña" : primitive === "roof" ? "Tejado" : primitive === "roundRoof" ? "Tejado redondo" : `Primitiva ${index}`,
+    name: primitive === "sphere" ? "Esfera" : primitive === "cone" ? "Cono" : primitive === "tube" ? "Tubo" : primitive === "halfSphere" ? "Semiesfera" : primitive === "torus" ? "Toro" : primitive === "pyramid" ? "Pirámide" : primitive === "wedge" ? "Cuña" : primitive === "roof" ? "Tejado" : primitive === "roundRoof" ? "Tejado redondo" : primitive === "polygon" ? "Polígono" : primitive === "gear" ? "Engranaje" : `Primitiva ${index}`,
     suppressed: false,
     width: 20,
     depth: 20,
@@ -129,6 +129,8 @@ export function createPrimitiveFeature(primitive: PrimitiveFeature["primitive"],
     ...(primitive === "cone" ? { topRadius: 0 } : {}),
     ...(primitive === "tube" ? { innerRadius: 6 } : {}),
     ...(primitive === "torus" ? { majorRadius: 12, tubeRadius: 4, width: 32, depth: 32, height: 8 } : {}),
+    ...(primitive === "polygon" ? { sides: 6 } : {}),
+    ...(primitive === "gear" ? { teeth: 12, toothDepth: 2.5, boreRadius: 3, width: 30, depth: 30, height: 6 } : {}),
     operation: "add",
     transform: operationTransform(),
   };
@@ -232,6 +234,12 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
         feature.width = (feature.majorRadius + feature.tubeRadius) * 2;
         feature.depth = feature.width;
         feature.height = feature.tubeRadius * 2;
+      }
+      if (feature.primitive === "polygon") feature.sides = Math.min(32, Math.max(3, Math.round(Number.isFinite(feature.sides) ? feature.sides! : 6)));
+      if (feature.primitive === "gear") {
+        feature.teeth = Math.min(64, Math.max(6, Math.round(Number.isFinite(feature.teeth) ? feature.teeth! : 12)));
+        feature.toothDepth = Math.min(feature.width / 2 - 0.2, Math.max(0.2, Number.isFinite(feature.toothDepth) ? feature.toothDepth! : 2.5));
+        feature.boreRadius = Math.max(0, Math.min(feature.width / 2 - feature.toothDepth - 0.1, Math.max(0, Number.isFinite(feature.boreRadius) ? feature.boreRadius! : 3)));
       }
       feature.transform ??= operationTransform();
     }

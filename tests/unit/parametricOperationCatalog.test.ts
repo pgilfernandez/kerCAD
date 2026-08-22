@@ -62,4 +62,10 @@ describe("parametric operation catalog", () => {
     expect(parameters.map((parameter) => parameter.key)).toEqual(keys);
     expect(parameters.map((parameter) => parameter.label)).toEqual(["Ancho", "Largo", "Altura"]);
   });
+
+  it("defines educational polygon and gear generators", () => {
+    expect(parametricOperationDefinition("polygon").parameters.map((parameter) => parameter.key)).toEqual(["radius", "sides", "height"]);
+    expect(parametricOperationDefinition("gear").parameters.map((parameter) => parameter.key)).toEqual(["outerRadius", "teeth", "toothDepth", "boreRadius", "height"]);
+    expect(parametricOperationDefinition("gear").parameters.find((parameter) => parameter.key === "teeth")).toMatchObject({ unit: "", min: 6, max: 64, step: 1 });
+  });
 });

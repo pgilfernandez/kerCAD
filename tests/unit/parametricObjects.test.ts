@@ -191,6 +191,31 @@ describe("parametric object workflow", () => {
     expect(feature).toMatchObject({ width: 28, depth: 18, height: 14 });
   });
 
+  it("adds and edits a regular polygon prism", () => {
+    const document = createStarterDocument(123);
+    const result = addPrimitiveToSelection(document, null, "polygon");
+    const feature = document.features.find((candidate) => candidate.id === result.featureId);
+
+    expect(feature).toMatchObject({ primitive: "polygon", width: 20, depth: 20, height: 20, sides: 6 });
+    expect(viewportSelectionForFeature(document, result.featureId)?.shapeParameters).toEqual({ shape: "polygon", radius: 10, sides: 6, height: 20 });
+    updateParametricShapeParameter(document, result.featureId!, "radius", 14);
+    updateParametricShapeParameter(document, result.featureId!, "sides", 9.6);
+    expect(feature).toMatchObject({ width: 28, depth: 28, sides: 10 });
+  });
+
+  it("adds and edits a bounded educational gear", () => {
+    const document = createStarterDocument(123);
+    const result = addPrimitiveToSelection(document, null, "gear");
+    const feature = document.features.find((candidate) => candidate.id === result.featureId);
+
+    expect(feature).toMatchObject({ primitive: "gear", width: 30, depth: 30, height: 6, teeth: 12, toothDepth: 2.5, boreRadius: 3 });
+    expect(viewportSelectionForFeature(document, result.featureId)?.shapeParameters).toEqual({ shape: "gear", outerRadius: 15, teeth: 12, toothDepth: 2.5, boreRadius: 3, height: 6 });
+    updateParametricShapeParameter(document, result.featureId!, "teeth", 18.7);
+    updateParametricShapeParameter(document, result.featureId!, "toothDepth", 4);
+    updateParametricShapeParameter(document, result.featureId!, "boreRadius", 5);
+    expect(feature).toMatchObject({ teeth: 19, toothDepth: 4, boreRadius: 5 });
+  });
+
   it("edits only the defining visual parameters for boxes and cylinders", () => {
     const document = createStarterDocument(123);
     const box = document.features.find((feature) => feature.kind === "extrude")!;

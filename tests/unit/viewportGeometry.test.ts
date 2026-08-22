@@ -108,6 +108,15 @@ describe("operation preview wireframes", () => {
     expect(positions.slice(0, 6)).toEqual([-10, -5, -4, 10, -5, -4]);
     expect(positions.slice(-6)).toEqual([0, -5, 4, 0, 5, 4]);
   });
+
+  it("draws each edge and generator of a configurable polygon prism", () => {
+    expect(operationPreviewWireframePositions("polygon", 20, 20, 12, 20, 0, 0, 7)).toHaveLength(7 * 3 * 6);
+  });
+
+  it("draws the toothed outline and bore of an educational gear", () => {
+    const positions = operationPreviewWireframePositions("gear", 30, 30, 6, 30, 6, 5, 12);
+    expect(positions).toHaveLength((12 * 4 * 3 + 64 * 2) * 6);
+  });
 });
 
 describe("operation preview styles", () => {

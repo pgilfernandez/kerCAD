@@ -78,6 +78,40 @@ function roundRoofSolid(brep: Brep, feature: PrimitiveFeature): AnySolid {
   return refinedBooleanSolid(brep, brep.intersect(ellipticalCylinder, clip));
 }
 
+function polygonPrismSolid(brep: Brep, feature: PrimitiveFeature): AnySolid {
+  const sides = Math.min(32, Math.max(3, Math.round(feature.sides ?? 6)));
+  const radius = feature.width / 2;
+  const points = Array.from({ length: sides }, (_, index) => {
+    const angle = index / sides * Math.PI * 2;
+    return [Math.cos(angle) * radius, Math.sin(angle) * radius, 0] as [number, number, number];
+  });
+  const face = brep.unwrap(brep.polygon(points));
+  return brep.unwrap(brep.extrude(face, feature.height)) as AnySolid;
+}
+
+function educationalGearSolid(brep: Brep, feature: PrimitiveFeature): AnySolid {
+  const outerRadius = feature.width / 2;
+  const toothDepth = Math.min(outerRadius - 0.2, Math.max(0.2, feature.toothDepth ?? 2.5));
+  const rootRadius = outerRadius - toothDepth;
+  const teeth = Math.min(64, Math.max(6, Math.round(feature.teeth ?? 12)));
+  const toothWidth = Math.max(0.2, Math.PI * 2 * rootRadius / teeth * 0.48);
+  const shapes: AnySolid[] = [brep.cylinder(rootRadius, feature.height, { at: [0, 0, 0] })];
+  for (let index = 0; index < teeth; index += 1) {
+    const tooth = brep.box(toothWidth, toothDepth + 0.2, feature.height, {
+      centered: true,
+      at: [0, rootRadius + toothDepth / 2 - 0.1, feature.height / 2],
+    });
+    shapes.push(brep.rotate(tooth, index * 360 / teeth, { axis: [0, 0, 1] }));
+  }
+  let gear = brep.unwrap(brep.fuseAll(shapes, { simplify: true })) as AnySolid;
+  const boreRadius = Math.min(rootRadius - 0.1, Math.max(0, feature.boreRadius ?? 3));
+  if (boreRadius > 0) {
+    const bore = brep.cylinder(boreRadius, feature.height + 2, { at: [0, 0, -1] });
+    gear = refinedBooleanSolid(brep, brep.cut(gear, bore));
+  }
+  return gear;
+}
+
 function solidFromPrimitive(brep: Brep, feature: PrimitiveFeature): AnySolid {
   if (feature.width <= 0 || feature.depth <= 0 || feature.height <= 0) {
     throw new Error(`${feature.name}: todas las dimensiones deben ser mayores que cero.`);
@@ -90,6 +124,9 @@ function solidFromPrimitive(brep: Brep, feature: PrimitiveFeature): AnySolid {
   }
   if (feature.primitive === "torus" && ((feature.tubeRadius ?? 0) <= 0 || (feature.majorRadius ?? 0) <= (feature.tubeRadius ?? 0))) {
     throw new Error(`${feature.name}: el radio mayor debe ser mayor que el radio del tubo.`);
+  }
+  if (feature.primitive === "gear" && ((feature.toothDepth ?? 0) <= 0 || (feature.toothDepth ?? 0) >= feature.width / 2 || (feature.boreRadius ?? 0) >= feature.width / 2 - (feature.toothDepth ?? 0))) {
+    throw new Error(`${feature.name}: la profundidad de diente y el radio del eje no caben en el radio exterior.`);
   }
   let solid: AnySolid;
   if (feature.primitive === "cone") {
@@ -109,6 +146,10 @@ function solidFromPrimitive(brep: Brep, feature: PrimitiveFeature): AnySolid {
     solid = angularPrimitiveSolid(brep, feature);
   } else if (feature.primitive === "roundRoof") {
     solid = roundRoofSolid(brep, feature);
+  } else if (feature.primitive === "polygon") {
+    solid = polygonPrismSolid(brep, feature);
+  } else if (feature.primitive === "gear") {
+    solid = educationalGearSolid(brep, feature);
   } else {
     solid = brep.ellipsoid(feature.width / 2, feature.depth / 2, feature.height / 2, { at: [0, 0, 0] });
   }

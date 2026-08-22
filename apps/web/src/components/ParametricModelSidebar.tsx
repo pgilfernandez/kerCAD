@@ -372,8 +372,16 @@ function ParametricFeatureInspector({
                   ? feature.width / 2
                   : parameter.key === "majorRadius"
                     ? feature.majorRadius ?? 12
-                    : parameter.key === "tubeRadius"
+                  : parameter.key === "tubeRadius"
                       ? feature.tubeRadius ?? 4
+                    : parameter.key === "sides"
+                      ? feature.sides ?? 6
+                    : parameter.key === "teeth"
+                      ? feature.teeth ?? 12
+                    : parameter.key === "toothDepth"
+                      ? feature.toothDepth ?? 2.5
+                    : parameter.key === "boreRadius"
+                      ? feature.boreRadius ?? 3
                   : parameter.key === "topRadius"
                     ? feature.topRadius ?? 0
                     : parameter.key === "innerRadius"
@@ -382,6 +390,7 @@ function ParametricFeatureInspector({
                 min={parameter.min}
                 max={parameter.max}
                 step={parameter.step}
+                unit={parameter.unit}
                 onChange={(value) => onUpdate((draft) => {
                   if (draft.kind !== "primitive") return;
                   if (parameter.key === "radius") {
@@ -394,7 +403,9 @@ function ParametricFeatureInspector({
                   } else if (parameter.key === "topRadius") {
                     draft.topRadius = Math.max(0, value);
                   } else if (parameter.key === "outerRadius") {
-                    const radius = Math.max((draft.innerRadius ?? 0) + 0.1, value);
+                    const radius = draft.primitive === "gear"
+                      ? Math.max((draft.toothDepth ?? 2.5) + (draft.boreRadius ?? 3) + 0.1, value)
+                      : Math.max((draft.innerRadius ?? 0) + 0.1, value);
                     draft.width = radius * 2;
                     draft.depth = radius * 2;
                   } else if (parameter.key === "innerRadius") {
@@ -408,6 +419,14 @@ function ParametricFeatureInspector({
                     draft.width = ((draft.majorRadius ?? 12) + draft.tubeRadius) * 2;
                     draft.depth = draft.width;
                     draft.height = draft.tubeRadius * 2;
+                  } else if (parameter.key === "sides") {
+                    draft.sides = Math.min(32, Math.max(3, Math.round(value)));
+                  } else if (parameter.key === "teeth") {
+                    draft.teeth = Math.min(64, Math.max(6, Math.round(value)));
+                  } else if (parameter.key === "toothDepth") {
+                    draft.toothDepth = Math.min(draft.width / 2 - 0.2, Math.max(0.2, value));
+                  } else if (parameter.key === "boreRadius") {
+                    draft.boreRadius = Math.max(0, Math.min(draft.width / 2 - (draft.toothDepth ?? 2.5) - 0.1, Math.max(0, value)));
                   } else if (parameter.key !== "diameter") draft[parameter.key] = Math.max(parameter.min, value);
                 })}
               />
@@ -446,7 +465,7 @@ function ParametricFeatureInspector({
   }
 }
 
-function BoundedNumberField({ label, value, min, max, step = 0.01, onChange }: { label: string; value: number; min: number; max: number; step?: number; onChange: (value: number) => void }) {
+function BoundedNumberField({ label, value, min, max, step = 0.01, unit = "mm", onChange }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (value: number) => void }) {
   const clampedValue = Math.min(max, Math.max(min, value));
   const [draft, setDraft] = useState(clampedValue);
   const [dragging, setDragging] = useState(false);
@@ -462,7 +481,7 @@ function BoundedNumberField({ label, value, min, max, step = 0.01, onChange }: {
   };
   return (
     <label className="educad-range-property" style={{ "--slider-pos": `${percent}%` } as CSSProperties}>
-      <span className="educad-range-header"><span>{label}</span><span className="educad-number-input"><input type="number" value={draft} min={min} max={max} step={step} onChange={(event) => { const next = Number(event.target.value); if (Number.isFinite(next)) setDraft(next); }} onBlur={commit} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); if (event.key === "Escape") { setDraft(clampedValue); event.currentTarget.blur(); } }} /><small>mm</small></span></span>
+      <span className="educad-range-header"><span>{label}</span><span className="educad-number-input"><input type="number" value={draft} min={min} max={max} step={step} onChange={(event) => { const next = Number(event.target.value); if (Number.isFinite(next)) setDraft(next); }} onBlur={commit} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); if (event.key === "Escape") { setDraft(clampedValue); event.currentTarget.blur(); } }} />{unit ? <small>{unit}</small> : null}</span></span>
       <span className="educad-range-control"><input type="range" aria-label={label} value={draft} min={min} max={max} step={step} onPointerDown={() => setDragging(true)} onPointerUp={commit} onPointerCancel={commit} onChange={(event) => setDraft(Number(event.target.value))} onBlur={commit} /></span>
     </label>
   );
