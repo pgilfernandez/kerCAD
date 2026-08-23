@@ -16,7 +16,17 @@ function refinedBooleanSolid(brep: Brep, result: ReturnType<Brep["cut"]> | Retur
   return brep.unwrap(brep.simplify(resultValue<AnySolid>(brep, result))) as AnySolid;
 }
 
-function drawnSketchFace(brep: Brep, sketch: SketchFeature): Face {
+function pointInPolygon(point: { x: number; y: number }, polygon: Array<{ x: number; y: number }>) {
+  let inside = false;
+  for (let index = 0, previous = polygon.length - 1; index < polygon.length; previous = index, index += 1) {
+    const current = polygon[index];
+    const prior = polygon[previous];
+    if ((current.y > point.y) !== (prior.y > point.y) && point.x < ((prior.x - current.x) * (point.y - current.y)) / (prior.y - current.y) + current.x) inside = !inside;
+  }
+  return inside;
+}
+
+function drawnSketchFaces(brep: Brep, sketch: SketchFeature): Face[] {
   if (sketch.profile.shape !== "drawn") throw new Error(`${sketch.name}: el perfil no es un boceto dibujado.`);
   const profile = sketch.profile.geometry;
   const points = new Map(profile.points.map((point) => [point.id, point]));
@@ -41,36 +51,58 @@ function drawnSketchFace(brep: Brep, sketch: SketchFeature): Face {
     if (currentId !== startId || path.length < 3) throw new Error(`${sketch.name}: cierra el perfil antes de usarlo en una operación 3D.`);
     paths.push(path);
   }
-  if (paths.length !== 1) throw new Error(`${sketch.name}: por ahora utiliza un único contorno cerrado.`);
-
-  const edges = paths[0].map(({ segment, fromId, toId }) => {
-    const from = points.get(fromId);
-    const to = points.get(toId);
-    if (!from || !to) throw new Error(`${sketch.name}: el boceto contiene referencias incompletas.`);
-    const fromVec: [number, number, number] = [from.x + sketch.x, from.z + sketch.y, sketch.offset];
-    const toVec: [number, number, number] = [to.x + sketch.x, to.z + sketch.y, sketch.offset];
-    if (segment.kind === "line" || (!from.handleIn && !from.handleOut && !to.handleIn && !to.handleOut)) return brep.line(fromVec, toVec);
-    const forward = segment.startId === fromId;
-    const firstHandle = forward ? from.handleOut : from.handleIn;
-    const secondHandle = forward ? to.handleIn : to.handleOut;
-    if (!firstHandle || !secondHandle) return brep.line(fromVec, toVec);
-    return brep.unwrap(brep.bezier([
-      fromVec,
-      [firstHandle.x + sketch.x, firstHandle.z + sketch.y, sketch.offset],
-      [secondHandle.x + sketch.x, secondHandle.z + sketch.y, sketch.offset],
-      toVec,
-    ])) as Edge;
+  const loops = paths.map((path) => {
+    const polygon = path.map(({ fromId }) => {
+      const point = points.get(fromId);
+      if (!point) throw new Error(`${sketch.name}: el boceto contiene referencias incompletas.`);
+      return { x: point.x, y: point.z };
+    });
+    const edges = path.map(({ segment, fromId, toId }) => {
+      const from = points.get(fromId);
+      const to = points.get(toId);
+      if (!from || !to) throw new Error(`${sketch.name}: el boceto contiene referencias incompletas.`);
+      const fromVec: [number, number, number] = [from.x + sketch.x, from.z + sketch.y, sketch.offset];
+      const toVec: [number, number, number] = [to.x + sketch.x, to.z + sketch.y, sketch.offset];
+      if (segment.kind === "line" || (!from.handleIn && !from.handleOut && !to.handleIn && !to.handleOut)) return brep.line(fromVec, toVec);
+      const forward = segment.startId === fromId;
+      const firstHandle = forward ? from.handleOut : from.handleIn;
+      const secondHandle = forward ? to.handleIn : to.handleOut;
+      if (!firstHandle || !secondHandle) return brep.line(fromVec, toVec);
+      return brep.unwrap(brep.bezier([
+        fromVec,
+        [firstHandle.x + sketch.x, firstHandle.z + sketch.y, sketch.offset],
+        [secondHandle.x + sketch.x, secondHandle.z + sketch.y, sketch.offset],
+        toVec,
+      ])) as Edge;
+    });
+    const wire = brep.unwrap(brep.wireLoop(edges));
+    const area = Math.abs(polygon.reduce((sum, point, index) => {
+      const next = polygon[(index + 1) % polygon.length];
+      return sum + point.x * next.y - next.x * point.y;
+    }, 0) / 2);
+    return { wire, polygon, area, depth: 0 };
   });
-  const wire = brep.unwrap(brep.wireLoop(edges));
-  return brep.unwrap(brep.face(wire as Parameters<Brep["face"]>[0])) as Face;
+  for (const loop of loops) loop.depth = loops.filter((candidate) => candidate !== loop && candidate.area > loop.area && pointInPolygon(loop.polygon[0], candidate.polygon)).length;
+  const outerLoops = loops.filter((loop) => loop.depth % 2 === 0);
+  return outerLoops.map((outer) => {
+    const holes = loops.filter((candidate) => candidate.depth === outer.depth + 1 && pointInPolygon(candidate.polygon[0], outer.polygon));
+    return brep.unwrap(brep.face(outer.wire as Parameters<Brep["face"]>[0], holes.map((hole) => hole.wire) as Parameters<Brep["face"]>[1])) as Face;
+  });
+}
+
+function combineSketchSolids(brep: Brep, solids: AnySolid[]) {
+  if (!solids.length) throw new Error("El boceto no contiene ninguna región rellena.");
+  return solids.slice(1).reduce((current, solid) => refinedBooleanSolid(brep, brep.fuse(current, solid)), solids[0]);
 }
 
 function solidFromSketch(brep: Brep, sketch: SketchFeature, feature: ExtrudeFeature): AnySolid {
   const profile = sketch.profile;
   if (profile.shape === "drawn") {
-    let face = drawnSketchFace(brep, sketch);
-    if (feature.symmetric) face = brep.translate(face, [0, 0, -feature.distance / 2]) as Face;
-    const solid = brep.unwrap(brep.extrude(face as Parameters<Brep["extrude"]>[0], feature.distance)) as AnySolid;
+    const solids = drawnSketchFaces(brep, sketch).map((sourceFace) => {
+      const face = feature.symmetric ? brep.translate(sourceFace, [0, 0, -feature.distance / 2]) as Face : sourceFace;
+      return brep.unwrap(brep.extrude(face as Parameters<Brep["extrude"]>[0], feature.distance)) as AnySolid;
+    });
+    const solid = combineSketchSolids(brep, solids);
     return applyOperationTransform(brep, solid, feature.transform);
   }
   const centerZ = feature.symmetric ? sketch.offset : sketch.offset + feature.distance / 2;
@@ -89,21 +121,21 @@ function solidFromSketch(brep: Brep, sketch: SketchFeature, feature: ExtrudeFeat
   return applyOperationTransform(brep, solid, feature.transform);
 }
 
-function faceFromSketch(brep: Brep, sketch: SketchFeature): Face {
-  if (sketch.profile.shape === "drawn") return drawnSketchFace(brep, sketch);
+function facesFromSketch(brep: Brep, sketch: SketchFeature): Face[] {
+  if (sketch.profile.shape === "drawn") return drawnSketchFaces(brep, sketch);
   if (sketch.profile.shape === "rectangle") {
     const halfWidth = sketch.profile.width / 2;
     const halfDepth = sketch.profile.depth / 2;
-    return brep.unwrap(brep.polygon([
+    return [brep.unwrap(brep.polygon([
       [sketch.x - halfWidth, sketch.y - halfDepth, sketch.offset],
       [sketch.x + halfWidth, sketch.y - halfDepth, sketch.offset],
       [sketch.x + halfWidth, sketch.y + halfDepth, sketch.offset],
       [sketch.x - halfWidth, sketch.y + halfDepth, sketch.offset],
-    ])) as Face;
+    ])) as Face];
   }
   const edge = brep.circle(sketch.profile.diameter / 2, { at: [sketch.x, sketch.y, sketch.offset] });
   const wire = brep.unwrap(brep.wireLoop([edge]));
-  return brep.unwrap(brep.face(wire as Parameters<Brep["face"]>[0])) as Face;
+  return [brep.unwrap(brep.face(wire as Parameters<Brep["face"]>[0])) as Face];
 }
 
 function applyOperationTransform(brep: Brep, solid: AnySolid, operation: ExtrudeFeature["transform"]): AnySolid {
@@ -443,15 +475,15 @@ function applyShellFeature(brep: Brep, document: ParametricDocument, current: An
 }
 
 function applyRevolveFeature(brep: Brep, document: ParametricDocument, current: AnySolid, feature: Extract<ParametricDocument["features"][number], { kind: "revolve" }>) {
-  let face: Face;
+  let faces: Face[];
   if (feature.source === "sketch") {
     const sketch = document.features.find((candidate): candidate is SketchFeature => candidate.kind === "sketch" && candidate.id === feature.sketchId);
     if (!sketch) throw new Error(`${feature.name}: el boceto seleccionado ya no existe.`);
-    face = faceFromSketch(brep, sketch);
+    faces = facesFromSketch(brep, sketch);
   } else {
     const stored = document.topologyReferences.find((reference) => reference.id === feature.faceReferenceId);
     if (!stored || stored.reference.hint.entityType !== "face") throw new Error(`${feature.name}: la cara seleccionada ya no existe.`);
-    face = resolveStoredFace(brep, document, current, stored, feature.name);
+    faces = [resolveStoredFace(brep, document, current, stored, feature.name)];
   }
   let axis: [number, number, number] = feature.axis === "x" ? [1, 0, 0] : feature.axis === "y" ? [0, 1, 0] : [0, 0, 1];
   let at: [number, number, number] = [0, 0, 0];
@@ -463,7 +495,7 @@ function applyRevolveFeature(brep: Brep, document: ParametricDocument, current: 
     at = space.point(axisReference.reference.hint.midpoint);
     axis = space.direction(axisReference.reference.hint.direction);
   }
-  const tool = brep.unwrap(brep.revolve(face as Parameters<Brep["revolve"]>[0], { axis, at, angle: feature.angle * Math.PI / 180 })) as AnySolid;
+  const tool = combineSketchSolids(brep, faces.map((face) => brep.unwrap(brep.revolve(face as Parameters<Brep["revolve"]>[0], { axis, at, angle: feature.angle * Math.PI / 180 })) as AnySolid));
   return applyBooleanOperation(brep, current, tool, feature);
 }
 

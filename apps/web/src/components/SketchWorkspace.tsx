@@ -791,7 +791,7 @@ export function SketchWorkspace({
             />
           ) : null}
           <g className="sketch-profile-fills" pointerEvents="none">
-            {paths.some((path) => path.closed) ? <path d={paths.filter((path) => path.closed).map(pathData).join(" ")} /> : null}
+            {paths.some((path) => path.closed) ? <path fillRule="evenodd" d={paths.filter((path) => path.closed).map(pathData).join(" ")} /> : null}
           </g>
           <g className="sketch-segments">
             {displayProfile.segments.map((segment) => (

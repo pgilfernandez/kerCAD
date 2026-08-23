@@ -159,7 +159,7 @@ function closestSketchGrid(step: number, enabled: boolean): GridSize {
   return options.reduce((closest, candidate) => Math.abs(candidate[0] - step) < Math.abs(closest[0] - step) ? candidate : closest, options[0])[1];
 }
 
-function isSingleClosedSketch(profile: SketchProfile) {
+function isClosedSketch(profile: SketchProfile) {
   if (profile.segments.length < 3) return false;
   const degree = new Map<string, number>();
   for (const segment of profile.segments) {
@@ -167,18 +167,7 @@ function isSingleClosedSketch(profile: SketchProfile) {
     degree.set(segment.endId, (degree.get(segment.endId) ?? 0) + 1);
   }
   if ([...degree.values()].some((value) => value !== 2)) return false;
-  const visited = new Set<string>();
-  const pending = [profile.segments[0].startId];
-  while (pending.length) {
-    const id = pending.pop()!;
-    if (visited.has(id)) continue;
-    visited.add(id);
-    for (const segment of profile.segments) {
-      if (segment.startId === id) pending.push(segment.endId);
-      if (segment.endId === id) pending.push(segment.startId);
-    }
-  }
-  return visited.size === degree.size;
+  return orderedSketchPaths(profile).every((path) => path.closed);
 }
 
 function withSmoothSketchHandles(profile: SketchProfile) {
@@ -613,8 +602,8 @@ export function SketchForgeParametricEditor() {
   };
 
   const acceptSketch = () => {
-    if (!sketchSession || !isSingleClosedSketch(sketchSession.profile)) {
-      setNotice({ type: "error", text: "Cierra un único contorno antes de aceptar el boceto." });
+    if (!sketchSession || !isClosedSketch(sketchSession.profile)) {
+      setNotice({ type: "error", text: "Cierra todos los contornos antes de aceptar el boceto." });
       return;
     }
     let featureId = sketchSession.featureId ?? "";
