@@ -1290,8 +1290,14 @@ button {
 .educad-feature-card output.compact { color: #8596a3; font-family: monospace; font-size: 7px; }
 .educad-feature-check input { justify-self: end; accent-color: #079bc9; }
 .educad-number-input { position: relative; display: block; }
-.educad-number-input input { padding-right: 28px !important; }
-.educad-number-input small { position: absolute; top: 50%; right: 7px; color: #8798a5; transform: translateY(-50%); font-size: 8px; }
+.educad-number-input input { padding-right: 43px !important; }
+.educad-number-input small { position: absolute; top: 50%; right: 19px; color: #8798a5; transform: translateY(-50%); font-size: 8px; pointer-events: none; }
+.educad-number-steppers { position: absolute; top: 2px; right: 2px; bottom: 2px; display: grid; width: 14px; grid-template-rows: 1fr 1fr; overflow: hidden; border-left: 1px solid #c6d5de; border-radius: 0 3px 3px 0; }
+.educad-number-steppers button { display: grid; min-width: 0; min-height: 0; padding: 0; place-items: center; border: 0; border-radius: 0; color: #587486; background: #edf4f7; font-size: 6px; line-height: 1; cursor: pointer; }
+.educad-number-steppers button + button { border-top: 1px solid #c6d5de; }
+.educad-number-steppers button:hover { color: #176b91; background: #dff3fb; }
+.educad-operation-asset-icon { display: block; width: 18px; height: 18px; object-fit: contain; }
+.educad-toolbar-operation-icon { display: block; width: 22px; height: 22px; object-fit: contain; }
 .educad-transform-card .educad-axis-label { display: grid; width: 21px; height: 21px; place-items: center; color: #ffffff; background: #d35b55; border-radius: 4px; font-size: 9px; }
 .educad-transform-card .educad-axis-label.y { background: #4b9d65; }
 .educad-transform-card .educad-axis-label.z { background: #4387c5; }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, PanelTopOpen, Plus, Rotate3D, RotateCcw, X } from "lucide-react";
+import { Box, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Plus, RotateCcw, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyEdgePick, type TopologyFacePick } from "@/components/ParametricViewport";
@@ -1088,8 +1088,8 @@ export function SketchForgeParametricEditor() {
               <Tool label="Chaflán" active={pendingEdgeTreatment === "chamfer"} onClick={() => beginEdgeTreatment("chamfer")}><ToolbarChamferIcon /></Tool>
               <Tool label="Redondeo" active={pendingEdgeTreatment === "fillet"} onClick={() => beginEdgeTreatment("fillet")}><ToolbarFilletIcon /></Tool>
               <Tool label="Extruir cara" active={Boolean(pendingFaceExtrude)} onClick={() => beginFaceExtrude("add")}><ToolbarShapeAddIcon /></Tool>
-              <Tool label="Vaciado" active={Boolean(pendingShell)} onClick={() => beginShell()}><PanelTopOpen size={20} /></Tool>
-              <Tool label="Revolución" active={Boolean(pendingRevolve)} onClick={() => beginRevolve()}><Rotate3D size={20} /></Tool>
+              <Tool label="Vaciado" active={Boolean(pendingShell)} onClick={() => beginShell()}><img className="educad-toolbar-operation-icon" src="/assets/educad/operations/shell.svg" alt="" /></Tool>
+              <Tool label="Revolución" active={Boolean(pendingRevolve)} onClick={() => beginRevolve()}><img className="educad-toolbar-operation-icon" src="/assets/educad/operations/revolve.svg" alt="" /></Tool>
             </ToolbarSection>
             <ToolbarSection label="Arrange">
               <Tool label={hasActiveWorkplane ? "Restaurar plano global" : placingWorkplane ? "Cancelar plano de trabajo" : "Colocar plano de trabajo"} active={placingWorkplane || hasActiveWorkplane} onClick={() => {
@@ -1238,6 +1238,7 @@ export function SketchForgeParametricEditor() {
           document={document}
           selection={modelSelection}
           mode={modelSidebarMode}
+          gridStep={document.workplane.gridStep}
           editingOriginObjectId={originEditObjectId}
           onSelectionChange={setModelSelection}
           onReorderSelection={reorderSelection}

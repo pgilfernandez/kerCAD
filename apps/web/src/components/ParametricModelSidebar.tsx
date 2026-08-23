@@ -18,12 +18,11 @@ import {
   LockKeyholeOpen,
   Pencil,
   Radius,
-  Rotate3D,
   Triangle,
   Trash2,
   X,
 } from "lucide-react";
-import { type CSSProperties, type MouseEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import { createContext, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { canReorderParametricSelection, OBJECT_COLOR_PALETTE, parametricObjectTree, sketchForExtrude, updateParametricTreeSelection, type ParametricTreeSelection } from "@/lib/parametricObjects";
 import { parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import type { ParametricDocument, ParametricFeature, ParametricObject } from "@/types/parametric";
@@ -32,11 +31,14 @@ export type ModelSelectionKind = "object" | "feature";
 export type ModelSidebarMode = "normal" | "simplified";
 export type ModelTreeSelection = ParametricTreeSelection;
 
+const NumericStepContext = createContext({ input: 0.5, slider: 0.1 });
+
 type Props = {
   document: ParametricDocument;
   selection: ModelTreeSelection[];
   mode: ModelSidebarMode;
   editingOriginObjectId: string | null;
+  gridStep: number;
   onSelectionChange: (selection: ModelTreeSelection[]) => void;
   onReorderSelection: (direction: "up" | "down") => void;
   onRenameSelection: (name: string) => void;
@@ -72,6 +74,7 @@ export function ParametricModelSidebar({
   selection,
   mode,
   editingOriginObjectId,
+  gridStep,
   onSelectionChange,
   onReorderSelection,
   onRenameSelection,
@@ -159,7 +162,7 @@ export function ParametricModelSidebar({
   };
 
   return (
-    <>
+    <NumericStepContext.Provider value={{ input: Math.max(0.0001, gridStep / 2), slider: Math.max(0.0001, gridStep / 10) }}><>
     <aside className={`educad-model-sidebar ${mode}`} aria-label="Modelo paramétrico">
         <section className="educad-model-tree">
           <div ref={objectListRef} className="educad-object-list">
@@ -270,7 +273,7 @@ export function ParametricModelSidebar({
         </form>
       </div>
     ) : null}
-    </>
+    </></NumericStepContext.Provider>
   );
 }
 
@@ -289,8 +292,8 @@ function FeatureIcon({ document, feature }: { document: ParametricDocument; feat
   }
   if (feature.kind === "hole") return <CircleDot className="drill-hole" size={16} />;
   if (feature.kind === "faceExtrude") return <span className={`educad-operation-icon ${feature.operation === "cut" ? "hole" : "add"}`} role="img" aria-label={feature.operation === "cut" ? "Hueco desde cara" : "Extrusión desde cara"}><Box size={17} /><small aria-hidden="true">{feature.operation === "cut" ? "−" : "+"}</small></span>;
-  if (feature.kind === "shell") return <Layers3 className="shell" size={16} />;
-  if (feature.kind === "revolve") return <Rotate3D className="revolve" size={16} />;
+  if (feature.kind === "shell") return <img className="educad-operation-asset-icon" src="/assets/educad/operations/shell.svg" alt="Vaciado" />;
+  if (feature.kind === "revolve") return <img className="educad-operation-asset-icon" src="/assets/educad/operations/revolve.svg" alt="Revolución" />;
   return feature.treatment === "chamfer" ? <Triangle className="chamfer" size={16} /> : <Radius className="fillet" size={16} />;
 }
 
@@ -359,13 +362,14 @@ function TransformGroup({
   min?: number;
   onUpdate: (axis: "x" | "y" | "z", value: number) => void;
 }) {
+  const { input: inputStep } = useContext(NumericStepContext);
   return (
     <div className="educad-feature-card educad-transform-card">
       <h3>{label}</h3>
       {(["x", "y", "z"] as const).map((axis) => (
         <label key={axis}>
           <span className={`educad-axis-label ${axis}`}>{axis.toUpperCase()}</span>
-          <span className="educad-number-input"><input type="number" value={values[axis]} min={min} step="0.01" onChange={(event) => { const value = Number(event.target.value); if (Number.isFinite(value)) onUpdate(axis, value); }} /><small>{unit}</small></span>
+          <DeferredNumberInput value={values[axis]} min={min} step={inputStep} unit={unit} onCommit={(value) => onUpdate(axis, value)} />
         </label>
       ))}
     </div>
@@ -398,11 +402,6 @@ function ParametricFeatureInspector({
     : [];
   const treatmentFaceCount = treatmentReferences.filter((reference) => reference?.reference.hint.entityType === "face").length;
   const treatmentEdgeCount = treatmentReferences.filter((reference) => reference?.reference.hint.entityType === "edge").length;
-  const setNumber = (value: string, apply: (value: number) => void) => {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) apply(parsed);
-  };
-
   return (
     <div className="educad-feature-inspector" aria-label={`Propiedades de ${feature.name}`}>
 
@@ -574,11 +573,53 @@ function ParametricFeatureInspector({
   );
 
   function NumberField({ label, value, min, onChange }: { label: string; value: number; min?: number; onChange: (value: number) => void }) {
-    return <label><span>{label}</span><span className="educad-number-input"><input type="number" value={value} min={min} step="0.01" onChange={(event) => setNumber(event.target.value, onChange)} /><small>mm</small></span></label>;
+    const { input: inputStep } = useContext(NumericStepContext);
+    return <label><span>{label}</span><DeferredNumberInput value={value} min={min} step={inputStep} unit="mm" onCommit={onChange} /></label>;
   }
 }
 
-function BoundedNumberField({ label, value, min, max, step = 0.01, unit = "mm", onChange }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (value: number) => void }) {
+function DeferredNumberInput({ value, min, max, step, unit, onCommit }: { value: number; min?: number; max?: number; step: number; unit?: string; onCommit: (value: number) => void }) {
+  const [draft, setDraft] = useState(String(value));
+  const [editing, setEditing] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (!editing) setDraft(String(value)); }, [editing, value]);
+  const steppedValue = (direction: 1 | -1) => {
+    const parsed = Number(draft.replace(",", "."));
+    const base = Number.isFinite(parsed) ? parsed : value;
+    const next = Math.round((base + direction * step) * 1e10) / 1e10;
+    return Math.min(max ?? Number.POSITIVE_INFINITY, Math.max(min ?? Number.NEGATIVE_INFINITY, next));
+  };
+  const nudge = (direction: 1 | -1) => {
+    setEditing(true);
+    setDraft(String(steppedValue(direction)));
+    inputRef.current?.focus();
+  };
+  const commit = () => {
+    setEditing(false);
+    const parsed = Number(draft.replace(",", "."));
+    if (!Number.isFinite(parsed)) {
+      setDraft(String(value));
+      return;
+    }
+    const next = Math.min(max ?? Number.POSITIVE_INFINITY, Math.max(min ?? Number.NEGATIVE_INFINITY, parsed));
+    setDraft(String(next));
+    if (next !== value) onCommit(next);
+  };
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") event.currentTarget.blur();
+    else if (event.key === "Escape") {
+      setDraft(String(value));
+      event.currentTarget.blur();
+    } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+      event.preventDefault();
+      nudge(event.key === "ArrowUp" ? 1 : -1);
+    }
+  };
+  return <span className="educad-number-input" onWheel={(event) => { event.preventDefault(); nudge(event.deltaY < 0 ? 1 : -1); }}><input ref={inputRef} type="text" inputMode="decimal" value={draft} onFocus={() => setEditing(true)} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={handleKeyDown} />{unit ? <small>{unit}</small> : null}<span className="educad-number-steppers"><button type="button" tabIndex={-1} aria-label="Aumentar valor" title="Aumentar" onPointerDown={(event) => { event.preventDefault(); nudge(1); }}>▲</button><button type="button" tabIndex={-1} aria-label="Disminuir valor" title="Disminuir" onPointerDown={(event) => { event.preventDefault(); nudge(-1); }}>▼</button></span></span>;
+}
+
+function BoundedNumberField({ label, value, min, max, unit = "mm", onChange }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (value: number) => void }) {
+  const steps = useContext(NumericStepContext);
   const clampedValue = Math.min(max, Math.max(min, value));
   const [draft, setDraft] = useState(clampedValue);
   const [dragging, setDragging] = useState(false);
@@ -594,8 +635,8 @@ function BoundedNumberField({ label, value, min, max, step = 0.01, unit = "mm", 
   };
   return (
     <label className="educad-range-property" style={{ "--slider-pos": `${percent}%` } as CSSProperties}>
-      <span className="educad-range-header"><span>{label}</span><span className="educad-number-input"><input type="number" value={draft} min={min} max={max} step={step} onChange={(event) => { const next = Number(event.target.value); if (Number.isFinite(next)) setDraft(next); }} onBlur={commit} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); if (event.key === "Escape") { setDraft(clampedValue); event.currentTarget.blur(); } }} />{unit ? <small>{unit}</small> : null}</span></span>
-      <span className="educad-range-control"><input type="range" aria-label={label} value={draft} min={min} max={max} step={step} onPointerDown={() => setDragging(true)} onPointerUp={commit} onPointerCancel={commit} onChange={(event) => setDraft(Number(event.target.value))} onBlur={commit} /></span>
+      <span className="educad-range-header"><span>{label}</span><DeferredNumberInput value={draft} min={min} max={max} step={steps.input} unit={unit} onCommit={(next) => { setDraft(next); if (next !== value) onChange(next); }} /></span>
+      <span className="educad-range-control"><input type="range" aria-label={label} value={draft} min={min} max={max} step={steps.slider} onPointerDown={() => setDragging(true)} onPointerUp={commit} onPointerCancel={commit} onChange={(event) => setDraft(Number(event.target.value))} onBlur={commit} /></span>
     </label>
   );
 }
