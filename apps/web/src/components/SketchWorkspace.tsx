@@ -8,14 +8,15 @@ import { parseMeasurementInput } from "@/lib/measurementUnits";
 import { WORKPLANE_MAJOR_GRID_INTERVAL } from "@/lib/workplaneGrid";
 import { mirrorSign, resizedImportedMeshPositions } from "@/lib/workplaneShapes";
 import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE, normalizeSnapGrid, normalizeWorkspaceSettings } from "@/lib/workplaneSettings";
-import type { GridSize, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchSegment, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
+import type { GridSize, SketchCircle, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchSegment, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
 
-export type SketchTool = "line" | "bezier" | "smooth" | "select" | "refine" | "erase" | "measure";
+export type SketchTool = "line" | "bezier" | "smooth" | "circle" | "select" | "refine" | "erase" | "measure";
 export type SketchSelection =
   | { kind: "point"; id: string }
   | { kind: "segment"; id: string }
+  | { kind: "circle"; id: string }
   | { kind: "image"; id: string }
-  | { kind: "multiple"; pointIds: string[]; segmentIds: string[]; imageIds?: string[] }
+  | { kind: "multiple"; pointIds: string[]; segmentIds: string[]; circleIds?: string[]; imageIds?: string[] }
   | null;
 export type SketchMeasurement = { start: SketchPoint; end: SketchPoint } | null;
 
@@ -35,7 +36,12 @@ type SketchWorkspaceProps = {
   onPlanePoint: (point: { x: number; z: number }, handles?: { handleIn: { x: number; z: number }; handleOut: { x: number; z: number } }) => void;
   onPointPress: (id: string) => void;
   onSelectSegment: (id: string) => void;
-  onSelectMany: (pointIds: string[], segmentIds: string[], imageIds: string[]) => void;
+  onSelectMany: (pointIds: string[], segmentIds: string[], imageIds: string[], circleIds?: string[]) => void;
+  onAddCircle?: (circle: Omit<SketchCircle, "id">) => void;
+  onSelectCircle?: (id: string) => void;
+  onDeleteCircle?: (id: string) => void;
+  onMoveCircle?: (id: string, center: { x: number; z: number }) => void;
+  onResizeCircle?: (id: string, radius: number) => void;
   onSelectImage: (id: string) => void;
   onUpdateImage: (id: string, patch: Partial<SketchImage>, message?: string) => void;
   onDeleteImage: (id: string) => void;
@@ -53,6 +59,8 @@ type DisplayPath = { id: string; points: SketchPoint[]; steps: PathStep[]; close
 type SketchReferenceFootprint = { fillD: string | null; outlineD: string | null };
 type PointerAction =
   | { kind: "bezier"; pointerId: number; origin: { x: number; z: number }; current: { x: number; z: number } }
+  | { kind: "move-circle"; pointerId: number; circleId: string; origin: { x: number; z: number }; current: { x: number; z: number }; start: SketchCircle }
+  | { kind: "resize-circle"; pointerId: number; circleId: string; current: { x: number; z: number }; start: SketchCircle }
   | { kind: "move-point"; pointerId: number; pointId: string; current: { x: number; z: number } }
   | { kind: "move-handle"; pointerId: number; pointId: string; handle: "in" | "out"; current: { x: number; z: number } }
   | { kind: "pan"; pointerId: number; clientX: number; clientY: number }
@@ -241,6 +249,10 @@ function pathData(path: DisplayPath) {
   return commands.join(" ");
 }
 
+function circlePathData(circle: SketchCircle) {
+  return `M ${circle.x + circle.radius} ${circle.z} A ${circle.radius} ${circle.radius} 0 1 0 ${circle.x - circle.radius} ${circle.z} A ${circle.radius} ${circle.radius} 0 1 0 ${circle.x + circle.radius} ${circle.z} Z`;
+}
+
 function segmentData(segment: SketchSegment, pointById: Map<string, SketchPoint>) {
   const from = pointById.get(segment.startId);
   const to = pointById.get(segment.endId);
@@ -419,6 +431,11 @@ export function SketchWorkspace({
   onPointPress,
   onSelectSegment,
   onSelectMany,
+  onAddCircle,
+  onSelectCircle,
+  onDeleteCircle,
+  onMoveCircle,
+  onResizeCircle,
   onSelectImage,
   onUpdateImage,
   onDeleteImage,
@@ -436,6 +453,7 @@ export function SketchWorkspace({
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, z: 0 });
   const [hover, setHover] = useState<{ x: number; z: number } | null>(null);
+  const [pendingCircleCenter, setPendingCircleCenter] = useState<{ x: number; z: number } | null>(null);
   const [pointerAction, setPointerAction] = useState<PointerAction | null>(null);
   const [svgSize, setSvgSize] = useState({ width: 0, height: 0 });
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -448,6 +466,10 @@ export function SketchWorkspace({
     );
     return fittedScale > 0 ? 1 / fittedScale : Math.max(width, depth) / 720;
   }, [depth, svgSize.height, svgSize.width, width]);
+
+  useEffect(() => {
+    if (tool !== "circle") setPendingCircleCenter(null);
+  }, [tool]);
   const displayProfile = useMemo(() => {
     if (pointerAction?.kind === "move-point") {
       const source = profile.points.find((point) => point.id === pointerAction.pointId);
@@ -495,13 +517,25 @@ export function SketchWorkspace({
     }
     return images;
   }, [pointerAction, profile.images]);
+  const displayCircles = useMemo(() => {
+    const circles = profile.circles ?? [];
+    if (pointerAction?.kind === "move-circle") {
+      return circles.map((circle) => circle.id === pointerAction.circleId ? { ...circle, x: pointerAction.start.x + pointerAction.current.x - pointerAction.origin.x, z: pointerAction.start.z + pointerAction.current.z - pointerAction.origin.z } : circle);
+    }
+    if (pointerAction?.kind === "resize-circle") {
+      return circles.map((circle) => circle.id === pointerAction.circleId ? { ...circle, radius: Math.max(0.01, Math.hypot(pointerAction.current.x - circle.x, pointerAction.current.z - circle.z)) } : circle);
+    }
+    return circles;
+  }, [pointerAction, profile.circles]);
   const pointById = useMemo(() => new Map(displayProfile.points.map((point) => [point.id, point])), [displayProfile.points]);
-  const paths = useMemo(() => orderedPaths(displayProfile), [displayProfile]);
+  const paths = useMemo(() => orderedPaths({ ...displayProfile, segments: displayProfile.segments.filter((segment) => !segment.construction) }), [displayProfile]);
   const activePoint = activePointId ? pointById.get(activePointId) ?? null : null;
   const selectedPoint = selected?.kind === "point" ? pointById.get(selected.id) ?? null : null;
   const selectedImage = selected?.kind === "image" ? displayImages.find((image) => image.id === selected.id) ?? null : null;
+  const selectedCircle = selected?.kind === "circle" ? displayCircles.find((circle) => circle.id === selected.id) ?? null : null;
   const isPointSelected = (id: string) => selected?.kind === "point" ? selected.id === id : selected?.kind === "multiple" ? selected.pointIds.includes(id) : false;
   const isSegmentSelected = (id: string) => selected?.kind === "segment" ? selected.id === id : selected?.kind === "multiple" ? selected.segmentIds.includes(id) : false;
+  const isCircleSelected = (id: string) => selected?.kind === "circle" ? selected.id === id : selected?.kind === "multiple" ? selected.circleIds?.includes(id) ?? false : false;
   const gridStep = clamp(workspace.gridBlockSize, 0.1, 200);
   const verticalLines = useMemo(() => {
     const lines: number[] = [];
@@ -563,6 +597,14 @@ export function SketchWorkspace({
     if (tool === "bezier") {
       event.currentTarget.setPointerCapture(event.pointerId);
       setPointerAction({ kind: "bezier", pointerId: event.pointerId, origin: point, current: point });
+    } else if (tool === "circle") {
+      if (!pendingCircleCenter) {
+        setPendingCircleCenter(point);
+      } else {
+        const radius = Math.hypot(point.x - pendingCircleCenter.x, point.z - pendingCircleCenter.z);
+        if (radius > 0.001) onAddCircle?.({ x: pendingCircleCenter.x, z: pendingCircleCenter.z, radius });
+        setPendingCircleCenter(null);
+      }
     } else if (tool === "select") {
       event.currentTarget.setPointerCapture(event.pointerId);
       setPointerAction({ kind: "marquee", pointerId: event.pointerId, origin: point, current: point });
@@ -617,7 +659,8 @@ export function SketchWorkspace({
         const imageMaxZ = image.z + image.depth / 2;
         return imageMaxX >= minX && imageMinX <= maxX && imageMaxZ >= minZ && imageMinZ <= maxZ;
       }).map((image) => image.id);
-      onSelectMany(pointIds, segmentIds, imageIds);
+      const circleIds = (profile.circles ?? []).filter((circle) => contains({ x: circle.x, z: circle.z }) || contains({ x: circle.x + circle.radius, z: circle.z }) || contains({ x: circle.x - circle.radius, z: circle.z }) || contains({ x: circle.x, z: circle.z + circle.radius }) || contains({ x: circle.x, z: circle.z - circle.radius })).map((circle) => circle.id);
+      onSelectMany(pointIds, segmentIds, imageIds, circleIds);
       setPointerAction(null);
       return;
     }
@@ -628,6 +671,10 @@ export function SketchWorkspace({
         handleIn: { x: action.origin.x - dx, z: action.origin.z - dz },
         handleOut: { x: action.origin.x + dx, z: action.origin.z + dz },
       });
+    } else if (action.kind === "move-circle") {
+      onMoveCircle?.(action.circleId, { x: action.start.x + action.current.x - action.origin.x, z: action.start.z + action.current.z - action.origin.z });
+    } else if (action.kind === "resize-circle") {
+      onResizeCircle?.(action.circleId, Math.max(0.01, Math.hypot(action.current.x - action.start.x, action.current.z - action.start.z)));
     } else if (action.kind === "move-point") {
       onMovePoint(action.pointId, action.current);
     } else if (action.kind === "move-handle") {
@@ -791,13 +838,13 @@ export function SketchWorkspace({
             />
           ) : null}
           <g className="sketch-profile-fills" pointerEvents="none">
-            {paths.some((path) => path.closed) ? <path fillRule="evenodd" d={paths.filter((path) => path.closed).map(pathData).join(" ")} /> : null}
+            {paths.some((path) => path.closed) || displayCircles.some((circle) => !circle.construction) ? <path fillRule="evenodd" d={[...paths.filter((path) => path.closed).map(pathData), ...displayCircles.filter((circle) => !circle.construction).map(circlePathData)].join(" ")} /> : null}
           </g>
           <g className="sketch-segments">
             {displayProfile.segments.map((segment) => (
               <path
                 data-sketch-entity="segment"
-                className={isSegmentSelected(segment.id) ? "selected" : ""}
+                className={`${isSegmentSelected(segment.id) ? "selected" : ""} ${segment.construction ? "construction" : ""}`}
                 key={segment.id}
                 d={segmentData(segment, pointById)}
                 onPointerDown={(event) => {
@@ -811,6 +858,25 @@ export function SketchWorkspace({
                 }}
               />
             ))}
+            {displayCircles.map((circle) => <circle
+              key={circle.id}
+              data-sketch-entity="circle"
+              className={`${isCircleSelected(circle.id) ? "selected" : ""} ${circle.construction ? "construction" : ""}`}
+              cx={circle.x}
+              cy={circle.z}
+              r={circle.radius}
+              onPointerDown={(event) => {
+                const point = pointFromEvent(event);
+                event.preventDefault();
+                event.stopPropagation();
+                if (event.button === 1) beginPan(event);
+                else if (tool === "erase") onDeleteCircle?.(circle.id);
+                else if (event.button === 0 && tool === "select" && point) {
+                  onSelectCircle?.(circle.id);
+                  beginEntityDrag(event, { kind: "move-circle", pointerId: event.pointerId, circleId: circle.id, origin: point, current: point, start: { ...circle } });
+                } else if (event.button === 0) onSelectCircle?.(circle.id);
+              }}
+            />)}
           </g>
           <g className="sketch-segment-dimensions" pointerEvents="none">
             {displayProfile.segments.map((segment) => {
@@ -846,6 +912,10 @@ export function SketchWorkspace({
               <circle cx={pointerAction.origin.x} cy={pointerAction.origin.z} r={controlPointRadius} />
             </g>
           ) : null}
+          {pendingCircleCenter && hover ? <>
+            <circle className="sketch-preview-line" cx={pendingCircleCenter.x} cy={pendingCircleCenter.z} r={Math.hypot(hover.x - pendingCircleCenter.x, hover.z - pendingCircleCenter.z)} pointerEvents="none" />
+            <circle className="sketch-circle-center pending" cx={pendingCircleCenter.x} cy={pendingCircleCenter.z} r={pointRadius} pointerEvents="none" />
+          </> : null}
           {measurement ? (
             <g className="sketch-measurement">
               <line x1={measurement.start.x} y1={measurement.start.z} x2={measurement.end.x} y2={measurement.end.z} />
@@ -881,6 +951,25 @@ export function SketchWorkspace({
               {selectedPoint.handleOut ? <><line x1={selectedPoint.x} y1={selectedPoint.z} x2={selectedPoint.handleOut.x} y2={selectedPoint.handleOut.z} /><circle data-sketch-entity="handle" cx={selectedPoint.handleOut.x} cy={selectedPoint.handleOut.z} r={controlPointRadius} onPointerDown={(event) => event.button === 1 ? beginPan(event) : beginEntityDrag(event, { kind: "move-handle", pointerId: event.pointerId, pointId: selectedPoint.id, handle: "out", current: selectedPoint.handleOut! })} /></> : null}
             </g>
           ) : null}
+          {selectedCircle && tool === "select" ? <g className="sketch-circle-handles">
+            <circle data-sketch-entity="circle-center" className="sketch-circle-center" cx={selectedCircle.x} cy={selectedCircle.z} r={pointRadius} onPointerDown={(event) => {
+              if (event.button === 1) { beginPan(event); return; }
+              if (event.button !== 0) return;
+              beginEntityDrag(event, { kind: "move-circle", pointerId: event.pointerId, circleId: selectedCircle.id, origin: { x: selectedCircle.x, z: selectedCircle.z }, current: { x: selectedCircle.x, z: selectedCircle.z }, start: { ...selectedCircle } });
+            }} />
+            <line x1={selectedCircle.x} y1={selectedCircle.z} x2={selectedCircle.x + selectedCircle.radius} y2={selectedCircle.z} pointerEvents="none" />
+            <circle data-sketch-entity="circle-handle" className="sketch-circle-radius-handle" cx={selectedCircle.x + selectedCircle.radius} cy={selectedCircle.z} r={controlPointRadius} onPointerDown={(event) => event.button === 1 ? beginPan(event) : beginEntityDrag(event, { kind: "resize-circle", pointerId: event.pointerId, circleId: selectedCircle.id, current: { x: selectedCircle.x + selectedCircle.radius, z: selectedCircle.z }, start: { ...selectedCircle } })} />
+          </g> : null}
+          <g className="sketch-circle-dimensions" pointerEvents="none">
+            {displayCircles.map((circle) => {
+              const label = `R ${formatDimension(circle.radius, workspace.accuracy)}`;
+              const pill = dimensionPillSize(label, screenUnit, 18);
+              return <g key={`radius-${circle.id}`} transform={`translate(${circle.x + circle.radius + 12 * screenUnit} ${circle.z - 18 * screenUnit})`}>
+                <rect x={0} y={-pill.height / 2} width={pill.width} height={pill.height} rx={pill.radius} />
+                <text x={pill.width / 2} y={5 * screenUnit} fontSize={13 * screenUnit}>{label}</text>
+              </g>;
+            })}
+          </g>
           <g className="sketch-points">
             {displayProfile.points.map((point) => (
               <circle
@@ -972,7 +1061,7 @@ export function SketchWorkspace({
               ))}
             </g>
           ) : null}
-          {hover && ["line", "bezier", "smooth", "measure"].includes(tool) ? <circle className="sketch-cursor-point" cx={hover.x} cy={hover.z} r={hoverPointRadius} pointerEvents="none" /> : null}
+          {hover && ["line", "bezier", "smooth", "circle", "measure"].includes(tool) ? <circle className="sketch-cursor-point" cx={hover.x} cy={hover.z} r={hoverPointRadius} pointerEvents="none" /> : null}
         </svg>
       </section>
       {selectedImage && tool === "select" ? (
@@ -986,9 +1075,9 @@ export function SketchWorkspace({
       ) : null}
       {selectedPoint && tool === "select" ? (
         <div className="sketch-point-actions" aria-label="Point actions">
-          <button type="button" title="Make corner" onClick={() => onSetPointMode(selectedPoint.id, "corner")}><CornerDownRight /><span>Corner</span></button>
-          <button type="button" title="Make smooth" onClick={() => onSetPointMode(selectedPoint.id, "smooth")}><Waves /><span>Smooth</span></button>
-          <button type="button" title="Split handles" onClick={() => onSetPointMode(selectedPoint.id, "split")}><Split /><span>Split</span></button>
+          <button className={selectedPoint.mode === "corner" || !selectedPoint.mode ? "active" : ""} type="button" title="Make corner" aria-pressed={selectedPoint.mode === "corner" || !selectedPoint.mode} onClick={() => onSetPointMode(selectedPoint.id, "corner")}><CornerDownRight /><span>Corner</span></button>
+          <button className={selectedPoint.mode === "smooth" ? "active" : ""} type="button" title="Make smooth" aria-pressed={selectedPoint.mode === "smooth"} onClick={() => onSetPointMode(selectedPoint.id, "smooth")}><Waves /><span>Smooth</span></button>
+          <button className={selectedPoint.mode === "split" ? "active" : ""} type="button" title="Split handles" aria-pressed={selectedPoint.mode === "split"} onClick={() => onSetPointMode(selectedPoint.id, "split")}><Split /><span>Split</span></button>
         </div>
       ) : null}
       <div className="grid-settings sketch-grid-settings">

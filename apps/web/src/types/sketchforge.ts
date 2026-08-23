@@ -86,6 +86,15 @@ export type SketchSegment = {
   startId: string;
   endId: string;
   kind?: "line" | "bezier" | "smooth";
+  construction?: boolean;
+};
+
+export type SketchCircle = {
+  id: string;
+  x: number;
+  z: number;
+  radius: number;
+  construction?: boolean;
 };
 
 export type SketchImage = {
@@ -106,6 +115,7 @@ export type SketchImage = {
 export type SketchProfile = {
   points: SketchPoint[];
   segments: SketchSegment[];
+  circles?: SketchCircle[];
   images?: SketchImage[];
 };
 

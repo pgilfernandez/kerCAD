@@ -30,7 +30,7 @@ function drawnSketchFaces(brep: Brep, sketch: SketchFeature): Face[] {
   if (sketch.profile.shape !== "drawn") throw new Error(`${sketch.name}: el perfil no es un boceto dibujado.`);
   const profile = sketch.profile.geometry;
   const points = new Map(profile.points.map((point) => [point.id, point]));
-  const unused = new Map(profile.segments.map((segment) => [segment.id, segment]));
+  const unused = new Map(profile.segments.filter((segment) => !segment.construction).map((segment) => [segment.id, segment]));
   const paths: Array<Array<{ segment: (typeof profile.segments)[number]; fromId: string; toId: string }>> = [];
 
   while (unused.size) {
@@ -51,7 +51,7 @@ function drawnSketchFaces(brep: Brep, sketch: SketchFeature): Face[] {
     if (currentId !== startId || path.length < 3) throw new Error(`${sketch.name}: cierra el perfil antes de usarlo en una operación 3D.`);
     paths.push(path);
   }
-  const loops = paths.map((path) => {
+  const loops = [...paths.map((path) => {
     const polygon = path.map(({ fromId }) => {
       const point = points.get(fromId);
       if (!point) throw new Error(`${sketch.name}: el boceto contiene referencias incompletas.`);
@@ -81,7 +81,16 @@ function drawnSketchFaces(brep: Brep, sketch: SketchFeature): Face[] {
       return sum + point.x * next.y - next.x * point.y;
     }, 0) / 2);
     return { wire, polygon, area, depth: 0 };
-  });
+  }), ...(profile.circles ?? []).filter((circle) => !circle.construction && circle.radius > 0).map((circle) => {
+    const polygon = Array.from({ length: 64 }, (_, index) => {
+      const angle = index / 64 * Math.PI * 2;
+      return { x: circle.x + Math.cos(angle) * circle.radius, y: circle.z + Math.sin(angle) * circle.radius };
+    });
+    const edge = brep.circle(circle.radius, { at: [circle.x + sketch.x, circle.z + sketch.y, sketch.offset] });
+    const wire = brep.unwrap(brep.wireLoop([edge]));
+    return { wire, polygon, area: Math.PI * circle.radius ** 2, depth: 0 };
+  })];
+  if (!loops.length) throw new Error(`${sketch.name}: dibuja al menos un contorno cerrado.`);
   for (const loop of loops) loop.depth = loops.filter((candidate) => candidate !== loop && candidate.area > loop.area && pointInPolygon(loop.polygon[0], candidate.polygon)).length;
   const outerLoops = loops.filter((loop) => loop.depth % 2 === 0);
   return outerLoops.map((outer) => {

@@ -416,7 +416,6 @@ function ParametricFeatureInspector({
           <div className="educad-feature-card"><h3>Operación</h3><ReadOnlyField label="Tipo" value="Boceto" /><ReadOnlyField label="Plano" value={feature.plane} /></div>
           {feature.profile.shape === "drawn" ? <>
             <button className="educad-edit-topology-selection" type="button" onClick={() => onEditSketch(feature.id)}>Editar boceto</button>
-            <div className="educad-feature-card"><h3>Geometría</h3><ReadOnlyField label="Puntos" value={String(feature.profile.geometry.points.length)} /><ReadOnlyField label="Segmentos" value={String(feature.profile.geometry.segments.length)} /></div>
           </> : <div className="educad-feature-card">
             <h3>Parámetros de la forma</h3>
             <ReadOnlyField label="Perfil" value={feature.profile.shape === "rectangle" ? "Rectángulo" : "Círculo"} />

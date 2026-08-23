@@ -232,7 +232,7 @@ const booleanTextFonts: Record<string, Font> = {
 let manifoldRuntimePromise: Promise<ManifoldToplevel> | null = null;
 
 function emptySketchProfile(): SketchProfile {
-  return { points: [], segments: [], images: [] };
+  return { points: [], segments: [], circles: [], images: [] };
 }
 
 function cloneSketchProfile(profile: SketchProfile): SketchProfile {
@@ -243,6 +243,7 @@ function cloneSketchProfile(profile: SketchProfile): SketchProfile {
       handleOut: point.handleOut ? { ...point.handleOut } : undefined,
     })),
     segments: profile.segments.map((segment) => ({ ...segment })),
+    circles: (profile.circles ?? []).map((circle) => ({ ...circle })),
     images: (profile.images ?? []).map((image) => ({ ...image })),
   };
 }
@@ -307,6 +308,7 @@ function withSmoothSketchHandles(profile: SketchProfile) {
     path.points.forEach((sourcePoint, index) => {
       const point = points.get(sourcePoint.id);
       if (!point) return;
+      if (point.mode === "split" && point.handleIn && point.handleOut) return;
       const previous = path.closed ? path.points[(index - 1 + path.points.length) % path.points.length] : path.points[Math.max(0, index - 1)];
       const following = path.closed ? path.points[(index + 1) % path.points.length] : path.points[Math.min(path.points.length - 1, index + 1)];
       const tangentX = (following.x - previous.x) / 6;
@@ -6264,6 +6266,7 @@ export function SketchForgeEditor({
       line: "Line: click points to draw straight segments",
       bezier: "Bézier: click and drag points to pull curve handles",
       smooth: "Smooth curve: click points to build a flowing path",
+      circle: "Circle: drag from the centre to define the radius",
       select: "Select: edit sketch geometry or place and scale reference images",
       refine: "Refine: click a segment to add a point, or a point to remove it",
       erase: "Erase: click a point or segment to remove it",
@@ -6475,14 +6478,20 @@ export function SketchForgeEditor({
     if (sketchSelection.kind === "point") deleteSketchPoint(sketchSelection.id);
     else if (sketchSelection.kind === "segment") deleteSketchSegment(sketchSelection.id);
     else if (sketchSelection.kind === "image") deleteSketchImage(sketchSelection.id);
+    else if (sketchSelection.kind === "circle") {
+      commitSketchProfile({ ...sketchProfile, circles: (sketchProfile.circles ?? []).filter((circle) => circle.id !== sketchSelection.id) }, "Sketch circle removed");
+      setSketchSelection(null);
+    }
     else {
       const pointIds = new Set(sketchSelection.pointIds);
       const segmentIds = new Set(sketchSelection.segmentIds);
       const imageIds = new Set(sketchSelection.imageIds ?? []);
+      const circleIds = new Set(sketchSelection.circleIds ?? []);
       commitSketchProfile({
         ...sketchProfile,
         points: sketchProfile.points.filter((point) => !pointIds.has(point.id)),
         segments: sketchProfile.segments.filter((segment) => !segmentIds.has(segment.id) && !pointIds.has(segment.startId) && !pointIds.has(segment.endId)),
+        circles: (sketchProfile.circles ?? []).filter((circle) => !circleIds.has(circle.id)),
         images: (sketchProfile.images ?? []).filter((image) => !imageIds.has(image.id)),
       }, "Selected sketch geometry removed");
       setSketchActivePointId(null);
@@ -6532,7 +6541,13 @@ export function SketchForgeEditor({
       next.segments = next.segments.map((segment) => segment.startId === id || segment.endId === id ? { ...segment, kind: "line" } : segment);
     } else {
       next.segments = next.segments.map((segment) => segment.startId === id || segment.endId === id ? { ...segment, kind: "bezier" } : segment);
-      if (!point.handleIn || !point.handleOut) next = withSmoothSketchHandles(next);
+      if (mode === "smooth" && point.handleOut) {
+        point.handleIn = { x: point.x * 2 - point.handleOut.x, z: point.z * 2 - point.handleOut.z };
+      } else if (mode === "smooth" && point.handleIn) {
+        point.handleOut = { x: point.x * 2 - point.handleIn.x, z: point.z * 2 - point.handleIn.z };
+      } else if (!point.handleIn || !point.handleOut) {
+        next = withSmoothSketchHandles(next);
+      }
       const updated = next.points.find((entry) => entry.id === id);
       if (updated) updated.mode = mode;
     }

@@ -4785,7 +4785,8 @@ button {
   stroke: none;
 }
 
-.sketch-segments path {
+.sketch-segments path,
+.sketch-segments > circle {
   fill: none;
   stroke: #173f60;
   stroke-width: 2.5;
@@ -4795,9 +4796,48 @@ button {
 }
 
 .sketch-segments path:hover,
-.sketch-segments path.selected {
+.sketch-segments path.selected,
+.sketch-segments > circle:hover,
+.sketch-segments > circle.selected {
   stroke: #ff8a00;
   stroke-width: 4;
+}
+
+.sketch-segments .construction {
+  stroke: #7395ad;
+  stroke-dasharray: 7 5;
+}
+
+.sketch-circle-handles line {
+  stroke: #169fce;
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.sketch-circle-center,
+.sketch-circle-radius-handle {
+  fill: #ffffff;
+  stroke: #169fce;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.sketch-circle-center { cursor: move; }
+.sketch-circle-center.pending { cursor: crosshair; }
+.sketch-circle-radius-handle { cursor: ew-resize; }
+
+.sketch-circle-dimensions rect {
+  fill: rgba(255, 255, 255, 0.96);
+  stroke: #169fce;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.sketch-circle-dimensions text {
+  fill: #173b5a;
+  font-weight: 700;
+  text-anchor: middle;
 }
 
 .sketch-preview-line {
@@ -4805,6 +4845,10 @@ button {
   stroke-width: 2;
   stroke-dasharray: 6 5;
   vector-effect: non-scaling-stroke;
+}
+
+circle.sketch-preview-line {
+  fill: rgba(98, 148, 214, 0.2);
 }
 
 .sketch-drag-handles line,
@@ -4970,6 +5014,12 @@ button {
   color: #126b8e;
   background: #e6f5fb;
   border-color: #b9dce9;
+}
+
+.sketch-point-actions button.active {
+  color: #ffffff;
+  background: #168fbd;
+  border-color: #0d759e;
 }
 
 .sketch-point-actions svg {

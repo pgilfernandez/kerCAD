@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, MousePointer2, PenLine, Plus, RotateCcw, Ruler, Spline, X } from "lucide-react";
+import { Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, MousePointer2, PenLine, Plus, RotateCcw, Ruler, Spline, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyEdgePick, type TopologyFacePick } from "@/components/ParametricViewport";
@@ -95,13 +95,14 @@ function fileName(value: string) {
 }
 
 function emptySketchProfile(): SketchProfile {
-  return { points: [], segments: [], images: [] };
+  return { points: [], segments: [], circles: [], images: [] };
 }
 
 function cloneSketchProfile(profile: SketchProfile): SketchProfile {
   return {
     points: profile.points.map((point) => ({ ...point, handleIn: point.handleIn ? { ...point.handleIn } : undefined, handleOut: point.handleOut ? { ...point.handleOut } : undefined })),
     segments: profile.segments.map((segment) => ({ ...segment })),
+    circles: (profile.circles ?? []).map((circle) => ({ ...circle })),
     images: (profile.images ?? []).map((image) => ({ ...image })),
   };
 }
@@ -160,14 +161,17 @@ function closestSketchGrid(step: number, enabled: boolean): GridSize {
 }
 
 function isClosedSketch(profile: SketchProfile) {
-  if (profile.segments.length < 3) return false;
+  const modelSegments = profile.segments.filter((segment) => !segment.construction);
+  const modelCircles = (profile.circles ?? []).filter((circle) => !circle.construction && circle.radius > 0);
+  if (modelSegments.length === 0) return modelCircles.length > 0;
+  if (modelSegments.length < 3) return false;
   const degree = new Map<string, number>();
-  for (const segment of profile.segments) {
+  for (const segment of modelSegments) {
     degree.set(segment.startId, (degree.get(segment.startId) ?? 0) + 1);
     degree.set(segment.endId, (degree.get(segment.endId) ?? 0) + 1);
   }
   if ([...degree.values()].some((value) => value !== 2)) return false;
-  return orderedSketchPaths(profile).every((path) => path.closed);
+  return orderedSketchPaths({ ...profile, segments: modelSegments }).every((path) => path.closed);
 }
 
 function withSmoothSketchHandles(profile: SketchProfile) {
@@ -176,6 +180,7 @@ function withSmoothSketchHandles(profile: SketchProfile) {
   orderedSketchPaths(next).forEach((path) => path.points.forEach((sourcePoint, index) => {
     const point = points.get(sourcePoint.id);
     if (!point) return;
+    if (point.mode === "split" && point.handleIn && point.handleOut) return;
     const previous = path.closed ? path.points[(index - 1 + path.points.length) % path.points.length] : path.points[Math.max(0, index - 1)];
     const following = path.closed ? path.points[(index + 1) % path.points.length] : path.points[Math.min(path.points.length - 1, index + 1)];
     const tangent = { x: (following.x - previous.x) / 6, z: (following.z - previous.z) / 6 };
@@ -676,6 +681,26 @@ export function SketchForgeParametricEditor() {
     if (tool !== "measure") setSketchMeasureStart(null);
   };
 
+  const selectedConstructionIds = useMemo(() => {
+    if (!sketchSession || !sketchSelection) return { segmentIds: [] as string[], circleIds: [] as string[], allConstruction: false };
+    const segmentIds = sketchSelection.kind === "segment" ? [sketchSelection.id]
+      : sketchSelection.kind === "point" ? sketchSession.profile.segments.filter((segment) => segment.startId === sketchSelection.id || segment.endId === sketchSelection.id).map((segment) => segment.id)
+      : sketchSelection.kind === "multiple" ? sketchSelection.segmentIds : [];
+    const circleIds = sketchSelection.kind === "circle" ? [sketchSelection.id] : sketchSelection.kind === "multiple" ? sketchSelection.circleIds ?? [] : [];
+    const entities = [...sketchSession.profile.segments.filter((segment) => segmentIds.includes(segment.id)), ...(sketchSession.profile.circles ?? []).filter((circle) => circleIds.includes(circle.id))];
+    return { segmentIds, circleIds, allConstruction: entities.length > 0 && entities.every((entity) => entity.construction) };
+  }, [sketchSelection, sketchSession]);
+
+  const toggleSketchConstruction = () => {
+    if (!selectedConstructionIds.segmentIds.length && !selectedConstructionIds.circleIds.length) return;
+    const construction = !selectedConstructionIds.allConstruction;
+    setSketchProfile((profile) => ({
+      ...profile,
+      segments: profile.segments.map((segment) => selectedConstructionIds.segmentIds.includes(segment.id) ? { ...segment, construction } : segment),
+      circles: (profile.circles ?? []).map((circle) => selectedConstructionIds.circleIds.includes(circle.id) ? { ...circle, construction } : circle),
+    }));
+  };
+
   const connectSketchPoint = (pointId: string) => {
     if (!sketchSession || !["line", "bezier", "smooth"].includes(sketchTool)) return;
     if (!sketchActivePointId) {
@@ -785,7 +810,13 @@ export function SketchForgeParametricEditor() {
       next.segments = next.segments.map((segment) => segment.startId === id || segment.endId === id ? { ...segment, kind: "line" as const } : segment);
     } else {
       next.segments = next.segments.map((segment) => segment.startId === id || segment.endId === id ? { ...segment, kind: "bezier" as const } : segment);
-      if (!point.handleIn || !point.handleOut) next = withSmoothSketchHandles(next);
+      if (mode === "smooth" && point.handleOut) {
+        point.handleIn = { x: point.x * 2 - point.handleOut.x, z: point.z * 2 - point.handleOut.z };
+      } else if (mode === "smooth" && point.handleIn) {
+        point.handleOut = { x: point.x * 2 - point.handleIn.x, z: point.z * 2 - point.handleIn.z };
+      } else if (!point.handleIn || !point.handleOut) {
+        next = withSmoothSketchHandles(next);
+      }
       const updated = next.points.find((candidate) => candidate.id === id);
       if (updated) updated.mode = mode;
     }
@@ -925,9 +956,10 @@ export function SketchForgeParametricEditor() {
           const pointIds = sketchSelection?.kind === "point" ? [sketchSelection.id] : sketchSelection?.kind === "multiple" ? sketchSelection.pointIds : [];
           const segmentIds = sketchSelection?.kind === "segment" ? [sketchSelection.id] : sketchSelection?.kind === "multiple" ? sketchSelection.segmentIds : [];
           const imageIds = sketchSelection?.kind === "image" ? [sketchSelection.id] : sketchSelection?.kind === "multiple" ? sketchSelection.imageIds ?? [] : [];
-          if (pointIds.length || segmentIds.length || imageIds.length) {
+          const circleIds = sketchSelection?.kind === "circle" ? [sketchSelection.id] : sketchSelection?.kind === "multiple" ? sketchSelection.circleIds ?? [] : [];
+          if (pointIds.length || segmentIds.length || imageIds.length || circleIds.length) {
             event.preventDefault();
-            setSketchProfile((profile) => ({ ...profile, points: profile.points.filter((point) => !pointIds.includes(point.id)), segments: profile.segments.filter((segment) => !segmentIds.includes(segment.id) && !pointIds.includes(segment.startId) && !pointIds.includes(segment.endId)), images: (profile.images ?? []).filter((image) => !imageIds.includes(image.id)) }));
+            setSketchProfile((profile) => ({ ...profile, points: profile.points.filter((point) => !pointIds.includes(point.id)), segments: profile.segments.filter((segment) => !segmentIds.includes(segment.id) && !pointIds.includes(segment.startId) && !pointIds.includes(segment.endId)), circles: (profile.circles ?? []).filter((circle) => !circleIds.includes(circle.id)), images: (profile.images ?? []).filter((image) => !imageIds.includes(image.id)) }));
             setSketchSelection(null);
           }
         }
@@ -1418,11 +1450,13 @@ export function SketchForgeParametricEditor() {
             <Tool label="Línea" active={sketchTool === "line"} onClick={() => chooseSketchTool("line")}><PenLine /></Tool>
             <Tool label="Curva Bézier" active={sketchTool === "bezier"} onClick={() => chooseSketchTool("bezier")}><Spline /></Tool>
             <Tool label="Curva suave" active={sketchTool === "smooth"} onClick={() => chooseSketchTool("smooth")}><Spline /></Tool>
+            <Tool label="Círculo" active={sketchTool === "circle"} onClick={() => chooseSketchTool("circle")}><Circle /></Tool>
           </ToolbarSection>
           <ToolbarSection label="Editar">
             <Tool label="Seleccionar" active={sketchTool === "select"} onClick={() => chooseSketchTool("select")}><MousePointer2 /></Tool>
             <Tool label="Refinar" active={sketchTool === "refine"} onClick={() => chooseSketchTool("refine")}><Plus /></Tool>
             <Tool label="Borrar" active={sketchTool === "erase"} onClick={() => chooseSketchTool("erase")}><Eraser /></Tool>
+            <Tool label="Geometría de construcción" enabled={selectedConstructionIds.segmentIds.length + selectedConstructionIds.circleIds.length > 0} active={selectedConstructionIds.allConstruction} onClick={toggleSketchConstruction}><DraftingCompass /></Tool>
           </ToolbarSection>
           <ToolbarSection label="Historial">
             <Tool label="Deshacer boceto" enabled={sketchHistoryIndex > 0} onClick={sketchUndo}><ToolbarUndoIcon /></Tool>
@@ -1539,7 +1573,17 @@ export function SketchForgeParametricEditor() {
           onPlanePoint={addSketchPoint}
           onPointPress={pressSketchPoint}
           onSelectSegment={(id) => { setSketchSelection({ kind: "segment", id }); setSketchActivePointId(null); }}
-          onSelectMany={(pointIds, segmentIds, imageIds) => setSketchSelection(pointIds.length || segmentIds.length || imageIds.length ? { kind: "multiple", pointIds, segmentIds, imageIds } : null)}
+          onSelectMany={(pointIds, segmentIds, imageIds, circleIds = []) => setSketchSelection(pointIds.length || segmentIds.length || imageIds.length || circleIds.length ? { kind: "multiple", pointIds, segmentIds, imageIds, circleIds } : null)}
+          onAddCircle={(circle) => {
+            const id = sketchEntityId("circle");
+            setSketchProfile((profile) => ({ ...profile, circles: [...(profile.circles ?? []), { ...circle, id }] }));
+            setSketchSelection({ kind: "circle", id });
+            setSketchTool("select");
+          }}
+          onSelectCircle={(id) => { setSketchSelection({ kind: "circle", id }); setSketchActivePointId(null); }}
+          onDeleteCircle={(id) => { setSketchProfile((profile) => ({ ...profile, circles: (profile.circles ?? []).filter((circle) => circle.id !== id) })); setSketchSelection(null); }}
+          onMoveCircle={(id, center) => setSketchProfile((profile) => ({ ...profile, circles: (profile.circles ?? []).map((circle) => circle.id === id ? { ...circle, ...center } : circle) }))}
+          onResizeCircle={(id, radius) => setSketchProfile((profile) => ({ ...profile, circles: (profile.circles ?? []).map((circle) => circle.id === id ? { ...circle, radius: Math.max(0.01, radius) } : circle) }))}
           onSelectImage={(id) => setSketchSelection({ kind: "image", id })}
           onUpdateImage={(id, update) => setSketchProfile((profile) => ({ ...profile, images: (profile.images ?? []).map((image) => image.id === id ? { ...image, ...update } : image) }))}
           onDeleteImage={(id) => setSketchProfile((profile) => ({ ...profile, images: (profile.images ?? []).filter((image) => image.id !== id) }))}

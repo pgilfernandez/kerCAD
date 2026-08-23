@@ -18,10 +18,15 @@ function sketchDimensions(sketch: SketchFeature) {
   if (sketch.profile.shape === "rectangle") return { width: sketch.profile.width, depth: sketch.profile.depth };
   if (sketch.profile.shape === "circle") return { width: sketch.profile.diameter, depth: sketch.profile.diameter };
   const points = sketch.profile.geometry.points;
-  if (!points.length) return { width: 0.1, depth: 0.1 };
+  const circles = sketch.profile.geometry.circles ?? [];
+  const minX = [...points.map((point) => point.x), ...circles.map((circle) => circle.x - circle.radius)];
+  const maxX = [...points.map((point) => point.x), ...circles.map((circle) => circle.x + circle.radius)];
+  const minZ = [...points.map((point) => point.z), ...circles.map((circle) => circle.z - circle.radius)];
+  const maxZ = [...points.map((point) => point.z), ...circles.map((circle) => circle.z + circle.radius)];
+  if (!minX.length) return { width: 0.1, depth: 0.1 };
   return {
-    width: Math.max(0.1, Math.max(...points.map((point) => point.x)) - Math.min(...points.map((point) => point.x))),
-    depth: Math.max(0.1, Math.max(...points.map((point) => point.z)) - Math.min(...points.map((point) => point.z))),
+    width: Math.max(0.1, Math.max(...maxX) - Math.min(...minX)),
+    depth: Math.max(0.1, Math.max(...maxZ) - Math.min(...minZ)),
   };
 }
 export type ParametricTreeSelection = { id: string; kind: "object" | "feature" };
@@ -756,6 +761,7 @@ export function resizeParametricSelection(
       handleIn: point.handleIn ? { x: point.handleIn.x * scaleX, z: point.handleIn.z * scaleZ } : undefined,
       handleOut: point.handleOut ? { x: point.handleOut.x * scaleX, z: point.handleOut.z * scaleZ } : undefined,
     }));
+    sketch!.profile.geometry.circles = (sketch!.profile.geometry.circles ?? []).map((circle) => ({ ...circle, x: circle.x * scaleX, z: circle.z * scaleZ, radius: circle.radius * (Math.abs(scaleX) + Math.abs(scaleZ)) / 2 }));
   }
 }
 

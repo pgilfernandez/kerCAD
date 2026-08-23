@@ -107,7 +107,7 @@ export function createSketchFeature(shape: RectangleProfile["shape"] | CirclePro
   };
 }
 
-export function createDrawnSketchFeature(index: number, geometry: DrawnProfile["geometry"] = { points: [], segments: [], images: [] }): SketchFeature {
+export function createDrawnSketchFeature(index: number, geometry: DrawnProfile["geometry"] = { points: [], segments: [], circles: [], images: [] }): SketchFeature {
   return {
     id: createFeatureId("sketch"),
     kind: "sketch",
