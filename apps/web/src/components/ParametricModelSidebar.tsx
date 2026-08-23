@@ -413,7 +413,7 @@ function ParametricFeatureInspector({
 
       {feature.kind === "sketch" ? (
         <>
-          <div className="educad-feature-card"><h3>Operación</h3><ReadOnlyField label="Tipo" value="Boceto" /><ReadOnlyField label="Plano" value={feature.plane} /></div>
+          <div className="educad-feature-card"><h3>Operación</h3><ReadOnlyField label="Tipo" value="Boceto" /></div>
           {feature.profile.shape === "drawn" ? <>
             <button className="educad-edit-topology-selection" type="button" onClick={() => onEditSketch(feature.id)}>Editar boceto</button>
           </> : <div className="educad-feature-card">
@@ -421,8 +421,9 @@ function ParametricFeatureInspector({
             <ReadOnlyField label="Perfil" value={feature.profile.shape === "rectangle" ? "Rectángulo" : "Círculo"} />
             {feature.profile.shape === "rectangle" ? <><NumberField label="Anchura" value={feature.profile.width} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} /><NumberField label="Profundidad" value={feature.profile.depth} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} /></> : <NumberField label="Diámetro" value={feature.profile.diameter} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value); })} />}
           </div>}
-          <TransformSection description="Posición">
-            <div className="educad-feature-card educad-transform-card"><h3>Posición</h3><NumberField label="X" value={feature.x} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch") draft.x = value; })} /><NumberField label="Y" value={feature.y} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch") draft.y = value; })} /><NumberField label="Z" value={feature.offset} min={0} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch") draft.offset = value; })} /></div>
+          <TransformSection>
+            <TransformGroup label="Posición" values={{ x: feature.x, y: feature.y, z: feature.offset }} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind !== "sketch") return; if (axis === "x") draft.x = value; else if (axis === "y") draft.y = value; else draft.offset = value; })} />
+            <TransformGroup label="Rotación" values={feature.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "sketch") draft.rotation[axis] = value; })} />
           </TransformSection>
         </>
       ) : null}

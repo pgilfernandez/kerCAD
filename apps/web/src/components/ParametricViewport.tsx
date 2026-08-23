@@ -11,7 +11,7 @@ import { constrainViewportAxisDrag, coplanarFaceRegion, exactEdgeRegion, exactFa
 import { AdaptiveViewportResolution, viewportPerformanceOptions, viewportRenderProfile, type ViewportRenderQuality } from "@/lib/viewportPerformance";
 import { orthographicTouchTargetWorldSize, perspectiveTouchTargetWorldSize, viewportPointerDragIntent, type ViewportPointerDragIntent } from "@/lib/viewportPointer";
 import { parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
-import type { ParametricDocument, ParametricObjectRenderRecord, ParametricTopologyReference, RenderMesh } from "@/types/parametric";
+import type { ParametricDocument, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, RenderMesh, SketchFeature } from "@/types/parametric";
 
 export type CameraView = { name: "iso" | "top" | "front" | "right" | "zoom-in" | "zoom-out" | "home" | "fit" | "selection" | "custom"; token: number; direction?: [number, number, number] };
 export type CameraProjection = "perspective" | "orthographic";
@@ -95,6 +95,7 @@ type Props = {
     position: { x: number; y: number; z: number };
     rotation: { x: number; y: number; z: number };
   }>;
+  sketchOverlays?: Array<{ feature: SketchFeature; object: ParametricObject | null; selected: boolean }>;
   editableOriginId?: string | null;
   selectedObjectOriginId?: string | null;
   selectedOperationOriginId?: string | null;
@@ -157,6 +158,65 @@ function previewMaterial(quality: ViewportRenderQuality, color: THREE.ColorRepre
   return quality === "normal"
     ? new THREE.MeshStandardMaterial({ ...shared, roughness: 0.7 })
     : new THREE.MeshLambertMaterial(shared);
+}
+
+function sketchOverlayPositions(feature: SketchFeature) {
+  const positions: number[] = [];
+  const addPolyline = (points: Array<{ x: number; y: number }>) => {
+    for (let index = 1; index < points.length; index += 1) positions.push(points[index - 1].x, points[index - 1].y, 0.025, points[index].x, points[index].y, 0.025);
+  };
+  if (feature.profile.shape === "rectangle") {
+    const halfWidth = feature.profile.width / 2;
+    const halfDepth = feature.profile.depth / 2;
+    addPolyline([{ x: -halfWidth, y: -halfDepth }, { x: halfWidth, y: -halfDepth }, { x: halfWidth, y: halfDepth }, { x: -halfWidth, y: halfDepth }, { x: -halfWidth, y: -halfDepth }]);
+    return positions;
+  }
+  if (feature.profile.shape === "circle") {
+    addPolyline(Array.from({ length: 65 }, (_, index) => {
+      const angle = index / 64 * Math.PI * 2;
+      return { x: Math.cos(angle) * feature.profile.diameter / 2, y: Math.sin(angle) * feature.profile.diameter / 2 };
+    }));
+    return positions;
+  }
+  const profile = feature.profile.geometry;
+  const pointById = new Map(profile.points.map((point) => [point.id, point]));
+  for (const segment of profile.segments.filter((candidate) => !candidate.construction)) {
+    const start = pointById.get(segment.startId);
+    const end = pointById.get(segment.endId);
+    if (!start || !end) continue;
+    if (segment.kind === "arc" && segment.center) {
+      const radius = Math.hypot(start.x - segment.center.x, start.z - segment.center.z);
+      const startAngle = Math.atan2(start.z - segment.center.z, start.x - segment.center.x);
+      const endAngle = Math.atan2(end.z - segment.center.z, end.x - segment.center.x);
+      const positive = segment.clockwise !== false;
+      const sweep = positive ? (endAngle - startAngle + Math.PI * 2) % (Math.PI * 2) : -((startAngle - endAngle + Math.PI * 2) % (Math.PI * 2));
+      const divisions = Math.max(8, Math.ceil(Math.abs(sweep) / (Math.PI / 24)));
+      addPolyline(Array.from({ length: divisions + 1 }, (_, index) => {
+        const angle = startAngle + sweep * index / divisions;
+        return { x: segment.center!.x + Math.cos(angle) * radius, y: segment.center!.z + Math.sin(angle) * radius };
+      }));
+      continue;
+    }
+    if (segment.kind !== "line" && start.handleOut && end.handleIn) {
+      addPolyline(Array.from({ length: 25 }, (_, index) => {
+        const amount = index / 24;
+        const inverse = 1 - amount;
+        return {
+          x: inverse ** 3 * start.x + 3 * inverse ** 2 * amount * start.handleOut!.x + 3 * inverse * amount ** 2 * end.handleIn!.x + amount ** 3 * end.x,
+          y: inverse ** 3 * start.z + 3 * inverse ** 2 * amount * start.handleOut!.z + 3 * inverse * amount ** 2 * end.handleIn!.z + amount ** 3 * end.z,
+        };
+      }));
+      continue;
+    }
+    addPolyline([{ x: start.x, y: start.z }, { x: end.x, y: end.z }]);
+  }
+  for (const circle of (profile.circles ?? []).filter((candidate) => !candidate.construction)) {
+    addPolyline(Array.from({ length: 65 }, (_, index) => {
+      const angle = index / 64 * Math.PI * 2;
+      return { x: circle.x + Math.cos(angle) * circle.radius, y: circle.z + Math.sin(angle) * circle.radius };
+    }));
+  }
+  return positions;
 }
 
 function disposeCachedObjectRender(group: THREE.Group | null, cached: CachedObjectRender) {
@@ -238,7 +298,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onShapeParameterChange, onObjectOriginMove, onObjectAxisMove, onOperationAxisMove, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onShapeParameterChange, onObjectOriginMove, onObjectAxisMove, onOperationAxisMove, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
@@ -256,6 +316,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const modelRef = useRef<THREE.Group | null>(null);
   const originLayerRef = useRef<THREE.Group | null>(null);
   const workplaneRef = useRef<THREE.Group | null>(null);
+  const sketchLayerRef = useRef<THREE.Group | null>(null);
   const selectionRootRef = useRef<THREE.Group | null>(null);
   const selectionVisualRootRef = useRef<THREE.Group | null>(null);
   const operationContextRef = useRef<THREE.Group | null>(null);
@@ -416,7 +477,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const camera = projection === "orthographic"
       ? new THREE.OrthographicCamera(-90, 90, 90, -90, 0.1, 2000)
       : new THREE.PerspectiveCamera(38, 1, 0.1, 1000);
-    camera.position.set(95, 78, 110);
+    camera.position.set(-95, 78, -110);
     const renderProfile = viewportRenderProfile(renderQuality);
     const resolution = new AdaptiveViewportResolution(window.devicePixelRatio, viewportPerformanceOptions(renderQuality));
     const renderer = new THREE.WebGLRenderer({ antialias: renderProfile.antialias, alpha: false, powerPreference: "high-performance" });
@@ -566,6 +627,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const modelGroup = new THREE.Group();
     modelGroup.rotation.x = -Math.PI / 2;
     scene.add(modelGroup);
+    const sketchLayer = new THREE.Group();
+    sketchLayer.name = "Bocetos 2D";
+    modelGroup.add(sketchLayer);
+    sketchLayerRef.current = sketchLayer;
     const originLayer = new THREE.Group();
     originLayer.name = "Orígenes de objetos";
     modelGroup.add(originLayer);
@@ -1440,6 +1505,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       modelRef.current = null;
       originLayerRef.current = null;
       workplaneRef.current = null;
+      sketchLayerRef.current = null;
       faceHighlightRef.current = null;
       edgeHighlightRef.current = null;
       topologyFaceLayerRef.current = null;
@@ -1527,8 +1593,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     group.position.set(0, 0, 0);
     group.rotation.set(0, 0, 0);
 
-    const width = Math.max(60, workplane.width);
-    const depth = Math.max(60, workplane.depth);
+    const width = Math.max(1, workplane.width);
+    const depth = Math.max(1, workplane.depth);
     const requestedStep = Math.max(0.1, workplane.gridStep);
     const addGrid = (target: THREE.Group, gridWidth: number, gridDepth: number, yellow = false) => {
       const step = Math.max(requestedStep, Math.max(gridWidth, gridDepth) / 1000);
@@ -1606,6 +1672,64 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     }
     invalidateRef.current();
   }, [projection, renderQuality, workplane.activeSizePercent, workplane.depth, workplane.gridStep, workplane.gridVisible, workplane.normal.x, workplane.normal.y, workplane.normal.z, workplane.origin.x, workplane.origin.y, workplane.origin.z, workplane.width, workplane.xAxis.x, workplane.xAxis.y, workplane.xAxis.z, workplane.yAxis.x, workplane.yAxis.y, workplane.yAxis.z]);
+
+  useEffect(() => {
+    const layer = sketchLayerRef.current;
+    const renderer = rendererRef.current;
+    if (!layer || !renderer) return;
+    const clearLayer = () => layer.traverse((child) => {
+      if (!(child instanceof LineSegments2)) return;
+      child.geometry.dispose();
+      child.material.dispose();
+    });
+    clearLayer();
+    layer.clear();
+    for (const overlay of sketchOverlays) {
+      const positions = sketchOverlayPositions(overlay.feature);
+      if (positions.length === 0) continue;
+      const objectRoot = new THREE.Group();
+      if (overlay.object) {
+        objectRoot.position.set(overlay.object.transform.position.x, overlay.object.transform.position.y, overlay.object.transform.position.z);
+        objectRoot.rotation.set(
+          THREE.MathUtils.degToRad(overlay.object.transform.rotation.x),
+          THREE.MathUtils.degToRad(overlay.object.transform.rotation.y),
+          THREE.MathUtils.degToRad(overlay.object.transform.rotation.z),
+          "ZYX",
+        );
+        objectRoot.scale.set(overlay.object.transform.scale.x, overlay.object.transform.scale.y, overlay.object.transform.scale.z);
+      }
+      const sketchRoot = new THREE.Group();
+      sketchRoot.position.set(overlay.feature.x, overlay.feature.y, overlay.feature.offset);
+      sketchRoot.rotation.set(
+        THREE.MathUtils.degToRad(overlay.feature.rotation.x),
+        THREE.MathUtils.degToRad(overlay.feature.rotation.y),
+        THREE.MathUtils.degToRad(overlay.feature.rotation.z),
+        "ZYX",
+      );
+      const geometry = new LineSegmentsGeometry();
+      geometry.setPositions(positions);
+      const material = new LineMaterial({
+        color: overlay.selected ? "#f08036" : "#087fa4",
+        linewidth: overlay.selected ? 2.4 : 1.6,
+        transparent: true,
+        opacity: overlay.selected ? 1 : 0.82,
+        depthTest: true,
+        depthWrite: false,
+      });
+      material.resolution.set(Math.max(1, renderer.domElement.clientWidth), Math.max(1, renderer.domElement.clientHeight));
+      const drawing = new LineSegments2(geometry, material);
+      drawing.renderOrder = 19;
+      drawing.userData.sketchFeatureId = overlay.feature.id;
+      sketchRoot.add(drawing);
+      objectRoot.add(sketchRoot);
+      layer.add(objectRoot);
+    }
+    invalidateRef.current();
+    return () => {
+      clearLayer();
+      layer.clear();
+    };
+  }, [projection, renderQuality, sketchOverlays]);
 
   useEffect(() => {
     const group = modelRef.current;
@@ -2061,11 +2185,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       return;
     }
     const vectors: Record<"iso" | "top" | "front" | "right" | "home", THREE.Vector3> = {
-      iso: new THREE.Vector3(1, 0.78, 1),
+      iso: new THREE.Vector3(-1, 0.78, -1),
       top: new THREE.Vector3(0, 1, 0.001),
       front: new THREE.Vector3(0, 0.001, 1),
       right: new THREE.Vector3(1, 0.001, 0),
-      home: new THREE.Vector3(1, 0.78, 1),
+      home: new THREE.Vector3(-1, 0.78, -1),
     };
     camera.position.copy(target).add(vectors[view.name].normalize().multiplyScalar(distance));
     camera.up.set(0, 1, 0);

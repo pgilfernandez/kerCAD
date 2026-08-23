@@ -104,14 +104,14 @@ function resizeSketchImage(start: SketchImage, handle: ResizeHandle, point: { x:
   if (start.lockAspect !== false) {
     if ((startsWest || startsEast) && (startsNorth || startsSouth)) {
       const fixedX = startsWest ? maxX : minX;
-      const fixedZ = startsNorth ? maxZ : minZ;
+      const fixedZ = startsNorth ? minZ : maxZ;
       const widthScale = Math.abs(point.x - fixedX) / Math.max(minimum, start.width);
       const depthScale = Math.abs(point.z - fixedZ) / Math.max(minimum, start.depth);
       const scale = Math.max(minimum / Math.min(start.width, start.depth), widthScale, depthScale);
       const width = Math.max(minimum, start.width * scale);
       const depth = Math.max(minimum, start.depth * scale);
       const xDirection = startsWest ? -1 : 1;
-      const zDirection = startsNorth ? -1 : 1;
+      const zDirection = startsNorth ? 1 : -1;
       return { width, depth, x: fixedX + xDirection * width / 2, z: fixedZ + zDirection * depth / 2 };
     }
     if (startsWest || startsEast) {
@@ -119,9 +119,9 @@ function resizeSketchImage(start: SketchImage, handle: ResizeHandle, point: { x:
       const width = Math.max(minimum, Math.abs(point.x - fixedX));
       return { width, depth: Math.max(minimum, width / aspect), x: fixedX + (startsWest ? -1 : 1) * width / 2 };
     }
-    const fixedZ = startsNorth ? maxZ : minZ;
+    const fixedZ = startsNorth ? minZ : maxZ;
     const depth = Math.max(minimum, Math.abs(point.z - fixedZ));
-    return { depth, width: Math.max(minimum, depth * aspect), z: fixedZ + (startsNorth ? -1 : 1) * depth / 2 };
+    return { depth, width: Math.max(minimum, depth * aspect), z: fixedZ + (startsNorth ? 1 : -1) * depth / 2 };
   }
 
   let nextMinX = minX;
@@ -130,8 +130,8 @@ function resizeSketchImage(start: SketchImage, handle: ResizeHandle, point: { x:
   let nextMaxZ = maxZ;
   if (startsWest) nextMinX = Math.min(point.x, maxX - minimum);
   if (startsEast) nextMaxX = Math.max(point.x, minX + minimum);
-  if (startsNorth) nextMinZ = Math.min(point.z, maxZ - minimum);
-  if (startsSouth) nextMaxZ = Math.max(point.z, minZ + minimum);
+  if (startsNorth) nextMaxZ = Math.max(point.z, minZ + minimum);
+  if (startsSouth) nextMinZ = Math.min(point.z, maxZ - minimum);
   return {
     x: (nextMinX + nextMaxX) / 2,
     z: (nextMinZ + nextMaxZ) / 2,
@@ -624,7 +624,7 @@ export function SketchWorkspace({
     const local = screenPoint.matrixTransform(matrix.inverse());
     const step = exactSnapStep === undefined ? snapStep(snap) : Math.max(0, exactSnapStep);
     const x = snapValue(local.x, step);
-    const z = snapValue(local.y, step);
+    const z = snapValue(-local.y, step);
     return constrainToGrid
       ? { x: clamp(x, -workspace.width / 2, workspace.width / 2), z: clamp(z, -workspace.depth / 2, workspace.depth / 2) }
       : { x, z };
@@ -701,7 +701,7 @@ export function SketchWorkspace({
       const deltaY = event.clientY - pointerAction.clientY;
       setPan((current) => ({
         x: clamp(current.x - deltaX / scaleX, -workspace.width / 2, workspace.width / 2),
-        z: clamp(current.z - deltaY / scaleY, -workspace.depth / 2, workspace.depth / 2),
+          z: clamp(current.z + deltaY / scaleY, -workspace.depth / 2, workspace.depth / 2),
       }));
       setPointerAction({ ...pointerAction, clientX: event.clientX, clientY: event.clientY });
       return;
@@ -801,13 +801,13 @@ export function SketchWorkspace({
     maxZ: selectedImage.z + selectedImage.depth / 2,
   } : null;
   const imageResizeHandles: Array<{ id: ResizeHandle; x: number; z: number }> = selectedImage && selectedImageBounds ? [
-    { id: "nw", x: selectedImageBounds.minX, z: selectedImageBounds.minZ },
-    { id: "n", x: selectedImage.x, z: selectedImageBounds.minZ },
-    { id: "ne", x: selectedImageBounds.maxX, z: selectedImageBounds.minZ },
+    { id: "nw", x: selectedImageBounds.minX, z: selectedImageBounds.maxZ },
+    { id: "n", x: selectedImage.x, z: selectedImageBounds.maxZ },
+    { id: "ne", x: selectedImageBounds.maxX, z: selectedImageBounds.maxZ },
     { id: "e", x: selectedImageBounds.maxX, z: selectedImage.z },
-    { id: "se", x: selectedImageBounds.maxX, z: selectedImageBounds.maxZ },
-    { id: "s", x: selectedImage.x, z: selectedImageBounds.maxZ },
-    { id: "sw", x: selectedImageBounds.minX, z: selectedImageBounds.maxZ },
+    { id: "se", x: selectedImageBounds.maxX, z: selectedImageBounds.minZ },
+    { id: "s", x: selectedImage.x, z: selectedImageBounds.minZ },
+    { id: "sw", x: selectedImageBounds.minX, z: selectedImageBounds.minZ },
     { id: "w", x: selectedImageBounds.minX, z: selectedImage.z },
   ] : [];
   const referenceFootprints = useMemo(
@@ -828,7 +828,7 @@ export function SketchWorkspace({
         <svg
           ref={svgRef}
           className={`sketch-plate tool-${tool} ${pointerAction?.kind === "pan" ? "panning" : ""}`}
-          viewBox={`${pan.x - viewWidth / 2} ${pan.z - viewDepth / 2} ${viewWidth} ${viewDepth}`}
+          viewBox={`${pan.x - viewWidth / 2} ${-pan.z - viewDepth / 2} ${viewWidth} ${viewDepth}`}
           preserveAspectRatio="none"
           onPointerDown={handlePlanePointerDown}
           onPointerMove={handlePointerMove}
@@ -837,6 +837,7 @@ export function SketchWorkspace({
           onPointerLeave={() => !pointerAction && setHover(null)}
           onWheel={handleWheel}
         >
+          <g className="sketch-plate-world" transform="scale(1 -1)">
           <rect className="sketch-plate-background" x={-workspace.width / 2} y={-workspace.depth / 2} width={workspace.width} height={workspace.depth} />
           {workspace.showGrid ? (
             <g className="sketch-grid" pointerEvents="none">
@@ -848,12 +849,12 @@ export function SketchWorkspace({
                 const inset = side * 0.025;
                 const head = length * 0.18;
                 const originX = -workspace.width / 2 + inset;
-                const originZ = workspace.depth / 2 - inset;
+                const originZ = -workspace.depth / 2 + inset;
                 return <g className="sketch-grid-axis-indicator">
                   <line className="axis-x" x1={originX} y1={originZ} x2={originX + length} y2={originZ} />
                   <polygon className="axis-x" points={`${originX + length},${originZ} ${originX + length - head},${originZ - head * 0.55} ${originX + length - head},${originZ + head * 0.55}`} />
-                  <line className="axis-y" x1={originX} y1={originZ} x2={originX} y2={originZ - length} />
-                  <polygon className="axis-y" points={`${originX},${originZ - length} ${originX - head * 0.55},${originZ - length + head} ${originX + head * 0.55},${originZ - length + head}`} />
+                  <line className="axis-y" x1={originX} y1={originZ} x2={originX} y2={originZ + length} />
+                  <polygon className="axis-y" points={`${originX},${originZ + length} ${originX - head * 0.55},${originZ + length - head} ${originX + head * 0.55},${originZ + length - head}`} />
                 </g>;
               })()}
             </g>
@@ -862,7 +863,7 @@ export function SketchWorkspace({
             <g className="sketch-revolve-guide" pointerEvents="none">
               <rect x={0} y={-workspace.depth / 2} width={workspace.width / 2} height={workspace.depth} />
               <line x1={0} y1={-workspace.depth / 2} x2={0} y2={workspace.depth / 2} />
-              <text x={-5 * screenUnit} y={-workspace.depth / 2 + 18 * screenUnit} fontSize={12 * screenUnit}>REVOLVE AXIS</text>
+              <text x={-5 * screenUnit} y={workspace.depth / 2 - 18 * screenUnit} fontSize={12 * screenUnit}>REVOLVE AXIS</text>
             </g>
           ) : null}
           <g className="sketch-reference-images">
@@ -980,7 +981,7 @@ export function SketchWorkspace({
               const label = formatDimension(dimension.length, workspace.accuracy);
               const pill = dimensionPillSize(label, screenUnit, 18);
               return (
-                <g key={`dimension-${segment.id}`} transform={`translate(${dimension.midpoint.x} ${dimension.midpoint.z - labelOffset})`}>
+                <g key={`dimension-${segment.id}`} transform={`translate(${dimension.midpoint.x} ${dimension.midpoint.z + labelOffset})`}>
                   <rect x={-pill.width / 2} y={-pill.height / 2} width={pill.width} height={pill.height} rx={pill.radius} />
                   <text y={5 * screenUnit} fontSize={13 * screenUnit}>{label}</text>
                 </g>
@@ -989,7 +990,7 @@ export function SketchWorkspace({
           </g>
           {smoothPreviewData ? <path className="sketch-preview-line" d={smoothPreviewData} pointerEvents="none" /> : activePoint && hover && ["line", "bezier"].includes(tool) ? <line className="sketch-preview-line" x1={activePoint.x} y1={activePoint.z} x2={hover.x} y2={hover.z} pointerEvents="none" /> : null}
           {activePoint && hover && ["line", "bezier", "smooth"].includes(tool) ? (
-            <g className="sketch-segment-dimensions preview" pointerEvents="none" transform={`translate(${(activePoint.x + hover.x) / 2} ${(activePoint.z + hover.z) / 2 - labelOffset})`}>
+            <g className="sketch-segment-dimensions preview" pointerEvents="none" transform={`translate(${(activePoint.x + hover.x) / 2} ${(activePoint.z + hover.z) / 2 + labelOffset})`}>
               {(() => {
                 const pill = dimensionPillSize(previewLabel, screenUnit, 18);
                 return (
@@ -1031,7 +1032,7 @@ export function SketchWorkspace({
                 className="sketch-measurement-pill"
                 role="button"
                 aria-label="Remove measurement"
-                transform={`translate(${(measurement.start.x + measurement.end.x) / 2} ${(measurement.start.z + measurement.end.z) / 2 - labelOffset})`}
+                transform={`translate(${(measurement.start.x + measurement.end.x) / 2} ${(measurement.start.z + measurement.end.z) / 2 + labelOffset})`}
                 onPointerDown={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
@@ -1077,7 +1078,7 @@ export function SketchWorkspace({
             {displayCircles.map((circle) => {
               const label = `R ${formatDimension(circle.radius, workspace.accuracy)}`;
               const pill = dimensionPillSize(label, screenUnit, 18);
-              return <g key={`radius-${circle.id}`} transform={`translate(${circle.x + circle.radius + 12 * screenUnit} ${circle.z - 18 * screenUnit})`}>
+              return <g key={`radius-${circle.id}`} transform={`translate(${circle.x + circle.radius + 12 * screenUnit} ${circle.z + 18 * screenUnit})`}>
                 <rect x={0} y={-pill.height / 2} width={pill.width} height={pill.height} rx={pill.radius} />
                 <text x={pill.width / 2} y={5 * screenUnit} fontSize={13 * screenUnit}>{label}</text>
               </g>;
@@ -1119,7 +1120,7 @@ export function SketchWorkspace({
                 height={selectedImage.depth}
                 pointerEvents="none"
               />
-              <g className="sketch-image-dimension width" pointerEvents="none" transform={`translate(${selectedImage.x} ${selectedImageBounds.minZ - labelOffset})`}>
+              <g className="sketch-image-dimension width" pointerEvents="none" transform={`translate(${selectedImage.x} ${selectedImageBounds.maxZ + labelOffset})`}>
                 {(() => {
                   const label = formatDimension(selectedImage.width, workspace.accuracy);
                   const pill = dimensionPillSize(label, screenUnit, 18);
@@ -1175,6 +1176,7 @@ export function SketchWorkspace({
             </g>
           ) : null}
           {hover && ["line", "bezier", "smooth", "circle", "arc", "measure"].includes(tool) ? <circle className="sketch-cursor-point" cx={hover.x} cy={hover.z} r={hoverPointRadius} pointerEvents="none" /> : null}
+          </g>
         </svg>
       </section>
       {selectedImage && tool === "select" ? (

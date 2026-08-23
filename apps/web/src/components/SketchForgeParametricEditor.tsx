@@ -1,7 +1,7 @@
 "use client";
 
 import { Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, CornerDownRight, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, MousePointer2, PenLine, Plus, RotateCcw, Ruler, Spline, Split, Waves, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent as ReactFocusEvent } from "react";
 import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyEdgePick, type TopologyFacePick } from "@/components/ParametricViewport";
 import { SketchWorkspace, type SketchMeasurement, type SketchSelection, type SketchTool } from "@/components/SketchWorkspace";
@@ -20,6 +20,7 @@ import {
   ToolbarRedoIcon,
   ToolbarSettingsIcon,
   ToolbarShapeAddIcon,
+  ToolbarSketchIcon,
   ToolbarSnapGridIcon,
   ToolbarTrashIcon,
   ToolbarUndoIcon,
@@ -580,6 +581,12 @@ export function SketchForgeParametricEditor() {
     position: selectedBox.origin ?? { x: selectedBox.x, y: selectedBox.y, z: selectedBox.baseZ },
     rotation: selectedBox.rotation3d ?? { x: 0, y: 0, z: selectedBox.rotation },
   }] : [], [selectedBox, selectedOperationOriginId]);
+  const viewportSketchOverlays = useMemo(() => document.features.flatMap((feature) => {
+    if (feature.kind !== "sketch" || feature.purpose !== "user" || feature.suppressed) return [];
+    const object = feature.objectId ? document.objects.find((candidate) => candidate.id === feature.objectId) ?? null : null;
+    if (object?.visible === false) return [];
+    return [{ feature, object, selected: modelSelection.some((item) => item.kind === "feature" && item.id === feature.id) }];
+  }), [document.features, document.objects, modelSelection]);
   const snapAmount = document.workplane.snapToGrid ? document.workplane.gridStep : 0.01;
 
   const beginSketch = (featureId: string | null = null) => {
@@ -901,6 +908,12 @@ export function SketchForgeParametricEditor() {
   const updateGridSettings = (patch: Partial<Pick<ParametricDocument["workplane"], "width" | "depth" | "gridStep" | "gridVisible" | "activeSizePercent">>) => {
     setWorkplaneDraft((current) => ({ ...current, ...patch }));
     mutate((draft) => { Object.assign(draft.workplane, patch); });
+  };
+  const commitGridNumber = (event: ReactFocusEvent<HTMLInputElement>, key: "width" | "depth" | "gridStep" | "activeSizePercent", minimum: number, maximum: number, fallback: number) => {
+    const parsed = Number(event.currentTarget.value.replace(",", "."));
+    const value = Math.min(maximum, Math.max(minimum, Number.isFinite(parsed) ? parsed : fallback));
+    event.currentTarget.value = String(value);
+    updateGridSettings({ [key]: value });
   };
 
   useEffect(() => {
@@ -1466,6 +1479,10 @@ export function SketchForgeParametricEditor() {
   return (
     <main className="educad-reference-shell">
       <div className="secondary-toolbar">
+        <div className="toolbar-workspace-tabs educad-toolbar-titlebar">
+          <strong className="educad-toolbar-brand">eduCAD</strong>
+          <span className="educad-project-name">{document.name}</span>
+        </div>
         {sketchSession ? <div className="sketch-toolbar-ribbon educad-parametric-sketch-toolbar" aria-label="Herramientas de boceto">
           <ToolbarSection label="Dibujar">
             <Tool label="Línea" active={sketchTool === "line"} onClick={() => chooseSketchTool("line")}><PenLine /></Tool>
@@ -1494,12 +1511,7 @@ export function SketchForgeParametricEditor() {
           </ToolbarSection>
           <div className="toolbar-spacer" />
           <div className="educad-sketch-finish-actions"><button className="educad-sketch-action primary" type="button" onClick={acceptSketch}><Check size={17} /><span>Aceptar boceto</span></button><button className="educad-sketch-action" type="button" onClick={cancelSketch}><X size={17} /><span>Cancelar</span></button></div>
-        </div> : <>
-        <div className="toolbar-workspace-tabs">
-          <button className="active">Diseño 3D</button>
-          <button onClick={() => beginSketch(selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? selectedFeature.id : null)}>Boceto</button>
-          <span className="educad-project-name">eduCAD · {document.name}</span>
-        </div>
+        </div> :
         <div className="toolbar-mode-content geometry">
           <ToolbarSection label="Home" className="toolbar-home-section"><Tool label="Nuevo diseño" onClick={newDocument}><ToolbarHomeIcon /></Tool></ToolbarSection>
           <div className="tool-group left">
@@ -1515,6 +1527,7 @@ export function SketchForgeParametricEditor() {
             </ToolbarSection>
             <ToolbarSection label="Shapes" className="toolbar-shapes-section">
               <button data-educad-popup="shapes" className={`shape-menu-trigger ${shapesOpen ? "active" : ""}`} aria-label="Añadir forma" onClick={() => setShapesOpen((value) => !value)}><ToolbarShapeAddIcon /></button>
+              <Tool label="Crear boceto" onClick={() => { setShapesOpen(false); beginSketch(null); }}><ToolbarSketchIcon /></Tool>
               {shapesOpen && (
                 <div data-educad-popup="shapes" className="shape-menu-dropdown">
                   <div className="shape-menu-title">Formas</div>
@@ -1580,7 +1593,7 @@ export function SketchForgeParametricEditor() {
               <button data-educad-popup="settings" className="action-icon-button" aria-label="Ajustes" onClick={() => setSettingsOpen((value) => !value)}><ToolbarSettingsIcon /></button>
             </div>
           </ToolbarSection>
-        </div></>}
+        </div>}
       </div>
 
       <section className={`educad-workplane-stage ${sketchSession ? "sketch-active" : ""}`}>
@@ -1686,6 +1699,7 @@ export function SketchForgeParametricEditor() {
           objectColors={objectColors}
           objectOrigins={viewportObjectOrigins}
           operationOrigins={viewportOperationOrigins}
+          sketchOverlays={viewportSketchOverlays}
           editableOriginId={originEditObjectId}
           selectedObjectOriginId={selectedOriginObjectId}
           selectedOperationOriginId={selectedOperationOriginId}
@@ -1764,10 +1778,10 @@ export function SketchForgeParametricEditor() {
         {workplaneOpen ? <div data-educad-popup="grid" className="educad-workplane-popover">
           <header><div><strong>Rejilla</strong><span>Suelo global y tamaño del plano activo</span></div><button type="button" aria-label="Cerrar" onClick={() => setWorkplaneOpen(false)}><X size={17} /></button></header>
           <label><span>Mostrar suelo XY</span><input type="checkbox" checked={workplaneDraft.gridVisible} onChange={(event) => updateGridSettings({ gridVisible: event.target.checked })} /></label>
-          <label><span>Tamaño del plano activo</span><span className="educad-number-input"><input type="number" min="2" max="100" step="1" value={workplaneDraft.activeSizePercent} onChange={(event) => updateGridSettings({ activeSizePercent: Math.min(100, Math.max(2, Number(event.target.value) || 10)) })} /><small>%</small></span></label>
-          <label><span>Ancho</span><span className="educad-number-input"><input type="number" min="60" max="2000" step="1" value={workplaneDraft.width} onChange={(event) => updateGridSettings({ width: Math.min(2000, Math.max(60, Number(event.target.value) || 60)) })} /><small>mm</small></span></label>
-          <label><span>Largo</span><span className="educad-number-input"><input type="number" min="60" max="2000" step="1" value={workplaneDraft.depth} onChange={(event) => updateGridSettings({ depth: Math.min(2000, Math.max(60, Number(event.target.value) || 60)) })} /><small>mm</small></span></label>
-          <label><span>Paso de líneas</span><span className="educad-number-input"><input type="number" min="0.1" max="200" step="0.1" value={workplaneDraft.gridStep} onChange={(event) => updateGridSettings({ gridStep: Math.min(200, Math.max(0.1, Number(event.target.value) || 0.1)) })} /><small>mm</small></span></label>
+          <label><span>Tamaño del plano activo</span><span className="educad-number-input"><input type="number" min="2" max="100" step="1" defaultValue={workplaneDraft.activeSizePercent} onBlur={(event) => commitGridNumber(event, "activeSizePercent", 2, 100, workplaneDraft.activeSizePercent)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>%</small></span></label>
+          <label><span>Ancho (eje X)</span><span className="educad-number-input"><input type="number" min="1" max="2000" step="1" defaultValue={workplaneDraft.width} onBlur={(event) => commitGridNumber(event, "width", 1, 2000, workplaneDraft.width)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>mm</small></span></label>
+          <label><span>Profundo (eje Y)</span><span className="educad-number-input"><input type="number" min="1" max="2000" step="1" defaultValue={workplaneDraft.depth} onBlur={(event) => commitGridNumber(event, "depth", 1, 2000, workplaneDraft.depth)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>mm</small></span></label>
+          <label><span>Paso de líneas</span><span className="educad-number-input"><input type="number" min="0.1" max="200" step="0.1" defaultValue={workplaneDraft.gridStep} onBlur={(event) => commitGridNumber(event, "gridStep", 0.1, 200, workplaneDraft.gridStep)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>mm</small></span></label>
         </div> : null}
         <button
           className={`educad-sidebar-mode-control ${modelSidebarMode}`}
@@ -1927,5 +1941,5 @@ function ViewCube({ orientation, onDirection }: { orientation: CameraOrientation
       window.setTimeout(() => { draggedRef.current = false; }, 0);
     }}
     onPointerCancel={() => { dragRef.current = null; draggedRef.current = false; }}
-  ><div className="view-cube-inner" style={{ transform: cubeTransform }}><button type="button" className="cube-face cube-top" aria-label="Vista inferior" onClick={() => chooseDirection([0, -1, 0.001])}>BOTTOM</button><button type="button" className="cube-face cube-bottom" aria-label="Vista superior" onClick={() => chooseDirection([0, 1, 0.001])}>TOP</button><button type="button" className="cube-face cube-front" aria-label="Vista frontal" onClick={() => chooseDirection([0, 0.001, 1])}>FRONT</button><button type="button" className="cube-face cube-back" aria-label="Vista trasera" onClick={() => chooseDirection([0, 0.001, -1])}>BACK</button><button type="button" className="cube-face cube-right" aria-label="Vista derecha" onClick={() => chooseDirection([1, 0.001, 0])}>RIGHT</button><button type="button" className="cube-face cube-left" aria-label="Vista izquierda" onClick={() => chooseDirection([-1, 0.001, 0])}>LEFT</button></div></div>;
+  ><div className="view-cube-inner" style={{ transform: cubeTransform }}><button type="button" className="cube-face cube-top" aria-label="Vista inferior" onClick={() => chooseDirection([0, -1, 0.001])}>BOTTOM</button><button type="button" className="cube-face cube-bottom" aria-label="Vista superior" onClick={() => chooseDirection([0, 1, 0.001])}>TOP</button><button type="button" className="cube-face cube-front" aria-label="Vista frontal" onClick={() => chooseDirection([0, 0.001, 1])}>FRONT</button><button type="button" className="cube-face cube-back" aria-label="Vista trasera" onClick={() => chooseDirection([0, 0.001, -1])}>BACK</button><button type="button" className="cube-face cube-right" aria-label="Vista izquierda" onClick={() => chooseDirection([-1, 0.001, 0])}>LEFT</button><button type="button" className="cube-face cube-left" aria-label="Vista derecha" onClick={() => chooseDirection([1, 0.001, 0])}>RIGHT</button></div></div>;
 }

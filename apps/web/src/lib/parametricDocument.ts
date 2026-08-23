@@ -56,6 +56,7 @@ export function createStarterDocument(now = Date.now()): ParametricDocument {
         x: 0,
         y: 0,
         offset: 0,
+        rotation: { x: 0, y: 0, z: 0 },
         profile: { shape: "rectangle", width: 20, depth: 20 },
       },
       {
@@ -101,6 +102,7 @@ export function createSketchFeature(shape: RectangleProfile["shape"] | CirclePro
     x: 0,
     y: 0,
     offset: 0,
+    rotation: { x: 0, y: 0, z: 0 },
     profile: shape === "rectangle"
       ? { shape, width: 40, depth: 30 }
       : { shape, diameter: 24 },
@@ -118,6 +120,7 @@ export function createDrawnSketchFeature(index: number, geometry: DrawnProfile["
     x: 0,
     y: 0,
     offset: 0,
+    rotation: { x: 0, y: 0, z: 0 },
     profile: { shape: "drawn", geometry: structuredClone(geometry) },
   };
 }
@@ -260,8 +263,8 @@ export function migrateParametricDocument(document: ParametricDocument): Paramet
 export function normalizeParametricDocument(document: ParametricDocument): ParametricDocument {
   const next = migrateParametricDocument(document);
   next.workplane ??= { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, ...globalParametricWorkplanePlacement() };
-  next.workplane.width = Math.min(2000, Math.max(60, Number.isFinite(next.workplane.width) ? next.workplane.width : 200));
-  next.workplane.depth = Math.min(2000, Math.max(60, Number.isFinite(next.workplane.depth) ? next.workplane.depth : 200));
+  next.workplane.width = Math.min(2000, Math.max(1, Number.isFinite(next.workplane.width) ? next.workplane.width : 200));
+  next.workplane.depth = Math.min(2000, Math.max(1, Number.isFinite(next.workplane.depth) ? next.workplane.depth : 200));
   next.workplane.gridStep = Math.min(200, Math.max(0.1, Number.isFinite(next.workplane.gridStep) ? next.workplane.gridStep : 5));
   next.workplane.snapToGrid = typeof next.workplane.snapToGrid === "boolean" ? next.workplane.snapToGrid : true;
   next.workplane.gridVisible = typeof next.workplane.gridVisible === "boolean" ? next.workplane.gridVisible : true;
@@ -281,7 +284,10 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
   }
 
   for (const feature of next.features) {
-    if (feature.kind === "sketch") feature.purpose ??= feature.profile.shape === "drawn" ? "user" : "primitive";
+    if (feature.kind === "sketch") {
+      feature.purpose ??= feature.profile.shape === "drawn" ? "user" : "primitive";
+      feature.rotation ??= { x: 0, y: 0, z: 0 };
+    }
     if ((feature.kind === "extrude" || feature.kind === "primitive") && (feature.operation as string) === "new") feature.operation = "add";
     if (feature.kind === "fillet") {
       feature.treatment ??= "fillet";

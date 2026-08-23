@@ -73,6 +73,7 @@ export type SketchFeature = BaseFeature & {
   x: number;
   y: number;
   offset: number;
+  rotation: ParametricVector3;
   profile: RectangleProfile | CircleProfile | DrawnProfile;
 };
 

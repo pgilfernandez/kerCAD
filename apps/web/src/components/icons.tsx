@@ -110,6 +110,10 @@ export function ToolbarShapeAddIcon(props: IconProps) {
   return <VectorToolbarSpriteIcon rect={{ x: 104, y: 0, width: 29, height: 27 }} {...props} />;
 }
 
+export function ToolbarSketchIcon() {
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/sketch.svg" alt="" draggable={false} />;
+}
+
 export function ToolbarBooleanModeIcon({ mode, ...props }: IconProps & { mode: "add" | "hole" | "common" }) {
   const color = mode === "add" ? "#378451" : mode === "hole" ? "#b6524d" : "#7256aa";
   const symbol = mode === "add" ? "+" : mode === "hole" ? "−" : "∩";

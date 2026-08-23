@@ -61,8 +61,8 @@ function drawnSketchFaces(brep: Brep, sketch: SketchFeature): Face[] {
       const from = points.get(fromId);
       const to = points.get(toId);
       if (!from || !to) throw new Error(`${sketch.name}: el boceto contiene referencias incompletas.`);
-      const fromVec: [number, number, number] = [from.x + sketch.x, from.z + sketch.y, sketch.offset];
-      const toVec: [number, number, number] = [to.x + sketch.x, to.z + sketch.y, sketch.offset];
+      const fromVec: [number, number, number] = [from.x, from.z, 0];
+      const toVec: [number, number, number] = [to.x, to.z, 0];
       if (segment.kind === "arc" && segment.center) {
         const radius = Math.hypot(from.x - segment.center.x, from.z - segment.center.z);
         const startAngle = Math.atan2(from.z - segment.center.z, from.x - segment.center.x) * 180 / Math.PI;
@@ -71,7 +71,7 @@ function drawnSketchFaces(brep: Brep, sketch: SketchFeature): Face[] {
         const positive = forward ? segment.clockwise !== false : segment.clockwise === false;
         if (positive) while (endAngle <= startAngle) endAngle += 360;
         else while (endAngle >= startAngle) endAngle -= 360;
-        return brep.unwrap(brep.ellipseArc(radius, radius, startAngle, endAngle, { at: [segment.center.x + sketch.x, segment.center.z + sketch.y, sketch.offset] })) as Edge;
+        return brep.unwrap(brep.ellipseArc(radius, radius, startAngle, endAngle, { at: [segment.center.x, segment.center.z, 0] })) as Edge;
       }
       if (segment.kind === "line" || (!from.handleIn && !from.handleOut && !to.handleIn && !to.handleOut)) return brep.line(fromVec, toVec);
       const forward = segment.startId === fromId;
@@ -80,8 +80,8 @@ function drawnSketchFaces(brep: Brep, sketch: SketchFeature): Face[] {
       if (!firstHandle || !secondHandle) return brep.line(fromVec, toVec);
       return brep.unwrap(brep.bezier([
         fromVec,
-        [firstHandle.x + sketch.x, firstHandle.z + sketch.y, sketch.offset],
-        [secondHandle.x + sketch.x, secondHandle.z + sketch.y, sketch.offset],
+        [firstHandle.x, firstHandle.z, 0],
+        [secondHandle.x, secondHandle.z, 0],
         toVec,
       ])) as Edge;
     });
@@ -96,7 +96,7 @@ function drawnSketchFaces(brep: Brep, sketch: SketchFeature): Face[] {
       const angle = index / 64 * Math.PI * 2;
       return { x: circle.x + Math.cos(angle) * circle.radius, y: circle.z + Math.sin(angle) * circle.radius };
     });
-    const edge = brep.circle(circle.radius, { at: [circle.x + sketch.x, circle.z + sketch.y, sketch.offset] });
+    const edge = brep.circle(circle.radius, { at: [circle.x, circle.z, 0] });
     const wire = brep.unwrap(brep.wireLoop([edge]));
     return { wire, polygon, area: Math.PI * circle.radius ** 2, depth: 0 };
   })];
@@ -121,40 +121,50 @@ function solidFromSketch(brep: Brep, sketch: SketchFeature, feature: ExtrudeFeat
       const face = feature.symmetric ? brep.translate(sourceFace, [0, 0, -feature.distance / 2]) as Face : sourceFace;
       return brep.unwrap(brep.extrude(face as Parameters<Brep["extrude"]>[0], feature.distance)) as AnySolid;
     });
-    const solid = combineSketchSolids(brep, solids);
+    const solid = applySketchTransform(brep, combineSketchSolids(brep, solids), sketch);
     return applyOperationTransform(brep, solid, feature.transform);
   }
-  const centerZ = feature.symmetric ? sketch.offset : sketch.offset + feature.distance / 2;
+  const centerZ = feature.symmetric ? 0 : feature.distance / 2;
   let solid: AnySolid;
   if (profile.shape === "rectangle") {
     solid = brep.box(profile.width, profile.depth, feature.distance, {
       centered: true,
-      at: [sketch.x, sketch.y, centerZ],
+      at: [0, 0, centerZ],
     });
   } else {
     solid = brep.cylinder(profile.diameter / 2, feature.distance, {
       centered: true,
-      at: [sketch.x, sketch.y, centerZ],
+      at: [0, 0, centerZ],
     });
   }
-  return applyOperationTransform(brep, solid, feature.transform);
+  return applyOperationTransform(brep, applySketchTransform(brep, solid, sketch), feature.transform);
 }
 
 function facesFromSketch(brep: Brep, sketch: SketchFeature): Face[] {
-  if (sketch.profile.shape === "drawn") return drawnSketchFaces(brep, sketch);
+  if (sketch.profile.shape === "drawn") return drawnSketchFaces(brep, sketch).map((face) => applySketchTransform(brep, face, sketch));
   if (sketch.profile.shape === "rectangle") {
     const halfWidth = sketch.profile.width / 2;
     const halfDepth = sketch.profile.depth / 2;
-    return [brep.unwrap(brep.polygon([
-      [sketch.x - halfWidth, sketch.y - halfDepth, sketch.offset],
-      [sketch.x + halfWidth, sketch.y - halfDepth, sketch.offset],
-      [sketch.x + halfWidth, sketch.y + halfDepth, sketch.offset],
-      [sketch.x - halfWidth, sketch.y + halfDepth, sketch.offset],
-    ])) as Face];
+    const face = brep.unwrap(brep.polygon([
+      [-halfWidth, -halfDepth, 0],
+      [halfWidth, -halfDepth, 0],
+      [halfWidth, halfDepth, 0],
+      [-halfWidth, halfDepth, 0],
+    ])) as Face;
+    return [applySketchTransform(brep, face, sketch)];
   }
-  const edge = brep.circle(sketch.profile.diameter / 2, { at: [sketch.x, sketch.y, sketch.offset] });
+  const edge = brep.circle(sketch.profile.diameter / 2, { at: [0, 0, 0] });
   const wire = brep.unwrap(brep.wireLoop([edge]));
-  return [brep.unwrap(brep.face(wire as Parameters<Brep["face"]>[0])) as Face];
+  return [applySketchTransform(brep, brep.unwrap(brep.face(wire as Parameters<Brep["face"]>[0])) as Face, sketch)];
+}
+
+function applySketchTransform<T extends AnySolid | Face>(brep: Brep, shape: T, sketch: SketchFeature): T {
+  let transformed = shape;
+  if (sketch.rotation.x) transformed = brep.rotate(transformed as AnySolid, sketch.rotation.x, { axis: [1, 0, 0] }) as unknown as T;
+  if (sketch.rotation.y) transformed = brep.rotate(transformed as AnySolid, sketch.rotation.y, { axis: [0, 1, 0] }) as unknown as T;
+  if (sketch.rotation.z) transformed = brep.rotate(transformed as AnySolid, sketch.rotation.z, { axis: [0, 0, 1] }) as unknown as T;
+  if (sketch.x || sketch.y || sketch.offset) transformed = brep.translate(transformed as AnySolid, [sketch.x, sketch.y, sketch.offset]) as unknown as T;
+  return transformed;
 }
 
 function applyOperationTransform(brep: Brep, solid: AnySolid, operation: ExtrudeFeature["transform"]): AnySolid {

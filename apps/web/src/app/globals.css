@@ -3296,6 +3296,34 @@ button {
   align-items: stretch;
 }
 
+.toolbar-workspace-tabs.educad-toolbar-titlebar {
+  left: 0;
+  width: 100%;
+  align-items: center;
+}
+
+.educad-toolbar-brand {
+  margin-left: 17px;
+  color: #264d68;
+  font-size: 15px;
+  font-weight: 950;
+  letter-spacing: -0.02em;
+}
+
+.educad-toolbar-titlebar .educad-project-name {
+  position: absolute;
+  left: 50%;
+  display: block;
+  max-width: min(50vw, 520px);
+  padding: 0;
+  color: #587185;
+  border: 0;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 850;
+  text-align: center;
+}
+
 .toolbar-workspace-tabs button {
   flex: 0 0 auto;
   min-width: 0;
@@ -3645,7 +3673,7 @@ button {
 }
 
 .toolbar-shapes-section {
-  min-width: 82px;
+  min-width: 126px;
 }
 
 .shape-menu-trigger {
@@ -4535,10 +4563,16 @@ button {
 }
 
 .educad-parametric-sketch-toolbar {
+  position: absolute;
+  top: calc(var(--editor-toolbar-height) - var(--editor-toolbar-tools-height));
+  right: 0;
+  bottom: 0;
+  left: 0;
   display: flex;
   align-items: stretch;
   width: 100%;
-  min-height: 78px;
+  height: var(--editor-toolbar-tools-height);
+  min-height: 0;
 }
 
 .educad-sketch-finish-actions {
@@ -4678,6 +4712,13 @@ button {
 .sketch-plate-background {
   fill: #ddf8ff;
   stroke: none;
+}
+
+.sketch-plate-world text,
+.sketch-plate-world image {
+  transform: scaleY(-1);
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
 .sketch-plate-border {
