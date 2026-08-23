@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, MousePointer2, PenLine, Plus, RotateCcw, Ruler, Spline, X } from "lucide-react";
+import { Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, CornerDownRight, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, MousePointer2, PenLine, Plus, RotateCcw, Ruler, Spline, Split, Waves, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyEdgePick, type TopologyFacePick } from "@/components/ParametricViewport";
@@ -177,17 +177,22 @@ function isClosedSketch(profile: SketchProfile) {
 function withSmoothSketchHandles(profile: SketchProfile) {
   const next = cloneSketchProfile(profile);
   const points = new Map(next.points.map((point) => [point.id, point]));
-  orderedSketchPaths(next).forEach((path) => path.points.forEach((sourcePoint, index) => {
-    const point = points.get(sourcePoint.id);
-    if (!point) return;
+  next.points.forEach((point) => {
     if (point.mode === "split" && point.handleIn && point.handleOut) return;
-    const previous = path.closed ? path.points[(index - 1 + path.points.length) % path.points.length] : path.points[Math.max(0, index - 1)];
-    const following = path.closed ? path.points[(index + 1) % path.points.length] : path.points[Math.min(path.points.length - 1, index + 1)];
-    const tangent = { x: (following.x - previous.x) / 6, z: (following.z - previous.z) / 6 };
+    const incoming = next.segments.find((segment) => segment.endId === point.id);
+    const outgoing = next.segments.find((segment) => segment.startId === point.id);
+    const previous = incoming ? points.get(incoming.startId) : null;
+    const following = outgoing ? points.get(outgoing.endId) : null;
+    if (!previous && !following) return;
+    const tangent = previous && following
+      ? { x: (following.x - previous.x) / 6, z: (following.z - previous.z) / 6 }
+      : previous
+        ? { x: (point.x - previous.x) / 6, z: (point.z - previous.z) / 6 }
+        : { x: (following!.x - point.x) / 6, z: (following!.z - point.z) / 6 };
     point.handleIn = { x: point.x - tangent.x, z: point.z - tangent.z };
     point.handleOut = { x: point.x + tangent.x, z: point.z + tangent.z };
     point.mode = "smooth";
-  }));
+  });
   return next;
 }
 
@@ -710,12 +715,13 @@ export function SketchForgeParametricEditor() {
     }
     if (sketchActivePointId === pointId) return;
     const duplicate = sketchSession.profile.segments.some((segment) => (segment.startId === sketchActivePointId && segment.endId === pointId) || (segment.startId === pointId && segment.endId === sketchActivePointId));
+    let closed = false;
     if (!duplicate) setSketchProfile((profile) => {
       const next = { ...profile, segments: [...profile.segments, { id: sketchEntityId("segment"), startId: sketchActivePointId, endId: pointId, kind: sketchTool as "line" | "bezier" | "smooth" }] };
-      return sketchTool === "smooth" ? withSmoothSketchHandles(next) : next;
+      const prepared = sketchTool === "smooth" ? withSmoothSketchHandles(next) : next;
+      closed = orderedSketchPaths(prepared).some((path) => path.closed && path.points.some((point) => point.id === sketchActivePointId) && path.points.some((point) => point.id === pointId));
+      return prepared;
     });
-    const firstPointId = sketchSession.profile.segments.length ? sketchSession.profile.segments[0].startId : null;
-    const closed = pointId === firstPointId;
     setSketchActivePointId(closed ? null : pointId);
     setSketchSelection({ kind: "point", id: pointId });
     if (closed) setSketchTool("select");
@@ -822,6 +828,29 @@ export function SketchForgeParametricEditor() {
     }
     return next;
   });
+
+  const selectedSketchPoint = sketchSession && sketchSelection?.kind === "point"
+    ? sketchSession.profile.points.find((point) => point.id === sketchSelection.id) ?? null
+    : null;
+
+  const deleteCurrentSketchSelection = () => {
+    if (!sketchSelection) return false;
+    const pointIds = sketchSelection.kind === "point" ? [sketchSelection.id] : sketchSelection.kind === "multiple" ? sketchSelection.pointIds : [];
+    const segmentIds = sketchSelection.kind === "segment" ? [sketchSelection.id] : sketchSelection.kind === "multiple" ? sketchSelection.segmentIds : [];
+    const imageIds = sketchSelection.kind === "image" ? [sketchSelection.id] : sketchSelection.kind === "multiple" ? sketchSelection.imageIds ?? [] : [];
+    const circleIds = sketchSelection.kind === "circle" ? [sketchSelection.id] : sketchSelection.kind === "multiple" ? sketchSelection.circleIds ?? [] : [];
+    if (!pointIds.length && !segmentIds.length && !imageIds.length && !circleIds.length) return false;
+    setSketchProfile((profile) => ({
+      ...profile,
+      points: profile.points.filter((point) => !pointIds.includes(point.id)),
+      segments: profile.segments.filter((segment) => !segmentIds.includes(segment.id) && !pointIds.includes(segment.startId) && !pointIds.includes(segment.endId)),
+      circles: (profile.circles ?? []).filter((circle) => !circleIds.includes(circle.id)),
+      images: (profile.images ?? []).filter((image) => !imageIds.includes(image.id)),
+    }));
+    setSketchActivePointId(null);
+    setSketchSelection(null);
+    return true;
+  };
 
   const addExtrudeFromSketch = (sketch: SketchFeature) => {
     let featureId = "";
@@ -953,15 +982,7 @@ export function SketchForgeParametricEditor() {
         }
         if (event.key === "Escape") cancelSketch();
         if (event.key === "Delete" || event.key === "Backspace") {
-          const pointIds = sketchSelection?.kind === "point" ? [sketchSelection.id] : sketchSelection?.kind === "multiple" ? sketchSelection.pointIds : [];
-          const segmentIds = sketchSelection?.kind === "segment" ? [sketchSelection.id] : sketchSelection?.kind === "multiple" ? sketchSelection.segmentIds : [];
-          const imageIds = sketchSelection?.kind === "image" ? [sketchSelection.id] : sketchSelection?.kind === "multiple" ? sketchSelection.imageIds ?? [] : [];
-          const circleIds = sketchSelection?.kind === "circle" ? [sketchSelection.id] : sketchSelection?.kind === "multiple" ? sketchSelection.circleIds ?? [] : [];
-          if (pointIds.length || segmentIds.length || imageIds.length || circleIds.length) {
-            event.preventDefault();
-            setSketchProfile((profile) => ({ ...profile, points: profile.points.filter((point) => !pointIds.includes(point.id)), segments: profile.segments.filter((segment) => !segmentIds.includes(segment.id) && !pointIds.includes(segment.startId) && !pointIds.includes(segment.endId)), circles: (profile.circles ?? []).filter((circle) => !circleIds.includes(circle.id)), images: (profile.images ?? []).filter((image) => !imageIds.includes(image.id)) }));
-            setSketchSelection(null);
-          }
+          if (deleteCurrentSketchSelection()) event.preventDefault();
         }
         return;
       }
@@ -1451,12 +1472,18 @@ export function SketchForgeParametricEditor() {
             <Tool label="Curva Bézier" active={sketchTool === "bezier"} onClick={() => chooseSketchTool("bezier")}><Spline /></Tool>
             <Tool label="Curva suave" active={sketchTool === "smooth"} onClick={() => chooseSketchTool("smooth")}><Spline /></Tool>
             <Tool label="Círculo" active={sketchTool === "circle"} onClick={() => chooseSketchTool("circle")}><Circle /></Tool>
+            <Tool label="Arco por centro" active={sketchTool === "arc"} onClick={() => chooseSketchTool("arc")}><RotateCcw /></Tool>
           </ToolbarSection>
           <ToolbarSection label="Editar">
             <Tool label="Seleccionar" active={sketchTool === "select"} onClick={() => chooseSketchTool("select")}><MousePointer2 /></Tool>
             <Tool label="Refinar" active={sketchTool === "refine"} onClick={() => chooseSketchTool("refine")}><Plus /></Tool>
-            <Tool label="Borrar" active={sketchTool === "erase"} onClick={() => chooseSketchTool("erase")}><Eraser /></Tool>
+            <Tool label={sketchSelection ? "Borrar selección" : "Borrar"} active={!sketchSelection && sketchTool === "erase"} onClick={() => { if (!deleteCurrentSketchSelection()) chooseSketchTool("erase"); }}><Eraser /></Tool>
             <Tool label="Geometría de construcción" enabled={selectedConstructionIds.segmentIds.length + selectedConstructionIds.circleIds.length > 0} active={selectedConstructionIds.allConstruction} onClick={toggleSketchConstruction}><DraftingCompass /></Tool>
+          </ToolbarSection>
+          <ToolbarSection label="Punto">
+            <Tool label="Esquina" enabled={Boolean(selectedSketchPoint)} active={selectedSketchPoint?.mode === "corner" || Boolean(selectedSketchPoint && !selectedSketchPoint.mode)} onClick={() => selectedSketchPoint && setSketchPointMode(selectedSketchPoint.id, "corner")}><CornerDownRight /></Tool>
+            <Tool label="Suave" enabled={Boolean(selectedSketchPoint)} active={selectedSketchPoint?.mode === "smooth"} onClick={() => selectedSketchPoint && setSketchPointMode(selectedSketchPoint.id, "smooth")}><Waves /></Tool>
+            <Tool label="Separar tiradores" enabled={Boolean(selectedSketchPoint)} active={selectedSketchPoint?.mode === "split"} onClick={() => selectedSketchPoint && setSketchPointMode(selectedSketchPoint.id, "split")}><Split /></Tool>
           </ToolbarSection>
           <ToolbarSection label="Historial">
             <Tool label="Deshacer boceto" enabled={sketchHistoryIndex > 0} onClick={sketchUndo}><ToolbarUndoIcon /></Tool>
@@ -1466,7 +1493,7 @@ export function SketchForgeParametricEditor() {
             <Tool label="Medir" active={sketchTool === "measure"} onClick={() => chooseSketchTool("measure")}><Ruler /></Tool>
           </ToolbarSection>
           <div className="toolbar-spacer" />
-          <div className="educad-sketch-finish-actions"><button className="sketch-command-button primary" type="button" onClick={acceptSketch}><Check size={18} /><span>Aceptar boceto</span></button><button className="sketch-command-button cancel" type="button" onClick={cancelSketch}><X size={18} /><span>Cancelar</span></button></div>
+          <div className="educad-sketch-finish-actions"><button className="educad-sketch-action primary" type="button" onClick={acceptSketch}><Check size={17} /><span>Aceptar boceto</span></button><button className="educad-sketch-action" type="button" onClick={cancelSketch}><X size={17} /><span>Cancelar</span></button></div>
         </div> : <>
         <div className="toolbar-workspace-tabs">
           <button className="active">Diseño 3D</button>
@@ -1580,6 +1607,37 @@ export function SketchForgeParametricEditor() {
             setSketchSelection({ kind: "circle", id });
             setSketchTool("select");
           }}
+          onAddArc={({ center, start, end, clockwise }) => {
+            const segmentId = sketchEntityId("arc");
+            setSketchProfile((profile) => {
+              const findOrAddPoint = (position: { x: number; z: number }) => {
+                const existing = profile.points.find((point) => Math.hypot(point.x - position.x, point.z - position.z) < 0.0001);
+                if (existing) return existing.id;
+                const point: SketchPoint = { id: sketchEntityId("point"), ...position, mode: "corner" };
+                profile.points.push(point);
+                return point.id;
+              };
+              const startId = findOrAddPoint(start);
+              const endId = findOrAddPoint(end);
+              return { ...profile, segments: [...profile.segments, { id: segmentId, startId, endId, kind: "arc", center: { ...center }, clockwise }] };
+            });
+            setSketchSelection({ kind: "segment", id: segmentId });
+            setSketchTool("select");
+          }}
+          onMoveArcCenter={(segmentId, center) => setSketchProfile((profile) => {
+            const next = cloneSketchProfile(profile);
+            const segment = next.segments.find((candidate) => candidate.id === segmentId && candidate.kind === "arc" && candidate.center);
+            if (!segment?.center) return profile;
+            const dx = center.x - segment.center.x;
+            const dz = center.z - segment.center.z;
+            segment.center = { ...center };
+            for (const point of next.points) {
+              if (point.id !== segment.startId && point.id !== segment.endId) continue;
+              point.x += dx;
+              point.z += dz;
+            }
+            return next;
+          })}
           onSelectCircle={(id) => { setSketchSelection({ kind: "circle", id }); setSketchActivePointId(null); }}
           onDeleteCircle={(id) => { setSketchProfile((profile) => ({ ...profile, circles: (profile.circles ?? []).filter((circle) => circle.id !== id) })); setSketchSelection(null); }}
           onMoveCircle={(id, center) => setSketchProfile((profile) => ({ ...profile, circles: (profile.circles ?? []).map((circle) => circle.id === id ? { ...circle, ...center } : circle) }))}
@@ -1589,16 +1647,39 @@ export function SketchForgeParametricEditor() {
           onDeleteImage={(id) => setSketchProfile((profile) => ({ ...profile, images: (profile.images ?? []).filter((image) => image.id !== id) }))}
           onDeletePoint={deleteSketchPoint}
           onDeleteSegment={deleteSketchSegment}
-          onMovePoint={(id, point) => setSketchProfile((profile) => ({ ...profile, points: profile.points.map((candidate) => {
-            if (candidate.id !== id) return candidate;
-            const dx = point.x - candidate.x;
-            const dz = point.z - candidate.z;
-            return { ...candidate, ...point, handleIn: candidate.handleIn ? { x: candidate.handleIn.x + dx, z: candidate.handleIn.z + dz } : undefined, handleOut: candidate.handleOut ? { x: candidate.handleOut.x + dx, z: candidate.handleOut.z + dz } : undefined };
-          }) }))}
+          onMovePoint={(id, position) => setSketchProfile((profile) => {
+            const next = cloneSketchProfile(profile);
+            const source = next.points.find((point) => point.id === id);
+            if (!source) return profile;
+            let target = { ...position };
+            const endingArc = next.segments.find((segment) => segment.kind === "arc" && segment.center && segment.endId === id);
+            if (endingArc?.center) {
+              const start = next.points.find((point) => point.id === endingArc.startId);
+              if (start) {
+                const radius = Math.hypot(start.x - endingArc.center.x, start.z - endingArc.center.z);
+                const angle = Math.atan2(target.z - endingArc.center.z, target.x - endingArc.center.x);
+                target = { x: endingArc.center.x + Math.cos(angle) * radius, z: endingArc.center.z + Math.sin(angle) * radius };
+              }
+            }
+            const dx = target.x - source.x;
+            const dz = target.z - source.z;
+            Object.assign(source, target, { handleIn: source.handleIn ? { x: source.handleIn.x + dx, z: source.handleIn.z + dz } : undefined, handleOut: source.handleOut ? { x: source.handleOut.x + dx, z: source.handleOut.z + dz } : undefined });
+            for (const arc of next.segments.filter((segment) => segment.kind === "arc" && segment.center && segment.startId === id)) {
+              const end = next.points.find((point) => point.id === arc.endId);
+              if (!end || !arc.center) continue;
+              const radius = Math.hypot(source.x - arc.center.x, source.z - arc.center.z);
+              const angle = Math.atan2(end.z - arc.center.z, end.x - arc.center.x);
+              end.x = arc.center.x + Math.cos(angle) * radius;
+              end.z = arc.center.z + Math.sin(angle) * radius;
+            }
+            return next;
+          })}
           onMoveHandle={moveSketchHandle}
           onInsertPoint={insertSketchPoint}
           onSetPointMode={setSketchPointMode}
           onClearMeasurement={() => { setSketchMeasurement(null); setSketchMeasureStart(null); }}
+          showPointActions={false}
+          showGridControls={false}
         /> : <ParametricViewport
           mesh={((editingEdgeTreatmentId || editingFaceExtrudeId || editingShellId || editingRevolveId) && topologySelectionBuild ? topologySelectionBuild : build).mesh}
           objectRecords={((editingEdgeTreatmentId || editingFaceExtrudeId || editingShellId || editingRevolveId) && topologySelectionBuild ? topologySelectionBuild : build).objectRecords}

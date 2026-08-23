@@ -63,6 +63,16 @@ function drawnSketchFaces(brep: Brep, sketch: SketchFeature): Face[] {
       if (!from || !to) throw new Error(`${sketch.name}: el boceto contiene referencias incompletas.`);
       const fromVec: [number, number, number] = [from.x + sketch.x, from.z + sketch.y, sketch.offset];
       const toVec: [number, number, number] = [to.x + sketch.x, to.z + sketch.y, sketch.offset];
+      if (segment.kind === "arc" && segment.center) {
+        const radius = Math.hypot(from.x - segment.center.x, from.z - segment.center.z);
+        const startAngle = Math.atan2(from.z - segment.center.z, from.x - segment.center.x) * 180 / Math.PI;
+        let endAngle = Math.atan2(to.z - segment.center.z, to.x - segment.center.x) * 180 / Math.PI;
+        const forward = segment.startId === fromId;
+        const positive = forward ? segment.clockwise !== false : segment.clockwise === false;
+        if (positive) while (endAngle <= startAngle) endAngle += 360;
+        else while (endAngle >= startAngle) endAngle -= 360;
+        return brep.unwrap(brep.ellipseArc(radius, radius, startAngle, endAngle, { at: [segment.center.x + sketch.x, segment.center.z + sketch.y, sketch.offset] })) as Edge;
+      }
       if (segment.kind === "line" || (!from.handleIn && !from.handleOut && !to.handleIn && !to.handleOut)) return brep.line(fromVec, toVec);
       const forward = segment.startId === fromId;
       const firstHandle = forward ? from.handleOut : from.handleIn;

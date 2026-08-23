@@ -85,7 +85,9 @@ export type SketchSegment = {
   id: string;
   startId: string;
   endId: string;
-  kind?: "line" | "bezier" | "smooth";
+  kind?: "line" | "bezier" | "smooth" | "arc";
+  center?: { x: number; z: number };
+  clockwise?: boolean;
   construction?: boolean;
 };
 

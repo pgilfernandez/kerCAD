@@ -653,7 +653,7 @@ button {
   border-radius: 8px;
   box-shadow: 0 3px 14px rgba(38, 62, 79, 0.14);
 }
-.educad-workplane-snap-button { left: 70px; }
+.educad-workplane-snap-button { bottom: 68px; }
 .educad-workplane-settings-button:hover,
 .educad-workplane-settings-button.active,
 .educad-workplane-snap-button:hover { color: #0783a9; background: #effafe; border-color: #83c5d9; }
@@ -663,7 +663,7 @@ button {
 .educad-workplane-popover {
   position: absolute;
   bottom: 68px;
-  left: 20px;
+  left: 70px;
   z-index: 13;
   width: 286px;
   overflow: hidden;
@@ -4548,8 +4548,36 @@ button {
   padding: 0 14px;
 }
 
-.educad-workplane-stage.sketch-active > :not(.sketch-workspace-stage):not(.educad-reference-toast) {
+.educad-sketch-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 13px;
+  color: #466273;
+  background: #ffffff;
+  border: 1px solid #bdced8;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.educad-sketch-action:hover { color: #087fa4; background: #f3fbfd; border-color: #79bed3; }
+.educad-sketch-action.primary { color: #ffffff; background: #079bc9; border-color: #0783a9; }
+.educad-sketch-action.primary:hover { background: #078db7; }
+.educad-sketch-action:focus-visible { outline: 3px solid rgba(0, 166, 219, 0.25); outline-offset: 2px; }
+
+.educad-workplane-stage.sketch-active > :not(.sketch-workspace-stage):not(.educad-reference-toast):not(.educad-workplane-settings-button):not(.educad-workplane-snap-button):not(.educad-workplane-popover) {
   display: none !important;
+}
+
+.educad-workplane-stage.sketch-active .sketch-workspace-stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: auto;
 }
 
 .sketch-mode-badge {
@@ -4676,6 +4704,14 @@ button {
   stroke: #178db5;
   stroke-width: 1.6;
 }
+
+.sketch-grid-axis-indicator line {
+  stroke-width: 2.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.sketch-grid-axis-indicator .axis-x { fill: #d83b3b; stroke: #d83b3b; }
+.sketch-grid-axis-indicator .axis-y { fill: #319653; stroke: #319653; }
 
 .sketch-revolve-guide rect {
   fill: rgba(248, 251, 252, 0.66);
@@ -4850,6 +4886,8 @@ button {
 circle.sketch-preview-line {
   fill: rgba(98, 148, 214, 0.2);
 }
+
+.sketch-arc-preview path { fill: none; }
 
 .sketch-drag-handles line,
 .sketch-curve-handles line {

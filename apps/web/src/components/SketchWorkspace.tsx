@@ -10,7 +10,7 @@ import { mirrorSign, resizedImportedMeshPositions } from "@/lib/workplaneShapes"
 import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE, normalizeSnapGrid, normalizeWorkspaceSettings } from "@/lib/workplaneSettings";
 import type { GridSize, SketchCircle, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchSegment, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
 
-export type SketchTool = "line" | "bezier" | "smooth" | "circle" | "select" | "refine" | "erase" | "measure";
+export type SketchTool = "line" | "bezier" | "smooth" | "circle" | "arc" | "select" | "refine" | "erase" | "measure";
 export type SketchSelection =
   | { kind: "point"; id: string }
   | { kind: "segment"; id: string }
@@ -38,6 +38,8 @@ type SketchWorkspaceProps = {
   onSelectSegment: (id: string) => void;
   onSelectMany: (pointIds: string[], segmentIds: string[], imageIds: string[], circleIds?: string[]) => void;
   onAddCircle?: (circle: Omit<SketchCircle, "id">) => void;
+  onAddArc?: (arc: { center: { x: number; z: number }; start: { x: number; z: number }; end: { x: number; z: number }; clockwise: boolean }) => void;
+  onMoveArcCenter?: (id: string, center: { x: number; z: number }) => void;
   onSelectCircle?: (id: string) => void;
   onDeleteCircle?: (id: string) => void;
   onMoveCircle?: (id: string, center: { x: number; z: number }) => void;
@@ -52,6 +54,8 @@ type SketchWorkspaceProps = {
   onInsertPoint: (segmentId: string, point: { x: number; z: number }) => void;
   onSetPointMode: (id: string, mode: "corner" | "smooth" | "split") => void;
   onClearMeasurement: () => void;
+  showPointActions?: boolean;
+  showGridControls?: boolean;
 };
 
 type PathStep = { segment: SketchSegment; from: SketchPoint; to: SketchPoint };
@@ -61,6 +65,7 @@ type PointerAction =
   | { kind: "bezier"; pointerId: number; origin: { x: number; z: number }; current: { x: number; z: number } }
   | { kind: "move-circle"; pointerId: number; circleId: string; origin: { x: number; z: number }; current: { x: number; z: number }; start: SketchCircle }
   | { kind: "resize-circle"; pointerId: number; circleId: string; current: { x: number; z: number }; start: SketchCircle }
+  | { kind: "move-arc-center"; pointerId: number; segmentId: string; origin: { x: number; z: number }; current: { x: number; z: number }; startCenter: { x: number; z: number } }
   | { kind: "move-point"; pointerId: number; pointId: string; current: { x: number; z: number } }
   | { kind: "move-handle"; pointerId: number; pointId: string; handle: "in" | "out"; current: { x: number; z: number } }
   | { kind: "pan"; pointerId: number; clientX: number; clientY: number }
@@ -160,6 +165,15 @@ function segmentDimension(segment: SketchSegment, pointById: Map<string, SketchP
   const start = pointById.get(segment.startId);
   const end = pointById.get(segment.endId);
   if (!start || !end) return null;
+  if (segment.kind === "arc" && segment.center) {
+    const radius = Math.hypot(start.x - segment.center.x, start.z - segment.center.z);
+    const startAngle = Math.atan2(start.z - segment.center.z, start.x - segment.center.x);
+    const endAngle = Math.atan2(end.z - segment.center.z, end.x - segment.center.x);
+    const forward = segment.clockwise !== false;
+    const sweep = forward ? (endAngle - startAngle + Math.PI * 2) % (Math.PI * 2) : (startAngle - endAngle + Math.PI * 2) % (Math.PI * 2);
+    const middleAngle = startAngle + (forward ? 1 : -1) * sweep / 2;
+    return { length: radius * sweep, midpoint: { x: segment.center.x + Math.cos(middleAngle) * radius, z: segment.center.z + Math.sin(middleAngle) * radius } };
+  }
   const first = start.handleOut;
   const second = end.handleIn;
   if (segment.kind === "line" || !first || !second) {
@@ -233,11 +247,27 @@ function curveControls(step: PathStep) {
   };
 }
 
+function arcCommand(step: PathStep) {
+  const center = step.segment.center;
+  if (!center) return `L ${step.to.x} ${step.to.z}`;
+  const radius = Math.hypot(step.from.x - center.x, step.from.z - center.z);
+  const startAngle = Math.atan2(step.from.z - center.z, step.from.x - center.x);
+  const endAngle = Math.atan2(step.to.z - center.z, step.to.x - center.x);
+  const forward = step.segment.startId === step.from.id;
+  const clockwise = forward ? step.segment.clockwise !== false : step.segment.clockwise === false;
+  const sweep = clockwise ? (endAngle - startAngle + Math.PI * 2) % (Math.PI * 2) : (startAngle - endAngle + Math.PI * 2) % (Math.PI * 2);
+  return `A ${radius} ${radius} 0 ${sweep > Math.PI ? 1 : 0} ${clockwise ? 1 : 0} ${step.to.x} ${step.to.z}`;
+}
+
 function pathData(path: DisplayPath) {
   const first = path.points[0];
   if (!first) return "";
   const commands = [`M ${first.x} ${first.z}`];
   path.steps.forEach((step) => {
+    if (step.segment.kind === "arc") {
+      commands.push(arcCommand(step));
+      return;
+    }
     const controls = curveControls(step);
     if (step.segment.kind !== "line" && controls.first && controls.second) {
       commands.push(`C ${controls.first.x} ${controls.first.z} ${controls.second.x} ${controls.second.z} ${step.to.x} ${step.to.z}`);
@@ -258,6 +288,7 @@ function segmentData(segment: SketchSegment, pointById: Map<string, SketchPoint>
   const to = pointById.get(segment.endId);
   if (!from || !to) return "";
   const step = { segment, from, to };
+  if (segment.kind === "arc") return `M ${from.x} ${from.z} ${arcCommand(step)}`;
   const controls = curveControls(step);
   return segment.kind !== "line" && controls.first && controls.second
     ? `M ${from.x} ${from.z} C ${controls.first.x} ${controls.first.z} ${controls.second.x} ${controls.second.z} ${to.x} ${to.z}`
@@ -432,6 +463,8 @@ export function SketchWorkspace({
   onSelectSegment,
   onSelectMany,
   onAddCircle,
+  onAddArc,
+  onMoveArcCenter,
   onSelectCircle,
   onDeleteCircle,
   onMoveCircle,
@@ -446,6 +479,8 @@ export function SketchWorkspace({
   onInsertPoint,
   onSetPointMode,
   onClearMeasurement,
+  showPointActions = true,
+  showGridControls = true,
 }: SketchWorkspaceProps) {
   const workspace = useMemo(() => normalizeWorkspaceSettings(initialWorkspace, DEFAULT_WORKPLANE_WORKSPACE), [initialWorkspace]);
   const [snap, setSnap] = useState<GridSize>(() => normalizeSnapGrid(initialSnap, DEFAULT_SNAP_GRID));
@@ -454,11 +489,16 @@ export function SketchWorkspace({
   const [pan, setPan] = useState({ x: 0, z: 0 });
   const [hover, setHover] = useState<{ x: number; z: number } | null>(null);
   const [pendingCircleCenter, setPendingCircleCenter] = useState<{ x: number; z: number } | null>(null);
+  const [pendingArc, setPendingArc] = useState<{ center: { x: number; z: number }; start?: { x: number; z: number } } | null>(null);
   const [pointerAction, setPointerAction] = useState<PointerAction | null>(null);
   const [svgSize, setSvgSize] = useState({ width: 0, height: 0 });
   const svgRef = useRef<SVGSVGElement | null>(null);
   const width = workspace.width / zoom;
   const depth = workspace.depth / zoom;
+  const viewportAspect = svgSize.width > 0 && svgSize.height > 0 ? svgSize.width / svgSize.height : width / depth;
+  const contentAspect = width / depth;
+  const viewWidth = viewportAspect > contentAspect ? depth * viewportAspect : width;
+  const viewDepth = viewportAspect > contentAspect ? depth : width / viewportAspect;
   const screenUnit = useMemo(() => {
     const fittedScale = Math.min(
       svgSize.width > 0 ? svgSize.width / width : 0,
@@ -469,8 +509,20 @@ export function SketchWorkspace({
 
   useEffect(() => {
     if (tool !== "circle") setPendingCircleCenter(null);
+    if (tool !== "arc") setPendingArc(null);
   }, [tool]);
   const displayProfile = useMemo(() => {
+    if (pointerAction?.kind === "move-arc-center") {
+      const segment = profile.segments.find((candidate) => candidate.id === pointerAction.segmentId);
+      if (!segment?.center) return profile;
+      const dx = pointerAction.current.x - pointerAction.origin.x;
+      const dz = pointerAction.current.z - pointerAction.origin.z;
+      return {
+        ...profile,
+        points: profile.points.map((point) => point.id === segment.startId || point.id === segment.endId ? { ...point, x: point.x + dx, z: point.z + dz } : point),
+        segments: profile.segments.map((candidate) => candidate.id === segment.id ? { ...candidate, center: { x: pointerAction.startCenter.x + dx, z: pointerAction.startCenter.z + dz } } : candidate),
+      };
+    }
     if (pointerAction?.kind === "move-point") {
       const source = profile.points.find((point) => point.id === pointerAction.pointId);
       if (!source) return profile;
@@ -531,8 +583,20 @@ export function SketchWorkspace({
   const paths = useMemo(() => orderedPaths({ ...displayProfile, segments: displayProfile.segments.filter((segment) => !segment.construction) }), [displayProfile]);
   const activePoint = activePointId ? pointById.get(activePointId) ?? null : null;
   const selectedPoint = selected?.kind === "point" ? pointById.get(selected.id) ?? null : null;
+  const smoothPreviewData = useMemo(() => {
+    if (tool !== "smooth" || !activePoint || !hover) return null;
+    const incoming = displayProfile.segments.find((segment) => segment.endId === activePoint.id);
+    const previous = incoming ? pointById.get(incoming.startId) : null;
+    const tangent = previous
+      ? { x: (hover.x - previous.x) / 6, z: (hover.z - previous.z) / 6 }
+      : { x: (hover.x - activePoint.x) / 6, z: (hover.z - activePoint.z) / 6 };
+    const control1 = { x: activePoint.x + tangent.x, z: activePoint.z + tangent.z };
+    const control2 = { x: hover.x - (hover.x - activePoint.x) / 6, z: hover.z - (hover.z - activePoint.z) / 6 };
+    return `M ${activePoint.x} ${activePoint.z} C ${control1.x} ${control1.z} ${control2.x} ${control2.z} ${hover.x} ${hover.z}`;
+  }, [activePoint, displayProfile.segments, hover, pointById, tool]);
   const selectedImage = selected?.kind === "image" ? displayImages.find((image) => image.id === selected.id) ?? null : null;
   const selectedCircle = selected?.kind === "circle" ? displayCircles.find((circle) => circle.id === selected.id) ?? null : null;
+  const selectedArc = selected?.kind === "segment" ? displayProfile.segments.find((segment) => segment.id === selected.id && segment.kind === "arc" && segment.center) ?? null : null;
   const isPointSelected = (id: string) => selected?.kind === "point" ? selected.id === id : selected?.kind === "multiple" ? selected.pointIds.includes(id) : false;
   const isSegmentSelected = (id: string) => selected?.kind === "segment" ? selected.id === id : selected?.kind === "multiple" ? selected.segmentIds.includes(id) : false;
   const isCircleSelected = (id: string) => selected?.kind === "circle" ? selected.id === id : selected?.kind === "multiple" ? selected.circleIds?.includes(id) ?? false : false;
@@ -550,7 +614,7 @@ export function SketchWorkspace({
     return lines;
   }, [gridStep, workspace.depth]);
 
-  const pointFromEvent = (event: { clientX: number; clientY: number }) => {
+  const pointFromEvent = (event: { clientX: number; clientY: number }, constrainToGrid = true) => {
     const svg = svgRef.current;
     const matrix = svg?.getScreenCTM();
     if (!svg || !matrix) return null;
@@ -559,10 +623,11 @@ export function SketchWorkspace({
     screenPoint.y = event.clientY;
     const local = screenPoint.matrixTransform(matrix.inverse());
     const step = exactSnapStep === undefined ? snapStep(snap) : Math.max(0, exactSnapStep);
-    return {
-      x: clamp(snapValue(local.x, step), -workspace.width / 2, workspace.width / 2),
-      z: clamp(snapValue(local.y, step), -workspace.depth / 2, workspace.depth / 2),
-    };
+    const x = snapValue(local.x, step);
+    const z = snapValue(local.y, step);
+    return constrainToGrid
+      ? { x: clamp(x, -workspace.width / 2, workspace.width / 2), z: clamp(z, -workspace.depth / 2, workspace.depth / 2) }
+      : { x, z };
   };
 
   useEffect(() => {
@@ -591,7 +656,7 @@ export function SketchWorkspace({
       return;
     }
     if (event.button !== 0 || (event.target !== event.currentTarget && (event.target as Element).closest("[data-sketch-entity]"))) return;
-    const point = pointFromEvent(event);
+    const point = pointFromEvent(event, tool !== "select");
     if (!point) return;
     event.preventDefault();
     if (tool === "bezier") {
@@ -604,6 +669,20 @@ export function SketchWorkspace({
         const radius = Math.hypot(point.x - pendingCircleCenter.x, point.z - pendingCircleCenter.z);
         if (radius > 0.001) onAddCircle?.({ x: pendingCircleCenter.x, z: pendingCircleCenter.z, radius });
         setPendingCircleCenter(null);
+      }
+    } else if (tool === "arc") {
+      if (!pendingArc) {
+        setPendingArc({ center: point });
+      } else if (!pendingArc.start) {
+        if (Math.hypot(point.x - pendingArc.center.x, point.z - pendingArc.center.z) > 0.001) setPendingArc({ ...pendingArc, start: point });
+      } else {
+        const radius = Math.hypot(pendingArc.start.x - pendingArc.center.x, pendingArc.start.z - pendingArc.center.z);
+        const angle = Math.atan2(point.z - pendingArc.center.z, point.x - pendingArc.center.x);
+        const end = { x: pendingArc.center.x + Math.cos(angle) * radius, z: pendingArc.center.z + Math.sin(angle) * radius };
+        const startAngle = Math.atan2(pendingArc.start.z - pendingArc.center.z, pendingArc.start.x - pendingArc.center.x);
+        const positiveSweep = (angle - startAngle + Math.PI * 2) % (Math.PI * 2);
+        onAddArc?.({ center: pendingArc.center, start: pendingArc.start, end, clockwise: positiveSweep <= Math.PI });
+        setPendingArc(null);
       }
     } else if (tool === "select") {
       event.currentTarget.setPointerCapture(event.pointerId);
@@ -627,7 +706,7 @@ export function SketchWorkspace({
       setPointerAction({ ...pointerAction, clientX: event.clientX, clientY: event.clientY });
       return;
     }
-    const point = pointFromEvent(event);
+    const point = pointFromEvent(event, pointerAction?.kind !== "marquee");
     setHover(point);
     if (point && pointerAction) setPointerAction({ ...pointerAction, current: point });
   };
@@ -675,6 +754,8 @@ export function SketchWorkspace({
       onMoveCircle?.(action.circleId, { x: action.start.x + action.current.x - action.origin.x, z: action.start.z + action.current.z - action.origin.z });
     } else if (action.kind === "resize-circle") {
       onResizeCircle?.(action.circleId, Math.max(0.01, Math.hypot(action.current.x - action.start.x, action.current.z - action.start.z)));
+    } else if (action.kind === "move-arc-center") {
+      onMoveArcCenter?.(action.segmentId, { x: action.startCenter.x + action.current.x - action.origin.x, z: action.startCenter.z + action.current.z - action.origin.z });
     } else if (action.kind === "move-point") {
       onMovePoint(action.pointId, action.current);
     } else if (action.kind === "move-handle") {
@@ -747,8 +828,8 @@ export function SketchWorkspace({
         <svg
           ref={svgRef}
           className={`sketch-plate tool-${tool} ${pointerAction?.kind === "pan" ? "panning" : ""}`}
-          viewBox={`${pan.x - width / 2} ${pan.z - depth / 2} ${width} ${depth}`}
-          preserveAspectRatio="xMidYMid meet"
+          viewBox={`${pan.x - viewWidth / 2} ${pan.z - viewDepth / 2} ${viewWidth} ${viewDepth}`}
+          preserveAspectRatio="none"
           onPointerDown={handlePlanePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={finishPointerAction}
@@ -761,6 +842,20 @@ export function SketchWorkspace({
             <g className="sketch-grid" pointerEvents="none">
               {verticalLines.map((x, index) => <line className={Math.abs(x) < 0.0001 ? "axis" : index % WORKPLANE_MAJOR_GRID_INTERVAL === 0 ? "major" : "minor"} key={`x-${x}`} x1={x} y1={-workspace.depth / 2} x2={x} y2={workspace.depth / 2} />)}
               {horizontalLines.map((z, index) => <line className={Math.abs(z) < 0.0001 ? "axis" : index % WORKPLANE_MAJOR_GRID_INTERVAL === 0 ? "major" : "minor"} key={`z-${z}`} x1={-workspace.width / 2} y1={z} x2={workspace.width / 2} y2={z} />)}
+              {(() => {
+                const side = Math.min(workspace.width, workspace.depth);
+                const length = side * 0.09;
+                const inset = side * 0.025;
+                const head = length * 0.18;
+                const originX = -workspace.width / 2 + inset;
+                const originZ = workspace.depth / 2 - inset;
+                return <g className="sketch-grid-axis-indicator">
+                  <line className="axis-x" x1={originX} y1={originZ} x2={originX + length} y2={originZ} />
+                  <polygon className="axis-x" points={`${originX + length},${originZ} ${originX + length - head},${originZ - head * 0.55} ${originX + length - head},${originZ + head * 0.55}`} />
+                  <line className="axis-y" x1={originX} y1={originZ} x2={originX} y2={originZ - length} />
+                  <polygon className="axis-y" points={`${originX},${originZ - length} ${originX - head * 0.55},${originZ - length + head} ${originX + head * 0.55},${originZ - length + head}`} />
+                </g>;
+              })()}
             </g>
           ) : null}
           {operation === "revolve" ? (
@@ -892,7 +987,7 @@ export function SketchWorkspace({
               );
             })}
           </g>
-          {activePoint && hover && ["line", "bezier", "smooth"].includes(tool) ? <line className="sketch-preview-line" x1={activePoint.x} y1={activePoint.z} x2={hover.x} y2={hover.z} pointerEvents="none" /> : null}
+          {smoothPreviewData ? <path className="sketch-preview-line" d={smoothPreviewData} pointerEvents="none" /> : activePoint && hover && ["line", "bezier"].includes(tool) ? <line className="sketch-preview-line" x1={activePoint.x} y1={activePoint.z} x2={hover.x} y2={hover.z} pointerEvents="none" /> : null}
           {activePoint && hover && ["line", "bezier", "smooth"].includes(tool) ? (
             <g className="sketch-segment-dimensions preview" pointerEvents="none" transform={`translate(${(activePoint.x + hover.x) / 2} ${(activePoint.z + hover.z) / 2 - labelOffset})`}>
               {(() => {
@@ -916,6 +1011,17 @@ export function SketchWorkspace({
             <circle className="sketch-preview-line" cx={pendingCircleCenter.x} cy={pendingCircleCenter.z} r={Math.hypot(hover.x - pendingCircleCenter.x, hover.z - pendingCircleCenter.z)} pointerEvents="none" />
             <circle className="sketch-circle-center pending" cx={pendingCircleCenter.x} cy={pendingCircleCenter.z} r={pointRadius} pointerEvents="none" />
           </> : null}
+          {pendingArc && hover ? <g className="sketch-arc-preview" pointerEvents="none">
+            <circle className="sketch-circle-center pending" cx={pendingArc.center.x} cy={pendingArc.center.z} r={pointRadius} />
+            {!pendingArc.start ? <line className="sketch-preview-line" x1={pendingArc.center.x} y1={pendingArc.center.z} x2={hover.x} y2={hover.z} /> : (() => {
+              const radius = Math.hypot(pendingArc.start!.x - pendingArc.center.x, pendingArc.start!.z - pendingArc.center.z);
+              const angle = Math.atan2(hover.z - pendingArc.center.z, hover.x - pendingArc.center.x);
+              const end = { x: pendingArc.center.x + Math.cos(angle) * radius, z: pendingArc.center.z + Math.sin(angle) * radius };
+              const startAngle = Math.atan2(pendingArc.start!.z - pendingArc.center.z, pendingArc.start!.x - pendingArc.center.x);
+              const sweep = (angle - startAngle + Math.PI * 2) % (Math.PI * 2);
+              return <path className="sketch-preview-line" d={`M ${pendingArc.start!.x} ${pendingArc.start!.z} A ${radius} ${radius} 0 ${Math.min(sweep, Math.PI * 2 - sweep) > Math.PI ? 1 : 0} ${sweep <= Math.PI ? 1 : 0} ${end.x} ${end.z}`} />;
+            })()}
+          </g> : null}
           {measurement ? (
             <g className="sketch-measurement">
               <line x1={measurement.start.x} y1={measurement.start.z} x2={measurement.end.x} y2={measurement.end.z} />
@@ -959,6 +1065,13 @@ export function SketchWorkspace({
             }} />
             <line x1={selectedCircle.x} y1={selectedCircle.z} x2={selectedCircle.x + selectedCircle.radius} y2={selectedCircle.z} pointerEvents="none" />
             <circle data-sketch-entity="circle-handle" className="sketch-circle-radius-handle" cx={selectedCircle.x + selectedCircle.radius} cy={selectedCircle.z} r={controlPointRadius} onPointerDown={(event) => event.button === 1 ? beginPan(event) : beginEntityDrag(event, { kind: "resize-circle", pointerId: event.pointerId, circleId: selectedCircle.id, current: { x: selectedCircle.x + selectedCircle.radius, z: selectedCircle.z }, start: { ...selectedCircle } })} />
+          </g> : null}
+          {selectedArc?.center && tool === "select" ? <g className="sketch-arc-handles">
+            <circle data-sketch-entity="arc-center" className="sketch-circle-center" cx={selectedArc.center.x} cy={selectedArc.center.z} r={pointRadius} onPointerDown={(event) => {
+              if (event.button === 1) { beginPan(event); return; }
+              if (event.button !== 0) return;
+              beginEntityDrag(event, { kind: "move-arc-center", pointerId: event.pointerId, segmentId: selectedArc.id, origin: { ...selectedArc.center! }, current: { ...selectedArc.center! }, startCenter: { ...selectedArc.center! } });
+            }} />
           </g> : null}
           <g className="sketch-circle-dimensions" pointerEvents="none">
             {displayCircles.map((circle) => {
@@ -1061,7 +1174,7 @@ export function SketchWorkspace({
               ))}
             </g>
           ) : null}
-          {hover && ["line", "bezier", "smooth", "circle", "measure"].includes(tool) ? <circle className="sketch-cursor-point" cx={hover.x} cy={hover.z} r={hoverPointRadius} pointerEvents="none" /> : null}
+          {hover && ["line", "bezier", "smooth", "circle", "arc", "measure"].includes(tool) ? <circle className="sketch-cursor-point" cx={hover.x} cy={hover.z} r={hoverPointRadius} pointerEvents="none" /> : null}
         </svg>
       </section>
       {selectedImage && tool === "select" ? (
@@ -1073,16 +1186,16 @@ export function SketchWorkspace({
           onDelete={() => onDeleteImage(selectedImage.id)}
         />
       ) : null}
-      {selectedPoint && tool === "select" ? (
+      {showPointActions && selectedPoint && tool === "select" ? (
         <div className="sketch-point-actions" aria-label="Point actions">
           <button className={selectedPoint.mode === "corner" || !selectedPoint.mode ? "active" : ""} type="button" title="Make corner" aria-pressed={selectedPoint.mode === "corner" || !selectedPoint.mode} onClick={() => onSetPointMode(selectedPoint.id, "corner")}><CornerDownRight /><span>Corner</span></button>
           <button className={selectedPoint.mode === "smooth" ? "active" : ""} type="button" title="Make smooth" aria-pressed={selectedPoint.mode === "smooth"} onClick={() => onSetPointMode(selectedPoint.id, "smooth")}><Waves /><span>Smooth</span></button>
           <button className={selectedPoint.mode === "split" ? "active" : ""} type="button" title="Split handles" aria-pressed={selectedPoint.mode === "split"} onClick={() => onSetPointMode(selectedPoint.id, "split")}><Split /><span>Split</span></button>
         </div>
       ) : null}
-      <div className="grid-settings sketch-grid-settings">
+      {showGridControls ? <div className="grid-settings sketch-grid-settings">
         <SnapGridControl snap={snap} snapOpen={snapOpen} onSnapChange={setSnap} onSnapOpenChange={setSnapOpen} />
-      </div>
+      </div> : null}
     </main>
   );
 }

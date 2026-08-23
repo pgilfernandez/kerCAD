@@ -304,19 +304,21 @@ function orderedSketchPaths(profile: SketchProfile): OrderedSketchPath[] {
 function withSmoothSketchHandles(profile: SketchProfile) {
   const next = cloneSketchProfile(profile);
   const points = new Map(next.points.map((point) => [point.id, point]));
-  orderedSketchPaths(next).forEach((path) => {
-    path.points.forEach((sourcePoint, index) => {
-      const point = points.get(sourcePoint.id);
-      if (!point) return;
-      if (point.mode === "split" && point.handleIn && point.handleOut) return;
-      const previous = path.closed ? path.points[(index - 1 + path.points.length) % path.points.length] : path.points[Math.max(0, index - 1)];
-      const following = path.closed ? path.points[(index + 1) % path.points.length] : path.points[Math.min(path.points.length - 1, index + 1)];
-      const tangentX = (following.x - previous.x) / 6;
-      const tangentZ = (following.z - previous.z) / 6;
-      point.handleIn = { x: point.x - tangentX, z: point.z - tangentZ };
-      point.handleOut = { x: point.x + tangentX, z: point.z + tangentZ };
-      point.mode = "smooth";
-    });
+  next.points.forEach((point) => {
+    if (point.mode === "split" && point.handleIn && point.handleOut) return;
+    const incoming = next.segments.find((segment) => segment.endId === point.id);
+    const outgoing = next.segments.find((segment) => segment.startId === point.id);
+    const previous = incoming ? points.get(incoming.startId) : null;
+    const following = outgoing ? points.get(outgoing.endId) : null;
+    if (!previous && !following) return;
+    const tangent = previous && following
+      ? { x: (following.x - previous.x) / 6, z: (following.z - previous.z) / 6 }
+      : previous
+        ? { x: (point.x - previous.x) / 6, z: (point.z - previous.z) / 6 }
+        : { x: (following!.x - point.x) / 6, z: (following!.z - point.z) / 6 };
+    point.handleIn = { x: point.x - tangent.x, z: point.z - tangent.z };
+    point.handleOut = { x: point.x + tangent.x, z: point.z + tangent.z };
+    point.mode = "smooth";
   });
   return next;
 }
@@ -6267,6 +6269,7 @@ export function SketchForgeEditor({
       bezier: "Bézier: click and drag points to pull curve handles",
       smooth: "Smooth curve: click points to build a flowing path",
       circle: "Circle: drag from the centre to define the radius",
+      arc: "Arc: choose the centre, start point, and end point",
       select: "Select: edit sketch geometry or place and scale reference images",
       refine: "Refine: click a segment to add a point, or a point to remove it",
       erase: "Erase: click a point or segment to remove it",

@@ -1568,6 +1568,31 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         lines.position.y = 0.025;
         target.add(lines);
       });
+      if (!yellow) {
+        const length = Math.min(gridWidth, gridDepth) * 0.09;
+        const inset = Math.min(gridWidth, gridDepth) * 0.025;
+        const head = length * 0.18;
+        const originX = -halfWidth + inset;
+        const originZ = halfDepth - inset;
+        const addAxisArrow = (color: string, values: number[]) => {
+          const geometry = new THREE.BufferGeometry();
+          geometry.setAttribute("position", new THREE.Float32BufferAttribute(values, 3));
+          const arrow = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.96 }));
+          arrow.position.y = 0.055;
+          arrow.renderOrder = 2;
+          target.add(arrow);
+        };
+        addAxisArrow("#d83b3b", [
+          originX, 0, originZ, originX + length, 0, originZ,
+          originX + length, 0, originZ, originX + length - head, 0, originZ - head * 0.55,
+          originX + length, 0, originZ, originX + length - head, 0, originZ + head * 0.55,
+        ]);
+        addAxisArrow("#319653", [
+          originX, 0, originZ, originX, 0, originZ - length,
+          originX, 0, originZ - length, originX - head * 0.55, 0, originZ - length + head,
+          originX, 0, originZ - length, originX + head * 0.55, 0, originZ - length + head,
+        ]);
+      }
     };
     if (workplane.gridVisible) addGrid(group, width, depth);
     if (!parametricWorkplaneIsGlobal(workplane)) {
