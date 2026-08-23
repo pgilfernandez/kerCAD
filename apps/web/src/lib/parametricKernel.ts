@@ -2,7 +2,7 @@ import { loadBrepWithOcct, type Brep, type BrepSolid } from "@/lib/brepKernel";
 import type { Edge, Face } from "brepjs";
 import { parametricObjectGeometryFingerprint } from "@/lib/parametricBuildState";
 import { topologicallySortedParametricFeatures } from "@/lib/parametricDependencyGraph";
-import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricObject, ParametricObjectRenderRecord, PrimitiveFeature, RenderMesh, SketchFeature } from "@/types/parametric";
+import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, PrimitiveFeature, RenderMesh, SketchFeature } from "@/types/parametric";
 
 type AnySolid = BrepSolid;
 type CompoundShape = ReturnType<Brep["compound"]>;
@@ -171,19 +171,19 @@ function applyBooleanOperation(
   return refinedBooleanSolid(brep, brep.intersect(current, tool));
 }
 
-function applyObjectTransform(brep: Brep, solid: AnySolid, object?: ParametricObject): AnySolid {
+function applyObjectTransform<T extends RenderableShape>(brep: Brep, solid: T, object?: ParametricObject): T {
   if (!object) return solid;
   const { position, rotation, scale } = object.transform;
   if (scale.x !== 1 || scale.y !== 1 || scale.z !== 1) {
     solid = brep.unwrap(brep.applyMatrix(solid, {
       linear: [scale.x, 0, 0, 0, scale.y, 0, 0, 0, scale.z],
       translation: [0, 0, 0],
-    })) as AnySolid;
+    })) as T;
   }
-  if (rotation.x) solid = brep.rotate(solid, rotation.x, { axis: [1, 0, 0] });
-  if (rotation.y) solid = brep.rotate(solid, rotation.y, { axis: [0, 1, 0] });
-  if (rotation.z) solid = brep.rotate(solid, rotation.z, { axis: [0, 0, 1] });
-  if (position.x || position.y || position.z) solid = brep.translate(solid, [position.x, position.y, position.z]);
+  if (rotation.x) solid = brep.rotate(solid, rotation.x, { axis: [1, 0, 0] }) as T;
+  if (rotation.y) solid = brep.rotate(solid, rotation.y, { axis: [0, 1, 0] }) as T;
+  if (rotation.z) solid = brep.rotate(solid, rotation.z, { axis: [0, 0, 1] }) as T;
+  if (position.x || position.y || position.z) solid = brep.translate(solid, [position.x, position.y, position.z]) as T;
   return solid;
 }
 
@@ -234,60 +234,98 @@ function buildRenderOutput(brep: Brep, document: ParametricDocument, solids: Map
   };
 }
 
+function topologyReferenceSpace(document: ParametricDocument, objectId?: string) {
+  const object = document.objects.find((candidate) => candidate.id === objectId);
+  const rotateInverse = (value: [number, number, number]) => {
+    let [x, y, z] = value;
+    if (object) for (const [angle, axis] of [[-object.transform.rotation.z, "z"], [-object.transform.rotation.y, "y"], [-object.transform.rotation.x, "x"]] as const) {
+      const radians = angle * Math.PI / 180;
+      const cosine = Math.cos(radians);
+      const sine = Math.sin(radians);
+      if (axis === "z") [x, y] = [x * cosine - y * sine, x * sine + y * cosine];
+      if (axis === "y") [x, z] = [x * cosine + z * sine, -x * sine + z * cosine];
+      if (axis === "x") [y, z] = [y * cosine - z * sine, y * sine + z * cosine];
+    }
+    return [x, y, z] as [number, number, number];
+  };
+  const averageScale = object ? (Math.abs(object.transform.scale.x) + Math.abs(object.transform.scale.y) + Math.abs(object.transform.scale.z)) / 3 : 1;
+  return {
+    point: (point: [number, number, number]) => {
+      const translated: [number, number, number] = object ? [point[0] - object.transform.position.x, point[1] - object.transform.position.y, point[2] - object.transform.position.z] : point;
+      const rotated = rotateInverse(translated);
+      return object ? [rotated[0] / object.transform.scale.x, rotated[1] / object.transform.scale.y, rotated[2] / object.transform.scale.z] as [number, number, number] : rotated;
+    },
+    direction: (direction: [number, number, number]) => {
+      const rotated = rotateInverse(direction);
+      const length = Math.hypot(rotated[0], rotated[1], rotated[2]) || 1;
+      return [rotated[0] / length, rotated[1] / length, rotated[2] / length] as [number, number, number];
+    },
+    lengthScale: Math.max(0.0001, averageScale),
+    areaScale: Math.max(0.0001, averageScale * averageScale),
+  };
+}
+
+function resolveStoredFace(brep: Brep, document: ParametricDocument, current: AnySolid, stored: ParametricTopologyReference, featureName: string) {
+  if (stored.reference.hint.entityType !== "face") throw new Error(`${featureName}: la referencia no es una cara.`);
+  const candidates = brep.getFaces(current);
+  const hint = stored.reference.hint;
+  const space = topologyReferenceSpace(document, stored.objectId);
+  let face: Face | undefined;
+  if (hint.centroid && hint.area !== undefined) {
+    const targetCenter = space.point(hint.centroid);
+    const targetArea = hint.area / space.areaScale;
+    const targetNormal = hint.normal ? space.direction(hint.normal) : null;
+    const nearest = candidates.map((candidate) => {
+      const center = brep.faceCenter(candidate as Parameters<Brep["faceCenter"]>[0]);
+      const area = brep.unwrapOr(brep.measureArea(candidate), targetArea);
+      const centerDistance = Math.hypot(center[0] - targetCenter[0], center[1] - targetCenter[1], center[2] - targetCenter[2]) / Math.max(1, Math.sqrt(Math.abs(targetArea)));
+      const areaDifference = Math.abs(area - targetArea) / Math.max(1, Math.abs(targetArea));
+      const normalDifference = targetNormal ? (() => { const normal = brep.normalAt(candidate as Parameters<Brep["normalAt"]>[0]); return 1 - Math.abs(normal[0] * targetNormal[0] + normal[1] * targetNormal[1] + normal[2] * targetNormal[2]); })() : 0;
+      return { candidate, score: centerDistance + areaDifference + normalDifference };
+    }).sort((a, b) => a.score - b.score)[0];
+    if (nearest && nearest.score <= 0.5) face = nearest.candidate as Face;
+  } else if (hint.topologyId !== undefined) face = candidates.find((candidate) => brep.getHashCode(candidate) === hint.topologyId) as Face | undefined;
+  if (face) return face;
+  const resolution = brep.resolveRefIn(stored.reference as Parameters<Brep["resolveRefIn"]>[0], current);
+  if (!resolution.ok) throw new Error(`${featureName}: no se pudo recuperar una cara (${resolution.reason}).`);
+  return resolution.entity as Face;
+}
+
+function resolveStoredEdge(brep: Brep, document: ParametricDocument, current: AnySolid, stored: ParametricTopologyReference, featureName: string) {
+  if (stored.reference.hint.entityType !== "edge") throw new Error(`${featureName}: la referencia no es una arista.`);
+  const candidates = brep.getEdges(current) as Edge[];
+  const hint = stored.reference.hint;
+  const space = topologyReferenceSpace(document, stored.objectId);
+  let edge: Edge | undefined;
+  if (hint.midpoint) {
+    const target = space.point(hint.midpoint);
+    const targetLength = hint.length === undefined ? 1 : hint.length / space.lengthScale;
+    const nearest = candidates.map((candidate) => {
+      const midpoint = brep.curvePointAt(candidate, 0.5);
+      const length = brep.unwrapOr(brep.measureLength(candidate), targetLength);
+      return { candidate, score: (Math.hypot(midpoint[0] - target[0], midpoint[1] - target[1], midpoint[2] - target[2]) + Math.abs(length - targetLength)) / Math.max(1, targetLength) };
+    }).sort((a, b) => a.score - b.score)[0];
+    if (nearest && nearest.score <= 0.35) edge = nearest.candidate;
+  } else if (hint.topologyId !== undefined) edge = candidates.find((candidate) => brep.getHashCode(candidate) === hint.topologyId);
+  if (edge) return edge;
+  const resolution = brep.resolveRefIn(stored.reference as Parameters<Brep["resolveRefIn"]>[0], current);
+  if (!resolution.ok) throw new Error(`${featureName}: no se pudo recuperar una arista (${resolution.reason}).`);
+  return resolution.entity as Edge;
+}
+
 function applyFilletFeature(brep: Brep, document: ParametricDocument, current: AnySolid, feature: Extract<ParametricDocument["features"][number], { kind: "fillet" }>) {
   const selectionReferenceIds = feature.selectionReferenceIds ?? feature.edgeReferenceIds ?? [];
   if (selectionReferenceIds.length) {
     const edges: Edge[] = [];
-    const object = document.objects.find((candidate) => candidate.id === feature.objectId);
-    const localPoint = (point: [number, number, number]) => {
-      if (!object) return point;
-      let [x, y, z] = [point[0] - object.transform.position.x, point[1] - object.transform.position.y, point[2] - object.transform.position.z];
-      for (const [angle, axis] of [[-object.transform.rotation.z, "z"], [-object.transform.rotation.y, "y"], [-object.transform.rotation.x, "x"]] as const) {
-        const radians = angle * Math.PI / 180;
-        const cosine = Math.cos(radians);
-        const sine = Math.sin(radians);
-        if (axis === "z") [x, y] = [x * cosine - y * sine, x * sine + y * cosine];
-        if (axis === "y") [x, z] = [x * cosine + z * sine, -x * sine + z * cosine];
-        if (axis === "x") [y, z] = [y * cosine - z * sine, y * sine + z * cosine];
-      }
-      return [x / object.transform.scale.x, y / object.transform.scale.y, z / object.transform.scale.z] as [number, number, number];
-    };
     for (const referenceId of selectionReferenceIds) {
       const stored = document.topologyReferences.find((reference) => reference.id === referenceId);
       if (!stored) throw new Error(`${feature.name}: la selección ya no existe.`);
       if (stored.reference.hint.entityType === "face") {
-        const faces = brep.getFaces(current);
-        const topologyId = stored.reference.hint.topologyId;
-        let face = topologyId === undefined ? undefined : faces.find((candidate) => brep.getHashCode(candidate) === topologyId);
-        if (!face) {
-          const resolution = brep.resolveRefIn(stored.reference as Parameters<Brep["resolveRefIn"]>[0], current);
-          if (!resolution.ok) throw new Error(`${feature.name}: no se pudo recuperar una cara (${resolution.reason}).`);
-          face = resolution.entity as Face;
-        }
+        const face = resolveStoredFace(brep, document, current, stored, feature.name);
         edges.push(...brep.getEdges(face) as Edge[]);
         continue;
       }
-      const candidates = brep.getEdges(current) as Edge[];
-      const topologyId = stored.reference.hint.topologyId;
-      let edge = topologyId === undefined ? undefined : candidates.find((candidate) => brep.getHashCode(candidate) === topologyId);
-      if (!edge && stored.reference.hint.entityType === "edge" && stored.reference.hint.midpoint) {
-        const target = localPoint(stored.reference.hint.midpoint);
-        const averageScale = object ? (Math.abs(object.transform.scale.x) + Math.abs(object.transform.scale.y) + Math.abs(object.transform.scale.z)) / 3 : 1;
-        const targetLength = stored.reference.hint.length === undefined ? 1 : stored.reference.hint.length / Math.max(0.0001, averageScale);
-        const nearest = candidates.map((candidate) => {
-          const midpoint = brep.curvePointAt(candidate, 0.5);
-          const midpointDistance = Math.hypot(midpoint[0] - target[0], midpoint[1] - target[1], midpoint[2] - target[2]);
-          const length = brep.unwrapOr(brep.measureLength(candidate), targetLength);
-          return { candidate, score: (midpointDistance + Math.abs(length - targetLength)) / Math.max(1, targetLength) };
-        }).sort((a, b) => a.score - b.score)[0];
-        if (nearest && nearest.score <= 0.35) edge = nearest.candidate;
-      }
-      if (!edge) {
-        const resolution = brep.resolveRefIn(stored.reference as Parameters<Brep["resolveRefIn"]>[0], current);
-        if (!resolution.ok) throw new Error(`${feature.name}: no se pudo recuperar una arista (${resolution.reason}).`);
-        edge = resolution.entity as Edge;
-      }
-      edges.push(edge);
+      edges.push(resolveStoredEdge(brep, document, current, stored, feature.name));
     }
     const uniqueEdges = [...new Map(edges.map((edge) => [brep.getHashCode(edge), edge])).values()];
     return resultValue<AnySolid>(brep, feature.treatment === "chamfer" ? brep.chamfer(current, uniqueEdges, feature.radius) : brep.fillet(current, uniqueEdges, feature.radius));
@@ -301,14 +339,7 @@ function applyFilletFeature(brep: Brep, document: ParametricDocument, current: A
 function applyFaceExtrudeFeature(brep: Brep, document: ParametricDocument, current: AnySolid, feature: Extract<ParametricDocument["features"][number], { kind: "faceExtrude" }>) {
   const stored = document.topologyReferences.find((reference) => reference.id === feature.faceReferenceId);
   if (!stored || stored.reference.hint.entityType !== "face") throw new Error(`${feature.name}: la cara seleccionada ya no existe.`);
-  const faces = brep.getFaces(current);
-  const topologyId = stored.reference.hint.topologyId;
-  let face = topologyId === undefined ? undefined : faces.find((candidate) => brep.getHashCode(candidate) === topologyId);
-  if (!face) {
-    const resolution = brep.resolveRefIn(stored.reference as Parameters<Brep["resolveRefIn"]>[0], current);
-    if (!resolution.ok) throw new Error(`${feature.name}: no se pudo recuperar la cara (${resolution.reason}).`);
-    face = resolution.entity as Face;
-  }
+  const face = resolveStoredFace(brep, document, current, stored, feature.name);
   const normal = stored.reference.hint.normal ?? [0, 0, 1];
   const object = document.objects.find((candidate) => candidate.id === feature.objectId);
   let [x, y, z] = normal;
@@ -330,18 +361,10 @@ function applyFaceExtrudeFeature(brep: Brep, document: ParametricDocument, curre
 }
 
 function applyShellFeature(brep: Brep, document: ParametricDocument, current: AnySolid, feature: Extract<ParametricDocument["features"][number], { kind: "shell" }>) {
-  const candidates = brep.getFaces(current);
   const faces = feature.faceReferenceIds.map((referenceId) => {
     const stored = document.topologyReferences.find((reference) => reference.id === referenceId);
     if (!stored || stored.reference.hint.entityType !== "face") throw new Error(`${feature.name}: una cara abierta ya no existe.`);
-    const topologyId = stored.reference.hint.topologyId;
-    let face = topologyId === undefined ? undefined : candidates.find((candidate) => brep.getHashCode(candidate) === topologyId);
-    if (!face) {
-      const resolution = brep.resolveRefIn(stored.reference as Parameters<Brep["resolveRefIn"]>[0], current);
-      if (!resolution.ok) throw new Error(`${feature.name}: no se pudo recuperar una cara (${resolution.reason}).`);
-      face = resolution.entity as Face;
-    }
-    return face;
+    return resolveStoredFace(brep, document, current, stored, feature.name);
   });
   if (faces.length === 0) throw new Error(`${feature.name}: selecciona al menos una cara para abrir.`);
   return resultValue<AnySolid>(brep, brep.shell(current, faces as Parameters<Brep["shell"]>[1], feature.thickness));
@@ -422,7 +445,16 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
       if (feature.id === contextFeatureId) {
         const selectedResult = solids.get(objectId);
         const removedMaterial = feature.kind === "fillet" || feature.kind === "shell" || (feature.kind === "faceExtrude" && feature.operation === "cut");
-        const detail = selectedResult ? resultValue<AnySolid>(brep, removedMaterial ? brep.cut(previousSolid, selectedResult) : brep.cut(selectedResult, previousSolid)) : null;
+        let detail: RenderableShape | null = null;
+        if (selectedResult && feature.kind === "fillet") {
+          const changedRegions = [
+            resultValue<AnySolid>(brep, brep.cut(previousSolid, selectedResult)),
+            resultValue<AnySolid>(brep, brep.cut(selectedResult, previousSolid)),
+          ].filter((shape) => !brep.isEmpty(shape));
+          detail = changedRegions.length === 1 ? changedRegions[0] : changedRegions.length > 1 ? brep.compound(changedRegions) : null;
+        } else if (selectedResult) {
+          detail = resultValue<AnySolid>(brep, removedMaterial ? brep.cut(previousSolid, selectedResult) : brep.cut(selectedResult, previousSolid));
+        }
         operationContext = selectedResult ? {
           featureId: feature.id,
           objectId,
@@ -430,7 +462,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
           mesh: meshShape(brep, applyObjectTransform(brep, selectedResult, objects.get(objectId))),
           selectionMesh,
           detailMesh: detail ? meshShape(brep, applyObjectTransform(brep, detail, objects.get(objectId))) : undefined,
-          detailColor: feature.kind === "faceExtrude" && feature.operation === "cut" ? "red" : "green",
+          detailColor: feature.kind === "shell" || (feature.kind === "faceExtrude" && feature.operation === "cut") ? "red" : "green",
         } : null;
         if (stopAtContext) return { mesh: null, objectRecords: [], operationContext, completedFeatureIds, warning: null };
       }

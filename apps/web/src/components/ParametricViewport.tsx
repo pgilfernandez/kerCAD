@@ -998,7 +998,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         if (topologyEdgeSelectionRef.current) {
           const selectedEdge = updateTopologyEdgeHighlight();
           if (selectedEdge) {
-            toggleTopologyEdge(selectedEdge.hit, selectedEdge.region, topologyMultiSelectionRef.current && (event.ctrlKey || event.metaKey));
+            toggleTopologyEdge(selectedEdge.hit, selectedEdge.region, topologyMultiSelectionRef.current);
             event.preventDefault();
             return;
           }
@@ -1007,7 +1007,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         if (selectedFace) {
           const { hit, region } = selectedFace;
           if (topologyFaceSelectionRef.current) {
-            toggleTopologyFace(hit, region, topologyMultiSelectionRef.current && (event.ctrlKey || event.metaKey));
+            toggleTopologyFace(hit, region, topologyMultiSelectionRef.current);
             event.preventDefault();
             return;
           }

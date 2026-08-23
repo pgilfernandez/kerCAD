@@ -190,8 +190,8 @@ export function SketchForgeParametricEditor() {
   const viewportOperationContext = useMemo(() => operationContext ? {
     ...operationContext,
     color: objectColors[operationContext.objectId] ?? operationContext.color,
-    opacity: 0.4,
-  } : null, [objectColors, operationContext]);
+    opacity: selectedOperationTimeline && selectedOperationTimeline.index === selectedOperationTimeline.count - 1 ? 0 : 0.4,
+  } : null, [objectColors, operationContext, selectedOperationTimeline]);
   const viewportTopologyPreviewContext = useMemo(() => topologyPreviewContext ? {
     ...topologyPreviewContext,
     color: objectColors[topologyPreviewContext.objectId] ?? topologyPreviewContext.color,
@@ -357,7 +357,7 @@ export function SketchForgeParametricEditor() {
   useEffect(() => {
     const counter = ++contextBuildCounter.current;
     setOperationContext(null);
-    if (!selectedOperationTimeline || selectedOperationTimeline.index === selectedOperationTimeline.count - 1) return;
+    if (!selectedOperationTimeline) return;
     const buildDocument = buildDocumentRef.current;
     const timeout = window.setTimeout(() => {
       contextWorkerRef.current?.buildContext(buildDocument, selectedOperationTimeline.featureId).then((result) => {
@@ -654,7 +654,7 @@ export function SketchForgeParametricEditor() {
     setSelectedTopologyEdges(savedReferences.filter((reference) => reference.reference.hint.entityType === "edge"));
     setPlacingWorkplane(false);
     setOriginEditObjectId(null);
-    setNotice({ type: "info", text: "Selecciona caras o aristas · Ctrl/Cmd para selección múltiple" });
+    setNotice({ type: "info", text: "Pulsa caras o aristas para añadirlas o retirarlas de la selección" });
   };
 
   const cancelEdgeTreatment = () => {
@@ -1120,7 +1120,6 @@ export function SketchForgeParametricEditor() {
           <button aria-label="Acercar" onClick={() => setCamera("zoom-in")}><Plus size={28} /></button>
           <button aria-label="Alejar" onClick={() => setCamera("zoom-out")}><Minus size={28} /></button>
         </div>
-        <div className="educad-drag-tip">Arrastra la operación para moverla · usa el tirador circular para girarla</div>
         {kernelBusy && <div className="educad-kernel-pill">Reconstruyendo OpenCascade…</div>}
         {build.warning && <div className="educad-rebuild-error"><strong>El historial se detuvo aquí</strong><span>{build.warning}</span></div>}
         {notice && <div className={`educad-reference-toast ${notice.type}`}>{notice.text}</div>}

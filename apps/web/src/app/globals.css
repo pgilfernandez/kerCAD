@@ -735,24 +735,6 @@ button {
 .educad-shape-coming strong { color: #405a6e; font-size: 11px; }
 .educad-shape-coming span { font-size: 9px; line-height: 1.4; }
 
-.educad-drag-tip {
-  position: absolute;
-  bottom: 17px;
-  left: 50%;
-  z-index: 4;
-  padding: 7px 13px;
-  color: #61788a;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #cad9e3;
-  border-radius: 999px;
-  box-shadow: 0 3px 10px rgba(32, 62, 81, 0.1);
-  transform: translateX(-50%);
-  font-size: 9px;
-  font-weight: 700;
-  white-space: nowrap;
-  backdrop-filter: blur(8px);
-}
-
 .educad-kernel-pill {
   position: absolute;
   top: 18px;
