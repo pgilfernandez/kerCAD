@@ -1,4 +1,4 @@
-export type FeatureKind = "sketch" | "extrude" | "primitive" | "hole" | "fillet" | "faceExtrude" | "shell";
+export type FeatureKind = "sketch" | "extrude" | "primitive" | "hole" | "fillet" | "faceExtrude" | "shell" | "revolve";
 
 export type ParametricDependencyReference =
   | { type: "feature"; id: string }
@@ -138,7 +138,15 @@ export type ShellFeature = BaseFeature & {
   faceReferenceIds: string[];
 };
 
-export type ParametricFeature = SketchFeature | ExtrudeFeature | PrimitiveFeature | HoleFeature | FilletFeature | FaceExtrudeFeature | ShellFeature;
+export type RevolveFeature = BaseFeature & {
+  kind: "revolve";
+  operation: "add" | "cut" | "intersect";
+  angle: number;
+  axis: "x" | "y" | "z";
+  faceReferenceId: string;
+};
+
+export type ParametricFeature = SketchFeature | ExtrudeFeature | PrimitiveFeature | HoleFeature | FilletFeature | FaceExtrudeFeature | ShellFeature | RevolveFeature;
 
 export type ParametricObject = {
   id: string;

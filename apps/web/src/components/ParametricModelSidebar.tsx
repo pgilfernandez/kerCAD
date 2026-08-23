@@ -18,6 +18,7 @@ import {
   LockKeyholeOpen,
   Pencil,
   Radius,
+  Rotate3D,
   Triangle,
   Trash2,
   X,
@@ -44,6 +45,7 @@ type Props = {
   onEditFeatureSelection: (featureId: string) => void;
   onEditFaceExtrudeSelection: (featureId: string) => void;
   onEditShellSelection: (featureId: string) => void;
+  onEditRevolveSelection: (featureId: string) => void;
   edgeTreatmentDraft: { treatment: "fillet" | "chamfer"; radius: number; faceCount: number; edgeCount: number; editing: boolean } | null;
   onEdgeTreatmentDraftChange: (update: Partial<{ treatment: "fillet" | "chamfer"; radius: number }>) => void;
   onAcceptEdgeTreatment: () => void;
@@ -56,6 +58,10 @@ type Props = {
   onShellDraftChange: (thickness: number) => void;
   onAcceptShell: () => void;
   onCancelShell: () => void;
+  revolveDraft: { operation: "add" | "cut" | "intersect"; angle: number; axis: "x" | "y" | "z"; faceCount: number; editing: boolean } | null;
+  onRevolveDraftChange: (update: Partial<{ operation: "add" | "cut" | "intersect"; angle: number; axis: "x" | "y" | "z" }>) => void;
+  onAcceptRevolve: () => void;
+  onCancelRevolve: () => void;
   onUpdateObject: (id: string, update: (object: ParametricObject) => void) => void;
   onUpdateFeature: (id: string, update: (feature: ParametricFeature) => void) => void;
 };
@@ -73,6 +79,7 @@ export function ParametricModelSidebar({
   onEditFeatureSelection,
   onEditFaceExtrudeSelection,
   onEditShellSelection,
+  onEditRevolveSelection,
   edgeTreatmentDraft,
   onEdgeTreatmentDraftChange,
   onAcceptEdgeTreatment,
@@ -85,6 +92,10 @@ export function ParametricModelSidebar({
   onShellDraftChange,
   onAcceptShell,
   onCancelShell,
+  revolveDraft,
+  onRevolveDraftChange,
+  onAcceptRevolve,
+  onCancelRevolve,
   onUpdateObject,
   onUpdateFeature,
 }: Props) {
@@ -206,7 +217,12 @@ export function ParametricModelSidebar({
       </div> : null}
 
       {mode === "normal" ? <section className="educad-sidebar-editor">
-        {shellDraft ? (
+        {revolveDraft ? (
+          <div className="educad-feature-inspector educad-edge-treatment-draft" aria-label="Revolución temporal">
+            <div className="educad-feature-card"><h3>{revolveDraft.editing ? "Editar revolución" : "Nueva revolución"}</h3><label><span>Tipo</span><select value={revolveDraft.operation} onChange={(event) => onRevolveDraftChange({ operation: event.target.value as typeof revolveDraft.operation })}><option value="add">Añadir</option><option value="cut">Hueco</option><option value="intersect">Común</option></select></label><label><span>Eje</span><select value={revolveDraft.axis} onChange={(event) => onRevolveDraftChange({ axis: event.target.value as typeof revolveDraft.axis })}><option value="x">X</option><option value="y">Y</option><option value="z">Z</option></select></label><BoundedNumberField label="Ángulo" value={revolveDraft.angle} min={1} max={360} step={1} unit="°" onChange={(angle) => onRevolveDraftChange({ angle })} /></div>
+            <div className="educad-topology-selection-actions"><button type="button" onClick={onCancelRevolve}>Cancelar</button><button type="button" className="primary" disabled={revolveDraft.faceCount !== 1} onClick={onAcceptRevolve}>Aceptar</button></div>
+          </div>
+        ) : shellDraft ? (
           <div className="educad-feature-inspector educad-edge-treatment-draft" aria-label="Vaciado temporal">
             <div className="educad-feature-card"><h3>{shellDraft.editing ? "Editar vaciado" : "Nuevo vaciado"}</h3><BoundedNumberField label="Espesor" value={shellDraft.thickness} min={0.01} max={50} onChange={onShellDraftChange} /></div>
             <div className="educad-topology-selection-actions"><button type="button" onClick={onCancelShell}>Cancelar</button><button type="button" className="primary" disabled={shellDraft.faceCount === 0} onClick={onAcceptShell}>Aceptar</button></div>
@@ -235,6 +251,7 @@ export function ParametricModelSidebar({
             onEditSelection={onEditFeatureSelection}
             onEditFaceExtrudeSelection={onEditFaceExtrudeSelection}
             onEditShellSelection={onEditShellSelection}
+            onEditRevolveSelection={onEditRevolveSelection}
           />
         ) : (
           <div className="educad-no-selection"><Layers3 size={28} /><strong>Selecciona un objeto u operación</strong><span>Despliega el árbol para editar el historial CAD.</span></div>
@@ -270,6 +287,7 @@ function FeatureIcon({ document, feature }: { document: ParametricDocument; feat
   if (feature.kind === "hole") return <CircleDot className="drill-hole" size={16} />;
   if (feature.kind === "faceExtrude") return <span className={`educad-operation-icon ${feature.operation === "cut" ? "hole" : "add"}`} role="img" aria-label={feature.operation === "cut" ? "Hueco desde cara" : "Extrusión desde cara"}><Box size={17} /><small aria-hidden="true">{feature.operation === "cut" ? "−" : "+"}</small></span>;
   if (feature.kind === "shell") return <Layers3 className="shell" size={16} />;
+  if (feature.kind === "revolve") return <Rotate3D className="revolve" size={16} />;
   return feature.treatment === "chamfer" ? <Triangle className="chamfer" size={16} /> : <Radius className="fillet" size={16} />;
 }
 
@@ -358,6 +376,7 @@ function ParametricFeatureInspector({
   onEditSelection,
   onEditFaceExtrudeSelection,
   onEditShellSelection,
+  onEditRevolveSelection,
 }: {
   document: ParametricDocument;
   feature: ParametricFeature;
@@ -365,6 +384,7 @@ function ParametricFeatureInspector({
   onEditSelection: (featureId: string) => void;
   onEditFaceExtrudeSelection: (featureId: string) => void;
   onEditShellSelection: (featureId: string) => void;
+  onEditRevolveSelection: (featureId: string) => void;
 }) {
   const onUpdate = (update: (feature: ParametricFeature) => void) => onUpdateFeature(feature.id, update);
   const primitiveSketch = feature.kind === "extrude" ? sketchForExtrude(document, feature) : null;
@@ -534,6 +554,14 @@ function ParametricFeatureInspector({
           <div className="educad-feature-card"><h3>Operación</h3><ReadOnlyField label="Tipo" value="Vaciado" /><BoundedNumberField label="Espesor" value={feature.thickness} min={0.01} max={50} onChange={(value) => onUpdate((draft) => { if (draft.kind === "shell") draft.thickness = Math.max(0.01, value); })} /></div>
           <button className="educad-edit-topology-selection" type="button" onClick={() => onEditShellSelection(feature.id)}>Editar caras abiertas</button>
           <TransformSection description="Sin transformación propia"><p className="educad-transform-empty">El vaciado desplaza las paredes hacia el interior y elimina las caras seleccionadas.</p></TransformSection>
+        </>
+      ) : null}
+
+      {feature.kind === "revolve" ? (
+        <>
+          <div className="educad-feature-card"><h3>Operación</h3><label><span>Tipo</span><select value={feature.operation} onChange={(event) => onUpdate((draft) => { if (draft.kind === "revolve") draft.operation = event.target.value as typeof draft.operation; })}><option value="add">Añadir</option><option value="cut">Hueco</option><option value="intersect">Común</option></select></label><label><span>Eje</span><select value={feature.axis} onChange={(event) => onUpdate((draft) => { if (draft.kind === "revolve") draft.axis = event.target.value as typeof draft.axis; })}><option value="x">X</option><option value="y">Y</option><option value="z">Z</option></select></label><BoundedNumberField label="Ángulo" value={feature.angle} min={1} max={360} step={1} unit="°" onChange={(value) => onUpdate((draft) => { if (draft.kind === "revolve") draft.angle = Math.min(360, Math.max(1, value)); })} /></div>
+          <button className="educad-edit-topology-selection" type="button" onClick={() => onEditRevolveSelection(feature.id)}>Editar cara</button>
+          <TransformSection description="Eje local del objeto"><p className="educad-transform-empty">La cara gira alrededor del eje local seleccionado que pasa por el origen del objeto.</p></TransformSection>
         </>
       ) : null}
 

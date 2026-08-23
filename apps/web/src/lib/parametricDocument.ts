@@ -3,6 +3,7 @@ import type {
   ExtrudeFeature,
   FilletFeature,
   FaceExtrudeFeature,
+  RevolveFeature,
   ShellFeature,
   HoleFeature,
   ParametricDocument,
@@ -191,6 +192,19 @@ export function createShellFeature(index: number): ShellFeature {
     suppressed: false,
     thickness: 2,
     faceReferenceIds: [],
+  };
+}
+
+export function createRevolveFeature(index: number, operation: RevolveFeature["operation"] = "add"): RevolveFeature {
+  return {
+    id: createFeatureId("revolve"),
+    kind: "revolve",
+    name: `Revolución ${index}`,
+    suppressed: false,
+    operation,
+    angle: 360,
+    axis: "z",
+    faceReferenceId: "",
   };
 }
 

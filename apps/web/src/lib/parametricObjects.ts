@@ -195,7 +195,7 @@ export function deleteParametricFeature(document: ParametricDocument, id: string
   const operations = document.features.filter((candidate) => candidate.objectId === objectId && candidate.kind !== "sketch");
   const operationIndex = operations.findIndex((candidate) => candidate.id === id);
   const ids = new Set([id]);
-  const ownedReferenceIds = new Set(feature.kind === "fillet" ? [...(feature.edgeReferenceIds ?? []), ...(feature.selectionReferenceIds ?? [])] : feature.kind === "faceExtrude" ? [feature.faceReferenceId] : feature.kind === "shell" ? feature.faceReferenceIds : []);
+  const ownedReferenceIds = new Set(feature.kind === "fillet" ? [...(feature.edgeReferenceIds ?? []), ...(feature.selectionReferenceIds ?? [])] : feature.kind === "faceExtrude" || feature.kind === "revolve" ? [feature.faceReferenceId] : feature.kind === "shell" ? feature.faceReferenceIds : []);
   if (feature.kind === "extrude") ids.add(feature.sketchId);
   if (feature.kind === "sketch") {
     for (const candidate of document.features) {
@@ -357,7 +357,7 @@ export function duplicateParametricObject(document: ParametricDocument, id: stri
       clone.edgeReferenceIds = clone.edgeReferenceIds?.map((referenceId) => topologyIdMap.get(referenceId) ?? referenceId);
       clone.selectionReferenceIds = clone.selectionReferenceIds?.map((referenceId) => topologyIdMap.get(referenceId) ?? referenceId);
     }
-    if (clone.kind === "faceExtrude") clone.faceReferenceId = topologyIdMap.get(clone.faceReferenceId) ?? clone.faceReferenceId;
+    if (clone.kind === "faceExtrude" || clone.kind === "revolve") clone.faceReferenceId = topologyIdMap.get(clone.faceReferenceId) ?? clone.faceReferenceId;
     if (clone.kind === "shell") clone.faceReferenceIds = clone.faceReferenceIds.map((referenceId) => topologyIdMap.get(referenceId) ?? referenceId);
     return clone;
   });

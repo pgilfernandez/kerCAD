@@ -98,7 +98,7 @@ export function assertValidParametricTopology(document: ParametricDocument) {
     references.set(reference.id, reference);
   }
   for (const feature of document.features) {
-    if (feature.kind === "faceExtrude") {
+    if (feature.kind === "faceExtrude" || feature.kind === "revolve") {
       const reference = references.get(feature.faceReferenceId);
       if (!reference) throw new ParametricTopologyError(`${feature.name}: la cara referenciada ya no existe.`);
       if (reference.reference.hint.entityType !== "face") throw new ParametricTopologyError(`${feature.name}: la referencia seleccionada no es una cara.`);

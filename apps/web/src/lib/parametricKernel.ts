@@ -370,6 +370,15 @@ function applyShellFeature(brep: Brep, document: ParametricDocument, current: An
   return resultValue<AnySolid>(brep, brep.shell(current, faces as Parameters<Brep["shell"]>[1], feature.thickness));
 }
 
+function applyRevolveFeature(brep: Brep, document: ParametricDocument, current: AnySolid, feature: Extract<ParametricDocument["features"][number], { kind: "revolve" }>) {
+  const stored = document.topologyReferences.find((reference) => reference.id === feature.faceReferenceId);
+  if (!stored || stored.reference.hint.entityType !== "face") throw new Error(`${feature.name}: la cara seleccionada ya no existe.`);
+  const face = resolveStoredFace(brep, document, current, stored, feature.name);
+  const axis: [number, number, number] = feature.axis === "x" ? [1, 0, 0] : feature.axis === "y" ? [0, 1, 0] : [0, 0, 1];
+  const tool = brep.unwrap(brep.revolve(face as Parameters<Brep["revolve"]>[0], { axis, at: [0, 0, 0], angle: feature.angle * Math.PI / 180 })) as AnySolid;
+  return applyBooleanOperation(brep, current, tool, feature);
+}
+
 async function buildParametricModelInternal(document: ParametricDocument, contextFeatureId: string | null, stopAtContext: boolean): Promise<BuildResult> {
   const brep = await loadBrepWithOcct();
   const sketches = new Map<string, SketchFeature>();
@@ -441,10 +450,15 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         current = applyShellFeature(brep, document, current, feature);
         solids.set(objectId, current);
         completedFeatureIds.push(feature.id);
+      } else if (feature.kind === "revolve") {
+        if (feature.angle <= 0 || feature.angle > 360) throw new Error(`${feature.name}: el ángulo debe estar entre 0 y 360 grados.`);
+        current = applyRevolveFeature(brep, document, current, feature);
+        solids.set(objectId, current);
+        completedFeatureIds.push(feature.id);
       }
       if (feature.id === contextFeatureId) {
         const selectedResult = solids.get(objectId);
-        const removedMaterial = feature.kind === "fillet" || feature.kind === "shell" || (feature.kind === "faceExtrude" && feature.operation === "cut");
+        const removedMaterial = feature.kind === "fillet" || feature.kind === "shell" || (feature.kind === "faceExtrude" && feature.operation === "cut") || (feature.kind === "revolve" && feature.operation !== "add");
         let detail: RenderableShape | null = null;
         if (selectedResult && feature.kind === "fillet") {
           const changedRegions = [
@@ -535,7 +549,8 @@ export async function exportParametricStep(document: ParametricDocument): Promis
       current = refinedBooleanSolid(brep, brep.cut(current, brep.cylinder(feature.diameter / 2, height, { at: [feature.x, feature.y, baseZ] })));
     } else if (feature.kind === "fillet") current = applyFilletFeature(brep, document, current, feature);
     else if (feature.kind === "faceExtrude") current = applyFaceExtrudeFeature(brep, document, current, feature);
-    else current = applyShellFeature(brep, document, current, feature);
+    else if (feature.kind === "shell") current = applyShellFeature(brep, document, current, feature);
+    else current = applyRevolveFeature(brep, document, current, feature);
     solids.set(objectId, current);
   }
   const result = combinedObjectShape(brep, worldObjectSolids(brep, solids, objects));
