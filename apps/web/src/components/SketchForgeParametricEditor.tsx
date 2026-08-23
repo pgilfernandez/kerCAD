@@ -1,9 +1,10 @@
 "use client";
 
-import { Box, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Plus, RotateCcw, X } from "lucide-react";
+import { Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, MousePointer2, PenLine, Plus, RotateCcw, Ruler, Spline, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyEdgePick, type TopologyFacePick } from "@/components/ParametricViewport";
+import { SketchWorkspace, type SketchMeasurement, type SketchSelection, type SketchTool } from "@/components/SketchWorkspace";
 import {
   ToolbarAlignIcon,
   ToolbarBooleanModeIcon,
@@ -26,13 +27,14 @@ import {
   ToolbarWorkplaneIcon,
   ToolbarResetWorkplaneIcon,
 } from "@/components/icons";
-import { cloneDocument, createFaceExtrudeFeature, createFilletFeature, createRevolveFeature, createShellFeature, createStarterDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
+import { cloneDocument, createDrawnSketchFeature, createExtrudeFeature, createFaceExtrudeFeature, createFilletFeature, createRevolveFeature, createShellFeature, createStarterDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { assertValidParametricDependencies } from "@/lib/parametricDependencyGraph";
 import { assertValidParametricTopology, recoverParametricTopologyReferenceInRecords } from "@/lib/parametricTopology";
 import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint } from "@/lib/parametricBuildState";
 import { exportParametricStep } from "@/lib/parametricKernel";
 import { ParametricBuildWorkerClient } from "@/lib/parametricBuildWorker";
 import { binaryStlFromRenderMeshes } from "@/lib/stlExport";
+import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import {
   beginHistoryTransaction,
   cancelHistoryTransaction,
@@ -46,6 +48,7 @@ import {
 } from "@/lib/parametricHistory";
 import {
   addPrimitiveToSelection,
+  addParametricObject,
   alignParametricSelections,
   applyParametricSelectionWorldDelta,
   applyWorkplanePatch,
@@ -67,11 +70,11 @@ import {
   type ParametricAlignmentAxis,
   type SupportedPrimitive,
 } from "@/lib/parametricObjects";
-import { globalParametricWorkplanePlacement, parametricWorkplaneFromFace, parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
+import { globalParametricWorkplanePlacement, objectPlacementForWorkplane, parametricWorkplaneFromFace, parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
 import { parametricOperationCatalog, parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import type { ViewportRenderQuality } from "@/lib/viewportPerformance";
-import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricFeature, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, PrimitiveFeature } from "@/types/parametric";
-import type { WorkplaneShape } from "@/types/sketchforge";
+import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricFeature, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, PrimitiveFeature, SketchFeature } from "@/types/parametric";
+import type { GridSize, SketchPoint, SketchProfile, WorkplaneShape } from "@/types/sketchforge";
 
 const STORAGE_KEY = "educad.parametric.document.v1";
 const RENDER_QUALITY_STORAGE_KEY = "educad.viewport.render-mode";
@@ -89,6 +92,109 @@ function downloadBlob(blob: Blob, name: string) {
 
 function fileName(value: string) {
   return value.trim().replace(/\.(?:educad\.json|json|step|stp|stl)$/i, "").toLowerCase().replace(/[^a-z0-9áéíóúüñ]+/gi, "-").replace(/^-|-$/g, "") || "modelo";
+}
+
+function emptySketchProfile(): SketchProfile {
+  return { points: [], segments: [], images: [] };
+}
+
+function cloneSketchProfile(profile: SketchProfile): SketchProfile {
+  return {
+    points: profile.points.map((point) => ({ ...point, handleIn: point.handleIn ? { ...point.handleIn } : undefined, handleOut: point.handleOut ? { ...point.handleOut } : undefined })),
+    segments: profile.segments.map((segment) => ({ ...segment })),
+    images: (profile.images ?? []).map((image) => ({ ...image })),
+  };
+}
+
+function orderedSketchPaths(profile: SketchProfile) {
+  const pointById = new Map(profile.points.map((point) => [point.id, point]));
+  const adjacency = new Map<string, Array<{ pointId: string; segment: SketchProfile["segments"][number] }>>();
+  profile.points.forEach((point) => adjacency.set(point.id, []));
+  const validSegments = profile.segments.filter((segment) => {
+    if (!pointById.has(segment.startId) || !pointById.has(segment.endId) || segment.startId === segment.endId) return false;
+    adjacency.get(segment.startId)?.push({ pointId: segment.endId, segment });
+    adjacency.get(segment.endId)?.push({ pointId: segment.startId, segment });
+    return true;
+  });
+  const unvisited = new Set(validSegments.map((segment) => segment.id));
+  const paths: Array<{ points: SketchPoint[]; closed: boolean }> = [];
+  while (unvisited.size) {
+    const seed = validSegments.find((segment) => segment.id === unvisited.values().next().value);
+    if (!seed) break;
+    const componentIds = new Set<string>();
+    const queue = [seed.startId, seed.endId];
+    while (queue.length) {
+      const id = queue.pop();
+      if (!id || componentIds.has(id)) continue;
+      componentIds.add(id);
+      adjacency.get(id)?.forEach((entry) => queue.push(entry.pointId));
+    }
+    const startId = [...componentIds].find((id) => (adjacency.get(id)?.filter((entry) => unvisited.has(entry.segment.id)).length ?? 0) === 1) ?? seed.startId;
+    const first = pointById.get(startId);
+    if (!first) { unvisited.delete(seed.id); continue; }
+    const points = [first];
+    let currentId = startId;
+    for (let guard = 0; guard <= validSegments.length; guard += 1) {
+      const edge = adjacency.get(currentId)?.find((entry) => unvisited.has(entry.segment.id));
+      if (!edge) break;
+      const to = pointById.get(edge.pointId);
+      if (!to) break;
+      unvisited.delete(edge.segment.id);
+      currentId = to.id;
+      if (currentId === startId) break;
+      points.push(to);
+    }
+    paths.push({ points, closed: currentId === startId && points.length >= 3 });
+  }
+  return paths;
+}
+
+function sketchEntityId(prefix: string) {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function closestSketchGrid(step: number, enabled: boolean): GridSize {
+  if (!enabled) return "Off";
+  const options: Array<[number, GridSize]> = [[0.1, "0.1 mm"], [0.25, "0.25 mm"], [0.5, "0.5 mm"], [1, "1.0 mm"], [2, "2.0 mm"], [5, "5.0 mm"]];
+  return options.reduce((closest, candidate) => Math.abs(candidate[0] - step) < Math.abs(closest[0] - step) ? candidate : closest, options[0])[1];
+}
+
+function isSingleClosedSketch(profile: SketchProfile) {
+  if (profile.segments.length < 3) return false;
+  const degree = new Map<string, number>();
+  for (const segment of profile.segments) {
+    degree.set(segment.startId, (degree.get(segment.startId) ?? 0) + 1);
+    degree.set(segment.endId, (degree.get(segment.endId) ?? 0) + 1);
+  }
+  if ([...degree.values()].some((value) => value !== 2)) return false;
+  const visited = new Set<string>();
+  const pending = [profile.segments[0].startId];
+  while (pending.length) {
+    const id = pending.pop()!;
+    if (visited.has(id)) continue;
+    visited.add(id);
+    for (const segment of profile.segments) {
+      if (segment.startId === id) pending.push(segment.endId);
+      if (segment.endId === id) pending.push(segment.startId);
+    }
+  }
+  return visited.size === degree.size;
+}
+
+function withSmoothSketchHandles(profile: SketchProfile) {
+  const next = cloneSketchProfile(profile);
+  const points = new Map(next.points.map((point) => [point.id, point]));
+  orderedSketchPaths(next).forEach((path) => path.points.forEach((sourcePoint, index) => {
+    const point = points.get(sourcePoint.id);
+    if (!point) return;
+    const previous = path.closed ? path.points[(index - 1 + path.points.length) % path.points.length] : path.points[Math.max(0, index - 1)];
+    const following = path.closed ? path.points[(index + 1) % path.points.length] : path.points[Math.min(path.points.length - 1, index + 1)];
+    const tangent = { x: (following.x - previous.x) / 6, z: (following.z - previous.z) / 6 };
+    point.handleIn = { x: point.x - tangent.x, z: point.z - tangent.z };
+    point.handleOut = { x: point.x + tangent.x, z: point.z + tangent.z };
+    point.mode = "smooth";
+  }));
+  return next;
 }
 
 export function SketchForgeParametricEditor() {
@@ -131,6 +237,15 @@ export function SketchForgeParametricEditor() {
   const [alignOpen, setAlignOpen] = useState(false);
   const [cameraOrientation, setCameraOrientation] = useState<CameraOrientation>({ azimuth: Math.PI / 4, polar: 1.02 });
   const [clipboardId, setClipboardId] = useState<string | null>(null);
+  const [sketchSession, setSketchSession] = useState<{ featureId: string | null; objectId: string | null; profile: SketchProfile } | null>(null);
+  const [sketchTool, setSketchTool] = useState<SketchTool>("line");
+  const [sketchActivePointId, setSketchActivePointId] = useState<string | null>(null);
+  const [sketchSelection, setSketchSelection] = useState<SketchSelection>(null);
+  const [sketchMeasurement, setSketchMeasurement] = useState<SketchMeasurement>(null);
+  const [sketchMeasureStart, setSketchMeasureStart] = useState<SketchPoint | null>(null);
+  const sketchHistoryRef = useRef<SketchProfile[]>([]);
+  const sketchHistoryIndexRef = useRef(-1);
+  const [sketchHistoryIndex, setSketchHistoryIndex] = useState(-1);
 
   useEffect(() => {
     const closePopoversOutside = (event: PointerEvent) => {
@@ -323,6 +438,7 @@ export function SketchForgeParametricEditor() {
       const stored = { ...structuredClone(reference), id: `${feature.id}:preview-face` };
       const storedAxis = pendingRevolve.axis === "edge" && selectedTopologyEdges[0] ? { ...structuredClone(selectedTopologyEdges[0]), id: `${feature.id}:preview-axis` } : null;
       feature.objectId = reference.objectId;
+      feature.source = "face";
       feature.operation = pendingRevolve.operation;
       feature.angle = pendingRevolve.angle;
       feature.axis = pendingRevolve.axis;
@@ -442,6 +558,7 @@ export function SketchForgeParametricEditor() {
   const selectedId = primarySelection?.id ?? null;
   const selectionKind = primarySelection?.kind ?? "object";
   const selectedObjectId = objectIdForFeature(document, selectedId);
+  const selectedFeature = selectionKind === "feature" ? document.features.find((feature) => feature.id === selectedId) ?? null : null;
   const selectedOperationId = selectionKind === "feature" && document.features.some((feature) => feature.id === selectedId && (feature.kind === "extrude" || feature.kind === "primitive")) ? selectedId : null;
   const selectedOperation = selectedOperationId ? document.features.find((feature): feature is ExtrudeFeature | PrimitiveFeature => feature.id === selectedOperationId && (feature.kind === "extrude" || feature.kind === "primitive")) : null;
   const selectedShape = useMemo(() => workplaneShapeForObject(document, selectedObjectId), [document, selectedObjectId]);
@@ -465,6 +582,256 @@ export function SketchForgeParametricEditor() {
     rotation: selectedBox.rotation3d ?? { x: 0, y: 0, z: selectedBox.rotation },
   }] : [], [selectedBox, selectedOperationOriginId]);
   const snapAmount = document.workplane.snapToGrid ? document.workplane.gridStep : 0.01;
+
+  const beginSketch = (featureId: string | null = null) => {
+    const feature = featureId ? document.features.find((candidate): candidate is SketchFeature => candidate.kind === "sketch" && candidate.id === featureId && candidate.profile.shape === "drawn") : null;
+    const profile = feature?.profile.shape === "drawn" ? cloneSketchProfile(feature.profile.geometry) : emptySketchProfile();
+    setSketchSession({ featureId: feature?.id ?? null, objectId: feature?.objectId ?? selectedObjectId, profile });
+    sketchHistoryRef.current = [cloneSketchProfile(profile)];
+    sketchHistoryIndexRef.current = 0;
+    setSketchHistoryIndex(0);
+    setSketchTool(feature ? "select" : "line");
+    setSketchActivePointId(null);
+    setSketchSelection(null);
+    setSketchMeasurement(null);
+    setSketchMeasureStart(null);
+    setModelSidebarMode("hidden");
+    setNotice({ type: "info", text: feature ? "Editando boceto" : "Dibuja un contorno cerrado" });
+  };
+
+  const cancelSketch = () => {
+    setSketchSession(null);
+    setSketchActivePointId(null);
+    setSketchSelection(null);
+    setSketchMeasurement(null);
+    setSketchMeasureStart(null);
+    sketchHistoryRef.current = [];
+    sketchHistoryIndexRef.current = -1;
+    setSketchHistoryIndex(-1);
+    setModelSidebarMode("normal");
+    setNotice({ type: "info", text: "Edición de boceto cancelada" });
+  };
+
+  const acceptSketch = () => {
+    if (!sketchSession || !isSingleClosedSketch(sketchSession.profile)) {
+      setNotice({ type: "error", text: "Cierra un único contorno antes de aceptar el boceto." });
+      return;
+    }
+    let featureId = sketchSession.featureId ?? "";
+    let objectId = sketchSession.objectId;
+    const changed = mutate((draft) => {
+      if (featureId) {
+        const feature = draft.features.find((candidate) => candidate.id === featureId);
+        if (feature?.kind === "sketch" && feature.profile.shape === "drawn") feature.profile.geometry = structuredClone(sketchSession.profile);
+        return;
+      }
+      if (!objectId || !draft.objects.some((object) => object.id === objectId)) {
+        objectId = addParametricObject(draft, draft.workplane.origin);
+        const object = draft.objects.find((candidate) => candidate.id === objectId);
+        if (object) {
+          const placement = objectPlacementForWorkplane(draft.workplane);
+          object.transform.position = placement.position;
+          object.transform.rotation = placement.rotation;
+        }
+      }
+      const feature = createDrawnSketchFeature(draft.features.filter((candidate) => candidate.kind === "sketch" && candidate.purpose === "user").length + 1, sketchSession.profile);
+      feature.objectId = objectId ?? undefined;
+      featureId = feature.id;
+      draft.features.push(feature);
+    });
+    if (!changed || !featureId) return;
+    setSketchSession(null);
+    sketchHistoryRef.current = [];
+    sketchHistoryIndexRef.current = -1;
+    setSketchHistoryIndex(-1);
+    setModelSidebarMode("normal");
+    setModelSelection([{ id: featureId, kind: "feature" }]);
+    setNotice({ type: "ok", text: sketchSession.featureId ? "Boceto actualizado" : "Boceto añadido al historial" });
+  };
+
+  const setSketchProfile = (update: (profile: SketchProfile) => SketchProfile) => {
+    if (!sketchSession) return;
+    const nextProfile = update(cloneSketchProfile(sketchSession.profile));
+    if (JSON.stringify(nextProfile) === JSON.stringify(sketchSession.profile)) return;
+    const nextHistory = [...sketchHistoryRef.current.slice(0, sketchHistoryIndexRef.current + 1), cloneSketchProfile(nextProfile)];
+    sketchHistoryRef.current = nextHistory;
+    sketchHistoryIndexRef.current = nextHistory.length - 1;
+    setSketchHistoryIndex(sketchHistoryIndexRef.current);
+    setSketchSession({ ...sketchSession, profile: nextProfile });
+  };
+
+  const sketchUndo = () => {
+    if (sketchHistoryIndexRef.current <= 0) return;
+    const index = sketchHistoryIndexRef.current - 1;
+    sketchHistoryIndexRef.current = index;
+    setSketchHistoryIndex(index);
+    setSketchSession((current) => current ? { ...current, profile: cloneSketchProfile(sketchHistoryRef.current[index]) } : current);
+    setSketchSelection(null);
+    setSketchActivePointId(null);
+  };
+
+  const sketchRedo = () => {
+    if (sketchHistoryIndexRef.current >= sketchHistoryRef.current.length - 1) return;
+    const index = sketchHistoryIndexRef.current + 1;
+    sketchHistoryIndexRef.current = index;
+    setSketchHistoryIndex(index);
+    setSketchSession((current) => current ? { ...current, profile: cloneSketchProfile(sketchHistoryRef.current[index]) } : current);
+    setSketchSelection(null);
+    setSketchActivePointId(null);
+  };
+
+  const chooseSketchTool = (tool: SketchTool) => {
+    setSketchTool(tool);
+    setSketchActivePointId(null);
+    setSketchSelection(null);
+    if (tool !== "measure") setSketchMeasureStart(null);
+  };
+
+  const connectSketchPoint = (pointId: string) => {
+    if (!sketchSession || !["line", "bezier", "smooth"].includes(sketchTool)) return;
+    if (!sketchActivePointId) {
+      setSketchActivePointId(pointId);
+      setSketchSelection({ kind: "point", id: pointId });
+      return;
+    }
+    if (sketchActivePointId === pointId) return;
+    const duplicate = sketchSession.profile.segments.some((segment) => (segment.startId === sketchActivePointId && segment.endId === pointId) || (segment.startId === pointId && segment.endId === sketchActivePointId));
+    if (!duplicate) setSketchProfile((profile) => {
+      const next = { ...profile, segments: [...profile.segments, { id: sketchEntityId("segment"), startId: sketchActivePointId, endId: pointId, kind: sketchTool as "line" | "bezier" | "smooth" }] };
+      return sketchTool === "smooth" ? withSmoothSketchHandles(next) : next;
+    });
+    const firstPointId = sketchSession.profile.segments.length ? sketchSession.profile.segments[0].startId : null;
+    const closed = pointId === firstPointId;
+    setSketchActivePointId(closed ? null : pointId);
+    setSketchSelection({ kind: "point", id: pointId });
+    if (closed) setSketchTool("select");
+  };
+
+  const addSketchPoint = (position: { x: number; z: number }, handles?: { handleIn: { x: number; z: number }; handleOut: { x: number; z: number } }) => {
+    if (!sketchSession) return;
+    if (sketchTool === "measure") {
+      const point = { id: "measure", ...position };
+      if (sketchMeasureStart) { setSketchMeasurement({ start: sketchMeasureStart, end: point }); setSketchMeasureStart(null); }
+      else { setSketchMeasureStart(point); setSketchMeasurement(null); }
+      return;
+    }
+    if (!["line", "bezier", "smooth"].includes(sketchTool)) return;
+    const existing = sketchSession.profile.points.find((point) => Math.hypot(point.x - position.x, point.z - position.z) < 0.0001);
+    if (existing) { connectSketchPoint(existing.id); return; }
+    const point: SketchPoint = { id: sketchEntityId("point"), ...position, ...handles, mode: sketchTool === "line" ? "corner" : "smooth" };
+    setSketchProfile((profile) => {
+      const next = { ...profile, points: [...profile.points, point], segments: sketchActivePointId ? [...profile.segments, { id: sketchEntityId("segment"), startId: sketchActivePointId, endId: point.id, kind: sketchTool as "line" | "bezier" | "smooth" }] : profile.segments };
+      return sketchTool === "smooth" ? withSmoothSketchHandles(next) : next;
+    });
+    setSketchActivePointId(point.id);
+    setSketchSelection({ kind: "point", id: point.id });
+  };
+
+  const pressSketchPoint = (id: string) => {
+    const point = sketchSession?.profile.points.find((candidate) => candidate.id === id);
+    if (!point) return;
+    if (sketchTool === "measure") {
+      if (sketchMeasureStart) { setSketchMeasurement({ start: sketchMeasureStart, end: point }); setSketchMeasureStart(null); }
+      else { setSketchMeasureStart(point); setSketchMeasurement(null); }
+    } else if (sketchTool === "select") { setSketchSelection({ kind: "point", id }); setSketchActivePointId(null); }
+    else connectSketchPoint(id);
+  };
+
+  const deleteSketchPoint = (id: string) => {
+    setSketchProfile((profile) => {
+      const connected = profile.segments.filter((segment) => segment.startId === id || segment.endId === id);
+      const neighborIds = connected.map((segment) => segment.startId === id ? segment.endId : segment.startId);
+      const remaining = profile.segments.filter((segment) => segment.startId !== id && segment.endId !== id);
+      if (neighborIds.length === 2 && neighborIds[0] !== neighborIds[1] && !remaining.some((segment) => (segment.startId === neighborIds[0] && segment.endId === neighborIds[1]) || (segment.startId === neighborIds[1] && segment.endId === neighborIds[0]))) {
+        remaining.push({ id: sketchEntityId("segment"), startId: neighborIds[0], endId: neighborIds[1], kind: connected.every((segment) => segment.kind === "line") ? "line" : connected.some((segment) => segment.kind === "smooth") ? "smooth" : "bezier" });
+      }
+      const next = { ...profile, points: profile.points.filter((point) => point.id !== id), segments: remaining };
+      return next.segments.some((segment) => segment.kind === "smooth") ? withSmoothSketchHandles(next) : next;
+    });
+    if (sketchActivePointId === id) setSketchActivePointId(null);
+    setSketchSelection(null);
+  };
+
+  const deleteSketchSegment = (id: string) => {
+    setSketchProfile((profile) => ({ ...profile, segments: profile.segments.filter((segment) => segment.id !== id) }));
+    setSketchActivePointId(null);
+    setSketchSelection(null);
+  };
+
+  const insertSketchPoint = (segmentId: string, position: { x: number; z: number }) => {
+    const insertedId = sketchEntityId("point");
+    setSketchProfile((profile) => {
+      const segment = profile.segments.find((candidate) => candidate.id === segmentId);
+      if (!segment) return profile;
+      const inserted: SketchPoint = { id: insertedId, ...position, mode: segment.kind === "line" ? "corner" : "smooth" };
+      const next = { ...profile, points: [...profile.points, inserted], segments: profile.segments.flatMap((candidate) => candidate.id === segmentId ? [{ ...candidate, id: sketchEntityId("segment"), endId: inserted.id }, { ...candidate, id: sketchEntityId("segment"), startId: inserted.id }] : [candidate]) };
+      return segment.kind === "smooth" ? withSmoothSketchHandles(next) : next;
+    });
+    setSketchSelection({ kind: "point", id: insertedId });
+    setSketchTool("select");
+  };
+
+  const moveSketchHandle = (id: string, handle: "in" | "out", position: { x: number; z: number }) => setSketchProfile((profile) => {
+    const next = cloneSketchProfile(profile);
+    const point = next.points.find((candidate) => candidate.id === id);
+    if (!point) return profile;
+    if (handle === "in") point.handleIn = { ...position };
+    else point.handleOut = { ...position };
+    if (point.mode === "smooth") {
+      const opposite = { x: point.x * 2 - position.x, z: point.z * 2 - position.z };
+      if (handle === "in") point.handleOut = opposite;
+      else point.handleIn = opposite;
+    }
+    return next;
+  });
+
+  const setSketchPointMode = (id: string, mode: "corner" | "smooth" | "split") => setSketchProfile((profile) => {
+    let next = cloneSketchProfile(profile);
+    const point = next.points.find((candidate) => candidate.id === id);
+    if (!point) return profile;
+    point.mode = mode;
+    if (mode === "corner") {
+      point.handleIn = undefined;
+      point.handleOut = undefined;
+      next.segments = next.segments.map((segment) => segment.startId === id || segment.endId === id ? { ...segment, kind: "line" as const } : segment);
+    } else {
+      next.segments = next.segments.map((segment) => segment.startId === id || segment.endId === id ? { ...segment, kind: "bezier" as const } : segment);
+      if (!point.handleIn || !point.handleOut) next = withSmoothSketchHandles(next);
+      const updated = next.points.find((candidate) => candidate.id === id);
+      if (updated) updated.mode = mode;
+    }
+    return next;
+  });
+
+  const addExtrudeFromSketch = (sketch: SketchFeature) => {
+    let featureId = "";
+    const changed = mutate((draft) => {
+      if (!sketch.objectId) return;
+      const feature = createExtrudeFeature(sketch.id, draft.features.filter((candidate) => candidate.kind === "extrude").length + 1, false);
+      feature.objectId = sketch.objectId;
+      feature.dependencies = [{ type: "feature", id: sketch.id }];
+      featureId = feature.id;
+      draft.features.push(feature);
+    });
+    if (changed && featureId) { setModelSelection([{ id: featureId, kind: "feature" }]); setNotice({ type: "ok", text: "Extrusión creada desde el boceto" }); }
+  };
+
+  const addRevolveFromSketch = (sketch: SketchFeature) => {
+    let featureId = "";
+    const changed = mutate((draft) => {
+      if (!sketch.objectId) return;
+      const feature = createRevolveFeature(draft.features.filter((candidate) => candidate.kind === "revolve").length + 1, "add");
+      feature.objectId = sketch.objectId;
+      feature.source = "sketch";
+      feature.sketchId = sketch.id;
+      feature.faceReferenceId = undefined;
+      feature.axis = "y";
+      feature.dependencies = [{ type: "feature", id: sketch.id }];
+      featureId = feature.id;
+      draft.features.push(feature);
+    });
+    if (changed && featureId) { setModelSelection([{ id: featureId, kind: "feature" }]); setNotice({ type: "ok", text: "Revolución creada desde el boceto" }); }
+  };
   const faceExtrudeHandle = useMemo(() => {
     const pendingReference = pendingFaceExtrude ? selectedTopologyFaces[0] : null;
     const selectedFeature = !pendingFaceExtrude && modelSelection.length === 1 && modelSelection[0]?.kind === "feature"
@@ -557,6 +924,26 @@ export function SketchForgeParametricEditor() {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.matches("input, select, textarea")) return;
+      if (sketchSession) {
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+          event.preventDefault();
+          if (event.shiftKey) sketchRedo();
+          else sketchUndo();
+          return;
+        }
+        if (event.key === "Escape") cancelSketch();
+        if (event.key === "Delete" || event.key === "Backspace") {
+          const pointIds = sketchSelection?.kind === "point" ? [sketchSelection.id] : sketchSelection?.kind === "multiple" ? sketchSelection.pointIds : [];
+          const segmentIds = sketchSelection?.kind === "segment" ? [sketchSelection.id] : sketchSelection?.kind === "multiple" ? sketchSelection.segmentIds : [];
+          const imageIds = sketchSelection?.kind === "image" ? [sketchSelection.id] : sketchSelection?.kind === "multiple" ? sketchSelection.imageIds ?? [] : [];
+          if (pointIds.length || segmentIds.length || imageIds.length) {
+            event.preventDefault();
+            setSketchProfile((profile) => ({ ...profile, points: profile.points.filter((point) => !pointIds.includes(point.id)), segments: profile.segments.filter((segment) => !segmentIds.includes(segment.id) && !pointIds.includes(segment.startId) && !pointIds.includes(segment.endId)), images: (profile.images ?? []).filter((image) => !imageIds.includes(image.id)) }));
+            setSketchSelection(null);
+          }
+        }
+        return;
+      }
       if (event.key === "Escape") {
         setModelSelection([]);
         return;
@@ -580,7 +967,7 @@ export function SketchForgeParametricEditor() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [deleteCurrentSelection, document.workplane, mutate, selectedId, selectedObjectId, selectionKind, snapAmount]);
+  }, [deleteCurrentSelection, document.workplane, mutate, selectedId, selectedObjectId, selectionKind, sketchSelection, sketchSession, snapAmount]);
 
   const updateSelected = (patch: Partial<WorkplaneShape>) => {
     if (!selectedObjectId) return;
@@ -884,6 +1271,7 @@ export function SketchForgeParametricEditor() {
       const feature = existing?.kind === "revolve" ? existing : createRevolveFeature(draft.features.filter((candidate) => candidate.kind === "revolve").length + 1, pendingRevolve.operation);
       if (existing?.kind === "revolve") draft.topologyReferences = draft.topologyReferences.filter((candidate) => candidate.id !== existing.faceReferenceId && candidate.id !== existing.axisReferenceId);
       feature.objectId = reference.objectId;
+      feature.source = "face";
       feature.operation = pendingRevolve.operation;
       feature.angle = Math.abs(pendingRevolve.angle) < 1 ? (pendingRevolve.angle < 0 ? -1 : 1) : Math.min(360, Math.max(-360, pendingRevolve.angle));
       feature.axis = pendingRevolve.axis;
@@ -1036,9 +1424,30 @@ export function SketchForgeParametricEditor() {
   return (
     <main className="educad-reference-shell">
       <div className="secondary-toolbar">
+        {sketchSession ? <div className="sketch-toolbar-ribbon educad-parametric-sketch-toolbar" aria-label="Herramientas de boceto">
+          <ToolbarSection label="Dibujar">
+            <Tool label="Línea" active={sketchTool === "line"} onClick={() => chooseSketchTool("line")}><PenLine /></Tool>
+            <Tool label="Curva Bézier" active={sketchTool === "bezier"} onClick={() => chooseSketchTool("bezier")}><Spline /></Tool>
+            <Tool label="Curva suave" active={sketchTool === "smooth"} onClick={() => chooseSketchTool("smooth")}><Spline /></Tool>
+          </ToolbarSection>
+          <ToolbarSection label="Editar">
+            <Tool label="Seleccionar" active={sketchTool === "select"} onClick={() => chooseSketchTool("select")}><MousePointer2 /></Tool>
+            <Tool label="Refinar" active={sketchTool === "refine"} onClick={() => chooseSketchTool("refine")}><Plus /></Tool>
+            <Tool label="Borrar" active={sketchTool === "erase"} onClick={() => chooseSketchTool("erase")}><Eraser /></Tool>
+          </ToolbarSection>
+          <ToolbarSection label="Historial">
+            <Tool label="Deshacer boceto" enabled={sketchHistoryIndex > 0} onClick={sketchUndo}><ToolbarUndoIcon /></Tool>
+            <Tool label="Rehacer boceto" enabled={sketchHistoryIndex >= 0 && sketchHistoryIndex < sketchHistoryRef.current.length - 1} onClick={sketchRedo}><ToolbarRedoIcon /></Tool>
+          </ToolbarSection>
+          <ToolbarSection label="Inspeccionar">
+            <Tool label="Medir" active={sketchTool === "measure"} onClick={() => chooseSketchTool("measure")}><Ruler /></Tool>
+          </ToolbarSection>
+          <div className="toolbar-spacer" />
+          <div className="educad-sketch-finish-actions"><button className="sketch-command-button primary" type="button" onClick={acceptSketch}><Check size={18} /><span>Aceptar boceto</span></button><button className="sketch-command-button cancel" type="button" onClick={cancelSketch}><X size={18} /><span>Cancelar</span></button></div>
+        </div> : <>
         <div className="toolbar-workspace-tabs">
           <button className="active">Diseño 3D</button>
-          <button onClick={() => setNotice({ type: "info", text: "Selecciona una forma para editar su boceto paramétrico" })}>Boceto</button>
+          <button onClick={() => beginSketch(selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? selectedFeature.id : null)}>Boceto</button>
           <span className="educad-project-name">eduCAD · {document.name}</span>
         </div>
         <div className="toolbar-mode-content geometry">
@@ -1087,9 +1496,9 @@ export function SketchForgeParametricEditor() {
               <Tool label="Ajustar a rejilla" enabled={Boolean(selectedShape && document.workplane.snapToGrid)} onClick={() => selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: Math.round((selectedShape?.x ?? 0) / snapAmount) * snapAmount, z: Math.round((selectedShape?.z ?? 0) / snapAmount) * snapAmount }))}><ToolbarSnapGridIcon /></Tool>
               <Tool label="Chaflán" active={pendingEdgeTreatment === "chamfer"} onClick={() => beginEdgeTreatment("chamfer")}><ToolbarChamferIcon /></Tool>
               <Tool label="Redondeo" active={pendingEdgeTreatment === "fillet"} onClick={() => beginEdgeTreatment("fillet")}><ToolbarFilletIcon /></Tool>
-              <Tool label="Extruir cara" active={Boolean(pendingFaceExtrude)} onClick={() => beginFaceExtrude("add")}><ToolbarShapeAddIcon /></Tool>
+              <Tool label={selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? "Extruir boceto" : "Extruir cara"} active={Boolean(pendingFaceExtrude)} onClick={() => selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? addExtrudeFromSketch(selectedFeature) : beginFaceExtrude("add")}><ToolbarShapeAddIcon /></Tool>
               <Tool label="Vaciado" active={Boolean(pendingShell)} onClick={() => beginShell()}><img className="educad-toolbar-operation-icon" src="/assets/educad/operations/shell.svg" alt="" /></Tool>
-              <Tool label="Revolución" active={Boolean(pendingRevolve)} onClick={() => beginRevolve()}><img className="educad-toolbar-operation-icon" src="/assets/educad/operations/revolve.svg" alt="" /></Tool>
+              <Tool label={selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? "Revolucionar boceto" : "Revolución"} active={Boolean(pendingRevolve)} onClick={() => selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? addRevolveFromSketch(selectedFeature) : beginRevolve()}><img className="educad-toolbar-operation-icon" src="/assets/educad/operations/revolve.svg" alt="" /></Tool>
             </ToolbarSection>
             <ToolbarSection label="Arrange">
               <Tool label={hasActiveWorkplane ? "Restaurar plano global" : placingWorkplane ? "Cancelar plano de trabajo" : "Colocar plano de trabajo"} active={placingWorkplane || hasActiveWorkplane} onClick={() => {
@@ -1121,12 +1530,43 @@ export function SketchForgeParametricEditor() {
               <button data-educad-popup="settings" className="action-icon-button" aria-label="Ajustes" onClick={() => setSettingsOpen((value) => !value)}><ToolbarSettingsIcon /></button>
             </div>
           </ToolbarSection>
-        </div>
+        </div></>}
       </div>
 
-      <section className="educad-workplane-stage">
+      <section className={`educad-workplane-stage ${sketchSession ? "sketch-active" : ""}`}>
         {showFps ? <FpsCounter rightOffset={modelSidebarMode === "normal" ? 332 : modelSidebarMode === "simplified" ? 80 : 12} /> : null}
-        <ParametricViewport
+        {sketchSession ? <SketchWorkspace
+          profile={sketchSession.profile}
+          operation="extrude"
+          referenceShapes={[]}
+          tool={sketchTool}
+          activePointId={sketchActivePointId}
+          selected={sketchSelection}
+          measurement={sketchMeasurement}
+          pendingMeasurementStart={sketchMeasureStart}
+          initialSnap={closestSketchGrid(document.workplane.gridStep, document.workplane.snapToGrid)}
+          exactSnapStep={document.workplane.snapToGrid ? document.workplane.gridStep : 0}
+          initialWorkspace={{ ...DEFAULT_WORKPLANE_WORKSPACE, width: document.workplane.width, depth: document.workplane.depth, sizePreset: `${document.workplane.width} x ${document.workplane.depth} mm`, gridBlockSize: document.workplane.gridStep, gridBlockPreset: `${document.workplane.gridStep} mm`, showGrid: document.workplane.gridVisible }}
+          onPlanePoint={addSketchPoint}
+          onPointPress={pressSketchPoint}
+          onSelectSegment={(id) => { setSketchSelection({ kind: "segment", id }); setSketchActivePointId(null); }}
+          onSelectMany={(pointIds, segmentIds, imageIds) => setSketchSelection(pointIds.length || segmentIds.length || imageIds.length ? { kind: "multiple", pointIds, segmentIds, imageIds } : null)}
+          onSelectImage={(id) => setSketchSelection({ kind: "image", id })}
+          onUpdateImage={(id, update) => setSketchProfile((profile) => ({ ...profile, images: (profile.images ?? []).map((image) => image.id === id ? { ...image, ...update } : image) }))}
+          onDeleteImage={(id) => setSketchProfile((profile) => ({ ...profile, images: (profile.images ?? []).filter((image) => image.id !== id) }))}
+          onDeletePoint={deleteSketchPoint}
+          onDeleteSegment={deleteSketchSegment}
+          onMovePoint={(id, point) => setSketchProfile((profile) => ({ ...profile, points: profile.points.map((candidate) => {
+            if (candidate.id !== id) return candidate;
+            const dx = point.x - candidate.x;
+            const dz = point.z - candidate.z;
+            return { ...candidate, ...point, handleIn: candidate.handleIn ? { x: candidate.handleIn.x + dx, z: candidate.handleIn.z + dz } : undefined, handleOut: candidate.handleOut ? { x: candidate.handleOut.x + dx, z: candidate.handleOut.z + dz } : undefined };
+          }) }))}
+          onMoveHandle={moveSketchHandle}
+          onInsertPoint={insertSketchPoint}
+          onSetPointMode={setSketchPointMode}
+          onClearMeasurement={() => { setSketchMeasurement(null); setSketchMeasureStart(null); }}
+        /> : <ParametricViewport
           mesh={((editingEdgeTreatmentId || editingFaceExtrudeId || editingShellId || editingRevolveId) && topologySelectionBuild ? topologySelectionBuild : build).mesh}
           objectRecords={((editingEdgeTreatmentId || editingFaceExtrudeId || editingShellId || editingRevolveId) && topologySelectionBuild ? topologySelectionBuild : build).objectRecords}
           objectColors={objectColors}
@@ -1193,7 +1633,7 @@ export function SketchForgeParametricEditor() {
             if (pendingFaceExtrude) setPendingFaceExtrude((current) => current ? { ...current, distance, operation } : current);
             else if (faceExtrudeHandle?.featureId) updateFeature(faceExtrudeHandle.featureId, (feature) => { if (feature.kind === "faceExtrude") { feature.distance = distance; feature.operation = operation; } });
           }}
-        />
+        />}
         <ViewCube orientation={cameraOrientation} onDirection={(direction) => setView((current) => ({ name: "custom", direction, token: current.token + 1 }))} />
         <button data-educad-popup="grid" className={`educad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label="Ajustes de rejilla" title="Rejilla" onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><Grid3X3 size={22} /></button>
         <button
@@ -1249,6 +1689,7 @@ export function SketchForgeParametricEditor() {
             const feature = document.features.find((candidate) => candidate.id === featureId);
             if (feature?.kind === "fillet") beginEdgeTreatment(feature.treatment, feature.id);
           }}
+          onEditSketch={beginSketch}
           onEditFaceExtrudeSelection={(featureId) => {
             const feature = document.features.find((candidate) => candidate.id === featureId);
             if (feature?.kind === "faceExtrude") beginFaceExtrude(feature.operation, feature.id);

@@ -480,7 +480,7 @@ function FeatureInspector({ feature, features, onUpdate, onDelete }: {
                 <NumberField label="Ancho" value={feature.profile.width} min={0.1} onChange={(width) => patch({ profile: { shape: "rectangle", width, depth: feature.profile.shape === "rectangle" ? feature.profile.depth : 30 } })} />
                 <NumberField label="Fondo" value={feature.profile.depth} min={0.1} onChange={(depth) => patch({ profile: { shape: "rectangle", width: feature.profile.shape === "rectangle" ? feature.profile.width : 40, depth } })} />
               </div>
-            ) : <NumberField label="Diámetro" value={feature.profile.diameter} min={0.1} onChange={(diameter) => patch({ profile: { shape: "circle", diameter } })} />}
+            ) : feature.profile.shape === "circle" ? <NumberField label="Diámetro" value={feature.profile.diameter} min={0.1} onChange={(diameter) => patch({ profile: { shape: "circle", diameter } })} /> : <p>Boceto dibujado en el editor 2D</p>}
             <div className="pcad-constraint-ok"><Check size={14} /> Boceto totalmente acotado</div>
           </section>
         </>

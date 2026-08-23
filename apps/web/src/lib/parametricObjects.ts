@@ -13,6 +13,17 @@ type TransformableOperation = ExtrudeFeature | PrimitiveFeature;
 function isTransformableOperation(feature: ParametricFeature): feature is TransformableOperation {
   return feature.kind === "extrude" || feature.kind === "primitive";
 }
+
+function sketchDimensions(sketch: SketchFeature) {
+  if (sketch.profile.shape === "rectangle") return { width: sketch.profile.width, depth: sketch.profile.depth };
+  if (sketch.profile.shape === "circle") return { width: sketch.profile.diameter, depth: sketch.profile.diameter };
+  const points = sketch.profile.geometry.points;
+  if (!points.length) return { width: 0.1, depth: 0.1 };
+  return {
+    width: Math.max(0.1, Math.max(...points.map((point) => point.x)) - Math.min(...points.map((point) => point.x))),
+    depth: Math.max(0.1, Math.max(...points.map((point) => point.z)) - Math.min(...points.map((point) => point.z))),
+  };
+}
 export type ParametricTreeSelection = { id: string; kind: "object" | "feature" };
 export const OBJECT_COLOR_PALETTE = [
   "#d41721", "#ff7a1a", "#f2cf10", "#33983d", "#18b99a", "#0098c7", "#3b82f6",
@@ -52,13 +63,13 @@ export function parametricObjectTree(document: ParametricDocument): ParametricOb
       id: object.id,
       name: object.name,
       object,
-      operations: document.features.filter((candidate) => candidate.objectId === object.id && candidate.kind !== "sketch"),
+      operations: document.features.filter((candidate) => candidate.objectId === object.id && (candidate.kind !== "sketch" || candidate.purpose === "user")),
     };
   });
 }
 
 export function lastOperationForObject(document: ParametricDocument, objectId: string) {
-  return document.features.findLast((feature) => feature.objectId === objectId && feature.kind !== "sketch") ?? null;
+  return document.features.findLast((feature) => feature.objectId === objectId && (feature.kind !== "sketch" || feature.purpose === "user")) ?? null;
 }
 
 export function colorForNewParametricObject(document: ParametricDocument, random = Math.random) {
@@ -146,7 +157,7 @@ export function addPrimitive(
   if (sketch.profile.shape === "rectangle") {
     sketch.profile.width = 20;
     sketch.profile.depth = 20;
-  } else {
+  } else if (sketch.profile.shape === "circle") {
     sketch.profile.diameter = 20;
   }
   const extrusion = createExtrudeFeature(sketch.id, count, false);
@@ -192,14 +203,18 @@ export function deleteParametricFeature(document: ParametricDocument, id: string
   const feature = document.features.find((candidate) => candidate.id === id);
   if (!feature) return { objectId: null, nextId: null };
   const objectId = objectIdForFeature(document, id);
-  const operations = document.features.filter((candidate) => candidate.objectId === objectId && candidate.kind !== "sketch");
+  const operations = document.features.filter((candidate) => candidate.objectId === objectId && (candidate.kind !== "sketch" || candidate.purpose === "user"));
   const operationIndex = operations.findIndex((candidate) => candidate.id === id);
   const ids = new Set([id]);
-  const ownedReferenceIds = new Set(feature.kind === "fillet" ? [...(feature.edgeReferenceIds ?? []), ...(feature.selectionReferenceIds ?? [])] : feature.kind === "faceExtrude" ? [feature.faceReferenceId] : feature.kind === "revolve" ? [feature.faceReferenceId, ...(feature.axisReferenceId ? [feature.axisReferenceId] : [])] : feature.kind === "shell" ? feature.faceReferenceIds : []);
-  if (feature.kind === "extrude") ids.add(feature.sketchId);
+  const ownedReferenceIds = new Set(feature.kind === "fillet" ? [...(feature.edgeReferenceIds ?? []), ...(feature.selectionReferenceIds ?? [])] : feature.kind === "faceExtrude" ? [feature.faceReferenceId] : feature.kind === "revolve" ? [...(feature.faceReferenceId ? [feature.faceReferenceId] : []), ...(feature.axisReferenceId ? [feature.axisReferenceId] : [])] : feature.kind === "shell" ? feature.faceReferenceIds : []);
+  if (feature.kind === "extrude") {
+    const sketch = document.features.find((candidate) => candidate.kind === "sketch" && candidate.id === feature.sketchId);
+    if (sketch?.kind === "sketch" && sketch.purpose !== "user") ids.add(feature.sketchId);
+  }
   if (feature.kind === "sketch") {
     for (const candidate of document.features) {
       if (candidate.kind === "extrude" && candidate.sketchId === feature.id) ids.add(candidate.id);
+      if (candidate.kind === "revolve" && candidate.source === "sketch" && candidate.sketchId === feature.id) ids.add(candidate.id);
     }
   }
   document.features = document.features.filter((candidate) => !ids.has(candidate.id));
@@ -269,7 +284,7 @@ export function canReorderParametricSelection(document: ParametricDocument, sele
   const ownerIds = new Set(selection.map((item) => objectIdForFeature(document, item.id)));
   if (ownerIds.size !== 1 || ownerIds.has(null)) return false;
   const objectId = [...ownerIds][0];
-  const ids = document.features.filter((feature) => feature.objectId === objectId && feature.kind !== "sketch").map((feature) => feature.id);
+  const ids = document.features.filter((feature) => feature.objectId === objectId && (feature.kind !== "sketch" || feature.purpose === "user")).map((feature) => feature.id);
   return moveSelectedIds(ids, new Set(selection.map((item) => item.id)), direction).moved;
 }
 
@@ -286,7 +301,7 @@ export function reorderParametricSelection(document: ParametricDocument, selecti
   const objectId = objectIdForFeature(document, selection[0].id);
   if (!objectId) return false;
   const ownedFeatures = document.features.filter((feature) => feature.objectId === objectId);
-  const operations = ownedFeatures.filter((feature) => feature.kind !== "sketch");
+  const operations = ownedFeatures.filter((feature) => feature.kind !== "sketch" || feature.purpose === "user");
   const { reordered } = moveSelectedIds(operations.map((feature) => feature.id), selectedIds, direction);
   const byId = new Map(ownedFeatures.map((feature) => [feature.id, feature]));
   const consumed = new Set<string>();
@@ -296,7 +311,7 @@ export function reorderParametricSelection(document: ParametricDocument, selecti
     const group: ParametricFeature[] = [];
     if (operation.kind === "extrude") {
       const sketch = byId.get(operation.sketchId);
-      if (sketch) {
+      if (sketch?.kind === "sketch" && sketch.purpose !== "user") {
         group.push(sketch);
         consumed.add(sketch.id);
       }
@@ -357,7 +372,9 @@ export function duplicateParametricObject(document: ParametricDocument, id: stri
       clone.edgeReferenceIds = clone.edgeReferenceIds?.map((referenceId) => topologyIdMap.get(referenceId) ?? referenceId);
       clone.selectionReferenceIds = clone.selectionReferenceIds?.map((referenceId) => topologyIdMap.get(referenceId) ?? referenceId);
     }
-    if (clone.kind === "faceExtrude" || clone.kind === "revolve") clone.faceReferenceId = topologyIdMap.get(clone.faceReferenceId) ?? clone.faceReferenceId;
+    if (clone.kind === "faceExtrude") clone.faceReferenceId = topologyIdMap.get(clone.faceReferenceId) ?? clone.faceReferenceId;
+    if (clone.kind === "revolve" && clone.faceReferenceId) clone.faceReferenceId = topologyIdMap.get(clone.faceReferenceId) ?? clone.faceReferenceId;
+    if (clone.kind === "revolve" && clone.sketchId) clone.sketchId = idMap.get(clone.sketchId) ?? clone.sketchId;
     if (clone.kind === "revolve" && clone.axisReferenceId) clone.axisReferenceId = topologyIdMap.get(clone.axisReferenceId) ?? clone.axisReferenceId;
     if (clone.kind === "shell") clone.faceReferenceIds = clone.faceReferenceIds.map((referenceId) => topologyIdMap.get(referenceId) ?? referenceId);
     return clone;
@@ -383,8 +400,9 @@ export function workplaneShapeForObject(document: ParametricDocument, id: string
   if (!feature) return null;
   const sketch = feature.kind === "extrude" ? sketchForExtrude(document, feature) : null;
   if (feature.kind === "extrude" && !sketch) return null;
-  const baseWidth = feature.kind === "primitive" ? feature.width : sketch!.profile.shape === "rectangle" ? sketch!.profile.width : sketch!.profile.diameter;
-  const baseDepth = feature.kind === "primitive" ? feature.depth : sketch!.profile.shape === "rectangle" ? sketch!.profile.depth : sketch!.profile.diameter;
+  const sketchSize = sketch ? sketchDimensions(sketch) : null;
+  const baseWidth = feature.kind === "primitive" ? feature.width : sketchSize!.width;
+  const baseDepth = feature.kind === "primitive" ? feature.depth : sketchSize!.depth;
   const baseHeight = feature.kind === "primitive" ? feature.height : feature.distance;
   const width = baseWidth * object.transform.scale.x;
   const depth = baseDepth * object.transform.scale.y;
@@ -461,8 +479,9 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
   const object = document.objects.find((candidate) => candidate.id === feature.objectId);
   const sketch = feature.kind === "extrude" ? sketchForExtrude(document, feature) : null;
   if (!object || (!includeUnavailable && (!object.visible || object.locked)) || (feature.kind === "extrude" && !sketch)) return null;
-  const baseWidth = feature.kind === "primitive" ? feature.width : sketch!.profile.shape === "rectangle" ? sketch!.profile.width : sketch!.profile.diameter;
-  const baseDepth = feature.kind === "primitive" ? feature.depth : sketch!.profile.shape === "rectangle" ? sketch!.profile.depth : sketch!.profile.diameter;
+  const sketchSize = sketch ? sketchDimensions(sketch) : null;
+  const baseWidth = feature.kind === "primitive" ? feature.width : sketchSize!.width;
+  const baseDepth = feature.kind === "primitive" ? feature.depth : sketchSize!.depth;
   const baseHeight = feature.kind === "primitive" ? feature.height : feature.distance;
   const world = operationWorldTransform(object, feature, baseHeight);
   const width = baseWidth * object.transform.scale.x;
@@ -502,9 +521,9 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
         : { shape: "sphere", radius: feature.width / 2 }
       : sketch!.profile.shape === "circle"
         ? { shape: "cylinder", radius: sketch!.profile.diameter / 2, height: feature.distance }
-        : { shape: "box", width: sketch!.profile.width, depth: sketch!.profile.depth, height: feature.distance },
+        : { shape: "box", width: baseWidth, depth: baseDepth, height: feature.distance },
     operationPreview: {
-      shape: feature.kind === "primitive" ? feature.primitive : sketch!.profile.shape === "rectangle" ? "box" : "cylinder",
+      shape: feature.kind === "primitive" ? feature.primitive : sketch!.profile.shape === "circle" ? "cylinder" : "box",
       ...(feature.kind === "primitive" && feature.primitive === "cone" ? { topRadius: feature.topRadius ?? 0 } : {}),
       ...(feature.kind === "primitive" && feature.primitive === "tube" ? { innerRadius: feature.innerRadius ?? 6 } : {}),
       ...(feature.kind === "primitive" && feature.primitive === "polygon" ? { sides: feature.sides ?? 6 } : {}),
@@ -721,11 +740,22 @@ export function resizeParametricSelection(
   } else if (sketch!.profile.shape === "rectangle") {
     sketch!.profile.width = Math.max(0.1, width / Math.max(0.01, Math.abs(object.transform.scale.x)));
     sketch!.profile.depth = Math.max(0.1, depth / Math.max(0.01, Math.abs(object.transform.scale.y)));
-  } else {
+  } else if (sketch!.profile.shape === "circle") {
     const widthRatio = width / Math.max(0.01, current.width);
     const depthRatio = depth / Math.max(0.01, current.depth);
     const ratio = Math.abs(widthRatio - 1) >= Math.abs(depthRatio - 1) ? widthRatio : depthRatio;
     sketch!.profile.diameter = Math.max(0.1, sketch!.profile.diameter * ratio);
+  } else {
+    const bounds = sketchDimensions(sketch!);
+    const scaleX = width / Math.max(0.1, bounds.width * Math.abs(object.transform.scale.x));
+    const scaleZ = depth / Math.max(0.1, bounds.depth * Math.abs(object.transform.scale.y));
+    sketch!.profile.geometry.points = sketch!.profile.geometry.points.map((point) => ({
+      ...point,
+      x: point.x * scaleX,
+      z: point.z * scaleZ,
+      handleIn: point.handleIn ? { x: point.handleIn.x * scaleX, z: point.handleIn.z * scaleZ } : undefined,
+      handleOut: point.handleOut ? { x: point.handleOut.x * scaleX, z: point.handleOut.z * scaleZ } : undefined,
+    }));
   }
 }
 

@@ -4534,6 +4534,24 @@ button {
   background: #f8fbfc;
 }
 
+.educad-parametric-sketch-toolbar {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-height: 78px;
+}
+
+.educad-sketch-finish-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+}
+
+.educad-workplane-stage.sketch-active > :not(.sketch-workspace-stage):not(.educad-reference-toast) {
+  display: none !important;
+}
+
 .sketch-mode-badge {
   position: absolute;
   top: 8px;

@@ -45,6 +45,7 @@ type Props = {
   onDeleteSelection: () => void;
   onToggleOriginEdit: (objectId: string) => void;
   onEditFeatureSelection: (featureId: string) => void;
+  onEditSketch: (featureId: string) => void;
   onEditFaceExtrudeSelection: (featureId: string) => void;
   onEditShellSelection: (featureId: string) => void;
   onEditRevolveFace: (featureId: string) => void;
@@ -81,6 +82,7 @@ export function ParametricModelSidebar({
   onDeleteSelection,
   onToggleOriginEdit,
   onEditFeatureSelection,
+  onEditSketch,
   onEditFaceExtrudeSelection,
   onEditShellSelection,
   onEditRevolveFace,
@@ -253,7 +255,8 @@ export function ParametricModelSidebar({
             document={document}
             feature={selectedFeature}
             onUpdateFeature={onUpdateFeature}
-            onEditSelection={onEditFeatureSelection}
+          onEditSelection={onEditFeatureSelection}
+          onEditSketch={onEditSketch}
             onEditFaceExtrudeSelection={onEditFaceExtrudeSelection}
             onEditShellSelection={onEditShellSelection}
             onEditRevolveFace={onEditRevolveFace}
@@ -381,6 +384,7 @@ function ParametricFeatureInspector({
   feature,
   onUpdateFeature,
   onEditSelection,
+  onEditSketch,
   onEditFaceExtrudeSelection,
   onEditShellSelection,
   onEditRevolveFace,
@@ -390,6 +394,7 @@ function ParametricFeatureInspector({
   feature: ParametricFeature;
   onUpdateFeature: (id: string, update: (feature: ParametricFeature) => void) => void;
   onEditSelection: (featureId: string) => void;
+  onEditSketch: (featureId: string) => void;
   onEditFaceExtrudeSelection: (featureId: string) => void;
   onEditShellSelection: (featureId: string) => void;
   onEditRevolveFace: (featureId: string) => void;
@@ -397,6 +402,7 @@ function ParametricFeatureInspector({
 }) {
   const onUpdate = (update: (feature: ParametricFeature) => void) => onUpdateFeature(feature.id, update);
   const primitiveSketch = feature.kind === "extrude" ? sketchForExtrude(document, feature) : null;
+  const revolveSketch = feature.kind === "revolve" && feature.source === "sketch" ? document.features.find((candidate): candidate is Extract<ParametricFeature, { kind: "sketch" }> => candidate.kind === "sketch" && candidate.id === feature.sketchId) ?? null : null;
   const treatmentReferences = feature.kind === "fillet"
     ? (feature.selectionReferenceIds ?? feature.edgeReferenceIds ?? []).map((id) => document.topologyReferences.find((reference) => reference.id === id)).filter(Boolean)
     : [];
@@ -408,11 +414,14 @@ function ParametricFeatureInspector({
       {feature.kind === "sketch" ? (
         <>
           <div className="educad-feature-card"><h3>Operación</h3><ReadOnlyField label="Tipo" value="Boceto" /><ReadOnlyField label="Plano" value={feature.plane} /></div>
-          <div className="educad-feature-card">
+          {feature.profile.shape === "drawn" ? <>
+            <button className="educad-edit-topology-selection" type="button" onClick={() => onEditSketch(feature.id)}>Editar boceto</button>
+            <div className="educad-feature-card"><h3>Geometría</h3><ReadOnlyField label="Puntos" value={String(feature.profile.geometry.points.length)} /><ReadOnlyField label="Segmentos" value={String(feature.profile.geometry.segments.length)} /></div>
+          </> : <div className="educad-feature-card">
             <h3>Parámetros de la forma</h3>
             <ReadOnlyField label="Perfil" value={feature.profile.shape === "rectangle" ? "Rectángulo" : "Círculo"} />
             {feature.profile.shape === "rectangle" ? <><NumberField label="Anchura" value={feature.profile.width} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} /><NumberField label="Profundidad" value={feature.profile.depth} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} /></> : <NumberField label="Diámetro" value={feature.profile.diameter} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value); })} />}
-          </div>
+          </div>}
           <TransformSection description="Posición">
             <div className="educad-feature-card educad-transform-card"><h3>Posición</h3><NumberField label="X" value={feature.x} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch") draft.x = value; })} /><NumberField label="Y" value={feature.y} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch") draft.y = value; })} /><NumberField label="Z" value={feature.offset} min={0} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch") draft.offset = value; })} /></div>
           </TransformSection>
@@ -564,7 +573,8 @@ function ParametricFeatureInspector({
       {feature.kind === "revolve" ? (
         <>
           <div className="educad-feature-card"><h3>Operación</h3><label><span>Tipo</span><select value={feature.operation} onChange={(event) => onUpdate((draft) => { if (draft.kind === "revolve") draft.operation = event.target.value as typeof draft.operation; })}><option value="add">Añadir</option><option value="cut">Hueco</option><option value="intersect">Común</option></select></label><label><span>Eje</span><select value={feature.axis} onChange={(event) => onUpdate((draft) => { if (draft.kind === "revolve") draft.axis = event.target.value as typeof draft.axis; })}><option value="x">X local</option><option value="y">Y local</option><option value="z">Z local</option>{feature.axis === "edge" ? <option value="edge">Arista seleccionada</option> : null}</select></label><BoundedNumberField label="Ángulo" value={feature.angle} min={-360} max={360} step={1} unit="°" onChange={(value) => onUpdate((draft) => { if (draft.kind === "revolve") draft.angle = Math.abs(value) < 1 ? (value < 0 ? -1 : 1) : Math.min(360, Math.max(-360, value)); })} /></div>
-          <div className="educad-topology-selection-actions"><button className="educad-edit-topology-selection" type="button" onClick={() => onEditRevolveFace(feature.id)}>Editar cara</button><button className="educad-edit-topology-selection" type="button" onClick={() => onEditRevolveAxis(feature.id)}>Editar eje</button></div>
+          {revolveSketch && revolveSketch.profile.shape !== "drawn" ? <div className="educad-feature-card"><h3>Perfil de boceto</h3><ReadOnlyField label="Forma" value={revolveSketch.profile.shape === "rectangle" ? "Rectángulo" : "Círculo"} />{revolveSketch.profile.shape === "rectangle" ? <><BoundedNumberField label="Anchura" value={revolveSketch.profile.width} min={0.01} max={200} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} /><BoundedNumberField label="Profundidad" value={revolveSketch.profile.depth} min={0.01} max={200} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} /></> : <BoundedNumberField label="Radio" value={revolveSketch.profile.diameter / 2} min={0.01} max={100} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value * 2); })} />}</div> : null}
+          {feature.source === "face" ? <div className="educad-topology-selection-actions"><button className="educad-edit-topology-selection" type="button" onClick={() => onEditRevolveFace(feature.id)}>Editar cara</button><button className="educad-edit-topology-selection" type="button" onClick={() => onEditRevolveAxis(feature.id)}>Editar eje</button></div> : <button className="educad-edit-topology-selection" type="button" onClick={() => onEditRevolveAxis(feature.id)}>Editar eje</button>}
           <TransformSection description="Eje local del objeto"><p className="educad-transform-empty">La cara gira alrededor del eje local seleccionado que pasa por el origen del objeto.</p></TransformSection>
         </>
       ) : null}

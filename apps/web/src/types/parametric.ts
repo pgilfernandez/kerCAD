@@ -60,13 +60,20 @@ export type CircleProfile = {
   diameter: number;
 };
 
+export type DrawnProfile = {
+  shape: "drawn";
+  geometry: import("@/types/sketchforge").SketchProfile;
+};
+
 export type SketchFeature = BaseFeature & {
   kind: "sketch";
+  /** Primitive profiles are implementation details of Box/Cylinder; user sketches are editable history operations. */
+  purpose?: "primitive" | "user";
   plane: "XY";
   x: number;
   y: number;
   offset: number;
-  profile: RectangleProfile | CircleProfile;
+  profile: RectangleProfile | CircleProfile | DrawnProfile;
 };
 
 export type ParametricVector3 = {
@@ -141,11 +148,13 @@ export type ShellFeature = BaseFeature & {
 
 export type RevolveFeature = BaseFeature & {
   kind: "revolve";
+  source: "face" | "sketch";
   operation: "add" | "cut" | "intersect";
   angle: number;
   axis: "x" | "y" | "z" | "edge";
   axisReferenceId?: string;
-  faceReferenceId: string;
+  faceReferenceId?: string;
+  sketchId?: string;
 };
 
 export type ParametricFeature = SketchFeature | ExtrudeFeature | PrimitiveFeature | HoleFeature | FilletFeature | FaceExtrudeFeature | ShellFeature | RevolveFeature;

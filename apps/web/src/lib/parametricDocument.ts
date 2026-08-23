@@ -11,6 +11,7 @@ import type {
   ParametricObject,
   PrimitiveFeature,
   RectangleProfile,
+  DrawnProfile,
   SketchFeature,
 } from "@/types/parametric";
 import { assertValidParametricDependencies } from "@/lib/parametricDependencyGraph";
@@ -95,6 +96,7 @@ export function createSketchFeature(shape: RectangleProfile["shape"] | CirclePro
     kind: "sketch",
     name: `Boceto ${index}`,
     suppressed: false,
+    purpose: "primitive",
     plane: "XY",
     x: 0,
     y: 0,
@@ -102,6 +104,21 @@ export function createSketchFeature(shape: RectangleProfile["shape"] | CirclePro
     profile: shape === "rectangle"
       ? { shape, width: 40, depth: 30 }
       : { shape, diameter: 24 },
+  };
+}
+
+export function createDrawnSketchFeature(index: number, geometry: DrawnProfile["geometry"] = { points: [], segments: [], images: [] }): SketchFeature {
+  return {
+    id: createFeatureId("sketch"),
+    kind: "sketch",
+    name: `Boceto ${index}`,
+    suppressed: false,
+    purpose: "user",
+    plane: "XY",
+    x: 0,
+    y: 0,
+    offset: 0,
+    profile: { shape: "drawn", geometry: structuredClone(geometry) },
   };
 }
 
@@ -201,6 +218,7 @@ export function createRevolveFeature(index: number, operation: RevolveFeature["o
     kind: "revolve",
     name: `Revolución ${index}`,
     suppressed: false,
+    source: "face",
     operation,
     angle: 360,
     axis: "z",
@@ -263,11 +281,13 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
   }
 
   for (const feature of next.features) {
+    if (feature.kind === "sketch") feature.purpose ??= feature.profile.shape === "drawn" ? "user" : "primitive";
     if ((feature.kind === "extrude" || feature.kind === "primitive") && (feature.operation as string) === "new") feature.operation = "add";
     if (feature.kind === "fillet") {
       feature.treatment ??= "fillet";
       feature.selectionReferenceIds ??= feature.edgeReferenceIds;
     }
+    if (feature.kind === "revolve") feature.source ??= feature.sketchId ? "sketch" : "face";
     if (feature.kind === "primitive") {
       feature.width = Math.max(0.1, Number.isFinite(feature.width) ? feature.width : 20);
       feature.depth = Math.max(0.1, Number.isFinite(feature.depth) ? feature.depth : 20);

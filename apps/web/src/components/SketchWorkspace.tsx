@@ -30,6 +30,7 @@ type SketchWorkspaceProps = {
   measurement: SketchMeasurement;
   pendingMeasurementStart: SketchPoint | null;
   initialSnap?: GridSize;
+  exactSnapStep?: number;
   initialWorkspace?: WorkplaneWorkspaceSettings;
   onPlanePoint: (point: { x: number; z: number }, handles?: { handleIn: { x: number; z: number }; handleOut: { x: number; z: number } }) => void;
   onPointPress: (id: string) => void;
@@ -412,6 +413,7 @@ export function SketchWorkspace({
   measurement,
   pendingMeasurementStart,
   initialSnap,
+  exactSnapStep,
   initialWorkspace,
   onPlanePoint,
   onPointPress,
@@ -500,7 +502,7 @@ export function SketchWorkspace({
   const selectedImage = selected?.kind === "image" ? displayImages.find((image) => image.id === selected.id) ?? null : null;
   const isPointSelected = (id: string) => selected?.kind === "point" ? selected.id === id : selected?.kind === "multiple" ? selected.pointIds.includes(id) : false;
   const isSegmentSelected = (id: string) => selected?.kind === "segment" ? selected.id === id : selected?.kind === "multiple" ? selected.segmentIds.includes(id) : false;
-  const gridStep = clamp(workspace.gridBlockSize, 1, 200);
+  const gridStep = clamp(workspace.gridBlockSize, 0.1, 200);
   const verticalLines = useMemo(() => {
     const lines: number[] = [];
     const start = Math.ceil((-workspace.width / 2) / gridStep) * gridStep;
@@ -522,7 +524,7 @@ export function SketchWorkspace({
     screenPoint.x = event.clientX;
     screenPoint.y = event.clientY;
     const local = screenPoint.matrixTransform(matrix.inverse());
-    const step = snapStep(snap);
+    const step = exactSnapStep === undefined ? snapStep(snap) : Math.max(0, exactSnapStep);
     return {
       x: clamp(snapValue(local.x, step), -workspace.width / 2, workspace.width / 2),
       z: clamp(snapValue(local.y, step), -workspace.depth / 2, workspace.depth / 2),

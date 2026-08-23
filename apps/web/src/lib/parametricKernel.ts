@@ -16,8 +16,63 @@ function refinedBooleanSolid(brep: Brep, result: ReturnType<Brep["cut"]> | Retur
   return brep.unwrap(brep.simplify(resultValue<AnySolid>(brep, result))) as AnySolid;
 }
 
+function drawnSketchFace(brep: Brep, sketch: SketchFeature): Face {
+  if (sketch.profile.shape !== "drawn") throw new Error(`${sketch.name}: el perfil no es un boceto dibujado.`);
+  const profile = sketch.profile.geometry;
+  const points = new Map(profile.points.map((point) => [point.id, point]));
+  const unused = new Map(profile.segments.map((segment) => [segment.id, segment]));
+  const paths: Array<Array<{ segment: (typeof profile.segments)[number]; fromId: string; toId: string }>> = [];
+
+  while (unused.size) {
+    const first = unused.values().next().value;
+    if (!first) break;
+    const startId = first.startId;
+    let currentId = startId;
+    const path: Array<{ segment: (typeof profile.segments)[number]; fromId: string; toId: string }> = [];
+    while (true) {
+      const next = [...unused.values()].find((segment) => segment.startId === currentId || segment.endId === currentId);
+      if (!next) break;
+      unused.delete(next.id);
+      const toId = next.startId === currentId ? next.endId : next.startId;
+      path.push({ segment: next, fromId: currentId, toId });
+      currentId = toId;
+      if (currentId === startId) break;
+    }
+    if (currentId !== startId || path.length < 3) throw new Error(`${sketch.name}: cierra el perfil antes de usarlo en una operación 3D.`);
+    paths.push(path);
+  }
+  if (paths.length !== 1) throw new Error(`${sketch.name}: por ahora utiliza un único contorno cerrado.`);
+
+  const edges = paths[0].map(({ segment, fromId, toId }) => {
+    const from = points.get(fromId);
+    const to = points.get(toId);
+    if (!from || !to) throw new Error(`${sketch.name}: el boceto contiene referencias incompletas.`);
+    const fromVec: [number, number, number] = [from.x + sketch.x, from.z + sketch.y, sketch.offset];
+    const toVec: [number, number, number] = [to.x + sketch.x, to.z + sketch.y, sketch.offset];
+    if (segment.kind === "line" || (!from.handleIn && !from.handleOut && !to.handleIn && !to.handleOut)) return brep.line(fromVec, toVec);
+    const forward = segment.startId === fromId;
+    const firstHandle = forward ? from.handleOut : from.handleIn;
+    const secondHandle = forward ? to.handleIn : to.handleOut;
+    if (!firstHandle || !secondHandle) return brep.line(fromVec, toVec);
+    return brep.unwrap(brep.bezier([
+      fromVec,
+      [firstHandle.x + sketch.x, firstHandle.z + sketch.y, sketch.offset],
+      [secondHandle.x + sketch.x, secondHandle.z + sketch.y, sketch.offset],
+      toVec,
+    ])) as Edge;
+  });
+  const wire = brep.unwrap(brep.wireLoop(edges));
+  return brep.unwrap(brep.face(wire as Parameters<Brep["face"]>[0])) as Face;
+}
+
 function solidFromSketch(brep: Brep, sketch: SketchFeature, feature: ExtrudeFeature): AnySolid {
   const profile = sketch.profile;
+  if (profile.shape === "drawn") {
+    let face = drawnSketchFace(brep, sketch);
+    if (feature.symmetric) face = brep.translate(face, [0, 0, -feature.distance / 2]) as Face;
+    const solid = brep.unwrap(brep.extrude(face as Parameters<Brep["extrude"]>[0], feature.distance)) as AnySolid;
+    return applyOperationTransform(brep, solid, feature.transform);
+  }
   const centerZ = feature.symmetric ? sketch.offset : sketch.offset + feature.distance / 2;
   let solid: AnySolid;
   if (profile.shape === "rectangle") {
@@ -32,6 +87,23 @@ function solidFromSketch(brep: Brep, sketch: SketchFeature, feature: ExtrudeFeat
     });
   }
   return applyOperationTransform(brep, solid, feature.transform);
+}
+
+function faceFromSketch(brep: Brep, sketch: SketchFeature): Face {
+  if (sketch.profile.shape === "drawn") return drawnSketchFace(brep, sketch);
+  if (sketch.profile.shape === "rectangle") {
+    const halfWidth = sketch.profile.width / 2;
+    const halfDepth = sketch.profile.depth / 2;
+    return brep.unwrap(brep.polygon([
+      [sketch.x - halfWidth, sketch.y - halfDepth, sketch.offset],
+      [sketch.x + halfWidth, sketch.y - halfDepth, sketch.offset],
+      [sketch.x + halfWidth, sketch.y + halfDepth, sketch.offset],
+      [sketch.x - halfWidth, sketch.y + halfDepth, sketch.offset],
+    ])) as Face;
+  }
+  const edge = brep.circle(sketch.profile.diameter / 2, { at: [sketch.x, sketch.y, sketch.offset] });
+  const wire = brep.unwrap(brep.wireLoop([edge]));
+  return brep.unwrap(brep.face(wire as Parameters<Brep["face"]>[0])) as Face;
 }
 
 function applyOperationTransform(brep: Brep, solid: AnySolid, operation: ExtrudeFeature["transform"]): AnySolid {
@@ -371,9 +443,16 @@ function applyShellFeature(brep: Brep, document: ParametricDocument, current: An
 }
 
 function applyRevolveFeature(brep: Brep, document: ParametricDocument, current: AnySolid, feature: Extract<ParametricDocument["features"][number], { kind: "revolve" }>) {
-  const stored = document.topologyReferences.find((reference) => reference.id === feature.faceReferenceId);
-  if (!stored || stored.reference.hint.entityType !== "face") throw new Error(`${feature.name}: la cara seleccionada ya no existe.`);
-  const face = resolveStoredFace(brep, document, current, stored, feature.name);
+  let face: Face;
+  if (feature.source === "sketch") {
+    const sketch = document.features.find((candidate): candidate is SketchFeature => candidate.kind === "sketch" && candidate.id === feature.sketchId);
+    if (!sketch) throw new Error(`${feature.name}: el boceto seleccionado ya no existe.`);
+    face = faceFromSketch(brep, sketch);
+  } else {
+    const stored = document.topologyReferences.find((reference) => reference.id === feature.faceReferenceId);
+    if (!stored || stored.reference.hint.entityType !== "face") throw new Error(`${feature.name}: la cara seleccionada ya no existe.`);
+    face = resolveStoredFace(brep, document, current, stored, feature.name);
+  }
   let axis: [number, number, number] = feature.axis === "x" ? [1, 0, 0] : feature.axis === "y" ? [0, 1, 0] : [0, 0, 1];
   let at: [number, number, number] = [0, 0, 0];
   if (feature.axis === "edge") {
