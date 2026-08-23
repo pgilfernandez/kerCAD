@@ -7,7 +7,7 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import { acceleratedRaycast, MeshBVH } from "three-mesh-bvh";
-import { constrainViewportAxisDrag, coplanarFaceRegion, exactEdgeRegion, exactFaceRegion, faceBoundaryPositions, finalReferenceWireframeDepthTest, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, type ViewportDimensionAxis, type ViewportEdgeGroup, type ViewportFaceGroup } from "@/lib/viewportGeometry";
+import { constrainViewportAxisDrag, coplanarFaceRegion, exactEdgeRegion, exactFaceRegion, finalReferenceWireframeDepthTest, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, type ViewportDimensionAxis, type ViewportEdgeGroup, type ViewportFaceGroup } from "@/lib/viewportGeometry";
 import { AdaptiveViewportResolution, viewportPerformanceOptions, viewportRenderProfile, type ViewportRenderQuality } from "@/lib/viewportPerformance";
 import { orthographicTouchTargetWorldSize, perspectiveTouchTargetWorldSize, viewportPointerDragIntent, type ViewportPointerDragIntent } from "@/lib/viewportPointer";
 import { parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
@@ -34,6 +34,8 @@ export type TopologyEdgePick = {
   selected: boolean;
   additive: boolean;
   midpoint: { x: number; y: number; z: number };
+  direction: { x: number; y: number; z: number };
+  straight: boolean;
   length: number;
   edgeId: number;
 };
@@ -258,7 +260,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const selectionVisualRootRef = useRef<THREE.Group | null>(null);
   const operationContextRef = useRef<THREE.Group | null>(null);
   const faceHighlightRef = useRef<THREE.Mesh | null>(null);
-  const edgeHighlightRef = useRef<THREE.LineSegments | null>(null);
+  const edgeHighlightRef = useRef<LineSegments2 | null>(null);
   const topologyFaceLayerRef = useRef<THREE.Group | null>(null);
   const faceExtrudeHandleRef = useRef<THREE.Group | null>(null);
   const faceExtrudeDistanceChangeRef = useRef(onFaceExtrudeDistanceChange);
@@ -575,10 +577,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     faceHighlight.renderOrder = 25;
     modelGroup.add(faceHighlight);
     faceHighlightRef.current = faceHighlight;
-    const edgeHighlight = new THREE.LineSegments(
-      new THREE.BufferGeometry(),
-      new THREE.LineBasicMaterial({ color: "#ffe47a", transparent: true, opacity: 0.95, depthTest: false }),
-    );
+    const edgeHighlightMaterial = new LineMaterial({ color: "#ffe47a", linewidth: 2, transparent: true, opacity: 0.95, depthTest: false });
+    edgeHighlightMaterial.resolution.set(Math.max(1, renderer.domElement.clientWidth), Math.max(1, renderer.domElement.clientHeight));
+    const edgeHighlight = new LineSegments2(new LineSegmentsGeometry(), edgeHighlightMaterial);
     edgeHighlight.visible = false;
     edgeHighlight.renderOrder = 27;
     modelGroup.add(edgeHighlight);
@@ -706,6 +707,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         : { geometry: new THREE.BufferGeometry(), region: null };
       faceHighlight.geometry = selectedFace.geometry;
       faceHighlight.visible = Boolean(hit?.face && selectedFace.region);
+      edgeHighlight.visible = false;
       if (hit && selectedFace.region) applyRelativeTransform(faceHighlight, hit.object);
       renderer.domElement.style.cursor = hit && selectedFace.region ? "crosshair" : "not-allowed";
       requestRender();
@@ -717,10 +719,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       const groups = hit?.object instanceof THREE.LineSegments ? hit.object.geometry.userData.edgeGroups as ViewportEdgeGroup[] | undefined : undefined;
       const positions = hit?.object instanceof THREE.LineSegments ? hit.object.geometry.getAttribute("position") : null;
       const region = hit && positions && groups?.length && typeof hit.index === "number" ? exactEdgeRegion(positions.array, hit.index, groups) : null;
-      const geometry = new THREE.BufferGeometry();
-      if (region) geometry.setAttribute("position", new THREE.Float32BufferAttribute(region.positions, 3));
+      const geometry = new LineSegmentsGeometry();
+      if (region) geometry.setPositions(region.positions);
       edgeHighlight.geometry = geometry;
       edgeHighlight.visible = Boolean(hit && region);
+      if (hit && region) faceHighlight.visible = false;
       if (hit && region) applyRelativeTransform(edgeHighlight, hit.object);
       renderer.domElement.style.cursor = hit && region ? "crosshair" : "not-allowed";
       requestRender();
@@ -762,14 +765,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           faceHighlight.geometry.clone(),
           new THREE.MeshBasicMaterial({ color: "#43b9e8", transparent: true, opacity: 0.62, side: THREE.DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 }),
         );
-        const boundaryGeometry = new LineSegmentsGeometry();
-        boundaryGeometry.setPositions(faceBoundaryPositions(region.positions));
-        const boundaryMaterial = new LineMaterial({ color: "#168ebf", linewidth: 2, depthTest: false, transparent: true, opacity: 1 });
-        boundaryMaterial.resolution.set(Math.max(1, renderer.domElement.clientWidth), Math.max(1, renderer.domElement.clientHeight));
-        const boundary = new LineSegments2(boundaryGeometry, boundaryMaterial);
         fill.renderOrder = 26;
-        boundary.renderOrder = 27;
-        highlight.add(fill, boundary);
+        highlight.add(fill);
         highlight.userData.topologyFaceKey = key;
         applyRelativeTransform(highlight, hit.object);
         topologyFaceLayer.add(highlight);
@@ -818,7 +815,14 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       }
       const relativeMatrix = relativeObjectTransform(hit.object);
       const midpoint = new THREE.Vector3(region.midpoint.x, region.midpoint.y, region.midpoint.z).applyMatrix4(relativeMatrix);
-      topologyEdgeSelectRef.current?.({ key, objectId, selected, additive, midpoint: { x: midpoint.x, y: midpoint.y, z: midpoint.z }, length: region.length, edgeId: region.edgeId });
+      const points = Array.from(region.positions);
+      const localStart = new THREE.Vector3(points[0] ?? 0, points[1] ?? 0, points[2] ?? 0);
+      const localEnd = new THREE.Vector3(points.at(-3) ?? 0, points.at(-2) ?? 0, points.at(-1) ?? 0);
+      const localDirection = localEnd.clone().sub(localStart);
+      const chordLength = localDirection.length();
+      const straight = chordLength > 1e-6 && Math.abs(chordLength - region.length) <= Math.max(0.01, region.length * 0.002);
+      const direction = localDirection.normalize().transformDirection(relativeMatrix);
+      topologyEdgeSelectRef.current?.({ key, objectId, selected, additive, midpoint: { x: midpoint.x, y: midpoint.y, z: midpoint.z }, direction: { x: direction.x, y: direction.y, z: direction.z }, straight, length: region.length, edgeId: region.edgeId });
       requestRender();
     };
     const updateManipulatorHitTargets = (pointerType: string) => {
@@ -1381,6 +1385,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       const width = Math.max(1, host.clientWidth);
       const height = Math.max(1, host.clientHeight);
       renderer.setSize(width, height, false);
+      edgeHighlightMaterial.resolution.set(width, height);
       const aspect = width / height;
       if (camera instanceof THREE.PerspectiveCamera) camera.aspect = aspect;
       else {
@@ -1700,15 +1705,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         const fillGeometry = new THREE.BufferGeometry();
         fillGeometry.setAttribute("position", new THREE.Float32BufferAttribute(region.positions, 3));
         const fill = new THREE.Mesh(fillGeometry, new THREE.MeshBasicMaterial({ color: "#43b9e8", transparent: interactiveTopologySelection, opacity: interactiveTopologySelection ? 0.62 : 1, side: THREE.DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 }));
-        const boundaryGeometry = new LineSegmentsGeometry();
-        boundaryGeometry.setPositions(faceBoundaryPositions(region.positions));
-        const boundaryMaterial = new LineMaterial({ color: "#168ebf", linewidth: 2, depthTest: false });
-        boundaryMaterial.resolution.set(Math.max(1, renderer.domElement.clientWidth), Math.max(1, renderer.domElement.clientHeight));
-        const boundary = new LineSegments2(boundaryGeometry, boundaryMaterial);
         fill.renderOrder = 26;
-        boundary.renderOrder = 27;
         highlight.userData.topologyFaceKey = `${reference.objectId}:face:${region.faceId}:origin:${region.origin}`;
-        highlight.add(fill, boundary);
+        highlight.add(fill);
         layer.add(highlight);
       } else {
         const geometry = cached?.edges.geometry;

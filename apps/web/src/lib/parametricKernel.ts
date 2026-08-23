@@ -374,8 +374,17 @@ function applyRevolveFeature(brep: Brep, document: ParametricDocument, current: 
   const stored = document.topologyReferences.find((reference) => reference.id === feature.faceReferenceId);
   if (!stored || stored.reference.hint.entityType !== "face") throw new Error(`${feature.name}: la cara seleccionada ya no existe.`);
   const face = resolveStoredFace(brep, document, current, stored, feature.name);
-  const axis: [number, number, number] = feature.axis === "x" ? [1, 0, 0] : feature.axis === "y" ? [0, 1, 0] : [0, 0, 1];
-  const tool = brep.unwrap(brep.revolve(face as Parameters<Brep["revolve"]>[0], { axis, at: [0, 0, 0], angle: feature.angle * Math.PI / 180 })) as AnySolid;
+  let axis: [number, number, number] = feature.axis === "x" ? [1, 0, 0] : feature.axis === "y" ? [0, 1, 0] : [0, 0, 1];
+  let at: [number, number, number] = [0, 0, 0];
+  if (feature.axis === "edge") {
+    const axisReference = document.topologyReferences.find((reference) => reference.id === feature.axisReferenceId);
+    if (!axisReference || axisReference.reference.hint.entityType !== "edge" || !axisReference.reference.hint.midpoint || !axisReference.reference.hint.direction) throw new Error(`${feature.name}: el eje seleccionado ya no existe.`);
+    resolveStoredEdge(brep, document, current, axisReference, feature.name);
+    const space = topologyReferenceSpace(document, axisReference.objectId);
+    at = space.point(axisReference.reference.hint.midpoint);
+    axis = space.direction(axisReference.reference.hint.direction);
+  }
+  const tool = brep.unwrap(brep.revolve(face as Parameters<Brep["revolve"]>[0], { axis, at, angle: feature.angle * Math.PI / 180 })) as AnySolid;
   return applyBooleanOperation(brep, current, tool, feature);
 }
 
@@ -451,7 +460,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         solids.set(objectId, current);
         completedFeatureIds.push(feature.id);
       } else if (feature.kind === "revolve") {
-        if (feature.angle <= 0 || feature.angle > 360) throw new Error(`${feature.name}: el ángulo debe estar entre 0 y 360 grados.`);
+        if (Math.abs(feature.angle) < 1 || Math.abs(feature.angle) > 360) throw new Error(`${feature.name}: el ángulo debe estar entre -360 y 360 grados y no puede ser cero.`);
         current = applyRevolveFeature(brep, document, current, feature);
         solids.set(objectId, current);
         completedFeatureIds.push(feature.id);

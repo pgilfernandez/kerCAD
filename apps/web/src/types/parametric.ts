@@ -25,6 +25,7 @@ export type ParametricEdgeReference = {
     entityType: "edge";
     length?: number;
     midpoint?: [number, number, number];
+    direction?: [number, number, number];
     topologyId?: number;
   };
 };
@@ -142,7 +143,8 @@ export type RevolveFeature = BaseFeature & {
   kind: "revolve";
   operation: "add" | "cut" | "intersect";
   angle: number;
-  axis: "x" | "y" | "z";
+  axis: "x" | "y" | "z" | "edge";
+  axisReferenceId?: string;
   faceReferenceId: string;
 };
 

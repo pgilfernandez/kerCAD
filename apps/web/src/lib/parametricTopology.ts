@@ -103,6 +103,11 @@ export function assertValidParametricTopology(document: ParametricDocument) {
       if (!reference) throw new ParametricTopologyError(`${feature.name}: la cara referenciada ya no existe.`);
       if (reference.reference.hint.entityType !== "face") throw new ParametricTopologyError(`${feature.name}: la referencia seleccionada no es una cara.`);
       if (feature.objectId && reference.objectId !== feature.objectId) throw new ParametricTopologyError(`${feature.name}: la cara pertenece a otro objeto.`);
+      if (feature.kind === "revolve" && feature.axis === "edge") {
+        const axisReference = feature.axisReferenceId ? references.get(feature.axisReferenceId) : null;
+        if (!axisReference || axisReference.reference.hint.entityType !== "edge") throw new ParametricTopologyError(`${feature.name}: falta la arista usada como eje.`);
+        if (feature.objectId && axisReference.objectId !== feature.objectId) throw new ParametricTopologyError(`${feature.name}: el eje pertenece a otro objeto.`);
+      }
       continue;
     }
     if (feature.kind === "shell") {
