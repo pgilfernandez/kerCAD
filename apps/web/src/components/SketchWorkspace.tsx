@@ -8,6 +8,7 @@ import { parseMeasurementInput } from "@/lib/measurementUnits";
 import { WORKPLANE_MAJOR_GRID_INTERVAL } from "@/lib/workplaneGrid";
 import { mirrorSign, resizedImportedMeshPositions } from "@/lib/workplaneShapes";
 import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE, normalizeSnapGrid, normalizeWorkspaceSettings } from "@/lib/workplaneSettings";
+import { solveSketchConstraints } from "@/lib/sketchConstraints";
 import type { GridSize, SketchCircle, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchSegment, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
 
 export type SketchTool = "line" | "bezier" | "smooth" | "circle" | "arc" | "select" | "refine" | "erase" | "measure";
@@ -83,32 +84,6 @@ function snapStep(size: GridSize) {
 
 function snapValue(value: number, step: number) {
   return step > 0 ? Math.round(value / step) * step : value;
-}
-
-function constrainedDisplayPoints(profile: SketchProfile, points: SketchPoint[], drivingPointId: string) {
-  const next = points.map((point) => ({ ...point }));
-  const pointById = new Map(next.map((point) => [point.id, point]));
-  const segmentById = new Map(profile.segments.map((segment) => [segment.id, segment]));
-  const driven = new Set([drivingPointId]);
-  const constraints = profile.constraints ?? [];
-  for (let pass = 0; pass < Math.max(1, constraints.length); pass += 1) {
-    for (const constraint of constraints) {
-      const segment = segmentById.get(constraint.segmentId);
-      if (!segment || segment.kind !== "line") continue;
-      const start = pointById.get(segment.startId);
-      const end = pointById.get(segment.endId);
-      if (!start || !end) continue;
-      const startDrives = driven.has(start.id) || !driven.has(end.id);
-      if (constraint.kind === "horizontal") {
-        if (startDrives) end.z = start.z;
-        else start.z = end.z;
-      } else if (startDrives) end.x = start.x;
-      else start.x = end.x;
-      driven.add(start.id);
-      driven.add(end.id);
-    }
-  }
-  return next;
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -559,10 +534,10 @@ export function SketchWorkspace({
         ...pointerAction.current,
         handleIn: point.handleIn ? { x: point.handleIn.x + deltaX, z: point.handleIn.z + deltaZ } : undefined,
         handleOut: point.handleOut ? { x: point.handleOut.x + deltaX, z: point.handleOut.z + deltaZ } : undefined,
-      } : point);
+      } : { ...point });
       return {
         ...profile,
-        points: constrainedDisplayPoints(profile, points, source.id),
+        points: solveSketchConstraints({ ...profile, points }, source.id).points,
       };
     }
     if (pointerAction?.kind === "move-handle") {
@@ -1003,6 +978,7 @@ export function SketchWorkspace({
           </g>
           <g className="sketch-constraints" pointerEvents="none">
             {(displayProfile.constraints ?? []).map((constraint) => {
+              if (constraint.kind !== "horizontal" && constraint.kind !== "vertical") return null;
               const segment = displayProfile.segments.find((candidate) => candidate.id === constraint.segmentId);
               if (!segment) return null;
               const dimension = segmentDimension(segment, pointById);
@@ -1013,6 +989,14 @@ export function SketchWorkspace({
                   <text y={4 * screenUnit} fontSize={11 * screenUnit}>{constraint.kind === "horizontal" ? "H" : "V"}</text>
                 </g>
               );
+            })}
+            {(displayProfile.constraints ?? []).filter((constraint) => constraint.kind === "fixed").map((constraint) => {
+              const point = pointById.get(constraint.pointId);
+              return point ? <text className="point-constraint" key={constraint.id} x={point.x + 10 * screenUnit} y={point.z - 10 * screenUnit} fontSize={12 * screenUnit}>F</text> : null;
+            })}
+            {(displayProfile.constraints ?? []).filter((constraint) => constraint.kind === "coincident").map((constraint) => {
+              const point = pointById.get(constraint.pointIds[0]);
+              return point ? <text className="point-constraint" key={constraint.id} x={point.x - 11 * screenUnit} y={point.z + 13 * screenUnit} fontSize={12 * screenUnit}>C</text> : null;
             })}
           </g>
           <g className="sketch-segment-dimensions" pointerEvents="none">

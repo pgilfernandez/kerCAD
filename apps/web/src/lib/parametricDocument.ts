@@ -294,7 +294,13 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
         geometry.circles ??= [];
         geometry.images ??= [];
         const lineIds = new Set(geometry.segments.filter((segment) => segment.kind === "line").map((segment) => segment.id));
-        geometry.constraints = (geometry.constraints ?? []).filter((constraint) => (constraint.kind === "horizontal" || constraint.kind === "vertical") && lineIds.has(constraint.segmentId));
+        const pointIds = new Set(geometry.points.map((point) => point.id));
+        geometry.constraints = (geometry.constraints ?? []).filter((constraint) => {
+          if (constraint.kind === "horizontal" || constraint.kind === "vertical") return lineIds.has(constraint.segmentId);
+          if (constraint.kind === "fixed") return pointIds.has(constraint.pointId) && Number.isFinite(constraint.x) && Number.isFinite(constraint.z);
+          if (constraint.kind === "coincident") return constraint.pointIds[0] !== constraint.pointIds[1] && constraint.pointIds.every((id) => pointIds.has(id));
+          return false;
+        });
       }
     }
     if ((feature.kind === "extrude" || feature.kind === "primitive") && (feature.operation as string) === "new") feature.operation = "add";

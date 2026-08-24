@@ -4899,6 +4899,35 @@ button {
   user-select: none;
 }
 
+.sketch-constraints .point-constraint {
+  fill: #7c3aed;
+}
+
+.educad-sketch-constraint-status {
+  align-self: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 24px;
+  margin-left: 6px;
+  padding: 0 9px;
+  white-space: nowrap;
+}
+
+.educad-sketch-constraint-status.full {
+  background: #ecfdf5;
+  border-color: #86efac;
+  color: #15803d;
+}
+
+.educad-sketch-constraint-status.over {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
 .sketch-circle-handles line {
   stroke: #169fce;
   stroke-width: 1.5;

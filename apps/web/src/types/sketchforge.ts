@@ -99,11 +99,10 @@ export type SketchCircle = {
   construction?: boolean;
 };
 
-export type SketchConstraint = {
-  id: string;
-  kind: "horizontal" | "vertical";
-  segmentId: string;
-};
+export type SketchConstraint =
+  | { id: string; kind: "horizontal" | "vertical"; segmentId: string }
+  | { id: string; kind: "coincident"; pointIds: [string, string] }
+  | { id: string; kind: "fixed"; pointId: string; x: number; z: number };
 
 export type SketchImage = {
   id: string;
