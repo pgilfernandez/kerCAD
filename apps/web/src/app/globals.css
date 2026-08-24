@@ -5023,6 +5023,31 @@ circle.sketch-preview-line {
   vector-effect: non-scaling-stroke;
 }
 
+.sketch-dimension-editor {
+  overflow: visible;
+}
+
+.sketch-dimension-editor input {
+  background: #dbeafe;
+  border-color: #2563eb;
+  border-style: solid;
+  box-sizing: border-box;
+  color: #173f60;
+  font-family: system-ui, sans-serif;
+  font-weight: 400;
+  line-height: 1;
+  height: 100%;
+  min-width: 0;
+  outline: none;
+  text-align: center;
+  width: 100%;
+}
+
+.sketch-dimension-editor input:focus {
+  border-color: #f08036;
+  box-shadow: 0 0 0 2px rgba(240, 128, 54, 0.22);
+}
+
 .sketch-segment-dimensions text {
   fill: #16283a;
   font-weight: 500;

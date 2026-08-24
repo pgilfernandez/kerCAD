@@ -295,10 +295,13 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
         geometry.images ??= [];
         const lineIds = new Set(geometry.segments.filter((segment) => segment.kind === "line").map((segment) => segment.id));
         const pointIds = new Set(geometry.points.map((point) => point.id));
+        const circleIds = new Set(geometry.circles.map((circle) => circle.id));
         geometry.constraints = (geometry.constraints ?? []).filter((constraint) => {
           if (constraint.kind === "horizontal" || constraint.kind === "vertical") return lineIds.has(constraint.segmentId);
           if (constraint.kind === "fixed") return pointIds.has(constraint.pointId) && Number.isFinite(constraint.x) && Number.isFinite(constraint.z);
           if (constraint.kind === "coincident") return constraint.pointIds[0] !== constraint.pointIds[1] && constraint.pointIds.every((id) => pointIds.has(id));
+          if (constraint.kind === "distance") return lineIds.has(constraint.segmentId) && ["aligned", "x", "z"].includes(constraint.axis) && Number.isFinite(constraint.value) && constraint.value > 0;
+          if (constraint.kind === "radius") return circleIds.has(constraint.circleId) && Number.isFinite(constraint.value) && constraint.value > 0;
           return false;
         });
       }

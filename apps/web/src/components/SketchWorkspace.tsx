@@ -54,6 +54,7 @@ type SketchWorkspaceProps = {
   onMoveHandle: (id: string, handle: "in" | "out", point: { x: number; z: number }) => void;
   onInsertPoint: (segmentId: string, point: { x: number; z: number }) => void;
   onSetPointMode: (id: string, mode: "corner" | "smooth" | "split") => void;
+  onUpdateConstraintValue?: (id: string, value: number) => void;
   onClearMeasurement: () => void;
   showPointActions?: boolean;
   showGridControls?: boolean;
@@ -152,6 +153,31 @@ function dimensionPillSize(label: string, screenUnit: number, extra = 24) {
     height: 26 * screenUnit,
     radius: 5 * screenUnit,
   };
+}
+
+function SketchDimensionInput({ id, label, value, accuracy, screenUnit, align = "center", onCommit }: { id: string; label: string; value: number; accuracy: 1 | 2 | 3; screenUnit: number; align?: "center" | "start"; onCommit?: (id: string, value: number) => void }) {
+  const formatted = formatDimension(value, accuracy);
+  const pill = dimensionPillSize(formatted, screenUnit, 18);
+  return <foreignObject className="sketch-dimension-editor" x={align === "start" ? 0 : -pill.width / 2} y={-pill.height / 2} width={pill.width} height={pill.height} transform="scale(1 -1)">
+    <input
+      key={`${id}-${formatted}`}
+      aria-label={label}
+      type="text"
+      inputMode="decimal"
+      defaultValue={formatted}
+      style={{ borderRadius: pill.radius, borderWidth: screenUnit, fontSize: 13 * screenUnit, padding: `0 ${5 * screenUnit}px` }}
+      onPointerDown={(event) => event.stopPropagation()}
+      onBlur={(event) => {
+        const parsed = parseMeasurementInput(event.currentTarget.value);
+        if (Number.isFinite(parsed) && parsed > 0) onCommit?.(id, parsed);
+        else { onCommit?.(id, parsed); event.currentTarget.value = formatted; }
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") event.currentTarget.blur();
+        if (event.key === "Escape") { event.currentTarget.value = formatted; event.currentTarget.blur(); }
+      }}
+    />
+  </foreignObject>;
 }
 
 function cubicPoint(start: SketchPoint, first: { x: number; z: number }, second: { x: number; z: number }, end: SketchPoint, amount: number) {
@@ -479,6 +505,7 @@ export function SketchWorkspace({
   onMoveHandle,
   onInsertPoint,
   onSetPointMode,
+  onUpdateConstraintValue,
   onClearMeasurement,
   showPointActions = true,
   showGridControls = true,
@@ -999,14 +1026,20 @@ export function SketchWorkspace({
               return point ? <text className="point-constraint" key={constraint.id} x={point.x - 11 * screenUnit} y={point.z + 13 * screenUnit} fontSize={12 * screenUnit}>C</text> : null;
             })}
           </g>
-          <g className="sketch-segment-dimensions" pointerEvents="none">
+          <g className="sketch-segment-dimensions">
             {displayProfile.segments.map((segment) => {
               const dimension = segmentDimension(segment, pointById);
               if (!dimension) return null;
+              const constraints = (displayProfile.constraints ?? []).filter((candidate): candidate is Extract<NonNullable<SketchProfile["constraints"]>[number], { kind: "distance" }> => candidate.kind === "distance" && candidate.segmentId === segment.id);
+              if (constraints.length) return constraints.map((constraint, index) => (
+                <g key={`dimension-${constraint.id}`} transform={`translate(${dimension.midpoint.x} ${dimension.midpoint.z + labelOffset + index * 30 * screenUnit})`}>
+                  <SketchDimensionInput id={constraint.id} label={constraint.axis === "x" ? "Distancia X" : constraint.axis === "z" ? "Distancia Y" : "Longitud"} value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} onCommit={onUpdateConstraintValue} />
+                </g>
+              ));
               const label = formatDimension(dimension.length, workspace.accuracy);
               const pill = dimensionPillSize(label, screenUnit, 18);
               return (
-                <g key={`dimension-${segment.id}`} transform={`translate(${dimension.midpoint.x} ${dimension.midpoint.z + labelOffset})`}>
+                <g key={`dimension-${segment.id}`} pointerEvents="none" transform={`translate(${dimension.midpoint.x} ${dimension.midpoint.z + labelOffset})`}>
                   <rect x={-pill.width / 2} y={-pill.height / 2} width={pill.width} height={pill.height} rx={pill.radius} />
                   <text y={5 * screenUnit} fontSize={13 * screenUnit}>{label}</text>
                 </g>
@@ -1099,11 +1132,15 @@ export function SketchWorkspace({
               beginEntityDrag(event, { kind: "move-arc-center", pointerId: event.pointerId, segmentId: selectedArc.id, origin: { ...selectedArc.center! }, current: { ...selectedArc.center! }, startCenter: { ...selectedArc.center! } });
             }} />
           </g> : null}
-          <g className="sketch-circle-dimensions" pointerEvents="none">
+          <g className="sketch-circle-dimensions">
             {displayCircles.map((circle) => {
+              const constraint = (displayProfile.constraints ?? []).find((candidate) => candidate.kind === "radius" && candidate.circleId === circle.id);
+              if (constraint?.kind === "radius") return <g key={`radius-${constraint.id}`} transform={`translate(${circle.x + circle.radius + 12 * screenUnit} ${circle.z + 18 * screenUnit})`}>
+                <SketchDimensionInput id={constraint.id} label="Radio" value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} align="start" onCommit={onUpdateConstraintValue} />
+              </g>;
               const label = `R ${formatDimension(circle.radius, workspace.accuracy)}`;
               const pill = dimensionPillSize(label, screenUnit, 18);
-              return <g key={`radius-${circle.id}`} transform={`translate(${circle.x + circle.radius + 12 * screenUnit} ${circle.z + 18 * screenUnit})`}>
+              return <g key={`radius-${circle.id}`} pointerEvents="none" transform={`translate(${circle.x + circle.radius + 12 * screenUnit} ${circle.z + 18 * screenUnit})`}>
                 <rect x={0} y={-pill.height / 2} width={pill.width} height={pill.height} rx={pill.radius} />
                 <text x={pill.width / 2} y={5 * screenUnit} fontSize={13 * screenUnit}>{label}</text>
               </g>;
