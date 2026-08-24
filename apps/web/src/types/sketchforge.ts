@@ -99,6 +99,12 @@ export type SketchCircle = {
   construction?: boolean;
 };
 
+export type SketchConstraint = {
+  id: string;
+  kind: "horizontal" | "vertical";
+  segmentId: string;
+};
+
 export type SketchImage = {
   id: string;
   name: string;
@@ -119,6 +125,7 @@ export type SketchProfile = {
   segments: SketchSegment[];
   circles?: SketchCircle[];
   images?: SketchImage[];
+  constraints?: SketchConstraint[];
 };
 
 export type SketchOperation = "extrude" | "revolve";

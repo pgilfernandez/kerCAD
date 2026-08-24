@@ -287,6 +287,15 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
     if (feature.kind === "sketch") {
       feature.purpose ??= feature.profile.shape === "drawn" ? "user" : "primitive";
       feature.rotation ??= { x: 0, y: 0, z: 0 };
+      if (feature.profile.shape === "drawn") {
+        const geometry = feature.profile.geometry;
+        geometry.points ??= [];
+        geometry.segments ??= [];
+        geometry.circles ??= [];
+        geometry.images ??= [];
+        const lineIds = new Set(geometry.segments.filter((segment) => segment.kind === "line").map((segment) => segment.id));
+        geometry.constraints = (geometry.constraints ?? []).filter((constraint) => (constraint.kind === "horizontal" || constraint.kind === "vertical") && lineIds.has(constraint.segmentId));
+      }
     }
     if ((feature.kind === "extrude" || feature.kind === "primitive") && (feature.operation as string) === "new") feature.operation = "add";
     if (feature.kind === "fillet") {

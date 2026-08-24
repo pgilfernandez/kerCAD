@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, CornerDownRight, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, MousePointer2, PenLine, Plus, RotateCcw, Ruler, Spline, Split, Waves, X } from "lucide-react";
+import { Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, CornerDownRight, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, MoveHorizontal, MoveVertical, MousePointer2, PenLine, Plus, RotateCcw, Ruler, Spline, Split, Waves, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent as ReactFocusEvent } from "react";
 import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyEdgePick, type TopologyFacePick } from "@/components/ParametricViewport";
@@ -96,7 +96,7 @@ function fileName(value: string) {
 }
 
 function emptySketchProfile(): SketchProfile {
-  return { points: [], segments: [], circles: [], images: [] };
+  return { points: [], segments: [], circles: [], images: [], constraints: [] };
 }
 
 function cloneSketchProfile(profile: SketchProfile): SketchProfile {
@@ -105,7 +105,33 @@ function cloneSketchProfile(profile: SketchProfile): SketchProfile {
     segments: profile.segments.map((segment) => ({ ...segment })),
     circles: (profile.circles ?? []).map((circle) => ({ ...circle })),
     images: (profile.images ?? []).map((image) => ({ ...image })),
+    constraints: (profile.constraints ?? []).map((constraint) => ({ ...constraint })),
   };
+}
+
+function solveSketchConstraints(profile: SketchProfile, drivingPointId?: string) {
+  const pointById = new Map(profile.points.map((point) => [point.id, point]));
+  const segmentById = new Map(profile.segments.map((segment) => [segment.id, segment]));
+  const driven = new Set(drivingPointId ? [drivingPointId] : []);
+  const constraints = profile.constraints ?? [];
+  for (let pass = 0; pass < Math.max(1, constraints.length); pass += 1) {
+    for (const constraint of constraints) {
+      const segment = segmentById.get(constraint.segmentId);
+      if (!segment || segment.kind !== "line") continue;
+      const start = pointById.get(segment.startId);
+      const end = pointById.get(segment.endId);
+      if (!start || !end) continue;
+      const startDrives = driven.has(start.id) || !driven.has(end.id);
+      if (constraint.kind === "horizontal") {
+        if (startDrives) end.z = start.z;
+        else start.z = end.z;
+      } else if (startDrives) end.x = start.x;
+      else start.x = end.x;
+      driven.add(start.id);
+      driven.add(end.id);
+    }
+  }
+  return profile;
 }
 
 function orderedSketchPaths(profile: SketchProfile) {
@@ -713,6 +739,31 @@ export function SketchForgeParametricEditor() {
     }));
   };
 
+  const selectedConstraintSegments = useMemo(() => {
+    if (!sketchSession || !sketchSelection) return [];
+    const ids = sketchSelection.kind === "segment" ? [sketchSelection.id]
+      : sketchSelection.kind === "multiple" ? sketchSelection.segmentIds
+      : [];
+    return sketchSession.profile.segments.filter((segment) => ids.includes(segment.id) && segment.kind === "line");
+  }, [sketchSelection, sketchSession]);
+
+  const selectedConstraintKind = (kind: "horizontal" | "vertical") => selectedConstraintSegments.length > 0
+    && selectedConstraintSegments.every((segment) => sketchSession?.profile.constraints?.some((constraint) => constraint.segmentId === segment.id && constraint.kind === kind));
+
+  const toggleSketchConstraint = (kind: "horizontal" | "vertical") => {
+    if (!selectedConstraintSegments.length) return;
+    const segmentIds = new Set(selectedConstraintSegments.map((segment) => segment.id));
+    const remove = selectedConstraintKind(kind);
+    setSketchProfile((profile) => {
+      const retained = (profile.constraints ?? []).filter((constraint) => !segmentIds.has(constraint.segmentId));
+      const constraints = remove ? retained : [
+        ...retained,
+        ...selectedConstraintSegments.map((segment) => ({ id: sketchEntityId("constraint"), kind, segmentId: segment.id } as const)),
+      ];
+      return solveSketchConstraints({ ...profile, constraints });
+    });
+  };
+
   const connectSketchPoint = (pointId: string) => {
     if (!sketchSession || !["line", "bezier", "smooth"].includes(sketchTool)) return;
     if (!sketchActivePointId) {
@@ -772,7 +823,8 @@ export function SketchForgeParametricEditor() {
       if (neighborIds.length === 2 && neighborIds[0] !== neighborIds[1] && !remaining.some((segment) => (segment.startId === neighborIds[0] && segment.endId === neighborIds[1]) || (segment.startId === neighborIds[1] && segment.endId === neighborIds[0]))) {
         remaining.push({ id: sketchEntityId("segment"), startId: neighborIds[0], endId: neighborIds[1], kind: connected.every((segment) => segment.kind === "line") ? "line" : connected.some((segment) => segment.kind === "smooth") ? "smooth" : "bezier" });
       }
-      const next = { ...profile, points: profile.points.filter((point) => point.id !== id), segments: remaining };
+      const remainingIds = new Set(remaining.map((segment) => segment.id));
+      const next = { ...profile, points: profile.points.filter((point) => point.id !== id), segments: remaining, constraints: (profile.constraints ?? []).filter((constraint) => remainingIds.has(constraint.segmentId)) };
       return next.segments.some((segment) => segment.kind === "smooth") ? withSmoothSketchHandles(next) : next;
     });
     if (sketchActivePointId === id) setSketchActivePointId(null);
@@ -780,7 +832,7 @@ export function SketchForgeParametricEditor() {
   };
 
   const deleteSketchSegment = (id: string) => {
-    setSketchProfile((profile) => ({ ...profile, segments: profile.segments.filter((segment) => segment.id !== id) }));
+    setSketchProfile((profile) => ({ ...profile, segments: profile.segments.filter((segment) => segment.id !== id), constraints: (profile.constraints ?? []).filter((constraint) => constraint.segmentId !== id) }));
     setSketchActivePointId(null);
     setSketchSelection(null);
   };
@@ -791,7 +843,21 @@ export function SketchForgeParametricEditor() {
       const segment = profile.segments.find((candidate) => candidate.id === segmentId);
       if (!segment) return profile;
       const inserted: SketchPoint = { id: insertedId, ...position, mode: segment.kind === "line" ? "corner" : "smooth" };
-      const next = { ...profile, points: [...profile.points, inserted], segments: profile.segments.flatMap((candidate) => candidate.id === segmentId ? [{ ...candidate, id: sketchEntityId("segment"), endId: inserted.id }, { ...candidate, id: sketchEntityId("segment"), startId: inserted.id }] : [candidate]) };
+      const firstId = sketchEntityId("segment");
+      const secondId = sketchEntityId("segment");
+      const inherited = (profile.constraints ?? []).filter((constraint) => constraint.segmentId === segmentId);
+      const next = {
+        ...profile,
+        points: [...profile.points, inserted],
+        segments: profile.segments.flatMap((candidate) => candidate.id === segmentId ? [{ ...candidate, id: firstId, endId: inserted.id }, { ...candidate, id: secondId, startId: inserted.id }] : [candidate]),
+        constraints: [
+          ...(profile.constraints ?? []).filter((constraint) => constraint.segmentId !== segmentId),
+          ...inherited.flatMap((constraint) => [
+            { ...constraint, id: sketchEntityId("constraint"), segmentId: firstId },
+            { ...constraint, id: sketchEntityId("constraint"), segmentId: secondId },
+          ]),
+        ],
+      };
       return segment.kind === "smooth" ? withSmoothSketchHandles(next) : next;
     });
     setSketchSelection({ kind: "point", id: insertedId });
@@ -822,7 +888,9 @@ export function SketchForgeParametricEditor() {
       point.handleOut = undefined;
       next.segments = next.segments.map((segment) => segment.startId === id || segment.endId === id ? { ...segment, kind: "line" as const } : segment);
     } else {
-      next.segments = next.segments.map((segment) => segment.startId === id || segment.endId === id ? { ...segment, kind: "bezier" as const } : segment);
+      const convertedIds = new Set(next.segments.filter((segment) => segment.startId === id || segment.endId === id).map((segment) => segment.id));
+      next.segments = next.segments.map((segment) => convertedIds.has(segment.id) ? { ...segment, kind: "bezier" as const } : segment);
+      next.constraints = (next.constraints ?? []).filter((constraint) => !convertedIds.has(constraint.segmentId));
       if (mode === "smooth" && point.handleOut) {
         point.handleIn = { x: point.x * 2 - point.handleOut.x, z: point.z * 2 - point.handleOut.z };
       } else if (mode === "smooth" && point.handleIn) {
@@ -853,6 +921,11 @@ export function SketchForgeParametricEditor() {
       segments: profile.segments.filter((segment) => !segmentIds.includes(segment.id) && !pointIds.includes(segment.startId) && !pointIds.includes(segment.endId)),
       circles: (profile.circles ?? []).filter((circle) => !circleIds.includes(circle.id)),
       images: (profile.images ?? []).filter((image) => !imageIds.includes(image.id)),
+      constraints: (profile.constraints ?? []).filter((constraint) => {
+        if (segmentIds.includes(constraint.segmentId)) return false;
+        const segment = profile.segments.find((candidate) => candidate.id === constraint.segmentId);
+        return Boolean(segment && !pointIds.includes(segment.startId) && !pointIds.includes(segment.endId));
+      }),
     }));
     setSketchActivePointId(null);
     setSketchSelection(null);
@@ -1502,6 +1575,10 @@ export function SketchForgeParametricEditor() {
             <Tool label="Suave" enabled={Boolean(selectedSketchPoint)} active={selectedSketchPoint?.mode === "smooth"} onClick={() => selectedSketchPoint && setSketchPointMode(selectedSketchPoint.id, "smooth")}><Waves /></Tool>
             <Tool label="Separar tiradores" enabled={Boolean(selectedSketchPoint)} active={selectedSketchPoint?.mode === "split"} onClick={() => selectedSketchPoint && setSketchPointMode(selectedSketchPoint.id, "split")}><Split /></Tool>
           </ToolbarSection>
+          <ToolbarSection label="Restringir">
+            <Tool label="Horizontal" enabled={selectedConstraintSegments.length > 0} active={selectedConstraintKind("horizontal")} onClick={() => toggleSketchConstraint("horizontal")}><MoveHorizontal /></Tool>
+            <Tool label="Vertical" enabled={selectedConstraintSegments.length > 0} active={selectedConstraintKind("vertical")} onClick={() => toggleSketchConstraint("vertical")}><MoveVertical /></Tool>
+          </ToolbarSection>
           <ToolbarSection label="Historial">
             <Tool label="Deshacer boceto" enabled={sketchHistoryIndex > 0} onClick={sketchUndo}><ToolbarUndoIcon /></Tool>
             <Tool label="Rehacer boceto" enabled={sketchHistoryIndex >= 0 && sketchHistoryIndex < sketchHistoryRef.current.length - 1} onClick={sketchRedo}><ToolbarRedoIcon /></Tool>
@@ -1685,7 +1762,7 @@ export function SketchForgeParametricEditor() {
               end.x = arc.center.x + Math.cos(angle) * radius;
               end.z = arc.center.z + Math.sin(angle) * radius;
             }
-            return next;
+            return solveSketchConstraints(next, id);
           })}
           onMoveHandle={moveSketchHandle}
           onInsertPoint={insertSketchPoint}

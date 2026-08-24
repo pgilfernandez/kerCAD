@@ -85,6 +85,32 @@ function snapValue(value: number, step: number) {
   return step > 0 ? Math.round(value / step) * step : value;
 }
 
+function constrainedDisplayPoints(profile: SketchProfile, points: SketchPoint[], drivingPointId: string) {
+  const next = points.map((point) => ({ ...point }));
+  const pointById = new Map(next.map((point) => [point.id, point]));
+  const segmentById = new Map(profile.segments.map((segment) => [segment.id, segment]));
+  const driven = new Set([drivingPointId]);
+  const constraints = profile.constraints ?? [];
+  for (let pass = 0; pass < Math.max(1, constraints.length); pass += 1) {
+    for (const constraint of constraints) {
+      const segment = segmentById.get(constraint.segmentId);
+      if (!segment || segment.kind !== "line") continue;
+      const start = pointById.get(segment.startId);
+      const end = pointById.get(segment.endId);
+      if (!start || !end) continue;
+      const startDrives = driven.has(start.id) || !driven.has(end.id);
+      if (constraint.kind === "horizontal") {
+        if (startDrives) end.z = start.z;
+        else start.z = end.z;
+      } else if (startDrives) end.x = start.x;
+      else start.x = end.x;
+      driven.add(start.id);
+      driven.add(end.id);
+    }
+  }
+  return next;
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
@@ -528,14 +554,15 @@ export function SketchWorkspace({
       if (!source) return profile;
       const deltaX = pointerAction.current.x - source.x;
       const deltaZ = pointerAction.current.z - source.z;
+      const points = profile.points.map((point) => point.id === source.id ? {
+        ...point,
+        ...pointerAction.current,
+        handleIn: point.handleIn ? { x: point.handleIn.x + deltaX, z: point.handleIn.z + deltaZ } : undefined,
+        handleOut: point.handleOut ? { x: point.handleOut.x + deltaX, z: point.handleOut.z + deltaZ } : undefined,
+      } : point);
       return {
         ...profile,
-        points: profile.points.map((point) => point.id === source.id ? {
-          ...point,
-          ...pointerAction.current,
-          handleIn: point.handleIn ? { x: point.handleIn.x + deltaX, z: point.handleIn.z + deltaZ } : undefined,
-          handleOut: point.handleOut ? { x: point.handleOut.x + deltaX, z: point.handleOut.z + deltaZ } : undefined,
-        } : point),
+        points: constrainedDisplayPoints(profile, points, source.id),
       };
     }
     if (pointerAction?.kind === "move-handle") {
@@ -973,6 +1000,20 @@ export function SketchWorkspace({
                 } else if (event.button === 0) onSelectCircle?.(circle.id);
               }}
             />)}
+          </g>
+          <g className="sketch-constraints" pointerEvents="none">
+            {(displayProfile.constraints ?? []).map((constraint) => {
+              const segment = displayProfile.segments.find((candidate) => candidate.id === constraint.segmentId);
+              if (!segment) return null;
+              const dimension = segmentDimension(segment, pointById);
+              if (!dimension) return null;
+              return (
+                <g key={constraint.id} transform={`translate(${dimension.midpoint.x} ${dimension.midpoint.z - 14 * screenUnit})`}>
+                  <rect x={-8 * screenUnit} y={-8 * screenUnit} width={16 * screenUnit} height={16 * screenUnit} rx={3 * screenUnit} />
+                  <text y={4 * screenUnit} fontSize={11 * screenUnit}>{constraint.kind === "horizontal" ? "H" : "V"}</text>
+                </g>
+              );
+            })}
           </g>
           <g className="sketch-segment-dimensions" pointerEvents="none">
             {displayProfile.segments.map((segment) => {

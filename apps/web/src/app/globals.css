@@ -4885,6 +4885,20 @@ button {
   stroke-dasharray: 7 5;
 }
 
+.sketch-constraints rect {
+  fill: #fff;
+  stroke: #2563eb;
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+}
+
+.sketch-constraints text {
+  fill: #1d4ed8;
+  font-weight: 800;
+  text-anchor: middle;
+  user-select: none;
+}
+
 .sketch-circle-handles line {
   stroke: #169fce;
   stroke-width: 1.5;

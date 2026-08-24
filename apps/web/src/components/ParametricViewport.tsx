@@ -172,9 +172,10 @@ function sketchOverlayPositions(feature: SketchFeature) {
     return positions;
   }
   if (feature.profile.shape === "circle") {
+    const radius = feature.profile.diameter / 2;
     addPolyline(Array.from({ length: 65 }, (_, index) => {
       const angle = index / 64 * Math.PI * 2;
-      return { x: Math.cos(angle) * feature.profile.diameter / 2, y: Math.sin(angle) * feature.profile.diameter / 2 };
+      return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
     }));
     return positions;
   }
