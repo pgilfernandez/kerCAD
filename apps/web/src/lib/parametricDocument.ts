@@ -301,7 +301,8 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
           if (constraint.kind === "fixed") return pointIds.has(constraint.pointId) && Number.isFinite(constraint.x) && Number.isFinite(constraint.z);
           if (constraint.kind === "coincident") return constraint.pointIds[0] !== constraint.pointIds[1] && constraint.pointIds.every((id) => pointIds.has(id));
           if (constraint.kind === "distance") return lineIds.has(constraint.segmentId) && ["aligned", "x", "z"].includes(constraint.axis) && Number.isFinite(constraint.value) && constraint.value > 0;
-          if (constraint.kind === "radius") return circleIds.has(constraint.circleId) && Number.isFinite(constraint.value) && constraint.value > 0;
+          if (constraint.kind === "radius" || constraint.kind === "diameter") return circleIds.has(constraint.circleId) && Number.isFinite(constraint.value) && constraint.value > 0;
+          if (constraint.kind === "angle") return constraint.segmentIds.length >= 1 && constraint.segmentIds.length <= 2 && constraint.segmentIds.every((id) => lineIds.has(id)) && Number.isFinite(constraint.value);
           return false;
         });
       }

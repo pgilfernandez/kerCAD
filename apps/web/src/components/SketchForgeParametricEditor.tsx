@@ -1,6 +1,6 @@
 "use client";
 
-import { Anchor, Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, CircleDot, CornerDownRight, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, MoveHorizontal, MoveVertical, MousePointer2, PenLine, Plus, RotateCcw, Ruler, Spline, Split, Waves, X } from "lucide-react";
+import { Anchor, Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, CircleDot, CornerDownRight, Diameter, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, MoveHorizontal, MoveVertical, MousePointer2, PenLine, Plus, RotateCcw, Ruler, Spline, Split, Waves, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent as ReactFocusEvent } from "react";
 import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyEdgePick, type TopologyFacePick } from "@/components/ParametricViewport";
@@ -840,6 +840,9 @@ export function SketchForgeParametricEditor() {
     : null;
   const selectedDimensionActive = (axis: "aligned" | "x" | "z") => Boolean(selectedDimensionSegment && sketchSession?.profile.constraints?.some((constraint) => constraint.kind === "distance" && constraint.segmentId === selectedDimensionSegment.id && constraint.axis === axis));
   const selectedRadiusActive = Boolean(selectedDimensionCircle && sketchSession?.profile.constraints?.some((constraint) => constraint.kind === "radius" && constraint.circleId === selectedDimensionCircle.id));
+  const selectedDiameterActive = Boolean(selectedDimensionCircle && sketchSession?.profile.constraints?.some((constraint) => constraint.kind === "diameter" && constraint.circleId === selectedDimensionCircle.id));
+  const selectedAngleSegments = selectedConstraintSegments.length >= 1 && selectedConstraintSegments.length <= 2 ? selectedConstraintSegments : [];
+  const selectedAngleActive = selectedAngleSegments.length > 0 && Boolean(sketchSession?.profile.constraints?.some((constraint) => constraint.kind === "angle" && constraint.segmentIds.length === selectedAngleSegments.length && constraint.segmentIds.every((id, index) => id === selectedAngleSegments[index].id)));
 
   const toggleSketchDimension = (axis: "aligned" | "x" | "z") => {
     if (!selectedDimensionSegment || !sketchSession) return;
@@ -863,19 +866,62 @@ export function SketchForgeParametricEditor() {
   };
 
   const toggleSketchRadius = () => {
-    if (!selectedDimensionCircle) return;
+    if (!selectedDimensionCircle || !sketchSession) return;
+    const candidate = { id: "constraint-preview", kind: "radius" as const, circleId: selectedDimensionCircle.id, value: selectedDimensionCircle.radius };
+    if (!selectedRadiusActive) {
+      const conflict = sketchConstraintConflict(sketchSession.profile, candidate);
+      if (conflict) { setNotice({ type: "error", text: conflict }); return; }
+    }
     setSketchProfile((profile) => {
       const retained = (profile.constraints ?? []).filter((constraint) => constraint.kind !== "radius" || constraint.circleId !== selectedDimensionCircle.id);
       if (selectedRadiusActive) return { ...profile, constraints: retained };
-      return solveSketchConstraints({ ...profile, constraints: [...retained, { id: sketchEntityId("constraint"), kind: "radius", circleId: selectedDimensionCircle.id, value: selectedDimensionCircle.radius }] });
+      return solveSketchConstraints({ ...profile, constraints: [...retained, { ...candidate, id: sketchEntityId("constraint") }] });
+    });
+  };
+
+  const toggleSketchDiameter = () => {
+    if (!selectedDimensionCircle || !sketchSession) return;
+    const candidate = { id: "constraint-preview", kind: "diameter" as const, circleId: selectedDimensionCircle.id, value: selectedDimensionCircle.radius * 2 };
+    if (!selectedDiameterActive) {
+      const conflict = sketchConstraintConflict(sketchSession.profile, candidate);
+      if (conflict) { setNotice({ type: "error", text: conflict }); return; }
+    }
+    setSketchProfile((profile) => {
+      const retained = (profile.constraints ?? []).filter((constraint) => constraint.kind !== "diameter" || constraint.circleId !== selectedDimensionCircle.id);
+      if (selectedDiameterActive) return { ...profile, constraints: retained };
+      return solveSketchConstraints({ ...profile, constraints: [...retained, { ...candidate, id: sketchEntityId("constraint") }] });
+    });
+  };
+
+  const toggleSketchAngle = () => {
+    if (!sketchSession || !selectedAngleSegments.length) return;
+    const pointById = new Map(sketchSession.profile.points.map((point) => [point.id, point]));
+    const segmentAngle = (segment: typeof selectedAngleSegments[number]) => {
+      const start = pointById.get(segment.startId);
+      const end = pointById.get(segment.endId);
+      return start && end ? Math.atan2(end.z - start.z, end.x - start.x) * 180 / Math.PI : 0;
+    };
+    let value = segmentAngle(selectedAngleSegments[selectedAngleSegments.length - 1]) - (selectedAngleSegments.length === 2 ? segmentAngle(selectedAngleSegments[0]) : 0);
+    value = ((value + 180) % 360 + 360) % 360 - 180;
+    const candidate = { id: "constraint-preview", kind: "angle" as const, segmentIds: selectedAngleSegments.map((segment) => segment.id) as [string] | [string, string], value };
+    if (!selectedAngleActive) {
+      const conflict = sketchConstraintConflict(sketchSession.profile, candidate);
+      if (conflict) { setNotice({ type: "error", text: conflict }); return; }
+    }
+    setSketchProfile((profile) => {
+      const retained = (profile.constraints ?? []).filter((constraint) => constraint.kind !== "angle" || constraint.segmentIds.length !== candidate.segmentIds.length || !constraint.segmentIds.every((id, index) => id === candidate.segmentIds[index]));
+      if (selectedAngleActive) return { ...profile, constraints: retained };
+      return solveSketchConstraints({ ...profile, constraints: [...retained, { ...candidate, id: sketchEntityId("constraint") }] });
     });
   };
 
   const updateSketchConstraintValue = (constraintId: string, value: number) => {
-    if (!Number.isFinite(value) || value <= 0) { setNotice({ type: "error", text: "La cota debe ser un número mayor que cero." }); return; }
+    const constraint = sketchSession?.profile.constraints?.find((candidate) => candidate.id === constraintId);
+    const signed = constraint?.kind === "angle";
+    if (!Number.isFinite(value) || (!signed && value <= 0)) { setNotice({ type: "error", text: signed ? "El ángulo debe ser un número válido." : "La cota debe ser un número mayor que cero." }); return; }
     setSketchProfile((profile) => solveSketchConstraints({
       ...profile,
-      constraints: (profile.constraints ?? []).map((constraint) => constraint.id === constraintId && (constraint.kind === "distance" || constraint.kind === "radius") ? { ...constraint, value } : constraint),
+      constraints: (profile.constraints ?? []).map((constraint) => constraint.id === constraintId && (constraint.kind === "distance" || constraint.kind === "radius" || constraint.kind === "diameter" || constraint.kind === "angle") ? { ...constraint, value } : constraint),
     }));
   };
 
@@ -939,7 +985,12 @@ export function SketchForgeParametricEditor() {
         remaining.push({ id: sketchEntityId("segment"), startId: neighborIds[0], endId: neighborIds[1], kind: connected.every((segment) => segment.kind === "line") ? "line" : connected.some((segment) => segment.kind === "smooth") ? "smooth" : "bezier" });
       }
       const remainingIds = new Set(remaining.map((segment) => segment.id));
-      const next = { ...profile, points: profile.points.filter((point) => point.id !== id), segments: remaining, constraints: (profile.constraints ?? []).filter((constraint) => !sketchConstraintUsesPoint(constraint, id) && ((constraint.kind !== "horizontal" && constraint.kind !== "vertical") || remainingIds.has(constraint.segmentId))) };
+      const next = { ...profile, points: profile.points.filter((point) => point.id !== id), segments: remaining, constraints: (profile.constraints ?? []).filter((constraint) => {
+        if (sketchConstraintUsesPoint(constraint, id)) return false;
+        if (constraint.kind === "angle") return constraint.segmentIds.every((segmentId) => remainingIds.has(segmentId));
+        if (constraint.kind === "horizontal" || constraint.kind === "vertical" || constraint.kind === "distance") return remainingIds.has(constraint.segmentId);
+        return true;
+      }) };
       return next.segments.some((segment) => segment.kind === "smooth") ? withSmoothSketchHandles(next) : next;
     });
     if (sketchActivePointId === id) setSketchActivePointId(null);
@@ -1037,8 +1088,13 @@ export function SketchForgeParametricEditor() {
       circles: (profile.circles ?? []).filter((circle) => !circleIds.includes(circle.id)),
       images: (profile.images ?? []).filter((image) => !imageIds.includes(image.id)),
       constraints: (profile.constraints ?? []).filter((constraint) => {
-        if (constraint.kind === "radius" && circleIds.includes(constraint.circleId)) return false;
+        if ((constraint.kind === "radius" || constraint.kind === "diameter") && circleIds.includes(constraint.circleId)) return false;
         if (pointIds.some((id) => sketchConstraintUsesPoint(constraint, id))) return false;
+        if (constraint.kind === "angle") return constraint.segmentIds.every((segmentId) => {
+          if (segmentIds.includes(segmentId)) return false;
+          const segment = profile.segments.find((candidate) => candidate.id === segmentId);
+          return Boolean(segment && !pointIds.includes(segment.startId) && !pointIds.includes(segment.endId));
+        });
         if (constraint.kind !== "horizontal" && constraint.kind !== "vertical" && constraint.kind !== "distance") return true;
         if (segmentIds.includes(constraint.segmentId)) return false;
         const segment = profile.segments.find((candidate) => candidate.id === constraint.segmentId);
@@ -1704,6 +1760,8 @@ export function SketchForgeParametricEditor() {
             <Tool label="Distancia X" enabled={Boolean(selectedDimensionSegment)} active={selectedDimensionActive("x")} onClick={() => toggleSketchDimension("x")}><MoveHorizontal /></Tool>
             <Tool label="Distancia Y" enabled={Boolean(selectedDimensionSegment)} active={selectedDimensionActive("z")} onClick={() => toggleSketchDimension("z")}><MoveVertical /></Tool>
             <Tool label="Radio" enabled={Boolean(selectedDimensionCircle)} active={selectedRadiusActive} onClick={toggleSketchRadius}><Circle /></Tool>
+            <Tool label="Diámetro" enabled={Boolean(selectedDimensionCircle)} active={selectedDiameterActive} onClick={toggleSketchDiameter}><Diameter /></Tool>
+            <Tool label="Ángulo" enabled={selectedAngleSegments.length > 0} active={selectedAngleActive} onClick={toggleSketchAngle}><DraftingCompass /></Tool>
           </ToolbarSection>
           <ToolbarSection label="Historial">
             <Tool label="Deshacer boceto" enabled={sketchHistoryIndex > 0} onClick={sketchUndo}><ToolbarUndoIcon /></Tool>
@@ -1856,11 +1914,11 @@ export function SketchForgeParametricEditor() {
             return next;
           })}
           onSelectCircle={(id) => { setSketchSelection({ kind: "circle", id }); setSketchActivePointId(null); }}
-          onDeleteCircle={(id) => { setSketchProfile((profile) => ({ ...profile, circles: (profile.circles ?? []).filter((circle) => circle.id !== id), constraints: (profile.constraints ?? []).filter((constraint) => constraint.kind !== "radius" || constraint.circleId !== id) })); setSketchSelection(null); }}
+          onDeleteCircle={(id) => { setSketchProfile((profile) => ({ ...profile, circles: (profile.circles ?? []).filter((circle) => circle.id !== id), constraints: (profile.constraints ?? []).filter((constraint) => (constraint.kind !== "radius" && constraint.kind !== "diameter") || constraint.circleId !== id) })); setSketchSelection(null); }}
           onMoveCircle={(id, center) => setSketchProfile((profile) => ({ ...profile, circles: (profile.circles ?? []).map((circle) => circle.id === id ? { ...circle, ...center } : circle) }))}
           onResizeCircle={(id, radius) => setSketchProfile((profile) => {
             const value = Math.max(0.01, radius);
-            return { ...profile, circles: (profile.circles ?? []).map((circle) => circle.id === id ? { ...circle, radius: value } : circle), constraints: (profile.constraints ?? []).map((constraint) => constraint.kind === "radius" && constraint.circleId === id ? { ...constraint, value } : constraint) };
+            return { ...profile, circles: (profile.circles ?? []).map((circle) => circle.id === id ? { ...circle, radius: value } : circle), constraints: (profile.constraints ?? []).map((constraint) => (constraint.kind === "radius" || constraint.kind === "diameter") && constraint.circleId === id ? { ...constraint, value: constraint.kind === "diameter" ? value * 2 : value } : constraint) };
           })}
           onSelectImage={(id) => setSketchSelection({ kind: "image", id })}
           onUpdateImage={(id, update) => setSketchProfile((profile) => ({ ...profile, images: (profile.images ?? []).map((image) => image.id === id ? { ...image, ...update } : image) }))}

@@ -155,29 +155,43 @@ function dimensionPillSize(label: string, screenUnit: number, extra = 24) {
   };
 }
 
-function SketchDimensionInput({ id, label, value, accuracy, screenUnit, align = "center", onCommit }: { id: string; label: string; value: number; accuracy: 1 | 2 | 3; screenUnit: number; align?: "center" | "start"; onCommit?: (id: string, value: number) => void }) {
+function SketchDimensionInput({ id, label, value, accuracy, screenUnit, align = "center", allowSigned = false, onCommit }: { id: string; label: string; value: number; accuracy: 1 | 2 | 3; screenUnit: number; align?: "center" | "start"; allowSigned?: boolean; onCommit?: (id: string, value: number) => void }) {
   const formatted = formatDimension(value, accuracy);
-  const pill = dimensionPillSize(formatted, screenUnit, 18);
-  return <foreignObject className="sketch-dimension-editor" x={align === "start" ? 0 : -pill.width / 2} y={-pill.height / 2} width={pill.width} height={pill.height} transform="scale(1 -1)">
-    <input
-      key={`${id}-${formatted}`}
-      aria-label={label}
-      type="text"
-      inputMode="decimal"
-      defaultValue={formatted}
-      style={{ borderRadius: pill.radius, borderWidth: screenUnit, fontSize: 13 * screenUnit, padding: `0 ${5 * screenUnit}px` }}
-      onPointerDown={(event) => event.stopPropagation()}
-      onBlur={(event) => {
-        const parsed = parseMeasurementInput(event.currentTarget.value);
-        if (Number.isFinite(parsed) && parsed > 0) onCommit?.(id, parsed);
-        else { onCommit?.(id, parsed); event.currentTarget.value = formatted; }
-      }}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") event.currentTarget.blur();
-        if (event.key === "Escape") { event.currentTarget.value = formatted; event.currentTarget.blur(); }
-      }}
-    />
-  </foreignObject>;
+  const [draft, setDraft] = useState(formatted);
+  const [editing, setEditing] = useState(false);
+  useEffect(() => setDraft(formatted), [formatted]);
+  const pill = dimensionPillSize(draft || formatted, screenUnit, 18);
+  const x = align === "start" ? 0 : -pill.width / 2;
+  const borderInset = 0.75 * screenUnit;
+  return <g className={`sketch-dimension-editor-group ${editing ? "editing" : ""}`} onPointerDown={(event) => { if (!editing) { event.preventDefault(); event.stopPropagation(); setEditing(true); } }}>
+    <rect className="sketch-dimension-editor-background" x={x} y={-pill.height / 2} width={pill.width} height={pill.height} rx={pill.radius} />
+    {editing ? <foreignObject className="sketch-dimension-editor" x={x} y={-pill.height / 2} width={pill.width} height={pill.height}>
+      <div className="sketch-dimension-editor-content">
+        <input
+          autoFocus
+        aria-label={label}
+        type="text"
+        inputMode="decimal"
+        value={draft}
+        style={{ fontSize: 13 * screenUnit, padding: `0 ${5 * screenUnit}px` }}
+        onPointerDown={(event) => event.stopPropagation()}
+        onChange={(event) => setDraft(event.currentTarget.value)}
+        onBlur={(event) => {
+          const parsed = parseMeasurementInput(draft);
+          if (Number.isFinite(parsed) && (allowSigned || parsed > 0)) onCommit?.(id, parsed);
+          else { onCommit?.(id, parsed); setDraft(formatted); }
+          setEditing(false);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") event.currentTarget.blur();
+          if (event.key === "Escape") { setDraft(formatted); event.currentTarget.blur(); }
+        }}
+        />
+      </div>
+    </foreignObject> : null}
+    <text className="sketch-dimension-editor-value" pointerEvents="none" x={x + pill.width / 2} y={5 * screenUnit} fontSize={13 * screenUnit}>{draft}</text>
+    <rect className="sketch-dimension-editor-frame" pointerEvents="none" x={x + borderInset} y={-pill.height / 2 + borderInset} width={pill.width - borderInset * 2} height={pill.height - borderInset * 2} rx={Math.max(0, pill.radius - borderInset)} />
+  </g>;
 }
 
 function cubicPoint(start: SketchPoint, first: { x: number; z: number }, second: { x: number; z: number }, end: SketchPoint, amount: number) {
@@ -1046,6 +1060,21 @@ export function SketchWorkspace({
               );
             })}
           </g>
+          <g className="sketch-angle-dimensions">
+            {(displayProfile.constraints ?? []).map((constraint) => {
+              if (constraint.kind !== "angle") return null;
+              const dimensions = constraint.segmentIds.map((id) => {
+                const segment = displayProfile.segments.find((candidate) => candidate.id === id);
+                return segment ? segmentDimension(segment, pointById) : null;
+              }).filter(Boolean) as Array<NonNullable<ReturnType<typeof segmentDimension>>>;
+              if (!dimensions.length) return null;
+              const x = dimensions.reduce((total, dimension) => total + dimension.midpoint.x, 0) / dimensions.length;
+              const z = dimensions.reduce((total, dimension) => total + dimension.midpoint.z, 0) / dimensions.length + labelOffset + 30 * screenUnit;
+              return <g key={`angle-${constraint.id}`} transform={`translate(${x} ${z})`}>
+                <SketchDimensionInput id={constraint.id} label="Ángulo" value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} allowSigned onCommit={onUpdateConstraintValue} />
+              </g>;
+            })}
+          </g>
           {smoothPreviewData ? <path className="sketch-preview-line" d={smoothPreviewData} pointerEvents="none" /> : activePoint && hover && ["line", "bezier"].includes(tool) ? <line className="sketch-preview-line" x1={activePoint.x} y1={activePoint.z} x2={hover.x} y2={hover.z} pointerEvents="none" /> : null}
           {activePoint && hover && ["line", "bezier", "smooth"].includes(tool) ? (
             <g className="sketch-segment-dimensions preview" pointerEvents="none" transform={`translate(${(activePoint.x + hover.x) / 2} ${(activePoint.z + hover.z) / 2 + labelOffset})`}>
@@ -1134,9 +1163,9 @@ export function SketchWorkspace({
           </g> : null}
           <g className="sketch-circle-dimensions">
             {displayCircles.map((circle) => {
-              const constraint = (displayProfile.constraints ?? []).find((candidate) => candidate.kind === "radius" && candidate.circleId === circle.id);
-              if (constraint?.kind === "radius") return <g key={`radius-${constraint.id}`} transform={`translate(${circle.x + circle.radius + 12 * screenUnit} ${circle.z + 18 * screenUnit})`}>
-                <SketchDimensionInput id={constraint.id} label="Radio" value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} align="start" onCommit={onUpdateConstraintValue} />
+              const constraint = (displayProfile.constraints ?? []).find((candidate) => (candidate.kind === "radius" || candidate.kind === "diameter") && candidate.circleId === circle.id);
+              if (constraint?.kind === "radius" || constraint?.kind === "diameter") return <g key={`radius-${constraint.id}`} transform={`translate(${circle.x + circle.radius + 12 * screenUnit} ${circle.z + 18 * screenUnit})`}>
+                <SketchDimensionInput id={constraint.id} label={constraint.kind === "diameter" ? "Diámetro" : "Radio"} value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} align="start" onCommit={onUpdateConstraintValue} />
               </g>;
               const label = `R ${formatDimension(circle.radius, workspace.accuracy)}`;
               const pill = dimensionPillSize(label, screenUnit, 18);

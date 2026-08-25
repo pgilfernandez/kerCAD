@@ -1,6 +1,7 @@
 import type { SketchConstraint, SketchProfile } from "@/types/sketchforge";
 
 export function sketchConstraintUsesSegment(constraint: SketchConstraint, segmentId: string) {
+  if (constraint.kind === "angle") return constraint.segmentIds.includes(segmentId);
   return (constraint.kind === "horizontal" || constraint.kind === "vertical" || constraint.kind === "distance") && constraint.segmentId === segmentId;
 }
 
@@ -40,14 +41,17 @@ export function sketchConstraintConflict(profile: SketchProfile, candidate: Sket
     if (candidate.kind === "horizontal") {
       if (onSegment.some((constraint) => constraint.kind === "vertical")) return "Una misma línea no puede ser horizontal y vertical.";
       if (onSegment.some((constraint) => constraint.kind === "distance" && constraint.axis === "z")) return "Una línea horizontal no puede tener una distancia Y distinta de cero.";
+      if (onSegment.some((constraint) => constraint.kind === "angle")) return "Elimina primero la cota angular de esta línea.";
     } else if (candidate.kind === "vertical") {
       if (onSegment.some((constraint) => constraint.kind === "horizontal")) return "Una misma línea no puede ser vertical y horizontal.";
       if (onSegment.some((constraint) => constraint.kind === "distance" && constraint.axis === "x")) return "Una línea vertical no puede tener una distancia X distinta de cero.";
+      if (onSegment.some((constraint) => constraint.kind === "angle")) return "Elimina primero la cota angular de esta línea.";
     } else if (candidate.kind === "distance") {
       if (candidate.axis === "x" && onSegment.some((constraint) => constraint.kind === "vertical")) return "Una línea vertical no puede tener una distancia X distinta de cero.";
       if (candidate.axis === "z" && onSegment.some((constraint) => constraint.kind === "horizontal")) return "Una línea horizontal no puede tener una distancia Y distinta de cero.";
       if (candidate.axis === "aligned" && onSegment.some((constraint) => constraint.kind === "distance" && constraint.axis !== "aligned")) return "La longitud no puede combinarse aquí con cotas X o Y; elimina primero esas cotas.";
       if (candidate.axis !== "aligned" && onSegment.some((constraint) => constraint.kind === "distance" && constraint.axis === "aligned")) return "La cota X/Y no puede combinarse aquí con una longitud; elimina primero la longitud.";
+      if (candidate.axis !== "aligned" && onSegment.some((constraint) => constraint.kind === "angle")) return "Una cota X/Y no puede combinarse con una cota angular en la misma línea.";
     }
   }
   if (candidate.kind === "coincident") {
@@ -67,7 +71,20 @@ export function sketchConstraintConflict(profile: SketchProfile, candidate: Sket
     const coincidentFixed = constraints.find((constraint) => constraint.kind === "fixed" && coincidentSketchPoints(profile, candidate.pointId, constraint.pointId));
     if (coincidentFixed?.kind === "fixed" && (Math.abs(coincidentFixed.x - candidate.x) > 0.000001 || Math.abs(coincidentFixed.z - candidate.z) > 0.000001)) return "Este punto coincide con otro punto fijado en una posición diferente.";
   }
-  if ((candidate.kind === "distance" || candidate.kind === "radius") && (!Number.isFinite(candidate.value) || candidate.value <= 0)) return "La cota debe ser mayor que cero.";
+  if (candidate.kind === "angle") {
+    for (const segmentId of candidate.segmentIds) {
+      const onSegment = constraints.filter((constraint) => sketchConstraintUsesSegment(constraint, segmentId));
+      if (onSegment.some((constraint) => constraint.kind === "angle")) return "La línea ya participa en una cota angular; elimina primero esa cota.";
+      if (onSegment.some((constraint) => constraint.kind === "horizontal" || constraint.kind === "vertical")) return "Una cota angular no puede combinarse con una orientación horizontal o vertical en la misma línea.";
+      if (onSegment.some((constraint) => constraint.kind === "distance" && constraint.axis !== "aligned")) return "Una cota angular no puede combinarse con cotas X/Y en la misma línea.";
+    }
+  }
+  if (candidate.kind === "radius" || candidate.kind === "diameter") {
+    const opposite = candidate.kind === "radius" ? "diameter" : "radius";
+    if (constraints.some((constraint) => constraint.kind === opposite && constraint.circleId === candidate.circleId)) return `El círculo ya está restringido por ${opposite === "radius" ? "radio" : "diámetro"}; elimina primero esa cota.`;
+  }
+  if ((candidate.kind === "distance" || candidate.kind === "radius" || candidate.kind === "diameter") && (!Number.isFinite(candidate.value) || candidate.value <= 0)) return "La cota debe ser mayor que cero.";
+  if (candidate.kind === "angle" && !Number.isFinite(candidate.value)) return "El ángulo debe ser un número válido.";
   return null;
 }
 
@@ -167,9 +184,35 @@ export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: 
   }
 
   for (const constraint of constraints) {
-    if (constraint.kind !== "radius") continue;
+    if (constraint.kind !== "radius" && constraint.kind !== "diameter") continue;
     const circle = profile.circles?.find((candidate) => candidate.id === constraint.circleId);
-    if (circle) circle.radius = Math.max(0.001, Math.abs(constraint.value));
+    if (circle) circle.radius = Math.max(0.001, Math.abs(constraint.value) / (constraint.kind === "diameter" ? 2 : 1));
+  }
+
+  for (const constraint of constraints) {
+    if (constraint.kind !== "angle") continue;
+    const first = segmentById.get(constraint.segmentIds[0]);
+    const second = constraint.segmentIds[1] ? segmentById.get(constraint.segmentIds[1]) : null;
+    const target = second ?? first;
+    if (!first || !target) continue;
+    const referenceStart = pointById.get(first.startId);
+    const referenceEnd = pointById.get(first.endId);
+    const targetStart = pointById.get(target.startId);
+    const targetEnd = pointById.get(target.endId);
+    if (!referenceStart || !referenceEnd || !targetStart || !targetEnd) continue;
+    const baseAngle = second ? Math.atan2(referenceEnd.z - referenceStart.z, referenceEnd.x - referenceStart.x) : 0;
+    const targetAngle = baseAngle + constraint.value * Math.PI / 180;
+    const length = Math.max(0.001, Math.hypot(targetEnd.x - targetStart.x, targetEnd.z - targetStart.z));
+    const startFixed = (componentByPoint.get(targetStart.id) ?? [targetStart.id]).some((id) => fixedByPoint.has(id));
+    const endFixed = (componentByPoint.get(targetEnd.id) ?? [targetEnd.id]).some((id) => fixedByPoint.has(id));
+    const moveStart = endFixed || (!startFixed && driven.has(targetStart.id) && !driven.has(targetEnd.id));
+    if (moveStart) {
+      assignComponent(targetStart.id, "x", targetEnd.x - Math.cos(targetAngle) * length);
+      assignComponent(targetStart.id, "z", targetEnd.z - Math.sin(targetAngle) * length);
+    } else {
+      assignComponent(targetEnd.id, "x", targetStart.x + Math.cos(targetAngle) * length);
+      assignComponent(targetEnd.id, "z", targetStart.z + Math.sin(targetAngle) * length);
+    }
   }
 
   for (const fixed of fixedByPoint.values()) {
