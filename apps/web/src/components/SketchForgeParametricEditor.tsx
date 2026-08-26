@@ -38,6 +38,7 @@ import { binaryStlFromRenderMeshes } from "@/lib/stlExport";
 import { sketchProfileFromSvg } from "@/lib/svgImport";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import { circleSketchPointId, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, solveSketchConstraints } from "@/lib/sketchConstraints";
+import { analyzeSketchConstraints } from "@/lib/sketchConstraintAnalysis";
 import { validateDrawnSketchProfile } from "@/lib/sketchProfileValidation";
 import { trimSketchGeometry } from "@/lib/sketchTrim";
 import {
@@ -1004,19 +1005,10 @@ export function SketchForgeParametricEditor() {
 
   const sketchConstraintStatus = useMemo(() => {
     if (!sketchSession) return { kind: "under", label: "Boceto libre" };
-    const profile = sketchSession.profile;
-    const pointDegrees = profile.points.reduce((total, point) => {
-      const handleDegrees = point.mode === "smooth" && (point.handleIn || point.handleOut)
-        ? 2
-        : (point.handleIn ? 2 : 0) + (point.handleOut ? 2 : 0);
-      return total + 2 + handleDegrees;
-    }, 0);
-    const initial = pointDegrees + (profile.circles?.length ?? 0) * 3 + profile.segments.filter((segment) => segment.kind === "arc" && segment.center).length * 2;
-    const consumed = (profile.constraints ?? []).reduce((total, constraint) => total + (constraint.kind === "fixed" || constraint.kind === "coincident" || constraint.kind === "concentric" || constraint.kind === "symmetric" ? 2 : 1), 0);
-    const remaining = initial - consumed;
-    if (remaining < 0) return { kind: "over", label: "Sobrerrestringido" };
-    if (initial > 0 && remaining === 0) return { kind: "full", label: "Totalmente restringido" };
-    return { kind: "under", label: `≈ ${Math.max(0, remaining)} GDL` };
+    const analysis = analyzeSketchConstraints(sketchSession.profile);
+    if (analysis.status === "over") return { kind: "over", label: `Conflicto · ${analysis.conflictingConstraintIds.length}` };
+    if (analysis.status === "full") return { kind: "full", label: "Totalmente restringido" };
+    return { kind: "under", label: `${analysis.degreesOfFreedom} GDL` };
   }, [sketchSession]);
 
   const selectedDimensionSegment = selectedConstraintSegments.length === 1 ? selectedConstraintSegments[0] : null;

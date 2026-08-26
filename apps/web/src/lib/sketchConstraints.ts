@@ -1,4 +1,5 @@
 import type { SketchConstraint, SketchPoint, SketchProfile } from "@/types/sketchforge";
+import { refineSketchConstraintsNumerically, sketchConstraintRankGain } from "@/lib/sketchConstraintAnalysis";
 
 export function circleSketchPointId(circleId: string, point: "center" | "radius") {
   return `circle:${circleId}:${point}`;
@@ -194,6 +195,10 @@ export function sketchConstraintConflict(profile: SketchProfile, candidate: Sket
   if ((candidate.kind === "distance" || candidate.kind === "radius" || candidate.kind === "diameter" || candidate.kind === "arcRadius" || candidate.kind === "arcDiameter") && (!Number.isFinite(candidate.value) || candidate.value <= 0)) return "La cota debe ser mayor que cero.";
   if (candidate.kind === "arcAngle" && !Number.isFinite(candidate.value)) return "El ángulo debe ser un número válido.";
   if (candidate.kind === "angle" && !Number.isFinite(candidate.value)) return "El ángulo debe ser un número válido.";
+  const numerical = sketchConstraintRankGain(profile, candidate);
+  if (numerical.gain === 0) return numerical.residual > 1e-3
+    ? "Esta restricción es incompatible con las restricciones existentes."
+    : "Esta restricción es redundante: la geometría ya está definida de esa forma.";
   return null;
 }
 
@@ -546,5 +551,5 @@ export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: 
       circle.radiusAngle = Math.atan2(radiusPoint.z - center.z, radiusPoint.x - center.x);
     }
   }
-  return profile;
+  return refineSketchConstraintsNumerically(profile, drivingPointId);
 }
