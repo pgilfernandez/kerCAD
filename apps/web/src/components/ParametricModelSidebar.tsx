@@ -13,6 +13,7 @@ import {
   DraftingCompass,
   Eye,
   EyeOff,
+  FlipHorizontal2,
   Layers3,
   LockKeyhole,
   LockKeyholeOpen,
@@ -297,6 +298,7 @@ function FeatureIcon({ document, feature }: { document: ParametricDocument; feat
   if (feature.kind === "faceExtrude") return <span className={`educad-operation-icon ${feature.operation === "cut" ? "hole" : "add"}`} role="img" aria-label={feature.operation === "cut" ? "Hueco desde cara" : "Extrusión desde cara"}><Box size={17} /><small aria-hidden="true">{feature.operation === "cut" ? "−" : "+"}</small></span>;
   if (feature.kind === "shell") return <img className="educad-operation-asset-icon" src="/assets/educad/operations/shell.svg" alt="Vaciado" />;
   if (feature.kind === "revolve") return <img className="educad-operation-asset-icon" src="/assets/educad/operations/revolve.svg" alt="Revolución" />;
+  if (feature.kind === "mirror") return <FlipHorizontal2 className="mirror" size={16} />;
   return feature.treatment === "chamfer" ? <Triangle className="chamfer" size={16} /> : <Radius className="fillet" size={16} />;
 }
 
@@ -575,6 +577,17 @@ function ParametricFeatureInspector({
           {revolveSketch && revolveSketch.profile.shape !== "drawn" ? <div className="educad-feature-card"><h3>Perfil de boceto</h3><ReadOnlyField label="Forma" value={revolveSketch.profile.shape === "rectangle" ? "Rectángulo" : "Círculo"} />{revolveSketch.profile.shape === "rectangle" ? <><BoundedNumberField label="Anchura" value={revolveSketch.profile.width} min={0.01} max={200} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} /><BoundedNumberField label="Profundidad" value={revolveSketch.profile.depth} min={0.01} max={200} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} /></> : <BoundedNumberField label="Radio" value={revolveSketch.profile.diameter / 2} min={0.01} max={100} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value * 2); })} />}</div> : null}
           {feature.source === "face" ? <div className="educad-topology-selection-actions"><button className="educad-edit-topology-selection" type="button" onClick={() => onEditRevolveFace(feature.id)}>Editar cara</button><button className="educad-edit-topology-selection" type="button" onClick={() => onEditRevolveAxis(feature.id)}>Editar eje</button></div> : <button className="educad-edit-topology-selection" type="button" onClick={() => onEditRevolveAxis(feature.id)}>Editar eje</button>}
           <TransformSection description="Eje local del objeto"><p className="educad-transform-empty">La cara gira alrededor del eje local seleccionado que pasa por el origen del objeto.</p></TransformSection>
+        </>
+      ) : null}
+
+      {feature.kind === "mirror" ? (
+        <>
+          <div className="educad-feature-card">
+            <h3>Operación</h3>
+            <label><span>Plano</span><select value={feature.axis} onChange={(event) => onUpdate((draft) => { if (draft.kind === "mirror") draft.axis = event.target.value as typeof draft.axis; })}><option value="x">YZ (eje X)</option><option value="y">XZ (eje Y)</option><option value="z">XY (eje Z)</option></select></label>
+            <label><span>Resultado</span><select value={feature.duplicate ? "duplicate" : "transform"} onChange={(event) => onUpdate((draft) => { if (draft.kind === "mirror") draft.duplicate = event.target.value === "duplicate"; })}><option value="duplicate">Duplicar</option><option value="transform">Sólo transformar</option></select></label>
+          </div>
+          <TransformSection description="Plano local del objeto"><p className="educad-transform-empty">El resultado anterior se refleja respecto al plano local que pasa por el origen.</p></TransformSection>
         </>
       ) : null}
 

@@ -1,4 +1,4 @@
-export type FeatureKind = "sketch" | "extrude" | "primitive" | "hole" | "fillet" | "faceExtrude" | "shell" | "revolve";
+export type FeatureKind = "sketch" | "extrude" | "primitive" | "hole" | "fillet" | "faceExtrude" | "shell" | "revolve" | "mirror";
 
 export type ParametricDependencyReference =
   | { type: "feature"; id: string }
@@ -158,7 +158,15 @@ export type RevolveFeature = BaseFeature & {
   sketchId?: string;
 };
 
-export type ParametricFeature = SketchFeature | ExtrudeFeature | PrimitiveFeature | HoleFeature | FilletFeature | FaceExtrudeFeature | ShellFeature | RevolveFeature;
+export type MirrorFeature = BaseFeature & {
+  kind: "mirror";
+  /** Local axis normal to the mirror plane. */
+  axis: "x" | "y" | "z";
+  /** Keep the previous result together with its mirrored copy. */
+  duplicate: boolean;
+};
+
+export type ParametricFeature = SketchFeature | ExtrudeFeature | PrimitiveFeature | HoleFeature | FilletFeature | FaceExtrudeFeature | ShellFeature | RevolveFeature | MirrorFeature;
 
 export type ParametricObject = {
   id: string;

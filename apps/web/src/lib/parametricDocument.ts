@@ -3,6 +3,7 @@ import type {
   ExtrudeFeature,
   FilletFeature,
   FaceExtrudeFeature,
+  MirrorFeature,
   RevolveFeature,
   ShellFeature,
   HoleFeature,
@@ -230,6 +231,17 @@ export function createRevolveFeature(index: number, operation: RevolveFeature["o
   };
 }
 
+export function createMirrorFeature(index: number): MirrorFeature {
+  return {
+    id: createFeatureId("mirror"),
+    kind: "mirror",
+    name: `Espejo ${index}`,
+    suppressed: false,
+    axis: "x",
+    duplicate: true,
+  };
+}
+
 export function validateDocument(value: unknown): value is ParametricDocument {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<ParametricDocument>;
@@ -329,6 +341,10 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
       feature.selectionReferenceIds ??= feature.edgeReferenceIds;
     }
     if (feature.kind === "revolve") feature.source ??= feature.sketchId ? "sketch" : "face";
+    if (feature.kind === "mirror") {
+      feature.axis = feature.axis === "y" || feature.axis === "z" ? feature.axis : "x";
+      feature.duplicate = typeof feature.duplicate === "boolean" ? feature.duplicate : true;
+    }
     if (feature.kind === "primitive") {
       feature.width = Math.max(0.1, Number.isFinite(feature.width) ? feature.width : 20);
       feature.depth = Math.max(0.1, Number.isFinite(feature.depth) ? feature.depth : 20);

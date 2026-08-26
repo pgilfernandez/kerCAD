@@ -528,6 +528,12 @@ function applyRevolveFeature(brep: Brep, document: ParametricDocument, current: 
   return applyBooleanOperation(brep, current, tool, feature);
 }
 
+function applyMirrorFeature(brep: Brep, current: AnySolid, feature: Extract<ParametricDocument["features"][number], { kind: "mirror" }>) {
+  const normal: [number, number, number] = feature.axis === "x" ? [1, 0, 0] : feature.axis === "y" ? [0, 1, 0] : [0, 0, 1];
+  const mirrored = brep.mirror(current, { normal }) as AnySolid;
+  return feature.duplicate ? refinedBooleanSolid(brep, brep.fuse(current, mirrored)) : mirrored;
+}
+
 async function buildParametricModelInternal(document: ParametricDocument, contextFeatureId: string | null, stopAtContext: boolean): Promise<BuildResult> {
   const brep = await loadBrepWithOcct();
   const sketches = new Map<string, SketchFeature>();
@@ -602,6 +608,10 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
       } else if (feature.kind === "revolve") {
         if (Math.abs(feature.angle) < 1 || Math.abs(feature.angle) > 360) throw new Error(`${feature.name}: el ángulo debe estar entre -360 y 360 grados y no puede ser cero.`);
         current = applyRevolveFeature(brep, document, current, feature);
+        solids.set(objectId, current);
+        completedFeatureIds.push(feature.id);
+      } else if (feature.kind === "mirror") {
+        current = applyMirrorFeature(brep, current, feature);
         solids.set(objectId, current);
         completedFeatureIds.push(feature.id);
       }
@@ -699,7 +709,8 @@ export async function exportParametricStep(document: ParametricDocument): Promis
     } else if (feature.kind === "fillet") current = applyFilletFeature(brep, document, current, feature);
     else if (feature.kind === "faceExtrude") current = applyFaceExtrudeFeature(brep, document, current, feature);
     else if (feature.kind === "shell") current = applyShellFeature(brep, document, current, feature);
-    else current = applyRevolveFeature(brep, document, current, feature);
+    else if (feature.kind === "revolve") current = applyRevolveFeature(brep, document, current, feature);
+    else current = applyMirrorFeature(brep, current, feature);
     solids.set(objectId, current);
   }
   const result = combinedObjectShape(brep, worldObjectSolids(brep, solids, objects));

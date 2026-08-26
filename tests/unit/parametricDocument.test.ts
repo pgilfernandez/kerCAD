@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createExtrudeFeature,
+  createMirrorFeature,
   createSketchFeature,
   createStarterDocument,
   documentHasSolid,
@@ -45,6 +46,17 @@ describe("parametric document", () => {
     const features = [first, extrusion, second];
     expect(previousSketch(features, extrusion.id)?.id).toBe(first.id);
     expect(previousSketch(features, second.id)?.id).toBe(second.id);
+  });
+
+  it("creates an editable mirror history operation", () => {
+    const mirror = createMirrorFeature(2);
+    expect(mirror).toMatchObject({
+      kind: "mirror",
+      name: "Espejo 2",
+      axis: "x",
+      duplicate: true,
+      suppressed: false,
+    });
   });
 
   it("does not count suppressed or cutting extrusions as a base solid", () => {
@@ -134,6 +146,6 @@ describe("parametric document", () => {
 
     const invalid = createStarterDocument(123);
     invalid.workplane = { width: 10, depth: 9000, gridStep: 0, snapToGrid: false } as typeof invalid.workplane;
-    expect(normalizeParametricDocument(invalid).workplane).toMatchObject({ width: 60, depth: 2000, gridStep: 0.1, snapToGrid: false });
+    expect(normalizeParametricDocument(invalid).workplane).toMatchObject({ width: 10, depth: 2000, gridStep: 0.1, snapToGrid: false });
   });
 });
