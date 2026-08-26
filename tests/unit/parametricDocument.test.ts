@@ -4,6 +4,7 @@ import {
   createMirrorFeature,
   createLinearPatternFeature,
   createPolarPatternFeature,
+  createObjectBooleanFeature,
   createSketchFeature,
   createStarterDocument,
   documentHasSolid,
@@ -87,6 +88,11 @@ describe("parametric document", () => {
       equalSpacing: true,
       suppressed: false,
     });
+  });
+
+  it("creates a cross-object Boolean dependency", () => {
+    const feature = createObjectBooleanFeature(1, "source-object");
+    expect(feature).toMatchObject({ kind: "objectBoolean", sourceObjectId: "source-object", operation: "add", dependencies: [{ type: "object", id: "source-object" }] });
   });
 
   it("does not count suppressed or cutting extrusions as a base solid", () => {

@@ -1,4 +1,4 @@
-export type FeatureKind = "sketch" | "extrude" | "primitive" | "hole" | "fillet" | "faceExtrude" | "shell" | "revolve" | "mirror" | "linearPattern" | "polarPattern";
+export type FeatureKind = "sketch" | "extrude" | "primitive" | "hole" | "fillet" | "faceExtrude" | "shell" | "revolve" | "mirror" | "linearPattern" | "polarPattern" | "objectBoolean";
 
 export type ParametricDependencyReference =
   | { type: "feature"; id: string }
@@ -190,7 +190,13 @@ export type PolarPatternFeature = BaseFeature & {
   equalSpacing: boolean;
 };
 
-export type ParametricFeature = SketchFeature | ExtrudeFeature | PrimitiveFeature | HoleFeature | FilletFeature | FaceExtrudeFeature | ShellFeature | RevolveFeature | MirrorFeature | LinearPatternFeature | PolarPatternFeature;
+export type ObjectBooleanFeature = BaseFeature & {
+  kind: "objectBoolean";
+  sourceObjectId: string;
+  operation: "add" | "cut" | "intersect";
+};
+
+export type ParametricFeature = SketchFeature | ExtrudeFeature | PrimitiveFeature | HoleFeature | FilletFeature | FaceExtrudeFeature | ShellFeature | RevolveFeature | MirrorFeature | LinearPatternFeature | PolarPatternFeature | ObjectBooleanFeature;
 
 export type ParametricObject = {
   id: string;

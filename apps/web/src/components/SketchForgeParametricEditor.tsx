@@ -18,6 +18,7 @@ import {
   ToolbarMirrorIcon,
   ToolbarLinearPatternIcon,
   ToolbarPolarPatternIcon,
+  ToolbarObjectBooleanIcon,
   ToolbarPasteIcon,
   ToolbarRedoIcon,
   ToolbarSettingsIcon,
@@ -30,7 +31,7 @@ import {
   ToolbarWorkplaneIcon,
   ToolbarResetWorkplaneIcon,
 } from "@/components/icons";
-import { cloneDocument, createDrawnSketchFeature, createExtrudeFeature, createFaceExtrudeFeature, createFilletFeature, createLinearPatternFeature, createMirrorFeature, createPolarPatternFeature, createRevolveFeature, createShellFeature, createStarterDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
+import { cloneDocument, createDrawnSketchFeature, createExtrudeFeature, createFaceExtrudeFeature, createFilletFeature, createLinearPatternFeature, createMirrorFeature, createObjectBooleanFeature, createPolarPatternFeature, createRevolveFeature, createShellFeature, createStarterDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { assertValidParametricDependencies } from "@/lib/parametricDependencyGraph";
 import { assertValidParametricTopology, recoverParametricTopologyReferenceInRecords } from "@/lib/parametricTopology";
 import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint } from "@/lib/parametricBuildState";
@@ -304,7 +305,7 @@ export function SketchForgeParametricEditor() {
     if (modelSelection.length !== 1 || modelSelection[0]?.kind !== "feature") return null;
     const buildDocument = buildDocumentRef.current;
     const feature = buildDocument.features.find((candidate) => candidate.id === modelSelection[0]?.id);
-    if ((feature?.kind !== "extrude" && feature?.kind !== "primitive" && feature?.kind !== "fillet" && feature?.kind !== "faceExtrude" && feature?.kind !== "shell" && feature?.kind !== "revolve" && feature?.kind !== "mirror" && feature?.kind !== "linearPattern" && feature?.kind !== "polarPattern") || !feature.objectId) return null;
+    if ((feature?.kind !== "extrude" && feature?.kind !== "primitive" && feature?.kind !== "fillet" && feature?.kind !== "faceExtrude" && feature?.kind !== "shell" && feature?.kind !== "revolve" && feature?.kind !== "mirror" && feature?.kind !== "linearPattern" && feature?.kind !== "polarPattern" && feature?.kind !== "objectBoolean") || !feature.objectId) return null;
     const operations = buildDocument.features.filter((candidate) => candidate.objectId === feature.objectId && candidate.kind !== "sketch");
     const index = operations.findIndex((candidate) => candidate.id === feature.id);
     return index < 0 ? null : { featureId: feature.id, objectId: feature.objectId, index, count: operations.length };
@@ -1451,6 +1452,22 @@ export function SketchForgeParametricEditor() {
       setNotice({ type: "ok", text: "Matriz polar creada" });
     }
   };
+  const addObjectBooleanOperation = () => {
+    if (!selectedObjectId) return;
+    const sourceObject = document.objects.find((object) => object.id !== selectedObjectId);
+    if (!sourceObject) return;
+    let featureId = "";
+    const changed = mutate((draft) => {
+      const feature = createObjectBooleanFeature(draft.features.filter((candidate) => candidate.kind === "objectBoolean").length + 1, sourceObject.id);
+      feature.objectId = selectedObjectId;
+      featureId = feature.id;
+      draft.features.push(feature);
+    });
+    if (changed && featureId) {
+      setModelSelection([{ id: featureId, kind: "feature" }]);
+      setNotice({ type: "ok", text: "Booleana entre objetos creada" });
+    }
+  };
   const faceExtrudeHandle = useMemo(() => {
     const pendingReference = pendingFaceExtrude ? selectedTopologyFaces[0] : null;
     const selectedFeature = !pendingFaceExtrude && modelSelection.length === 1 && modelSelection[0]?.kind === "feature"
@@ -2123,6 +2140,7 @@ export function SketchForgeParametricEditor() {
               <Tool label="Espejo" enabled={Boolean(selectedObjectId)} onClick={addMirrorOperation}><ToolbarMirrorIcon /></Tool>
               <Tool label="Matriz lineal" enabled={Boolean(selectedObjectId)} onClick={addLinearPatternOperation}><ToolbarLinearPatternIcon /></Tool>
               <Tool label="Matriz polar" enabled={Boolean(selectedObjectId)} onClick={addPolarPatternOperation}><ToolbarPolarPatternIcon /></Tool>
+              <Tool label="Booleana entre objetos" enabled={Boolean(selectedObjectId && document.objects.some((object) => object.id !== selectedObjectId))} onClick={addObjectBooleanOperation}><ToolbarObjectBooleanIcon /></Tool>
               <Tool label="Ajustar a rejilla" enabled={Boolean(selectedShape && document.workplane.snapToGrid)} onClick={() => selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: Math.round((selectedShape?.x ?? 0) / snapAmount) * snapAmount, z: Math.round((selectedShape?.z ?? 0) / snapAmount) * snapAmount }))}><ToolbarSnapGridIcon /></Tool>
               <Tool label="Chaflán" active={pendingEdgeTreatment === "chamfer"} onClick={() => beginEdgeTreatment("chamfer")}><ToolbarChamferIcon /></Tool>
               <Tool label="Redondeo" active={pendingEdgeTreatment === "fillet"} onClick={() => beginEdgeTreatment("fillet")}><ToolbarFilletIcon /></Tool>

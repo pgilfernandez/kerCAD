@@ -21,6 +21,7 @@ import {
   Radius,
   Rows3,
   RotateCw,
+  Combine,
   Triangle,
   Trash2,
   X,
@@ -304,6 +305,7 @@ function FeatureIcon({ document, feature }: { document: ParametricDocument; feat
   if (feature.kind === "mirror") return <FlipHorizontal2 className="mirror" size={16} />;
   if (feature.kind === "linearPattern") return <Rows3 className="linear-pattern" size={16} />;
   if (feature.kind === "polarPattern") return <RotateCw className="polar-pattern" size={16} />;
+  if (feature.kind === "objectBoolean") return <Combine className="object-boolean" size={16} />;
   return feature.treatment === "chamfer" ? <Triangle className="chamfer" size={16} /> : <Radius className="fillet" size={16} />;
 }
 
@@ -654,6 +656,17 @@ function ParametricFeatureInspector({
             <BoundedNumberField label={feature.equalSpacing ? "Ángulo total" : "Paso angular"} value={feature.angle} min={-360} max={360} step={1} unit="°" onChange={(value) => onUpdate((draft) => { if (draft.kind === "polarPattern") draft.angle = Math.abs(value) < 0.1 ? (value < 0 ? -0.1 : 0.1) : value; })} />
           </div>
           <TransformSection description="Rotación alrededor del origen local"><p className="educad-transform-empty">La cantidad incluye el original. El signo del ángulo determina el sentido de giro.</p></TransformSection>
+        </>
+      ) : null}
+
+      {feature.kind === "objectBoolean" ? (
+        <>
+          <div className="educad-feature-card">
+            <h3>Operación</h3>
+            <label><span>Modo</span><select value={feature.operation} onChange={(event) => onUpdate((draft) => { if (draft.kind === "objectBoolean") draft.operation = event.target.value as typeof draft.operation; })}><option value="add">Añadir</option><option value="cut">Hueco</option><option value="intersect">Común</option></select></label>
+            <label><span>Objeto</span><select value={feature.sourceObjectId} onChange={(event) => onUpdate((draft) => { if (draft.kind !== "objectBoolean") return; draft.sourceObjectId = event.target.value; draft.dependencies = [{ type: "object", id: event.target.value }]; })}>{document.objects.filter((object) => object.id !== feature.objectId).map((object) => <option key={object.id} value={object.id}>{object.name}</option>)}</select></label>
+          </div>
+          <TransformSection description="Referencia entre objetos"><p className="educad-transform-empty">La geometría se actualiza con el objeto de referencia. Puedes ocultarlo en el árbol sin romper esta operación.</p></TransformSection>
         </>
       ) : null}
 

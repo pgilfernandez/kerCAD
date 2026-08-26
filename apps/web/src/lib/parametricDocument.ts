@@ -6,6 +6,7 @@ import type {
   MirrorFeature,
   LinearPatternFeature,
   PolarPatternFeature,
+  ObjectBooleanFeature,
   RevolveFeature,
   ShellFeature,
   HoleFeature,
@@ -274,6 +275,18 @@ export function createPolarPatternFeature(index: number): PolarPatternFeature {
   };
 }
 
+export function createObjectBooleanFeature(index: number, sourceObjectId: string): ObjectBooleanFeature {
+  return {
+    id: createFeatureId("object-boolean"),
+    kind: "objectBoolean",
+    name: `Booleana de objeto ${index}`,
+    suppressed: false,
+    sourceObjectId,
+    operation: "add",
+    dependencies: [{ type: "object", id: sourceObjectId }],
+  };
+}
+
 export function validateDocument(value: unknown): value is ParametricDocument {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<ParametricDocument>;
@@ -403,6 +416,10 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
       feature.count = Math.min(50, Math.max(2, Math.round(Number.isFinite(feature.count) ? feature.count : 6)));
       feature.angle = Math.min(360, Math.max(-360, Number.isFinite(feature.angle) && Math.abs(feature.angle) >= 0.1 ? feature.angle : 360));
       feature.equalSpacing = typeof feature.equalSpacing === "boolean" ? feature.equalSpacing : true;
+    }
+    if (feature.kind === "objectBoolean") {
+      feature.operation = feature.operation === "cut" || feature.operation === "intersect" ? feature.operation : "add";
+      feature.dependencies = [{ type: "object", id: feature.sourceObjectId }];
     }
     if (feature.kind === "primitive") {
       feature.width = Math.max(0.1, Number.isFinite(feature.width) ? feature.width : 20);

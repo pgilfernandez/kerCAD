@@ -184,6 +184,16 @@ export function ToolbarPolarPatternIcon(props: IconProps) {
   );
 }
 
+export function ToolbarObjectBooleanIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 48 48" aria-hidden="true" {...props}>
+      <circle cx="19" cy="24" r="13" fill="currentColor" opacity="0.22" stroke="currentColor" strokeWidth="2.3" />
+      <circle cx="29" cy="24" r="13" fill="white" fillOpacity="0.72" stroke="currentColor" strokeWidth="2.3" />
+      <path d="M24 13a13 13 0 0 1 0 22 13 13 0 0 1 0-22Z" fill="currentColor" opacity="0.75" />
+    </svg>
+  );
+}
+
 export function ToolbarChamferIcon() {
   return <ToolbarCommandImage file="toolbar-chamfer.png" className="toolbar-user-art-icon" />;
 }

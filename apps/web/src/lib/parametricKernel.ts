@@ -2,6 +2,7 @@ import { loadBrepWithOcct, type Brep, type BrepSolid } from "@/lib/brepKernel";
 import type { Edge, Face } from "brepjs";
 import { parametricObjectGeometryFingerprint } from "@/lib/parametricBuildState";
 import { topologicallySortedParametricFeatures } from "@/lib/parametricDependencyGraph";
+import { parametricTransformMatrix } from "@/lib/parametricWorkplane";
 import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, PrimitiveFeature, RenderMesh, SketchFeature } from "@/types/parametric";
 
 type AnySolid = BrepSolid;
@@ -337,8 +338,10 @@ export function parametricObjectRenderId(objectId: string) {
   return `object:${objectId}`;
 }
 
-function worldObjectSolids(brep: Brep, solids: Map<string, AnySolid>, objects: Map<string, ParametricObject>) {
-  return new Map([...solids].map(([objectId, solid]) => [objectId, applyObjectTransform(brep, solid, objects.get(objectId))]));
+function worldObjectSolids(brep: Brep, solids: Map<string, AnySolid>, objects: Map<string, ParametricObject>, visibleOnly = false) {
+  return new Map([...solids]
+    .filter(([objectId]) => !visibleOnly || objects.get(objectId)?.visible !== false)
+    .map(([objectId, solid]) => [objectId, applyObjectTransform(brep, solid, objects.get(objectId))]));
 }
 
 function objectRenderRecords(brep: Brep, document: ParametricDocument, worldSolids: Map<string, AnySolid>, objects: Map<string, ParametricObject>): ParametricObjectRenderRecord[] {
@@ -360,7 +363,7 @@ function objectRenderRecords(brep: Brep, document: ParametricDocument, worldSoli
 }
 
 function buildRenderOutput(brep: Brep, document: ParametricDocument, solids: Map<string, AnySolid>, objects: Map<string, ParametricObject>) {
-  const worldSolids = worldObjectSolids(brep, solids, objects);
+  const worldSolids = worldObjectSolids(brep, solids, objects, true);
   const combined = combinedObjectShape(brep, worldSolids);
   return {
     mesh: combined ? meshShape(brep, combined) : null,
@@ -589,6 +592,21 @@ function applyPolarPatternFeature(brep: Brep, current: AnySolid, feature: Extrac
   return result;
 }
 
+function solidInTargetObjectSpace(brep: Brep, solid: AnySolid, source: ParametricObject, target: ParametricObject) {
+  const relative = parametricTransformMatrix(target.transform).invert().multiply(parametricTransformMatrix(source.transform));
+  const elements = relative.elements;
+  return brep.unwrap(brep.applyMatrix(solid, {
+    linear: [elements[0], elements[4], elements[8], elements[1], elements[5], elements[9], elements[2], elements[6], elements[10]],
+    translation: [elements[12], elements[13], elements[14]],
+  })) as AnySolid;
+}
+
+function applyObjectBooleanFeature(brep: Brep, current: AnySolid, source: AnySolid, feature: Extract<ParametricDocument["features"][number], { kind: "objectBoolean" }>) {
+  if (feature.operation === "add") return refinedBooleanSolid(brep, brep.fuse(current, source));
+  if (feature.operation === "cut") return refinedBooleanSolid(brep, brep.cut(current, source));
+  return refinedBooleanSolid(brep, brep.intersect(current, source));
+}
+
 async function buildParametricModelInternal(document: ParametricDocument, contextFeatureId: string | null, stopAtContext: boolean): Promise<BuildResult> {
   const brep = await loadBrepWithOcct();
   const sketches = new Map<string, SketchFeature>();
@@ -602,7 +620,6 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
   try {
     for (const feature of topologicallySortedParametricFeatures(document)) {
       if (feature.suppressed) continue;
-      if (feature.objectId && objects.get(feature.objectId)?.visible === false) continue;
       if (feature.kind === "sketch") {
         sketches.set(feature.id, feature);
         completedFeatureIds.push(feature.id);
@@ -691,11 +708,26 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         current = applyPolarPatternFeature(brep, current, feature, sourceState);
         solids.set(objectId, current);
         completedFeatureIds.push(feature.id);
+      } else if (feature.kind === "objectBoolean") {
+        const sourceSolid = solids.get(feature.sourceObjectId);
+        const sourceObject = objects.get(feature.sourceObjectId);
+        const targetObject = objects.get(objectId);
+        if (!sourceSolid || !sourceObject || !targetObject) throw new Error(`${feature.name}: el objeto de referencia ya no está disponible.`);
+        if (feature.sourceObjectId === objectId) throw new Error(`${feature.name}: un objeto no puede combinarse consigo mismo.`);
+        const tool = solidInTargetObjectSpace(brep, sourceSolid, sourceObject, targetObject);
+        current = applyObjectBooleanFeature(brep, current, tool, feature);
+        solids.set(objectId, current);
+        operationStates.set(feature.id, {
+          before: previousSolid,
+          after: current,
+          ...(feature.operation === "add" ? { added: tool, removed: null } : feature.operation === "cut" ? { added: null, removed: tool } : {}),
+        });
+        completedFeatureIds.push(feature.id);
       }
       if (!operationStates.has(feature.id)) operationStates.set(feature.id, { before: previousSolid, after: current });
       if (feature.id === contextFeatureId) {
         const selectedResult = solids.get(objectId);
-        const removedMaterial = feature.kind === "fillet" || feature.kind === "shell" || (feature.kind === "faceExtrude" && feature.operation === "cut") || (feature.kind === "revolve" && feature.operation !== "add");
+        const removedMaterial = feature.kind === "fillet" || feature.kind === "shell" || (feature.kind === "faceExtrude" && feature.operation === "cut") || (feature.kind === "revolve" && feature.operation !== "add") || (feature.kind === "objectBoolean" && feature.operation !== "add");
         let detail: RenderableShape | null = null;
         if (selectedResult && feature.kind === "fillet") {
           const changedRegions = [
@@ -800,7 +832,14 @@ export async function exportParametricStep(document: ParametricDocument): Promis
     else if (feature.kind === "revolve") current = applyRevolveFeature(brep, document, current, feature);
     else if (feature.kind === "mirror") current = applyMirrorFeature(brep, current, feature);
     else if (feature.kind === "linearPattern") current = applyLinearPatternFeature(brep, current, feature, feature.source === "feature" && feature.sourceFeatureId ? operationStates.get(feature.sourceFeatureId) : undefined);
-    else current = applyPolarPatternFeature(brep, current, feature, feature.source === "feature" && feature.sourceFeatureId ? operationStates.get(feature.sourceFeatureId) : undefined);
+    else if (feature.kind === "polarPattern") current = applyPolarPatternFeature(brep, current, feature, feature.source === "feature" && feature.sourceFeatureId ? operationStates.get(feature.sourceFeatureId) : undefined);
+    else {
+      const sourceSolid = solids.get(feature.sourceObjectId);
+      const sourceObject = objects.get(feature.sourceObjectId);
+      const targetObject = objects.get(objectId);
+      if (!sourceSolid || !sourceObject || !targetObject) throw new Error(`${feature.name}: el objeto de referencia ya no está disponible.`);
+      current = applyObjectBooleanFeature(brep, current, solidInTargetObjectSpace(brep, sourceSolid, sourceObject, targetObject), feature);
+    }
     solids.set(objectId, current);
     if (!operationStates.has(feature.id)) operationStates.set(feature.id, { before: previousSolid, after: current });
   }
