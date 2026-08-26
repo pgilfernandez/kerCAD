@@ -209,6 +209,7 @@ export function SketchForgeParametricEditor() {
   const [modelSidebarMode, setModelSidebarMode] = useState<ModelSidebarMode | "hidden">("normal");
   const [exportOpen, setExportOpen] = useState(false);
   const [exportFileName, setExportFileName] = useState(document.name);
+  const [newDocumentOpen, setNewDocumentOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const [workplaneOpen, setWorkplaneOpen] = useState(false);
@@ -237,7 +238,7 @@ export function SketchForgeParametricEditor() {
   const [showRotationTriad, setShowRotationTriad] = useState(true);
   const [originEditObjectId, setOriginEditObjectId] = useState<string | null>(null);
   const [alignOpen, setAlignOpen] = useState(false);
-  const [cameraOrientation, setCameraOrientation] = useState<CameraOrientation>({ azimuth: Math.PI / 4, polar: 1.02 });
+  const [cameraOrientation, setCameraOrientation] = useState<CameraOrientation>({ azimuth: -Math.PI / 4, polar: 1.02 });
   const [clipboardId, setClipboardId] = useState<string | null>(null);
   const [sketchSession, setSketchSession] = useState<{ featureId: string | null; objectId: string | null; profile: SketchProfile } | null>(null);
   const [sketchTool, setSketchTool] = useState<SketchTool>("line");
@@ -1675,7 +1676,15 @@ export function SketchForgeParametricEditor() {
     const next = createStarterDocument();
     setHistory(createParametricHistory(next));
     setModelSelection(next.objects[0] ? [{ id: next.objects[0].id, kind: "object" }] : []);
+    setCamera("home");
     setNotice({ type: "info", text: "Nuevo diseño" });
+    setNewDocumentOpen(false);
+  };
+
+  const openExportFromNewDocumentWarning = () => {
+    setNewDocumentOpen(false);
+    setExportFileName(document.name);
+    setExportOpen(true);
   };
 
   const beginEdgeTreatment = (treatment: "fillet" | "chamfer", featureId: string | null = null) => {
@@ -2097,7 +2106,7 @@ export function SketchForgeParametricEditor() {
           <div className="educad-sketch-finish-actions"><button className="educad-sketch-action primary" type="button" onClick={acceptSketch}><Check size={17} /><span>Aceptar boceto</span></button><button className="educad-sketch-action" type="button" onClick={cancelSketch}><X size={17} /><span>Cancelar</span></button></div>
         </div> :
         <div className="toolbar-mode-content geometry">
-          <ToolbarSection label="Home" className="toolbar-home-section"><Tool label="Nuevo diseño" onClick={newDocument}><ToolbarHomeIcon /></Tool></ToolbarSection>
+          <ToolbarSection label="Home" className="toolbar-home-section"><Tool label="Nuevo diseño" onClick={() => setNewDocumentOpen(true)}><ToolbarHomeIcon /></Tool></ToolbarSection>
           <div className="tool-group left">
             <ToolbarSection label="Clipboard">
               <Tool label="Copiar" enabled={Boolean(selectedObjectId)} onClick={() => { setClipboardId(selectedObjectId); setNotice({ type: "info", text: "Objeto copiado" }); }}><ToolbarCopyIcon /></Tool>
@@ -2182,7 +2191,7 @@ export function SketchForgeParametricEditor() {
       </div>
 
       <section className={`educad-workplane-stage ${sketchSession ? "sketch-active" : ""}`}>
-        {showFps ? <FpsCounter rightOffset={modelSidebarMode === "normal" ? 332 : modelSidebarMode === "simplified" ? 80 : 12} /> : null}
+        {showFps ? <FpsCounter rightOffset={modelSidebarMode === "normal" ? 252 : modelSidebarMode === "simplified" ? 80 : 12} /> : null}
         {sketchSession ? <SketchWorkspace
           profile={sketchSession.profile}
           profileValidation={activeSketchProfileValidation}
@@ -2538,6 +2547,16 @@ export function SketchForgeParametricEditor() {
         </aside>
       )}
 
+      {newDocumentOpen ? (
+        <div className="educad-dialog-backdrop" role="presentation" onPointerDown={() => setNewDocumentOpen(false)}>
+          <section className="educad-new-document-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-new-document-title" onPointerDown={(event) => event.stopPropagation()}>
+            <header><strong id="educad-new-document-title">Crear un nuevo diseño</strong><button type="button" aria-label="Cancelar" onClick={() => setNewDocumentOpen(false)}><X size={18} /></button></header>
+            <p>Vas a cerrar el proyecto actual. Guarda una copia antes de crear un diseño nuevo si quieres conservarlo.</p>
+            <footer><button type="button" onClick={() => setNewDocumentOpen(false)}>Cancelar</button><button type="button" className="danger" onClick={newDocument}>Nuevo</button><button type="button" className="primary" onClick={openExportFromNewDocumentWarning}>Guardar</button></footer>
+          </section>
+        </div>
+      ) : null}
+
       {settingsOpen && (
         <aside data-educad-popup="settings" className="top-action-panel educad-settings-panel">
           <header><strong>Ajustes del diseño</strong><button onClick={() => setSettingsOpen(false)}><X /></button></header>
@@ -2586,7 +2605,7 @@ function Tool({ label, enabled = true, active, onClick, children }: { label: str
 }
 
 function SketchSideTool({ label, enabled = true, active, onClick, children }: { label: string; enabled?: boolean; active?: boolean; onClick?: () => void; children: React.ReactNode }) {
-  return <button className={`educad-sketch-side-tool ${active ? "active" : ""}`} type="button" aria-pressed={active} disabled={!enabled} title={label} onClick={onClick}><span className="educad-sketch-side-tool-icon">{children}</span><span>{label}</span></button>;
+  return <button className={`educad-sketch-side-tool ${active ? "active" : ""}`} type="button" aria-label={label} aria-pressed={active} disabled={!enabled} title={label} onClick={onClick}><span className="educad-sketch-side-tool-icon">{children}</span></button>;
 }
 
 function ViewCube({ orientation, onDirection }: { orientation: CameraOrientation; onDirection: (direction: [number, number, number]) => void }) {
