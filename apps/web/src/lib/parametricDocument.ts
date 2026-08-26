@@ -305,6 +305,8 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
         geometry.constraints = (geometry.constraints ?? []).filter((constraint) => {
           if (constraint.kind === "horizontal" || constraint.kind === "vertical") return lineIds.has(constraint.segmentId);
           if (constraint.kind === "parallel" || constraint.kind === "perpendicular") return constraint.segmentIds[0] !== constraint.segmentIds[1] && constraint.segmentIds.every((id) => lineIds.has(id));
+          if (constraint.kind === "equalLength") return constraint.segmentIds[0] !== constraint.segmentIds[1] && constraint.segmentIds.every((id) => lineIds.has(id));
+          if (constraint.kind === "concentric" || constraint.kind === "equalRadius") return constraint.circleIds[0] !== constraint.circleIds[1] && constraint.circleIds.every((id) => circleIds.has(id));
           if (constraint.kind === "fixed") return pointIds.has(constraint.pointId) && Number.isFinite(constraint.x) && Number.isFinite(constraint.z);
           if (constraint.kind === "coincident") return constraint.pointIds[0] !== constraint.pointIds[1] && constraint.pointIds.every((id) => pointIds.has(id));
           if (constraint.kind === "distance") return lineIds.has(constraint.segmentId) && ["aligned", "x", "z"].includes(constraint.axis) && Number.isFinite(constraint.value) && constraint.value > 0;

@@ -22,13 +22,14 @@ export function sketchConstraintPoint(profile: SketchProfile, id: string): Sketc
 }
 
 export function sketchConstraintUsesSegment(constraint: SketchConstraint, segmentId: string) {
-  if (constraint.kind === "angle" || constraint.kind === "parallel" || constraint.kind === "perpendicular") return constraint.segmentIds.includes(segmentId);
+  if (constraint.kind === "angle" || constraint.kind === "parallel" || constraint.kind === "perpendicular" || constraint.kind === "equalLength") return constraint.segmentIds.includes(segmentId);
   return (constraint.kind === "horizontal" || constraint.kind === "vertical" || constraint.kind === "distance") && constraint.segmentId === segmentId;
 }
 
 export function sketchConstraintUsesPoint(constraint: SketchConstraint, pointId: string) {
   if (constraint.kind === "fixed") return constraint.pointId === pointId;
   if (constraint.kind === "coincident") return constraint.pointIds.includes(pointId);
+  if (constraint.kind === "concentric") return constraint.circleIds.some((circleId) => circleSketchPointId(circleId, "center") === pointId);
   return false;
 }
 
@@ -52,6 +53,24 @@ function coincidentSketchPoints(profile: SketchProfile, firstId: string, secondI
 
 export function sketchConstraintConflict(profile: SketchProfile, candidate: SketchConstraint) {
   const constraints = profile.constraints ?? [];
+  if (candidate.kind === "equalLength") {
+    const segments = candidate.segmentIds.map((id) => profile.segments.find((segment) => segment.id === id && segment.kind === "line"));
+    if (candidate.segmentIds[0] === candidate.segmentIds[1] || segments.some((segment) => !segment)) return "La igualdad requiere dos líneas rectas diferentes.";
+    const lengths = candidate.segmentIds.map((segmentId) => constraints.find((constraint) => constraint.kind === "distance" && constraint.segmentId === segmentId && constraint.axis === "aligned"));
+    if (lengths[0]?.kind === "distance" && lengths[1]?.kind === "distance" && Math.abs(lengths[0].value - lengths[1].value) > 0.000001) return "Las líneas tienen cotas de longitud diferentes.";
+  }
+  if (candidate.kind === "concentric" || candidate.kind === "equalRadius") {
+    const circles = candidate.circleIds.map((id) => profile.circles?.find((circle) => circle.id === id));
+    if (candidate.circleIds[0] === candidate.circleIds[1] || circles.some((circle) => !circle)) return "La relación requiere dos círculos diferentes.";
+    if (candidate.kind === "concentric") {
+      const fixed = candidate.circleIds.map((circleId) => constraints.find((constraint) => constraint.kind === "fixed" && constraint.pointId === circleSketchPointId(circleId, "center")));
+      if (fixed[0]?.kind === "fixed" && fixed[1]?.kind === "fixed" && (Math.abs(fixed[0].x - fixed[1].x) > 0.000001 || Math.abs(fixed[0].z - fixed[1].z) > 0.000001)) return "Los centros están fijados en posiciones diferentes.";
+    } else {
+      const radii = candidate.circleIds.map((circleId) => constraints.find((constraint): constraint is Extract<SketchConstraint, { kind: "radius" | "diameter" }> => (constraint.kind === "radius" || constraint.kind === "diameter") && constraint.circleId === circleId));
+      const values = radii.map((constraint) => constraint && (constraint.kind === "diameter" ? constraint.value / 2 : constraint.value));
+      if (values[0] != null && values[1] != null && Math.abs(values[0] - values[1]) > 0.000001) return "Los círculos tienen cotas de radio diferentes.";
+    }
+  }
   if (candidate.kind === "parallel" || candidate.kind === "perpendicular") {
     const [firstId, secondId] = candidate.segmentIds;
     if (firstId === secondId) return "Selecciona dos líneas diferentes.";
@@ -135,15 +154,30 @@ export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: 
     const circle = profile.circles?.find((candidate) => candidate.id === constraint.circleId);
     if (circle) circle.radius = Math.max(0.001, Math.abs(constraint.value) / (constraint.kind === "diameter" ? 2 : 1));
   }
+  for (const constraint of constraints) {
+    if (constraint.kind !== "equalRadius") continue;
+    let reference = profile.circles?.find((circle) => circle.id === constraint.circleIds[0]);
+    let target = profile.circles?.find((circle) => circle.id === constraint.circleIds[1]);
+    if (!reference || !target) continue;
+    const targetDriven = drivingPointId === circleSketchPointId(target.id, "radius");
+    const referenceDriven = drivingPointId === circleSketchPointId(reference.id, "radius");
+    const targetDimensioned = constraints.some((candidate) => (candidate.kind === "radius" || candidate.kind === "diameter") && candidate.circleId === target?.id);
+    const referenceDimensioned = constraints.some((candidate) => (candidate.kind === "radius" || candidate.kind === "diameter") && candidate.circleId === reference?.id);
+    if (targetDriven || (targetDimensioned && !referenceDriven && !referenceDimensioned)) [reference, target] = [target, reference];
+    target.radius = reference.radius;
+  }
   const virtualPoints = (profile.circles ?? []).flatMap((circle) => [circleSketchPointId(circle.id, "center"), circleSketchPointId(circle.id, "radius")].map((id) => sketchConstraintPoint(profile, id)).filter(Boolean) as SketchPoint[]);
   const allPoints = [...profile.points, ...virtualPoints];
   const pointById = new Map(allPoints.map((point) => [point.id, point]));
   const segmentById = new Map(profile.segments.map((segment) => [segment.id, segment]));
   const neighbors = new Map(allPoints.map((point) => [point.id, [] as string[]]));
   for (const constraint of constraints) {
-    if (constraint.kind !== "coincident") continue;
-    neighbors.get(constraint.pointIds[0])?.push(constraint.pointIds[1]);
-    neighbors.get(constraint.pointIds[1])?.push(constraint.pointIds[0]);
+    const ids = constraint.kind === "coincident" ? constraint.pointIds
+      : constraint.kind === "concentric" ? constraint.circleIds.map((circleId) => circleSketchPointId(circleId, "center")) as [string, string]
+      : null;
+    if (!ids) continue;
+    neighbors.get(ids[0])?.push(ids[1]);
+    neighbors.get(ids[1])?.push(ids[0]);
   }
 
   const componentByPoint = new Map<string, string[]>();
@@ -226,6 +260,39 @@ export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: 
         const unitZ = length > 0.000001 ? dz / length : 0;
         assignComponent(moving.id, "x", anchor.x + unitX * value);
         assignComponent(moving.id, "z", anchor.z + unitZ * value);
+      }
+    }
+  }
+
+  const equalLengths = constraints.filter((constraint): constraint is Extract<SketchConstraint, { kind: "equalLength" }> => constraint.kind === "equalLength");
+  for (let pass = 0; pass < Math.max(1, equalLengths.length); pass += 1) {
+    for (const constraint of equalLengths) {
+      let reference = segmentById.get(constraint.segmentIds[0]);
+      let target = segmentById.get(constraint.segmentIds[1]);
+      if (!reference || !target) continue;
+      const isDriven = (segment: NonNullable<typeof reference>) => driven.has(segment.startId) || driven.has(segment.endId);
+      const isFullyFixed = (segment: NonNullable<typeof reference>) => [segment.startId, segment.endId].every((id) => (componentByPoint.get(id) ?? [id]).some((pointId) => fixedByPoint.has(pointId)));
+      if (isDriven(target) || (isFullyFixed(target) && !isDriven(reference) && !isFullyFixed(reference))) [reference, target] = [target, reference];
+      const referenceStart = pointById.get(reference.startId);
+      const referenceEnd = pointById.get(reference.endId);
+      const targetStart = pointById.get(target.startId);
+      const targetEnd = pointById.get(target.endId);
+      if (!referenceStart || !referenceEnd || !targetStart || !targetEnd) continue;
+      const length = Math.max(0.001, Math.hypot(referenceEnd.x - referenceStart.x, referenceEnd.z - referenceStart.z));
+      const dx = targetEnd.x - targetStart.x;
+      const dz = targetEnd.z - targetStart.z;
+      const currentLength = Math.hypot(dx, dz);
+      const unitX = currentLength > 0.000001 ? dx / currentLength : 1;
+      const unitZ = currentLength > 0.000001 ? dz / currentLength : 0;
+      const startFixed = (componentByPoint.get(targetStart.id) ?? [targetStart.id]).some((id) => fixedByPoint.has(id));
+      const endFixed = (componentByPoint.get(targetEnd.id) ?? [targetEnd.id]).some((id) => fixedByPoint.has(id));
+      const moveStart = endFixed || (!startFixed && driven.has(targetStart.id) && !driven.has(targetEnd.id));
+      if (moveStart) {
+        assignComponent(targetStart.id, "x", targetEnd.x - unitX * length);
+        assignComponent(targetStart.id, "z", targetEnd.z - unitZ * length);
+      } else {
+        assignComponent(targetEnd.id, "x", targetStart.x + unitX * length);
+        assignComponent(targetEnd.id, "z", targetStart.z + unitZ * length);
       }
     }
   }

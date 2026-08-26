@@ -79,7 +79,7 @@ import { globalParametricWorkplanePlacement, objectPlacementForWorkplane, parame
 import { parametricOperationCatalog, parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import type { ViewportRenderQuality } from "@/lib/viewportPerformance";
 import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricFeature, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, PrimitiveFeature, SketchFeature } from "@/types/parametric";
-import type { GridSize, SketchPoint, SketchProfile, WorkplaneShape } from "@/types/sketchforge";
+import type { GridSize, SketchConstraint, SketchPoint, SketchProfile, WorkplaneShape } from "@/types/sketchforge";
 
 const STORAGE_KEY = "educad.parametric.document.v1";
 const RENDER_QUALITY_STORAGE_KEY = "educad.viewport.render-mode";
@@ -790,6 +790,52 @@ export function SketchForgeParametricEditor() {
     });
   };
 
+  const selectedConstraintCircles = useMemo(() => {
+    if (!sketchSession || !sketchSelection) return [];
+    const ids = sketchSelection.kind === "circle" ? [sketchSelection.id]
+      : sketchSelection.kind === "multiple" ? sketchSelection.circleIds ?? []
+      : [];
+    return (sketchSession.profile.circles ?? []).filter((circle) => ids.includes(circle.id));
+  }, [sketchSelection, sketchSession]);
+  const selectedCirclePair = selectedConstraintCircles.length === 2 ? selectedConstraintCircles as [typeof selectedConstraintCircles[number], typeof selectedConstraintCircles[number]] : null;
+  const selectedConcentricActive = Boolean(selectedCirclePair && sketchSession?.profile.constraints?.some((constraint) => constraint.kind === "concentric" && constraint.circleIds.every((id) => selectedCirclePair.some((circle) => circle.id === id))));
+  const selectedEqualActive = Boolean(
+    (selectedLinePair && sketchSession?.profile.constraints?.some((constraint) => constraint.kind === "equalLength" && constraint.segmentIds.every((id) => selectedLinePair.some((segment) => segment.id === id))))
+    || (selectedCirclePair && sketchSession?.profile.constraints?.some((constraint) => constraint.kind === "equalRadius" && constraint.circleIds.every((id) => selectedCirclePair.some((circle) => circle.id === id)))),
+  );
+
+  const toggleSketchConcentric = () => {
+    if (!selectedCirclePair || !sketchSession) return;
+    const circleIds: [string, string] = [selectedCirclePair[0].id, selectedCirclePair[1].id];
+    if (!selectedConcentricActive) {
+      const conflict = sketchConstraintConflict(sketchSession.profile, { id: "constraint-preview", kind: "concentric", circleIds });
+      if (conflict) { setNotice({ type: "error", text: conflict }); return; }
+    }
+    setSketchProfile((profile) => {
+      const retained = (profile.constraints ?? []).filter((constraint) => constraint.kind !== "concentric" || !constraint.circleIds.every((id) => circleIds.includes(id)));
+      return solveSketchConstraints({ ...profile, constraints: selectedConcentricActive ? retained : [...retained, { id: sketchEntityId("constraint"), kind: "concentric", circleIds }] });
+    });
+  };
+
+  const toggleSketchEqual = () => {
+    if (!sketchSession || (!selectedLinePair && !selectedCirclePair)) return;
+    const candidate: SketchConstraint = selectedLinePair
+      ? { id: "constraint-preview", kind: "equalLength", segmentIds: [selectedLinePair[0].id, selectedLinePair[1].id] }
+      : { id: "constraint-preview", kind: "equalRadius", circleIds: [selectedCirclePair![0].id, selectedCirclePair![1].id] };
+    if (!selectedEqualActive) {
+      const conflict = sketchConstraintConflict(sketchSession.profile, candidate);
+      if (conflict) { setNotice({ type: "error", text: conflict }); return; }
+    }
+    setSketchProfile((profile) => {
+      const retained = (profile.constraints ?? []).filter((constraint) => {
+        if (candidate.kind === "equalLength" && constraint.kind === "equalLength") return !constraint.segmentIds.every((id) => candidate.segmentIds.includes(id));
+        if (candidate.kind === "equalRadius" && constraint.kind === "equalRadius") return !constraint.circleIds.every((id) => candidate.circleIds.includes(id));
+        return true;
+      });
+      return solveSketchConstraints({ ...profile, constraints: selectedEqualActive ? retained : [...retained, { ...candidate, id: sketchEntityId("constraint") }] });
+    });
+  };
+
   const selectedConstraintPoints = useMemo(() => {
     if (!sketchSession || !sketchSelection) return [];
     const ids = sketchSelection.kind === "point" ? [sketchSelection.id]
@@ -885,7 +931,7 @@ export function SketchForgeParametricEditor() {
       return total + 2 + handleDegrees;
     }, 0);
     const initial = pointDegrees + (profile.circles?.length ?? 0) * 3 + profile.segments.filter((segment) => segment.kind === "arc" && segment.center).length * 2;
-    const consumed = (profile.constraints ?? []).reduce((total, constraint) => total + (constraint.kind === "fixed" || constraint.kind === "coincident" ? 2 : 1), 0);
+    const consumed = (profile.constraints ?? []).reduce((total, constraint) => total + (constraint.kind === "fixed" || constraint.kind === "coincident" || constraint.kind === "concentric" ? 2 : 1), 0);
     const remaining = initial - consumed;
     if (remaining < 0) return { kind: "over", label: "Sobrerrestringido" };
     if (initial > 0 && remaining === 0) return { kind: "full", label: "Totalmente restringido" };
@@ -1061,6 +1107,7 @@ export function SketchForgeParametricEditor() {
       const remainingIds = new Set(remaining.map((segment) => segment.id));
       const next = { ...profile, points: profile.points.filter((point) => point.id !== id), segments: remaining, constraints: (profile.constraints ?? []).filter((constraint) => {
         if (sketchConstraintUsesPoint(constraint, id)) return false;
+        if (profile.segments.some((segment) => !remainingIds.has(segment.id) && sketchConstraintUsesSegment(constraint, segment.id))) return false;
         if (constraint.kind === "angle") return constraint.segmentIds.every((segmentId) => remainingIds.has(segmentId));
         if (constraint.kind === "horizontal" || constraint.kind === "vertical" || constraint.kind === "distance") return remainingIds.has(constraint.segmentId);
         return true;
@@ -1164,8 +1211,10 @@ export function SketchForgeParametricEditor() {
       images: (profile.images ?? []).filter((image) => !imageIds.includes(image.id)),
       constraints: (profile.constraints ?? []).filter((constraint) => {
         if ((constraint.kind === "radius" || constraint.kind === "diameter") && circleIds.includes(constraint.circleId)) return false;
+        if ((constraint.kind === "concentric" || constraint.kind === "equalRadius") && constraint.circleIds.some((circleId) => circleIds.includes(circleId))) return false;
         if (circleIds.some((circleId) => sketchConstraintUsesPoint(constraint, circleSketchPointId(circleId, "center")) || sketchConstraintUsesPoint(constraint, circleSketchPointId(circleId, "radius")))) return false;
         if (pointIds.some((id) => sketchConstraintUsesPoint(constraint, id))) return false;
+        if (profile.segments.some((segment) => (segmentIds.includes(segment.id) || pointIds.includes(segment.startId) || pointIds.includes(segment.endId)) && sketchConstraintUsesSegment(constraint, segment.id))) return false;
         if (constraint.kind === "angle") return constraint.segmentIds.every((segmentId) => {
           if (segmentIds.includes(segmentId)) return false;
           const segment = profile.segments.find((candidate) => candidate.id === segmentId);
@@ -1830,6 +1879,8 @@ export function SketchForgeParametricEditor() {
             <Tool label="Vertical" enabled={selectedConstraintSegments.length > 0} active={selectedConstraintKind("vertical")} onClick={() => toggleSketchConstraint("vertical")}><MoveVertical /></Tool>
             <Tool label="Paralela" enabled={Boolean(selectedLinePair)} active={selectedPairConstraintKind("parallel")} onClick={() => toggleSketchPairConstraint("parallel")}><span aria-hidden="true">∥</span></Tool>
             <Tool label="Perpendicular" enabled={Boolean(selectedLinePair)} active={selectedPairConstraintKind("perpendicular")} onClick={() => toggleSketchPairConstraint("perpendicular")}><span aria-hidden="true">⊥</span></Tool>
+            <Tool label="Concéntrica" enabled={Boolean(selectedCirclePair)} active={selectedConcentricActive} onClick={toggleSketchConcentric}><span aria-hidden="true">◎</span></Tool>
+            <Tool label="Igual" enabled={Boolean(selectedLinePair || selectedCirclePair)} active={selectedEqualActive} onClick={toggleSketchEqual}><span aria-hidden="true">=</span></Tool>
             <Tool label="Coincidente" enabled={selectedConstraintPoints.length >= 2} active={selectedPointsCoincident} onClick={toggleCoincidentSketchPoints}><CircleDot /></Tool>
             <Tool label="Fijar punto" enabled={selectedConstraintPoints.length > 0} active={selectedPointsFixed} onClick={toggleFixedSketchPoints}><Anchor /></Tool>
           </ToolbarSection>
@@ -1997,6 +2048,7 @@ export function SketchForgeParametricEditor() {
             const virtualIds = new Set([circleSketchPointId(id, "center"), circleSketchPointId(id, "radius")]);
             return { ...profile, circles: (profile.circles ?? []).filter((circle) => circle.id !== id), constraints: (profile.constraints ?? []).filter((constraint) => {
               if ((constraint.kind === "radius" || constraint.kind === "diameter") && constraint.circleId === id) return false;
+              if ((constraint.kind === "concentric" || constraint.kind === "equalRadius") && constraint.circleIds.includes(id)) return false;
               return ![...virtualIds].some((pointId) => sketchConstraintUsesPoint(constraint, pointId));
             }) };
           }); setSketchSelection(null); }}

@@ -1087,6 +1087,25 @@ export function SketchWorkspace({
               const z = (dimensions[0].midpoint.z + dimensions[1].midpoint.z) / 2 - 14 * screenUnit;
               return <SketchConstraintBadge key={constraint.id} id={constraint.id} label={constraint.kind === "parallel" ? "∥" : "⊥"} x={x} z={z} screenUnit={screenUnit} onDelete={onDeleteConstraint} />;
             })}
+            {(displayProfile.constraints ?? []).map((constraint) => {
+              if (constraint.kind !== "equalLength") return null;
+              const dimensions = constraint.segmentIds.map((id) => {
+                const segment = displayProfile.segments.find((candidate) => candidate.id === id);
+                return segment ? segmentDimension(segment, pointById) : null;
+              }).filter(Boolean) as Array<NonNullable<ReturnType<typeof segmentDimension>>>;
+              if (dimensions.length !== 2) return null;
+              const x = (dimensions[0].midpoint.x + dimensions[1].midpoint.x) / 2;
+              const z = (dimensions[0].midpoint.z + dimensions[1].midpoint.z) / 2 + 14 * screenUnit;
+              return <SketchConstraintBadge key={constraint.id} id={constraint.id} label="=" x={x} z={z} screenUnit={screenUnit} onDelete={onDeleteConstraint} />;
+            })}
+            {(displayProfile.constraints ?? []).map((constraint) => {
+              if (constraint.kind !== "concentric" && constraint.kind !== "equalRadius") return null;
+              const circles = constraint.circleIds.map((id) => displayProfile.circles?.find((circle) => circle.id === id)).filter(Boolean) as NonNullable<typeof displayProfile.circles>;
+              if (circles.length !== 2) return null;
+              const x = (circles[0].x + circles[1].x) / 2 + 18 * screenUnit;
+              const z = (circles[0].z + circles[1].z) / 2 - 12 * screenUnit;
+              return <SketchConstraintBadge key={constraint.id} id={constraint.id} label={constraint.kind === "concentric" ? "◎" : "="} x={x} z={z} screenUnit={screenUnit} onDelete={onDeleteConstraint} />;
+            })}
             {(displayProfile.constraints ?? []).filter((constraint) => constraint.kind === "fixed").map((constraint) => {
               const point = pointById.get(constraint.pointId);
               return point ? <SketchConstraintBadge key={constraint.id} id={constraint.id} label="F" x={point.x + 18 * screenUnit} z={point.z - 12 * screenUnit} screenUnit={screenUnit} onDelete={onDeleteConstraint} /> : null;

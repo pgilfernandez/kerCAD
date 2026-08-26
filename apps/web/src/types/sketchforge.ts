@@ -103,6 +103,8 @@ export type SketchCircle = {
 export type SketchConstraint =
   | { id: string; kind: "horizontal" | "vertical"; segmentId: string }
   | { id: string; kind: "parallel" | "perpendicular"; segmentIds: [string, string] }
+  | { id: string; kind: "equalLength"; segmentIds: [string, string] }
+  | { id: string; kind: "concentric" | "equalRadius"; circleIds: [string, string] }
   | { id: string; kind: "coincident"; pointIds: [string, string] }
   | { id: string; kind: "fixed"; pointId: string; x: number; z: number }
   | { id: string; kind: "distance"; segmentId: string; axis: "aligned" | "x" | "z"; value: number }
