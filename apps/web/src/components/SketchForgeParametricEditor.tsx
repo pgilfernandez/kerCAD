@@ -2019,9 +2019,7 @@ export function SketchForgeParametricEditor() {
                 <div data-educad-popup="shapes" className="shape-menu-dropdown">
                   <div className="shape-menu-title">Formas</div>
                   <div className="shape-menu-list">
-                    <div className="educad-shape-target">{selectedObjectId ? `Añadir al final de ${document.objects.find((object) => object.id === selectedObjectId)?.name ?? "objeto activo"}` : "Se creará un objeto nuevo"}</div>
                     {parametricOperationCatalog.map((asset) => <button className="shape-menu-item" key={asset.kind} onClick={() => addShape(asset.kind)}><img src={asset.menuIcon} alt="" /><span>{asset.name}<small>{selectedObjectId ? "Nueva operación en el objeto" : asset.description}</small></span></button>)}
-                    <div className="educad-shape-coming"><strong>Más operaciones CAD</strong><span>Tubo, toro y otras formas llegarán como operaciones paramétricas.</span></div>
                   </div>
                 </div>
               )}
@@ -2317,7 +2315,7 @@ export function SketchForgeParametricEditor() {
           }}
         ><Magnet size={21} /></button>
         {workplaneOpen ? <div data-educad-popup="grid" className="educad-workplane-popover">
-          <header><div><strong>Rejilla</strong><span>Suelo global y tamaño del plano activo</span></div><button type="button" aria-label="Cerrar" onClick={() => setWorkplaneOpen(false)}><X size={17} /></button></header>
+          <header><div><strong>Rejilla</strong></div><button type="button" aria-label="Cerrar" onClick={() => setWorkplaneOpen(false)}><X size={17} /></button></header>
           <label><span>Mostrar suelo XY</span><input type="checkbox" checked={workplaneDraft.gridVisible} onChange={(event) => updateGridSettings({ gridVisible: event.target.checked })} /></label>
           <label><span>Tamaño del plano activo</span><span className="educad-number-input"><input type="number" min="2" max="100" step="1" defaultValue={workplaneDraft.activeSizePercent} onBlur={(event) => commitGridNumber(event, "activeSizePercent", 2, 100, workplaneDraft.activeSizePercent)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>%</small></span></label>
           <label><span>Ancho (eje X)</span><span className="educad-number-input"><input type="number" min="1" max="2000" step="1" defaultValue={workplaneDraft.width} onBlur={(event) => commitGridNumber(event, "width", 1, 2000, workplaneDraft.width)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>mm</small></span></label>

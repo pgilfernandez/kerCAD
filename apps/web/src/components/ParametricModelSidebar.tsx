@@ -263,7 +263,7 @@ export function ParametricModelSidebar({
             onEditRevolveAxis={onEditRevolveAxis}
           />
         ) : (
-          <div className="educad-no-selection"><Layers3 size={28} /><strong>Selecciona un objeto u operación</strong><span>Despliega el árbol para editar el historial CAD.</span></div>
+          <div className="educad-no-selection"><Layers3 size={28} /><strong>Selecciona un objeto u operación</strong></div>
         )}
       </section> : null}
     </aside>
@@ -338,7 +338,6 @@ function ParametricObjectInspector({
           <label className="educad-custom-color" title="Color personalizado"><input type="color" value={object.color} onChange={(event) => onUpdate((draft) => { draft.color = event.target.value; })} /><span>+</span></label>
         </div> : null}
       </div>
-      <p className="educad-feature-note">El objeto solo transforma el resultado de sus operaciones. La geometría se edita desplegando el árbol.</p>
     </div>
   );
 }
