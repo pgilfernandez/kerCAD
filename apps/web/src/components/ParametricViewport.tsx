@@ -393,6 +393,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const editableOriginIdRef = useRef(editableOriginId);
   const selectedObjectOriginIdRef = useRef(selectedObjectOriginId);
   const selectedOperationOriginIdRef = useRef(selectedOperationOriginId);
+  const selectedObjectIdsRef = useRef(selectedObjectIds);
   const orientationRef = useRef(onCameraOrientation);
   const objectSelectRef = useRef(onObjectSelect);
   const objectsSelectRef = useRef(onObjectsSelect);
@@ -428,6 +429,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   useEffect(() => { editableOriginIdRef.current = editableOriginId; }, [editableOriginId]);
   useEffect(() => { selectedObjectOriginIdRef.current = selectedObjectOriginId; }, [selectedObjectOriginId]);
   useEffect(() => { selectedOperationOriginIdRef.current = selectedOperationOriginId; }, [selectedOperationOriginId]);
+  useEffect(() => { selectedObjectIdsRef.current = selectedObjectIds; }, [selectedObjectIds]);
   useEffect(() => { orientationRef.current = onCameraOrientation; }, [onCameraOrientation]);
   useEffect(() => { objectSelectRef.current = onObjectSelect; }, [onObjectSelect]);
   useEffect(() => { objectsSelectRef.current = onObjectsSelect; }, [onObjectsSelect]);
@@ -751,12 +753,98 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     let rotationStartQuaternion: THREE.Quaternion | null = null;
     let rotationPlaneAxis: THREE.Vector3 | null = null;
     let rotationStartVector: THREE.Vector3 | null = null;
+    let rotationGuideReferenceVector: THREE.Vector3 | null = null;
     let rotationCenterWorld: THREE.Vector3 | null = null;
+    let rotationGuide: THREE.Group | null = null;
+    let rotationGuideHighlight: LineSegments2 | null = null;
+    let rotationGuideScale = 1;
+    let rotationPreview: THREE.Group | null = null;
     let pendingRotation: { targetId: string; targetKind: "object" | "feature"; localAxis: "x" | "y" | "z"; axis: { x: number; y: number; z: number }; deltaDegrees: number } | null = null;
     let sketchPreviewRoot: THREE.Object3D | null = null;
     let sketchPreviewStartWorldPosition: THREE.Vector3 | null = null;
     let sketchPreviewStartWorldQuaternion: THREE.Quaternion | null = null;
     let pickCandidate: { pointerId: number; pointerType: string; x: number; y: number; dragIntent: ViewportPointerDragIntent } | null = null;
+    const disposeTemporaryLineGroup = (group: THREE.Group | null) => {
+      if (!group) return;
+      group.parent?.remove(group);
+      group.traverse((child) => {
+        if (!(child instanceof LineSegments2)) return;
+        child.geometry.dispose();
+        child.material.dispose();
+      });
+    };
+    const rotationGuideAt = (center: THREE.Vector3, axis: THREE.Vector3, reference: THREE.Vector3, markerScale: number) => {
+      const group = new THREE.Group();
+      group.position.copy(center);
+      const radial = reference.clone().normalize();
+      const tangent = axis.clone().cross(radial).normalize();
+      const pointAt = (degrees: number, radius: number) => radial.clone().multiplyScalar(Math.cos(THREE.MathUtils.degToRad(degrees)) * radius).addScaledVector(tangent, Math.sin(THREE.MathUtils.degToRad(degrees)) * radius);
+      const ringRadius = markerScale * 0.576;
+      const maximumRadius = ringRadius * 2;
+      const circleRadius = maximumRadius - markerScale * 0.12;
+      const circlePositions: number[] = [];
+      for (let index = 0; index < 144; index += 1) {
+        const first = pointAt(index * 2.5, circleRadius);
+        const second = pointAt((index + 1) * 2.5, circleRadius);
+        circlePositions.push(first.x, first.y, first.z, second.x, second.y, second.z);
+      }
+      const tickPositions: number[] = [];
+      for (let degrees = 0; degrees < 360; degrees += 5) {
+        const length = markerScale * (degrees % 10 === 0 ? 0.12 : 0.08);
+        const first = pointAt(degrees, circleRadius);
+        const second = pointAt(degrees, circleRadius + length);
+        tickPositions.push(first.x, first.y, first.z, second.x, second.y, second.z);
+      }
+      for (let degrees = 0; degrees < 360; degrees += 45) {
+        const first = pointAt(degrees, ringRadius * 0.25);
+        const second = pointAt(degrees, ringRadius * 0.75);
+        tickPositions.push(first.x, first.y, first.z, second.x, second.y, second.z);
+      }
+      const addLines = (positions: number[], linewidth: number, renderOrder: number) => {
+        const geometry = new LineSegmentsGeometry();
+        geometry.setPositions(positions);
+        const material = new LineMaterial({ color: 0xffffff, linewidth, depthTest: false, depthWrite: false, transparent: true, opacity: 0.96 });
+        material.resolution.set(Math.max(1, renderer.domElement.clientWidth), Math.max(1, renderer.domElement.clientHeight));
+        const lines = new LineSegments2(geometry, material);
+        lines.renderOrder = renderOrder;
+        group.add(lines);
+      };
+      addLines(circlePositions, 1, 40);
+      addLines(tickPositions, 3, 41);
+      const highlightGeometry = new LineSegmentsGeometry();
+      highlightGeometry.setPositions([0, 0, 0, 0, 0, 0]);
+      const highlightMaterial = new LineMaterial({ color: "#43b9e8", linewidth: 3, depthTest: false, depthWrite: false, transparent: true, opacity: 1 });
+      highlightMaterial.resolution.set(Math.max(1, renderer.domElement.clientWidth), Math.max(1, renderer.domElement.clientHeight));
+      rotationGuideHighlight = new LineSegments2(highlightGeometry, highlightMaterial);
+      rotationGuideHighlight.renderOrder = 42;
+      rotationGuideHighlight.visible = false;
+      group.add(rotationGuideHighlight);
+      scene.add(group);
+      return group;
+    };
+    const rotationWireframePreviewAt = (targetId: string, targetKind: "object" | "feature", center: THREE.Vector3) => {
+      const objectId = targetKind === "object" ? targetId : selectedObjectIdsRef.current[0];
+      const cached = objectId ? objectRenderCacheRef.current.get(objectId) : null;
+      const attribute = cached?.edges.geometry.getAttribute("position");
+      if (!attribute) return null;
+      const inverseCenter = center.clone().negate();
+      const positions: number[] = [];
+      for (let index = 0; index < attribute.count; index += 1) {
+        const point = new THREE.Vector3(attribute.getX(index), attribute.getY(index), attribute.getZ(index)).applyMatrix4(modelGroup.matrixWorld).add(inverseCenter);
+        positions.push(point.x, point.y, point.z);
+      }
+      const geometry = new LineSegmentsGeometry();
+      geometry.setPositions(positions);
+      const material = new LineMaterial({ color: 0x263746, linewidth: 2, depthTest: false, depthWrite: false, transparent: true, opacity: 0.92 });
+      material.resolution.set(Math.max(1, renderer.domElement.clientWidth), Math.max(1, renderer.domElement.clientHeight));
+      const lines = new LineSegments2(geometry, material);
+      lines.renderOrder = 39;
+      const group = new THREE.Group();
+      group.position.copy(center);
+      group.add(lines);
+      scene.add(group);
+      return group;
+    };
     const updateSelectionBox = (candidate: NonNullable<typeof pickCandidate>, clientX: number, clientY: number) => {
       const box = selectionBoxRef.current;
       if (!box) return;
@@ -1217,8 +1305,17 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
             rotationPlaneAxis = worldRotationAxis;
             rotationCenterWorld = worldOrigin;
             rotationStartVector = dragPoint.clone().sub(worldOrigin).normalize();
+            const markerWorldQuaternion = originHandle.marker.getWorldQuaternion(new THREE.Quaternion());
+            const localGuideReference = originHandle.rotationAxis === "x"
+              ? new THREE.Vector3(0, 1, 0)
+              : new THREE.Vector3(1, 0, 0);
+            rotationGuideReferenceVector = localGuideReference.applyQuaternion(markerWorldQuaternion).normalize();
             const parentAxis = localRotationAxis.clone().applyQuaternion(originHandle.marker.quaternion).normalize();
             pendingRotation = { targetId: originHandle.targetId, targetKind: originHandle.targetKind, localAxis: originHandle.rotationAxis!, axis: { x: parentAxis.x, y: parentAxis.y, z: parentAxis.z }, deltaDegrees: 0 };
+            const markerWorldScale = originHandle.marker.getWorldScale(new THREE.Vector3());
+            rotationGuideScale = Math.max(markerWorldScale.x, markerWorldScale.y, markerWorldScale.z, 0.001);
+            rotationGuide = rotationGuideAt(worldOrigin, worldRotationAxis, rotationGuideReferenceVector, rotationGuideScale);
+            rotationPreview = rotationWireframePreviewAt(originHandle.targetId, originHandle.targetKind, worldOrigin);
           } else {
             interaction = originHandle.editable ? "origin" : "axisMove";
             const hitAxis = originHandle.hit.object.userData.originAxis;
@@ -1363,16 +1460,61 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         requestRender();
         return;
       }
-      if (interaction === "axisRotate" && rotationDragMarker && rotationStartQuaternion && rotationPlaneAxis && rotationStartVector && rotationCenterWorld && pendingRotation) {
-        const currentVector = dragPoint.clone().sub(rotationCenterWorld).normalize();
+      if (interaction === "axisRotate" && rotationDragMarker && rotationStartQuaternion && rotationPlaneAxis && rotationStartVector && rotationGuideReferenceVector && rotationCenterWorld && pendingRotation) {
+        const pointerFromCenter = dragPoint.clone().sub(rotationCenterWorld);
+        const pointerRadius = pointerFromCenter.length();
+        const currentVector = pointerFromCenter.clone().normalize();
         const sine = rotationPlaneAxis.dot(rotationStartVector.clone().cross(currentVector));
         const cosine = rotationStartVector.dot(currentVector);
         const rawDegrees = THREE.MathUtils.radToDeg(Math.atan2(sine, cosine));
+        const guideTangent = rotationPlaneAxis.clone().cross(rotationGuideReferenceVector).normalize();
+        const pointerGuideDegrees = THREE.MathUtils.radToDeg(Math.atan2(
+          currentVector.dot(guideTangent),
+          currentVector.dot(rotationGuideReferenceVector),
+        ));
+        const radialLineDistance = (degrees: number, minimumRadius: number, maximumRadius: number) => {
+          const difference = THREE.MathUtils.degToRad(pointerGuideDegrees - degrees);
+          const perpendicular = Math.abs(Math.sin(difference)) * pointerRadius;
+          const radialGap = pointerRadius < minimumRadius ? minimumRadius - pointerRadius : pointerRadius > maximumRadius ? pointerRadius - maximumRadius : 0;
+          return Math.hypot(perpendicular, radialGap);
+        };
+        const ringRadius = rotationGuideScale * 0.576;
+        const maximumRadius = ringRadius * 2;
+        const circleRadius = maximumRadius - rotationGuideScale * 0.12;
+        const outerDegrees = Math.round(pointerGuideDegrees / 5) * 5;
+        const outerLength = rotationGuideScale * (Math.abs(outerDegrees) % 10 === 0 ? 0.12 : 0.08);
+        const outerDistance = radialLineDistance(outerDegrees, circleRadius, circleRadius + outerLength);
+        const innerDegrees = Math.round(pointerGuideDegrees / 45) * 45;
+        const innerDistance = radialLineDistance(innerDegrees, ringRadius * 0.25, ringRadius * 0.75);
+        const sensitiveDistance = rotationGuideScale * 0.055;
+        const activeGuide = outerDistance <= sensitiveDistance || innerDistance <= sensitiveDistance
+          ? outerDistance <= innerDistance
+            ? { degrees: outerDegrees, minimumRadius: circleRadius, maximumRadius: circleRadius + outerLength }
+            : { degrees: innerDegrees, minimumRadius: ringRadius * 0.25, maximumRadius: ringRadius * 0.75 }
+          : null;
+        if (rotationGuideHighlight) {
+          rotationGuideHighlight.visible = activeGuide !== null;
+          if (activeGuide) {
+            const radians = THREE.MathUtils.degToRad(activeGuide.degrees);
+            const guideDirection = rotationGuideReferenceVector.clone().multiplyScalar(Math.cos(radians)).addScaledVector(guideTangent, Math.sin(radians));
+            const first = guideDirection.clone().multiplyScalar(activeGuide.minimumRadius);
+            const second = guideDirection.multiplyScalar(activeGuide.maximumRadius);
+            rotationGuideHighlight.geometry.setPositions([first.x, first.y, first.z, second.x, second.y, second.z]);
+          }
+        }
+        const preciseGuideDegrees = activeGuide?.degrees ?? null;
+        const preciseDegrees = preciseGuideDegrees === null
+          ? null
+          : THREE.MathUtils.radToDeg(Math.atan2(
+              Math.sin(THREE.MathUtils.degToRad(preciseGuideDegrees)),
+              Math.cos(THREE.MathUtils.degToRad(preciseGuideDegrees)),
+            ));
         const rotationStep = event.shiftKey ? 15 : 1;
-        const degrees = Math.round(rawDegrees / rotationStep) * rotationStep;
+        const degrees = preciseDegrees ?? Math.round(rawDegrees / rotationStep) * rotationStep;
         pendingRotation.deltaDegrees = degrees;
         const parentAxis = new THREE.Vector3(pendingRotation.axis.x, pendingRotation.axis.y, pendingRotation.axis.z).normalize();
         rotationDragMarker.quaternion.copy(new THREE.Quaternion().setFromAxisAngle(parentAxis, THREE.MathUtils.degToRad(degrees)).multiply(rotationStartQuaternion));
+        rotationPreview?.quaternion.setFromAxisAngle(rotationPlaneAxis, THREE.MathUtils.degToRad(degrees));
         if (sketchPreviewRoot?.parent && sketchPreviewStartWorldQuaternion) {
           const desiredWorld = new THREE.Quaternion().setFromAxisAngle(rotationPlaneAxis, THREE.MathUtils.degToRad(degrees)).multiply(sketchPreviewStartWorldQuaternion);
           const parentWorld = sketchPreviewRoot.parent.getWorldQuaternion(new THREE.Quaternion());
@@ -1579,7 +1721,14 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       rotationStartQuaternion = null;
       rotationPlaneAxis = null;
       rotationStartVector = null;
+      rotationGuideReferenceVector = null;
       rotationCenterWorld = null;
+      disposeTemporaryLineGroup(rotationGuide);
+      disposeTemporaryLineGroup(rotationPreview);
+      rotationGuide = null;
+      rotationGuideHighlight = null;
+      rotationPreview = null;
+      rotationGuideScale = 1;
       pendingRotation = null;
       sketchPreviewRoot = null;
       sketchPreviewStartWorldPosition = null;
@@ -1654,6 +1803,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       renderer.dispose();
       renderer.domElement.remove();
       if (dimensionHoverTimerRef.current !== null) window.clearTimeout(dimensionHoverTimerRef.current);
+      disposeTemporaryLineGroup(rotationGuide);
+      disposeTemporaryLineGroup(rotationPreview);
       clearObjectOriginLayer(originLayer);
       clearTopologyFaceHighlights();
       faceHighlight.geometry.dispose();
