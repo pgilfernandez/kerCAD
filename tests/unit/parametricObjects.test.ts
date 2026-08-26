@@ -229,6 +229,8 @@ describe("parametric object workflow", () => {
 
     expect(viewportSelectionForFeature(document, box.id)?.shapeParameters).toEqual({ shape: "box", width: 32, depth: 14, height: 26 });
     expect(viewportSelectionForFeature(document, cylinderId)?.shapeParameters).toEqual({ shape: "cylinder", radius: 7, height: 31 });
+    expect(viewportSelectionForFeature(document, box.id)?.parameterHandles).toBeUndefined();
+    expect(viewportSelectionForFeature(document, cylinderId)?.parameterHandles).toBeUndefined();
   });
 
   it("creates a new object only when a shape has no selected object", () => {

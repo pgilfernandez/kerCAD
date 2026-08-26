@@ -521,7 +521,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
     center: world.center,
     origin: { x: world.x, y: world.y, z: world.z },
     rotation3d: world.rotation3d,
-    ...(feature.kind === "extrude" ? { parameterHandles: ["height" as const] } : {}),
+    ...(feature.kind === "extrude" && sketch!.purpose === "user" ? { parameterHandles: ["height" as const] } : {}),
     ...(feature.kind === "extrude" && sketch!.profile.shape === "circle" ? { resizeAspectRatio: 1 } : {}),
     shapeParameters: feature.kind === "primitive"
       ? feature.primitive === "cone"

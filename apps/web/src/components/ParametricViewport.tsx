@@ -1229,6 +1229,43 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         else if (role === "handle" || role === "target") child.position.copy(end);
       });
     };
+    const updateGearPreview = (selected: ViewportSelection, outerRadius: number, toothDepth: number, boreRadius: number, teeth: number, height: number) => {
+      if (selected.shapeParameters?.shape !== "gear") return;
+      const radialScale = selected.width / Math.max(0.01, selected.shapeParameters.outerRadius * 2);
+      const heightScale = selected.height / Math.max(0.01, selected.shapeParameters.height);
+      const worldOuterRadius = outerRadius * radialScale;
+      const worldToothDepth = toothDepth * radialScale;
+      const worldBoreRadius = boreRadius * radialScale;
+      const worldHeight = height * heightScale;
+      const visualRoot = selectionVisualRootRef.current;
+      if (!visualRoot) return;
+      const teethOffset = selected.depth / 2 + 3 - selected.shapeParameters.teeth;
+      visualRoot.traverse((child) => {
+        if (child.userData.operationPreviewWireframe && child instanceof LineSegments2) {
+          child.geometry.setPositions(operationPreviewWireframePositions("gear", worldOuterRadius * 2, worldOuterRadius * 2, worldHeight, worldOuterRadius * 2, worldBoreRadius * 2, worldToothDepth, teeth));
+        }
+        const parameter = child.userData.shapeParameterVisual as ShapeParameter | undefined;
+        const role = child.userData.shapeParameterVisualRole as "guide" | "handle" | "target" | undefined;
+        if (!parameter || !role) return;
+        const end = parameter === "outerRadius"
+          ? new THREE.Vector3(worldOuterRadius + 3, 0, -worldHeight / 2)
+          : parameter === "toothDepth"
+            ? new THREE.Vector3(worldOuterRadius + 3, 0, worldHeight / 2)
+            : parameter === "boreRadius"
+              ? new THREE.Vector3(0, worldBoreRadius + 3, worldHeight / 2)
+              : parameter === "teeth"
+                ? new THREE.Vector3(0, teethOffset + teeth, 0)
+                : new THREE.Vector3(0, 0, worldHeight / 2 + 3);
+        if (role === "guide" && child instanceof THREE.Line) {
+          const start = parameter === "height"
+            ? new THREE.Vector3(0, 0, -worldHeight / 2)
+            : parameter === "toothDepth"
+              ? new THREE.Vector3(worldOuterRadius - worldToothDepth, 0, worldHeight / 2)
+              : new THREE.Vector3(0, 0, end.z);
+          child.geometry.setFromPoints([start, end]);
+        } else if (role === "handle" || role === "target") child.position.copy(end);
+      });
+    };
     const onPointerDown = (event: PointerEvent) => {
       if (event.button !== 0) return;
       setPointer(event);
@@ -1359,7 +1396,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
             parameterWorldToLocal = root.matrixWorld.clone().invert();
             const localPointer = dragPoint.clone().applyMatrix4(parameterWorldToLocal);
             const values = selected.shapeParameters;
-            shapeParameterWorldScale = parameter === "sides" && values?.shape === "polygon"
+            shapeParameterWorldScale = (parameter === "sides" && values?.shape === "polygon") || (parameter === "teeth" && values?.shape === "gear")
               ? 1
               : parameter === "tubeRadius" && values?.shape === "torus"
               ? selected.height / Math.max(0.01, values.tubeRadius * 2)
@@ -1384,6 +1421,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
                     ? values.tubeRadius * shapeParameterWorldScale
                   : parameter === "sides" && values?.shape === "polygon"
                     ? values.sides
+                  : parameter === "teeth" && values?.shape === "gear"
+                    ? values.teeth
+                  : parameter === "toothDepth" && values?.shape === "gear"
+                    ? values.toothDepth * shapeParameterWorldScale
+                  : parameter === "boreRadius" && values?.shape === "gear"
+                    ? values.boreRadius * shapeParameterWorldScale
                 : parameter === "depth" ? selected.depth / 2 : parameter === "height" ? selected.height / 2 : selected.width / 2;
             const pointerCoordinate = shapeParameterDragAxis === "y" ? localPointer.y : shapeParameterDragAxis === "z" ? localPointer.z : localPointer.x;
             parameterPointerOffset = pointerCoordinate - visualHalfExtent;
@@ -1399,6 +1442,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
                             : parameter === "majorRadius" && values?.shape === "torus" ? values.majorRadius
                               : parameter === "tubeRadius" && values?.shape === "torus" ? values.tubeRadius
                                 : parameter === "sides" && values?.shape === "polygon" ? values.sides
+                                  : parameter === "teeth" && values?.shape === "gear" ? values.teeth
+                                    : parameter === "toothDepth" && values?.shape === "gear" ? values.toothDepth
+                                      : parameter === "boreRadius" && values?.shape === "gear" ? values.boreRadius
                             : 0;
             pendingShapeParameter = { parameter, value };
             shapeParameterPreviewRef.current = pendingShapeParameter;
@@ -1567,18 +1613,18 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         const parameter = pendingShapeParameter.parameter;
         const pointerCoordinate = shapeParameterDragAxis === "y" ? localPointer.y : shapeParameterDragAxis === "z" ? localPointer.z : localPointer.x;
         const adjusted = pointerCoordinate - parameterPointerOffset;
-        const visualExtent = parameter === "sides"
-          ? Math.min(32, Math.max(3, Math.round(Math.abs(adjusted))))
+        const visualExtent = parameter === "sides" || parameter === "teeth"
+          ? parameter === "sides" ? Math.min(32, Math.max(3, Math.round(Math.abs(adjusted)))) : Math.min(64, Math.max(6, Math.round(Math.abs(adjusted))))
           : parameter === "height"
           ? Math.max(grid, Math.round((adjusted + resizeStart.height / 2) / grid) * grid)
-          : parameter === "topRadius" || parameter === "innerRadius" || parameter === "majorRadius" || parameter === "tubeRadius"
+          : parameter === "topRadius" || parameter === "innerRadius" || parameter === "majorRadius" || parameter === "tubeRadius" || parameter === "toothDepth" || parameter === "boreRadius"
             ? Math.max(0, Math.round(Math.abs(adjusted) / grid) * grid)
             : Math.max(grid, Math.round(Math.abs(adjusted) * 2 / grid) * grid);
         const startExtent = parameter === "depth" ? resizeStart.depth : parameter === "height" ? resizeStart.height : resizeStart.width;
         const ratio = visualExtent / Math.max(0.01, startExtent);
-        pendingShapeParameter.value = parameter === "sides"
+        pendingShapeParameter.value = parameter === "sides" || parameter === "teeth"
           ? visualExtent
-          : parameter === "topRadius" || parameter === "innerRadius" || parameter === "majorRadius" || parameter === "tubeRadius"
+          : parameter === "topRadius" || parameter === "innerRadius" || parameter === "majorRadius" || parameter === "tubeRadius" || parameter === "toothDepth" || parameter === "boreRadius"
           ? visualExtent / Math.max(0.0001, shapeParameterWorldScale)
           : Math.max(0.1, shapeParameterStartValue * ratio);
         shapeParameterPreviewRef.current = pendingShapeParameter;
@@ -1609,6 +1655,16 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           pendingShapeParameter.value = Math.min(32, Math.max(3, Math.round(pendingShapeParameter.value)));
           shapeParameterPreviewRef.current = pendingShapeParameter;
           updatePolygonPreview(selected, pendingShapeParameter.value);
+        } else if (selected.shapeParameters?.shape === "gear") {
+          const outerRadius = parameter === "outerRadius" ? Math.max(selected.shapeParameters.toothDepth + selected.shapeParameters.boreRadius + 0.1, pendingShapeParameter.value) : selected.shapeParameters.outerRadius;
+          const toothDepth = parameter === "toothDepth" ? Math.min(outerRadius - selected.shapeParameters.boreRadius - 0.1, Math.max(0.2, pendingShapeParameter.value)) : selected.shapeParameters.toothDepth;
+          const boreRadius = parameter === "boreRadius" ? Math.min(outerRadius - toothDepth - 0.1, Math.max(0, pendingShapeParameter.value)) : selected.shapeParameters.boreRadius;
+          const teeth = parameter === "teeth" ? Math.min(64, Math.max(6, Math.round(pendingShapeParameter.value))) : selected.shapeParameters.teeth;
+          const height = parameter === "height" ? pendingShapeParameter.value : selected.shapeParameters.height;
+          pendingShapeParameter.value = parameter === "outerRadius" ? outerRadius : parameter === "toothDepth" ? toothDepth : parameter === "boreRadius" ? boreRadius : parameter === "teeth" ? teeth : height;
+          shapeParameterPreviewRef.current = pendingShapeParameter;
+          if (parameter === "height") visualRoot.position.z = (visualExtent - resizeStart.height) / 2;
+          updateGearPreview(selected, outerRadius, toothDepth, boreRadius, teeth, height);
         } else if (parameter === "width") visualRoot.scale.x = ratio;
         else if (parameter === "depth") visualRoot.scale.y = ratio;
         else if (parameter === "height") {
@@ -2437,7 +2493,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       addParameterHandle("innerRadius", "y", new THREE.Vector3(0, 0, selection.height / 2), new THREE.Vector3(innerRadius + 3, 0, selection.height / 2));
       addParameterHandle("height", "z", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(0, 0, selection.height / 2 + 3));
     } else if (parameters?.shape === "gear") {
+      const radialScale = selection.width / Math.max(0.01, parameters.outerRadius * 2);
       addParameterHandle("outerRadius", "x", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(selection.width / 2 + 3, 0, -selection.height / 2));
+      addParameterHandle("toothDepth", "x", new THREE.Vector3(selection.width / 2 - parameters.toothDepth * radialScale, 0, selection.height / 2), new THREE.Vector3(selection.width / 2 + 3, 0, selection.height / 2));
+      addParameterHandle("boreRadius", "y", new THREE.Vector3(0, 0, selection.height / 2), new THREE.Vector3(0, parameters.boreRadius * radialScale + 3, selection.height / 2), "y");
+      addParameterHandle("teeth", "y", new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, selection.depth / 2 + 3, 0), "y");
       addParameterHandle("height", "z", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(0, 0, selection.height / 2 + 3));
     } else if (parameters?.shape === "halfSphere") {
       addParameterHandle("radius", "x", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(selection.width / 2 + 3, 0, -selection.height / 2));
