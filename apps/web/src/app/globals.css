@@ -4903,6 +4903,39 @@ button {
   fill: #7c3aed;
 }
 
+.sketch-constraint-badge > line,
+.sketch-constraint-remove-separator {
+  stroke: #60a5fa;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.sketch-constraint-remove {
+  cursor: pointer;
+  outline: none;
+}
+
+.sketch-constraint-remove rect {
+  fill: transparent !important;
+  stroke: none !important;
+}
+
+.sketch-constraint-remove text {
+  fill: #1d4ed8 !important;
+  font-weight: 500 !important;
+  text-anchor: middle;
+}
+
+.sketch-constraint-remove:hover rect,
+.sketch-constraint-remove:focus rect {
+  fill: rgba(239, 68, 68, 0.12) !important;
+}
+
+.sketch-constraint-remove:hover text,
+.sketch-constraint-remove:focus text {
+  fill: #dc2626 !important;
+}
+
 .educad-sketch-constraint-status {
   align-self: center;
   border: 1px solid #cbd5e1;
@@ -4946,6 +4979,13 @@ button {
 .sketch-circle-center { cursor: move; }
 .sketch-circle-center.pending { cursor: crosshair; }
 .sketch-circle-radius-handle { cursor: ew-resize; }
+
+.sketch-circle-center.selected,
+.sketch-circle-radius-handle.selected {
+  fill: #60a5fa;
+  stroke: #1d4ed8;
+  stroke-width: 2;
+}
 
 .sketch-circle-dimensions rect {
   fill: rgba(255, 255, 255, 0.96);
@@ -5050,6 +5090,18 @@ circle.sketch-preview-line {
 
 .sketch-circle-dimensions .sketch-dimension-editor-value {
   font-weight: 400 !important;
+}
+
+.sketch-circle-dimensions .sketch-dimension-editor input,
+.sketch-circle-dimensions > g > text {
+  font-weight: 400 !important;
+}
+
+.sketch-dimension-editor-indicator {
+  fill: #1d4ed8 !important;
+  font-weight: 600 !important;
+  opacity: 1 !important;
+  text-anchor: middle;
 }
 
 .sketch-dimension-editor-content {

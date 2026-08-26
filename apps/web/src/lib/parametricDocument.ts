@@ -17,6 +17,7 @@ import type {
 import { assertValidParametricDependencies } from "@/lib/parametricDependencyGraph";
 import { assertValidParametricTopology, isParametricTopologyReference } from "@/lib/parametricTopology";
 import { globalParametricWorkplanePlacement, normalizeParametricWorkplanePlacement } from "@/lib/parametricWorkplane";
+import { circleSketchPointId } from "@/lib/sketchConstraints";
 
 let localCounter = 0;
 export const CURRENT_PARAMETRIC_SCHEMA = "educad-parametric/v2" as const;
@@ -296,6 +297,11 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
         const lineIds = new Set(geometry.segments.filter((segment) => segment.kind === "line").map((segment) => segment.id));
         const pointIds = new Set(geometry.points.map((point) => point.id));
         const circleIds = new Set(geometry.circles.map((circle) => circle.id));
+        for (const circle of geometry.circles) {
+          if (!Number.isFinite(circle.radiusAngle)) circle.radiusAngle = 0;
+          pointIds.add(circleSketchPointId(circle.id, "center"));
+          pointIds.add(circleSketchPointId(circle.id, "radius"));
+        }
         geometry.constraints = (geometry.constraints ?? []).filter((constraint) => {
           if (constraint.kind === "horizontal" || constraint.kind === "vertical") return lineIds.has(constraint.segmentId);
           if (constraint.kind === "fixed") return pointIds.has(constraint.pointId) && Number.isFinite(constraint.x) && Number.isFinite(constraint.z);

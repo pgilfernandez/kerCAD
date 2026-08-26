@@ -6485,7 +6485,7 @@ export function SketchForgeEditor({
       commitSketchProfile({ ...sketchProfile, circles: (sketchProfile.circles ?? []).filter((circle) => circle.id !== sketchSelection.id) }, "Sketch circle removed");
       setSketchSelection(null);
     }
-    else {
+    else if (sketchSelection.kind === "multiple") {
       const pointIds = new Set(sketchSelection.pointIds);
       const segmentIds = new Set(sketchSelection.segmentIds);
       const imageIds = new Set(sketchSelection.imageIds ?? []);
@@ -6500,6 +6500,7 @@ export function SketchForgeEditor({
       setSketchActivePointId(null);
       setSketchSelection(null);
     }
+    else setNotice("Select the circle to remove it");
   }, [commitSketchProfile, deleteSketchImage, deleteSketchPoint, deleteSketchSegment, sketchProfile, sketchSelection]);
 
   const moveSketchPoint = useCallback((id: string, position: { x: number; z: number }) => {

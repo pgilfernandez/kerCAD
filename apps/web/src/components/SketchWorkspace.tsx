@@ -16,6 +16,7 @@ export type SketchSelection =
   | { kind: "point"; id: string }
   | { kind: "segment"; id: string }
   | { kind: "circle"; id: string }
+  | { kind: "circlePoint"; circleId: string; point: "center" | "radius" }
   | { kind: "image"; id: string }
   | { kind: "multiple"; pointIds: string[]; segmentIds: string[]; circleIds?: string[]; imageIds?: string[] }
   | null;
@@ -35,16 +36,17 @@ type SketchWorkspaceProps = {
   exactSnapStep?: number;
   initialWorkspace?: WorkplaneWorkspaceSettings;
   onPlanePoint: (point: { x: number; z: number }, handles?: { handleIn: { x: number; z: number }; handleOut: { x: number; z: number } }) => void;
-  onPointPress: (id: string) => void;
+  onPointPress: (id: string, additive?: boolean) => void;
   onSelectSegment: (id: string) => void;
   onSelectMany: (pointIds: string[], segmentIds: string[], imageIds: string[], circleIds?: string[]) => void;
   onAddCircle?: (circle: Omit<SketchCircle, "id">) => void;
   onAddArc?: (arc: { center: { x: number; z: number }; start: { x: number; z: number }; end: { x: number; z: number }; clockwise: boolean }) => void;
   onMoveArcCenter?: (id: string, center: { x: number; z: number }) => void;
   onSelectCircle?: (id: string) => void;
+  onSelectCirclePoint?: (id: string, point: "center" | "radius", additive: boolean) => void;
   onDeleteCircle?: (id: string) => void;
   onMoveCircle?: (id: string, center: { x: number; z: number }) => void;
-  onResizeCircle?: (id: string, radius: number) => void;
+  onResizeCircle?: (id: string, radius: number, angle: number) => void;
   onSelectImage: (id: string) => void;
   onUpdateImage: (id: string, patch: Partial<SketchImage>, message?: string) => void;
   onDeleteImage: (id: string) => void;
@@ -55,6 +57,7 @@ type SketchWorkspaceProps = {
   onInsertPoint: (segmentId: string, point: { x: number; z: number }) => void;
   onSetPointMode: (id: string, mode: "corner" | "smooth" | "split") => void;
   onUpdateConstraintValue?: (id: string, value: number) => void;
+  onDeleteConstraint?: (id: string) => void;
   onClearMeasurement: () => void;
   showPointActions?: boolean;
   showGridControls?: boolean;
@@ -155,12 +158,25 @@ function dimensionPillSize(label: string, screenUnit: number, extra = 24) {
   };
 }
 
-function SketchDimensionInput({ id, label, value, accuracy, screenUnit, align = "center", allowSigned = false, onCommit }: { id: string; label: string; value: number; accuracy: 1 | 2 | 3; screenUnit: number; align?: "center" | "start"; allowSigned?: boolean; onCommit?: (id: string, value: number) => void }) {
+function SketchDimensionInput({ id, label, indicator, value, accuracy, screenUnit, align = "center", allowSigned = false, onCommit, onDelete }: { id: string; label: string; indicator: string; value: number; accuracy: 1 | 2 | 3; screenUnit: number; align?: "center" | "start"; allowSigned?: boolean; onCommit?: (id: string, value: number) => void; onDelete?: (id: string) => void }) {
   const formatted = formatDimension(value, accuracy);
   const [draft, setDraft] = useState(formatted);
   const [editing, setEditing] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => setDraft(formatted), [formatted]);
-  const pill = dimensionPillSize(draft || formatted, screenUnit, 18);
+  useEffect(() => {
+    if (!editing) return;
+    const acceptOnOutsidePointer = (event: PointerEvent) => {
+      const input = inputRef.current;
+      if (input && event.target !== input) input.blur();
+    };
+    document.addEventListener("pointerdown", acceptOnOutsidePointer, true);
+    return () => document.removeEventListener("pointerdown", acceptOnOutsidePointer, true);
+  }, [editing]);
+  const removeWidth = 22 * screenUnit;
+  const indicatorWidth = 20 * screenUnit;
+  const controlsWidth = removeWidth + indicatorWidth;
+  const pill = dimensionPillSize(draft || formatted, screenUnit, 60);
   const x = align === "start" ? 0 : -pill.width / 2;
   const borderInset = 0.75 * screenUnit;
   return <g className={`sketch-dimension-editor-group ${editing ? "editing" : ""}`} onPointerDown={(event) => { if (!editing) { event.preventDefault(); event.stopPropagation(); setEditing(true); } }}>
@@ -168,12 +184,13 @@ function SketchDimensionInput({ id, label, value, accuracy, screenUnit, align = 
     {editing ? <foreignObject className="sketch-dimension-editor" x={x} y={-pill.height / 2} width={pill.width} height={pill.height}>
       <div className="sketch-dimension-editor-content">
         <input
+          ref={inputRef}
           autoFocus
         aria-label={label}
         type="text"
         inputMode="decimal"
         value={draft}
-        style={{ fontSize: 13 * screenUnit, padding: `0 ${5 * screenUnit}px` }}
+          style={{ fontSize: 13 * screenUnit, padding: `0 ${removeWidth + 3 * screenUnit}px 0 ${indicatorWidth + 3 * screenUnit}px` }}
         onPointerDown={(event) => event.stopPropagation()}
         onChange={(event) => setDraft(event.currentTarget.value)}
         onBlur={(event) => {
@@ -189,8 +206,30 @@ function SketchDimensionInput({ id, label, value, accuracy, screenUnit, align = 
         />
       </div>
     </foreignObject> : null}
-    <text className="sketch-dimension-editor-value" pointerEvents="none" x={x + pill.width / 2} y={5 * screenUnit} fontSize={13 * screenUnit}>{draft}</text>
+    <text className="sketch-dimension-editor-value" pointerEvents="none" x={x + indicatorWidth + (pill.width - controlsWidth) / 2} y={5 * screenUnit} fontSize={13 * screenUnit}>{draft}</text>
+    <text className="sketch-dimension-editor-indicator" pointerEvents="none" x={x + indicatorWidth / 2} y={5 * screenUnit} fontSize={11 * screenUnit}>{indicator}</text>
+    <line className="sketch-constraint-remove-separator" pointerEvents="none" x1={x + indicatorWidth} y1={-pill.height / 2 + 4 * screenUnit} x2={x + indicatorWidth} y2={pill.height / 2 - 4 * screenUnit} />
+    <line className="sketch-constraint-remove-separator" pointerEvents="none" x1={x + pill.width - removeWidth} y1={-pill.height / 2 + 4 * screenUnit} x2={x + pill.width - removeWidth} y2={pill.height / 2 - 4 * screenUnit} />
+    <g className="sketch-constraint-remove" role="button" tabIndex={0} aria-label={`Eliminar restricción ${label}`} onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); onDelete?.(id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); onDelete?.(id); } }}>
+      <rect x={x + pill.width - removeWidth} y={-pill.height / 2} width={removeWidth} height={pill.height} />
+      <text pointerEvents="none" x={x + pill.width - removeWidth / 2} y={5 * screenUnit} fontSize={14 * screenUnit}>×</text>
+    </g>
     <rect className="sketch-dimension-editor-frame" pointerEvents="none" x={x + borderInset} y={-pill.height / 2 + borderInset} width={pill.width - borderInset * 2} height={pill.height - borderInset * 2} rx={Math.max(0, pill.radius - borderInset)} />
+  </g>;
+}
+
+function SketchConstraintBadge({ id, label, x, z, screenUnit, onDelete }: { id: string; label: string; x: number; z: number; screenUnit: number; onDelete?: (id: string) => void }) {
+  const width = 34 * screenUnit;
+  const height = 18 * screenUnit;
+  const removeWidth = 17 * screenUnit;
+  return <g className="sketch-constraint-badge" transform={`translate(${x} ${z})`}>
+    <rect x={-width / 2} y={-height / 2} width={width} height={height} rx={3 * screenUnit} />
+    <text pointerEvents="none" x={-removeWidth / 2} y={4 * screenUnit} fontSize={11 * screenUnit}>{label}</text>
+    <line pointerEvents="none" x1={0} y1={-height / 2 + 3 * screenUnit} x2={0} y2={height / 2 - 3 * screenUnit} />
+    <g className="sketch-constraint-remove" role="button" tabIndex={0} aria-label={`Eliminar restricción ${label}`} onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); onDelete?.(id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); onDelete?.(id); } }}>
+      <rect x={0} y={-height / 2} width={removeWidth} height={height} />
+      <text pointerEvents="none" x={removeWidth / 2} y={4 * screenUnit} fontSize={12 * screenUnit}>×</text>
+    </g>
   </g>;
 }
 
@@ -507,6 +546,7 @@ export function SketchWorkspace({
   onAddArc,
   onMoveArcCenter,
   onSelectCircle,
+  onSelectCirclePoint,
   onDeleteCircle,
   onMoveCircle,
   onResizeCircle,
@@ -520,6 +560,7 @@ export function SketchWorkspace({
   onInsertPoint,
   onSetPointMode,
   onUpdateConstraintValue,
+  onDeleteConstraint,
   onClearMeasurement,
   showPointActions = true,
   showGridControls = true,
@@ -618,7 +659,7 @@ export function SketchWorkspace({
       return circles.map((circle) => circle.id === pointerAction.circleId ? { ...circle, x: pointerAction.start.x + pointerAction.current.x - pointerAction.origin.x, z: pointerAction.start.z + pointerAction.current.z - pointerAction.origin.z } : circle);
     }
     if (pointerAction?.kind === "resize-circle") {
-      return circles.map((circle) => circle.id === pointerAction.circleId ? { ...circle, radius: Math.max(0.01, Math.hypot(pointerAction.current.x - circle.x, pointerAction.current.z - circle.z)) } : circle);
+      return circles.map((circle) => circle.id === pointerAction.circleId ? { ...circle, radius: Math.max(0.01, Math.hypot(pointerAction.current.x - circle.x, pointerAction.current.z - circle.z)), radiusAngle: Math.atan2(pointerAction.current.z - circle.z, pointerAction.current.x - circle.x) } : circle);
     }
     return circles;
   }, [pointerAction, profile.circles]);
@@ -638,11 +679,20 @@ export function SketchWorkspace({
     return `M ${activePoint.x} ${activePoint.z} C ${control1.x} ${control1.z} ${control2.x} ${control2.z} ${hover.x} ${hover.z}`;
   }, [activePoint, displayProfile.segments, hover, pointById, tool]);
   const selectedImage = selected?.kind === "image" ? displayImages.find((image) => image.id === selected.id) ?? null : null;
-  const selectedCircle = selected?.kind === "circle" ? displayCircles.find((circle) => circle.id === selected.id) ?? null : null;
+  const selectedVirtualCircleId = selected?.kind === "multiple"
+    ? selected.pointIds.map((id) => /^circle:(.+):(center|radius)$/.exec(id)?.[1]).find(Boolean)
+    : null;
+  const selectedCircleId = selected?.kind === "circle" ? selected.id
+    : selected?.kind === "circlePoint" ? selected.circleId
+    : selectedVirtualCircleId;
+  const selectedCircle = selectedCircleId ? displayCircles.find((circle) => circle.id === selectedCircleId) ?? null : null;
   const selectedArc = selected?.kind === "segment" ? displayProfile.segments.find((segment) => segment.id === selected.id && segment.kind === "arc" && segment.center) ?? null : null;
   const isPointSelected = (id: string) => selected?.kind === "point" ? selected.id === id : selected?.kind === "multiple" ? selected.pointIds.includes(id) : false;
   const isSegmentSelected = (id: string) => selected?.kind === "segment" ? selected.id === id : selected?.kind === "multiple" ? selected.segmentIds.includes(id) : false;
-  const isCircleSelected = (id: string) => selected?.kind === "circle" ? selected.id === id : selected?.kind === "multiple" ? selected.circleIds?.includes(id) ?? false : false;
+  const isCircleSelected = (id: string) => selected?.kind === "circle" ? selected.id === id : selected?.kind === "circlePoint" ? selected.circleId === id : selected?.kind === "multiple" ? (selected.circleIds?.includes(id) ?? false) || selected.pointIds.some((pointId) => pointId.startsWith(`circle:${id}:`)) : false;
+  const isCirclePointSelected = (circleId: string, point: "center" | "radius") => selected?.kind === "circlePoint"
+    ? selected.circleId === circleId && selected.point === point
+    : selected?.kind === "multiple" ? selected.pointIds.includes(`circle:${circleId}:${point}`) : false;
   const gridStep = clamp(workspace.gridBlockSize, 0.1, 200);
   const verticalLines = useMemo(() => {
     const lines: number[] = [];
@@ -796,7 +846,7 @@ export function SketchWorkspace({
     } else if (action.kind === "move-circle") {
       onMoveCircle?.(action.circleId, { x: action.start.x + action.current.x - action.origin.x, z: action.start.z + action.current.z - action.origin.z });
     } else if (action.kind === "resize-circle") {
-      onResizeCircle?.(action.circleId, Math.max(0.01, Math.hypot(action.current.x - action.start.x, action.current.z - action.start.z)));
+      onResizeCircle?.(action.circleId, Math.max(0.01, Math.hypot(action.current.x - action.start.x, action.current.z - action.start.z)), Math.atan2(action.current.z - action.start.z, action.current.x - action.start.x));
     } else if (action.kind === "move-arc-center") {
       onMoveArcCenter?.(action.segmentId, { x: action.startCenter.x + action.current.x - action.origin.x, z: action.startCenter.z + action.current.z - action.origin.z });
     } else if (action.kind === "move-point") {
@@ -1017,27 +1067,22 @@ export function SketchWorkspace({
               }}
             />)}
           </g>
-          <g className="sketch-constraints" pointerEvents="none">
+          <g className="sketch-constraints">
             {(displayProfile.constraints ?? []).map((constraint) => {
               if (constraint.kind !== "horizontal" && constraint.kind !== "vertical") return null;
               const segment = displayProfile.segments.find((candidate) => candidate.id === constraint.segmentId);
               if (!segment) return null;
               const dimension = segmentDimension(segment, pointById);
               if (!dimension) return null;
-              return (
-                <g key={constraint.id} transform={`translate(${dimension.midpoint.x} ${dimension.midpoint.z - 14 * screenUnit})`}>
-                  <rect x={-8 * screenUnit} y={-8 * screenUnit} width={16 * screenUnit} height={16 * screenUnit} rx={3 * screenUnit} />
-                  <text y={4 * screenUnit} fontSize={11 * screenUnit}>{constraint.kind === "horizontal" ? "H" : "V"}</text>
-                </g>
-              );
+              return <SketchConstraintBadge key={constraint.id} id={constraint.id} label={constraint.kind === "horizontal" ? "H" : "V"} x={dimension.midpoint.x} z={dimension.midpoint.z - 14 * screenUnit} screenUnit={screenUnit} onDelete={onDeleteConstraint} />;
             })}
             {(displayProfile.constraints ?? []).filter((constraint) => constraint.kind === "fixed").map((constraint) => {
               const point = pointById.get(constraint.pointId);
-              return point ? <text className="point-constraint" key={constraint.id} x={point.x + 10 * screenUnit} y={point.z - 10 * screenUnit} fontSize={12 * screenUnit}>F</text> : null;
+              return point ? <SketchConstraintBadge key={constraint.id} id={constraint.id} label="F" x={point.x + 18 * screenUnit} z={point.z - 12 * screenUnit} screenUnit={screenUnit} onDelete={onDeleteConstraint} /> : null;
             })}
             {(displayProfile.constraints ?? []).filter((constraint) => constraint.kind === "coincident").map((constraint) => {
               const point = pointById.get(constraint.pointIds[0]);
-              return point ? <text className="point-constraint" key={constraint.id} x={point.x - 11 * screenUnit} y={point.z + 13 * screenUnit} fontSize={12 * screenUnit}>C</text> : null;
+              return point ? <SketchConstraintBadge key={constraint.id} id={constraint.id} label="C" x={point.x - 18 * screenUnit} z={point.z + 13 * screenUnit} screenUnit={screenUnit} onDelete={onDeleteConstraint} /> : null;
             })}
           </g>
           <g className="sketch-segment-dimensions">
@@ -1047,7 +1092,7 @@ export function SketchWorkspace({
               const constraints = (displayProfile.constraints ?? []).filter((candidate): candidate is Extract<NonNullable<SketchProfile["constraints"]>[number], { kind: "distance" }> => candidate.kind === "distance" && candidate.segmentId === segment.id);
               if (constraints.length) return constraints.map((constraint, index) => (
                 <g key={`dimension-${constraint.id}`} transform={`translate(${dimension.midpoint.x} ${dimension.midpoint.z + labelOffset + index * 30 * screenUnit})`}>
-                  <SketchDimensionInput id={constraint.id} label={constraint.axis === "x" ? "Distancia X" : constraint.axis === "z" ? "Distancia Y" : "Longitud"} value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} onCommit={onUpdateConstraintValue} />
+                  <SketchDimensionInput id={constraint.id} label={constraint.axis === "x" ? "Distancia X" : constraint.axis === "z" ? "Distancia Y" : "Longitud"} indicator={constraint.axis === "x" ? "H" : constraint.axis === "z" ? "V" : "D"} value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
                 </g>
               ));
               const label = formatDimension(dimension.length, workspace.accuracy);
@@ -1071,7 +1116,7 @@ export function SketchWorkspace({
               const x = dimensions.reduce((total, dimension) => total + dimension.midpoint.x, 0) / dimensions.length;
               const z = dimensions.reduce((total, dimension) => total + dimension.midpoint.z, 0) / dimensions.length + labelOffset + 30 * screenUnit;
               return <g key={`angle-${constraint.id}`} transform={`translate(${x} ${z})`}>
-                <SketchDimensionInput id={constraint.id} label="Ángulo" value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} allowSigned onCommit={onUpdateConstraintValue} />
+                <SketchDimensionInput id={constraint.id} label="Ángulo" indicator="A" value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} allowSigned onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
               </g>;
             })}
           </g>
@@ -1146,13 +1191,22 @@ export function SketchWorkspace({
             </g>
           ) : null}
           {selectedCircle && tool === "select" ? <g className="sketch-circle-handles">
-            <circle data-sketch-entity="circle-center" className="sketch-circle-center" cx={selectedCircle.x} cy={selectedCircle.z} r={pointRadius} onPointerDown={(event) => {
+            <circle data-sketch-entity="circle-center" className={`sketch-circle-center ${isCirclePointSelected(selectedCircle.id, "center") ? "selected" : ""}`} cx={selectedCircle.x} cy={selectedCircle.z} r={pointRadius} onPointerDown={(event) => {
               if (event.button === 1) { beginPan(event); return; }
               if (event.button !== 0) return;
+              onSelectCirclePoint?.(selectedCircle.id, "center", event.ctrlKey || event.metaKey);
               beginEntityDrag(event, { kind: "move-circle", pointerId: event.pointerId, circleId: selectedCircle.id, origin: { x: selectedCircle.x, z: selectedCircle.z }, current: { x: selectedCircle.x, z: selectedCircle.z }, start: { ...selectedCircle } });
             }} />
-            <line x1={selectedCircle.x} y1={selectedCircle.z} x2={selectedCircle.x + selectedCircle.radius} y2={selectedCircle.z} pointerEvents="none" />
-            <circle data-sketch-entity="circle-handle" className="sketch-circle-radius-handle" cx={selectedCircle.x + selectedCircle.radius} cy={selectedCircle.z} r={controlPointRadius} onPointerDown={(event) => event.button === 1 ? beginPan(event) : beginEntityDrag(event, { kind: "resize-circle", pointerId: event.pointerId, circleId: selectedCircle.id, current: { x: selectedCircle.x + selectedCircle.radius, z: selectedCircle.z }, start: { ...selectedCircle } })} />
+            {(() => {
+              const angle = selectedCircle.radiusAngle ?? 0;
+              const radiusPoint = { x: selectedCircle.x + Math.cos(angle) * selectedCircle.radius, z: selectedCircle.z + Math.sin(angle) * selectedCircle.radius };
+              return <><line x1={selectedCircle.x} y1={selectedCircle.z} x2={radiusPoint.x} y2={radiusPoint.z} pointerEvents="none" />
+                <circle data-sketch-entity="circle-handle" className={`sketch-circle-radius-handle ${isCirclePointSelected(selectedCircle.id, "radius") ? "selected" : ""}`} cx={radiusPoint.x} cy={radiusPoint.z} r={controlPointRadius} onPointerDown={(event) => {
+                  if (event.button === 1) { beginPan(event); return; }
+                  onSelectCirclePoint?.(selectedCircle.id, "radius", event.ctrlKey || event.metaKey);
+                  beginEntityDrag(event, { kind: "resize-circle", pointerId: event.pointerId, circleId: selectedCircle.id, current: radiusPoint, start: { ...selectedCircle } });
+                }} /></>;
+            })()}
           </g> : null}
           {selectedArc?.center && tool === "select" ? <g className="sketch-arc-handles">
             <circle data-sketch-entity="arc-center" className="sketch-circle-center" cx={selectedArc.center.x} cy={selectedArc.center.z} r={pointRadius} onPointerDown={(event) => {
@@ -1165,7 +1219,7 @@ export function SketchWorkspace({
             {displayCircles.map((circle) => {
               const constraint = (displayProfile.constraints ?? []).find((candidate) => (candidate.kind === "radius" || candidate.kind === "diameter") && candidate.circleId === circle.id);
               if (constraint?.kind === "radius" || constraint?.kind === "diameter") return <g key={`radius-${constraint.id}`} transform={`translate(${circle.x + circle.radius + 12 * screenUnit} ${circle.z + 18 * screenUnit})`}>
-                <SketchDimensionInput id={constraint.id} label={constraint.kind === "diameter" ? "Diámetro" : "Radio"} value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} align="start" onCommit={onUpdateConstraintValue} />
+                <SketchDimensionInput id={constraint.id} label={constraint.kind === "diameter" ? "Diámetro" : "Radio"} indicator={constraint.kind === "diameter" ? "Ø" : "R"} value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} align="start" onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
               </g>;
               const label = `R ${formatDimension(circle.radius, workspace.accuracy)}`;
               const pill = dimensionPillSize(label, screenUnit, 18);
@@ -1192,10 +1246,10 @@ export function SketchWorkspace({
                   } else if (tool === "erase" || tool === "refine") {
                     onDeletePoint(point.id);
                   } else if (event.button === 0 && tool === "select") {
-                    onPointPress(point.id);
+                    onPointPress(point.id, event.ctrlKey || event.metaKey);
                     beginEntityDrag(event, { kind: "move-point", pointerId: event.pointerId, pointId: point.id, current: { x: point.x, z: point.z } });
                   } else if (event.button === 0) {
-                    onPointPress(point.id);
+                    onPointPress(point.id, event.ctrlKey || event.metaKey);
                   }
                 }}
               />

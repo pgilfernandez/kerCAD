@@ -96,6 +96,7 @@ export type SketchCircle = {
   x: number;
   z: number;
   radius: number;
+  radiusAngle?: number;
   construction?: boolean;
 };
 

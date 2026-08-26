@@ -36,7 +36,7 @@ import { exportParametricStep } from "@/lib/parametricKernel";
 import { ParametricBuildWorkerClient } from "@/lib/parametricBuildWorker";
 import { binaryStlFromRenderMeshes } from "@/lib/stlExport";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
-import { sketchConstraintConflict, sketchConstraintUsesPoint, sketchConstraintUsesSegment, solveSketchConstraints } from "@/lib/sketchConstraints";
+import { circleSketchPointId, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, solveSketchConstraints } from "@/lib/sketchConstraints";
 import {
   beginHistoryTransaction,
   cancelHistoryTransaction,
@@ -752,10 +752,27 @@ export function SketchForgeParametricEditor() {
   const selectedConstraintPoints = useMemo(() => {
     if (!sketchSession || !sketchSelection) return [];
     const ids = sketchSelection.kind === "point" ? [sketchSelection.id]
+      : sketchSelection.kind === "circlePoint" ? [circleSketchPointId(sketchSelection.circleId, sketchSelection.point)]
       : sketchSelection.kind === "multiple" ? sketchSelection.pointIds
       : [];
-    return sketchSession.profile.points.filter((point) => ids.includes(point.id));
+    return ids.map((id) => sketchConstraintPoint(sketchSession.profile, id)).filter((point): point is SketchPoint => Boolean(point));
   }, [sketchSelection, sketchSession]);
+
+  const selectSketchCirclePoint = (circleId: string, point: "center" | "radius", additive: boolean) => {
+    const id = circleSketchPointId(circleId, point);
+    if (!additive) {
+      setSketchSelection({ kind: "circlePoint", circleId, point });
+      setSketchActivePointId(null);
+      return;
+    }
+    const pointIds = sketchSelection?.kind === "point" ? [sketchSelection.id]
+      : sketchSelection?.kind === "circlePoint" ? [circleSketchPointId(sketchSelection.circleId, sketchSelection.point)]
+      : sketchSelection?.kind === "multiple" ? sketchSelection.pointIds
+      : [];
+    const nextPointIds = pointIds.includes(id) ? pointIds.filter((candidate) => candidate !== id) : [...pointIds, id];
+    setSketchSelection(nextPointIds.length ? { kind: "multiple", pointIds: nextPointIds, segmentIds: [], circleIds: [], imageIds: [] } : null);
+    setSketchActivePointId(null);
+  };
 
   const selectedPointsFixed = selectedConstraintPoints.length > 0 && selectedConstraintPoints.every((point) => sketchSession?.profile.constraints?.some((constraint) => constraint.kind === "fixed" && constraint.pointId === point.id));
 
@@ -925,6 +942,11 @@ export function SketchForgeParametricEditor() {
     }));
   };
 
+  const deleteSketchConstraint = (constraintId: string) => {
+    setSketchProfile((profile) => ({ ...profile, constraints: (profile.constraints ?? []).filter((constraint) => constraint.id !== constraintId) }));
+    setNotice({ type: "info", text: "Restricción eliminada; geometría liberada" });
+  };
+
   const connectSketchPoint = (pointId: string) => {
     if (!sketchSession || !["line", "bezier", "smooth"].includes(sketchTool)) return;
     if (!sketchActivePointId) {
@@ -966,13 +988,24 @@ export function SketchForgeParametricEditor() {
     setSketchSelection({ kind: "point", id: point.id });
   };
 
-  const pressSketchPoint = (id: string) => {
+  const pressSketchPoint = (id: string, additive = false) => {
     const point = sketchSession?.profile.points.find((candidate) => candidate.id === id);
     if (!point) return;
     if (sketchTool === "measure") {
       if (sketchMeasureStart) { setSketchMeasurement({ start: sketchMeasureStart, end: point }); setSketchMeasureStart(null); }
       else { setSketchMeasureStart(point); setSketchMeasurement(null); }
-    } else if (sketchTool === "select") { setSketchSelection({ kind: "point", id }); setSketchActivePointId(null); }
+    } else if (sketchTool === "select") {
+      if (!additive) setSketchSelection({ kind: "point", id });
+      else {
+        const pointIds = sketchSelection?.kind === "point" ? [sketchSelection.id]
+          : sketchSelection?.kind === "circlePoint" ? [circleSketchPointId(sketchSelection.circleId, sketchSelection.point)]
+          : sketchSelection?.kind === "multiple" ? sketchSelection.pointIds
+          : [];
+        const nextPointIds = pointIds.includes(id) ? pointIds.filter((candidate) => candidate !== id) : [...pointIds, id];
+        setSketchSelection(nextPointIds.length ? { kind: "multiple", pointIds: nextPointIds, segmentIds: [], circleIds: [], imageIds: [] } : null);
+      }
+      setSketchActivePointId(null);
+    }
     else connectSketchPoint(id);
   };
 
@@ -1076,7 +1109,8 @@ export function SketchForgeParametricEditor() {
 
   const deleteCurrentSketchSelection = () => {
     if (!sketchSelection) return false;
-    const pointIds = sketchSelection.kind === "point" ? [sketchSelection.id] : sketchSelection.kind === "multiple" ? sketchSelection.pointIds : [];
+    const selectedPointIds = sketchSelection.kind === "point" ? [sketchSelection.id] : sketchSelection.kind === "multiple" ? sketchSelection.pointIds : [];
+    const pointIds = selectedPointIds.filter((id) => sketchSession?.profile.points.some((point) => point.id === id));
     const segmentIds = sketchSelection.kind === "segment" ? [sketchSelection.id] : sketchSelection.kind === "multiple" ? sketchSelection.segmentIds : [];
     const imageIds = sketchSelection.kind === "image" ? [sketchSelection.id] : sketchSelection.kind === "multiple" ? sketchSelection.imageIds ?? [] : [];
     const circleIds = sketchSelection.kind === "circle" ? [sketchSelection.id] : sketchSelection.kind === "multiple" ? sketchSelection.circleIds ?? [] : [];
@@ -1089,6 +1123,7 @@ export function SketchForgeParametricEditor() {
       images: (profile.images ?? []).filter((image) => !imageIds.includes(image.id)),
       constraints: (profile.constraints ?? []).filter((constraint) => {
         if ((constraint.kind === "radius" || constraint.kind === "diameter") && circleIds.includes(constraint.circleId)) return false;
+        if (circleIds.some((circleId) => sketchConstraintUsesPoint(constraint, circleSketchPointId(circleId, "center")) || sketchConstraintUsesPoint(constraint, circleSketchPointId(circleId, "radius")))) return false;
         if (pointIds.some((id) => sketchConstraintUsesPoint(constraint, id))) return false;
         if (constraint.kind === "angle") return constraint.segmentIds.every((segmentId) => {
           if (segmentIds.includes(segmentId)) return false;
@@ -1914,11 +1949,30 @@ export function SketchForgeParametricEditor() {
             return next;
           })}
           onSelectCircle={(id) => { setSketchSelection({ kind: "circle", id }); setSketchActivePointId(null); }}
-          onDeleteCircle={(id) => { setSketchProfile((profile) => ({ ...profile, circles: (profile.circles ?? []).filter((circle) => circle.id !== id), constraints: (profile.constraints ?? []).filter((constraint) => (constraint.kind !== "radius" && constraint.kind !== "diameter") || constraint.circleId !== id) })); setSketchSelection(null); }}
-          onMoveCircle={(id, center) => setSketchProfile((profile) => ({ ...profile, circles: (profile.circles ?? []).map((circle) => circle.id === id ? { ...circle, ...center } : circle) }))}
-          onResizeCircle={(id, radius) => setSketchProfile((profile) => {
+          onSelectCirclePoint={selectSketchCirclePoint}
+          onDeleteCircle={(id) => { setSketchProfile((profile) => {
+            const virtualIds = new Set([circleSketchPointId(id, "center"), circleSketchPointId(id, "radius")]);
+            return { ...profile, circles: (profile.circles ?? []).filter((circle) => circle.id !== id), constraints: (profile.constraints ?? []).filter((constraint) => {
+              if ((constraint.kind === "radius" || constraint.kind === "diameter") && constraint.circleId === id) return false;
+              return ![...virtualIds].some((pointId) => sketchConstraintUsesPoint(constraint, pointId));
+            }) };
+          }); setSketchSelection(null); }}
+          onMoveCircle={(id, center) => setSketchProfile((profile) => {
+            const next = cloneSketchProfile(profile);
+            const circle = next.circles?.find((candidate) => candidate.id === id);
+            if (!circle) return profile;
+            Object.assign(circle, center);
+            return solveSketchConstraints(next, circleSketchPointId(id, "center"));
+          })}
+          onResizeCircle={(id, radius, angle) => setSketchProfile((profile) => {
             const value = Math.max(0.01, radius);
-            return { ...profile, circles: (profile.circles ?? []).map((circle) => circle.id === id ? { ...circle, radius: value } : circle), constraints: (profile.constraints ?? []).map((constraint) => (constraint.kind === "radius" || constraint.kind === "diameter") && constraint.circleId === id ? { ...constraint, value: constraint.kind === "diameter" ? value * 2 : value } : constraint) };
+            const next = cloneSketchProfile(profile);
+            const circle = next.circles?.find((candidate) => candidate.id === id);
+            if (!circle) return profile;
+            circle.radius = value;
+            circle.radiusAngle = angle;
+            next.constraints = (next.constraints ?? []).map((constraint) => (constraint.kind === "radius" || constraint.kind === "diameter") && constraint.circleId === id ? { ...constraint, value: constraint.kind === "diameter" ? value * 2 : value } : constraint);
+            return solveSketchConstraints(next, circleSketchPointId(id, "radius"));
           })}
           onSelectImage={(id) => setSketchSelection({ kind: "image", id })}
           onUpdateImage={(id, update) => setSketchProfile((profile) => ({ ...profile, images: (profile.images ?? []).map((image) => image.id === id ? { ...image, ...update } : image) }))}
@@ -1956,6 +2010,7 @@ export function SketchForgeParametricEditor() {
           onInsertPoint={insertSketchPoint}
           onSetPointMode={setSketchPointMode}
           onUpdateConstraintValue={updateSketchConstraintValue}
+          onDeleteConstraint={deleteSketchConstraint}
           onClearMeasurement={() => { setSketchMeasurement(null); setSketchMeasureStart(null); }}
           showPointActions={false}
           showGridControls={false}

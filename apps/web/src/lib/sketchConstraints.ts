@@ -1,4 +1,25 @@
-import type { SketchConstraint, SketchProfile } from "@/types/sketchforge";
+import type { SketchConstraint, SketchPoint, SketchProfile } from "@/types/sketchforge";
+
+export function circleSketchPointId(circleId: string, point: "center" | "radius") {
+  return `circle:${circleId}:${point}`;
+}
+
+function circleSketchPointReference(id: string) {
+  const match = /^circle:(.+):(center|radius)$/.exec(id);
+  return match ? { circleId: match[1], point: match[2] as "center" | "radius" } : null;
+}
+
+export function sketchConstraintPoint(profile: SketchProfile, id: string): SketchPoint | null {
+  const point = profile.points.find((candidate) => candidate.id === id);
+  if (point) return point;
+  const reference = circleSketchPointReference(id);
+  const circle = reference ? profile.circles?.find((candidate) => candidate.id === reference.circleId) : null;
+  if (!reference || !circle) return null;
+  const angle = circle.radiusAngle ?? 0;
+  return reference.point === "center"
+    ? { id, x: circle.x, z: circle.z }
+    : { id, x: circle.x + Math.cos(angle) * circle.radius, z: circle.z + Math.sin(angle) * circle.radius };
+}
 
 export function sketchConstraintUsesSegment(constraint: SketchConstraint, segmentId: string) {
   if (constraint.kind === "angle") return constraint.segmentIds.includes(segmentId);
@@ -56,6 +77,9 @@ export function sketchConstraintConflict(profile: SketchProfile, candidate: Sket
   }
   if (candidate.kind === "coincident") {
     const [firstId, secondId] = candidate.pointIds;
+    const firstCirclePoint = circleSketchPointReference(firstId);
+    const secondCirclePoint = circleSketchPointReference(secondId);
+    if (firstCirclePoint && secondCirclePoint && firstCirclePoint.circleId === secondCirclePoint.circleId && firstCirclePoint.point !== secondCirclePoint.point) return "El centro de un círculo no puede coincidir con su propio punto de radio.";
     const segment = profile.segments.find((item) => (item.startId === firstId && item.endId === secondId) || (item.startId === secondId && item.endId === firstId));
     if (segment && constraints.some((constraint) => constraint.kind === "distance" && constraint.segmentId === segment.id)) return "No se pueden hacer coincidentes los extremos de una línea que tiene una cota de distancia.";
     const firstFixed = constraints.find((constraint) => constraint.kind === "fixed" && constraint.pointId === firstId);
@@ -63,6 +87,8 @@ export function sketchConstraintConflict(profile: SketchProfile, candidate: Sket
     if (firstFixed?.kind === "fixed" && secondFixed?.kind === "fixed" && (Math.abs(firstFixed.x - secondFixed.x) > 0.000001 || Math.abs(firstFixed.z - secondFixed.z) > 0.000001)) return "Dos puntos fijados en posiciones diferentes no pueden hacerse coincidentes.";
   }
   if (candidate.kind === "fixed") {
+    const circlePoint = circleSketchPointReference(candidate.pointId);
+    if (circlePoint?.point === "radius" && constraints.some((constraint) => (constraint.kind === "radius" || constraint.kind === "diameter") && constraint.circleId === circlePoint.circleId)) return "El punto radial no puede fijarse mientras el círculo tenga una cota de radio o diámetro.";
     for (const segment of profile.segments.filter((item) => item.startId === candidate.pointId || item.endId === candidate.pointId)) {
       const otherId = segment.startId === candidate.pointId ? segment.endId : segment.startId;
       const otherFixed = constraints.some((constraint) => constraint.kind === "fixed" && constraint.pointId === otherId);
@@ -82,6 +108,7 @@ export function sketchConstraintConflict(profile: SketchProfile, candidate: Sket
   if (candidate.kind === "radius" || candidate.kind === "diameter") {
     const opposite = candidate.kind === "radius" ? "diameter" : "radius";
     if (constraints.some((constraint) => constraint.kind === opposite && constraint.circleId === candidate.circleId)) return `El círculo ya está restringido por ${opposite === "radius" ? "radio" : "diámetro"}; elimina primero esa cota.`;
+    if (constraints.some((constraint) => constraint.kind === "fixed" && constraint.pointId === circleSketchPointId(candidate.circleId, "radius"))) return "Elimina primero la restricción fija del punto radial.";
   }
   if ((candidate.kind === "distance" || candidate.kind === "radius" || candidate.kind === "diameter") && (!Number.isFinite(candidate.value) || candidate.value <= 0)) return "La cota debe ser mayor que cero.";
   if (candidate.kind === "angle" && !Number.isFinite(candidate.value)) return "El ángulo debe ser un número válido.";
@@ -89,10 +116,17 @@ export function sketchConstraintConflict(profile: SketchProfile, candidate: Sket
 }
 
 export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: string) {
-  const pointById = new Map(profile.points.map((point) => [point.id, point]));
-  const segmentById = new Map(profile.segments.map((segment) => [segment.id, segment]));
   const constraints = profile.constraints ?? [];
-  const neighbors = new Map(profile.points.map((point) => [point.id, [] as string[]]));
+  for (const constraint of constraints) {
+    if (constraint.kind !== "radius" && constraint.kind !== "diameter") continue;
+    const circle = profile.circles?.find((candidate) => candidate.id === constraint.circleId);
+    if (circle) circle.radius = Math.max(0.001, Math.abs(constraint.value) / (constraint.kind === "diameter" ? 2 : 1));
+  }
+  const virtualPoints = (profile.circles ?? []).flatMap((circle) => [circleSketchPointId(circle.id, "center"), circleSketchPointId(circle.id, "radius")].map((id) => sketchConstraintPoint(profile, id)).filter(Boolean) as SketchPoint[]);
+  const allPoints = [...profile.points, ...virtualPoints];
+  const pointById = new Map(allPoints.map((point) => [point.id, point]));
+  const segmentById = new Map(profile.segments.map((segment) => [segment.id, segment]));
+  const neighbors = new Map(allPoints.map((point) => [point.id, [] as string[]]));
   for (const constraint of constraints) {
     if (constraint.kind !== "coincident") continue;
     neighbors.get(constraint.pointIds[0])?.push(constraint.pointIds[1]);
@@ -100,7 +134,7 @@ export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: 
   }
 
   const componentByPoint = new Map<string, string[]>();
-  for (const point of profile.points) {
+  for (const point of allPoints) {
     if (componentByPoint.has(point.id)) continue;
     const component: string[] = [];
     const pending = [point.id];
@@ -184,12 +218,6 @@ export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: 
   }
 
   for (const constraint of constraints) {
-    if (constraint.kind !== "radius" && constraint.kind !== "diameter") continue;
-    const circle = profile.circles?.find((candidate) => candidate.id === constraint.circleId);
-    if (circle) circle.radius = Math.max(0.001, Math.abs(constraint.value) / (constraint.kind === "diameter" ? 2 : 1));
-  }
-
-  for (const constraint of constraints) {
     if (constraint.kind !== "angle") continue;
     const first = segmentById.get(constraint.segmentIds[0]);
     const second = constraint.segmentIds[1] ? segmentById.get(constraint.segmentIds[1]) : null;
@@ -218,6 +246,23 @@ export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: 
   for (const fixed of fixedByPoint.values()) {
     assignComponent(fixed.pointId, "x", fixed.x);
     assignComponent(fixed.pointId, "z", fixed.z);
+  }
+  for (const circle of profile.circles ?? []) {
+    const centerId = circleSketchPointId(circle.id, "center");
+    const radiusId = circleSketchPointId(circle.id, "radius");
+    const center = pointById.get(centerId);
+    const radiusPoint = pointById.get(radiusId);
+    if (!center || !radiusPoint) continue;
+    const centerReferenced = drivingPointId === centerId || constraints.some((constraint) => sketchConstraintUsesPoint(constraint, centerId));
+    const radiusReferenced = drivingPointId === radiusId || constraints.some((constraint) => sketchConstraintUsesPoint(constraint, radiusId));
+    if (centerReferenced) {
+      circle.x = center.x;
+      circle.z = center.z;
+    }
+    if (radiusReferenced) {
+      circle.radius = Math.max(0.001, Math.hypot(radiusPoint.x - center.x, radiusPoint.z - center.z));
+      circle.radiusAngle = Math.atan2(radiusPoint.z - center.z, radiusPoint.x - center.x);
+    }
   }
   return profile;
 }
