@@ -24,6 +24,7 @@ export function sketchConstraintPoint(profile: SketchProfile, id: string): Sketc
 export function sketchConstraintUsesSegment(constraint: SketchConstraint, segmentId: string) {
   if (constraint.kind === "angle" || constraint.kind === "parallel" || constraint.kind === "perpendicular" || constraint.kind === "equalLength") return constraint.segmentIds.includes(segmentId);
   if (constraint.kind === "midpoint" || constraint.kind === "pointOnObject") return constraint.segmentId === segmentId;
+  if (constraint.kind === "tangentLineCircle" || constraint.kind === "symmetric") return constraint.segmentId === segmentId;
   return (constraint.kind === "horizontal" || constraint.kind === "vertical" || constraint.kind === "distance") && constraint.segmentId === segmentId;
 }
 
@@ -32,6 +33,9 @@ export function sketchConstraintUsesPoint(constraint: SketchConstraint, pointId:
   if (constraint.kind === "coincident") return constraint.pointIds.includes(pointId);
   if (constraint.kind === "concentric") return constraint.circleIds.some((circleId) => circleSketchPointId(circleId, "center") === pointId);
   if (constraint.kind === "midpoint" || constraint.kind === "pointOnObject") return constraint.pointId === pointId;
+  if (constraint.kind === "symmetric") return constraint.pointIds.includes(pointId);
+  if (constraint.kind === "tangentLineCircle") return circleSketchPointId(constraint.circleId, "center") === pointId;
+  if (constraint.kind === "tangentCircles") return constraint.circleIds.some((circleId) => circleSketchPointId(circleId, "center") === pointId);
   return false;
 }
 
@@ -55,6 +59,32 @@ function coincidentSketchPoints(profile: SketchProfile, firstId: string, secondI
 
 export function sketchConstraintConflict(profile: SketchProfile, candidate: SketchConstraint) {
   const constraints = profile.constraints ?? [];
+  if (candidate.kind === "tangentLineCircle") {
+    const segment = profile.segments.find((item) => item.id === candidate.segmentId && item.kind === "line");
+    const circle = profile.circles?.find((item) => item.id === candidate.circleId);
+    if (!segment || !circle) return "La tangencia requiere una línea recta y un círculo válidos.";
+    const centerId = circleSketchPointId(circle.id, "center");
+    if (constraints.some((constraint) => constraint.kind === "fixed" && coincidentSketchPoints(profile, centerId, constraint.pointId))) return "El centro del círculo está fijado; libéralo antes de aplicar la tangencia.";
+  }
+  if (candidate.kind === "tangentCircles") {
+    const circles = candidate.circleIds.map((id) => profile.circles?.find((circle) => circle.id === id));
+    if (candidate.circleIds[0] === candidate.circleIds[1] || circles.some((circle) => !circle)) return "La tangencia requiere dos círculos diferentes.";
+    const fixedCenters = candidate.circleIds.map((circleId) => constraints.find((constraint) => constraint.kind === "fixed" && constraint.pointId === circleSketchPointId(circleId, "center")));
+    if (fixedCenters.every(Boolean) && circles[0] && circles[1]) {
+      const distance = Math.hypot(circles[1].x - circles[0].x, circles[1].z - circles[0].z);
+      if (Math.abs(distance - circles[0].radius - circles[1].radius) > 0.000001) return "Los dos centros están fijados y los círculos no son tangentes.";
+    }
+  }
+  if (candidate.kind === "symmetric") {
+    const [firstId, secondId] = candidate.pointIds;
+    const first = sketchConstraintPoint(profile, firstId);
+    const second = sketchConstraintPoint(profile, secondId);
+    const axis = profile.segments.find((segment) => segment.id === candidate.segmentId && segment.kind === "line");
+    if (firstId === secondId || !first || !second || !axis) return "La simetría requiere dos puntos diferentes y una línea recta como eje.";
+    if ([axis.startId, axis.endId].includes(firstId) || [axis.startId, axis.endId].includes(secondId)) return "Los puntos del eje no pueden usarse como puntos simétricos.";
+    const fixed = candidate.pointIds.map((pointId) => constraints.some((constraint) => constraint.kind === "fixed" && coincidentSketchPoints(profile, pointId, constraint.pointId)));
+    if (fixed.every(Boolean)) return "Los dos puntos están fijados; libera uno antes de aplicar la simetría.";
+  }
   if (candidate.kind === "midpoint" || candidate.kind === "pointOnObject") {
     const point = sketchConstraintPoint(profile, candidate.pointId);
     const segment = profile.segments.find((item) => item.id === candidate.segmentId && item.kind === "line");
@@ -390,6 +420,72 @@ export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: 
   }
 
   applyPointRelations();
+
+  for (const constraint of constraints) {
+    if (constraint.kind === "tangentLineCircle") {
+      const segment = segmentById.get(constraint.segmentId);
+      const circle = profile.circles?.find((candidate) => candidate.id === constraint.circleId);
+      const start = segment ? pointById.get(segment.startId) : null;
+      const end = segment ? pointById.get(segment.endId) : null;
+      const center = circle ? pointById.get(circleSketchPointId(circle.id, "center")) : null;
+      if (!segment || segment.kind !== "line" || !circle || !start || !end || !center) continue;
+      const dx = end.x - start.x;
+      const dz = end.z - start.z;
+      const length = Math.hypot(dx, dz);
+      if (length < 0.000001) continue;
+      const unitX = dx / length;
+      const unitZ = dz / length;
+      const projection = (center.x - start.x) * unitX + (center.z - start.z) * unitZ;
+      const baseX = start.x + projection * unitX;
+      const baseZ = start.z + projection * unitZ;
+      const normalX = -unitZ;
+      const normalZ = unitX;
+      const side = Math.sign((center.x - baseX) * normalX + (center.z - baseZ) * normalZ) || 1;
+      assignComponent(center.id, "x", baseX + normalX * circle.radius * side);
+      assignComponent(center.id, "z", baseZ + normalZ * circle.radius * side);
+    }
+    if (constraint.kind === "tangentCircles") {
+      let reference = profile.circles?.find((circle) => circle.id === constraint.circleIds[0]);
+      let target = profile.circles?.find((circle) => circle.id === constraint.circleIds[1]);
+      if (!reference || !target) continue;
+      const referenceId = circleSketchPointId(reference.id, "center");
+      const targetId = circleSketchPointId(target.id, "center");
+      const targetFixed = (componentByPoint.get(targetId) ?? [targetId]).some((id) => fixedByPoint.has(id));
+      const referenceFixed = (componentByPoint.get(referenceId) ?? [referenceId]).some((id) => fixedByPoint.has(id));
+      if (driven.has(referenceId) || (targetFixed && !referenceFixed)) [reference, target] = [target, reference];
+      const referenceCenter = pointById.get(circleSketchPointId(reference.id, "center"));
+      const targetCenter = pointById.get(circleSketchPointId(target.id, "center"));
+      if (!referenceCenter || !targetCenter) continue;
+      const dx = targetCenter.x - referenceCenter.x;
+      const dz = targetCenter.z - referenceCenter.z;
+      const distance = Math.hypot(dx, dz);
+      const unitX = distance > 0.000001 ? dx / distance : 1;
+      const unitZ = distance > 0.000001 ? dz / distance : 0;
+      const tangentDistance = reference.radius + target.radius;
+      assignComponent(targetCenter.id, "x", referenceCenter.x + unitX * tangentDistance);
+      assignComponent(targetCenter.id, "z", referenceCenter.z + unitZ * tangentDistance);
+    }
+    if (constraint.kind === "symmetric") {
+      let reference = pointById.get(constraint.pointIds[0]);
+      let target = pointById.get(constraint.pointIds[1]);
+      const axis = segmentById.get(constraint.segmentId);
+      const axisStart = axis ? pointById.get(axis.startId) : null;
+      const axisEnd = axis ? pointById.get(axis.endId) : null;
+      if (!reference || !target || !axis || axis.kind !== "line" || !axisStart || !axisEnd) continue;
+      const targetFixed = (componentByPoint.get(target.id) ?? [target.id]).some((id) => fixedByPoint.has(id));
+      const referenceFixed = (componentByPoint.get(reference.id) ?? [reference.id]).some((id) => fixedByPoint.has(id));
+      if (driven.has(reference.id) || (targetFixed && !referenceFixed)) [reference, target] = [target, reference];
+      const dx = axisEnd.x - axisStart.x;
+      const dz = axisEnd.z - axisStart.z;
+      const lengthSquared = dx * dx + dz * dz;
+      if (lengthSquared < 0.000001) continue;
+      const projection = ((reference.x - axisStart.x) * dx + (reference.z - axisStart.z) * dz) / lengthSquared;
+      const projectionX = axisStart.x + projection * dx;
+      const projectionZ = axisStart.z + projection * dz;
+      assignComponent(target.id, "x", projectionX * 2 - reference.x);
+      assignComponent(target.id, "z", projectionZ * 2 - reference.z);
+    }
+  }
 
   for (const fixed of fixedByPoint.values()) {
     assignComponent(fixed.pointId, "x", fixed.x);

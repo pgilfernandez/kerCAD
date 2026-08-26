@@ -42,7 +42,7 @@ type SketchWorkspaceProps = {
   onAddCircle?: (circle: Omit<SketchCircle, "id">) => void;
   onAddArc?: (arc: { center: { x: number; z: number }; start: { x: number; z: number }; end: { x: number; z: number }; clockwise: boolean }) => void;
   onMoveArcCenter?: (id: string, center: { x: number; z: number }) => void;
-  onSelectCircle?: (id: string) => void;
+  onSelectCircle?: (id: string, additive?: boolean) => void;
   onSelectCirclePoint?: (id: string, point: "center" | "radius", additive: boolean) => void;
   onDeleteCircle?: (id: string) => void;
   onMoveCircle?: (id: string, center: { x: number; z: number }) => void;
@@ -1061,9 +1061,9 @@ export function SketchWorkspace({
                 if (event.button === 1) beginPan(event);
                 else if (tool === "erase") onDeleteCircle?.(circle.id);
                 else if (event.button === 0 && tool === "select" && point) {
-                  onSelectCircle?.(circle.id);
+                  onSelectCircle?.(circle.id, event.ctrlKey || event.metaKey || event.shiftKey);
                   beginEntityDrag(event, { kind: "move-circle", pointerId: event.pointerId, circleId: circle.id, origin: point, current: point, start: { ...circle } });
-                } else if (event.button === 0) onSelectCircle?.(circle.id);
+                } else if (event.button === 0) onSelectCircle?.(circle.id, event.ctrlKey || event.metaKey || event.shiftKey);
               }}
             />)}
           </g>
@@ -1111,6 +1111,26 @@ export function SketchWorkspace({
               const point = pointById.get(constraint.pointId);
               if (!point) return null;
               return <SketchConstraintBadge key={constraint.id} id={constraint.id} label={constraint.kind === "midpoint" ? "M" : "∈"} x={point.x + 18 * screenUnit} z={point.z + 13 * screenUnit} screenUnit={screenUnit} onDelete={onDeleteConstraint} />;
+            })}
+            {(displayProfile.constraints ?? []).map((constraint) => {
+              if (constraint.kind === "tangentLineCircle") {
+                const segment = displayProfile.segments.find((candidate) => candidate.id === constraint.segmentId);
+                const dimension = segment ? segmentDimension(segment, pointById) : null;
+                const circle = displayProfile.circles?.find((candidate) => candidate.id === constraint.circleId);
+                if (!dimension || !circle) return null;
+                return <SketchConstraintBadge key={constraint.id} id={constraint.id} label="T" x={(dimension.midpoint.x + circle.x) / 2} z={(dimension.midpoint.z + circle.z) / 2 - 14 * screenUnit} screenUnit={screenUnit} onDelete={onDeleteConstraint} />;
+              }
+              if (constraint.kind === "tangentCircles") {
+                const circles = constraint.circleIds.map((id) => displayProfile.circles?.find((circle) => circle.id === id)).filter(Boolean) as SketchCircle[];
+                if (circles.length !== 2) return null;
+                return <SketchConstraintBadge key={constraint.id} id={constraint.id} label="T" x={(circles[0].x + circles[1].x) / 2} z={(circles[0].z + circles[1].z) / 2 - 14 * screenUnit} screenUnit={screenUnit} onDelete={onDeleteConstraint} />;
+              }
+              if (constraint.kind === "symmetric") {
+                const points = constraint.pointIds.map((id) => pointById.get(id)).filter(Boolean) as SketchPoint[];
+                if (points.length !== 2) return null;
+                return <SketchConstraintBadge key={constraint.id} id={constraint.id} label="S" x={(points[0].x + points[1].x) / 2 + 18 * screenUnit} z={(points[0].z + points[1].z) / 2} screenUnit={screenUnit} onDelete={onDeleteConstraint} />;
+              }
+              return null;
             })}
             {(displayProfile.constraints ?? []).filter((constraint) => constraint.kind === "fixed").map((constraint) => {
               const point = pointById.get(constraint.pointId);
