@@ -4,6 +4,7 @@ import type {
   FilletFeature,
   FaceExtrudeFeature,
   MirrorFeature,
+  LinearPatternFeature,
   RevolveFeature,
   ShellFeature,
   HoleFeature,
@@ -242,6 +243,19 @@ export function createMirrorFeature(index: number): MirrorFeature {
   };
 }
 
+export function createLinearPatternFeature(index: number): LinearPatternFeature {
+  return {
+    id: createFeatureId("linear-pattern"),
+    kind: "linearPattern",
+    name: `Matriz lineal ${index}`,
+    suppressed: false,
+    source: "body",
+    axis: "x",
+    count: 3,
+    spacing: 20,
+  };
+}
+
 export function validateDocument(value: unknown): value is ParametricDocument {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<ParametricDocument>;
@@ -340,10 +354,24 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
       feature.treatment ??= "fillet";
       feature.selectionReferenceIds ??= feature.edgeReferenceIds;
     }
-    if (feature.kind === "revolve") feature.source ??= feature.sketchId ? "sketch" : "face";
+    if (feature.kind === "revolve") {
+      const legacy = feature as RevolveFeature & { source?: RevolveFeature["source"] };
+      legacy.source ??= legacy.sketchId ? "sketch" : "face";
+    }
     if (feature.kind === "mirror") {
       feature.axis = feature.axis === "y" || feature.axis === "z" ? feature.axis : "x";
       feature.duplicate = typeof feature.duplicate === "boolean" ? feature.duplicate : true;
+    }
+    if (feature.kind === "linearPattern") {
+      feature.source = feature.source === "feature" && feature.sourceFeatureId ? "feature" : "body";
+      if (feature.source === "body") {
+        feature.sourceFeatureId = undefined;
+      } else if (!feature.dependencies?.some((dependency) => dependency.type === "feature" && dependency.id === feature.sourceFeatureId)) {
+        feature.dependencies = [...feature.dependencies ?? [], { type: "feature", id: feature.sourceFeatureId! }];
+      }
+      feature.axis = feature.axis === "y" || feature.axis === "z" ? feature.axis : "x";
+      feature.count = Math.min(50, Math.max(2, Math.round(Number.isFinite(feature.count) ? feature.count : 3)));
+      feature.spacing = Math.abs(feature.spacing) >= 0.01 && Number.isFinite(feature.spacing) ? feature.spacing : 20;
     }
     if (feature.kind === "primitive") {
       feature.width = Math.max(0.1, Number.isFinite(feature.width) ? feature.width : 20);

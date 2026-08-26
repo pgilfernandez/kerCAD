@@ -1,4 +1,4 @@
-export type FeatureKind = "sketch" | "extrude" | "primitive" | "hole" | "fillet" | "faceExtrude" | "shell" | "revolve" | "mirror";
+export type FeatureKind = "sketch" | "extrude" | "primitive" | "hole" | "fillet" | "faceExtrude" | "shell" | "revolve" | "mirror" | "linearPattern";
 
 export type ParametricDependencyReference =
   | { type: "feature"; id: string }
@@ -166,7 +166,18 @@ export type MirrorFeature = BaseFeature & {
   duplicate: boolean;
 };
 
-export type ParametricFeature = SketchFeature | ExtrudeFeature | PrimitiveFeature | HoleFeature | FilletFeature | FaceExtrudeFeature | ShellFeature | RevolveFeature | MirrorFeature;
+export type LinearPatternFeature = BaseFeature & {
+  kind: "linearPattern";
+  source: "body" | "feature";
+  sourceFeatureId?: string;
+  axis: "x" | "y" | "z";
+  /** Total number of instances, including the original result. */
+  count: number;
+  /** Signed center-to-center distance between consecutive instances. */
+  spacing: number;
+};
+
+export type ParametricFeature = SketchFeature | ExtrudeFeature | PrimitiveFeature | HoleFeature | FilletFeature | FaceExtrudeFeature | ShellFeature | RevolveFeature | MirrorFeature | LinearPatternFeature;
 
 export type ParametricObject = {
   id: string;

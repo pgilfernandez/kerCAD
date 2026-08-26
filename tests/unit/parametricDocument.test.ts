@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createExtrudeFeature,
   createMirrorFeature,
+  createLinearPatternFeature,
   createSketchFeature,
   createStarterDocument,
   documentHasSolid,
@@ -55,6 +56,19 @@ describe("parametric document", () => {
       name: "Espejo 2",
       axis: "x",
       duplicate: true,
+      suppressed: false,
+    });
+  });
+
+  it("creates an editable linear pattern history operation", () => {
+    const pattern = createLinearPatternFeature(1);
+    expect(pattern).toMatchObject({
+      kind: "linearPattern",
+      name: "Matriz lineal 1",
+      source: "body",
+      axis: "x",
+      count: 3,
+      spacing: 20,
       suppressed: false,
     });
   });

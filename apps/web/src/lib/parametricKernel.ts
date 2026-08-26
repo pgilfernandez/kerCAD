@@ -7,6 +7,7 @@ import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricObject,
 type AnySolid = BrepSolid;
 type CompoundShape = ReturnType<Brep["compound"]>;
 type RenderableShape = AnySolid | CompoundShape;
+type OperationSolidState = { before: AnySolid | null; after: AnySolid };
 
 function resultValue<T>(brep: Brep, result: ReturnType<Brep["cut"]> | ReturnType<Brep["fuse"]> | ReturnType<Brep["intersect"]> | ReturnType<Brep["fillet"]>) {
   return brep.unwrap(result) as T;
@@ -534,12 +535,33 @@ function applyMirrorFeature(brep: Brep, current: AnySolid, feature: Extract<Para
   return feature.duplicate ? refinedBooleanSolid(brep, brep.fuse(current, mirrored)) : mirrored;
 }
 
+function applyLinearPatternFeature(brep: Brep, current: AnySolid, feature: Extract<ParametricDocument["features"][number], { kind: "linearPattern" }>, sourceState?: OperationSolidState) {
+  let result = current;
+  if (feature.source === "feature" && !sourceState) throw new Error(`${feature.name}: la operación de origen ya no está disponible.`);
+  const added = feature.source === "body"
+    ? current
+    : sourceState!.before
+      ? resultValue<AnySolid>(brep, brep.cut(sourceState!.after, sourceState!.before))
+      : sourceState!.after;
+  const removed = feature.source === "feature" && sourceState!.before
+    ? resultValue<AnySolid>(brep, brep.cut(sourceState!.before, sourceState!.after))
+    : null;
+  for (let index = 1; index < feature.count; index += 1) {
+    const distance = feature.spacing * index;
+    const offset: [number, number, number] = feature.axis === "x" ? [distance, 0, 0] : feature.axis === "y" ? [0, distance, 0] : [0, 0, distance];
+    if (!brep.isEmpty(added)) result = refinedBooleanSolid(brep, brep.fuse(result, brep.translate(added, offset) as AnySolid));
+    if (removed && !brep.isEmpty(removed)) result = refinedBooleanSolid(brep, brep.cut(result, brep.translate(removed, offset) as AnySolid));
+  }
+  return result;
+}
+
 async function buildParametricModelInternal(document: ParametricDocument, contextFeatureId: string | null, stopAtContext: boolean): Promise<BuildResult> {
   const brep = await loadBrepWithOcct();
   const sketches = new Map<string, SketchFeature>();
   const objects = new Map(document.objects.map((object) => [object.id, object]));
   const completedFeatureIds: string[] = [];
   const solids = new Map<string, AnySolid>();
+  const operationStates = new Map<string, OperationSolidState>();
   let operationContext: BuildResult["operationContext"] = null;
   let lastObjectId = "legacy";
 
@@ -560,7 +582,9 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         lastObjectId = objectId;
         const current = solids.get(objectId) ?? null;
         const tool = feature.kind === "primitive" ? solidFromPrimitive(brep, feature) : solidFromSketch(brep, sketch!, feature);
-        solids.set(objectId, applyBooleanOperation(brep, current, tool, feature));
+        const result = applyBooleanOperation(brep, current, tool, feature);
+        solids.set(objectId, result);
+        operationStates.set(feature.id, { before: current, after: result });
         completedFeatureIds.push(feature.id);
         if (feature.id === contextFeatureId) {
           const selectedResult = solids.get(objectId);
@@ -587,6 +611,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         const cutter = brep.cylinder(feature.diameter / 2, Math.max(0.01, height), { at: [feature.x, feature.y, baseZ] });
         current = refinedBooleanSolid(brep, brep.cut(current, cutter));
         solids.set(objectId, current);
+        operationStates.set(feature.id, { before: previousSolid, after: current });
         completedFeatureIds.push(feature.id);
         continue;
       }
@@ -614,7 +639,15 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         current = applyMirrorFeature(brep, current, feature);
         solids.set(objectId, current);
         completedFeatureIds.push(feature.id);
+      } else if (feature.kind === "linearPattern") {
+        if (feature.count < 2 || feature.count > 50) throw new Error(`${feature.name}: la cantidad debe estar entre 2 y 50.`);
+        if (Math.abs(feature.spacing) < 0.01) throw new Error(`${feature.name}: la separación no puede ser cero.`);
+        const sourceState = feature.source === "feature" && feature.sourceFeatureId ? operationStates.get(feature.sourceFeatureId) : undefined;
+        current = applyLinearPatternFeature(brep, current, feature, sourceState);
+        solids.set(objectId, current);
+        completedFeatureIds.push(feature.id);
       }
+      operationStates.set(feature.id, { before: previousSolid, after: current });
       if (feature.id === contextFeatureId) {
         const selectedResult = solids.get(objectId);
         const removedMaterial = feature.kind === "fillet" || feature.kind === "shell" || (feature.kind === "faceExtrude" && feature.operation === "cut") || (feature.kind === "revolve" && feature.operation !== "add");
@@ -681,6 +714,7 @@ export async function exportParametricStep(document: ParametricDocument): Promis
   const sketches = new Map<string, SketchFeature>();
   const objects = new Map(document.objects.map((object) => [object.id, object]));
   const solids = new Map<string, AnySolid>();
+  const operationStates = new Map<string, OperationSolidState>();
   let lastObjectId = "legacy";
   for (const feature of topologicallySortedParametricFeatures(document)) {
     if (feature.suppressed) continue;
@@ -695,12 +729,15 @@ export async function exportParametricStep(document: ParametricDocument): Promis
       lastObjectId = objectId;
       const current = solids.get(objectId) ?? null;
       const tool = feature.kind === "primitive" ? solidFromPrimitive(brep, feature) : solidFromSketch(brep, sketch!, feature);
-      solids.set(objectId, applyBooleanOperation(brep, current, tool, feature));
+      const result = applyBooleanOperation(brep, current, tool, feature);
+      solids.set(objectId, result);
+      operationStates.set(feature.id, { before: current, after: result });
       continue;
     }
     const objectId = feature.objectId ?? lastObjectId;
     let current = solids.get(objectId) ?? null;
     if (!current) continue;
+    const previousSolid = current;
     if (feature.kind === "hole") {
       const bounds = brep.getBounds(current);
       const baseZ = feature.termination === "through-all" ? bounds.zMin - 1 : bounds.zMax - feature.depth;
@@ -710,8 +747,10 @@ export async function exportParametricStep(document: ParametricDocument): Promis
     else if (feature.kind === "faceExtrude") current = applyFaceExtrudeFeature(brep, document, current, feature);
     else if (feature.kind === "shell") current = applyShellFeature(brep, document, current, feature);
     else if (feature.kind === "revolve") current = applyRevolveFeature(brep, document, current, feature);
-    else current = applyMirrorFeature(brep, current, feature);
+    else if (feature.kind === "mirror") current = applyMirrorFeature(brep, current, feature);
+    else current = applyLinearPatternFeature(brep, current, feature, feature.source === "feature" && feature.sourceFeatureId ? operationStates.get(feature.sourceFeatureId) : undefined);
     solids.set(objectId, current);
+    operationStates.set(feature.id, { before: previousSolid, after: current });
   }
   const result = combinedObjectShape(brep, worldObjectSolids(brep, solids, objects));
   if (!result) throw new Error("No hay ningún sólido para exportar.");

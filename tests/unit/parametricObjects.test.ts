@@ -31,7 +31,7 @@ import {
   updateParametricTreeSelection,
   updateParametricShapeParameter,
 } from "@/lib/parametricObjects";
-import { createFilletFeature, createStarterDocument } from "@/lib/parametricDocument";
+import { createFilletFeature, createLinearPatternFeature, createStarterDocument } from "@/lib/parametricDocument";
 
 describe("parametric object workflow", () => {
   it("adds a simple shape as a real sketch and extrusion", () => {
@@ -658,5 +658,20 @@ describe("parametric object workflow", () => {
 
     expect(lastOperationForObject(document, objectId)?.id).toBe(fillet.id);
     expect(lastOperationForObject(document, "missing-object")).toBeNull();
+  });
+
+  it("removes a feature pattern when its source operation is deleted", () => {
+    const document = createStarterDocument(123);
+    const source = document.features.find((feature) => feature.kind === "extrude")!;
+    const pattern = createLinearPatternFeature(1);
+    pattern.objectId = source.objectId;
+    pattern.source = "feature";
+    pattern.sourceFeatureId = source.id;
+    pattern.dependencies = [{ type: "feature", id: source.id }];
+    document.features.push(pattern);
+
+    deleteParametricFeature(document, source.id);
+
+    expect(document.features.some((feature) => feature.id === pattern.id)).toBe(false);
   });
 });

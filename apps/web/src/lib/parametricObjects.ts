@@ -227,6 +227,15 @@ export function deleteParametricFeature(document: ParametricDocument, id: string
       if (candidate.kind === "revolve" && candidate.source === "sketch" && candidate.sketchId === feature.id) ids.add(candidate.id);
     }
   }
+  let addedDependent = true;
+  while (addedDependent) {
+    addedDependent = false;
+    for (const candidate of document.features) {
+      if (ids.has(candidate.id) || !candidate.dependencies?.some((dependency) => dependency.type === "feature" && ids.has(dependency.id))) continue;
+      ids.add(candidate.id);
+      addedDependent = true;
+    }
+  }
   document.features = document.features.filter((candidate) => !ids.has(candidate.id));
   document.topologyReferences = document.topologyReferences.filter((reference) => !ids.has(reference.sourceFeatureId) && !ownedReferenceIds.has(reference.id));
   const remaining = operations.filter((candidate) => !ids.has(candidate.id));

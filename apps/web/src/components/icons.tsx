@@ -165,6 +165,15 @@ export function ToolbarMirrorIcon() {
   return <ToolbarCommandImage file="toolbar-mirror.png" className="toolbar-user-art-icon" />;
 }
 
+export function ToolbarLinearPatternIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 48 48" aria-hidden="true" {...props}>
+      <path d="M9 39 39 9" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+      {[10, 24, 38].map((coordinate) => <rect key={coordinate} x={coordinate - 5} y={43 - coordinate - 5} width="10" height="10" rx="1.5" fill="white" stroke="currentColor" strokeWidth="2.2" />)}
+    </svg>
+  );
+}
+
 export function ToolbarChamferIcon() {
   return <ToolbarCommandImage file="toolbar-chamfer.png" className="toolbar-user-art-icon" />;
 }

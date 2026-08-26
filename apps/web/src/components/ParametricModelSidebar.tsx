@@ -19,6 +19,7 @@ import {
   LockKeyholeOpen,
   Pencil,
   Radius,
+  Rows3,
   Triangle,
   Trash2,
   X,
@@ -299,6 +300,7 @@ function FeatureIcon({ document, feature }: { document: ParametricDocument; feat
   if (feature.kind === "shell") return <img className="educad-operation-asset-icon" src="/assets/educad/operations/shell.svg" alt="Vaciado" />;
   if (feature.kind === "revolve") return <img className="educad-operation-asset-icon" src="/assets/educad/operations/revolve.svg" alt="Revolución" />;
   if (feature.kind === "mirror") return <FlipHorizontal2 className="mirror" size={16} />;
+  if (feature.kind === "linearPattern") return <Rows3 className="linear-pattern" size={16} />;
   return feature.treatment === "chamfer" ? <Triangle className="chamfer" size={16} /> : <Radius className="fillet" size={16} />;
 }
 
@@ -404,6 +406,9 @@ function ParametricFeatureInspector({
   const onUpdate = (update: (feature: ParametricFeature) => void) => onUpdateFeature(feature.id, update);
   const primitiveSketch = feature.kind === "extrude" ? sketchForExtrude(document, feature) : null;
   const revolveSketch = feature.kind === "revolve" && feature.source === "sketch" ? document.features.find((candidate): candidate is Extract<ParametricFeature, { kind: "sketch" }> => candidate.kind === "sketch" && candidate.id === feature.sketchId) ?? null : null;
+  const linearPatternSources = feature.kind === "linearPattern"
+    ? document.features.slice(0, document.features.findIndex((candidate) => candidate.id === feature.id)).filter((candidate) => candidate.objectId === feature.objectId && candidate.kind !== "sketch")
+    : [];
   const treatmentReferences = feature.kind === "fillet"
     ? (feature.selectionReferenceIds ?? feature.edgeReferenceIds ?? []).map((id) => document.topologyReferences.find((reference) => reference.id === id)).filter(Boolean)
     : [];
@@ -588,6 +593,33 @@ function ParametricFeatureInspector({
             <label><span>Resultado</span><select value={feature.duplicate ? "duplicate" : "transform"} onChange={(event) => onUpdate((draft) => { if (draft.kind === "mirror") draft.duplicate = event.target.value === "duplicate"; })}><option value="duplicate">Duplicar</option><option value="transform">Sólo transformar</option></select></label>
           </div>
           <TransformSection description="Plano local del objeto"><p className="educad-transform-empty">El resultado anterior se refleja respecto al plano local que pasa por el origen.</p></TransformSection>
+        </>
+      ) : null}
+
+      {feature.kind === "linearPattern" ? (
+        <>
+          <div className="educad-feature-card">
+            <h3>Operación</h3>
+            <label><span>Origen</span><select value={feature.source === "feature" ? feature.sourceFeatureId ?? "body" : "body"} onChange={(event) => onUpdate((draft) => {
+              if (draft.kind !== "linearPattern") return;
+              if (event.target.value === "body") {
+                draft.source = "body";
+                draft.sourceFeatureId = undefined;
+                draft.dependencies = undefined;
+              } else {
+                draft.source = "feature";
+                draft.sourceFeatureId = event.target.value;
+                draft.dependencies = [{ type: "feature", id: event.target.value }];
+              }
+            })}><option value="body">Cuerpo completo</option>{linearPatternSources.map((source) => <option key={source.id} value={source.id}>Operación · {source.name}</option>)}</select></label>
+            <label><span>Eje</span><select value={feature.axis} onChange={(event) => onUpdate((draft) => { if (draft.kind === "linearPattern") draft.axis = event.target.value as typeof draft.axis; })}><option value="x">X local</option><option value="y">Y local</option><option value="z">Z local</option></select></label>
+          </div>
+          <div className="educad-feature-card">
+            <h3>Parámetros</h3>
+            <BoundedNumberField label="Cantidad" value={feature.count} min={2} max={50} step={1} onChange={(value) => onUpdate((draft) => { if (draft.kind === "linearPattern") draft.count = Math.min(50, Math.max(2, Math.round(value))); })} />
+            <BoundedNumberField label="Separación" value={feature.spacing} min={-1000} max={1000} unit="mm" onChange={(value) => onUpdate((draft) => { if (draft.kind === "linearPattern") draft.spacing = Math.abs(value) < 0.01 ? (value < 0 ? -0.01 : 0.01) : value; })} />
+          </div>
+          <TransformSection description="Dirección local del objeto"><p className="educad-transform-empty">La cantidad incluye el original. Puede repetirse el cuerpo acumulado o la contribución de una operación anterior.</p></TransformSection>
         </>
       ) : null}
 
