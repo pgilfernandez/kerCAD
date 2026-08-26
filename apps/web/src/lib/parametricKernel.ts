@@ -7,7 +7,7 @@ import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricObject,
 type AnySolid = BrepSolid;
 type CompoundShape = ReturnType<Brep["compound"]>;
 type RenderableShape = AnySolid | CompoundShape;
-type OperationSolidState = { before: AnySolid | null; after: AnySolid };
+type OperationSolidState = { before: AnySolid | null; after: AnySolid; added?: AnySolid | null; removed?: AnySolid | null };
 
 function resultValue<T>(brep: Brep, result: ReturnType<Brep["cut"]> | ReturnType<Brep["fuse"]> | ReturnType<Brep["intersect"]> | ReturnType<Brep["fillet"]>) {
   return brep.unwrap(result) as T;
@@ -540,17 +540,51 @@ function applyLinearPatternFeature(brep: Brep, current: AnySolid, feature: Extra
   if (feature.source === "feature" && !sourceState) throw new Error(`${feature.name}: la operación de origen ya no está disponible.`);
   const added = feature.source === "body"
     ? current
-    : sourceState!.before
-      ? resultValue<AnySolid>(brep, brep.cut(sourceState!.after, sourceState!.before))
-      : sourceState!.after;
-  const removed = feature.source === "feature" && sourceState!.before
-    ? resultValue<AnySolid>(brep, brep.cut(sourceState!.before, sourceState!.after))
+    : sourceState!.added !== undefined
+      ? sourceState!.added
+      : sourceState!.before
+        ? resultValue<AnySolid>(brep, brep.cut(sourceState!.after, sourceState!.before))
+        : sourceState!.after;
+  const removed = feature.source === "feature"
+    ? sourceState!.removed !== undefined
+      ? sourceState!.removed
+      : sourceState!.before
+        ? resultValue<AnySolid>(brep, brep.cut(sourceState!.before, sourceState!.after))
+        : null
     : null;
   for (let index = 1; index < feature.count; index += 1) {
     const distance = feature.spacing * index;
     const offset: [number, number, number] = feature.axis === "x" ? [distance, 0, 0] : feature.axis === "y" ? [0, distance, 0] : [0, 0, distance];
-    if (!brep.isEmpty(added)) result = refinedBooleanSolid(brep, brep.fuse(result, brep.translate(added, offset) as AnySolid));
+    if (added && !brep.isEmpty(added)) result = refinedBooleanSolid(brep, brep.fuse(result, brep.translate(added, offset) as AnySolid));
     if (removed && !brep.isEmpty(removed)) result = refinedBooleanSolid(brep, brep.cut(result, brep.translate(removed, offset) as AnySolid));
+  }
+  return result;
+}
+
+function applyPolarPatternFeature(brep: Brep, current: AnySolid, feature: Extract<ParametricDocument["features"][number], { kind: "polarPattern" }>, sourceState?: OperationSolidState) {
+  let result = current;
+  if (feature.source === "feature" && !sourceState) throw new Error(`${feature.name}: la operación de origen ya no está disponible.`);
+  const added = feature.source === "body"
+    ? current
+    : sourceState!.added !== undefined
+      ? sourceState!.added
+      : sourceState!.before
+        ? resultValue<AnySolid>(brep, brep.cut(sourceState!.after, sourceState!.before))
+        : sourceState!.after;
+  const removed = feature.source === "feature"
+    ? sourceState!.removed !== undefined
+      ? sourceState!.removed
+      : sourceState!.before
+        ? resultValue<AnySolid>(brep, brep.cut(sourceState!.before, sourceState!.after))
+        : null
+    : null;
+  const closesCircle = feature.equalSpacing && Math.abs(feature.angle) >= 359.999;
+  const angleStep = feature.equalSpacing ? feature.angle / (closesCircle ? feature.count : feature.count - 1) : feature.angle;
+  const axis: [number, number, number] = feature.axis === "x" ? [1, 0, 0] : feature.axis === "y" ? [0, 1, 0] : [0, 0, 1];
+  for (let index = 1; index < feature.count; index += 1) {
+    const angle = angleStep * index;
+    if (added && !brep.isEmpty(added)) result = refinedBooleanSolid(brep, brep.fuse(result, brep.rotate(added, angle, { axis }) as AnySolid));
+    if (removed && !brep.isEmpty(removed)) result = refinedBooleanSolid(brep, brep.cut(result, brep.rotate(removed, angle, { axis }) as AnySolid));
   }
   return result;
 }
@@ -584,7 +618,11 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         const tool = feature.kind === "primitive" ? solidFromPrimitive(brep, feature) : solidFromSketch(brep, sketch!, feature);
         const result = applyBooleanOperation(brep, current, tool, feature);
         solids.set(objectId, result);
-        operationStates.set(feature.id, { before: current, after: result });
+        operationStates.set(feature.id, {
+          before: current,
+          after: result,
+          ...(feature.operation === "add" ? { added: tool, removed: null } : feature.operation === "cut" ? { added: null, removed: tool } : {}),
+        });
         completedFeatureIds.push(feature.id);
         if (feature.id === contextFeatureId) {
           const selectedResult = solids.get(objectId);
@@ -611,7 +649,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         const cutter = brep.cylinder(feature.diameter / 2, Math.max(0.01, height), { at: [feature.x, feature.y, baseZ] });
         current = refinedBooleanSolid(brep, brep.cut(current, cutter));
         solids.set(objectId, current);
-        operationStates.set(feature.id, { before: previousSolid, after: current });
+        operationStates.set(feature.id, { before: previousSolid, after: current, added: null, removed: cutter });
         completedFeatureIds.push(feature.id);
         continue;
       }
@@ -646,8 +684,15 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         current = applyLinearPatternFeature(brep, current, feature, sourceState);
         solids.set(objectId, current);
         completedFeatureIds.push(feature.id);
+      } else if (feature.kind === "polarPattern") {
+        if (feature.count < 2 || feature.count > 50) throw new Error(`${feature.name}: la cantidad debe estar entre 2 y 50.`);
+        if (Math.abs(feature.angle) < 0.1 || Math.abs(feature.angle) > 360) throw new Error(`${feature.name}: el ángulo debe estar entre -360 y 360 grados y no puede ser cero.`);
+        const sourceState = feature.source === "feature" && feature.sourceFeatureId ? operationStates.get(feature.sourceFeatureId) : undefined;
+        current = applyPolarPatternFeature(brep, current, feature, sourceState);
+        solids.set(objectId, current);
+        completedFeatureIds.push(feature.id);
       }
-      operationStates.set(feature.id, { before: previousSolid, after: current });
+      if (!operationStates.has(feature.id)) operationStates.set(feature.id, { before: previousSolid, after: current });
       if (feature.id === contextFeatureId) {
         const selectedResult = solids.get(objectId);
         const removedMaterial = feature.kind === "fillet" || feature.kind === "shell" || (feature.kind === "faceExtrude" && feature.operation === "cut") || (feature.kind === "revolve" && feature.operation !== "add");
@@ -731,7 +776,11 @@ export async function exportParametricStep(document: ParametricDocument): Promis
       const tool = feature.kind === "primitive" ? solidFromPrimitive(brep, feature) : solidFromSketch(brep, sketch!, feature);
       const result = applyBooleanOperation(brep, current, tool, feature);
       solids.set(objectId, result);
-      operationStates.set(feature.id, { before: current, after: result });
+      operationStates.set(feature.id, {
+        before: current,
+        after: result,
+        ...(feature.operation === "add" ? { added: tool, removed: null } : feature.operation === "cut" ? { added: null, removed: tool } : {}),
+      });
       continue;
     }
     const objectId = feature.objectId ?? lastObjectId;
@@ -742,15 +791,18 @@ export async function exportParametricStep(document: ParametricDocument): Promis
       const bounds = brep.getBounds(current);
       const baseZ = feature.termination === "through-all" ? bounds.zMin - 1 : bounds.zMax - feature.depth;
       const height = feature.termination === "through-all" ? bounds.zMax - bounds.zMin + 2 : feature.depth + 1;
-      current = refinedBooleanSolid(brep, brep.cut(current, brep.cylinder(feature.diameter / 2, height, { at: [feature.x, feature.y, baseZ] })));
+      const cutter = brep.cylinder(feature.diameter / 2, height, { at: [feature.x, feature.y, baseZ] });
+      current = refinedBooleanSolid(brep, brep.cut(current, cutter));
+      operationStates.set(feature.id, { before: previousSolid, after: current, added: null, removed: cutter });
     } else if (feature.kind === "fillet") current = applyFilletFeature(brep, document, current, feature);
     else if (feature.kind === "faceExtrude") current = applyFaceExtrudeFeature(brep, document, current, feature);
     else if (feature.kind === "shell") current = applyShellFeature(brep, document, current, feature);
     else if (feature.kind === "revolve") current = applyRevolveFeature(brep, document, current, feature);
     else if (feature.kind === "mirror") current = applyMirrorFeature(brep, current, feature);
-    else current = applyLinearPatternFeature(brep, current, feature, feature.source === "feature" && feature.sourceFeatureId ? operationStates.get(feature.sourceFeatureId) : undefined);
+    else if (feature.kind === "linearPattern") current = applyLinearPatternFeature(brep, current, feature, feature.source === "feature" && feature.sourceFeatureId ? operationStates.get(feature.sourceFeatureId) : undefined);
+    else current = applyPolarPatternFeature(brep, current, feature, feature.source === "feature" && feature.sourceFeatureId ? operationStates.get(feature.sourceFeatureId) : undefined);
     solids.set(objectId, current);
-    operationStates.set(feature.id, { before: previousSolid, after: current });
+    if (!operationStates.has(feature.id)) operationStates.set(feature.id, { before: previousSolid, after: current });
   }
   const result = combinedObjectShape(brep, worldObjectSolids(brep, solids, objects));
   if (!result) throw new Error("No hay ningún sólido para exportar.");

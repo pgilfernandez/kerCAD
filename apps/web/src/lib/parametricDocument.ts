@@ -5,6 +5,7 @@ import type {
   FaceExtrudeFeature,
   MirrorFeature,
   LinearPatternFeature,
+  PolarPatternFeature,
   RevolveFeature,
   ShellFeature,
   HoleFeature,
@@ -54,6 +55,7 @@ export function createStarterDocument(now = Date.now()): ParametricDocument {
         kind: "sketch",
         name: "Boceto de Caja",
         suppressed: false,
+        visible: true,
         objectId: object.id,
         plane: "XY",
         x: 0,
@@ -100,6 +102,7 @@ export function createSketchFeature(shape: RectangleProfile["shape"] | CirclePro
     kind: "sketch",
     name: `Boceto ${index}`,
     suppressed: false,
+    visible: true,
     purpose: "primitive",
     plane: "XY",
     x: 0,
@@ -118,6 +121,7 @@ export function createDrawnSketchFeature(index: number, geometry: DrawnProfile["
     kind: "sketch",
     name: `Boceto ${index}`,
     suppressed: false,
+    visible: true,
     purpose: "user",
     plane: "XY",
     x: 0,
@@ -256,6 +260,20 @@ export function createLinearPatternFeature(index: number): LinearPatternFeature 
   };
 }
 
+export function createPolarPatternFeature(index: number): PolarPatternFeature {
+  return {
+    id: createFeatureId("polar-pattern"),
+    kind: "polarPattern",
+    name: `Matriz polar ${index}`,
+    suppressed: false,
+    source: "body",
+    axis: "z",
+    count: 6,
+    angle: 360,
+    equalSpacing: true,
+  };
+}
+
 export function validateDocument(value: unknown): value is ParametricDocument {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<ParametricDocument>;
@@ -312,6 +330,7 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
 
   for (const feature of next.features) {
     if (feature.kind === "sketch") {
+      feature.visible = typeof feature.visible === "boolean" ? feature.visible : true;
       feature.purpose ??= feature.profile.shape === "drawn" ? "user" : "primitive";
       feature.rotation ??= { x: 0, y: 0, z: 0 };
       if (feature.profile.shape === "drawn") {
@@ -372,6 +391,18 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
       feature.axis = feature.axis === "y" || feature.axis === "z" ? feature.axis : "x";
       feature.count = Math.min(50, Math.max(2, Math.round(Number.isFinite(feature.count) ? feature.count : 3)));
       feature.spacing = Math.abs(feature.spacing) >= 0.01 && Number.isFinite(feature.spacing) ? feature.spacing : 20;
+    }
+    if (feature.kind === "polarPattern") {
+      feature.source = feature.source === "feature" && feature.sourceFeatureId ? "feature" : "body";
+      if (feature.source === "body") {
+        feature.sourceFeatureId = undefined;
+      } else if (!feature.dependencies?.some((dependency) => dependency.type === "feature" && dependency.id === feature.sourceFeatureId)) {
+        feature.dependencies = [...feature.dependencies ?? [], { type: "feature", id: feature.sourceFeatureId! }];
+      }
+      feature.axis = feature.axis === "x" || feature.axis === "y" ? feature.axis : "z";
+      feature.count = Math.min(50, Math.max(2, Math.round(Number.isFinite(feature.count) ? feature.count : 6)));
+      feature.angle = Math.min(360, Math.max(-360, Number.isFinite(feature.angle) && Math.abs(feature.angle) >= 0.1 ? feature.angle : 360));
+      feature.equalSpacing = typeof feature.equalSpacing === "boolean" ? feature.equalSpacing : true;
     }
     if (feature.kind === "primitive") {
       feature.width = Math.max(0.1, Number.isFinite(feature.width) ? feature.width : 20);

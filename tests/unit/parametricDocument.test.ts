@@ -3,6 +3,7 @@ import {
   createExtrudeFeature,
   createMirrorFeature,
   createLinearPatternFeature,
+  createPolarPatternFeature,
   createSketchFeature,
   createStarterDocument,
   documentHasSolid,
@@ -32,6 +33,7 @@ describe("parametric document", () => {
     expect(document.objects).toHaveLength(1);
     expect(document.objects[0]).toMatchObject({ name: "Objeto 1", color: "#d41721", visible: true, locked: false, expanded: true, transform: { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 } } });
     expect(document.features.map((feature) => feature.kind)).toEqual(["sketch", "extrude"]);
+    expect(document.features[0]).toMatchObject({ kind: "sketch", visible: true });
     const [sketch, extrude] = document.features;
     expect(extrude.kind === "extrude" && extrude.sketchId).toBe(sketch.id);
     expect(extrude.kind === "extrude" && extrude.operation).toBe("add");
@@ -69,6 +71,20 @@ describe("parametric document", () => {
       axis: "x",
       count: 3,
       spacing: 20,
+      suppressed: false,
+    });
+  });
+
+  it("creates an editable polar pattern history operation", () => {
+    const pattern = createPolarPatternFeature(1);
+    expect(pattern).toMatchObject({
+      kind: "polarPattern",
+      name: "Matriz polar 1",
+      source: "body",
+      axis: "z",
+      count: 6,
+      angle: 360,
+      equalSpacing: true,
       suppressed: false,
     });
   });
@@ -142,6 +158,16 @@ describe("parametric document", () => {
 
     expect(normalizeParametricDocument(stored).objects[0]).toMatchObject({ color: stored.color, visible: true, locked: false, expanded: true });
     expect("originVisible" in normalizeParametricDocument(stored).objects[0]).toBe(false);
+  });
+
+  it("restores sketch overlay visibility without changing suppression", () => {
+    const stored = createStarterDocument(123);
+    const sketch = stored.features[0];
+    if (sketch.kind !== "sketch") throw new Error("expected sketch");
+    delete (sketch as Partial<typeof sketch>).visible;
+
+    const normalized = normalizeParametricDocument(stored);
+    expect(normalized.features[0]).toMatchObject({ kind: "sketch", visible: true, suppressed: false });
   });
 
   it("migrates and clamps workplane settings", () => {

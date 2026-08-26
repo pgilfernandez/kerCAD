@@ -20,6 +20,7 @@ import {
   Pencil,
   Radius,
   Rows3,
+  RotateCw,
   Triangle,
   Trash2,
   X,
@@ -196,13 +197,14 @@ export function ParametricModelSidebar({
                   {isExpanded ? (
                     <div className="educad-operation-list" role="group" aria-label={`Operaciones de ${object.name}`}>
                       {object.operations.map((feature) => (
-                        <div key={feature.id} className={`educad-operation-row ${selection.some((candidate) => candidate.kind === "feature" && candidate.id === feature.id) ? "selected" : ""} ${feature.suppressed ? "suppressed" : ""} ${operationClass(feature)}`}>
+                        <div key={feature.id} className={`educad-operation-row ${selection.some((candidate) => candidate.kind === "feature" && candidate.id === feature.id) ? "selected" : ""} ${feature.suppressed ? "suppressed" : ""} ${feature.kind === "sketch" && !feature.visible ? "hidden" : ""} ${operationClass(feature)}`}>
                           <button className="educad-operation-select" title={feature.name} onClick={(event) => selectNode({ id: feature.id, kind: "feature" }, event)}>
                             <span className="educad-tree-branch" aria-hidden="true" />
                             <FeatureIcon document={document} feature={feature} />
                             <span className="educad-operation-name"><strong>{feature.name}</strong></span>
                           </button>
                           <div className="educad-tree-actions">
+                            {feature.kind === "sketch" ? <button aria-label={feature.visible ? `Ocultar ${feature.name}` : `Mostrar ${feature.name}`} title={feature.visible ? "Ocultar boceto" : "Mostrar boceto"} aria-pressed={!feature.visible} onClick={() => onUpdateFeature(feature.id, (draft) => { if (draft.kind === "sketch") draft.visible = !draft.visible; })}>{feature.visible ? <Eye size={15} /> : <EyeOff size={15} />}</button> : null}
                             <button aria-label={feature.suppressed ? `Activar ${feature.name}` : `Suprimir ${feature.name}`} title={feature.suppressed ? "Activar" : "Suprimir"} aria-pressed={feature.suppressed} onClick={() => onUpdateFeature(feature.id, (draft) => { draft.suppressed = !draft.suppressed; })}><CircleOff size={15} /></button>
                           </div>
                         </div>
@@ -301,6 +303,7 @@ function FeatureIcon({ document, feature }: { document: ParametricDocument; feat
   if (feature.kind === "revolve") return <img className="educad-operation-asset-icon" src="/assets/educad/operations/revolve.svg" alt="Revolución" />;
   if (feature.kind === "mirror") return <FlipHorizontal2 className="mirror" size={16} />;
   if (feature.kind === "linearPattern") return <Rows3 className="linear-pattern" size={16} />;
+  if (feature.kind === "polarPattern") return <RotateCw className="polar-pattern" size={16} />;
   return feature.treatment === "chamfer" ? <Triangle className="chamfer" size={16} /> : <Radius className="fillet" size={16} />;
 }
 
@@ -407,6 +410,9 @@ function ParametricFeatureInspector({
   const primitiveSketch = feature.kind === "extrude" ? sketchForExtrude(document, feature) : null;
   const revolveSketch = feature.kind === "revolve" && feature.source === "sketch" ? document.features.find((candidate): candidate is Extract<ParametricFeature, { kind: "sketch" }> => candidate.kind === "sketch" && candidate.id === feature.sketchId) ?? null : null;
   const linearPatternSources = feature.kind === "linearPattern"
+    ? document.features.slice(0, document.features.findIndex((candidate) => candidate.id === feature.id)).filter((candidate) => candidate.objectId === feature.objectId && candidate.kind !== "sketch")
+    : [];
+  const polarPatternSources = feature.kind === "polarPattern"
     ? document.features.slice(0, document.features.findIndex((candidate) => candidate.id === feature.id)).filter((candidate) => candidate.objectId === feature.objectId && candidate.kind !== "sketch")
     : [];
   const treatmentReferences = feature.kind === "fillet"
@@ -620,6 +626,34 @@ function ParametricFeatureInspector({
             <BoundedNumberField label="Separación" value={feature.spacing} min={-1000} max={1000} unit="mm" onChange={(value) => onUpdate((draft) => { if (draft.kind === "linearPattern") draft.spacing = Math.abs(value) < 0.01 ? (value < 0 ? -0.01 : 0.01) : value; })} />
           </div>
           <TransformSection description="Dirección local del objeto"><p className="educad-transform-empty">La cantidad incluye el original. Puede repetirse el cuerpo acumulado o la contribución de una operación anterior.</p></TransformSection>
+        </>
+      ) : null}
+
+      {feature.kind === "polarPattern" ? (
+        <>
+          <div className="educad-feature-card">
+            <h3>Operación</h3>
+            <label><span>Origen</span><select value={feature.source === "feature" ? feature.sourceFeatureId ?? "body" : "body"} onChange={(event) => onUpdate((draft) => {
+              if (draft.kind !== "polarPattern") return;
+              if (event.target.value === "body") {
+                draft.source = "body";
+                draft.sourceFeatureId = undefined;
+                draft.dependencies = undefined;
+              } else {
+                draft.source = "feature";
+                draft.sourceFeatureId = event.target.value;
+                draft.dependencies = [{ type: "feature", id: event.target.value }];
+              }
+            })}><option value="body">Cuerpo completo</option>{polarPatternSources.map((source) => <option key={source.id} value={source.id}>Operación · {source.name}</option>)}</select></label>
+            <label><span>Eje</span><select value={feature.axis} onChange={(event) => onUpdate((draft) => { if (draft.kind === "polarPattern") draft.axis = event.target.value as typeof draft.axis; })}><option value="x">X local</option><option value="y">Y local</option><option value="z">Z local</option></select></label>
+            <label><span>Distribución uniforme</span><input type="checkbox" checked={feature.equalSpacing} onChange={(event) => onUpdate((draft) => { if (draft.kind === "polarPattern") draft.equalSpacing = event.target.checked; })} /></label>
+          </div>
+          <div className="educad-feature-card">
+            <h3>Parámetros</h3>
+            <BoundedNumberField label="Cantidad" value={feature.count} min={2} max={50} step={1} onChange={(value) => onUpdate((draft) => { if (draft.kind === "polarPattern") draft.count = Math.min(50, Math.max(2, Math.round(value))); })} />
+            <BoundedNumberField label={feature.equalSpacing ? "Ángulo total" : "Paso angular"} value={feature.angle} min={-360} max={360} step={1} unit="°" onChange={(value) => onUpdate((draft) => { if (draft.kind === "polarPattern") draft.angle = Math.abs(value) < 0.1 ? (value < 0 ? -0.1 : 0.1) : value; })} />
+          </div>
+          <TransformSection description="Rotación alrededor del origen local"><p className="educad-transform-empty">La cantidad incluye el original. El signo del ángulo determina el sentido de giro.</p></TransformSection>
         </>
       ) : null}
 

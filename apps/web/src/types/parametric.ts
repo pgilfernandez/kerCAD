@@ -1,4 +1,4 @@
-export type FeatureKind = "sketch" | "extrude" | "primitive" | "hole" | "fillet" | "faceExtrude" | "shell" | "revolve" | "mirror" | "linearPattern";
+export type FeatureKind = "sketch" | "extrude" | "primitive" | "hole" | "fillet" | "faceExtrude" | "shell" | "revolve" | "mirror" | "linearPattern" | "polarPattern";
 
 export type ParametricDependencyReference =
   | { type: "feature"; id: string }
@@ -67,6 +67,8 @@ export type DrawnProfile = {
 
 export type SketchFeature = BaseFeature & {
   kind: "sketch";
+  /** Controls only the 2D overlay; downstream CAD operations still consume the sketch. */
+  visible: boolean;
   /** Primitive profiles are implementation details of Box/Cylinder; user sketches are editable history operations. */
   purpose?: "primitive" | "user";
   plane: "XY";
@@ -177,7 +179,18 @@ export type LinearPatternFeature = BaseFeature & {
   spacing: number;
 };
 
-export type ParametricFeature = SketchFeature | ExtrudeFeature | PrimitiveFeature | HoleFeature | FilletFeature | FaceExtrudeFeature | ShellFeature | RevolveFeature | MirrorFeature | LinearPatternFeature;
+export type PolarPatternFeature = BaseFeature & {
+  kind: "polarPattern";
+  source: "body" | "feature";
+  sourceFeatureId?: string;
+  axis: "x" | "y" | "z";
+  count: number;
+  /** Total sweep when equalSpacing is enabled; otherwise the step angle. */
+  angle: number;
+  equalSpacing: boolean;
+};
+
+export type ParametricFeature = SketchFeature | ExtrudeFeature | PrimitiveFeature | HoleFeature | FilletFeature | FaceExtrudeFeature | ShellFeature | RevolveFeature | MirrorFeature | LinearPatternFeature | PolarPatternFeature;
 
 export type ParametricObject = {
   id: string;

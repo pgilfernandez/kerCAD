@@ -174,6 +174,16 @@ export function ToolbarLinearPatternIcon(props: IconProps) {
   );
 }
 
+export function ToolbarPolarPatternIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 48 48" aria-hidden="true" {...props}>
+      <circle cx="24" cy="24" r="14" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="3 3" />
+      {[0, 90, 180, 270].map((angle) => <rect key={angle} x="19" y="4" width="10" height="10" rx="1.5" fill="white" stroke="currentColor" strokeWidth="2.2" transform={`rotate(${angle} 24 24)`} />)}
+      <circle cx="24" cy="24" r="2.5" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function ToolbarChamferIcon() {
   return <ToolbarCommandImage file="toolbar-chamfer.png" className="toolbar-user-art-icon" />;
 }
