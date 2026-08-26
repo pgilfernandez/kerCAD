@@ -3528,6 +3528,12 @@ button {
   height: 43px;
 }
 
+.toolbar-modify-section .toolbar-icon > svg {
+  overflow: visible;
+  transform: scale(1.18);
+  transform-origin: center;
+}
+
 .toolbar-command-icon {
   --toolbar-art-offset-y: 0%;
   display: block;

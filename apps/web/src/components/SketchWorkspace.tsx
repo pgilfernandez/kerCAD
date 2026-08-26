@@ -37,7 +37,7 @@ type SketchWorkspaceProps = {
   initialWorkspace?: WorkplaneWorkspaceSettings;
   onPlanePoint: (point: { x: number; z: number }, handles?: { handleIn: { x: number; z: number }; handleOut: { x: number; z: number } }) => void;
   onPointPress: (id: string, additive?: boolean) => void;
-  onSelectSegment: (id: string) => void;
+  onSelectSegment: (id: string, additive?: boolean) => void;
   onSelectMany: (pointIds: string[], segmentIds: string[], imageIds: string[], circleIds?: string[]) => void;
   onAddCircle?: (circle: Omit<SketchCircle, "id">) => void;
   onAddArc?: (arc: { center: { x: number; z: number }; start: { x: number; z: number }; end: { x: number; z: number }; clockwise: boolean }) => void;
@@ -1043,7 +1043,7 @@ export function SketchWorkspace({
                   if (event.button === 1) beginPan(event);
                   else if (tool === "erase") onDeleteSegment(segment.id);
                   else if (event.button === 0 && tool === "refine" && point) onInsertPoint(segment.id, point);
-                  else if (event.button === 0) onSelectSegment(segment.id);
+                  else if (event.button === 0) onSelectSegment(segment.id, event.ctrlKey || event.metaKey || event.shiftKey);
                 }}
               />
             ))}
@@ -1105,6 +1105,12 @@ export function SketchWorkspace({
               const x = (circles[0].x + circles[1].x) / 2 + 18 * screenUnit;
               const z = (circles[0].z + circles[1].z) / 2 - 12 * screenUnit;
               return <SketchConstraintBadge key={constraint.id} id={constraint.id} label={constraint.kind === "concentric" ? "◎" : "="} x={x} z={z} screenUnit={screenUnit} onDelete={onDeleteConstraint} />;
+            })}
+            {(displayProfile.constraints ?? []).map((constraint) => {
+              if (constraint.kind !== "midpoint" && constraint.kind !== "pointOnObject") return null;
+              const point = pointById.get(constraint.pointId);
+              if (!point) return null;
+              return <SketchConstraintBadge key={constraint.id} id={constraint.id} label={constraint.kind === "midpoint" ? "M" : "∈"} x={point.x + 18 * screenUnit} z={point.z + 13 * screenUnit} screenUnit={screenUnit} onDelete={onDeleteConstraint} />;
             })}
             {(displayProfile.constraints ?? []).filter((constraint) => constraint.kind === "fixed").map((constraint) => {
               const point = pointById.get(constraint.pointId);

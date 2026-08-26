@@ -23,6 +23,7 @@ export function sketchConstraintPoint(profile: SketchProfile, id: string): Sketc
 
 export function sketchConstraintUsesSegment(constraint: SketchConstraint, segmentId: string) {
   if (constraint.kind === "angle" || constraint.kind === "parallel" || constraint.kind === "perpendicular" || constraint.kind === "equalLength") return constraint.segmentIds.includes(segmentId);
+  if (constraint.kind === "midpoint" || constraint.kind === "pointOnObject") return constraint.segmentId === segmentId;
   return (constraint.kind === "horizontal" || constraint.kind === "vertical" || constraint.kind === "distance") && constraint.segmentId === segmentId;
 }
 
@@ -30,6 +31,7 @@ export function sketchConstraintUsesPoint(constraint: SketchConstraint, pointId:
   if (constraint.kind === "fixed") return constraint.pointId === pointId;
   if (constraint.kind === "coincident") return constraint.pointIds.includes(pointId);
   if (constraint.kind === "concentric") return constraint.circleIds.some((circleId) => circleSketchPointId(circleId, "center") === pointId);
+  if (constraint.kind === "midpoint" || constraint.kind === "pointOnObject") return constraint.pointId === pointId;
   return false;
 }
 
@@ -53,6 +55,13 @@ function coincidentSketchPoints(profile: SketchProfile, firstId: string, secondI
 
 export function sketchConstraintConflict(profile: SketchProfile, candidate: SketchConstraint) {
   const constraints = profile.constraints ?? [];
+  if (candidate.kind === "midpoint" || candidate.kind === "pointOnObject") {
+    const point = sketchConstraintPoint(profile, candidate.pointId);
+    const segment = profile.segments.find((item) => item.id === candidate.segmentId && item.kind === "line");
+    if (!point || !segment) return "La relación requiere un punto y una línea recta válidos.";
+    if (segment.startId === candidate.pointId || segment.endId === candidate.pointId) return candidate.kind === "midpoint" ? "Un extremo de la línea no puede ser también su punto medio." : "El extremo ya pertenece a la línea.";
+    if (constraints.some((constraint) => constraint.kind === "fixed" && coincidentSketchPoints(profile, candidate.pointId, constraint.pointId))) return "El punto está fijado; libéralo antes de aplicar esta relación.";
+  }
   if (candidate.kind === "equalLength") {
     const segments = candidate.segmentIds.map((id) => profile.segments.find((segment) => segment.id === id && segment.kind === "line"));
     if (candidate.segmentIds[0] === candidate.segmentIds[1] || segments.some((segment) => !segment)) return "La igualdad requiere dos líneas rectas diferentes.";
@@ -297,6 +306,29 @@ export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: 
     }
   }
 
+  const pointRelations = constraints.filter((constraint): constraint is Extract<SketchConstraint, { kind: "midpoint" | "pointOnObject" }> => constraint.kind === "midpoint" || constraint.kind === "pointOnObject");
+  const applyPointRelations = () => {
+    for (const constraint of pointRelations) {
+      const point = pointById.get(constraint.pointId);
+      const segment = segmentById.get(constraint.segmentId);
+      const start = segment ? pointById.get(segment.startId) : null;
+      const end = segment ? pointById.get(segment.endId) : null;
+      if (!point || !segment || segment.kind !== "line" || !start || !end) continue;
+      let x = (start.x + end.x) / 2;
+      let z = (start.z + end.z) / 2;
+      if (constraint.kind === "pointOnObject") {
+        const dx = end.x - start.x;
+        const dz = end.z - start.z;
+        const lengthSquared = dx * dx + dz * dz;
+        const t = lengthSquared > 0.000001 ? Math.max(0, Math.min(1, ((point.x - start.x) * dx + (point.z - start.z) * dz) / lengthSquared)) : 0;
+        x = start.x + dx * t;
+        z = start.z + dz * t;
+      }
+      assignComponent(point.id, "x", x);
+      assignComponent(point.id, "z", z);
+    }
+  };
+
   const angularDistance = (first: number, second: number) => Math.abs(Math.atan2(Math.sin(first - second), Math.cos(first - second)));
   const pairRelations = constraints.filter((constraint): constraint is Extract<SketchConstraint, { kind: "parallel" | "perpendicular" }> => constraint.kind === "parallel" || constraint.kind === "perpendicular");
   for (let pass = 0; pass < Math.max(1, pairRelations.length); pass += 1) {
@@ -356,6 +388,8 @@ export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: 
       assignComponent(targetEnd.id, "z", targetStart.z + Math.sin(targetAngle) * length);
     }
   }
+
+  applyPointRelations();
 
   for (const fixed of fixedByPoint.values()) {
     assignComponent(fixed.pointId, "x", fixed.x);

@@ -335,12 +335,12 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
       marker.add(ring, ringTarget);
     }
   }
-  if (positionVisible) {
+  if (positionVisible || rotationEditable) {
     const center = new THREE.Mesh(
-      new THREE.SphereGeometry(0.09, 10, 8),
+      new THREE.SphereGeometry(0.036, 10, 8),
       new THREE.MeshBasicMaterial({ color: editable ? 0x8a45b8 : 0xffffff, depthTest: false, depthWrite: false }),
     );
-    center.userData.originAxis = "xy";
+    if (positionVisible) center.userData.originAxis = "xy";
     marker.add(center);
   }
   marker.traverse((child) => {
