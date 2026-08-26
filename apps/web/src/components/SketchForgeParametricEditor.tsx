@@ -773,6 +773,23 @@ export function SketchForgeParametricEditor() {
     });
   };
 
+  const selectedLinePair = selectedConstraintSegments.length === 2 ? selectedConstraintSegments as [typeof selectedConstraintSegments[number], typeof selectedConstraintSegments[number]] : null;
+  const selectedPairConstraintKind = (kind: "parallel" | "perpendicular") => Boolean(selectedLinePair && sketchSession?.profile.constraints?.some((constraint) => constraint.kind === kind && constraint.segmentIds.every((id) => selectedLinePair.some((segment) => segment.id === id))));
+
+  const toggleSketchPairConstraint = (kind: "parallel" | "perpendicular") => {
+    if (!selectedLinePair || !sketchSession) return;
+    const segmentIds: [string, string] = [selectedLinePair[0].id, selectedLinePair[1].id];
+    const remove = selectedPairConstraintKind(kind);
+    if (!remove) {
+      const conflict = sketchConstraintConflict(sketchSession.profile, { id: "constraint-preview", kind, segmentIds });
+      if (conflict) { setNotice({ type: "error", text: conflict }); return; }
+    }
+    setSketchProfile((profile) => {
+      const retained = (profile.constraints ?? []).filter((constraint) => constraint.kind !== kind || !constraint.segmentIds.every((id) => segmentIds.includes(id)));
+      return solveSketchConstraints({ ...profile, constraints: remove ? retained : [...retained, { id: sketchEntityId("constraint"), kind, segmentIds }] });
+    });
+  };
+
   const selectedConstraintPoints = useMemo(() => {
     if (!sketchSession || !sketchSelection) return [];
     const ids = sketchSelection.kind === "point" ? [sketchSelection.id]
@@ -1811,6 +1828,8 @@ export function SketchForgeParametricEditor() {
           <ToolbarSection label="Restringir">
             <Tool label="Horizontal" enabled={selectedConstraintSegments.length > 0} active={selectedConstraintKind("horizontal")} onClick={() => toggleSketchConstraint("horizontal")}><MoveHorizontal /></Tool>
             <Tool label="Vertical" enabled={selectedConstraintSegments.length > 0} active={selectedConstraintKind("vertical")} onClick={() => toggleSketchConstraint("vertical")}><MoveVertical /></Tool>
+            <Tool label="Paralela" enabled={Boolean(selectedLinePair)} active={selectedPairConstraintKind("parallel")} onClick={() => toggleSketchPairConstraint("parallel")}><span aria-hidden="true">∥</span></Tool>
+            <Tool label="Perpendicular" enabled={Boolean(selectedLinePair)} active={selectedPairConstraintKind("perpendicular")} onClick={() => toggleSketchPairConstraint("perpendicular")}><span aria-hidden="true">⊥</span></Tool>
             <Tool label="Coincidente" enabled={selectedConstraintPoints.length >= 2} active={selectedPointsCoincident} onClick={toggleCoincidentSketchPoints}><CircleDot /></Tool>
             <Tool label="Fijar punto" enabled={selectedConstraintPoints.length > 0} active={selectedPointsFixed} onClick={toggleFixedSketchPoints}><Anchor /></Tool>
           </ToolbarSection>

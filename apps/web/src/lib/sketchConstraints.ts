@@ -22,7 +22,7 @@ export function sketchConstraintPoint(profile: SketchProfile, id: string): Sketc
 }
 
 export function sketchConstraintUsesSegment(constraint: SketchConstraint, segmentId: string) {
-  if (constraint.kind === "angle") return constraint.segmentIds.includes(segmentId);
+  if (constraint.kind === "angle" || constraint.kind === "parallel" || constraint.kind === "perpendicular") return constraint.segmentIds.includes(segmentId);
   return (constraint.kind === "horizontal" || constraint.kind === "vertical" || constraint.kind === "distance") && constraint.segmentId === segmentId;
 }
 
@@ -52,6 +52,18 @@ function coincidentSketchPoints(profile: SketchProfile, firstId: string, secondI
 
 export function sketchConstraintConflict(profile: SketchProfile, candidate: SketchConstraint) {
   const constraints = profile.constraints ?? [];
+  if (candidate.kind === "parallel" || candidate.kind === "perpendicular") {
+    const [firstId, secondId] = candidate.segmentIds;
+    if (firstId === secondId) return "Selecciona dos líneas diferentes.";
+    const segments = candidate.segmentIds.map((id) => profile.segments.find((segment) => segment.id === id && segment.kind === "line"));
+    if (segments.some((segment) => !segment)) return "La relación requiere dos líneas rectas válidas.";
+    const samePair = (constraint: Extract<SketchConstraint, { kind: "parallel" | "perpendicular" }>) => constraint.segmentIds.every((id) => candidate.segmentIds.includes(id));
+    const opposite = candidate.kind === "parallel" ? "perpendicular" : "parallel";
+    if (constraints.some((constraint) => constraint.kind === opposite && samePair(constraint))) return `Las mismas líneas no pueden ser ${candidate.kind === "parallel" ? "paralelas y perpendiculares" : "perpendiculares y paralelas"}.`;
+    if (constraints.some((constraint) => constraint.kind === "angle" && candidate.segmentIds.every((id) => constraint.segmentIds.includes(id)))) return "Elimina primero la cota angular entre estas líneas.";
+    const fullyFixed = segments.map((segment) => segment && [segment.startId, segment.endId].every((id) => constraints.some((constraint) => constraint.kind === "fixed" && constraint.pointId === id)));
+    if (fullyFixed.every(Boolean)) return "Las dos líneas están completamente fijadas y no pueden reorientarse.";
+  }
   if (candidate.kind === "horizontal" || candidate.kind === "vertical" || candidate.kind === "distance") {
     const segment = profile.segments.find((item) => item.id === candidate.segmentId);
     if (!segment) return "La geometría seleccionada ya no existe.";
@@ -103,6 +115,7 @@ export function sketchConstraintConflict(profile: SketchProfile, candidate: Sket
       if (onSegment.some((constraint) => constraint.kind === "angle")) return "La línea ya participa en una cota angular; elimina primero esa cota.";
       if (onSegment.some((constraint) => constraint.kind === "horizontal" || constraint.kind === "vertical")) return "Una cota angular no puede combinarse con una orientación horizontal o vertical en la misma línea.";
       if (onSegment.some((constraint) => constraint.kind === "distance" && constraint.axis !== "aligned")) return "Una cota angular no puede combinarse con cotas X/Y en la misma línea.";
+      if (onSegment.some((constraint) => constraint.kind === "parallel" || constraint.kind === "perpendicular")) return "Elimina primero la relación paralela o perpendicular de esta línea.";
     }
   }
   if (candidate.kind === "radius" || candidate.kind === "diameter") {
@@ -213,6 +226,40 @@ export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: 
         const unitZ = length > 0.000001 ? dz / length : 0;
         assignComponent(moving.id, "x", anchor.x + unitX * value);
         assignComponent(moving.id, "z", anchor.z + unitZ * value);
+      }
+    }
+  }
+
+  const angularDistance = (first: number, second: number) => Math.abs(Math.atan2(Math.sin(first - second), Math.cos(first - second)));
+  const pairRelations = constraints.filter((constraint): constraint is Extract<SketchConstraint, { kind: "parallel" | "perpendicular" }> => constraint.kind === "parallel" || constraint.kind === "perpendicular");
+  for (let pass = 0; pass < Math.max(1, pairRelations.length); pass += 1) {
+    for (const constraint of pairRelations) {
+      let reference = segmentById.get(constraint.segmentIds[0]);
+      let target = segmentById.get(constraint.segmentIds[1]);
+      if (!reference || !target) continue;
+      const segmentFullyFixed = (segment: NonNullable<typeof reference>) => [segment.startId, segment.endId].every((id) => (componentByPoint.get(id) ?? [id]).some((pointId) => fixedByPoint.has(pointId)));
+      if (segmentFullyFixed(target) && !segmentFullyFixed(reference)) [reference, target] = [target, reference];
+      const referenceStart = pointById.get(reference.startId);
+      const referenceEnd = pointById.get(reference.endId);
+      const targetStart = pointById.get(target.startId);
+      const targetEnd = pointById.get(target.endId);
+      if (!referenceStart || !referenceEnd || !targetStart || !targetEnd) continue;
+      const referenceAngle = Math.atan2(referenceEnd.z - referenceStart.z, referenceEnd.x - referenceStart.x);
+      const currentAngle = Math.atan2(targetEnd.z - targetStart.z, targetEnd.x - targetStart.x);
+      const candidates = constraint.kind === "parallel"
+        ? [referenceAngle, referenceAngle + Math.PI]
+        : [referenceAngle + Math.PI / 2, referenceAngle - Math.PI / 2];
+      const targetAngle = candidates.sort((first, second) => angularDistance(first, currentAngle) - angularDistance(second, currentAngle))[0];
+      const length = Math.max(0.001, Math.hypot(targetEnd.x - targetStart.x, targetEnd.z - targetStart.z));
+      const startFixed = (componentByPoint.get(targetStart.id) ?? [targetStart.id]).some((id) => fixedByPoint.has(id));
+      const endFixed = (componentByPoint.get(targetEnd.id) ?? [targetEnd.id]).some((id) => fixedByPoint.has(id));
+      const moveStart = endFixed || (!startFixed && driven.has(targetStart.id) && !driven.has(targetEnd.id));
+      if (moveStart) {
+        assignComponent(targetStart.id, "x", targetEnd.x - Math.cos(targetAngle) * length);
+        assignComponent(targetStart.id, "z", targetEnd.z - Math.sin(targetAngle) * length);
+      } else {
+        assignComponent(targetEnd.id, "x", targetStart.x + Math.cos(targetAngle) * length);
+        assignComponent(targetEnd.id, "z", targetStart.z + Math.sin(targetAngle) * length);
       }
     }
   }
