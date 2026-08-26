@@ -35,6 +35,7 @@ import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricO
 import { exportParametricStep } from "@/lib/parametricKernel";
 import { ParametricBuildWorkerClient } from "@/lib/parametricBuildWorker";
 import { binaryStlFromRenderMeshes } from "@/lib/stlExport";
+import { sketchProfileFromSvg } from "@/lib/svgImport";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import { circleSketchPointId, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, solveSketchConstraints } from "@/lib/sketchConstraints";
 import { validateDrawnSketchProfile } from "@/lib/sketchProfileValidation";
@@ -283,6 +284,7 @@ export function SketchForgeParametricEditor() {
   const [exporting, setExporting] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
+  const sketchSvgImportRef = useRef<HTMLInputElement>(null);
   const buildCounter = useRef(0);
   const contextBuildCounter = useRef(0);
   const buildWorkerRef = useRef<ParametricBuildWorkerClient | null>(null);
@@ -631,6 +633,28 @@ export function SketchForgeParametricEditor() {
     setSketchHistoryIndex(-1);
     setModelSidebarMode("normal");
     setNotice({ type: "info", text: "Edición de boceto cancelada" });
+  };
+
+  const importSvgIntoSketch = async (file: File) => {
+    if (!sketchSession) return;
+    try {
+      const imported = sketchProfileFromSvg(await file.text());
+      const pointIds = imported.points.map((point) => point.id);
+      const segmentIds = imported.segments.map((segment) => segment.id);
+      const circleIds = (imported.circles ?? []).map((circle) => circle.id);
+      setSketchProfile((profile) => ({
+        ...profile,
+        points: [...profile.points, ...imported.points],
+        segments: [...profile.segments, ...imported.segments],
+        circles: [...(profile.circles ?? []), ...(imported.circles ?? [])],
+      }));
+      setSketchSelection({ kind: "multiple", pointIds, segmentIds, circleIds, imageIds: [] });
+      setSketchActivePointId(null);
+      setSketchTool("select");
+      setNotice({ type: "ok", text: `SVG importado como ${segmentIds.length} segmentos y ${circleIds.length} círculos editables` });
+    } catch (error) {
+      setNotice({ type: "error", text: error instanceof Error ? error.message : "No se pudo convertir el SVG en un boceto editable." });
+    }
   };
 
   const acceptSketch = () => {
@@ -1968,6 +1992,9 @@ export function SketchForgeParametricEditor() {
           <ToolbarSection label="Inspeccionar">
             <Tool label="Medir" active={sketchTool === "measure"} onClick={() => chooseSketchTool("measure")}><Ruler /></Tool>
           </ToolbarSection>
+          <ToolbarSection label="Importar">
+            <Tool label="Importar SVG editable" onClick={() => sketchSvgImportRef.current?.click()}><ToolbarImportIcon /></Tool>
+          </ToolbarSection>
           <output className={`educad-sketch-constraint-status ${sketchConstraintStatus.kind}`}>{sketchConstraintStatus.label}</output>
           <div className="toolbar-spacer" />
           <div className="educad-sketch-finish-actions"><button className="educad-sketch-action primary" type="button" onClick={acceptSketch}><Check size={17} /><span>Aceptar boceto</span></button><button className="educad-sketch-action" type="button" onClick={cancelSketch}><X size={17} /><span>Cancelar</span></button></div>
@@ -2388,6 +2415,7 @@ export function SketchForgeParametricEditor() {
       )}
 
       <input ref={importRef} hidden type="file" accept=".json,.educad" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importProject(file); event.target.value = ""; }} />
+      <input ref={sketchSvgImportRef} hidden type="file" accept=".svg,image/svg+xml" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importSvgIntoSketch(file); event.target.value = ""; }} />
     </main>
   );
 }

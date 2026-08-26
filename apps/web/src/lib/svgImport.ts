@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { SVGLoader } from "three/examples/jsm/loaders/SVGLoader.js";
 import { createLocalId } from "@/lib/localIds";
-import type { WorkplaneShape } from "@/types/sketchforge";
+import type { SketchPoint, SketchProfile, WorkplaneShape } from "@/types/sketchforge";
 
 export const MAX_SVG_BYTES = 2 * 1024 * 1024;
 export const MAX_SVG_XML_ELEMENTS = 10_000;
@@ -607,6 +607,116 @@ export function importedShapeFromSvg(fileName: string, source: string): Workplan
     locked: false,
     hidden: false,
   };
+}
+
+function svgLengthMillimeters(value: string | null) {
+  if (!value || value.trim().endsWith("%")) return null;
+  const match = value.trim().match(/^([+-]?(?:\d+\.?\d*|\.\d+))(mm|cm|in|pt|pc|px)?$/i);
+  if (!match) return null;
+  const amount = Number.parseFloat(match[1]);
+  const unit = match[2]?.toLowerCase() ?? "px";
+  const factor = unit === "mm" ? 1 : unit === "cm" ? 10 : unit === "in" ? 25.4 : unit === "pt" ? 25.4 / 72 : unit === "pc" ? 25.4 / 6 : 25.4 / 96;
+  return amount * factor;
+}
+
+/** Converts visible SVG paths into native, editable sketch entities in millimetres. */
+export function sketchProfileFromSvg(source: string): SketchProfile {
+  validateSvgSourcePreflight(source);
+  const parsed = svgLoader.parse(normalizeSvgUseReferences(normalizeSvgDocumentType(source)));
+  const parsedXml = parsed.xml as unknown as XMLDocument | Element;
+  const root = "documentElement" in parsedXml ? parsedXml.documentElement : parsedXml;
+  if (root.localName !== "svg" || root.querySelector("parsererror")) throw new Error("SVG is not valid XML");
+  const viewBox = root.getAttribute("viewBox")?.trim().split(/[\s,]+/).map(Number) ?? [];
+  const physicalWidth = svgLengthMillimeters(root.getAttribute("width"));
+  const physicalHeight = svgLengthMillimeters(root.getAttribute("height"));
+  const scale = viewBox.length === 4 && physicalWidth && Number.isFinite(viewBox[2]) && viewBox[2] > 0
+    ? physicalWidth / viewBox[2]
+    : viewBox.length === 4 && physicalHeight && Number.isFinite(viewBox[3]) && viewBox[3] > 0
+      ? physicalHeight / viewBox[3]
+      : 25.4 / 90;
+  const profile: SketchProfile = { points: [], segments: [], circles: [], images: [], constraints: [] };
+  const pointAt = (vector: THREE.Vector2) => ({ x: vector.x * scale, z: -vector.y * scale });
+  const findOrCreatePoint = (position: { x: number; z: number }, mode: SketchPoint["mode"] = "corner") => {
+    const existing = profile.points.find((point) => Math.hypot(point.x - position.x, point.z - position.z) < 0.000001);
+    if (existing) return existing;
+    const point: SketchPoint = { id: createLocalId("svg-point"), ...position, mode };
+    profile.points.push(point);
+    return point;
+  };
+  const addLine = (from: THREE.Vector2, to: THREE.Vector2) => {
+    const start = findOrCreatePoint(pointAt(from));
+    const end = findOrCreatePoint(pointAt(to));
+    if (start.id !== end.id) profile.segments.push({ id: createLocalId("svg-segment"), kind: "line", startId: start.id, endId: end.id });
+  };
+
+  for (const path of parsed.paths.filter(pathIsVisible)) for (const subPath of path.subPaths) {
+    if (subPath.curves.length === 1 && subPath.curves[0] instanceof THREE.EllipseCurve) {
+      const curve = subPath.curves[0];
+      const sweep = Math.abs(curve.aEndAngle - curve.aStartAngle);
+      if (Math.abs(curve.xRadius - curve.yRadius) < 0.000001 && Math.abs(curve.aRotation) < 0.000001 && sweep >= Math.PI * 2 - 0.00001) {
+        profile.circles!.push({ id: createLocalId("svg-circle"), x: curve.aX * scale, z: -curve.aY * scale, radius: curve.xRadius * scale, radiusAngle: 0 });
+        continue;
+      }
+    }
+    let firstPoint: THREE.Vector2 | null = null;
+    let lastPoint: THREE.Vector2 | null = null;
+    for (const curve of subPath.curves) {
+      if (curve instanceof THREE.LineCurve) {
+        addLine(curve.v1, curve.v2);
+        firstPoint ??= curve.v1;
+        lastPoint = curve.v2;
+      } else if (curve instanceof THREE.CubicBezierCurve) {
+        const start = findOrCreatePoint(pointAt(curve.v0), "split");
+        const end = findOrCreatePoint(pointAt(curve.v3), "split");
+        start.mode = "split";
+        end.mode = "split";
+        start.handleOut = pointAt(curve.v1);
+        end.handleIn = pointAt(curve.v2);
+        profile.segments.push({ id: createLocalId("svg-segment"), kind: "bezier", startId: start.id, endId: end.id });
+        firstPoint ??= curve.v0;
+        lastPoint = curve.v3;
+      } else if (curve instanceof THREE.QuadraticBezierCurve) {
+        const start = findOrCreatePoint(pointAt(curve.v0), "split");
+        const end = findOrCreatePoint(pointAt(curve.v2), "split");
+        const firstControl = curve.v0.clone().add(curve.v1.clone().sub(curve.v0).multiplyScalar(2 / 3));
+        const secondControl = curve.v2.clone().add(curve.v1.clone().sub(curve.v2).multiplyScalar(2 / 3));
+        start.mode = "split";
+        end.mode = "split";
+        start.handleOut = pointAt(firstControl);
+        end.handleIn = pointAt(secondControl);
+        profile.segments.push({ id: createLocalId("svg-segment"), kind: "bezier", startId: start.id, endId: end.id });
+        firstPoint ??= curve.v0;
+        lastPoint = curve.v2;
+      } else if (curve instanceof THREE.EllipseCurve && Math.abs(curve.xRadius - curve.yRadius) < 0.000001 && Math.abs(curve.aRotation) < 0.000001) {
+        const startVector = curve.getPoint(0);
+        const endVector = curve.getPoint(1);
+        const start = findOrCreatePoint(pointAt(startVector));
+        const end = findOrCreatePoint(pointAt(endVector));
+        if (start.id !== end.id) profile.segments.push({ id: createLocalId("svg-segment"), kind: "arc", startId: start.id, endId: end.id, center: { x: curve.aX * scale, z: -curve.aY * scale }, clockwise: curve.aClockwise });
+        firstPoint ??= startVector;
+        lastPoint = endVector;
+      } else {
+        const sampled = curve.getPoints(24);
+        for (let index = 1; index < sampled.length; index += 1) addLine(sampled[index - 1], sampled[index]);
+        firstPoint ??= sampled[0] ?? null;
+        lastPoint = sampled.at(-1) ?? lastPoint;
+      }
+    }
+    if (subPath.autoClose && firstPoint && lastPoint && firstPoint.distanceTo(lastPoint) > 0.000001) addLine(lastPoint, firstPoint);
+  }
+
+  if (!profile.segments.length && !profile.circles?.length) throw new Error("SVG has no visible editable geometry");
+  const positions = [...profile.points.map((point) => ({ x: point.x, z: point.z })), ...(profile.circles ?? []).flatMap((circle) => [{ x: circle.x - circle.radius, z: circle.z - circle.radius }, { x: circle.x + circle.radius, z: circle.z + circle.radius }])];
+  const centerX = (Math.min(...positions.map((point) => point.x)) + Math.max(...positions.map((point) => point.x))) / 2;
+  const centerZ = (Math.min(...positions.map((point) => point.z)) + Math.max(...positions.map((point) => point.z))) / 2;
+  profile.points.forEach((point) => {
+    point.x -= centerX;
+    point.z -= centerZ;
+    if (point.handleIn) { point.handleIn.x -= centerX; point.handleIn.z -= centerZ; }
+    if (point.handleOut) { point.handleOut.x -= centerX; point.handleOut.z -= centerZ; }
+  });
+  profile.circles?.forEach((circle) => { circle.x -= centerX; circle.z -= centerZ; });
+  return profile;
 }
 
 export function invalidSvgMeshReason(shape: WorkplaneShape) {
