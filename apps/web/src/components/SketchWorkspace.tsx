@@ -9,6 +9,7 @@ import { WORKPLANE_MAJOR_GRID_INTERVAL } from "@/lib/workplaneGrid";
 import { mirrorSign, resizedImportedMeshPositions } from "@/lib/workplaneShapes";
 import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE, normalizeSnapGrid, normalizeWorkspaceSettings } from "@/lib/workplaneSettings";
 import { solveSketchConstraints } from "@/lib/sketchConstraints";
+import type { SketchProfileValidation } from "@/lib/sketchProfileValidation";
 import type { GridSize, SketchCircle, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchSegment, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
 
 export type SketchTool = "line" | "bezier" | "smooth" | "circle" | "arc" | "select" | "refine" | "erase" | "measure";
@@ -24,6 +25,7 @@ export type SketchMeasurement = { start: SketchPoint; end: SketchPoint } | null;
 
 type SketchWorkspaceProps = {
   profile: SketchProfile;
+  profileValidation?: SketchProfileValidation | null;
   operation?: SketchOperation;
   revolvePreviewPositions?: number[] | null;
   referenceShapes: WorkplaneShape[];
@@ -527,6 +529,7 @@ function importedMeshFootprint(shape: WorkplaneShape): SketchReferenceFootprint 
 
 export function SketchWorkspace({
   profile,
+  profileValidation = null,
   operation = "extrude",
   revolvePreviewPositions = null,
   referenceShapes,
@@ -907,10 +910,18 @@ export function SketchWorkspace({
     () => new Map(referenceShapes.map((shape) => [shape.id, importedMeshFootprint(shape)])),
     [referenceShapes],
   );
+  const invalidSegmentIds = useMemo(() => new Set(profileValidation?.diagnostics.flatMap((diagnostic) => diagnostic.segmentIds ?? []) ?? []), [profileValidation]);
+  const invalidCircleIds = useMemo(() => new Set(profileValidation?.diagnostics.flatMap((diagnostic) => diagnostic.circleIds ?? []) ?? []), [profileValidation]);
+  const invalidPointIds = useMemo(() => new Set(profileValidation?.diagnostics.flatMap((diagnostic) => diagnostic.pointIds ?? []) ?? []), [profileValidation]);
 
   return (
     <main className="sketch-workspace-stage">
       <div className="sketch-mode-badge">{operation === "revolve" ? "Revolve sketch" : "Sketch view"}</div>
+      {profileValidation ? <aside className={`sketch-profile-status ${profileValidation.valid ? "valid" : "invalid"}`}>
+        <strong>{profileValidation.valid ? `Perfil válido · ${profileValidation.closedContourCount} contorno${profileValidation.closedContourCount === 1 ? "" : "s"}` : "Perfil no válido"}</strong>
+        {!profileValidation.valid ? <span>{profileValidation.diagnostics[0]?.message}</span> : null}
+        {profileValidation.diagnostics.length > 1 ? <small>+{profileValidation.diagnostics.length - 1} problema{profileValidation.diagnostics.length === 2 ? "" : "s"}</small> : null}
+      </aside> : null}
       {operation === "revolve" ? <SketchRevolvePreview positions={revolvePreviewPositions} /> : null}
       <div className="camera-controls sketch-camera-controls" aria-label="Sketch view controls">
         <button aria-label="Reset sketch view" onClick={() => { setZoom(1); setPan({ x: 0, z: 0 }); }}><Home size={28} /></button>
@@ -1033,7 +1044,7 @@ export function SketchWorkspace({
             {displayProfile.segments.map((segment) => (
               <path
                 data-sketch-entity="segment"
-                className={`${isSegmentSelected(segment.id) ? "selected" : ""} ${segment.construction ? "construction" : ""}`}
+                className={`${isSegmentSelected(segment.id) ? "selected" : ""} ${segment.construction ? "construction" : ""} ${invalidSegmentIds.has(segment.id) ? "invalid" : ""}`}
                 key={segment.id}
                 d={segmentData(segment, pointById)}
                 onPointerDown={(event) => {
@@ -1050,7 +1061,7 @@ export function SketchWorkspace({
             {displayCircles.map((circle) => <circle
               key={circle.id}
               data-sketch-entity="circle"
-              className={`${isCircleSelected(circle.id) ? "selected" : ""} ${circle.construction ? "construction" : ""}`}
+              className={`${isCircleSelected(circle.id) ? "selected" : ""} ${circle.construction ? "construction" : ""} ${invalidCircleIds.has(circle.id) ? "invalid" : ""}`}
               cx={circle.x}
               cy={circle.z}
               r={circle.radius}
@@ -1289,7 +1300,7 @@ export function SketchWorkspace({
             {displayProfile.points.map((point) => (
               <circle
                 data-sketch-entity="point"
-                className={`${isPointSelected(point.id) ? "selected" : ""} ${activePointId === point.id ? "active" : ""}`}
+                className={`${isPointSelected(point.id) ? "selected" : ""} ${activePointId === point.id ? "active" : ""} ${invalidPointIds.has(point.id) ? "invalid" : ""}`}
                 key={point.id}
                 cx={point.x}
                 cy={point.z}

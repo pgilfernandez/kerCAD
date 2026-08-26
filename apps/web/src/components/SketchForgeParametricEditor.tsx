@@ -37,6 +37,7 @@ import { ParametricBuildWorkerClient } from "@/lib/parametricBuildWorker";
 import { binaryStlFromRenderMeshes } from "@/lib/stlExport";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import { circleSketchPointId, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, solveSketchConstraints } from "@/lib/sketchConstraints";
+import { validateDrawnSketchProfile } from "@/lib/sketchProfileValidation";
 import {
   beginHistoryTransaction,
   cancelHistoryTransaction,
@@ -168,20 +169,6 @@ function closestSketchGrid(step: number, enabled: boolean): GridSize {
   return options.reduce((closest, candidate) => Math.abs(candidate[0] - step) < Math.abs(closest[0] - step) ? candidate : closest, options[0])[1];
 }
 
-function isClosedSketch(profile: SketchProfile) {
-  const modelSegments = profile.segments.filter((segment) => !segment.construction);
-  const modelCircles = (profile.circles ?? []).filter((circle) => !circle.construction && circle.radius > 0);
-  if (modelSegments.length === 0) return modelCircles.length > 0;
-  if (modelSegments.length < 3) return false;
-  const degree = new Map<string, number>();
-  for (const segment of modelSegments) {
-    degree.set(segment.startId, (degree.get(segment.startId) ?? 0) + 1);
-    degree.set(segment.endId, (degree.get(segment.endId) ?? 0) + 1);
-  }
-  if ([...degree.values()].some((value) => value !== 2)) return false;
-  return orderedSketchPaths({ ...profile, segments: modelSegments }).every((path) => path.closed);
-}
-
 function withSmoothSketchHandles(profile: SketchProfile) {
   const next = cloneSketchProfile(profile);
   const points = new Map(next.points.map((point) => [point.id, point]));
@@ -255,6 +242,7 @@ export function SketchForgeParametricEditor() {
   const sketchHistoryRef = useRef<SketchProfile[]>([]);
   const sketchHistoryIndexRef = useRef(-1);
   const [sketchHistoryIndex, setSketchHistoryIndex] = useState(-1);
+  const activeSketchProfileValidation = useMemo(() => sketchSession ? validateDrawnSketchProfile(sketchSession.profile) : null, [sketchSession]);
 
   useEffect(() => {
     const closePopoversOutside = (event: PointerEvent) => {
@@ -646,8 +634,9 @@ export function SketchForgeParametricEditor() {
   };
 
   const acceptSketch = () => {
-    if (!sketchSession || !isClosedSketch(sketchSession.profile)) {
-      setNotice({ type: "error", text: "Cierra todos los contornos antes de aceptar el boceto." });
+    const validation = sketchSession ? validateDrawnSketchProfile(sketchSession.profile) : null;
+    if (!sketchSession || !validation?.valid) {
+      setNotice({ type: "error", text: validation?.diagnostics[0]?.message ?? "Cierra todos los contornos antes de aceptar el boceto." });
       return;
     }
     let featureId = sketchSession.featureId ?? "";
@@ -1302,6 +1291,9 @@ export function SketchForgeParametricEditor() {
   };
 
   const addExtrudeFromSketch = (sketch: SketchFeature) => {
+    if (sketch.profile.shape !== "drawn") return;
+    const validation = validateDrawnSketchProfile(sketch.profile.geometry);
+    if (!validation.valid) { setNotice({ type: "error", text: `No se puede extruir: ${validation.diagnostics[0]?.message ?? "el perfil no es válido."}` }); return; }
     let featureId = "";
     const changed = mutate((draft) => {
       if (!sketch.objectId) return;
@@ -1315,6 +1307,9 @@ export function SketchForgeParametricEditor() {
   };
 
   const addRevolveFromSketch = (sketch: SketchFeature) => {
+    if (sketch.profile.shape !== "drawn") return;
+    const validation = validateDrawnSketchProfile(sketch.profile.geometry);
+    if (!validation.valid) { setNotice({ type: "error", text: `No se puede revolucionar: ${validation.diagnostics[0]?.message ?? "el perfil no es válido."}` }); return; }
     let featureId = "";
     const changed = mutate((draft) => {
       if (!sketch.objectId) return;
@@ -2065,6 +2060,7 @@ export function SketchForgeParametricEditor() {
         {showFps ? <FpsCounter rightOffset={modelSidebarMode === "normal" ? 332 : modelSidebarMode === "simplified" ? 80 : 12} /> : null}
         {sketchSession ? <SketchWorkspace
           profile={sketchSession.profile}
+          profileValidation={activeSketchProfileValidation}
           operation="extrude"
           referenceShapes={[]}
           tool={sketchTool}

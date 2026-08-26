@@ -4636,6 +4636,30 @@ button {
   pointer-events: none;
 }
 
+.sketch-profile-status {
+  position: absolute;
+  top: 42px;
+  left: 50%;
+  z-index: 9;
+  display: flex;
+  max-width: min(520px, calc(100% - 190px));
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  color: #315c45;
+  background: rgba(238, 250, 242, 0.95);
+  border: 1px solid #78bd8e;
+  box-shadow: 0 2px 8px rgba(35, 72, 49, 0.12);
+  font-size: 10px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.sketch-profile-status.invalid { color: #8d2727; background: rgba(255, 241, 241, 0.96); border-color: #db7777; }
+.sketch-profile-status strong { white-space: nowrap; font-size: 10px; }
+.sketch-profile-status span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sketch-profile-status small { white-space: nowrap; font-size: 9px; }
+
 .sketch-revolve-preview {
   position: absolute;
   top: 18px;
@@ -4891,6 +4915,12 @@ button {
   stroke-dasharray: 7 5;
 }
 
+.sketch-segments path.invalid,
+.sketch-segments > circle.invalid {
+  stroke: #d93636;
+  stroke-width: 4;
+}
+
 .sketch-constraints rect {
   fill: #fff;
   stroke: #2563eb;
@@ -5053,6 +5083,12 @@ circle.sketch-preview-line {
   fill: #ffb24b;
   stroke: #9d4d00;
   stroke-width: 2;
+}
+
+.sketch-points circle.invalid {
+  fill: #ffd6d6;
+  stroke: #d42424;
+  stroke-width: 2.4;
 }
 
 .sketch-cursor-point {
