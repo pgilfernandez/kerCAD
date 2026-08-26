@@ -1,6 +1,6 @@
 "use client";
 
-import { Anchor, Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, CircleDot, CornerDownRight, Diameter, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Move3d, MoveHorizontal, MoveVertical, MousePointer2, PenLine, Plus, Rotate3d, RotateCcw, Ruler, Spline, Split, Waves, X } from "lucide-react";
+import { Anchor, Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, CircleDot, CornerDownRight, Diameter, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Move3d, MoveHorizontal, MoveVertical, MousePointer2, PenLine, Plus, Rotate3d, RotateCcw, Ruler, Scissors, Spline, Split, Waves, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent as ReactFocusEvent } from "react";
 import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyEdgePick, type TopologyFacePick } from "@/components/ParametricViewport";
@@ -39,6 +39,7 @@ import { sketchProfileFromSvg } from "@/lib/svgImport";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import { circleSketchPointId, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, solveSketchConstraints } from "@/lib/sketchConstraints";
 import { validateDrawnSketchProfile } from "@/lib/sketchProfileValidation";
+import { trimSketchGeometry } from "@/lib/sketchTrim";
 import {
   beginHistoryTransaction,
   cancelHistoryTransaction,
@@ -1255,6 +1256,16 @@ export function SketchForgeParametricEditor() {
     setSketchSelection(null);
   };
 
+  const trimSketchEntity = (target: { kind: "segment" | "circle"; id: string }, point: { x: number; z: number }) => {
+    if (!sketchSession) return;
+    const result = trimSketchGeometry(sketchSession.profile, target, point, sketchEntityId);
+    setNotice({ type: result.trimmed ? "ok" : "info", text: result.message });
+    if (!result.trimmed) return;
+    setSketchProfile(() => result.profile);
+    setSketchSelection(null);
+    setSketchActivePointId(null);
+  };
+
   const insertSketchPoint = (segmentId: string, position: { x: number; z: number }) => {
     const insertedId = sketchEntityId("point");
     setSketchProfile((profile) => {
@@ -2003,6 +2014,7 @@ export function SketchForgeParametricEditor() {
           <ToolbarSection label="Editar">
             <Tool label="Seleccionar" active={sketchTool === "select"} onClick={() => chooseSketchTool("select")}><MousePointer2 /></Tool>
             <Tool label="Refinar" active={sketchTool === "refine"} onClick={() => chooseSketchTool("refine")}><Plus /></Tool>
+            <Tool label="Recortar" active={sketchTool === "trim"} onClick={() => chooseSketchTool("trim")}><Scissors /></Tool>
             <Tool label={sketchSelection ? "Borrar selección" : "Borrar"} active={!sketchSelection && sketchTool === "erase"} onClick={() => { if (!deleteCurrentSketchSelection()) chooseSketchTool("erase"); }}><Eraser /></Tool>
             <Tool label="Geometría de construcción" enabled={selectedConstructionIds.segmentIds.length + selectedConstructionIds.circleIds.length > 0} active={selectedConstructionIds.allConstruction} onClick={toggleSketchConstruction}><DraftingCompass /></Tool>
           </ToolbarSection>
@@ -2010,28 +2022,6 @@ export function SketchForgeParametricEditor() {
             <Tool label="Esquina" enabled={Boolean(selectedSketchPoint)} active={selectedSketchPoint?.mode === "corner" || Boolean(selectedSketchPoint && !selectedSketchPoint.mode)} onClick={() => selectedSketchPoint && setSketchPointMode(selectedSketchPoint.id, "corner")}><CornerDownRight /></Tool>
             <Tool label="Suave" enabled={Boolean(selectedSketchPoint)} active={selectedSketchPoint?.mode === "smooth"} onClick={() => selectedSketchPoint && setSketchPointMode(selectedSketchPoint.id, "smooth")}><Waves /></Tool>
             <Tool label="Separar tiradores" enabled={Boolean(selectedSketchPoint)} active={selectedSketchPoint?.mode === "split"} onClick={() => selectedSketchPoint && setSketchPointMode(selectedSketchPoint.id, "split")}><Split /></Tool>
-          </ToolbarSection>
-          <ToolbarSection label="Restringir">
-            <Tool label="Horizontal" enabled={selectedConstraintSegments.length > 0} active={selectedConstraintKind("horizontal")} onClick={() => toggleSketchConstraint("horizontal")}><MoveHorizontal /></Tool>
-            <Tool label="Vertical" enabled={selectedConstraintSegments.length > 0} active={selectedConstraintKind("vertical")} onClick={() => toggleSketchConstraint("vertical")}><MoveVertical /></Tool>
-            <Tool label="Paralela" enabled={Boolean(selectedLinePair)} active={selectedPairConstraintKind("parallel")} onClick={() => toggleSketchPairConstraint("parallel")}><span aria-hidden="true">∥</span></Tool>
-            <Tool label="Perpendicular" enabled={Boolean(selectedLinePair)} active={selectedPairConstraintKind("perpendicular")} onClick={() => toggleSketchPairConstraint("perpendicular")}><span aria-hidden="true">⊥</span></Tool>
-            <Tool label="Concéntrica" enabled={Boolean(selectedCirclePair)} active={selectedConcentricActive} onClick={toggleSketchConcentric}><span aria-hidden="true">◎</span></Tool>
-            <Tool label="Igual" enabled={Boolean(selectedLinePair || selectedCirclePair)} active={selectedEqualActive} onClick={toggleSketchEqual}><span aria-hidden="true">=</span></Tool>
-            <Tool label="Punto medio" enabled={Boolean(selectedPointLinePair)} active={selectedPointLineActive("midpoint")} onClick={() => toggleSketchPointLineConstraint("midpoint")}><span aria-hidden="true">M</span></Tool>
-            <Tool label="Punto sobre geometría" enabled={Boolean(selectedPointLinePair)} active={selectedPointLineActive("pointOnObject")} onClick={() => toggleSketchPointLineConstraint("pointOnObject")}><span aria-hidden="true">∈</span></Tool>
-            <Tool label="Tangente" enabled={Boolean(selectedTangentConstraint)} active={selectedTangentActive} onClick={toggleSketchTangent}><span aria-hidden="true">T</span></Tool>
-            <Tool label="Simetría" enabled={Boolean(selectedSymmetrySet)} active={selectedSymmetryActive} onClick={toggleSketchSymmetry}><span aria-hidden="true">S</span></Tool>
-            <Tool label="Coincidente" enabled={selectedConstraintPoints.length >= 2} active={selectedPointsCoincident} onClick={toggleCoincidentSketchPoints}><CircleDot /></Tool>
-            <Tool label="Fijar punto" enabled={selectedConstraintPoints.length > 0} active={selectedPointsFixed} onClick={toggleFixedSketchPoints}><Anchor /></Tool>
-          </ToolbarSection>
-          <ToolbarSection label="Acotar">
-            <Tool label="Longitud" enabled={Boolean(selectedDimensionSegment)} active={selectedDimensionActive("aligned")} onClick={() => toggleSketchDimension("aligned")}><Ruler /></Tool>
-            <Tool label="Distancia X" enabled={Boolean(selectedDimensionSegment)} active={selectedDimensionActive("x")} onClick={() => toggleSketchDimension("x")}><MoveHorizontal /></Tool>
-            <Tool label="Distancia Y" enabled={Boolean(selectedDimensionSegment)} active={selectedDimensionActive("z")} onClick={() => toggleSketchDimension("z")}><MoveVertical /></Tool>
-            <Tool label="Radio" enabled={Boolean(selectedDimensionCircle || selectedDimensionArc)} active={selectedRadiusActive} onClick={toggleSketchRadius}><Circle /></Tool>
-            <Tool label="Diámetro" enabled={Boolean(selectedDimensionCircle || selectedDimensionArc)} active={selectedDiameterActive} onClick={toggleSketchDiameter}><Diameter /></Tool>
-            <Tool label="Ángulo" enabled={selectedAngleSegments.length > 0 || Boolean(selectedDimensionArc)} active={selectedDimensionArc ? selectedArcAngleActive : selectedAngleActive} onClick={selectedDimensionArc ? toggleSketchArcAngle : toggleSketchAngle}><DraftingCompass /></Tool>
           </ToolbarSection>
           <ToolbarSection label="Historial">
             <Tool label="Deshacer boceto" enabled={sketchHistoryIndex > 0} onClick={sketchUndo}><ToolbarUndoIcon /></Tool>
@@ -2043,7 +2033,6 @@ export function SketchForgeParametricEditor() {
           <ToolbarSection label="Importar">
             <Tool label="Importar SVG editable" onClick={() => sketchSvgImportRef.current?.click()}><ToolbarImportIcon /></Tool>
           </ToolbarSection>
-          <output className={`educad-sketch-constraint-status ${sketchConstraintStatus.kind}`}>{sketchConstraintStatus.label}</output>
           <div className="toolbar-spacer" />
           <div className="educad-sketch-finish-actions"><button className="educad-sketch-action primary" type="button" onClick={acceptSketch}><Check size={17} /><span>Aceptar boceto</span></button><button className="educad-sketch-action" type="button" onClick={cancelSketch}><X size={17} /><span>Cancelar</span></button></div>
         </div> :
@@ -2221,6 +2210,7 @@ export function SketchForgeParametricEditor() {
               return ![...virtualIds].some((pointId) => sketchConstraintUsesPoint(constraint, pointId));
             }) };
           }); setSketchSelection(null); }}
+          onTrimCircle={(id, point) => trimSketchEntity({ kind: "circle", id }, point)}
           onMoveCircle={(id, center) => setSketchProfile((profile) => {
             const next = cloneSketchProfile(profile);
             const circle = next.circles?.find((candidate) => candidate.id === id);
@@ -2243,6 +2233,7 @@ export function SketchForgeParametricEditor() {
           onDeleteImage={(id) => setSketchProfile((profile) => ({ ...profile, images: (profile.images ?? []).filter((image) => image.id !== id) }))}
           onDeletePoint={deleteSketchPoint}
           onDeleteSegment={deleteSketchSegment}
+          onTrimSegment={(id, point) => trimSketchEntity({ kind: "segment", id }, point)}
           onMovePoint={(id, position) => setSketchProfile((profile) => {
             const next = cloneSketchProfile(profile);
             const source = next.points.find((point) => point.id === id);
@@ -2349,6 +2340,40 @@ export function SketchForgeParametricEditor() {
             else if (faceExtrudeHandle?.featureId) updateFeature(faceExtrudeHandle.featureId, (feature) => { if (feature.kind === "faceExtrude") { feature.distance = distance; feature.operation = operation; } });
           }}
         />}
+        {sketchSession ? <aside className="educad-sketch-constraints-panel" aria-label="Restricciones y cotas del boceto">
+          <header>
+            <div><strong>Restricciones</strong><span>Selecciona geometría para habilitar herramientas</span></div>
+            <output className={`educad-sketch-constraint-status ${sketchConstraintStatus.kind}`}>{sketchConstraintStatus.label}</output>
+          </header>
+          <section>
+            <h2>Geométricas</h2>
+            <div className="educad-sketch-side-tool-grid">
+              <SketchSideTool label="Horizontal" enabled={selectedConstraintSegments.length > 0} active={selectedConstraintKind("horizontal")} onClick={() => toggleSketchConstraint("horizontal")}><MoveHorizontal /></SketchSideTool>
+              <SketchSideTool label="Vertical" enabled={selectedConstraintSegments.length > 0} active={selectedConstraintKind("vertical")} onClick={() => toggleSketchConstraint("vertical")}><MoveVertical /></SketchSideTool>
+              <SketchSideTool label="Paralela" enabled={Boolean(selectedLinePair)} active={selectedPairConstraintKind("parallel")} onClick={() => toggleSketchPairConstraint("parallel")}><span aria-hidden="true">∥</span></SketchSideTool>
+              <SketchSideTool label="Perpendicular" enabled={Boolean(selectedLinePair)} active={selectedPairConstraintKind("perpendicular")} onClick={() => toggleSketchPairConstraint("perpendicular")}><span aria-hidden="true">⊥</span></SketchSideTool>
+              <SketchSideTool label="Concéntrica" enabled={Boolean(selectedCirclePair)} active={selectedConcentricActive} onClick={toggleSketchConcentric}><span aria-hidden="true">◎</span></SketchSideTool>
+              <SketchSideTool label="Igual" enabled={Boolean(selectedLinePair || selectedCirclePair)} active={selectedEqualActive} onClick={toggleSketchEqual}><span aria-hidden="true">=</span></SketchSideTool>
+              <SketchSideTool label="Punto medio" enabled={Boolean(selectedPointLinePair)} active={selectedPointLineActive("midpoint")} onClick={() => toggleSketchPointLineConstraint("midpoint")}><span aria-hidden="true">M</span></SketchSideTool>
+              <SketchSideTool label="Punto sobre geometría" enabled={Boolean(selectedPointLinePair)} active={selectedPointLineActive("pointOnObject")} onClick={() => toggleSketchPointLineConstraint("pointOnObject")}><span aria-hidden="true">∈</span></SketchSideTool>
+              <SketchSideTool label="Tangente" enabled={Boolean(selectedTangentConstraint)} active={selectedTangentActive} onClick={toggleSketchTangent}><span aria-hidden="true">T</span></SketchSideTool>
+              <SketchSideTool label="Simetría" enabled={Boolean(selectedSymmetrySet)} active={selectedSymmetryActive} onClick={toggleSketchSymmetry}><span aria-hidden="true">S</span></SketchSideTool>
+              <SketchSideTool label="Coincidente" enabled={selectedConstraintPoints.length >= 2} active={selectedPointsCoincident} onClick={toggleCoincidentSketchPoints}><CircleDot /></SketchSideTool>
+              <SketchSideTool label="Fijar punto" enabled={selectedConstraintPoints.length > 0} active={selectedPointsFixed} onClick={toggleFixedSketchPoints}><Anchor /></SketchSideTool>
+            </div>
+          </section>
+          <section>
+            <h2>Cotas</h2>
+            <div className="educad-sketch-side-tool-grid">
+              <SketchSideTool label="Longitud" enabled={Boolean(selectedDimensionSegment)} active={selectedDimensionActive("aligned")} onClick={() => toggleSketchDimension("aligned")}><Ruler /></SketchSideTool>
+              <SketchSideTool label="Distancia X" enabled={Boolean(selectedDimensionSegment)} active={selectedDimensionActive("x")} onClick={() => toggleSketchDimension("x")}><MoveHorizontal /></SketchSideTool>
+              <SketchSideTool label="Distancia Y" enabled={Boolean(selectedDimensionSegment)} active={selectedDimensionActive("z")} onClick={() => toggleSketchDimension("z")}><MoveVertical /></SketchSideTool>
+              <SketchSideTool label="Radio" enabled={Boolean(selectedDimensionCircle || selectedDimensionArc)} active={selectedRadiusActive} onClick={toggleSketchRadius}><Circle /></SketchSideTool>
+              <SketchSideTool label="Diámetro" enabled={Boolean(selectedDimensionCircle || selectedDimensionArc)} active={selectedDiameterActive} onClick={toggleSketchDiameter}><Diameter /></SketchSideTool>
+              <SketchSideTool label="Ángulo" enabled={selectedAngleSegments.length > 0 || Boolean(selectedDimensionArc)} active={selectedDimensionArc ? selectedArcAngleActive : selectedAngleActive} onClick={selectedDimensionArc ? toggleSketchArcAngle : toggleSketchAngle}><DraftingCompass /></SketchSideTool>
+            </div>
+          </section>
+        </aside> : null}
         <ViewCube orientation={cameraOrientation} onDirection={(direction) => setView((current) => ({ name: "custom", direction, token: current.token + 1 }))} />
         <button data-educad-popup="grid" className={`educad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label="Ajustes de rejilla" title="Rejilla" onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><Grid3X3 size={22} /></button>
         <button
@@ -2495,6 +2520,10 @@ function ToolbarSection({ label, className = "", children }: { label: string; cl
 
 function Tool({ label, enabled = true, active, onClick, children }: { label: string; enabled?: boolean; active?: boolean; onClick?: () => void; children: React.ReactNode }) {
   return <button className={`toolbar-icon ${enabled ? "" : "disabled"} ${active ? "active" : ""}`} aria-label={label} aria-pressed={active === undefined ? undefined : active} title={label} disabled={!enabled} onClick={onClick}>{children}</button>;
+}
+
+function SketchSideTool({ label, enabled = true, active, onClick, children }: { label: string; enabled?: boolean; active?: boolean; onClick?: () => void; children: React.ReactNode }) {
+  return <button className={`educad-sketch-side-tool ${active ? "active" : ""}`} type="button" aria-pressed={active} disabled={!enabled} title={label} onClick={onClick}><span className="educad-sketch-side-tool-icon">{children}</span><span>{label}</span></button>;
 }
 
 function ViewCube({ orientation, onDirection }: { orientation: CameraOrientation; onDirection: (direction: [number, number, number]) => void }) {

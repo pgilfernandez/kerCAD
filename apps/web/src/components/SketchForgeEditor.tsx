@@ -6272,6 +6272,7 @@ export function SketchForgeEditor({
       arc: "Arc: choose the centre, start point, and end point",
       select: "Select: edit sketch geometry or place and scale reference images",
       refine: "Refine: click a segment to add a point, or a point to remove it",
+      trim: "Trim: click a line, arc, or circle section between intersections",
       erase: "Erase: click a point or segment to remove it",
       measure: "Measure: choose two points",
     };

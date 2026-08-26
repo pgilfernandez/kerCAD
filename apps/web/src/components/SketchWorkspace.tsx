@@ -12,7 +12,7 @@ import { solveSketchConstraints } from "@/lib/sketchConstraints";
 import type { SketchProfileValidation } from "@/lib/sketchProfileValidation";
 import type { GridSize, SketchCircle, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchSegment, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
 
-export type SketchTool = "line" | "bezier" | "smooth" | "circle" | "arc" | "select" | "refine" | "erase" | "measure";
+export type SketchTool = "line" | "bezier" | "smooth" | "circle" | "arc" | "select" | "refine" | "trim" | "erase" | "measure";
 export type SketchSelection =
   | { kind: "point"; id: string }
   | { kind: "segment"; id: string }
@@ -47,6 +47,7 @@ type SketchWorkspaceProps = {
   onSelectCircle?: (id: string, additive?: boolean) => void;
   onSelectCirclePoint?: (id: string, point: "center" | "radius", additive: boolean) => void;
   onDeleteCircle?: (id: string) => void;
+  onTrimCircle?: (id: string, point: { x: number; z: number }) => void;
   onMoveCircle?: (id: string, center: { x: number; z: number }) => void;
   onResizeCircle?: (id: string, radius: number, angle: number) => void;
   onSelectImage: (id: string) => void;
@@ -54,6 +55,7 @@ type SketchWorkspaceProps = {
   onDeleteImage: (id: string) => void;
   onDeletePoint: (id: string) => void;
   onDeleteSegment: (id: string) => void;
+  onTrimSegment?: (id: string, point: { x: number; z: number }) => void;
   onMovePoint: (id: string, point: { x: number; z: number }) => void;
   onMoveHandle: (id: string, handle: "in" | "out", point: { x: number; z: number }) => void;
   onInsertPoint: (segmentId: string, point: { x: number; z: number }) => void;
@@ -559,6 +561,7 @@ export function SketchWorkspace({
   onSelectCircle,
   onSelectCirclePoint,
   onDeleteCircle,
+  onTrimCircle,
   onMoveCircle,
   onResizeCircle,
   onSelectImage,
@@ -566,6 +569,7 @@ export function SketchWorkspace({
   onDeleteImage,
   onDeletePoint,
   onDeleteSegment,
+  onTrimSegment,
   onMovePoint,
   onMoveHandle,
   onInsertPoint,
@@ -1056,11 +1060,12 @@ export function SketchWorkspace({
                 key={segment.id}
                 d={segmentData(segment, pointById)}
                 onPointerDown={(event) => {
-                  const point = pointFromEvent(event);
+                  const point = pointFromEvent(event, tool !== "trim");
                   event.preventDefault();
                   event.stopPropagation();
                   if (event.button === 1) beginPan(event);
                   else if (tool === "erase") onDeleteSegment(segment.id);
+                  else if (event.button === 0 && tool === "trim" && point) onTrimSegment?.(segment.id, point);
                   else if (event.button === 0 && tool === "refine" && point) onInsertPoint(segment.id, point);
                   else if (event.button === 0) onSelectSegment(segment.id, event.ctrlKey || event.metaKey || event.shiftKey);
                 }}
@@ -1074,11 +1079,12 @@ export function SketchWorkspace({
               cy={circle.z}
               r={circle.radius}
               onPointerDown={(event) => {
-                const point = pointFromEvent(event);
+                const point = pointFromEvent(event, tool !== "trim");
                 event.preventDefault();
                 event.stopPropagation();
                 if (event.button === 1) beginPan(event);
                 else if (tool === "erase") onDeleteCircle?.(circle.id);
+                else if (event.button === 0 && tool === "trim" && point) onTrimCircle?.(circle.id, point);
                 else if (event.button === 0 && tool === "select" && point) {
                   onSelectCircle?.(circle.id, event.ctrlKey || event.metaKey || event.shiftKey);
                   beginEntityDrag(event, { kind: "move-circle", pointerId: event.pointerId, circleId: circle.id, origin: point, current: point, start: { ...circle } });
@@ -1349,6 +1355,8 @@ export function SketchWorkspace({
                     beginPan(event);
                   } else if (tool === "erase" || tool === "refine") {
                     onDeletePoint(point.id);
+                  } else if (tool === "trim") {
+                    return;
                   } else if (event.button === 0 && tool === "select") {
                     onPointPress(point.id, event.ctrlKey || event.metaKey);
                     beginEntityDrag(event, { kind: "move-point", pointerId: event.pointerId, pointId: point.id, current: { x: point.x, z: point.z } });
