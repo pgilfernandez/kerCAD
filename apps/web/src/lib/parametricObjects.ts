@@ -9,9 +9,14 @@ import * as THREE from "three";
 
 export type SupportedPrimitive = ParametricPrimitiveKind;
 type TransformableOperation = ExtrudeFeature | PrimitiveFeature;
+type MovableOperation = TransformableOperation | SketchFeature;
 
 function isTransformableOperation(feature: ParametricFeature): feature is TransformableOperation {
   return feature.kind === "extrude" || feature.kind === "primitive";
+}
+
+function isMovableOperation(feature: ParametricFeature): feature is MovableOperation {
+  return isTransformableOperation(feature) || (feature.kind === "sketch" && feature.purpose === "user");
 }
 
 function sketchDimensions(sketch: SketchFeature) {
@@ -507,6 +512,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
     center: world.center,
     origin: { x: world.x, y: world.y, z: world.z },
     rotation3d: world.rotation3d,
+    ...(feature.kind === "extrude" ? { parameterHandles: ["height" as const] } : {}),
     ...(feature.kind === "extrude" && sketch!.profile.shape === "circle" ? { resizeAspectRatio: 1 } : {}),
     shapeParameters: feature.kind === "primitive"
       ? feature.primitive === "cone"
@@ -540,6 +546,29 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
   };
 }
 
+export function viewportPlacementForSketchFeature(document: ParametricDocument, id: string | null) {
+  const feature = document.features.find((candidate): candidate is SketchFeature => candidate.id === id && candidate.kind === "sketch" && candidate.purpose === "user");
+  const object = feature?.objectId ? document.objects.find((candidate) => candidate.id === feature.objectId) : null;
+  if (!feature || !object || feature.suppressed || !object.visible || object.locked) return null;
+  const matrix = parametricTransformMatrix(object.transform).multiply(parametricTransformMatrix({
+    position: { x: feature.x, y: feature.y, z: feature.offset },
+    rotation: feature.rotation,
+  }));
+  const position = new THREE.Vector3();
+  const quaternion = new THREE.Quaternion();
+  matrix.decompose(position, quaternion, new THREE.Vector3());
+  const rotation = new THREE.Euler().setFromQuaternion(quaternion, "ZYX");
+  const clean = (value: number) => Math.abs(value) < 1e-10 ? 0 : Number(value.toFixed(10));
+  return {
+    position: { x: clean(position.x), y: clean(position.y), z: clean(position.z) },
+    rotation: {
+      x: clean(THREE.MathUtils.radToDeg(rotation.x)),
+      y: clean(THREE.MathUtils.radToDeg(rotation.y)),
+      z: clean(THREE.MathUtils.radToDeg(rotation.z)),
+    },
+  };
+}
+
 export function applyOperationWorldPosition(document: ParametricDocument, id: string, x: number, y: number) {
   const feature = document.features.find((candidate): candidate is TransformableOperation => candidate.id === id && isTransformableOperation(candidate));
   const object = feature ? document.objects.find((candidate) => candidate.id === feature.objectId) : null;
@@ -566,13 +595,24 @@ export function applyParametricSelectionWorldDelta(
     object.transform.position.z += delta.z;
     return;
   }
-  const feature = document.features.find((candidate): candidate is TransformableOperation => candidate.id === id && isTransformableOperation(candidate));
+  const feature = document.features.find((candidate): candidate is MovableOperation => candidate.id === id && isMovableOperation(candidate));
   const object = feature ? document.objects.find((candidate) => candidate.id === feature.objectId) : null;
   if (!feature || !object) return;
   const unrotated = inverseRotateVector(delta, object.transform.rotation);
-  feature.transform.position.x += unrotated.x / object.transform.scale.x;
-  feature.transform.position.y += unrotated.y / object.transform.scale.y;
-  feature.transform.position.z += unrotated.z / object.transform.scale.z;
+  const local = {
+    x: unrotated.x / object.transform.scale.x,
+    y: unrotated.y / object.transform.scale.y,
+    z: unrotated.z / object.transform.scale.z,
+  };
+  if (feature.kind === "sketch") {
+    feature.x += local.x;
+    feature.y += local.y;
+    feature.offset += local.z;
+  } else {
+    feature.transform.position.x += local.x;
+    feature.transform.position.y += local.y;
+    feature.transform.position.z += local.z;
+  }
 }
 
 export function applyParametricSelectionWorkplaneRotation(
@@ -595,13 +635,35 @@ export function applyParametricSelectionWorkplaneRotation(
     if (object) object.transform.rotation = parametricRotationFromMatrix(delta.multiply(rotationMatrix(object.transform.rotation)));
     return;
   }
-  const feature = document.features.find((candidate): candidate is TransformableOperation => candidate.id === id && isTransformableOperation(candidate));
+  const feature = document.features.find((candidate): candidate is MovableOperation => candidate.id === id && isMovableOperation(candidate));
   const object = feature ? document.objects.find((candidate) => candidate.id === feature.objectId) : null;
   if (!feature || !object) return;
   const objectRotation = rotationMatrix(object.transform.rotation);
-  const worldRotation = objectRotation.clone().multiply(rotationMatrix(feature.transform.rotation));
+  const localRotation = feature.kind === "sketch" ? feature.rotation : feature.transform.rotation;
+  const worldRotation = objectRotation.clone().multiply(rotationMatrix(localRotation));
   const nextLocal = objectRotation.clone().invert().multiply(delta.multiply(worldRotation));
-  feature.transform.rotation = parametricRotationFromMatrix(nextLocal);
+  if (feature.kind === "sketch") feature.rotation = parametricRotationFromMatrix(nextLocal);
+  else feature.transform.rotation = parametricRotationFromMatrix(nextLocal);
+}
+
+export function rotateParametricObjectAroundLocalAxis(
+  document: ParametricDocument,
+  id: string,
+  axis: "x" | "y" | "z",
+  deltaDegrees: number,
+) {
+  if (!Number.isFinite(deltaDegrees)) return;
+  const object = document.objects.find((candidate) => candidate.id === id);
+  if (!object) return;
+  const current = new THREE.Quaternion().setFromEuler(new THREE.Euler(
+    THREE.MathUtils.degToRad(object.transform.rotation.x),
+    THREE.MathUtils.degToRad(object.transform.rotation.y),
+    THREE.MathUtils.degToRad(object.transform.rotation.z),
+    "ZYX",
+  ));
+  const direction = axis === "x" ? new THREE.Vector3(1, 0, 0) : axis === "y" ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, 0, 1);
+  current.multiply(new THREE.Quaternion().setFromAxisAngle(direction, THREE.MathUtils.degToRad(deltaDegrees)));
+  object.transform.rotation = parametricRotationFromMatrix(new THREE.Matrix4().makeRotationFromQuaternion(current));
 }
 
 export function applyOperationWorldRotation(document: ParametricDocument, id: string, rotation: number) {

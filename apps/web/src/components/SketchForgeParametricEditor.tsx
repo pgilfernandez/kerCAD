@@ -1,6 +1,6 @@
 "use client";
 
-import { Anchor, Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, CircleDot, CornerDownRight, Diameter, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, MoveHorizontal, MoveVertical, MousePointer2, PenLine, Plus, RotateCcw, Ruler, Spline, Split, Waves, X } from "lucide-react";
+import { Anchor, Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, CircleDot, CornerDownRight, Diameter, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Move3d, MoveHorizontal, MoveVertical, MousePointer2, PenLine, Plus, Rotate3d, RotateCcw, Ruler, Spline, Split, Waves, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent as ReactFocusEvent } from "react";
 import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyEdgePick, type TopologyFacePick } from "@/components/ParametricViewport";
@@ -53,6 +53,8 @@ import {
   addParametricObject,
   alignParametricSelections,
   applyParametricSelectionWorldDelta,
+  applyParametricSelectionWorkplaneRotation,
+  rotateParametricObjectAroundLocalAxis,
   applyWorkplanePatch,
   deleteParametricObject,
   deleteParametricFeature,
@@ -67,6 +69,7 @@ import {
   updateParametricShapeParameter,
   viewportSelectionForFeature,
   viewportSelectionForObject,
+  viewportPlacementForSketchFeature,
   workplaneShapeForObject,
   type ParametricAlignmentAnchor,
   type ParametricAlignmentAxis,
@@ -81,6 +84,8 @@ import type { GridSize, SketchPoint, SketchProfile, WorkplaneShape } from "@/typ
 const STORAGE_KEY = "educad.parametric.document.v1";
 const RENDER_QUALITY_STORAGE_KEY = "educad.viewport.render-mode";
 const FPS_VISIBLE_STORAGE_KEY = "educad.viewport.show-fps";
+const POSITION_TRIAD_VISIBLE_STORAGE_KEY = "educad.viewport.position-triad";
+const ROTATION_TRIAD_VISIBLE_STORAGE_KEY = "educad.viewport.rotation-triad";
 type Notice = { type: "ok" | "info" | "error"; text: string } | null;
 
 function downloadBlob(blob: Blob, name: string) {
@@ -235,6 +240,8 @@ export function SketchForgeParametricEditor() {
   const [projection, setProjection] = useState<CameraProjection>("orthographic");
   const [renderQuality, setRenderQuality] = useState<ViewportRenderQuality>("normal");
   const [showFps, setShowFps] = useState(false);
+  const [showPositionTriad, setShowPositionTriad] = useState(true);
+  const [showRotationTriad, setShowRotationTriad] = useState(true);
   const [originEditObjectId, setOriginEditObjectId] = useState<string | null>(null);
   const [alignOpen, setAlignOpen] = useState(false);
   const [cameraOrientation, setCameraOrientation] = useState<CameraOrientation>({ azimuth: Math.PI / 4, polar: 1.02 });
@@ -339,6 +346,8 @@ export function SketchForgeParametricEditor() {
       const storedQuality = localStorage.getItem(RENDER_QUALITY_STORAGE_KEY);
       if (storedQuality === "normal" || storedQuality === "optimized") setRenderQuality(storedQuality);
       setShowFps(localStorage.getItem(FPS_VISIBLE_STORAGE_KEY) === "true");
+      setShowPositionTriad(localStorage.getItem(POSITION_TRIAD_VISIBLE_STORAGE_KEY) !== "false");
+      setShowRotationTriad(localStorage.getItem(ROTATION_TRIAD_VISIBLE_STORAGE_KEY) !== "false");
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored) as unknown;
@@ -365,6 +374,14 @@ export function SketchForgeParametricEditor() {
   useEffect(() => {
     if (hydrated) localStorage.setItem(FPS_VISIBLE_STORAGE_KEY, String(showFps));
   }, [hydrated, showFps]);
+
+  useEffect(() => {
+    if (hydrated) localStorage.setItem(POSITION_TRIAD_VISIBLE_STORAGE_KEY, String(showPositionTriad));
+  }, [hydrated, showPositionTriad]);
+
+  useEffect(() => {
+    if (hydrated) localStorage.setItem(ROTATION_TRIAD_VISIBLE_STORAGE_KEY, String(showRotationTriad));
+  }, [hydrated, showRotationTriad]);
 
   useEffect(() => {
     const createWorker = () => new Worker(new URL("../workers/parametricBuild.worker.ts", import.meta.url), { type: "module" });
@@ -563,26 +580,33 @@ export function SketchForgeParametricEditor() {
   const selectedFeature = selectionKind === "feature" ? document.features.find((feature) => feature.id === selectedId) ?? null : null;
   const selectedOperationId = selectionKind === "feature" && document.features.some((feature) => feature.id === selectedId && (feature.kind === "extrude" || feature.kind === "primitive")) ? selectedId : null;
   const selectedOperation = selectedOperationId ? document.features.find((feature): feature is ExtrudeFeature | PrimitiveFeature => feature.id === selectedOperationId && (feature.kind === "extrude" || feature.kind === "primitive")) : null;
+  const selectedSketchId = selectedFeature?.kind === "sketch" && selectedFeature.purpose === "user" ? selectedFeature.id : null;
+  const selectedTransformOperationId = selectedOperationId ?? selectedSketchId;
   const selectedShape = useMemo(() => workplaneShapeForObject(document, selectedObjectId), [document, selectedObjectId]);
-  const selectedBox = useMemo(() => modelSelection.length === 1 ? (selectedOperationId ? viewportSelectionForFeature(document, selectedOperationId) : viewportSelectionForObject(document, selectedObjectId)) : null, [document, modelSelection.length, selectedObjectId, selectedOperationId]);
+  const selectedBox = useMemo(() => modelSelection.length === 1 ? (selectionKind === "feature" ? selectedOperationId ? viewportSelectionForFeature(document, selectedOperationId) : null : viewportSelectionForObject(document, selectedObjectId)) : null, [document, modelSelection.length, selectedObjectId, selectedOperationId, selectionKind]);
+  const selectedSketchPlacement = useMemo(() => selectedSketchId ? viewportPlacementForSketchFeature(document, selectedSketchId) : null, [document, selectedSketchId]);
   const selectedOriginObjectId = modelSelection.length === 1 && selectionKind === "object" ? selectedObjectId : null;
-  const selectedOperationOriginId = modelSelection.length === 1 ? selectedOperationId : null;
+  const selectedOperationOriginId = modelSelection.length === 1 ? selectedTransformOperationId : null;
   const viewportSelectedObjectIds = useMemo(() => [...new Set(modelSelection.flatMap((item) => {
     const objectId = objectIdForFeature(document, item.id);
     return objectId ? [objectId] : [];
   }))], [document, modelSelection]);
   const viewportObjectOrigins = useMemo(() => document.objects.map((object) => ({
     objectId: object.id,
-    visible: object.id === selectedOriginObjectId,
+    visible: object.id === selectedOriginObjectId && (showPositionTriad || showRotationTriad || object.id === originEditObjectId),
     position: object.transform.position,
     rotation: object.transform.rotation,
-  })), [document.objects, selectedOriginObjectId]);
-  const viewportOperationOrigins = useMemo(() => selectedOperationOriginId && selectedBox ? [{
+    positionVisible: showPositionTriad || object.id === originEditObjectId,
+    rotationEditable: object.id === selectedOriginObjectId && showRotationTriad,
+  })), [document.objects, originEditObjectId, selectedOriginObjectId, showPositionTriad, showRotationTriad]);
+  const viewportOperationOrigins = useMemo(() => selectedOperationOriginId && (selectedBox || selectedSketchPlacement) ? [{
     featureId: selectedOperationOriginId,
-    visible: true,
-    position: selectedBox.origin ?? { x: selectedBox.x, y: selectedBox.y, z: selectedBox.baseZ },
-    rotation: selectedBox.rotation3d ?? { x: 0, y: 0, z: selectedBox.rotation },
-  }] : [], [selectedBox, selectedOperationOriginId]);
+    visible: showPositionTriad || showRotationTriad,
+    position: selectedSketchPlacement?.position ?? selectedBox?.origin ?? { x: selectedBox?.x ?? 0, y: selectedBox?.y ?? 0, z: selectedBox?.baseZ ?? 0 },
+    rotation: selectedSketchPlacement?.rotation ?? selectedBox?.rotation3d ?? { x: 0, y: 0, z: selectedBox?.rotation ?? 0 },
+    positionVisible: showPositionTriad,
+    rotationEditable: showRotationTriad,
+  }] : [], [selectedBox, selectedOperationOriginId, selectedSketchPlacement, showPositionTriad, showRotationTriad]);
   const viewportSketchOverlays = useMemo(() => document.features.flatMap((feature) => {
     if (feature.kind !== "sketch" || feature.purpose !== "user" || feature.suppressed) return [];
     const object = feature.objectId ? document.objects.find((candidate) => candidate.id === feature.objectId) ?? null : null;
@@ -1856,7 +1880,7 @@ export function SketchForgeParametricEditor() {
               <Tool label="Ajustar a rejilla" enabled={Boolean(selectedShape && document.workplane.snapToGrid)} onClick={() => selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: Math.round((selectedShape?.x ?? 0) / snapAmount) * snapAmount, z: Math.round((selectedShape?.z ?? 0) / snapAmount) * snapAmount }))}><ToolbarSnapGridIcon /></Tool>
               <Tool label="Chaflán" active={pendingEdgeTreatment === "chamfer"} onClick={() => beginEdgeTreatment("chamfer")}><ToolbarChamferIcon /></Tool>
               <Tool label="Redondeo" active={pendingEdgeTreatment === "fillet"} onClick={() => beginEdgeTreatment("fillet")}><ToolbarFilletIcon /></Tool>
-              <Tool label={selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? "Extruir boceto" : "Extruir cara"} active={Boolean(pendingFaceExtrude)} onClick={() => selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? addExtrudeFromSketch(selectedFeature) : beginFaceExtrude("add")}><ToolbarShapeAddIcon /></Tool>
+              <Tool label={selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? "Extruir boceto" : "Extruir cara"} active={Boolean(pendingFaceExtrude)} onClick={() => selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? addExtrudeFromSketch(selectedFeature) : beginFaceExtrude("add")}><img className="educad-toolbar-operation-icon" src="/assets/educad/operations/extrude.svg" alt="" /></Tool>
               <Tool label="Vaciado" active={Boolean(pendingShell)} onClick={() => beginShell()}><img className="educad-toolbar-operation-icon" src="/assets/educad/operations/shell.svg" alt="" /></Tool>
               <Tool label={selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? "Revolucionar boceto" : "Revolución"} active={Boolean(pendingRevolve)} onClick={() => selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? addRevolveFromSketch(selectedFeature) : beginRevolve()}><img className="educad-toolbar-operation-icon" src="/assets/educad/operations/revolve.svg" alt="" /></Tool>
             </ToolbarSection>
@@ -2043,7 +2067,9 @@ export function SketchForgeParametricEditor() {
             const object = draft.objects.find((candidate) => candidate.id === objectId);
             if (object) object.transform.position = { ...position };
           })}
+          onObjectRotate={(objectId, _axis, deltaDegrees, localAxis) => mutate((draft) => rotateParametricObjectAroundLocalAxis(draft, objectId, localAxis, deltaDegrees))}
           onOperationAxisMove={(featureId, delta) => mutate((draft) => applyParametricSelectionWorldDelta(draft, featureId, "feature", delta))}
+          onOperationRotate={(featureId, axis, deltaDegrees) => mutate((draft) => applyParametricSelectionWorkplaneRotation(draft, featureId, "feature", axis, deltaDegrees))}
           onCameraOrientation={setCameraOrientation}
           onObjectSelect={(objectId) => {
             const object = document.objects.find((candidate) => candidate.id === objectId);
@@ -2113,6 +2139,8 @@ export function SketchForgeParametricEditor() {
           {modelSidebarMode === "normal" ? <ChevronLeft size={23} /> : modelSidebarMode === "simplified" ? <ChevronDown size={23} /> : <ChevronRight size={23} />}
         </button>
         <div className="camera-controls" aria-label="Controles de cámara">
+          <button className={showPositionTriad ? "active" : ""} aria-label={showPositionTriad ? "Ocultar triada de posición" : "Mostrar triada de posición"} aria-pressed={showPositionTriad} title="Triada de posición" onClick={() => setShowPositionTriad((visible) => !visible)}><Move3d size={22} /></button>
+          <button className={showRotationTriad ? "active" : ""} aria-label={showRotationTriad ? "Ocultar triada de rotación" : "Mostrar triada de rotación"} aria-pressed={showRotationTriad} title="Triada de rotación" onClick={() => setShowRotationTriad((visible) => !visible)}><Rotate3d size={22} /></button>
           <button aria-label={projection === "perspective" ? "Cambiar a vista ortográfica" : "Cambiar a perspectiva"} title={projection === "perspective" ? "Perspectiva" : "Ortográfica"} aria-pressed={projection === "orthographic"} onClick={() => setProjection((current) => current === "perspective" ? "orthographic" : "perspective")}><Box size={22} /></button>
           <button aria-label="Vista inicial" onClick={() => setCamera("home")}><Home size={24} /></button>
           <button aria-label="Encuadrar todo" title="Encuadrar todo" onClick={() => setCamera("fit")}><Maximize2 size={21} /></button>
