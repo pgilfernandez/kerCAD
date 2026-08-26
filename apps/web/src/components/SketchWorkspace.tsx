@@ -243,18 +243,26 @@ function cubicPoint(start: SketchPoint, first: { x: number; z: number }, second:
   };
 }
 
+function arcDimensionGeometry(segment: SketchSegment, pointById: Map<string, SketchPoint>) {
+  const start = pointById.get(segment.startId);
+  const end = pointById.get(segment.endId);
+  if (segment.kind !== "arc" || !segment.center || !start || !end) return null;
+  const radius = Math.hypot(start.x - segment.center.x, start.z - segment.center.z);
+  const startAngle = Math.atan2(start.z - segment.center.z, start.x - segment.center.x);
+  const endAngle = Math.atan2(end.z - segment.center.z, end.x - segment.center.x);
+  const forward = segment.clockwise !== false;
+  const sweep = forward ? (endAngle - startAngle + Math.PI * 2) % (Math.PI * 2) : (startAngle - endAngle + Math.PI * 2) % (Math.PI * 2);
+  const middleAngle = startAngle + (forward ? 1 : -1) * sweep / 2;
+  return { radius, sweep, middleAngle, center: segment.center };
+}
+
 function segmentDimension(segment: SketchSegment, pointById: Map<string, SketchPoint>) {
   const start = pointById.get(segment.startId);
   const end = pointById.get(segment.endId);
   if (!start || !end) return null;
   if (segment.kind === "arc" && segment.center) {
-    const radius = Math.hypot(start.x - segment.center.x, start.z - segment.center.z);
-    const startAngle = Math.atan2(start.z - segment.center.z, start.x - segment.center.x);
-    const endAngle = Math.atan2(end.z - segment.center.z, end.x - segment.center.x);
-    const forward = segment.clockwise !== false;
-    const sweep = forward ? (endAngle - startAngle + Math.PI * 2) % (Math.PI * 2) : (startAngle - endAngle + Math.PI * 2) % (Math.PI * 2);
-    const middleAngle = startAngle + (forward ? 1 : -1) * sweep / 2;
-    return { length: radius * sweep, midpoint: { x: segment.center.x + Math.cos(middleAngle) * radius, z: segment.center.z + Math.sin(middleAngle) * radius } };
+    const arc = arcDimensionGeometry(segment, pointById);
+    return arc ? { length: arc.radius * arc.sweep, midpoint: { x: arc.center.x + Math.cos(arc.middleAngle) * arc.radius, z: arc.center.z + Math.sin(arc.middleAngle) * arc.radius } } : null;
   }
   const first = start.handleOut;
   const second = end.handleIn;
@@ -1293,6 +1301,35 @@ export function SketchWorkspace({
               return <g key={`radius-${circle.id}`} pointerEvents="none" transform={`translate(${circle.x + circle.radius + 12 * screenUnit} ${circle.z + 18 * screenUnit})`}>
                 <rect x={0} y={-pill.height / 2} width={pill.width} height={pill.height} rx={pill.radius} />
                 <text x={pill.width / 2} y={5 * screenUnit} fontSize={13 * screenUnit}>{label}</text>
+              </g>;
+            })}
+          </g>
+          <g className="sketch-circle-dimensions sketch-arc-dimensions">
+            {displayProfile.segments.filter((segment) => segment.kind === "arc" && segment.center).map((segment) => {
+              const arc = arcDimensionGeometry(segment, pointById);
+              if (!arc) return null;
+              const radialConstraint = (displayProfile.constraints ?? []).find((candidate): candidate is Extract<NonNullable<SketchProfile["constraints"]>[number], { kind: "arcRadius" | "arcDiameter" }> => (candidate.kind === "arcRadius" || candidate.kind === "arcDiameter") && candidate.segmentId === segment.id);
+              const angleConstraint = (displayProfile.constraints ?? []).find((candidate): candidate is Extract<NonNullable<SketchProfile["constraints"]>[number], { kind: "arcAngle" }> => candidate.kind === "arcAngle" && candidate.segmentId === segment.id);
+              const radialPosition = {
+                x: arc.center.x + Math.cos(arc.middleAngle) * (arc.radius + 12 * screenUnit),
+                z: arc.center.z + Math.sin(arc.middleAngle) * (arc.radius + 12 * screenUnit),
+              };
+              const anglePosition = {
+                x: arc.center.x + Math.cos(arc.middleAngle) * arc.radius * 0.55,
+                z: arc.center.z + Math.sin(arc.middleAngle) * arc.radius * 0.55,
+              };
+              const radialLabel = `R ${formatDimension(arc.radius, workspace.accuracy)}`;
+              const radialPill = dimensionPillSize(radialLabel, screenUnit, 18);
+              return <g key={`arc-dimensions-${segment.id}`}>
+                {radialConstraint ? <g transform={`translate(${radialPosition.x} ${radialPosition.z})`}>
+                  <SketchDimensionInput id={radialConstraint.id} label={radialConstraint.kind === "arcDiameter" ? "Diámetro" : "Radio"} indicator={radialConstraint.kind === "arcDiameter" ? "Ø" : "R"} value={radialConstraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} align="start" onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
+                </g> : <g pointerEvents="none" transform={`translate(${radialPosition.x} ${radialPosition.z})`}>
+                  <rect x={0} y={-radialPill.height / 2} width={radialPill.width} height={radialPill.height} rx={radialPill.radius} />
+                  <text x={radialPill.width / 2} y={5 * screenUnit} fontSize={13 * screenUnit}>{radialLabel}</text>
+                </g>}
+                {angleConstraint ? <g transform={`translate(${anglePosition.x} ${anglePosition.z})`}>
+                  <SketchDimensionInput id={angleConstraint.id} label="Ángulo del arco" indicator="A" value={angleConstraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
+                </g> : null}
               </g>;
             })}
           </g>

@@ -295,6 +295,7 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
         geometry.circles ??= [];
         geometry.images ??= [];
         const lineIds = new Set(geometry.segments.filter((segment) => segment.kind === "line").map((segment) => segment.id));
+        const segmentIds = new Set(geometry.segments.map((segment) => segment.id));
         const pointIds = new Set(geometry.points.map((point) => point.id));
         const circleIds = new Set(geometry.circles.map((circle) => circle.id));
         for (const circle of geometry.circles) {
@@ -315,6 +316,8 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
           if (constraint.kind === "coincident") return constraint.pointIds[0] !== constraint.pointIds[1] && constraint.pointIds.every((id) => pointIds.has(id));
           if (constraint.kind === "distance") return lineIds.has(constraint.segmentId) && ["aligned", "x", "z"].includes(constraint.axis) && Number.isFinite(constraint.value) && constraint.value > 0;
           if (constraint.kind === "radius" || constraint.kind === "diameter") return circleIds.has(constraint.circleId) && Number.isFinite(constraint.value) && constraint.value > 0;
+          if (constraint.kind === "arcRadius" || constraint.kind === "arcDiameter") return segmentIds.has(constraint.segmentId) && Number.isFinite(constraint.value) && constraint.value > 0;
+          if (constraint.kind === "arcAngle") return segmentIds.has(constraint.segmentId) && Number.isFinite(constraint.value) && constraint.value > 0 && constraint.value < 360;
           if (constraint.kind === "angle") return constraint.segmentIds.length >= 1 && constraint.segmentIds.length <= 2 && constraint.segmentIds.every((id) => lineIds.has(id)) && Number.isFinite(constraint.value);
           return false;
         });

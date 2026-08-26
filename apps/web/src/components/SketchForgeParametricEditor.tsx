@@ -1022,9 +1022,29 @@ export function SketchForgeParametricEditor() {
   const selectedDimensionCircle = sketchSession && sketchSelection?.kind === "circle"
     ? sketchSession.profile.circles?.find((circle) => circle.id === sketchSelection.id) ?? null
     : null;
+  const selectedDimensionArcId = sketchSelection?.kind === "segment"
+    ? sketchSelection.id
+    : sketchSelection?.kind === "multiple" && sketchSelection.segmentIds.length === 1
+      ? sketchSelection.segmentIds[0]
+      : null;
+  const selectedDimensionArc = sketchSession && selectedDimensionArcId
+    ? sketchSession.profile.segments.find((segment) => segment.id === selectedDimensionArcId && segment.kind === "arc" && segment.center) ?? null
+    : null;
+  const selectedArcStart = selectedDimensionArc && sketchSession ? sketchSession.profile.points.find((point) => point.id === selectedDimensionArc.startId) ?? null : null;
+  const selectedArcEnd = selectedDimensionArc && sketchSession ? sketchSession.profile.points.find((point) => point.id === selectedDimensionArc.endId) ?? null : null;
+  const selectedArcRadius = selectedDimensionArc?.center && selectedArcStart ? Math.hypot(selectedArcStart.x - selectedDimensionArc.center.x, selectedArcStart.z - selectedDimensionArc.center.z) : null;
   const selectedDimensionActive = (axis: "aligned" | "x" | "z") => Boolean(selectedDimensionSegment && sketchSession?.profile.constraints?.some((constraint) => constraint.kind === "distance" && constraint.segmentId === selectedDimensionSegment.id && constraint.axis === axis));
-  const selectedRadiusActive = Boolean(selectedDimensionCircle && sketchSession?.profile.constraints?.some((constraint) => constraint.kind === "radius" && constraint.circleId === selectedDimensionCircle.id));
-  const selectedDiameterActive = Boolean(selectedDimensionCircle && sketchSession?.profile.constraints?.some((constraint) => constraint.kind === "diameter" && constraint.circleId === selectedDimensionCircle.id));
+  const selectedRadiusActive = Boolean(
+    selectedDimensionCircle
+      ? sketchSession?.profile.constraints?.some((constraint) => constraint.kind === "radius" && constraint.circleId === selectedDimensionCircle.id)
+      : selectedDimensionArc && sketchSession?.profile.constraints?.some((constraint) => constraint.kind === "arcRadius" && constraint.segmentId === selectedDimensionArc.id),
+  );
+  const selectedDiameterActive = Boolean(
+    selectedDimensionCircle
+      ? sketchSession?.profile.constraints?.some((constraint) => constraint.kind === "diameter" && constraint.circleId === selectedDimensionCircle.id)
+      : selectedDimensionArc && sketchSession?.profile.constraints?.some((constraint) => constraint.kind === "arcDiameter" && constraint.segmentId === selectedDimensionArc.id),
+  );
+  const selectedArcAngleActive = Boolean(selectedDimensionArc && sketchSession?.profile.constraints?.some((constraint) => constraint.kind === "arcAngle" && constraint.segmentId === selectedDimensionArc.id));
   const selectedAngleSegments = selectedConstraintSegments.length >= 1 && selectedConstraintSegments.length <= 2 ? selectedConstraintSegments : [];
   const selectedAngleActive = selectedAngleSegments.length > 0 && Boolean(sketchSession?.profile.constraints?.some((constraint) => constraint.kind === "angle" && constraint.segmentIds.length === selectedAngleSegments.length && constraint.segmentIds.every((id, index) => id === selectedAngleSegments[index].id)));
 
@@ -1050,29 +1070,56 @@ export function SketchForgeParametricEditor() {
   };
 
   const toggleSketchRadius = () => {
-    if (!selectedDimensionCircle || !sketchSession) return;
-    const candidate = { id: "constraint-preview", kind: "radius" as const, circleId: selectedDimensionCircle.id, value: selectedDimensionCircle.radius };
+    if ((!selectedDimensionCircle && (!selectedDimensionArc || selectedArcRadius === null)) || !sketchSession) return;
+    const candidate: SketchConstraint = selectedDimensionCircle
+      ? { id: "constraint-preview", kind: "radius", circleId: selectedDimensionCircle.id, value: selectedDimensionCircle.radius }
+      : { id: "constraint-preview", kind: "arcRadius", segmentId: selectedDimensionArc!.id, value: selectedArcRadius! };
     if (!selectedRadiusActive) {
       const conflict = sketchConstraintConflict(sketchSession.profile, candidate);
       if (conflict) { setNotice({ type: "error", text: conflict }); return; }
     }
     setSketchProfile((profile) => {
-      const retained = (profile.constraints ?? []).filter((constraint) => constraint.kind !== "radius" || constraint.circleId !== selectedDimensionCircle.id);
+      const retained = (profile.constraints ?? []).filter((constraint) => selectedDimensionCircle
+        ? constraint.kind !== "radius" || constraint.circleId !== selectedDimensionCircle.id
+        : constraint.kind !== "arcRadius" || constraint.segmentId !== selectedDimensionArc!.id);
       if (selectedRadiusActive) return { ...profile, constraints: retained };
       return solveSketchConstraints({ ...profile, constraints: [...retained, { ...candidate, id: sketchEntityId("constraint") }] });
     });
   };
 
   const toggleSketchDiameter = () => {
-    if (!selectedDimensionCircle || !sketchSession) return;
-    const candidate = { id: "constraint-preview", kind: "diameter" as const, circleId: selectedDimensionCircle.id, value: selectedDimensionCircle.radius * 2 };
+    if ((!selectedDimensionCircle && (!selectedDimensionArc || selectedArcRadius === null)) || !sketchSession) return;
+    const candidate: SketchConstraint = selectedDimensionCircle
+      ? { id: "constraint-preview", kind: "diameter", circleId: selectedDimensionCircle.id, value: selectedDimensionCircle.radius * 2 }
+      : { id: "constraint-preview", kind: "arcDiameter", segmentId: selectedDimensionArc!.id, value: selectedArcRadius! * 2 };
     if (!selectedDiameterActive) {
       const conflict = sketchConstraintConflict(sketchSession.profile, candidate);
       if (conflict) { setNotice({ type: "error", text: conflict }); return; }
     }
     setSketchProfile((profile) => {
-      const retained = (profile.constraints ?? []).filter((constraint) => constraint.kind !== "diameter" || constraint.circleId !== selectedDimensionCircle.id);
+      const retained = (profile.constraints ?? []).filter((constraint) => selectedDimensionCircle
+        ? constraint.kind !== "diameter" || constraint.circleId !== selectedDimensionCircle.id
+        : constraint.kind !== "arcDiameter" || constraint.segmentId !== selectedDimensionArc!.id);
       if (selectedDiameterActive) return { ...profile, constraints: retained };
+      return solveSketchConstraints({ ...profile, constraints: [...retained, { ...candidate, id: sketchEntityId("constraint") }] });
+    });
+  };
+
+  const toggleSketchArcAngle = () => {
+    if (!selectedDimensionArc?.center || !selectedArcStart || !selectedArcEnd || !sketchSession) return;
+    const startAngle = Math.atan2(selectedArcStart.z - selectedDimensionArc.center.z, selectedArcStart.x - selectedDimensionArc.center.x);
+    const endAngle = Math.atan2(selectedArcEnd.z - selectedDimensionArc.center.z, selectedArcEnd.x - selectedDimensionArc.center.x);
+    const sweep = selectedDimensionArc.clockwise !== false
+      ? (endAngle - startAngle + Math.PI * 2) % (Math.PI * 2)
+      : (startAngle - endAngle + Math.PI * 2) % (Math.PI * 2);
+    const candidate: SketchConstraint = { id: "constraint-preview", kind: "arcAngle", segmentId: selectedDimensionArc.id, value: Math.max(0.001, sweep * 180 / Math.PI) };
+    if (!selectedArcAngleActive) {
+      const conflict = sketchConstraintConflict(sketchSession.profile, candidate);
+      if (conflict) { setNotice({ type: "error", text: conflict }); return; }
+    }
+    setSketchProfile((profile) => {
+      const retained = (profile.constraints ?? []).filter((constraint) => constraint.kind !== "arcAngle" || constraint.segmentId !== selectedDimensionArc.id);
+      if (selectedArcAngleActive) return { ...profile, constraints: retained };
       return solveSketchConstraints({ ...profile, constraints: [...retained, { ...candidate, id: sketchEntityId("constraint") }] });
     });
   };
@@ -1102,10 +1149,11 @@ export function SketchForgeParametricEditor() {
   const updateSketchConstraintValue = (constraintId: string, value: number) => {
     const constraint = sketchSession?.profile.constraints?.find((candidate) => candidate.id === constraintId);
     const signed = constraint?.kind === "angle";
+    if (constraint?.kind === "arcAngle" && (!Number.isFinite(value) || value <= 0 || value >= 360)) { setNotice({ type: "error", text: "El ángulo del arco debe estar entre 0° y 360°." }); return; }
     if (!Number.isFinite(value) || (!signed && value <= 0)) { setNotice({ type: "error", text: signed ? "El ángulo debe ser un número válido." : "La cota debe ser un número mayor que cero." }); return; }
     setSketchProfile((profile) => solveSketchConstraints({
       ...profile,
-      constraints: (profile.constraints ?? []).map((constraint) => constraint.id === constraintId && (constraint.kind === "distance" || constraint.kind === "radius" || constraint.kind === "diameter" || constraint.kind === "angle") ? { ...constraint, value } : constraint),
+      constraints: (profile.constraints ?? []).map((constraint) => constraint.id === constraintId && (constraint.kind === "distance" || constraint.kind === "radius" || constraint.kind === "diameter" || constraint.kind === "arcRadius" || constraint.kind === "arcDiameter" || constraint.kind === "arcAngle" || constraint.kind === "angle") ? { ...constraint, value } : constraint),
     }));
   };
 
@@ -1981,9 +2029,9 @@ export function SketchForgeParametricEditor() {
             <Tool label="Longitud" enabled={Boolean(selectedDimensionSegment)} active={selectedDimensionActive("aligned")} onClick={() => toggleSketchDimension("aligned")}><Ruler /></Tool>
             <Tool label="Distancia X" enabled={Boolean(selectedDimensionSegment)} active={selectedDimensionActive("x")} onClick={() => toggleSketchDimension("x")}><MoveHorizontal /></Tool>
             <Tool label="Distancia Y" enabled={Boolean(selectedDimensionSegment)} active={selectedDimensionActive("z")} onClick={() => toggleSketchDimension("z")}><MoveVertical /></Tool>
-            <Tool label="Radio" enabled={Boolean(selectedDimensionCircle)} active={selectedRadiusActive} onClick={toggleSketchRadius}><Circle /></Tool>
-            <Tool label="Diámetro" enabled={Boolean(selectedDimensionCircle)} active={selectedDiameterActive} onClick={toggleSketchDiameter}><Diameter /></Tool>
-            <Tool label="Ángulo" enabled={selectedAngleSegments.length > 0} active={selectedAngleActive} onClick={toggleSketchAngle}><DraftingCompass /></Tool>
+            <Tool label="Radio" enabled={Boolean(selectedDimensionCircle || selectedDimensionArc)} active={selectedRadiusActive} onClick={toggleSketchRadius}><Circle /></Tool>
+            <Tool label="Diámetro" enabled={Boolean(selectedDimensionCircle || selectedDimensionArc)} active={selectedDiameterActive} onClick={toggleSketchDiameter}><Diameter /></Tool>
+            <Tool label="Ángulo" enabled={selectedAngleSegments.length > 0 || Boolean(selectedDimensionArc)} active={selectedDimensionArc ? selectedArcAngleActive : selectedAngleActive} onClick={selectedDimensionArc ? toggleSketchArcAngle : toggleSketchAngle}><DraftingCompass /></Tool>
           </ToolbarSection>
           <ToolbarSection label="Historial">
             <Tool label="Deshacer boceto" enabled={sketchHistoryIndex > 0} onClick={sketchUndo}><ToolbarUndoIcon /></Tool>

@@ -23,6 +23,7 @@ export function sketchConstraintPoint(profile: SketchProfile, id: string): Sketc
 
 export function sketchConstraintUsesSegment(constraint: SketchConstraint, segmentId: string) {
   if (constraint.kind === "angle" || constraint.kind === "parallel" || constraint.kind === "perpendicular" || constraint.kind === "equalLength") return constraint.segmentIds.includes(segmentId);
+  if (constraint.kind === "arcRadius" || constraint.kind === "arcDiameter" || constraint.kind === "arcAngle") return constraint.segmentId === segmentId;
   if (constraint.kind === "midpoint" || constraint.kind === "pointOnObject") return constraint.segmentId === segmentId;
   if (constraint.kind === "tangentLineCircle" || constraint.kind === "symmetric") return constraint.segmentId === segmentId;
   return (constraint.kind === "horizontal" || constraint.kind === "vertical" || constraint.kind === "distance") && constraint.segmentId === segmentId;
@@ -181,7 +182,17 @@ export function sketchConstraintConflict(profile: SketchProfile, candidate: Sket
     if (constraints.some((constraint) => constraint.kind === opposite && constraint.circleId === candidate.circleId)) return `El círculo ya está restringido por ${opposite === "radius" ? "radio" : "diámetro"}; elimina primero esa cota.`;
     if (constraints.some((constraint) => constraint.kind === "fixed" && constraint.pointId === circleSketchPointId(candidate.circleId, "radius"))) return "Elimina primero la restricción fija del punto radial.";
   }
-  if ((candidate.kind === "distance" || candidate.kind === "radius" || candidate.kind === "diameter") && (!Number.isFinite(candidate.value) || candidate.value <= 0)) return "La cota debe ser mayor que cero.";
+  if (candidate.kind === "arcRadius" || candidate.kind === "arcDiameter" || candidate.kind === "arcAngle") {
+    const arc = profile.segments.find((segment) => segment.id === candidate.segmentId && segment.kind === "arc" && segment.center);
+    if (!arc) return "La cota requiere un arco válido.";
+    if (candidate.kind === "arcRadius" || candidate.kind === "arcDiameter") {
+      const opposite = candidate.kind === "arcRadius" ? "arcDiameter" : "arcRadius";
+      if (constraints.some((constraint) => constraint.kind === opposite && constraint.segmentId === candidate.segmentId)) return `El arco ya está restringido por ${opposite === "arcRadius" ? "radio" : "diámetro"}; elimina primero esa cota.`;
+    }
+    if (candidate.kind === "arcAngle" && (candidate.value <= 0 || candidate.value >= 360)) return "El ángulo del arco debe estar entre 0° y 360°.";
+  }
+  if ((candidate.kind === "distance" || candidate.kind === "radius" || candidate.kind === "diameter" || candidate.kind === "arcRadius" || candidate.kind === "arcDiameter") && (!Number.isFinite(candidate.value) || candidate.value <= 0)) return "La cota debe ser mayor que cero.";
+  if (candidate.kind === "arcAngle" && !Number.isFinite(candidate.value)) return "El ángulo debe ser un número válido.";
   if (candidate.kind === "angle" && !Number.isFinite(candidate.value)) return "El ángulo debe ser un número válido.";
   return null;
 }
@@ -192,6 +203,33 @@ export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: 
     if (constraint.kind !== "radius" && constraint.kind !== "diameter") continue;
     const circle = profile.circles?.find((candidate) => candidate.id === constraint.circleId);
     if (circle) circle.radius = Math.max(0.001, Math.abs(constraint.value) / (constraint.kind === "diameter" ? 2 : 1));
+  }
+  for (const constraint of constraints) {
+    if (constraint.kind !== "arcRadius" && constraint.kind !== "arcDiameter") continue;
+    const arc = profile.segments.find((segment) => segment.id === constraint.segmentId && segment.kind === "arc" && segment.center);
+    const start = arc ? profile.points.find((point) => point.id === arc.startId) : null;
+    const end = arc ? profile.points.find((point) => point.id === arc.endId) : null;
+    if (!arc?.center || !start || !end) continue;
+    const radius = Math.max(0.001, Math.abs(constraint.value) / (constraint.kind === "arcDiameter" ? 2 : 1));
+    const startAngle = Math.atan2(start.z - arc.center.z, start.x - arc.center.x);
+    const endAngle = Math.atan2(end.z - arc.center.z, end.x - arc.center.x);
+    start.x = arc.center.x + Math.cos(startAngle) * radius;
+    start.z = arc.center.z + Math.sin(startAngle) * radius;
+    end.x = arc.center.x + Math.cos(endAngle) * radius;
+    end.z = arc.center.z + Math.sin(endAngle) * radius;
+  }
+  for (const constraint of constraints) {
+    if (constraint.kind !== "arcAngle") continue;
+    const arc = profile.segments.find((segment) => segment.id === constraint.segmentId && segment.kind === "arc" && segment.center);
+    const start = arc ? profile.points.find((point) => point.id === arc.startId) : null;
+    const end = arc ? profile.points.find((point) => point.id === arc.endId) : null;
+    if (!arc?.center || !start || !end) continue;
+    const radius = Math.max(0.001, Math.hypot(start.x - arc.center.x, start.z - arc.center.z));
+    const startAngle = Math.atan2(start.z - arc.center.z, start.x - arc.center.x);
+    const sweep = Math.min(359.999, Math.max(0.001, Math.abs(constraint.value))) * Math.PI / 180;
+    const endAngle = startAngle + (arc.clockwise !== false ? 1 : -1) * sweep;
+    end.x = arc.center.x + Math.cos(endAngle) * radius;
+    end.z = arc.center.z + Math.sin(endAngle) * radius;
   }
   for (const constraint of constraints) {
     if (constraint.kind !== "equalRadius") continue;
