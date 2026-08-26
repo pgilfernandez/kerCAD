@@ -35,6 +35,29 @@ function cubicPoint(start: SketchPoint, first: PlanePoint, second: PlanePoint, e
   };
 }
 
+type CubicPoints = [PlanePoint, PlanePoint, PlanePoint, PlanePoint];
+
+function mixPoint(first: PlanePoint, second: PlanePoint, amount: number): PlanePoint {
+  return { x: first.x + (second.x - first.x) * amount, z: first.z + (second.z - first.z) * amount };
+}
+
+function splitCubic(points: CubicPoints, amount: number): [CubicPoints, CubicPoints] {
+  const first = mixPoint(points[0], points[1], amount);
+  const second = mixPoint(points[1], points[2], amount);
+  const third = mixPoint(points[2], points[3], amount);
+  const leftMiddle = mixPoint(first, second, amount);
+  const rightMiddle = mixPoint(second, third, amount);
+  const split = mixPoint(leftMiddle, rightMiddle, amount);
+  return [[points[0], first, leftMiddle, split], [split, rightMiddle, third, points[3]]];
+}
+
+function cubicRange(points: CubicPoints, start: number, end: number): CubicPoints {
+  if (start <= EPSILON && end >= 1 - EPSILON) return points;
+  const left = end >= 1 - EPSILON ? points : splitCubic(points, end)[0];
+  if (start <= EPSILON) return left;
+  return splitCubic(left, start / Math.max(EPSILON, end))[1];
+}
+
 function segmentPolyline(segment: SketchSegment, pointById: Map<string, SketchPoint>): PlanePoint[] {
   const start = pointById.get(segment.startId);
   const end = pointById.get(segment.endId);
@@ -118,10 +141,10 @@ function constraintUsesCircle(profile: SketchProfile, circleId: string) {
   };
 }
 
-function existingOrNewPoint(profile: SketchProfile, point: PlanePoint, createId: (prefix: string) => string) {
+function existingOrNewPoint(profile: SketchProfile, point: PlanePoint, createId: (prefix: string) => string, mode: SketchPoint["mode"] = "corner") {
   const existing = profile.points.find((candidate) => Math.hypot(candidate.x - point.x, candidate.z - point.z) <= 1e-4);
   if (existing) return existing.id;
-  const created: SketchPoint = { id: createId("point"), ...point, mode: "corner" };
+  const created: SketchPoint = { id: createId("point"), ...point, mode };
   profile.points.push(created);
   return created.id;
 }
@@ -139,8 +162,6 @@ function trimSegment(profile: SketchProfile, segment: SketchSegment, click: Plan
   const start = profile.points.find((point) => point.id === segment.startId);
   const end = profile.points.find((point) => point.id === segment.endId);
   if (!start || !end) return { profile, trimmed: false, message: "La geometría seleccionada ya no existe." };
-  if (segment.kind !== "line" && segment.kind !== "arc") return { profile, trimmed: false, message: "El recorte de curvas Bézier y suaves se añadirá en el siguiente bloque del bocetador." };
-
   const polylines = otherPolylines(profile, { kind: "segment", id: segment.id });
   let clickedParameter = 0;
   const intersections: number[] = [];
@@ -171,6 +192,28 @@ function trimSegment(profile: SketchProfile, segment: SketchSegment, click: Plan
         if (amount >= -EPSILON && amount <= 1 + EPSILON) intersections.push(clamp01(amount));
       }
     }
+  } else if (segment.kind === "bezier" || segment.kind === "smooth") {
+    if (!start.handleOut || !end.handleIn) return { profile, trimmed: false, message: "La curva no dispone de tiradores válidos para recortarse." };
+    const samples = Array.from({ length: 129 }, (_, index) => cubicPoint(start, start.handleOut!, end.handleIn!, end, index / 128));
+    let closestDistance = Number.POSITIVE_INFINITY;
+    for (let index = 1; index < samples.length; index += 1) {
+      const sampleStart = samples[index - 1];
+      const sampleEnd = samples[index];
+      const dx = sampleEnd.x - sampleStart.x;
+      const dz = sampleEnd.z - sampleStart.z;
+      const lengthSquared = dx * dx + dz * dz;
+      const localAmount = lengthSquared > EPSILON ? clamp01(((click.x - sampleStart.x) * dx + (click.z - sampleStart.z) * dz) / lengthSquared) : 0;
+      const projected = { x: sampleStart.x + dx * localAmount, z: sampleStart.z + dz * localAmount };
+      const distance = Math.hypot(click.x - projected.x, click.z - projected.z);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        clickedParameter = (index - 1 + localAmount) / 128;
+      }
+      for (const polyline of polylines) for (let otherIndex = 1; otherIndex < polyline.length; otherIndex += 1) {
+        const hit = lineIntersection(sampleStart, sampleEnd, polyline[otherIndex - 1], polyline[otherIndex]);
+        if (hit) intersections.push((index - 1 + hit.amount) / 128);
+      }
+    }
   } else {
     const lengthSquared = (end.x - start.x) ** 2 + (end.z - start.z) ** 2;
     clickedParameter = lengthSquared > EPSILON ? clamp01(((click.x - start.x) * (end.x - start.x) + (click.z - start.z) * (end.z - start.z)) / lengthSquared) : 0;
@@ -185,10 +228,22 @@ function trimSegment(profile: SketchProfile, segment: SketchSegment, click: Plan
   const next = cloneProfile(profile);
   next.segments = next.segments.filter((candidate) => candidate.id !== segment.id);
   next.constraints = (next.constraints ?? []).filter((constraint) => !sketchConstraintUsesSegment(constraint, segment.id));
+  const cubic: CubicPoints | null = (segment.kind === "bezier" || segment.kind === "smooth") && start.handleOut && end.handleIn
+    ? [{ x: start.x, z: start.z }, { ...start.handleOut }, { ...end.handleIn }, { x: end.x, z: end.z }]
+    : null;
   const addFragment = (from: number, to: number) => {
     if (to - from <= EPSILON) return;
-    const startId = from <= EPSILON ? segment.startId : existingOrNewPoint(next, pointAt(from), createId);
-    const endId = to >= 1 - EPSILON ? segment.endId : existingOrNewPoint(next, pointAt(to), createId);
+    const curve = cubic ? cubicRange(cubic, from, to) : null;
+    const startPosition = curve?.[0] ?? pointAt(from);
+    const endPosition = curve?.[3] ?? pointAt(to);
+    const startId = from <= EPSILON ? segment.startId : existingOrNewPoint(next, startPosition, createId, segment.kind === "smooth" ? "smooth" : "corner");
+    const endId = to >= 1 - EPSILON ? segment.endId : existingOrNewPoint(next, endPosition, createId, segment.kind === "smooth" ? "smooth" : "corner");
+    if (curve) {
+      const fragmentStart = next.points.find((point) => point.id === startId);
+      const fragmentEnd = next.points.find((point) => point.id === endId);
+      if (fragmentStart) fragmentStart.handleOut = { ...curve[1] };
+      if (fragmentEnd) fragmentEnd.handleIn = { ...curve[2] };
+    }
     next.segments.push({ ...segment, id: createId(segment.kind === "arc" ? "arc" : "segment"), startId, endId, center: segment.center ? { ...segment.center } : undefined });
   };
   addFragment(0, interval.start);

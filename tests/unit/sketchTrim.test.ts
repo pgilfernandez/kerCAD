@@ -73,4 +73,33 @@ describe("sketch trimming", () => {
     expect(arcs[0].startId).toBe("start");
     expect(arcs[0].endId).not.toBe("end");
   });
+
+  it.each(["bezier", "smooth"] as const)("preserves exact handles when trimming a %s curve", (kind) => {
+    const profile: SketchProfile = {
+      points: [
+        { id: "start", x: 0, z: 0, handleOut: { x: 3, z: 8 }, mode: kind === "smooth" ? "smooth" : "corner" },
+        { id: "end", x: 10, z: 0, handleIn: { x: 7, z: 8 }, mode: kind === "smooth" ? "smooth" : "corner" },
+        { id: "left-a", x: 3, z: -2 }, { id: "left-b", x: 3, z: 10 },
+        { id: "right-a", x: 7, z: -2 }, { id: "right-b", x: 7, z: 10 },
+      ],
+      segments: [
+        { id: "curve", startId: "start", endId: "end", kind },
+        { id: "left", startId: "left-a", endId: "left-b", kind: "line" },
+        { id: "right", startId: "right-a", endId: "right-b", kind: "line" },
+      ],
+      constraints: [],
+    };
+
+    const result = trimSketchGeometry(profile, { kind: "segment", id: "curve" }, { x: 5, z: 6 }, ids());
+
+    expect(result.trimmed).toBe(true);
+    const fragments = result.profile.segments.filter((segment) => segment.kind === kind);
+    expect(fragments).toHaveLength(2);
+    for (const fragment of fragments) {
+      const fragmentStart = result.profile.points.find((point) => point.id === fragment.startId);
+      const fragmentEnd = result.profile.points.find((point) => point.id === fragment.endId);
+      expect(fragmentStart?.handleOut).toBeDefined();
+      expect(fragmentEnd?.handleIn).toBeDefined();
+    }
+  });
 });
