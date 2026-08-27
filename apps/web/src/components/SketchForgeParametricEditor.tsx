@@ -46,6 +46,7 @@ import { importSvgAsParametricExtrusion } from "@/lib/svgParametricImport";
 import { addParametricText } from "@/lib/parametricText";
 import { appendScribbleContour } from "@/lib/parametricScribble";
 import { appendDefaultSketchText, deleteSketchText, moveSketchText } from "@/lib/sketchText";
+import { EDUCAD_PACKAGE_MEDIA_TYPE, exportEducadProject, importEducadProject } from "@/lib/educadProject";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import { circleSketchPointId, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, solveSketchConstraints } from "@/lib/sketchConstraints";
 import { analyzeSketchConstraints } from "@/lib/sketchConstraintAnalysis";
@@ -299,6 +300,7 @@ export function SketchForgeParametricEditor() {
     return () => window.removeEventListener("keydown", cancel);
   }, [placingWorkplane, selectingTopologyEdges, selectingTopologyFaces]);
   const [exporting, setExporting] = useState(false);
+  const [projectExporting, setProjectExporting] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
   const sketchSvgImportRef = useRef<HTMLInputElement>(null);
@@ -2077,9 +2079,19 @@ export function SketchForgeParametricEditor() {
     });
   };
 
-  const exportProject = () => {
-    downloadBlob(new Blob([JSON.stringify(document, null, 2)], { type: "application/json" }), `${fileName(exportFileName)}.educad.json`);
-    setNotice({ type: "ok", text: "Proyecto paramétrico exportado" });
+  const exportProject = async () => {
+    setProjectExporting(true);
+    try {
+      const bytes = await exportEducadProject(document);
+      const archive = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+      downloadBlob(new Blob([archive], { type: EDUCAD_PACKAGE_MEDIA_TYPE }), `${fileName(exportFileName)}.educad`);
+      setNotice({ type: "ok", text: "Proyecto eduCAD guardado" });
+      setExportOpen(false);
+    } catch (error) {
+      setNotice({ type: "error", text: error instanceof Error ? error.message : "No se pudo guardar el proyecto" });
+    } finally {
+      setProjectExporting(false);
+    }
   };
 
   const exportStep = async () => {
@@ -2108,12 +2120,22 @@ export function SketchForgeParametricEditor() {
 
   const importProject = async (file: File) => {
     try {
-      const parsed = JSON.parse(await file.text()) as unknown;
-      if (!validateDocument(parsed)) throw new Error("Este no es un proyecto eduCAD compatible.");
-      const normalized = normalizeParametricDocument(parsed);
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const packaged = file.name.toLowerCase().endsWith(".educad") || bytes[0] === 0x50 && bytes[1] === 0x4b;
+      let normalized: ParametricDocument;
+      let assetCount = 0;
+      if (packaged) {
+        const restored = await importEducadProject(bytes);
+        normalized = restored.document;
+        assetCount = restored.assets.length;
+      } else {
+        const parsed = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+        if (!validateDocument(parsed)) throw new Error("Este no es un proyecto eduCAD compatible.");
+        normalized = normalizeParametricDocument(parsed);
+      }
       setHistory(createParametricHistory(normalized));
       setModelSelection(normalized.objects[0] ? [{ id: normalized.objects[0].id, kind: "object" }] : []);
-      setNotice({ type: "ok", text: "Proyecto abierto" });
+      setNotice({ type: "ok", text: assetCount ? `Proyecto abierto · ${assetCount} recurso${assetCount === 1 ? "" : "s"}` : "Proyecto abierto" });
     } catch (error) {
       setNotice({ type: "error", text: error instanceof Error ? error.message : "No se pudo abrir" });
     }
@@ -2641,7 +2663,7 @@ export function SketchForgeParametricEditor() {
           <header><div className="top-action-heading"><strong>Exportar</strong><span>Conserva los parámetros o fabrica la pieza</span></div><button onClick={() => setExportOpen(false)}><X /></button></header>
           <label className="educad-export-name"><span>Nombre del archivo</span><input type="text" value={exportFileName} maxLength={120} placeholder="modelo" onChange={(event) => setExportFileName(event.target.value)} /></label>
           <div className="educad-export-options">
-            <button onClick={exportProject}><span className="export-format-icon">JSON</span><strong>Proyecto eduCAD</strong><small>Historial editable y parámetros</small></button>
+            <button onClick={() => void exportProject()} disabled={projectExporting}><span className="export-format-icon">edu</span><strong>{projectExporting ? "Guardando…" : "Proyecto eduCAD"}</strong><small>Paquete editable con historial y recursos</small></button>
             <button onClick={() => void exportStep()} disabled={exporting || kernelBusy || !build.mesh}><span className="export-format-icon step">STEP</span><strong>{exporting ? "Exportando…" : "Modelo STEP"}</strong><small>B-Rep exacto para fabricación</small></button>
             <button onClick={exportStl} disabled={kernelBusy || build.objectRecords.length === 0}><span className="export-format-icon">STL</span><strong>Modelo STL</strong><small>Binario, en milímetros y listo para imprimir</small></button>
           </div>
@@ -2668,7 +2690,7 @@ export function SketchForgeParametricEditor() {
         </aside>
       )}
 
-      <input ref={importRef} hidden type="file" accept=".json,.educad,.svg,image/svg+xml" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importManagedFile(file); event.target.value = ""; }} />
+      <input ref={importRef} hidden type="file" accept=".educad,.educad.json,.json,.svg,application/vnd.educad.project+zip,application/json,image/svg+xml" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importManagedFile(file); event.target.value = ""; }} />
       <input ref={sketchSvgImportRef} hidden type="file" accept=".svg,image/svg+xml" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importSvgIntoSketch(file); event.target.value = ""; }} />
     </main>
   );
