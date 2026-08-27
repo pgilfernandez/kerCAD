@@ -1,4 +1,4 @@
-export type FeatureKind = "sketch" | "extrude" | "primitive" | "hole" | "fillet" | "faceExtrude" | "shell" | "revolve" | "mirror" | "linearPattern" | "polarPattern" | "objectBoolean";
+export type FeatureKind = "sketch" | "extrude" | "primitive" | "importedStep" | "hole" | "fillet" | "faceExtrude" | "shell" | "revolve" | "mirror" | "linearPattern" | "polarPattern" | "objectBoolean";
 
 export type ParametricDependencyReference =
   | { type: "feature"; id: string }
@@ -119,6 +119,13 @@ export type PrimitiveFeature = BaseFeature & {
   };
 };
 
+export type ImportedStepFeature = BaseFeature & {
+  kind: "importedStep";
+  sourceName: string;
+  /** Exact canonical STEP payload; the editable history never falls back to a mesh. */
+  stepText: string;
+};
+
 export type HoleFeature = BaseFeature & {
   kind: "hole";
   x: number;
@@ -197,7 +204,7 @@ export type ObjectBooleanFeature = BaseFeature & {
   operation: "add" | "cut" | "intersect";
 };
 
-export type ParametricFeature = SketchFeature | ExtrudeFeature | PrimitiveFeature | HoleFeature | FilletFeature | FaceExtrudeFeature | ShellFeature | RevolveFeature | MirrorFeature | LinearPatternFeature | PolarPatternFeature | ObjectBooleanFeature;
+export type ParametricFeature = SketchFeature | ExtrudeFeature | PrimitiveFeature | ImportedStepFeature | HoleFeature | FilletFeature | FaceExtrudeFeature | ShellFeature | RevolveFeature | MirrorFeature | LinearPatternFeature | PolarPatternFeature | ObjectBooleanFeature;
 
 export type ParametricObject = {
   id: string;

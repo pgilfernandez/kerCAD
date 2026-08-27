@@ -10,6 +10,7 @@ import type {
   RevolveFeature,
   ShellFeature,
   HoleFeature,
+  ImportedStepFeature,
   ParametricDocument,
   ParametricFeature,
   ParametricObject,
@@ -165,6 +166,17 @@ export function createPrimitiveFeature(primitive: PrimitiveFeature["primitive"],
     ...(primitive === "gear" ? { teeth: 12, toothDepth: 2.5, boreRadius: 3, width: 30, depth: 30, height: 6 } : {}),
     operation: "add",
     transform: operationTransform(),
+  };
+}
+
+export function createImportedStepFeature(sourceName: string, stepText: string, index: number): ImportedStepFeature {
+  return {
+    id: createFeatureId("step"),
+    kind: "importedStep",
+    name: sourceName.replace(/\.(?:step|stp)$/i, "") || `STEP importado ${index}`,
+    suppressed: false,
+    sourceName,
+    stepText,
   };
 }
 
@@ -389,6 +401,10 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
       }
     }
     if ((feature.kind === "extrude" || feature.kind === "primitive") && (feature.operation as string) === "new") feature.operation = "add";
+    if (feature.kind === "importedStep") {
+      feature.sourceName = typeof feature.sourceName === "string" && feature.sourceName.trim() ? feature.sourceName : `${feature.name}.step`;
+      if (typeof feature.stepText !== "string" || !feature.stepText.trim()) throw new Error(`${feature.name}: el contenido STEP está vacío.`);
+    }
     if (feature.kind === "fillet") {
       feature.treatment ??= "fillet";
       feature.selectionReferenceIds ??= feature.edgeReferenceIds;
@@ -447,6 +463,14 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
         feature.boreRadius = Math.max(0, Math.min(feature.width / 2 - feature.toothDepth - 0.1, Math.max(0, Number.isFinite(feature.boreRadius) ? feature.boreRadius! : 3)));
       }
       feature.transform ??= operationTransform();
+    }
+  }
+
+  for (const object of next.objects) {
+    const operations = next.features.filter((feature) => feature.objectId === object.id && feature.kind !== "sketch");
+    const importedBases = operations.filter((feature) => feature.kind === "importedStep");
+    if (importedBases.length > 1 || (importedBases[0] && operations[0]?.id !== importedBases[0].id)) {
+      throw new Error(`${object.name}: el STEP importado debe ser la primera y única geometría base del objeto.`);
     }
   }
 
@@ -509,7 +533,7 @@ export function previousSketch(features: ParametricFeature[], selectedId: string
 }
 
 export function documentHasSolid(features: ParametricFeature[]) {
-  return features.some((feature) => (feature.kind === "extrude" || feature.kind === "primitive") && !feature.suppressed && feature.operation === "add");
+  return features.some((feature) => !feature.suppressed && (feature.kind === "importedStep" || ((feature.kind === "extrude" || feature.kind === "primitive") && feature.operation === "add")));
 }
 
 export function cloneDocument(document: ParametricDocument): ParametricDocument {

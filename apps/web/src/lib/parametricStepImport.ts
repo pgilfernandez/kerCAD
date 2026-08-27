@@ -1,0 +1,27 @@
+import { loadBrepWithOcct } from "@/lib/brepKernel";
+import { createImportedStepFeature, createParametricObject } from "@/lib/parametricDocument";
+import { colorForNewParametricObject } from "@/lib/parametricObjects";
+import type { ParametricDocument } from "@/types/parametric";
+
+export function appendImportedStepObject(document: ParametricDocument, sourceName: string, stepText: string, random = Math.random) {
+  if (!stepText.trim()) throw new Error("El archivo STEP está vacío.");
+  const object = createParametricObject(document.objects.length + 1);
+  const feature = createImportedStepFeature(sourceName, stepText, document.features.length + 1);
+  object.name = feature.name;
+  object.color = colorForNewParametricObject(document, random);
+  feature.objectId = object.id;
+  document.objects.push(object);
+  document.features.push(feature);
+  return { objectId: object.id, featureId: feature.id };
+}
+
+export async function importStepAsParametricObject(document: ParametricDocument, sourceName: string, buffer: ArrayBuffer, random = Math.random) {
+  const brep = await loadBrepWithOcct();
+  const imported = await brep.importSTEP(new Blob([buffer]));
+  if (!imported.ok) throw new Error(`No se pudo leer el STEP: ${String(imported.error.message ?? imported.error)}`);
+  const tessellation = brep.mesh(imported.value);
+  if (tessellation.vertices.length < 9) throw new Error("El archivo STEP no contiene geometría sólida.");
+  const canonical = brep.exportSTEP(imported.value);
+  if (!canonical.ok) throw new Error(`No se pudo conservar el B-Rep STEP: ${String(canonical.error.message ?? canonical.error)}`);
+  return appendImportedStepObject(document, sourceName, await canonical.value.text(), random);
+}

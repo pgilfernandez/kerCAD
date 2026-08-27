@@ -48,6 +48,7 @@ import { appendScribbleContour } from "@/lib/parametricScribble";
 import { appendDefaultSketchText, deleteSketchText, moveSketchText } from "@/lib/sketchText";
 import { EDUCAD_PACKAGE_MEDIA_TYPE, exportEducadProject, importEducadProject } from "@/lib/educadProject";
 import { mergeParametricProjects } from "@/lib/parametricProjectMerge";
+import { importStepAsParametricObject } from "@/lib/parametricStepImport";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import { circleSketchPointId, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, solveSketchConstraints } from "@/lib/sketchConstraints";
 import { analyzeSketchConstraints } from "@/lib/sketchConstraintAnalysis";
@@ -2164,6 +2165,19 @@ export function SketchForgeParametricEditor() {
   };
 
   const importManagedFile = async (file: File) => {
+    if (/\.(?:step|stp)$/i.test(file.name)) {
+      try {
+        setNotice({ type: "info", text: "Importando B-Rep STEP…" });
+        const draft = cloneDocument(document);
+        const imported = await importStepAsParametricObject(draft, file.name, await file.arrayBuffer());
+        commit(draft);
+        setModelSelection([{ id: imported.featureId, kind: "feature" }]);
+        setNotice({ type: "ok", text: "STEP importado como geometría base editable" });
+      } catch (error) {
+        setNotice({ type: "error", text: error instanceof Error ? error.message : "No se pudo importar el STEP." });
+      }
+      return;
+    }
     if (file.name.toLowerCase().endsWith(".svg") || file.type === "image/svg+xml") {
       const awaitSource = await file.text();
       try {
@@ -2722,7 +2736,7 @@ export function SketchForgeParametricEditor() {
         </aside>
       )}
 
-      <input ref={importRef} hidden type="file" accept=".educad,.educad.json,.json,.svg,application/vnd.educad.project+zip,application/json,image/svg+xml" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importManagedFile(file); event.target.value = ""; }} />
+      <input ref={importRef} hidden type="file" accept=".educad,.educad.json,.json,.svg,.step,.stp,application/vnd.educad.project+zip,application/json,image/svg+xml,model/step" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importManagedFile(file); event.target.value = ""; }} />
       <input ref={sketchSvgImportRef} hidden type="file" accept=".svg,image/svg+xml" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importSvgIntoSketch(file); event.target.value = ""; }} />
     </main>
   );

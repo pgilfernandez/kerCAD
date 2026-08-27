@@ -13,6 +13,7 @@ import {
   DraftingCompass,
   Eye,
   EyeOff,
+  FileBox,
   FlipHorizontal2,
   Layers3,
   LockKeyhole,
@@ -301,6 +302,7 @@ function FeatureIcon({ document, feature }: { document: ParametricDocument; feat
     const role = feature.operation === "cut" ? "hole" : feature.operation === "intersect" ? "common" : "add";
     return <span className={`educad-operation-icon ${role}`} role="img" aria-label={`${definition.name}: ${definition.roles[feature.operation].label}`}><Circle size={17} /><small aria-hidden="true">{role === "add" ? "+" : role === "hole" ? "−" : "∩"}</small></span>;
   }
+  if (feature.kind === "importedStep") return <FileBox className="imported-step" size={16} />;
   if (feature.kind === "hole") return <CircleDot className="drill-hole" size={16} />;
   if (feature.kind === "faceExtrude") return <span className={`educad-operation-icon ${feature.operation === "cut" ? "hole" : "add"}`} role="img" aria-label={feature.operation === "cut" ? "Hueco desde cara" : "Extrusión desde cara"}><Box size={17} /><small aria-hidden="true">{feature.operation === "cut" ? "−" : "+"}</small></span>;
   if (feature.kind === "shell") return <img className="educad-operation-asset-icon" src="/assets/educad/operations/shell.svg" alt="Vaciado" />;
@@ -566,6 +568,13 @@ function ParametricFeatureInspector({
             <TransformGroup label="Posición" values={feature.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "primitive") draft.transform.position[axis] = value; })} />
             <TransformGroup label="Rotación" values={feature.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "primitive") draft.transform.rotation[axis] = value; })} />
           </TransformSection>
+        </>
+      ) : null}
+
+      {feature.kind === "importedStep" ? (
+        <>
+          <div className="educad-feature-card"><h3>Operación</h3><ReadOnlyField label="Tipo" value="STEP importado" /><ReadOnlyField label="Archivo" value={feature.sourceName} /><ReadOnlyField label="Geometría" value="B-Rep exacto" /></div>
+          <TransformSection description="Transformación del objeto contenedor"><p className="educad-transform-empty">Esta es la geometría base. Las operaciones posteriores permanecen editables en el historial.</p></TransformSection>
         </>
       ) : null}
 

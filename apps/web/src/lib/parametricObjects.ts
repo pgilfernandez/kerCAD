@@ -304,8 +304,10 @@ export function canReorderParametricSelection(document: ParametricDocument, sele
   const ownerIds = new Set(selection.map((item) => objectIdForFeature(document, item.id)));
   if (ownerIds.size !== 1 || ownerIds.has(null)) return false;
   const objectId = [...ownerIds][0];
-  const ids = document.features.filter((feature) => feature.objectId === objectId && (feature.kind !== "sketch" || feature.purpose === "user")).map((feature) => feature.id);
-  return moveSelectedIds(ids, new Set(selection.map((item) => item.id)), direction).moved;
+  const operations = document.features.filter((feature) => feature.objectId === objectId && (feature.kind !== "sketch" || feature.purpose === "user"));
+  const { reordered, moved } = moveSelectedIds(operations.map((feature) => feature.id), new Set(selection.map((item) => item.id)), direction);
+  const importedBase = operations.find((feature) => feature.kind === "importedStep");
+  return moved && (!importedBase || reordered[0] === importedBase.id);
 }
 
 export function reorderParametricSelection(document: ParametricDocument, selection: ParametricTreeSelection[], direction: "up" | "down") {

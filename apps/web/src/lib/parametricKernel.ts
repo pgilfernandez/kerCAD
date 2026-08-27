@@ -277,6 +277,13 @@ function solidFromPrimitive(brep: Brep, feature: PrimitiveFeature): AnySolid {
   return applyOperationTransform(brep, solid, feature.transform);
 }
 
+async function solidFromImportedStep(brep: Brep, feature: Extract<ParametricDocument["features"][number], { kind: "importedStep" }>): Promise<AnySolid> {
+  const imported = await brep.importSTEP(new Blob([feature.stepText]));
+  if (!imported.ok) throw new Error(`${feature.name}: no se pudo reconstruir el B-Rep STEP (${String(imported.error.message ?? imported.error)}).`);
+  if (brep.mesh(imported.value).vertices.length < 9) throw new Error(`${feature.name}: el STEP no contiene geometría sólida.`);
+  return imported.value as unknown as AnySolid;
+}
+
 function applyBooleanOperation(
   brep: Brep,
   current: AnySolid | null,
@@ -375,7 +382,7 @@ function textExtrusionDirections(document: ParametricDocument, objectId: string,
       directions.push([direction[0] / length, direction[1] / length, direction[2] / length]);
       continue;
     }
-    if (feature.kind === "primitive" || feature.kind === "faceExtrude" || feature.kind === "revolve" || feature.kind === "objectBoolean") containsOtherSolidGeometry = true;
+    if (feature.kind === "primitive" || feature.kind === "importedStep" || feature.kind === "faceExtrude" || feature.kind === "revolve" || feature.kind === "objectBoolean") containsOtherSolidGeometry = true;
   }
   return containsOtherSolidGeometry ? [] : directions;
 }
@@ -719,6 +726,26 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         completedFeatureIds.push(feature.id);
         continue;
       }
+      if (feature.kind === "importedStep") {
+        const objectId = feature.objectId ?? "legacy";
+        if (solids.has(objectId)) throw new Error(`${feature.name}: el STEP importado debe ser la primera operación del objeto.`);
+        lastObjectId = objectId;
+        const result = await solidFromImportedStep(brep, feature);
+        solids.set(objectId, result);
+        operationStates.set(feature.id, { before: null, after: result });
+        featureSolidSnapshots.set(feature.id, { objectId, solid: result });
+        completedFeatureIds.push(feature.id);
+        if (feature.id === contextFeatureId) {
+          operationContext = {
+            featureId: feature.id,
+            objectId,
+            color: objects.get(objectId)?.color ?? "#d41721",
+            mesh: meshShape(brep, applyObjectTransform(brep, result, objects.get(objectId))),
+          };
+          if (stopAtContext) return { mesh: null, objectRecords: [], operationContext, completedFeatureIds, warning: null };
+        }
+        continue;
+      }
       if (feature.kind === "extrude" || feature.kind === "primitive") {
         const sketch = feature.kind === "extrude" ? sketches.get(feature.sketchId) : null;
         if (feature.kind === "extrude" && !sketch) throw new Error(`${feature.name}: no se encuentra el boceto de origen.`);
@@ -949,6 +976,15 @@ export async function exportParametricStep(document: ParametricDocument): Promis
     if (feature.suppressed) continue;
     if (feature.kind === "sketch") {
       sketches.set(feature.id, feature);
+      continue;
+    }
+    if (feature.kind === "importedStep") {
+      const objectId = feature.objectId ?? "legacy";
+      if (solids.has(objectId)) throw new Error(`${feature.name}: el STEP importado debe ser la primera operación del objeto.`);
+      lastObjectId = objectId;
+      const result = await solidFromImportedStep(brep, feature);
+      solids.set(objectId, result);
+      operationStates.set(feature.id, { before: null, after: result });
       continue;
     }
     if (feature.kind === "extrude" || feature.kind === "primitive") {
