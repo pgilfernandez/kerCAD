@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createObjectBooleanFeature, createStarterDocument } from "@/lib/parametricDocument";
-import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint, parametricObjectGeometryFingerprint } from "@/lib/parametricBuildState";
+import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint, parametricObjectFeaturePrefixFingerprint, parametricObjectGeometryFingerprint } from "@/lib/parametricBuildState";
 import { addPrimitiveToSelection } from "@/lib/parametricObjects";
 
 describe("parametric build state", () => {
@@ -64,5 +64,25 @@ describe("parametric build state", () => {
     document.objects.find((object) => object.id === source.objectId)!.transform.position.y += 8;
 
     expect(parametricObjectGeometryFingerprint(document, targetId)).not.toBe(before);
+  });
+
+  it("keeps an unchanged operation prefix reusable when a later operation changes", () => {
+    const document = createStarterDocument(123);
+    const objectId = document.objects[0].id;
+    const firstFeatureId = document.features.find((feature) => feature.objectId === objectId && feature.kind !== "sketch")!.id;
+    const second = addPrimitiveToSelection(document, objectId, "cylinder");
+    const prefixBefore = parametricObjectFeaturePrefixFingerprint(document, objectId, firstFeatureId);
+    const objectBefore = parametricObjectGeometryFingerprint(document, objectId);
+    const secondFeature = document.features.find((feature) => feature.id === second.featureId)!;
+    if (secondFeature.kind !== "extrude") throw new Error("Expected an extrude feature");
+    secondFeature.distance += 5;
+
+    expect(parametricObjectFeaturePrefixFingerprint(document, objectId, firstFeatureId)).toBe(prefixBefore);
+    expect(parametricObjectGeometryFingerprint(document, objectId)).not.toBe(objectBefore);
+
+    const firstFeature = document.features.find((feature) => feature.id === firstFeatureId)!;
+    if (firstFeature.kind !== "extrude" && firstFeature.kind !== "primitive") throw new Error("Expected a solid feature");
+    firstFeature.transform.position.x += 1;
+    expect(parametricObjectFeaturePrefixFingerprint(document, objectId, firstFeatureId)).not.toBe(prefixBefore);
   });
 });

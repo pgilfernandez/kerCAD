@@ -1,6 +1,6 @@
 import { loadBrepWithOcct, type Brep, type BrepSolid } from "@/lib/brepKernel";
 import type { Edge, Face } from "brepjs";
-import { parametricObjectGeometryFingerprint } from "@/lib/parametricBuildState";
+import { parametricObjectFeaturePrefixFingerprint, parametricObjectGeometryFingerprint } from "@/lib/parametricBuildState";
 import { topologicallySortedParametricFeatures } from "@/lib/parametricDependencyGraph";
 import { parametricTransformMatrix } from "@/lib/parametricWorkplane";
 import { combineProfileSolids, extrudePlanarProfile, facesFromPlanarProfile, type PlanarBrepLoop } from "@/lib/profileBrep";
@@ -11,10 +11,12 @@ type CompoundShape = ReturnType<Brep["compound"]>;
 type RenderableShape = AnySolid | CompoundShape;
 type OperationSolidState = { before: AnySolid | null; after: AnySolid; added?: AnySolid | null; removed?: AnySolid | null };
 type CachedObjectSolid = { fingerprint: string; solid: AnySolid };
+type CachedFeatureSolid = { fingerprint: string; objectId: string; solid: AnySolid; state?: OperationSolidState };
 
 // This cache lives inside the long-running main build worker. B-Rep handles stay
 // in that worker and are discarded automatically if cancellation restarts it.
 const cachedObjectSolids = new Map<string, CachedObjectSolid>();
+const cachedFeatureSolids = new Map<string, CachedFeatureSolid>();
 
 function resultValue<T>(brep: Brep, result: ReturnType<Brep["cut"]> | ReturnType<Brep["fuse"]> | ReturnType<Brep["intersect"]> | ReturnType<Brep["fillet"]>) {
   return brep.unwrap(result) as T;
@@ -649,21 +651,47 @@ function applyObjectBooleanFeature(brep: Brep, current: AnySolid, source: AnySol
 
 async function buildParametricModelInternal(document: ParametricDocument, contextFeatureId: string | null, stopAtContext: boolean, incrementalRender = false): Promise<BuildResult> {
   const brep = await loadBrepWithOcct();
-  const sketches = new Map<string, SketchFeature>();
+  const sketches = new Map(document.features.filter((feature): feature is SketchFeature => feature.kind === "sketch" && !feature.suppressed).map((feature) => [feature.id, feature]));
   const objects = new Map(document.objects.map((object) => [object.id, object]));
   const completedFeatureIds: string[] = [];
   const solids = new Map<string, AnySolid>();
   const operationStates = new Map<string, OperationSolidState>();
+  const featureSolidSnapshots = new Map<string, { objectId: string; solid: AnySolid }>();
+  const prefixFingerprints = new Map<string, string>();
+  const prefixFingerprint = (objectId: string, featureId: string) => {
+    const cacheKey = `${objectId}:${featureId}`;
+    const existing = prefixFingerprints.get(cacheKey);
+    if (existing) return existing;
+    const fingerprint = parametricObjectFeaturePrefixFingerprint(document, objectId, featureId);
+    prefixFingerprints.set(cacheKey, fingerprint);
+    return fingerprint;
+  };
   let operationContext: BuildResult["operationContext"] = null;
   let lastObjectId = "legacy";
   const reuseObjectCache = contextFeatureId === null && !stopAtContext;
   const reusableObjectIds = new Set<string>();
+  const reusablePrefixFeatureIds = new Set<string>();
   if (reuseObjectCache) {
     for (const object of document.objects) {
       const cached = cachedObjectSolids.get(object.id);
-      if (!cached || cached.fingerprint !== parametricObjectGeometryFingerprint(document, object.id)) continue;
-      solids.set(object.id, cached.solid);
-      reusableObjectIds.add(object.id);
+      if (cached?.fingerprint === parametricObjectGeometryFingerprint(document, object.id)) {
+        solids.set(object.id, cached.solid);
+        reusableObjectIds.add(object.id);
+        continue;
+      }
+      const objectFeatures = document.features.filter((feature) => feature.objectId === object.id);
+      for (let index = objectFeatures.length - 1; index >= 0; index -= 1) {
+        const feature = objectFeatures[index];
+        const featureCache = cachedFeatureSolids.get(feature.id);
+        if (!featureCache || featureCache.objectId !== object.id || featureCache.fingerprint !== prefixFingerprint(object.id, feature.id)) continue;
+        solids.set(object.id, featureCache.solid);
+        for (const prefixFeature of objectFeatures.slice(0, index + 1)) {
+          reusablePrefixFeatureIds.add(prefixFeature.id);
+          const prefixCache = cachedFeatureSolids.get(prefixFeature.id);
+          if (prefixCache?.fingerprint === prefixFingerprint(object.id, prefixFeature.id) && prefixCache.state) operationStates.set(prefixFeature.id, prefixCache.state);
+        }
+        break;
+      }
     }
   }
 
@@ -675,8 +703,12 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         completedFeatureIds.push(feature.id);
         continue;
       }
+      if (reusablePrefixFeatureIds.has(feature.id)) {
+        if (feature.kind !== "sketch" && feature.objectId) lastObjectId = feature.objectId;
+        completedFeatureIds.push(feature.id);
+        continue;
+      }
       if (feature.kind === "sketch") {
-        sketches.set(feature.id, feature);
         completedFeatureIds.push(feature.id);
         continue;
       }
@@ -695,6 +727,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
           after: result,
           ...(feature.operation === "add" ? { added: tool, removed: null } : feature.operation === "cut" ? { added: null, removed: tool } : {}),
         });
+        featureSolidSnapshots.set(feature.id, { objectId, solid: result });
         completedFeatureIds.push(feature.id);
         if (feature.id === contextFeatureId) {
           const selectedResult = solids.get(objectId);
@@ -722,6 +755,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         current = refinedBooleanSolid(brep, brep.cut(current, cutter));
         solids.set(objectId, current);
         operationStates.set(feature.id, { before: previousSolid, after: current, added: null, removed: cutter });
+        featureSolidSnapshots.set(feature.id, { objectId, solid: current });
         completedFeatureIds.push(feature.id);
         continue;
       }
@@ -780,6 +814,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         completedFeatureIds.push(feature.id);
       }
       if (!operationStates.has(feature.id)) operationStates.set(feature.id, { before: previousSolid, after: current });
+      featureSolidSnapshots.set(feature.id, { objectId, solid: current });
       if (feature.id === contextFeatureId) {
         const selectedResult = solids.get(objectId);
         const removedMaterial = feature.kind === "fillet" || feature.kind === "shell" || (feature.kind === "faceExtrude" && feature.operation === "cut") || (feature.kind === "revolve" && feature.operation !== "add") || (feature.kind === "objectBoolean" && feature.operation !== "add");
@@ -811,7 +846,17 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
 
   if (reuseObjectCache) {
     const activeObjectIds = new Set(document.objects.map((object) => object.id));
+    const activeFeatureIds = new Set(document.features.map((feature) => feature.id));
     for (const objectId of cachedObjectSolids.keys()) if (!activeObjectIds.has(objectId)) cachedObjectSolids.delete(objectId);
+    for (const featureId of cachedFeatureSolids.keys()) if (!activeFeatureIds.has(featureId)) cachedFeatureSolids.delete(featureId);
+    for (const [featureId, snapshot] of featureSolidSnapshots) {
+      cachedFeatureSolids.set(featureId, {
+        fingerprint: prefixFingerprint(snapshot.objectId, featureId),
+        objectId: snapshot.objectId,
+        solid: snapshot.solid,
+        state: operationStates.get(featureId),
+      });
+    }
     for (const [objectId, solid] of solids) {
       if (!activeObjectIds.has(objectId)) continue;
       cachedObjectSolids.set(objectId, {
