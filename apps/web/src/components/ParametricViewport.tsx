@@ -615,8 +615,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         : parameters?.shape === "text"
           ? [
               new THREE.Vector3(0, 0, 0),
-              new THREE.Vector3(0, selection.depth / 2 + 3, -selection.height / 2),
-              new THREE.Vector3(selection.width / 2, selection.depth / 2, 0),
+              new THREE.Vector3(0, selected.depth / 2 + 3, -selected.height / 2),
+              new THREE.Vector3(selected.width / 2, selected.depth / 2, 0),
             ]
         : [
             new THREE.Vector3(0, -selected.depth / 2, -selected.height / 2),

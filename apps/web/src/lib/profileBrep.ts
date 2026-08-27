@@ -25,7 +25,11 @@ export function extrudePlanarProfile(brep: Brep, faces: readonly Face[], distanc
 
 export function combineProfileSolids(brep: Brep, solids: readonly BrepSolid[]): BrepSolid {
   if (!solids.length) throw new Error("El perfil no contiene ninguna región rellena.");
-  return solids.slice(1).reduce((current, solid) => brep.unwrap(brep.simplify(brep.unwrap(brep.fuse(current, solid)))) as BrepSolid, solids[0]);
+  if (solids.length === 1) return solids[0];
+  // Text and imported SVG profiles commonly contain many disconnected regions.
+  // A single multi-body boolean avoids simplifying the accumulated result after
+  // every glyph, which made construction time grow rapidly with word length.
+  return brep.unwrap(brep.fuseAll([...solids], { simplify: true })) as BrepSolid;
 }
 
 export function applyProfileBoolean(brep: Brep, current: BrepSolid, tool: BrepSolid, role: ProfileBooleanRole): BrepSolid {
