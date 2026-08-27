@@ -3,7 +3,8 @@ import { createLocalId } from "@/lib/localIds";
 import { addParametricObject } from "@/lib/parametricObjects";
 import { objectPlacementForWorkplane } from "@/lib/parametricWorkplane";
 import type { ParametricDocument, SketchFeature } from "@/types/parametric";
-import type { SketchProfile } from "@/types/sketchforge";
+import type { SketchPoint, SketchProfile } from "@/types/sketchforge";
+import { CubicBezierCurve, LineCurve, QuadraticBezierCurve, type Curve, type Vector2 } from "three";
 import { FontLoader, type Font, type FontData } from "three/examples/jsm/loaders/FontLoader.js";
 import droidMonoFontJson from "three/examples/fonts/droid/droid_sans_mono_regular.typeface.json";
 import droidSansBoldFontJson from "three/examples/fonts/droid/droid_sans_bold.typeface.json";
@@ -33,13 +34,49 @@ function parametricWebFont(name: ParametricTextSettings["font"]) {
   return font;
 }
 
-function addLoop(profile: SketchProfile, source: Array<{ x: number; y: number }>, offsetX: number) {
-  const cleaned = source.filter((point, index) => index === 0 || Math.hypot(point.x - source[index - 1].x, point.y - source[index - 1].y) > 1e-7);
-  if (cleaned.length > 2 && Math.hypot(cleaned[0].x - cleaned.at(-1)!.x, cleaned[0].y - cleaned.at(-1)!.y) < 1e-7) cleaned.pop();
-  if (cleaned.length < 3) return;
-  const points = cleaned.map((point) => ({ id: createLocalId("text-point"), x: point.x + offsetX, z: point.y }));
+type TextCurvePiece = {
+  start: Vector2;
+  end: Vector2;
+  control1?: Vector2;
+  control2?: Vector2;
+};
+
+function textCurvePieces(curve: Curve<Vector2>): TextCurvePiece[] {
+  if (curve instanceof LineCurve) return [{ start: curve.v1, end: curve.v2 }];
+  if (curve instanceof CubicBezierCurve) return [{ start: curve.v0, end: curve.v3, control1: curve.v1, control2: curve.v2 }];
+  if (curve instanceof QuadraticBezierCurve) {
+    return [{
+      start: curve.v0,
+      end: curve.v2,
+      control1: curve.v0.clone().lerp(curve.v1, 2 / 3),
+      control2: curve.v2.clone().lerp(curve.v1, 2 / 3),
+    }];
+  }
+  const sampled = curve.getPoints(4);
+  return sampled.slice(1).map((end, index) => ({ start: sampled[index], end }));
+}
+
+function addCurveLoop(profile: SketchProfile, curves: Curve<Vector2>[], offsetX: number) {
+  const pieces = curves.flatMap(textCurvePieces).filter((piece) => piece.start.distanceToSquared(piece.end) > 1e-14);
+  if (pieces.length < 2) return;
+  const points: SketchPoint[] = pieces.map((piece) => ({
+    id: createLocalId("text-point"),
+    x: piece.start.x + offsetX,
+    z: piece.start.y,
+    ...(piece.control1 ? { handleOut: { x: piece.control1.x + offsetX, z: piece.control1.y } } : {}),
+  }));
+  for (let index = 0; index < pieces.length; index += 1) {
+    const piece = pieces[index];
+    const next = points[(index + 1) % points.length];
+    if (piece.control2) next.handleIn = { x: piece.control2.x + offsetX, z: piece.control2.y };
+    profile.segments.push({
+      id: createLocalId("text-segment"),
+      kind: piece.control1 && piece.control2 ? "bezier" : "line",
+      startId: points[index].id,
+      endId: next.id,
+    });
+  }
   profile.points.push(...points);
-  for (let index = 0; index < points.length; index += 1) profile.segments.push({ id: createLocalId("text-segment"), kind: "line", startId: points[index].id, endId: points[(index + 1) % points.length].id });
 }
 
 export function parametricTextProfile(settings: ParametricTextSettings): SketchProfile {
@@ -57,14 +94,15 @@ export function parametricTextProfile(settings: ParametricTextSettings): SketchP
   for (const character of normalized.text) {
     if (/\s/.test(character)) { cursor += size * 0.38 + Math.max(0, normalized.spacing); continue; }
     const shapes = font.generateShapes(character, size);
-    // Five subdivisions retain readable glyph curves while keeping profile validation
-    // and exact B-Rep construction light enough for interactive editing.
-    const sampled = shapes.flatMap((shape) => [shape.getPoints(10), ...shape.holes.map((hole) => hole.getPoints(5))]);
+    const loops = shapes.flatMap((shape) => [shape, ...shape.holes]);
+    // Sampling is only used for layout bounds. CAD construction keeps the native
+    // line/quadratic/cubic curves below instead of producing many straight edges.
+    const sampled = loops.map((loop) => loop.getPoints(5));
     const glyphPoints = sampled.flat();
     if (!glyphPoints.length) { cursor += size * 0.55 + Math.max(0, normalized.spacing); continue; }
     const minX = Math.min(...glyphPoints.map((point) => point.x));
     const maxX = Math.max(...glyphPoints.map((point) => point.x));
-    for (const loop of sampled) addLoop(profile, loop, cursor - minX);
+    for (const loop of loops) addCurveLoop(profile, loop.curves, cursor - minX);
     cursor += Math.max(size * 0.2, maxX - minX) + Math.max(0, normalized.spacing);
   }
   if (!profile.segments.length) throw new Error("Escribe al menos un carácter visible.");
@@ -77,6 +115,14 @@ export function parametricTextProfile(settings: ParametricTextSettings): SketchP
   for (const point of profile.points) {
     point.x += offsetX;
     point.z += offsetZ;
+    if (point.handleIn) {
+      point.handleIn.x += offsetX;
+      point.handleIn.z += offsetZ;
+    }
+    if (point.handleOut) {
+      point.handleOut.x += offsetX;
+      point.handleOut.z += offsetZ;
+    }
   }
   return profile;
 }

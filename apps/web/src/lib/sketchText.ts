@@ -9,7 +9,14 @@ export function appendDefaultSketchText(profile: SketchProfile, position: { x: n
   const maxX = Math.max(...geometry.points.map((point) => point.x));
   const minZ = Math.min(...geometry.points.map((point) => point.z));
   const maxZ = Math.max(...geometry.points.map((point) => point.z));
-  const points = geometry.points.map((point) => ({ ...point, x: point.x + position.x, z: point.z + position.z, generatedTextId: id }));
+  const points = geometry.points.map((point) => ({
+    ...point,
+    x: point.x + position.x,
+    z: point.z + position.z,
+    handleIn: point.handleIn ? { x: point.handleIn.x + position.x, z: point.handleIn.z + position.z } : undefined,
+    handleOut: point.handleOut ? { x: point.handleOut.x + position.x, z: point.handleOut.z + position.z } : undefined,
+    generatedTextId: id,
+  }));
   const segments = geometry.segments.map((segment) => ({ ...segment, generatedTextId: id }));
   return {
     ...profile,

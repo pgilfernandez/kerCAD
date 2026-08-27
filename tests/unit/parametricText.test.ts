@@ -9,6 +9,7 @@ describe("parametric text", () => {
     const profile = parametricTextProfile({ kind: "text", text: "eduCAD 3D á", font: "Sans", size: 20, spacing: 1, align: "center", verticalAlign: "center" });
     expect(profile.generator).toMatchObject({ kind: "text", text: "eduCAD 3D á", font: "Sans", align: "center", verticalAlign: "center" });
     expect(profile.segments.length).toBeGreaterThan(20);
+    expect(profile.segments.some((segment) => segment.kind === "bezier")).toBe(true);
     expect(validateDrawnSketchProfile(profile).valid).toBe(true);
   });
 
