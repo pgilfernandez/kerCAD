@@ -24,11 +24,13 @@ import {
   Combine,
   Triangle,
   Trash2,
+  Type,
   X,
 } from "lucide-react";
 import { createContext, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { canReorderParametricSelection, OBJECT_COLOR_PALETTE, parametricObjectTree, sketchForExtrude, updateParametricTreeSelection, type ParametricTreeSelection } from "@/lib/parametricObjects";
 import { parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
+import { updateParametricTextSketch } from "@/lib/parametricText";
 import type { ParametricDocument, ParametricFeature, ParametricObject } from "@/types/parametric";
 
 export type ModelSelectionKind = "object" | "feature";
@@ -291,7 +293,8 @@ function FeatureIcon({ document, feature }: { document: ParametricDocument; feat
     const sketch = sketchForExtrude(document, feature);
     const role = feature.operation === "cut" ? "hole" : feature.operation === "intersect" ? "common" : "add";
     const label = feature.operation === "cut" ? "Hueco" : feature.operation === "intersect" ? "Común" : "Añadir";
-    return <span className={`educad-operation-icon ${role}`} role="img" aria-label={`${sketch?.profile.shape === "circle" ? "Cilindro" : "Caja"}: ${label}`}>{sketch?.profile.shape === "circle" ? <CircleDot size={17} /> : <Box size={17} />}<small aria-hidden="true">{role === "add" ? "+" : role === "hole" ? "−" : "∩"}</small></span>;
+    const generatedText = sketch?.profile.shape === "drawn" && sketch.profile.geometry.generator?.kind === "text";
+    return <span className={`educad-operation-icon ${role}`} role="img" aria-label={`${generatedText ? "Texto" : sketch?.profile.shape === "circle" ? "Cilindro" : "Caja"}: ${label}`}>{generatedText ? <Type size={17} /> : sketch?.profile.shape === "circle" ? <CircleDot size={17} /> : <Box size={17} />}<small aria-hidden="true">{role === "add" ? "+" : role === "hole" ? "−" : "∩"}</small></span>;
   }
   if (feature.kind === "primitive") {
     const definition = parametricOperationDefinition(feature.primitive);
@@ -410,6 +413,7 @@ function ParametricFeatureInspector({
 }) {
   const onUpdate = (update: (feature: ParametricFeature) => void) => onUpdateFeature(feature.id, update);
   const primitiveSketch = feature.kind === "extrude" ? sketchForExtrude(document, feature) : null;
+  const textGenerator = primitiveSketch?.profile.shape === "drawn" && primitiveSketch.profile.geometry.generator?.kind === "text" ? primitiveSketch.profile.geometry.generator : null;
   const revolveSketch = feature.kind === "revolve" && feature.source === "sketch" ? document.features.find((candidate): candidate is Extract<ParametricFeature, { kind: "sketch" }> => candidate.kind === "sketch" && candidate.id === feature.sketchId) ?? null : null;
   const linearPatternSources = feature.kind === "linearPattern"
     ? document.features.slice(0, document.features.findIndex((candidate) => candidate.id === feature.id)).filter((candidate) => candidate.objectId === feature.objectId && candidate.kind !== "sketch")
@@ -450,7 +454,12 @@ function ParametricFeatureInspector({
           </div>
           <div className="educad-feature-card">
             <h3>Parámetros de la forma</h3>
-            {primitiveSketch?.profile.shape === "rectangle" ? (
+            {textGenerator && primitiveSketch ? <>
+              <label><span>Texto</span><DeferredTextInput value={textGenerator.text} maxLength={40} onCommit={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { text: value }); })} /></label>
+              <BoundedNumberField label="Tamaño" value={textGenerator.size} min={1} max={200} unit="mm" onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { size: value }); })} />
+              <BoundedNumberField label="Espaciado" value={textGenerator.spacing} min={0} max={100} unit="mm" onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { spacing: value }); })} />
+              <label><span>Alineación</span><select value={textGenerator.align} onChange={(event) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { align: event.target.value as typeof textGenerator.align }); })}><option value="left">Izquierda</option><option value="center">Centro</option><option value="right">Derecha</option></select></label>
+            </> : primitiveSketch?.profile.shape === "rectangle" ? (
               <>
                 <BoundedNumberField label="Anchura" value={primitiveSketch.profile.width} min={0.01} max={200} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} />
                 <BoundedNumberField label="Profundidad" value={primitiveSketch.profile.depth} min={0.01} max={200} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} />
@@ -677,6 +686,19 @@ function ParametricFeatureInspector({
     const { input: inputStep } = useContext(NumericStepContext);
     return <label><span>{label}</span><DeferredNumberInput value={value} min={min} step={inputStep} unit="mm" onCommit={onChange} /></label>;
   }
+}
+
+function DeferredTextInput({ value, maxLength, onCommit }: { value: string; maxLength: number; onCommit: (value: string) => void }) {
+  const [draft, setDraft] = useState(value);
+  const [editing, setEditing] = useState(false);
+  useEffect(() => { if (!editing) setDraft(value); }, [editing, value]);
+  const commit = () => {
+    const next = draft.trim() || value;
+    setDraft(next);
+    setEditing(false);
+    if (next !== value) onCommit(next);
+  };
+  return <input value={draft} maxLength={maxLength} onFocus={() => setEditing(true)} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); if (event.key === "Escape") { setDraft(value); event.currentTarget.blur(); } }} />;
 }
 
 function DeferredNumberInput({ value, min, max, step, unit, onCommit }: { value: number; min?: number; max?: number; step: number; unit?: string; onCommit: (value: number) => void }) {

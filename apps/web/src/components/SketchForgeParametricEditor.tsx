@@ -1,6 +1,6 @@
 "use client";
 
-import { Anchor, Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, CircleDot, CornerDownRight, Diameter, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Move3d, MoveHorizontal, MoveVertical, MousePointer2, PenLine, Plus, Rotate3d, RotateCcw, Ruler, Scissors, Spline, Split, Waves, X } from "lucide-react";
+import { Anchor, Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, CircleDot, CornerDownRight, Diameter, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Move3d, MoveHorizontal, MoveVertical, MousePointer2, PenLine, Plus, Rotate3d, RotateCcw, Ruler, Scissors, Spline, Split, Type, Waves, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent as ReactFocusEvent } from "react";
 import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyEdgePick, type TopologyFacePick } from "@/components/ParametricViewport";
@@ -43,6 +43,7 @@ import { ParametricBuildWorkerClient } from "@/lib/parametricBuildWorker";
 import { binaryStlFromRenderMeshes } from "@/lib/stlExport";
 import { sketchProfileFromSvg } from "@/lib/svgImport";
 import { importSvgAsParametricExtrusion } from "@/lib/svgParametricImport";
+import { addParametricText } from "@/lib/parametricText";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import { circleSketchPointId, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, solveSketchConstraints } from "@/lib/sketchConstraints";
 import { analyzeSketchConstraints } from "@/lib/sketchConstraintAnalysis";
@@ -1542,6 +1543,16 @@ export function SketchForgeParametricEditor() {
     setNotice({ type: "ok", text: `${parametricOperationDefinition(kind).name} ${result.createdObject ? "creada en un objeto nuevo" : "añadida al final del objeto activo"}` });
   };
 
+  const addText = () => {
+    let result: ReturnType<typeof addParametricText> | null = null;
+    const changed = mutate((draft) => { result = addParametricText(draft, selectedObjectId); });
+    const completed = result as ReturnType<typeof addParametricText> | null;
+    if (!changed || !completed) return;
+    setModelSelection([{ id: completed.extrusionId, kind: "feature" }]);
+    setShapesOpen(false);
+    setNotice({ type: "ok", text: selectedObjectId ? "Texto añadido al objeto activo" : "Texto creado en un objeto nuevo" });
+  };
+
   const removeSelected = useCallback(() => {
     if (!selectedObjectId) return;
     const ids = document.objects.map((object) => object.id);
@@ -2161,6 +2172,7 @@ export function SketchForgeParametricEditor() {
             <ToolbarSection label="Shapes" className="toolbar-shapes-section">
               <button data-educad-popup="shapes" className={`shape-menu-trigger ${shapesOpen ? "active" : ""}`} aria-label="Añadir forma" onClick={() => setShapesOpen((value) => !value)}><ToolbarShapeAddIcon /></button>
               <Tool label="Crear boceto" onClick={() => { setShapesOpen(false); beginSketch(null); }}><ToolbarSketchIcon /></Tool>
+              <Tool label="Añadir texto" onClick={addText}><Type /></Tool>
               {shapesOpen && (
                 <div data-educad-popup="shapes" className="shape-menu-dropdown">
                   <div className="shape-menu-title">Formas</div>
