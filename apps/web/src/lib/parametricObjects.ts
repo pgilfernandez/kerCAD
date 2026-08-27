@@ -109,7 +109,7 @@ export function addPrimitive(
   const object = document.objects.find((candidate) => candidate.id === objectId);
   if (!object) return null;
   const count = document.features.filter((feature) => feature.kind !== "sketch").length + 1;
-  if (kind === "sphere" || kind === "cone" || kind === "tube" || kind === "halfSphere" || kind === "torus" || kind === "pyramid" || kind === "wedge" || kind === "roof" || kind === "roundRoof" || kind === "polygon" || kind === "gear") {
+  if (kind === "roundedBox" || kind === "sphere" || kind === "cone" || kind === "tube" || kind === "halfSphere" || kind === "torus" || kind === "pyramid" || kind === "wedge" || kind === "roof" || kind === "roundRoof" || kind === "polygon" || kind === "gear") {
     const definition = parametricOperationDefinition(kind);
     const primitive = createPrimitiveFeature(kind, count);
     primitive.objectId = objectId;
@@ -117,6 +117,7 @@ export function addPrimitive(
     primitive.width = definition.parameters.find((parameter) => parameter.key === "width")?.defaultValue ?? 20;
     primitive.depth = definition.parameters.find((parameter) => parameter.key === "depth")?.defaultValue ?? 20;
     primitive.height = definition.parameters.find((parameter) => parameter.key === "height")?.defaultValue ?? 20;
+    if (kind === "roundedBox") primitive.cornerRadius = definition.parameters.find((parameter) => parameter.key === "cornerRadius")?.defaultValue ?? 3;
     if (kind === "cone") {
       const baseRadius = definition.parameters.find((parameter) => parameter.key === "baseRadius")?.defaultValue ?? 10;
       primitive.width = baseRadius * 2;
@@ -429,7 +430,7 @@ export function workplaneShapeForObject(document: ParametricDocument, id: string
   return {
     id: object.id,
     name: object.name,
-    kind: feature.kind === "primitive" ? feature.primitive : sketch!.profile.shape === "rectangle" ? "box" : "cylinder",
+    kind: feature.kind === "primitive" ? feature.primitive === "roundedBox" ? "box" : feature.primitive : sketch!.profile.shape === "rectangle" ? "box" : "cylinder",
     color: object.color,
     hole: feature.operation === "cut",
     x: world.x,
@@ -535,6 +536,8 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
           ? { shape: "tube", outerRadius: feature.width / 2, innerRadius: feature.innerRadius ?? 6, height: feature.height }
           : feature.primitive === "torus"
             ? { shape: "torus", majorRadius: feature.majorRadius ?? 12, tubeRadius: feature.tubeRadius ?? 4 }
+          : feature.primitive === "roundedBox"
+            ? { shape: "roundedBox", width: feature.width, depth: feature.depth, height: feature.height, cornerRadius: feature.cornerRadius ?? 3 }
           : feature.primitive === "pyramid" || feature.primitive === "wedge" || feature.primitive === "roof" || feature.primitive === "roundRoof"
             ? { shape: feature.primitive, width: feature.width, depth: feature.depth, height: feature.height }
           : feature.primitive === "polygon"
@@ -553,6 +556,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
       shape: feature.kind === "primitive" ? feature.primitive : sketch!.profile.shape === "circle" ? "cylinder" : "box",
       ...(feature.kind === "primitive" && feature.primitive === "cone" ? { topRadius: feature.topRadius ?? 0 } : {}),
       ...(feature.kind === "primitive" && feature.primitive === "tube" ? { innerRadius: feature.innerRadius ?? 6 } : {}),
+      ...(feature.kind === "primitive" && feature.primitive === "roundedBox" ? { cornerRadius: feature.cornerRadius ?? 3 } : {}),
       ...(feature.kind === "primitive" && feature.primitive === "polygon" ? { sides: feature.sides ?? 6 } : {}),
       ...(feature.kind === "primitive" && feature.primitive === "gear" ? { teeth: feature.teeth ?? 12, toothDepth: feature.toothDepth ?? 2.5, boreRadius: feature.boreRadius ?? 3 } : {}),
       mode: previewMode,
@@ -862,7 +866,7 @@ export function resizeParametricHeight(document: ParametricDocument, id: string,
 export function updateParametricShapeParameter(
   document: ParametricDocument,
   id: string,
-  parameter: "width" | "depth" | "height" | "size" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "majorRadius" | "tubeRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius",
+  parameter: "width" | "depth" | "height" | "size" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "majorRadius" | "tubeRadius" | "cornerRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius",
   value: number,
 ) {
   if (!Number.isFinite(value) || (parameter === "topRadius" || parameter === "boreRadius" ? value < 0 : value <= 0)) return;
@@ -870,7 +874,17 @@ export function updateParametricShapeParameter(
   if (!feature) return;
   const next = Math.max(0.1, value);
   if (feature.kind === "primitive") {
-    if (feature.primitive === "sphere" && parameter === "radius") {
+    if (feature.primitive === "roundedBox" && parameter === "cornerRadius") {
+      feature.cornerRadius = Math.min(feature.width / 2 - 0.1, feature.depth / 2 - 0.1, next);
+    } else if (feature.primitive === "roundedBox" && parameter === "width") {
+      feature.width = next;
+      feature.cornerRadius = Math.min(feature.cornerRadius ?? 3, feature.width / 2 - 0.1, feature.depth / 2 - 0.1);
+    } else if (feature.primitive === "roundedBox" && parameter === "depth") {
+      feature.depth = next;
+      feature.cornerRadius = Math.min(feature.cornerRadius ?? 3, feature.width / 2 - 0.1, feature.depth / 2 - 0.1);
+    } else if (feature.primitive === "roundedBox" && parameter === "height") {
+      feature.height = next;
+    } else if (feature.primitive === "sphere" && parameter === "radius") {
       feature.width = next * 2;
       feature.depth = next * 2;
       feature.height = next * 2;

@@ -39,7 +39,7 @@ export type TopologyEdgePick = {
   length: number;
   edgeId: number;
 };
-type ShapeParameter = "width" | "depth" | "height" | "size" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "majorRadius" | "tubeRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius";
+type ShapeParameter = "width" | "depth" | "height" | "size" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "majorRadius" | "tubeRadius" | "cornerRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius";
 
 export type ViewportSelection = {
   id: string;
@@ -56,6 +56,7 @@ export type ViewportSelection = {
   resizeAspectRatio?: number;
   shapeParameters?:
     | { shape: "box"; width: number; depth: number; height: number }
+    | { shape: "roundedBox"; width: number; depth: number; height: number; cornerRadius: number }
     | { shape: "text"; size: number; height: number }
     | { shape: "cylinder"; radius: number; height: number }
     | { shape: "sphere"; radius: number }
@@ -67,9 +68,10 @@ export type ViewportSelection = {
     | { shape: "gear"; outerRadius: number; toothDepth: number; boreRadius: number; teeth: number; height: number }
     | { shape: "halfSphere"; radius: number; height: number };
   operationPreview?: {
-    shape: "box" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear";
+    shape: "box" | "roundedBox" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear";
     topRadius?: number;
     innerRadius?: number;
+    cornerRadius?: number;
     sides?: number;
     teeth?: number;
     toothDepth?: number;
@@ -488,7 +490,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const selected = selectionRef.current;
     if (!selected) return 0;
     const parameters = selected.shapeParameters;
-    const boxLike = parameters && (parameters.shape === "box" || parameters.shape === "pyramid" || parameters.shape === "wedge" || parameters.shape === "roof" || parameters.shape === "roundRoof");
+    const boxLike = parameters && (parameters.shape === "box" || parameters.shape === "roundedBox" || parameters.shape === "pyramid" || parameters.shape === "wedge" || parameters.shape === "roof" || parameters.shape === "roundRoof");
     const parameter = axis === "x" ? parameters?.shape === "text" ? null : boxLike ? "width" : parameters?.shape === "cone" ? "baseRadius" : parameters?.shape === "tube" || parameters?.shape === "gear" ? "outerRadius" : parameters?.shape === "torus" ? "majorRadius" : parameters ? "radius" : null
       : axis === "y" ? parameters?.shape === "text" ? "size" : parameters?.shape === "cone" ? "topRadius" : parameters?.shape === "tube" ? "innerRadius" : parameters?.shape === "polygon" ? "sides" : boxLike ? "depth" : null
         : axis === "z" && parameters ? parameters.shape === "torus" ? "tubeRadius" : parameters.shape !== "sphere" ? "height" : null : null;
@@ -529,7 +531,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     }
     const parameters = selected.shapeParameters;
     if (parameters) {
-      const boxLike = parameters.shape === "box" || parameters.shape === "pyramid" || parameters.shape === "wedge" || parameters.shape === "roof" || parameters.shape === "roundRoof";
+      const boxLike = parameters.shape === "box" || parameters.shape === "roundedBox" || parameters.shape === "pyramid" || parameters.shape === "wedge" || parameters.shape === "roof" || parameters.shape === "roundRoof";
       const parameter = axis === "x" ? parameters.shape === "text" ? null : boxLike ? "width" : parameters.shape === "cone" ? "baseRadius" : parameters.shape === "tube" || parameters.shape === "gear" ? "outerRadius" : parameters.shape === "torus" ? "majorRadius" : "radius" : axis === "y" ? parameters.shape === "text" ? "size" : parameters.shape === "cone" ? "topRadius" : parameters.shape === "tube" ? "innerRadius" : parameters.shape === "polygon" ? "sides" : boxLike ? "depth" : null : axis === "z" ? parameters.shape === "torus" ? "tubeRadius" : parameters.shape !== "sphere" ? "height" : null : null;
       if (parameter && (parameter === "topRadius" ? value >= 0 : value > 0)) shapeParameterRef.current?.(parameter, value);
     }
@@ -641,7 +643,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
             ? ["Radio", "Largo", "Espesor"]
           : parameters?.shape === "text"
             ? ["", "Tamaño", "Alto"]
-            : [parameters?.shape === "box" || parameters?.shape === "pyramid" || parameters?.shape === "wedge" || parameters?.shape === "roof" || parameters?.shape === "roundRoof" ? "Ancho" : "Radio", "Largo", "Alto"];
+            : [parameters?.shape === "box" || parameters?.shape === "roundedBox" || parameters?.shape === "pyramid" || parameters?.shape === "wedge" || parameters?.shape === "roof" || parameters?.shape === "roundRoof" ? "Ancho" : "Radio", "Largo", "Alto"];
       const units = parameters?.shape === "polygon" ? ["mm", "", "mm"] : ["mm", "mm", "mm"];
       const offsets = [[0, 18], [-24, 0], [22, 0]];
       points.forEach((point, index) => {
@@ -1246,6 +1248,21 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         } else if (role === "handle" || role === "target") child.position.copy(end);
       });
     };
+    const updateRoundedBoxPreview = (selected: ViewportSelection, cornerRadius: number) => {
+      if (selected.shapeParameters?.shape !== "roundedBox") return;
+      const radiusScale = selected.width / Math.max(0.01, selected.shapeParameters.width);
+      const worldRadius = Math.min(selected.width / 2 - 0.1, selected.depth / 2 - 0.1, cornerRadius * radiusScale);
+      const visualRoot = selectionVisualRootRef.current;
+      if (!visualRoot) return;
+      visualRoot.traverse((child) => {
+        if (child.userData.operationPreviewWireframe && child instanceof LineSegments2) child.geometry.setPositions(operationPreviewWireframePositions("roundedBox", selected.width, selected.depth, selected.height, selected.width, 0, 0, 64, worldRadius));
+        if (child.userData.shapeParameterVisual !== "cornerRadius") return;
+        const role = child.userData.shapeParameterVisualRole as "guide" | "handle" | "target" | undefined;
+        const end = new THREE.Vector3(worldRadius + 3, 0, selected.height / 2);
+        if (role === "guide" && child instanceof THREE.Line) child.geometry.setFromPoints([new THREE.Vector3(0, 0, selected.height / 2), end]);
+        else if (role === "handle" || role === "target") child.position.copy(end);
+      });
+    };
     const updateTorusPreview = (selected: ViewportSelection, majorRadius: number, tubeRadius: number) => {
       if (selected.shapeParameters?.shape !== "torus") return;
       const originalOuterRadius = selected.shapeParameters.majorRadius + selected.shapeParameters.tubeRadius;
@@ -1463,6 +1480,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
               ? 1
               : parameter === "tubeRadius" && values?.shape === "torus"
               ? selected.height / Math.max(0.01, values.tubeRadius * 2)
+              : parameter === "cornerRadius" && values?.shape === "roundedBox"
+                ? selected.width / Math.max(0.01, values.width)
               : values?.shape === "cone" || values?.shape === "tube" || values?.shape === "gear" || values?.shape === "torus"
               ? selected.width / Math.max(0.01, (values.shape === "cone" ? values.baseRadius : values.shape === "tube" || values.shape === "gear" ? values.outerRadius : values.majorRadius + values.tubeRadius) * 2)
               : parameter === "height" && values && values.shape !== "sphere"
@@ -1482,6 +1501,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
                     ? values.majorRadius * shapeParameterWorldScale
                   : parameter === "tubeRadius" && values?.shape === "torus"
                     ? values.tubeRadius * shapeParameterWorldScale
+                  : parameter === "cornerRadius" && values?.shape === "roundedBox"
+                    ? values.cornerRadius * shapeParameterWorldScale
                   : parameter === "sides" && values?.shape === "polygon"
                     ? values.sides
                   : parameter === "teeth" && values?.shape === "gear"
@@ -1493,7 +1514,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
                 : parameter === "depth" || (parameter === "size" && values?.shape === "text") ? selected.depth / 2 : parameter === "height" ? selected.height / 2 : selected.width / 2;
             const pointerCoordinate = shapeParameterDragAxis === "y" ? localPointer.y : shapeParameterDragAxis === "z" ? localPointer.z : localPointer.x;
             parameterPointerOffset = pointerCoordinate - visualHalfExtent;
-            const boxLikeValues = values && (values.shape === "box" || values.shape === "pyramid" || values.shape === "wedge" || values.shape === "roof" || values.shape === "roundRoof");
+            const boxLikeValues = values && (values.shape === "box" || values.shape === "roundedBox" || values.shape === "pyramid" || values.shape === "wedge" || values.shape === "roof" || values.shape === "roundRoof");
             const value = parameter === "width" && boxLikeValues ? values.width
               : parameter === "depth" && boxLikeValues ? values.depth
                 : parameter === "height" && values && values.shape !== "sphere" && values.shape !== "torus" ? values.height
@@ -1505,6 +1526,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
                           : parameter === "innerRadius" && values?.shape === "tube" ? values.innerRadius
                             : parameter === "majorRadius" && values?.shape === "torus" ? values.majorRadius
                               : parameter === "tubeRadius" && values?.shape === "torus" ? values.tubeRadius
+                                : parameter === "cornerRadius" && values?.shape === "roundedBox" ? values.cornerRadius
                                 : parameter === "sides" && values?.shape === "polygon" ? values.sides
                                   : parameter === "teeth" && values?.shape === "gear" ? values.teeth
                                     : parameter === "toothDepth" && values?.shape === "gear" ? values.toothDepth
@@ -1697,21 +1719,25 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           ? parameter === "sides" ? Math.min(32, Math.max(3, Math.round(Math.abs(adjusted)))) : Math.min(64, Math.max(6, Math.round(Math.abs(adjusted))))
           : parameter === "height"
           ? Math.max(grid, Math.round((adjusted + resizeStart.height / 2) / grid) * grid)
-          : parameter === "topRadius" || parameter === "innerRadius" || parameter === "majorRadius" || parameter === "tubeRadius" || parameter === "toothDepth" || parameter === "boreRadius"
+          : parameter === "topRadius" || parameter === "innerRadius" || parameter === "majorRadius" || parameter === "tubeRadius" || parameter === "cornerRadius" || parameter === "toothDepth" || parameter === "boreRadius"
             ? Math.max(0, Math.round(Math.abs(adjusted) / grid) * grid)
             : Math.max(grid, Math.round(Math.abs(adjusted) * 2 / grid) * grid);
         const startExtent = parameter === "depth" || parameter === "size" ? resizeStart.depth : parameter === "height" ? resizeStart.height : resizeStart.width;
         const ratio = visualExtent / Math.max(0.01, startExtent);
         pendingShapeParameter.value = parameter === "sides" || parameter === "teeth"
           ? visualExtent
-          : parameter === "topRadius" || parameter === "innerRadius" || parameter === "majorRadius" || parameter === "tubeRadius" || parameter === "toothDepth" || parameter === "boreRadius"
+          : parameter === "topRadius" || parameter === "innerRadius" || parameter === "majorRadius" || parameter === "tubeRadius" || parameter === "cornerRadius" || parameter === "toothDepth" || parameter === "boreRadius"
           ? visualExtent / Math.max(0.0001, shapeParameterWorldScale)
           : Math.max(0.1, shapeParameterStartValue * ratio);
         shapeParameterPreviewRef.current = pendingShapeParameter;
         root.position.copy(resizeRootStart);
         visualRoot.position.set(0, 0, 0);
         visualRoot.scale.set(1, 1, 1);
-        if (selected.shapeParameters?.shape === "cone") {
+        if (selected.shapeParameters?.shape === "roundedBox" && parameter === "cornerRadius") {
+          pendingShapeParameter.value = Math.min(selected.shapeParameters.width / 2 - 0.1, selected.shapeParameters.depth / 2 - 0.1, Math.max(0.1, pendingShapeParameter.value));
+          shapeParameterPreviewRef.current = pendingShapeParameter;
+          updateRoundedBoxPreview(selected, pendingShapeParameter.value);
+        } else if (selected.shapeParameters?.shape === "cone") {
           const baseRadius = parameter === "baseRadius" ? pendingShapeParameter.value : selected.shapeParameters.baseRadius;
           const topRadius = parameter === "topRadius" ? pendingShapeParameter.value : selected.shapeParameters.topRadius;
           const height = parameter === "height" ? pendingShapeParameter.value : selected.shapeParameters.height;
@@ -2505,7 +2531,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           ? previewParameters.toothDepth * selection.width / Math.max(0.01, previewParameters.outerRadius * 2)
           : 0;
         const radialSegments = previewParameters?.shape === "polygon" ? previewParameters.sides : previewParameters?.shape === "gear" ? previewParameters.teeth : 64;
-        lineGeometry.setPositions(operationPreviewWireframePositions(operationPreview.shape, selection.width, selection.depth, selection.height, topWidth, innerWidth, profileInsetWidth, radialSegments));
+        const cornerRadius = previewParameters?.shape === "roundedBox" ? previewParameters.cornerRadius * selection.width / Math.max(0.01, previewParameters.width) : 0;
+        lineGeometry.setPositions(operationPreviewWireframePositions(operationPreview.shape, selection.width, selection.depth, selection.height, topWidth, innerWidth, profileInsetWidth, radialSegments, cornerRadius));
         const preview = new LineSegments2(lineGeometry, new LineMaterial({ color: roleColor, linewidth: 2, depthTest: false, transparent: true, opacity: 1 }));
         preview.userData.operationPreviewWireframe = true;
         preview.renderOrder = 18;
@@ -2552,10 +2579,14 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       visualRoot.add(target);
       resizeHitboxesRef.current.push(target);
     };
-    if (parameters?.shape === "box") {
+    if (parameters?.shape === "box" || parameters?.shape === "roundedBox") {
       addParameterHandle("width", "x", new THREE.Vector3(0, 0, 0), new THREE.Vector3(selection.width / 2 + 3, 0, 0));
       addParameterHandle("depth", "y", new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, selection.depth / 2 + 3, 0));
       addParameterHandle("height", "z", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(0, 0, selection.height / 2 + 3));
+      if (parameters.shape === "roundedBox") {
+        const radiusScale = selection.width / Math.max(0.01, parameters.width);
+        addParameterHandle("cornerRadius", "x", new THREE.Vector3(0, 0, selection.height / 2), new THREE.Vector3(parameters.cornerRadius * radiusScale + 3, 0, selection.height / 2));
+      }
     } else if (parameters?.shape === "text") {
       addParameterHandle("size", "y", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(0, selection.depth / 2 + 3, -selection.height / 2), "y");
       addParameterHandle("height", "z", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(0, 0, selection.height / 2 + 3));

@@ -244,7 +244,12 @@ function solidFromPrimitive(brep: Brep, feature: PrimitiveFeature): AnySolid {
     throw new Error(`${feature.name}: la profundidad de diente y el radio del eje no caben en el radio exterior.`);
   }
   let solid: AnySolid;
-  if (feature.primitive === "cone") {
+  if (feature.primitive === "roundedBox") {
+    const cornerRadius = feature.cornerRadius ?? 3;
+    if (cornerRadius <= 0 || cornerRadius >= Math.min(feature.width, feature.depth) / 2) throw new Error(`${feature.name}: el radio debe ser menor que la mitad del ancho y de la profundidad.`);
+    const box = brep.box(feature.width, feature.depth, feature.height, { centered: true, at: [0, 0, feature.height / 2] });
+    solid = resultValue<AnySolid>(brep, brep.fillet(box, brep.edgeFinder().inDirection("Z"), cornerRadius));
+  } else if (feature.primitive === "cone") {
     solid = brep.cone(feature.width / 2, feature.topRadius ?? 0, feature.height, { at: [0, 0, 0] });
   } else if (feature.primitive === "tube") {
     const outer = brep.cylinder(feature.width / 2, feature.height, { at: [0, 0, 0] });

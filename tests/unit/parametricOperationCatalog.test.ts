@@ -22,6 +22,14 @@ describe("parametric operation catalog", () => {
     }
   });
 
+  it("places a vertically rounded box directly after the standard box", () => {
+    const boxIndex = parametricOperationCatalog.findIndex((definition) => definition.kind === "box");
+    const definition = parametricOperationCatalog[boxIndex + 1];
+
+    expect(definition).toMatchObject({ kind: "roundedBox", menuIcon: "assets/educad/shapes/box_rounded.svg" });
+    expect(definition.parameters.map((parameter) => parameter.key)).toEqual(["width", "depth", "height", "cornerRadius"]);
+  });
+
   it("defines an exact cone that can also become a frustum", () => {
     const definition = parametricOperationDefinition("cone");
 

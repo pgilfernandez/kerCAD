@@ -99,7 +99,7 @@ export type ExtrudeFeature = BaseFeature & {
 
 export type PrimitiveFeature = BaseFeature & {
   kind: "primitive";
-  primitive: "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear";
+  primitive: "roundedBox" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear";
   width: number;
   depth: number;
   height: number;
@@ -107,6 +107,7 @@ export type PrimitiveFeature = BaseFeature & {
   innerRadius?: number;
   majorRadius?: number;
   tubeRadius?: number;
+  cornerRadius?: number;
   sides?: number;
   teeth?: number;
   toothDepth?: number;

@@ -137,6 +137,13 @@ describe("operation preview wireframes", () => {
     expect(positions.slice(6, 12)).toEqual([-10, -5, -6, 0, 0, 6]);
   });
 
+  it("draws rounded box outlines without triangulated faces", () => {
+    const positions = operationPreviewWireframePositions("roundedBox", 20, 10, 6, 20, 0, 0, 64, 2);
+
+    expect(positions).toHaveLength(80 * 6);
+    expect(positions.every(Number.isFinite)).toBe(true);
+  });
+
   it.each(["wedge", "roof"] as const)("draws the nine structural edges of a %s", (shape) => {
     expect(operationPreviewWireframePositions(shape, 20, 10, 12)).toHaveLength(9 * 6);
   });

@@ -1,4 +1,4 @@
-export function operationPreviewWireframePositions(shape: "box" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear", width: number, depth: number, height: number, topWidth = width, innerWidth = 0, profileInsetWidth = 0, radialSegments = 64) {
+export function operationPreviewWireframePositions(shape: "box" | "roundedBox" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear", width: number, depth: number, height: number, topWidth = width, innerWidth = 0, profileInsetWidth = 0, radialSegments = 64, cornerRadius = 0) {
   const positions: number[] = [];
   const addSegment = (x1: number, y1: number, z1: number, x2: number, y2: number, z2: number) => positions.push(x1, y1, z1, x2, y2, z2);
   const halfWidth = width / 2;
@@ -14,6 +14,29 @@ export function operationPreviewWireframePositions(shape: "box" | "cylinder" | "
     }
     for (const [x, y] of [[-halfWidth, -halfDepth], [halfWidth, -halfDepth], [halfWidth, halfDepth], [-halfWidth, halfDepth]] as const) {
       addSegment(x, y, bottom, x, y, top);
+    }
+    return positions;
+  }
+  if (shape === "roundedBox") {
+    const radius = Math.min(halfWidth - 0.1, halfDepth - 0.1, Math.max(0.1, cornerRadius || 3));
+    const steps = 8;
+    const centers = [[halfWidth - radius, halfDepth - radius], [-halfWidth + radius, halfDepth - radius], [-halfWidth + radius, -halfDepth + radius], [halfWidth - radius, -halfDepth + radius]] as const;
+    for (const z of [bottom, top]) for (let corner = 0; corner < 4; corner += 1) {
+      const center = centers[corner];
+      const startAngle = corner * Math.PI / 2;
+      for (let step = 0; step < steps; step += 1) {
+        const angle = startAngle + step / steps * Math.PI / 2;
+        const next = startAngle + (step + 1) / steps * Math.PI / 2;
+        addSegment(center[0] + Math.cos(angle) * radius, center[1] + Math.sin(angle) * radius, z, center[0] + Math.cos(next) * radius, center[1] + Math.sin(next) * radius, z);
+      }
+      const nextCenter = centers[(corner + 1) % 4];
+      const endAngle = (corner + 1) * Math.PI / 2;
+      const nextStartAngle = (corner + 1) * Math.PI / 2;
+      addSegment(center[0] + Math.cos(endAngle) * radius, center[1] + Math.sin(endAngle) * radius, z, nextCenter[0] + Math.cos(nextStartAngle) * radius, nextCenter[1] + Math.sin(nextStartAngle) * radius, z);
+    }
+    for (let corner = 0; corner < 4; corner += 1) {
+      const center = centers[corner];
+      for (const angle of [corner * Math.PI / 2, (corner + 1) * Math.PI / 2]) addSegment(center[0] + Math.cos(angle) * radius, center[1] + Math.sin(angle) * radius, bottom, center[0] + Math.cos(angle) * radius, center[1] + Math.sin(angle) * radius, top);
     }
     return positions;
   }

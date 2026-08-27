@@ -167,6 +167,21 @@ describe("parametric object workflow", () => {
     expect(feature).toMatchObject({ majorRadius: 6.1, tubeRadius: 6, width: 24.2, depth: 24.2, height: 12 });
   });
 
+  it("adds a rounded box and keeps its corner radius inside the footprint", () => {
+    const document = createStarterDocument(123);
+    const result = addPrimitiveToSelection(document, null, "roundedBox");
+    const feature = document.features.find((candidate) => candidate.id === result.featureId);
+
+    expect(feature).toMatchObject({ kind: "primitive", primitive: "roundedBox", width: 20, depth: 20, height: 20, cornerRadius: 3 });
+    expect(viewportSelectionForFeature(document, result.featureId)).toMatchObject({
+      shapeParameters: { shape: "roundedBox", width: 20, depth: 20, height: 20, cornerRadius: 3 },
+    });
+    updateParametricShapeParameter(document, result.featureId!, "cornerRadius", 20);
+    expect(feature).toMatchObject({ cornerRadius: 9.9 });
+    updateParametricShapeParameter(document, result.featureId!, "width", 8);
+    expect(feature).toMatchObject({ width: 8, cornerRadius: 3.9 });
+  });
+
   it.each([
     ["pyramid", "Pirámide", 20],
     ["wedge", "Cuña", 20],

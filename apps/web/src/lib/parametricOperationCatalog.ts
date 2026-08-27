@@ -1,8 +1,8 @@
-export type ParametricPrimitiveKind = "box" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear";
+export type ParametricPrimitiveKind = "box" | "roundedBox" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear";
 export type ParametricBooleanRole = "add" | "cut" | "intersect";
 
 export type ParametricParameterDefinition = {
-  key: "width" | "depth" | "height" | "diameter" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "majorRadius" | "tubeRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius";
+  key: "width" | "depth" | "height" | "diameter" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "majorRadius" | "tubeRadius" | "cornerRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius";
   label: string;
   unit: "mm" | "";
   min: number;
@@ -48,6 +48,14 @@ export const parametricOperationCatalog: ParametricOperationDefinition[] = [
     menuIcon: "assets/sketchforge/shape-icons-gray/box.png",
     roles: roles("box"),
     parameters: [dimension("width", "Anchura"), dimension("depth", "Profundidad"), dimension("height", "Altura")],
+  },
+  {
+    kind: "roundedBox",
+    name: "Caja redondeada",
+    description: "Caja paramétrica con las cuatro esquinas verticales redondeadas",
+    menuIcon: "assets/educad/shapes/box_rounded.svg",
+    roles: roles("roundedBox"),
+    parameters: [dimension("width", "Anchura"), dimension("depth", "Profundidad"), dimension("height", "Altura"), dimension("cornerRadius", "Radio de esquina", 3)],
   },
   {
     kind: "cylinder",

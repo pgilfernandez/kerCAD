@@ -152,11 +152,12 @@ export function createPrimitiveFeature(primitive: PrimitiveFeature["primitive"],
     id: createFeatureId("primitive"),
     kind: "primitive",
     primitive,
-    name: primitive === "sphere" ? "Esfera" : primitive === "cone" ? "Cono" : primitive === "tube" ? "Tubo" : primitive === "halfSphere" ? "Semiesfera" : primitive === "torus" ? "Toro" : primitive === "pyramid" ? "Pirámide" : primitive === "wedge" ? "Cuña" : primitive === "roof" ? "Tejado" : primitive === "roundRoof" ? "Tejado redondo" : primitive === "polygon" ? "Polígono" : primitive === "gear" ? "Engranaje" : `Primitiva ${index}`,
+    name: primitive === "roundedBox" ? "Caja redondeada" : primitive === "sphere" ? "Esfera" : primitive === "cone" ? "Cono" : primitive === "tube" ? "Tubo" : primitive === "halfSphere" ? "Semiesfera" : primitive === "torus" ? "Toro" : primitive === "pyramid" ? "Pirámide" : primitive === "wedge" ? "Cuña" : primitive === "roof" ? "Tejado" : primitive === "roundRoof" ? "Tejado redondo" : primitive === "polygon" ? "Polígono" : primitive === "gear" ? "Engranaje" : `Primitiva ${index}`,
     suppressed: false,
     width: 20,
     depth: 20,
     height: 20,
+    ...(primitive === "roundedBox" ? { cornerRadius: 3 } : {}),
     ...(primitive === "cone" ? { topRadius: 0 } : {}),
     ...(primitive === "tube" ? { innerRadius: 6 } : {}),
     ...(primitive === "torus" ? { majorRadius: 12, tubeRadius: 4, width: 32, depth: 32, height: 8 } : {}),
@@ -431,6 +432,7 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
       feature.width = Math.max(0.1, Number.isFinite(feature.width) ? feature.width : 20);
       feature.depth = Math.max(0.1, Number.isFinite(feature.depth) ? feature.depth : 20);
       feature.height = Math.max(0.1, Number.isFinite(feature.height) ? feature.height : 20);
+      if (feature.primitive === "roundedBox") feature.cornerRadius = Math.min(feature.width / 2 - 0.1, feature.depth / 2 - 0.1, Math.max(0.1, Number.isFinite(feature.cornerRadius) ? feature.cornerRadius! : 3));
       if (feature.primitive === "torus") {
         feature.majorRadius = Math.max(0.2, Number.isFinite(feature.majorRadius) ? feature.majorRadius! : 12);
         feature.tubeRadius = Math.min(feature.majorRadius - 0.1, Math.max(0.1, Number.isFinite(feature.tubeRadius) ? feature.tubeRadius! : 4));

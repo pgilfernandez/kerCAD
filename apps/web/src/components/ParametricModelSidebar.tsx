@@ -497,6 +497,8 @@ function ParametricFeatureInspector({
                     ? feature.majorRadius ?? 12
                   : parameter.key === "tubeRadius"
                       ? feature.tubeRadius ?? 4
+                    : parameter.key === "cornerRadius"
+                      ? feature.cornerRadius ?? 3
                     : parameter.key === "sides"
                       ? feature.sides ?? 6
                     : parameter.key === "teeth"
@@ -542,6 +544,11 @@ function ParametricFeatureInspector({
                     draft.width = ((draft.majorRadius ?? 12) + draft.tubeRadius) * 2;
                     draft.depth = draft.width;
                     draft.height = draft.tubeRadius * 2;
+                  } else if (parameter.key === "cornerRadius") {
+                    draft.cornerRadius = Math.min(draft.width / 2 - 0.1, draft.depth / 2 - 0.1, Math.max(0.1, value));
+                  } else if ((parameter.key === "width" || parameter.key === "depth") && draft.primitive === "roundedBox") {
+                    draft[parameter.key] = Math.max(parameter.min, value);
+                    draft.cornerRadius = Math.min(draft.cornerRadius ?? 3, draft.width / 2 - 0.1, draft.depth / 2 - 0.1);
                   } else if (parameter.key === "sides") {
                     draft.sides = Math.min(32, Math.max(3, Math.round(value)));
                   } else if (parameter.key === "teeth") {
