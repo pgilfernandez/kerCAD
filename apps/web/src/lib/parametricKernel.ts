@@ -10,6 +10,11 @@ type AnySolid = BrepSolid;
 type CompoundShape = ReturnType<Brep["compound"]>;
 type RenderableShape = AnySolid | CompoundShape;
 type OperationSolidState = { before: AnySolid | null; after: AnySolid; added?: AnySolid | null; removed?: AnySolid | null };
+type CachedObjectSolid = { fingerprint: string; solid: AnySolid };
+
+// This cache lives inside the long-running main build worker. B-Rep handles stay
+// in that worker and are discarded automatically if cancellation restarts it.
+const cachedObjectSolids = new Map<string, CachedObjectSolid>();
 
 function resultValue<T>(brep: Brep, result: ReturnType<Brep["cut"]> | ReturnType<Brep["fuse"]> | ReturnType<Brep["intersect"]> | ReturnType<Brep["fillet"]>) {
   return brep.unwrap(result) as T;
@@ -638,10 +643,25 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
   const operationStates = new Map<string, OperationSolidState>();
   let operationContext: BuildResult["operationContext"] = null;
   let lastObjectId = "legacy";
+  const reuseObjectCache = contextFeatureId === null && !stopAtContext;
+  const reusableObjectIds = new Set<string>();
+  if (reuseObjectCache) {
+    for (const object of document.objects) {
+      const cached = cachedObjectSolids.get(object.id);
+      if (!cached || cached.fingerprint !== parametricObjectGeometryFingerprint(document, object.id)) continue;
+      solids.set(object.id, cached.solid);
+      reusableObjectIds.add(object.id);
+    }
+  }
 
   try {
     for (const feature of topologicallySortedParametricFeatures(document)) {
       if (feature.suppressed) continue;
+      if (feature.objectId && reusableObjectIds.has(feature.objectId)) {
+        if (feature.kind !== "sketch") lastObjectId = feature.objectId;
+        completedFeatureIds.push(feature.id);
+        continue;
+      }
       if (feature.kind === "sketch") {
         sketches.set(feature.id, feature);
         completedFeatureIds.push(feature.id);
@@ -774,6 +794,18 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
     }
   } catch (error) {
     return { ...buildRenderOutput(brep, document, solids, objects), operationContext, completedFeatureIds, warning: errorMessage(error) };
+  }
+
+  if (reuseObjectCache) {
+    const activeObjectIds = new Set(document.objects.map((object) => object.id));
+    for (const objectId of cachedObjectSolids.keys()) if (!activeObjectIds.has(objectId)) cachedObjectSolids.delete(objectId);
+    for (const [objectId, solid] of solids) {
+      if (!activeObjectIds.has(objectId)) continue;
+      cachedObjectSolids.set(objectId, {
+        fingerprint: parametricObjectGeometryFingerprint(document, objectId),
+        solid,
+      });
+    }
   }
 
   return { ...buildRenderOutput(brep, document, solids, objects), operationContext, completedFeatureIds, warning: null };
