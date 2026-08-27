@@ -6270,6 +6270,7 @@ export function SketchForgeEditor({
       smooth: "Smooth curve: click points to build a flowing path",
       freehand: "Freehand: drag to draw a closed contour",
       freehandSmooth: "Smooth freehand: drag to draw a closed Bézier contour",
+      text: "Text: click to place a 10 mm system-font label",
       circle: "Circle: drag from the centre to define the radius",
       arc: "Arc: choose the centre, start point, and end point",
       select: "Select: edit sketch geometry or place and scale reference images",

@@ -79,6 +79,7 @@ export type SketchPoint = {
   handleIn?: { x: number; z: number };
   handleOut?: { x: number; z: number };
   mode?: "corner" | "smooth" | "split";
+  generatedTextId?: string;
 };
 
 export type SketchSegment = {
@@ -89,6 +90,18 @@ export type SketchSegment = {
   center?: { x: number; z: number };
   clockwise?: boolean;
   construction?: boolean;
+  generatedTextId?: string;
+};
+
+export type SketchText = {
+  id: string;
+  text: string;
+  fontFamily: string;
+  x: number;
+  z: number;
+  height: number;
+  width: number;
+  depth: number;
 };
 
 export type SketchCircle = {
@@ -137,6 +150,7 @@ export type SketchProfile = {
   segments: SketchSegment[];
   circles?: SketchCircle[];
   images?: SketchImage[];
+  texts?: SketchText[];
   constraints?: SketchConstraint[];
   generator?:
     | { kind: "text"; text: string; font: "Sans" | "Serif" | "Script" | "Monospace" | "Rounded"; size: number; spacing: number; align: "left" | "center" | "right"; verticalAlign: "bottom" | "center" | "top" }

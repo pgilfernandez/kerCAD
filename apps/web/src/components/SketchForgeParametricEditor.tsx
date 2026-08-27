@@ -1,6 +1,6 @@
 "use client";
 
-import { Anchor, Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, CircleDot, CornerDownRight, Diameter, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Move3d, MoveHorizontal, MoveVertical, MousePointer2, PenLine, PenTool, Plus, Rotate3d, RotateCcw, Ruler, Scissors, Spline, Split, Waves, X } from "lucide-react";
+import { Anchor, Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, CircleDot, CornerDownRight, Diameter, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Move3d, MoveHorizontal, MoveVertical, MousePointer2, PenLine, PenTool, Plus, Rotate3d, RotateCcw, Ruler, Scissors, Spline, Split, Type, Waves, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent as ReactFocusEvent } from "react";
 import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyEdgePick, type TopologyFacePick } from "@/components/ParametricViewport";
@@ -45,6 +45,7 @@ import { sketchProfileFromSvg } from "@/lib/svgImport";
 import { importSvgAsParametricExtrusion } from "@/lib/svgParametricImport";
 import { addParametricText } from "@/lib/parametricText";
 import { appendScribbleContour } from "@/lib/parametricScribble";
+import { appendDefaultSketchText, deleteSketchText, moveSketchText } from "@/lib/sketchText";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import { circleSketchPointId, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, solveSketchConstraints } from "@/lib/sketchConstraints";
 import { analyzeSketchConstraints } from "@/lib/sketchConstraintAnalysis";
@@ -115,7 +116,7 @@ function fileName(value: string) {
 }
 
 function emptySketchProfile(): SketchProfile {
-  return { points: [], segments: [], circles: [], images: [], constraints: [] };
+  return { points: [], segments: [], circles: [], images: [], texts: [], constraints: [] };
 }
 
 function cloneSketchProfile(profile: SketchProfile): SketchProfile {
@@ -124,6 +125,7 @@ function cloneSketchProfile(profile: SketchProfile): SketchProfile {
     segments: profile.segments.map((segment) => ({ ...segment })),
     circles: (profile.circles ?? []).map((circle) => ({ ...circle })),
     images: (profile.images ?? []).map((image) => ({ ...image })),
+    texts: (profile.texts ?? []).map((text) => ({ ...text })),
     constraints: (profile.constraints ?? []).map((constraint) => ({ ...constraint })),
   };
 }
@@ -1377,6 +1379,11 @@ export function SketchForgeParametricEditor() {
 
   const deleteCurrentSketchSelection = () => {
     if (!sketchSelection) return false;
+    if (sketchSelection.kind === "text") {
+      setSketchProfile((profile) => deleteSketchText(profile, sketchSelection.id));
+      setSketchSelection(null);
+      return true;
+    }
     const selectedPointIds = sketchSelection.kind === "point" ? [sketchSelection.id] : sketchSelection.kind === "multiple" ? sketchSelection.pointIds : [];
     const pointIds = selectedPointIds.filter((id) => sketchSession?.profile.points.some((point) => point.id === id));
     const segmentIds = sketchSelection.kind === "segment" ? [sketchSelection.id] : sketchSelection.kind === "multiple" ? sketchSelection.segmentIds : [];
@@ -2148,6 +2155,7 @@ export function SketchForgeParametricEditor() {
             <Tool label="Curva suave" active={sketchTool === "smooth"} onClick={() => chooseSketchTool("smooth")}><Spline /></Tool>
             <Tool label="Dibujo libre" active={sketchTool === "freehand"} onClick={() => chooseSketchTool("freehand")}><PenTool /></Tool>
             <Tool label="Dibujo libre suavizado" active={sketchTool === "freehandSmooth"} onClick={() => chooseSketchTool("freehandSmooth")}><Waves /></Tool>
+            <Tool label="Texto" active={sketchTool === "text"} onClick={() => chooseSketchTool("text")}><Type /></Tool>
             <Tool label="Círculo" active={sketchTool === "circle"} onClick={() => chooseSketchTool("circle")}><Circle /></Tool>
             <Tool label="Arco por centro" active={sketchTool === "arc"} onClick={() => chooseSketchTool("arc")}><RotateCcw /></Tool>
           </ToolbarSection>
@@ -2287,6 +2295,19 @@ export function SketchForgeParametricEditor() {
               setNotice({ type: "error", text: error instanceof Error ? error.message : "No se pudo crear el contorno libre." });
             }
           }}
+          onAddText={(position) => {
+            let textId = "";
+            setSketchProfile((profile) => {
+              const next = appendDefaultSketchText(profile, position);
+              textId = next.texts?.at(-1)?.id ?? "";
+              return next;
+            });
+            if (textId) setSketchSelection({ kind: "text", id: textId });
+            setSketchTool("select");
+          }}
+          onSelectText={(id) => setSketchSelection({ kind: "text", id })}
+          onMoveText={(id, position) => setSketchProfile((profile) => moveSketchText(profile, id, position))}
+          onDeleteText={(id) => { setSketchProfile((profile) => deleteSketchText(profile, id)); setSketchSelection(null); }}
           onPointPress={pressSketchPoint}
           onSelectSegment={(id, additive = false) => {
             if (!additive) setSketchSelection({ kind: "segment", id });

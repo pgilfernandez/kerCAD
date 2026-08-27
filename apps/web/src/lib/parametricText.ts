@@ -14,15 +14,24 @@ import optimerBoldFontJson from "three/examples/fonts/optimer_bold.typeface.json
 export type ParametricTextSettings = Extract<NonNullable<SketchProfile["generator"]>, { kind: "text" }>;
 
 const fontLoader = new FontLoader();
-const PARAMETRIC_WEB_FONTS: Record<ParametricTextSettings["font"], Font> = {
-  Sans: fontLoader.parse(droidSansBoldFontJson as FontData),
-  Serif: fontLoader.parse(droidSerifBoldFontJson as FontData),
-  Script: fontLoader.parse(gentilisBoldFontJson as FontData),
-  Monospace: fontLoader.parse(droidMonoFontJson as FontData),
-  Rounded: fontLoader.parse(optimerBoldFontJson as FontData),
+const PARAMETRIC_WEB_FONT_DATA: Record<ParametricTextSettings["font"], FontData> = {
+  Sans: droidSansBoldFontJson as FontData,
+  Serif: droidSerifBoldFontJson as FontData,
+  Script: gentilisBoldFontJson as FontData,
+  Monospace: droidMonoFontJson as FontData,
+  Rounded: optimerBoldFontJson as FontData,
 };
+const parsedFonts = new Map<ParametricTextSettings["font"], Font>();
 
-export const parametricTextFontNames = Object.keys(PARAMETRIC_WEB_FONTS) as ParametricTextSettings["font"][];
+export const parametricTextFontNames = Object.keys(PARAMETRIC_WEB_FONT_DATA) as ParametricTextSettings["font"][];
+
+function parametricWebFont(name: ParametricTextSettings["font"]) {
+  const cached = parsedFonts.get(name);
+  if (cached) return cached;
+  const font = fontLoader.parse(PARAMETRIC_WEB_FONT_DATA[name]);
+  parsedFonts.set(name, font);
+  return font;
+}
 
 function addLoop(profile: SketchProfile, source: Array<{ x: number; y: number }>, offsetX: number) {
   const cleaned = source.filter((point, index) => index === 0 || Math.hypot(point.x - source[index - 1].x, point.y - source[index - 1].y) > 1e-7);
@@ -37,18 +46,20 @@ export function parametricTextProfile(settings: ParametricTextSettings): SketchP
   const normalized = {
     ...settings,
     text: settings.text.slice(0, 40),
-    font: PARAMETRIC_WEB_FONTS[settings.font] ? settings.font : "Sans" as const,
+    font: PARAMETRIC_WEB_FONT_DATA[settings.font] ? settings.font : "Sans" as const,
     align: settings.align ?? "center",
     verticalAlign: settings.verticalAlign ?? "center",
   };
-  const font = PARAMETRIC_WEB_FONTS[normalized.font];
+  const font = parametricWebFont(normalized.font);
   const size = Math.max(1, normalized.size);
   const profile: SketchProfile = { points: [], segments: [], circles: [], images: [], constraints: [], generator: normalized };
   let cursor = 0;
   for (const character of normalized.text) {
     if (/\s/.test(character)) { cursor += size * 0.38 + Math.max(0, normalized.spacing); continue; }
     const shapes = font.generateShapes(character, size);
-    const sampled = shapes.flatMap((shape) => [shape.getPoints(16), ...shape.holes.map((hole) => hole.getPoints(16))]);
+    // Five subdivisions retain readable glyph curves while keeping profile validation
+    // and exact B-Rep construction light enough for interactive editing.
+    const sampled = shapes.flatMap((shape) => [shape.getPoints(10), ...shape.holes.map((hole) => hole.getPoints(5))]);
     const glyphPoints = sampled.flat();
     if (!glyphPoints.length) { cursor += size * 0.55 + Math.max(0, normalized.spacing); continue; }
     const minX = Math.min(...glyphPoints.map((point) => point.x));

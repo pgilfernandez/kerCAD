@@ -5004,6 +5004,46 @@ button {
   cursor: pointer;
 }
 
+.sketch-text-entities text {
+  fill: #173f60;
+  stroke: transparent;
+  stroke-width: 5;
+  paint-order: stroke fill;
+  cursor: move;
+  user-select: none;
+}
+
+.sketch-text-entities text:hover {
+  fill: #169fce;
+}
+
+.sketch-text-entities text.selected {
+  fill: #1677c8;
+  stroke: rgba(22, 119, 200, 0.2);
+}
+
+.sketch-text-selection-box {
+  fill: rgba(22, 119, 200, 0.05);
+  stroke: rgba(22, 119, 200, 0.75);
+  stroke-dasharray: 4 3;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.sketch-text-dimensions > g > g rect {
+  fill: rgba(255, 255, 255, 0.97);
+  stroke: rgba(127, 151, 168, 0.9);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 1px 2px rgba(25, 55, 76, 0.15));
+}
+
+.sketch-text-dimensions > g > g text {
+  fill: #173b5a;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
 .sketch-segments path:hover,
 .sketch-segments path.selected,
 .sketch-segments > circle:hover,

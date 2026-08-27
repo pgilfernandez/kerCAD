@@ -316,6 +316,56 @@ function worldObjectSolids(brep: Brep, solids: Map<string, AnySolid>, objects: M
     .map(([objectId, solid]) => [objectId, applyObjectTransform(brep, solid, objects.get(objectId))]));
 }
 
+type Direction3 = [number, number, number];
+
+function rotateDirection(direction: Direction3, rotation: { x: number; y: number; z: number }): Direction3 {
+  let [x, y, z] = direction;
+  for (const [angle, axis] of [[rotation.x, "x"], [rotation.y, "y"], [rotation.z, "z"]] as const) {
+    if (!angle) continue;
+    const radians = angle * Math.PI / 180;
+    const cosine = Math.cos(radians);
+    const sine = Math.sin(radians);
+    if (axis === "x") [y, z] = [y * cosine - z * sine, y * sine + z * cosine];
+    if (axis === "y") [x, z] = [x * cosine + z * sine, -x * sine + z * cosine];
+    if (axis === "z") [x, y] = [x * cosine - y * sine, x * sine + y * cosine];
+  }
+  return [x, y, z];
+}
+
+function isTextOnlySketch(sketch: SketchFeature) {
+  if (sketch.profile.shape !== "drawn") return false;
+  const profile = sketch.profile.geometry;
+  if (profile.generator?.kind === "text") return true;
+  const contourSegments = profile.segments.filter((segment) => !segment.construction);
+  return contourSegments.length > 0 && contourSegments.every((segment) => Boolean(segment.generatedTextId));
+}
+
+function textExtrusionDirections(document: ParametricDocument, objectId: string, object?: ParametricObject) {
+  const sketches = new Map(document.features.filter((feature): feature is SketchFeature => feature.kind === "sketch").map((sketch) => [sketch.id, sketch]));
+  const directions: Direction3[] = [];
+  let containsOtherSolidGeometry = false;
+  for (const feature of document.features.filter((candidate) => !candidate.suppressed && candidate.objectId === objectId)) {
+    if (feature.kind === "extrude") {
+      const sketch = sketches.get(feature.sketchId);
+      if (!sketch || !isTextOnlySketch(sketch)) {
+        containsOtherSolidGeometry = true;
+        continue;
+      }
+      let direction = rotateDirection([0, 0, 1], sketch.rotation);
+      direction = rotateDirection(direction, feature.transform.rotation);
+      if (object) {
+        direction = [direction[0] * object.transform.scale.x, direction[1] * object.transform.scale.y, direction[2] * object.transform.scale.z];
+        direction = rotateDirection(direction, object.transform.rotation);
+      }
+      const length = Math.hypot(...direction) || 1;
+      directions.push([direction[0] / length, direction[1] / length, direction[2] / length]);
+      continue;
+    }
+    if (feature.kind === "primitive" || feature.kind === "faceExtrude" || feature.kind === "revolve" || feature.kind === "objectBoolean") containsOtherSolidGeometry = true;
+  }
+  return containsOtherSolidGeometry ? [] : directions;
+}
+
 function objectRenderRecords(brep: Brep, document: ParametricDocument, worldSolids: Map<string, AnySolid>, objects: Map<string, ParametricObject>): ParametricObjectRenderRecord[] {
   return [...worldSolids].map(([objectId, solid]) => {
     const object = objects.get(objectId);
@@ -329,7 +379,7 @@ function objectRenderRecords(brep: Brep, document: ParametricDocument, worldSoli
         rotation: { x: 0, y: 0, z: 0 },
         scale: { x: 1, y: 1, z: 1 },
       }),
-      mesh: meshShape(brep, solid),
+      mesh: meshShape(brep, solid, textExtrusionDirections(document, objectId, object)),
     };
   });
 }
@@ -737,18 +787,51 @@ export async function buildParametricOperationContext(document: ParametricDocume
   return (await buildParametricModelInternal(document, featureId, true)).operationContext;
 }
 
-function meshShape(brep: Brep, shape: RenderableShape): RenderMesh {
+export function omitParallelRenderEdges(
+  lines: Float32Array,
+  groups: Array<{ start: number; count: number; edgeId: number }>,
+  directions: Direction3[],
+) {
+  if (!directions.length || !groups.length) return { edges: lines, edgeGroups: groups.map((group) => ({ ...group })) };
+  const retained: number[] = [];
+  const edgeGroups: Array<{ start: number; count: number; edgeId: number }> = [];
+  for (const group of groups) {
+    const start = group.start * 3;
+    const end = (group.start + group.count) * 3;
+    const parallel = directions.some((direction) => {
+      let hasLength = false;
+      for (let offset = start; offset + 5 < end; offset += 6) {
+        const x = lines[offset + 3] - lines[offset];
+        const y = lines[offset + 4] - lines[offset + 1];
+        const z = lines[offset + 5] - lines[offset + 2];
+        const length = Math.hypot(x, y, z);
+        if (length <= 1e-7) continue;
+        hasLength = true;
+        const cosine = Math.abs((x * direction[0] + y * direction[1] + z * direction[2]) / length);
+        if (cosine < 0.9999) return false;
+      }
+      return hasLength;
+    });
+    if (parallel) continue;
+    edgeGroups.push({ start: retained.length / 3, count: group.count, edgeId: group.edgeId });
+    for (let offset = start; offset < end; offset += 1) retained.push(lines[offset]);
+  }
+  return { edges: new Float32Array(retained), edgeGroups };
+}
+
+function meshShape(brep: Brep, shape: RenderableShape, omittedEdgeDirections: Direction3[] = []): RenderMesh {
   const triangles = brep.mesh(shape, { tolerance: 0.15, angularTolerance: 0.25 });
   const edgeMesh = brep.meshEdges(shape, { tolerance: 0.12, angularTolerance: 0.2 });
+  const displayEdges = omitParallelRenderEdges(edgeMesh.lines, edgeMesh.edgeGroups, omittedEdgeDirections);
   const bounds = brep.getBounds(shape);
   const volumeResult = brep.measureVolume(shape);
   return {
     positions: triangles.vertices,
     normals: triangles.normals,
     indices: triangles.triangles,
-    edges: edgeMesh.lines,
+    edges: displayEdges.edges,
     faceGroups: triangles.faceGroups.map((group) => ({ ...group })),
-    edgeGroups: edgeMesh.edgeGroups.map((group) => ({ ...group })),
+    edgeGroups: displayEdges.edgeGroups,
     metrics: {
       width: bounds.xMax - bounds.xMin,
       depth: bounds.yMax - bounds.yMin,

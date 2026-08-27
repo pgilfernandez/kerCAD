@@ -499,6 +499,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
   const sketch = feature.kind === "extrude" ? sketchForExtrude(document, feature) : null;
   if (!object || (!includeUnavailable && (!object.visible || object.locked)) || (feature.kind === "extrude" && !sketch)) return null;
   const sketchSize = sketch ? sketchDimensions(sketch) : null;
+  const textGenerator = sketch?.profile.shape === "drawn" && sketch.profile.geometry.generator?.kind === "text" ? sketch.profile.geometry.generator : null;
   const baseWidth = feature.kind === "primitive" ? feature.width : sketchSize!.width;
   const baseDepth = feature.kind === "primitive" ? feature.depth : sketchSize!.depth;
   const baseHeight = feature.kind === "primitive" ? feature.height : feature.distance;
@@ -521,7 +522,11 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
     center: world.center,
     origin: { x: world.x, y: world.y, z: world.z },
     rotation3d: world.rotation3d,
-    ...(feature.kind === "extrude" && sketch!.purpose === "user" ? { parameterHandles: ["height" as const] } : {}),
+    ...(textGenerator
+      ? { parameterHandles: ["size" as const, "height" as const] }
+      : feature.kind === "extrude" && sketch!.purpose === "user"
+        ? { parameterHandles: ["height" as const] }
+        : {}),
     ...(feature.kind === "extrude" && sketch!.profile.shape === "circle" ? { resizeAspectRatio: 1 } : {}),
     shapeParameters: feature.kind === "primitive"
       ? feature.primitive === "cone"
@@ -539,6 +544,8 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
           : feature.primitive === "halfSphere"
             ? { shape: "halfSphere", radius: feature.width / 2, height: feature.height }
         : { shape: "sphere", radius: feature.width / 2 }
+      : textGenerator
+        ? { shape: "text", size: textGenerator.size, height: feature.distance }
       : sketch!.profile.shape === "circle"
         ? { shape: "cylinder", radius: sketch!.profile.diameter / 2, height: feature.distance }
         : { shape: "box", width: baseWidth, depth: baseDepth, height: feature.distance },
@@ -855,7 +862,7 @@ export function resizeParametricHeight(document: ParametricDocument, id: string,
 export function updateParametricShapeParameter(
   document: ParametricDocument,
   id: string,
-  parameter: "width" | "depth" | "height" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "majorRadius" | "tubeRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius",
+  parameter: "width" | "depth" | "height" | "size" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "majorRadius" | "tubeRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius",
   value: number,
 ) {
   if (!Number.isFinite(value) || (parameter === "topRadius" || parameter === "boreRadius" ? value < 0 : value <= 0)) return;
@@ -929,6 +936,23 @@ export function updateParametricShapeParameter(
   if (!sketch) return;
   if (parameter === "height") {
     feature.distance = next;
+  } else if (parameter === "size" && sketch.profile.shape === "drawn" && sketch.profile.geometry.generator?.kind === "text") {
+    const generator = sketch.profile.geometry.generator;
+    const scale = next / Math.max(0.1, generator.size);
+    generator.size = next;
+    generator.spacing *= scale;
+    for (const point of sketch.profile.geometry.points) {
+      point.x *= scale;
+      point.z *= scale;
+      if (point.handleIn) {
+        point.handleIn.x *= scale;
+        point.handleIn.z *= scale;
+      }
+      if (point.handleOut) {
+        point.handleOut.x *= scale;
+        point.handleOut.z *= scale;
+      }
+    }
   } else if (sketch.profile.shape === "rectangle" && parameter === "width") {
     sketch.profile.width = next;
   } else if (sketch.profile.shape === "rectangle" && parameter === "depth") {

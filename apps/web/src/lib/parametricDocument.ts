@@ -352,6 +352,7 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
         geometry.segments ??= [];
         geometry.circles ??= [];
         geometry.images ??= [];
+        geometry.texts ??= [];
         if (geometry.generator?.kind === "text") {
           geometry.generator.font = ["Sans", "Serif", "Script", "Monospace", "Rounded"].includes(geometry.generator.font) ? geometry.generator.font : "Sans";
           geometry.generator.align = geometry.generator.align === "left" || geometry.generator.align === "right" ? geometry.generator.align : "center";

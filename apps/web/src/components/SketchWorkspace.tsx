@@ -10,15 +10,16 @@ import { mirrorSign, resizedImportedMeshPositions } from "@/lib/workplaneShapes"
 import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE, normalizeSnapGrid, normalizeWorkspaceSettings } from "@/lib/workplaneSettings";
 import { solveSketchConstraints } from "@/lib/sketchConstraints";
 import type { SketchProfileValidation } from "@/lib/sketchProfileValidation";
-import type { GridSize, SketchCircle, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchSegment, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
+import type { GridSize, SketchCircle, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchSegment, SketchText, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
 
-export type SketchTool = "line" | "bezier" | "smooth" | "freehand" | "freehandSmooth" | "circle" | "arc" | "select" | "refine" | "trim" | "erase" | "measure";
+export type SketchTool = "line" | "bezier" | "smooth" | "freehand" | "freehandSmooth" | "text" | "circle" | "arc" | "select" | "refine" | "trim" | "erase" | "measure";
 export type SketchSelection =
   | { kind: "point"; id: string }
   | { kind: "segment"; id: string }
   | { kind: "circle"; id: string }
   | { kind: "circlePoint"; circleId: string; point: "center" | "radius" }
   | { kind: "image"; id: string }
+  | { kind: "text"; id: string }
   | { kind: "multiple"; pointIds: string[]; segmentIds: string[]; circleIds?: string[]; imageIds?: string[] }
   | null;
 export type SketchMeasurement = { start: SketchPoint; end: SketchPoint } | null;
@@ -39,6 +40,10 @@ type SketchWorkspaceProps = {
   initialWorkspace?: WorkplaneWorkspaceSettings;
   onPlanePoint: (point: { x: number; z: number }, handles?: { handleIn: { x: number; z: number }; handleOut: { x: number; z: number } }) => void;
   onFreehandContour?: (points: Array<{ x: number; z: number }>, smooth: boolean) => void;
+  onAddText?: (position: { x: number; z: number }) => void;
+  onSelectText?: (id: string) => void;
+  onMoveText?: (id: string, position: { x: number; z: number }) => void;
+  onDeleteText?: (id: string) => void;
   onPointPress: (id: string, additive?: boolean) => void;
   onSelectSegment: (id: string, additive?: boolean) => void;
   onSelectMany: (pointIds: string[], segmentIds: string[], imageIds: string[], circleIds?: string[]) => void;
@@ -82,6 +87,7 @@ type PointerAction =
   | { kind: "marquee"; pointerId: number; origin: { x: number; z: number }; current: { x: number; z: number } }
   | { kind: "freehand"; pointerId: number; origin: { x: number; z: number }; current: { x: number; z: number }; points: Array<{ x: number; z: number }>; smooth: boolean }
   | { kind: "move-image"; pointerId: number; imageId: string; origin: { x: number; z: number }; current: { x: number; z: number }; start: SketchImage }
+  | { kind: "move-text"; pointerId: number; textId: string; origin: { x: number; z: number }; current: { x: number; z: number }; start: SketchText }
   | { kind: "resize-image"; pointerId: number; imageId: string; handle: ResizeHandle; current: { x: number; z: number }; start: SketchImage };
 
 type ResizeHandle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
@@ -555,6 +561,10 @@ export function SketchWorkspace({
   initialWorkspace,
   onPlanePoint,
   onFreehandContour,
+  onAddText,
+  onSelectText,
+  onMoveText,
+  onDeleteText,
   onPointPress,
   onSelectSegment,
   onSelectMany,
@@ -682,7 +692,29 @@ export function SketchWorkspace({
     return circles;
   }, [pointerAction, profile.circles]);
   const pointById = useMemo(() => new Map(displayProfile.points.map((point) => [point.id, point])), [displayProfile.points]);
-  const paths = useMemo(() => orderedPaths({ ...displayProfile, segments: displayProfile.segments.filter((segment) => !segment.construction) }), [displayProfile]);
+  const paths = useMemo(() => orderedPaths({ ...displayProfile, segments: displayProfile.segments.filter((segment) => !segment.construction && !segment.generatedTextId) }), [displayProfile]);
+  const displayTexts = useMemo(() => {
+    const texts = profile.texts ?? [];
+    if (pointerAction?.kind !== "move-text") return texts;
+    const dx = pointerAction.current.x - pointerAction.origin.x;
+    const dz = pointerAction.current.z - pointerAction.origin.z;
+    return texts.map((text) => text.id === pointerAction.textId ? { ...text, x: pointerAction.start.x + dx, z: pointerAction.start.z + dz } : text);
+  }, [pointerAction, profile.texts]);
+  const displayTextBounds = useMemo(() => new Map(displayTexts.map((text) => {
+    const generatedPoints = profile.points.filter((point) => point.generatedTextId === text.id);
+    const generatedWidth = generatedPoints.length ? Math.max(...generatedPoints.map((point) => point.x)) - Math.min(...generatedPoints.map((point) => point.x)) : text.height;
+    const generatedDepth = generatedPoints.length ? Math.max(...generatedPoints.map((point) => point.z)) - Math.min(...generatedPoints.map((point) => point.z)) : text.height;
+    const width = Number.isFinite(text.width) && text.width > 0 ? text.width : generatedWidth;
+    const depth = Number.isFinite(text.depth) && text.depth > 0 ? text.depth : generatedDepth;
+    return [text.id, {
+      minX: text.x - width / 2,
+      maxX: text.x + width / 2,
+      minZ: text.z - depth / 2,
+      maxZ: text.z + depth / 2,
+      width,
+      depth,
+    }];
+  })), [displayTexts, profile.points]);
   const activePoint = activePointId ? pointById.get(activePointId) ?? null : null;
   const selectedPoint = selected?.kind === "point" ? pointById.get(selected.id) ?? null : null;
   const smoothPreviewData = useMemo(() => {
@@ -771,7 +803,9 @@ export function SketchWorkspace({
     const point = pointFromEvent(event, tool !== "select" && !freehandTool, !freehandTool);
     if (!point) return;
     event.preventDefault();
-    if (freehandTool) {
+    if (tool === "text") {
+      onAddText?.(point);
+    } else if (freehandTool) {
       event.currentTarget.setPointerCapture(event.pointerId);
       setPointerAction({ kind: "freehand", pointerId: event.pointerId, origin: point, current: point, points: [point], smooth: tool === "freehandSmooth" });
     } else if (tool === "bezier") {
@@ -848,8 +882,9 @@ export function SketchWorkspace({
       const minZ = Math.min(action.origin.z, action.current.z);
       const maxZ = Math.max(action.origin.z, action.current.z);
       const contains = (point: { x: number; z: number }) => point.x >= minX && point.x <= maxX && point.z >= minZ && point.z <= maxZ;
-      const pointIds = profile.points.filter(contains).map((point) => point.id);
+      const pointIds = profile.points.filter((point) => !point.generatedTextId && contains(point)).map((point) => point.id);
       const segmentIds = profile.segments.filter((segment) => {
+        if (segment.generatedTextId) return false;
         const start = pointById.get(segment.startId);
         const end = pointById.get(segment.endId);
         return Boolean(start && end && (contains(start) || contains(end) || contains({ x: (start.x + end.x) / 2, z: (start.z + end.z) / 2 })));
@@ -888,6 +923,8 @@ export function SketchWorkspace({
         x: action.start.x + action.current.x - action.origin.x,
         z: action.start.z + action.current.z - action.origin.z,
       }, "Sketch image moved");
+    } else if (action.kind === "move-text") {
+      onMoveText?.(action.textId, { x: action.start.x + action.current.x - action.origin.x, z: action.start.z + action.current.z - action.origin.z });
     } else if (action.kind === "resize-image") {
       onUpdateImage(action.imageId, resizeSketchImage(action.start, action.handle, action.current), "Sketch image resized");
     }
@@ -1068,8 +1105,53 @@ export function SketchWorkspace({
           <g className="sketch-profile-fills" pointerEvents="none">
             {paths.some((path) => path.closed) || displayCircles.some((circle) => !circle.construction) ? <path fillRule="evenodd" d={[...paths.filter((path) => path.closed).map(pathData), ...displayCircles.filter((circle) => !circle.construction).map(circlePathData)].join(" ")} /> : null}
           </g>
+          <g className="sketch-text-entities">
+            {displayTexts.map((text) => <g key={text.id} transform={`translate(${text.x} ${text.z})`}>
+              <text
+                data-sketch-entity="text"
+                className={selected?.kind === "text" && selected.id === text.id ? "selected" : ""}
+                y={text.height * 0.35}
+                fontFamily={text.fontFamily}
+                fontSize={text.height}
+                textAnchor="middle"
+                onPointerDown={(event) => {
+                  const point = pointFromEvent(event);
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (event.button === 1) beginPan(event);
+                  else if (event.button === 0 && tool === "erase") onDeleteText?.(text.id);
+                  else if (event.button === 0 && point) {
+                    onSelectText?.(text.id);
+                    if (tool === "select") beginEntityDrag(event, { kind: "move-text", pointerId: event.pointerId, textId: text.id, origin: point, current: point, start: { ...text } });
+                  }
+                }}
+              >{text.text}</text>
+            </g>)}
+          </g>
+          <g className="sketch-text-dimensions">
+            {displayTexts.map((text) => {
+              const bounds = displayTextBounds.get(text.id);
+              if (!bounds) return null;
+              const widthLabel = formatDimension(bounds.width, workspace.accuracy);
+              const depthLabel = formatDimension(bounds.depth, workspace.accuracy);
+              const widthPill = dimensionPillSize(widthLabel, screenUnit, 18);
+              const depthPill = dimensionPillSize(depthLabel, screenUnit, 18);
+              const isSelected = selected?.kind === "text" && selected.id === text.id;
+              return <g key={`text-dimensions-${text.id}`} pointerEvents="none">
+                {isSelected ? <rect className="sketch-text-selection-box" x={bounds.minX} y={bounds.minZ} width={bounds.width} height={bounds.depth} /> : null}
+                <g className="width" transform={`translate(${text.x} ${bounds.maxZ + labelOffset})`}>
+                  <rect x={-widthPill.width / 2} y={-widthPill.height / 2} width={widthPill.width} height={widthPill.height} rx={widthPill.radius} />
+                  <text y={5 * screenUnit} fontSize={13 * screenUnit}>{widthLabel}</text>
+                </g>
+                <g className="depth" transform={`translate(${bounds.maxX + 34 * screenUnit} ${text.z})`}>
+                  <rect x={-depthPill.width / 2} y={-depthPill.height / 2} width={depthPill.width} height={depthPill.height} rx={depthPill.radius} />
+                  <text y={5 * screenUnit} fontSize={13 * screenUnit}>{depthLabel}</text>
+                </g>
+              </g>;
+            })}
+          </g>
           <g className="sketch-segments">
-            {displayProfile.segments.map((segment) => (
+            {displayProfile.segments.filter((segment) => !segment.generatedTextId).map((segment) => (
               <path
                 data-sketch-entity="segment"
                 className={`${isSegmentSelected(segment.id) ? "selected" : ""} ${segment.construction ? "construction" : ""} ${invalidSegmentIds.has(segment.id) ? "invalid" : ""}`}
@@ -1183,7 +1265,7 @@ export function SketchWorkspace({
             })}
           </g>
           <g className="sketch-segment-dimensions">
-            {displayProfile.segments.map((segment) => {
+            {displayProfile.segments.filter((segment) => !segment.generatedTextId).map((segment) => {
               const dimension = segmentDimension(segment, pointById);
               if (!dimension) return null;
               const constraints = (displayProfile.constraints ?? []).filter((candidate): candidate is Extract<NonNullable<SketchProfile["constraints"]>[number], { kind: "distance" }> => candidate.kind === "distance" && candidate.segmentId === segment.id);
@@ -1356,7 +1438,7 @@ export function SketchWorkspace({
             })}
           </g>
           <g className="sketch-points">
-            {displayProfile.points.map((point) => (
+            {displayProfile.points.filter((point) => !point.generatedTextId).map((point) => (
               <circle
                 data-sketch-entity="point"
                 className={`${isPointSelected(point.id) ? "selected" : ""} ${activePointId === point.id ? "active" : ""} ${invalidPointIds.has(point.id) ? "invalid" : ""}`}
