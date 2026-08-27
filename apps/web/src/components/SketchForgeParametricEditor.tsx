@@ -47,6 +47,7 @@ import { addParametricText } from "@/lib/parametricText";
 import { appendScribbleContour } from "@/lib/parametricScribble";
 import { appendDefaultSketchText, deleteSketchText, moveSketchText } from "@/lib/sketchText";
 import { EDUCAD_PACKAGE_MEDIA_TYPE, exportEducadProject, importEducadProject } from "@/lib/educadProject";
+import { mergeParametricProjects } from "@/lib/parametricProjectMerge";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import { circleSketchPointId, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, solveSketchConstraints } from "@/lib/sketchConstraints";
 import { analyzeSketchConstraints } from "@/lib/sketchConstraintAnalysis";
@@ -301,6 +302,7 @@ export function SketchForgeParametricEditor() {
   }, [placingWorkplane, selectingTopologyEdges, selectingTopologyFaces]);
   const [exporting, setExporting] = useState(false);
   const [projectExporting, setProjectExporting] = useState(false);
+  const [pendingProjectImport, setPendingProjectImport] = useState<{ document: ParametricDocument; assetCount: number; fileName: string } | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
   const sketchSvgImportRef = useRef<HTMLInputElement>(null);
@@ -2133,11 +2135,31 @@ export function SketchForgeParametricEditor() {
         if (!validateDocument(parsed)) throw new Error("Este no es un proyecto eduCAD compatible.");
         normalized = normalizeParametricDocument(parsed);
       }
-      setHistory(createParametricHistory(normalized));
-      setModelSelection(normalized.objects[0] ? [{ id: normalized.objects[0].id, kind: "object" }] : []);
-      setNotice({ type: "ok", text: assetCount ? `Proyecto abierto · ${assetCount} recurso${assetCount === 1 ? "" : "s"}` : "Proyecto abierto" });
+      setPendingProjectImport({ document: normalized, assetCount, fileName: file.name });
     } catch (error) {
       setNotice({ type: "error", text: error instanceof Error ? error.message : "No se pudo abrir" });
+    }
+  };
+
+  const openPendingProject = () => {
+    if (!pendingProjectImport) return;
+    const opened = pendingProjectImport.document;
+    setHistory(createParametricHistory(opened));
+    setModelSelection(opened.objects[0] ? [{ id: opened.objects[0].id, kind: "object" }] : []);
+    setNotice({ type: "ok", text: pendingProjectImport.assetCount ? `Proyecto abierto · ${pendingProjectImport.assetCount} recurso${pendingProjectImport.assetCount === 1 ? "" : "s"}` : "Proyecto abierto" });
+    setPendingProjectImport(null);
+  };
+
+  const mergePendingProject = () => {
+    if (!pendingProjectImport) return;
+    try {
+      const merged = mergeParametricProjects(document, pendingProjectImport.document);
+      commit(merged.document);
+      setModelSelection(merged.importedObjectIds.map((id) => ({ id, kind: "object" as const })));
+      setNotice({ type: "ok", text: `${merged.importedObjectIds.length} objeto${merged.importedObjectIds.length === 1 ? "" : "s"} añadido${merged.importedObjectIds.length === 1 ? "" : "s"} al proyecto` });
+      setPendingProjectImport(null);
+    } catch (error) {
+      setNotice({ type: "error", text: error instanceof Error ? error.message : "No se pudo añadir el proyecto" });
     }
   };
 
@@ -2676,6 +2698,16 @@ export function SketchForgeParametricEditor() {
             <header><strong id="educad-new-document-title">Crear un nuevo diseño</strong><button type="button" aria-label="Cancelar" onClick={() => setNewDocumentOpen(false)}><X size={18} /></button></header>
             <p>Vas a cerrar el proyecto actual. Guarda una copia antes de crear un diseño nuevo si quieres conservarlo.</p>
             <footer><button type="button" onClick={() => setNewDocumentOpen(false)}>Cancelar</button><button type="button" className="danger" onClick={newDocument}>Nuevo</button><button type="button" className="primary" onClick={openExportFromNewDocumentWarning}>Guardar</button></footer>
+          </section>
+        </div>
+      ) : null}
+
+      {pendingProjectImport ? (
+        <div className="educad-dialog-backdrop" role="presentation" onPointerDown={() => setPendingProjectImport(null)}>
+          <section className="educad-new-document-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-import-project-title" onPointerDown={(event) => event.stopPropagation()}>
+            <header><strong id="educad-import-project-title">Importar proyecto eduCAD</strong><button type="button" aria-label="Cancelar" onClick={() => setPendingProjectImport(null)}><X size={18} /></button></header>
+            <p><strong>{pendingProjectImport.document.name || pendingProjectImport.fileName}</strong> contiene {pendingProjectImport.document.objects.length} objeto{pendingProjectImport.document.objects.length === 1 ? "" : "s"}. Puedes abrirlo como proyecto independiente o añadir sus objetos al diseño actual.</p>
+            <footer><button type="button" onClick={() => setPendingProjectImport(null)}>Cancelar</button><button type="button" onClick={openPendingProject}>Abrir</button><button type="button" className="primary" onClick={mergePendingProject}>Añadir al actual</button></footer>
           </section>
         </div>
       ) : null}
