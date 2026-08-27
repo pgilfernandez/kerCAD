@@ -42,6 +42,7 @@ import { exportParametricStep } from "@/lib/parametricKernel";
 import { ParametricBuildWorkerClient } from "@/lib/parametricBuildWorker";
 import { binaryStlFromRenderMeshes } from "@/lib/stlExport";
 import { sketchProfileFromSvg } from "@/lib/svgImport";
+import { importSvgAsParametricExtrusion } from "@/lib/svgParametricImport";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import { circleSketchPointId, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, solveSketchConstraints } from "@/lib/sketchConstraints";
 import { analyzeSketchConstraints } from "@/lib/sketchConstraintAnalysis";
@@ -2082,6 +2083,24 @@ export function SketchForgeParametricEditor() {
     }
   };
 
+  const importManagedFile = async (file: File) => {
+    if (file.name.toLowerCase().endsWith(".svg") || file.type === "image/svg+xml") {
+      const awaitSource = await file.text();
+      try {
+        let result: ReturnType<typeof importSvgAsParametricExtrusion> | null = null;
+        const changed = mutate((draft) => { result = importSvgAsParametricExtrusion(draft, awaitSource, file.name, selectedObjectId); });
+        const completed = result as ReturnType<typeof importSvgAsParametricExtrusion> | null;
+        if (!changed || !completed) return;
+        setModelSelection([{ id: completed.extrusionId, kind: "feature" }]);
+        setNotice({ type: "ok", text: `SVG importado como extrusión paramétrica · ${completed.segmentCount} segmentos y ${completed.circleCount} círculos` });
+      } catch (error) {
+        setNotice({ type: "error", text: error instanceof Error ? error.message : "No se pudo importar el SVG." });
+      }
+      return;
+    }
+    await importProject(file);
+  };
+
   if (!hydrated) {
     return <main className="educad-reference-shell"><div className="editor-loading-screen"><div className="editor-loading-toolbar" /><div className="educad-initial-loading">Preparando el espacio de trabajo…</div></div></main>;
   }
@@ -2588,7 +2607,7 @@ export function SketchForgeParametricEditor() {
         </aside>
       )}
 
-      <input ref={importRef} hidden type="file" accept=".json,.educad" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importProject(file); event.target.value = ""; }} />
+      <input ref={importRef} hidden type="file" accept=".json,.educad,.svg,image/svg+xml" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importManagedFile(file); event.target.value = ""; }} />
       <input ref={sketchSvgImportRef} hidden type="file" accept=".svg,image/svg+xml" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importSvgIntoSketch(file); event.target.value = ""; }} />
     </main>
   );
