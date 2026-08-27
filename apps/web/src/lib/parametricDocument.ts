@@ -351,6 +351,15 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
     object.visible ??= true;
     object.locked ??= false;
     object.expanded ??= true;
+    if (object.referenceMesh) {
+      object.referenceMesh.opacity = Math.min(1, Math.max(0.05, Number.isFinite(object.referenceMesh.opacity) ? object.referenceMesh.opacity : 0.4));
+      object.referenceMesh.displayMode = object.referenceMesh.displayMode === "solid" || object.referenceMesh.displayMode === "wireframe" ? object.referenceMesh.displayMode : "solidEdges";
+      object.referenceMesh.pickable = typeof object.referenceMesh.pickable === "boolean" ? object.referenceMesh.pickable : true;
+      object.referenceMesh.positions = Array.isArray(object.referenceMesh.positions) ? object.referenceMesh.positions.filter(Number.isFinite) : [];
+      object.referenceMesh.normals = Array.isArray(object.referenceMesh.normals) ? object.referenceMesh.normals.filter(Number.isFinite) : [];
+      object.referenceMesh.edges = Array.isArray(object.referenceMesh.edges) ? object.referenceMesh.edges.filter(Number.isFinite) : [];
+      if (object.referenceMesh.positions.length < 9 || object.referenceMesh.normals.length !== object.referenceMesh.positions.length) throw new Error(`${object.name}: la malla de referencia no es válida.`);
+    }
     delete (object as ParametricObject & { originVisible?: boolean }).originVisible;
   }
 

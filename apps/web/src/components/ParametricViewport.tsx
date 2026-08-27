@@ -163,6 +163,14 @@ function objectMaterial(quality: ViewportRenderQuality, color: THREE.ColorRepres
     : new THREE.MeshLambertMaterial({ color, polygonOffset: true, polygonOffsetFactor: 1 });
 }
 
+function referenceMaterial(quality: ViewportRenderQuality, color: THREE.ColorRepresentation, opacity: number) {
+  const material = objectMaterial(quality, color);
+  material.transparent = opacity < 1;
+  material.opacity = opacity;
+  material.depthWrite = opacity >= 1;
+  return material;
+}
+
 function previewMaterial(quality: ViewportRenderQuality, color: THREE.ColorRepresentation, opacity: number) {
   const shared = { color, transparent: opacity < 1, opacity, depthTest: false, depthWrite: false };
   return quality === "normal"
@@ -912,7 +920,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       const objectBounds = new THREE.Box3();
       const ids: string[] = [];
       for (const body of modelGroup.children) {
-        if (!(body instanceof THREE.Mesh) || typeof body.userData.objectId !== "string") continue;
+        if (!(body instanceof THREE.Mesh) || typeof body.userData.objectId !== "string" || body.userData.editorPickable === false) continue;
         objectBounds.setFromObject(body);
         objectBounds.getCenter(center);
         if (center.sub(camera.position).dot(cameraDirection) <= 0) continue;
@@ -1843,7 +1851,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           return;
         }
         setPointer(event);
-        const bodies = modelGroup.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh && typeof child.userData.objectId === "string");
+        const bodies = modelGroup.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh && typeof child.userData.objectId === "string" && child.userData.editorPickable !== false);
         const hit = raycaster.intersectObjects(bodies, false)[0];
         const objectId = hit?.object.userData.objectId;
         if (typeof objectId === "string") objectSelectRef.current?.(objectId);
@@ -2270,8 +2278,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const controls = controlsRef.current;
     if (!group || !camera || !controls) return;
     const renderItems = objectRecords.length > 0
-      ? objectRecords.map((item) => ({ mesh: item.mesh, color: item.color, objectId: item.objectId as string | null, renderId: item.renderId, geometryFingerprint: item.geometryFingerprint }))
-      : mesh ? [{ mesh, color, objectId: null, renderId: "combined", geometryFingerprint: null }] : [];
+      ? objectRecords.map((item) => ({ mesh: item.mesh, color: item.color, objectId: item.objectId as string | null, renderId: item.renderId, geometryFingerprint: item.geometryFingerprint, reference: item.reference }))
+      : mesh ? [{ mesh, color, objectId: null, renderId: "combined", geometryFingerprint: null, reference: undefined }] : [];
     const requestedKeys = new Set(renderItems.map((item) => item.objectId ?? "__combined"));
     let resourcesChanged = false;
     for (const [key, cached] of objectRenderCacheRef.current) {
@@ -2290,7 +2298,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       const key = item.objectId ?? "__combined";
       const cached = objectRenderCacheRef.current.get(key);
       if (cached && item.geometryFingerprint !== null && cached.geometryFingerprint === item.geometryFingerprint) {
-        cached.body.visible = item.objectId !== isolatedHistoryObjectIdRef.current;
+        cached.body.visible = item.objectId !== isolatedHistoryObjectIdRef.current && item.reference?.displayMode !== "wireframe";
+        cached.edges.visible = item.reference?.displayMode !== "solid";
+        cached.body.userData.editorPickable = item.reference?.pickable ?? true;
         const materials = Array.isArray(cached.body.material) ? cached.body.material : [cached.body.material];
         for (const material of materials) setMaterialColor(material, item.color);
         continue;
@@ -2307,12 +2317,13 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       geometry.boundsTree = new MeshBVH(geometry, { indirect: true });
       const body = new THREE.Mesh(
         geometry,
-        objectMaterial(renderQuality, item.color),
+        item.reference ? referenceMaterial(renderQuality, item.color, item.reference.opacity) : objectMaterial(renderQuality, item.color),
       );
       body.raycast = acceleratedRaycast;
       body.castShadow = true;
       body.receiveShadow = true;
       if (item.objectId) body.userData.objectId = item.objectId;
+      body.userData.editorPickable = item.reference?.pickable ?? true;
       body.userData.renderId = item.renderId;
       body.visible = item.objectId !== isolatedHistoryObjectIdRef.current;
       group.add(body);
@@ -2329,6 +2340,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       edges.userData.renderId = item.renderId;
       edges.userData.finalReferenceWireframe = true;
       edges.renderOrder = 17;
+      if (item.reference) {
+        body.visible = item.reference.displayMode !== "wireframe" && item.objectId !== isolatedHistoryObjectIdRef.current;
+        edges.visible = item.reference.displayMode !== "solid";
+      }
       group.add(edges);
       objectRenderCacheRef.current.set(key, { geometryFingerprint: item.geometryFingerprint, body, edges });
       resourcesChanged = true;

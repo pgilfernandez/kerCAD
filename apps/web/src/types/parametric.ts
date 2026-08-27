@@ -218,6 +218,17 @@ export type ParametricObject = {
     rotation: ParametricVector3;
     scale: ParametricVector3;
   };
+  /** Non-parametric visual aid. It never enters the OpenCascade history. */
+  referenceMesh?: {
+    sourceName: string;
+    format: "stl" | "obj";
+    positions: number[];
+    normals: number[];
+    edges: number[];
+    opacity: number;
+    displayMode: "solid" | "wireframe" | "solidEdges";
+    pickable: boolean;
+  };
 };
 
 export type ParametricDocument = {
@@ -269,6 +280,11 @@ export type ParametricObjectRenderRecord = {
   color: string;
   worldTransform: ParametricObject["transform"];
   mesh: RenderMesh;
+  reference?: {
+    opacity: number;
+    displayMode: "solid" | "wireframe" | "solidEdges";
+    pickable: boolean;
+  };
 };
 
 export type BuildResult = {

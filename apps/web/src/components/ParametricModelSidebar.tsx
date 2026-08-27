@@ -190,7 +190,7 @@ export function ParametricModelSidebar({
                       {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                     </button>
                     <button className="educad-object-select" title={object.name} onClick={(event) => selectNode({ id: object.id, kind: "object" }, event)}>
-                      <Box size={17} />
+                      {object.object.referenceMesh ? <FileBox size={17} /> : <Box size={17} />}
                       <span><strong>{object.name}</strong></span>
                     </button>
                     <div className="educad-tree-actions">
@@ -338,6 +338,7 @@ function ParametricObjectInspector({
   }, [colorOpen]);
   return (
     <div className="educad-feature-inspector educad-object-inspector">
+      {object.referenceMesh ? <div className="educad-feature-card"><h3>Referencia</h3><ReadOnlyField label="Archivo" value={object.referenceMesh.sourceName} /><ReadOnlyField label="Formato" value={object.referenceMesh.format.toUpperCase()} /><label><span>Opacidad</span><input type="range" min={0.05} max={1} step={0.05} value={object.referenceMesh.opacity} onChange={(event) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.opacity = Number(event.target.value); })} /></label><label><span>Visualización</span><select value={object.referenceMesh.displayMode} onChange={(event) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.displayMode = event.target.value as typeof draft.referenceMesh.displayMode; })}><option value="solidEdges">Sólido y aristas</option><option value="solid">Sólido</option><option value="wireframe">Alámbrico</option></select></label><label><span>Seleccionable</span><input type="checkbox" checked={object.referenceMesh.pickable} onChange={(event) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.pickable = event.target.checked; })} /></label></div> : null}
       <TransformSection>
         <TransformGroup label="Posición" values={object.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.position[axis] = value; })} />
         <TransformGroup label="Rotación" values={object.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.rotation[axis] = value; })} />

@@ -418,6 +418,32 @@ export function duplicateParametricObject(document: ParametricDocument, id: stri
 export function workplaneShapeForObject(document: ParametricDocument, id: string | null): WorkplaneShape | null {
   const object = document.objects.find((candidate) => candidate.id === id);
   if (!object) return null;
+  if (object.referenceMesh) {
+    const positions = object.referenceMesh.positions;
+    let minX = Infinity; let minY = Infinity; let minZ = Infinity;
+    let maxX = -Infinity; let maxY = -Infinity; let maxZ = -Infinity;
+    for (let index = 0; index < positions.length; index += 3) {
+      minX = Math.min(minX, positions[index]); maxX = Math.max(maxX, positions[index]);
+      minY = Math.min(minY, positions[index + 1]); maxY = Math.max(maxY, positions[index + 1]);
+      minZ = Math.min(minZ, positions[index + 2]); maxZ = Math.max(maxZ, positions[index + 2]);
+    }
+    return {
+      id: object.id,
+      name: object.name,
+      kind: "mesh",
+      color: object.color,
+      x: object.transform.position.x,
+      z: object.transform.position.y,
+      elevation: object.transform.position.z,
+      size: Math.max((maxX - minX) * object.transform.scale.x, (maxY - minY) * object.transform.scale.y),
+      width: (maxX - minX) * object.transform.scale.x,
+      depth: (maxY - minY) * object.transform.scale.y,
+      height: (maxZ - minZ) * object.transform.scale.z,
+      rotation: object.transform.rotation.z,
+      hidden: !object.visible,
+      locked: object.locked,
+    };
+  }
   const feature = document.features.find((candidate): candidate is TransformableOperation => isTransformableOperation(candidate) && candidate.objectId === object.id) ?? null;
   if (!feature) return null;
   const sketch = feature.kind === "extrude" ? sketchForExtrude(document, feature) : null;
