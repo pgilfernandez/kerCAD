@@ -23,6 +23,7 @@ const PARAMETRIC_WEB_FONT_DATA: Record<ParametricTextSettings["font"], FontData>
   Rounded: optimerBoldFontJson as FontData,
 };
 const parsedFonts = new Map<ParametricTextSettings["font"], Font>();
+const cachedGlyphs = new Map<string, TextGlyph>();
 
 export const parametricTextFontNames = Object.keys(PARAMETRIC_WEB_FONT_DATA) as ParametricTextSettings["font"][];
 
@@ -41,6 +42,12 @@ type TextCurvePiece = {
   control2?: Vector2;
 };
 
+type TextGlyph = {
+  loops: TextCurvePiece[][];
+  minX: number;
+  maxX: number;
+};
+
 function textCurvePieces(curve: Curve<Vector2>): TextCurvePiece[] {
   if (curve instanceof LineCurve) return [{ start: curve.v1, end: curve.v2 }];
   if (curve instanceof CubicBezierCurve) return [{ start: curve.v0, end: curve.v3, control1: curve.v1, control2: curve.v2 }];
@@ -56,19 +63,36 @@ function textCurvePieces(curve: Curve<Vector2>): TextCurvePiece[] {
   return sampled.slice(1).map((end, index) => ({ start: sampled[index], end }));
 }
 
-function addCurveLoop(profile: SketchProfile, curves: Curve<Vector2>[], offsetX: number) {
-  const pieces = curves.flatMap(textCurvePieces).filter((piece) => piece.start.distanceToSquared(piece.end) > 1e-14);
+function cachedTextGlyph(fontName: ParametricTextSettings["font"], font: Font, character: string): TextGlyph | null {
+  const key = `${fontName}:${character}`;
+  const cached = cachedGlyphs.get(key);
+  if (cached) return cached;
+  const shapes = font.generateShapes(character, 1);
+  const loops = shapes.flatMap((shape) => [shape, ...shape.holes]);
+  const bounds = loops.flatMap((loop) => loop.getPoints(5));
+  const points = bounds.flat();
+  if (!points.length) return null;
+  const glyph = {
+    loops: loops.map((loop) => loop.curves.flatMap(textCurvePieces).filter((piece) => piece.start.distanceToSquared(piece.end) > 1e-14)),
+    minX: Math.min(...points.map((point) => point.x)),
+    maxX: Math.max(...points.map((point) => point.x)),
+  };
+  cachedGlyphs.set(key, glyph);
+  return glyph;
+}
+
+function addCurveLoop(profile: SketchProfile, pieces: TextCurvePiece[], offsetX: number, scale: number) {
   if (pieces.length < 2) return;
   const points: SketchPoint[] = pieces.map((piece) => ({
     id: createLocalId("text-point"),
-    x: piece.start.x + offsetX,
-    z: piece.start.y,
-    ...(piece.control1 ? { handleOut: { x: piece.control1.x + offsetX, z: piece.control1.y } } : {}),
+    x: piece.start.x * scale + offsetX,
+    z: piece.start.y * scale,
+    ...(piece.control1 ? { handleOut: { x: piece.control1.x * scale + offsetX, z: piece.control1.y * scale } } : {}),
   }));
   for (let index = 0; index < pieces.length; index += 1) {
     const piece = pieces[index];
     const next = points[(index + 1) % points.length];
-    if (piece.control2) next.handleIn = { x: piece.control2.x + offsetX, z: piece.control2.y };
+    if (piece.control2) next.handleIn = { x: piece.control2.x * scale + offsetX, z: piece.control2.y * scale };
     profile.segments.push({
       id: createLocalId("text-segment"),
       kind: piece.control1 && piece.control2 ? "bezier" : "line",
@@ -93,16 +117,11 @@ export function parametricTextProfile(settings: ParametricTextSettings): SketchP
   let cursor = 0;
   for (const character of normalized.text) {
     if (/\s/.test(character)) { cursor += size * 0.38 + Math.max(0, normalized.spacing); continue; }
-    const shapes = font.generateShapes(character, size);
-    const loops = shapes.flatMap((shape) => [shape, ...shape.holes]);
-    // Sampling is only used for layout bounds. CAD construction keeps the native
-    // line/quadratic/cubic curves below instead of producing many straight edges.
-    const sampled = loops.map((loop) => loop.getPoints(5));
-    const glyphPoints = sampled.flat();
-    if (!glyphPoints.length) { cursor += size * 0.55 + Math.max(0, normalized.spacing); continue; }
-    const minX = Math.min(...glyphPoints.map((point) => point.x));
-    const maxX = Math.max(...glyphPoints.map((point) => point.x));
-    for (const loop of loops) addCurveLoop(profile, loop.curves, cursor - minX);
+    const glyph = cachedTextGlyph(normalized.font, font, character);
+    if (!glyph) { cursor += size * 0.55 + Math.max(0, normalized.spacing); continue; }
+    const minX = glyph.minX * size;
+    const maxX = glyph.maxX * size;
+    for (const loop of glyph.loops) addCurveLoop(profile, loop, cursor - minX, size);
     cursor += Math.max(size * 0.2, maxX - minX) + Math.max(0, normalized.spacing);
   }
   if (!profile.segments.length) throw new Error("Escribe al menos un carácter visible.");

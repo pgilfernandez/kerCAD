@@ -32,6 +32,17 @@ describe("parametric text", () => {
     expect(sketch.profile.shape === "drawn" ? sketch.profile.geometry.segments.length : 0).toBeLessThan(before);
   });
 
+  it("reuses unit glyph curves without sharing sketch entities", () => {
+    const settings = { kind: "text", text: "e", font: "Sans", size: 20, spacing: 0, align: "center", verticalAlign: "center" } as const;
+    const first = parametricTextProfile(settings);
+    const second = parametricTextProfile({ ...settings, size: 40 });
+
+    expect(second.segments).toHaveLength(first.segments.length);
+    expect(second.points[0].id).not.toBe(first.points[0].id);
+    expect(second.points[0].x).toBeCloseTo(first.points[0].x * 2, 5);
+    expect(second.points[0].z).toBeCloseTo(first.points[0].z * 2, 5);
+  });
+
   it("exposes only size and height manipulators", () => {
     const document = createStarterDocument(123);
     const result = addParametricText(document, document.objects[0].id);
