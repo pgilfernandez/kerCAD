@@ -1,6 +1,6 @@
 import type { ParametricDocument } from "@/types/parametric";
 
-const PARAMETRIC_GEOMETRY_VERSION = 4;
+const PARAMETRIC_GEOMETRY_VERSION = 5;
 
 function dependentObjectIds(document: ParametricDocument, objectId: string, rootFeatures = document.features.filter((feature) => feature.objectId === objectId)) {
   const featureObject = new Map(document.features.map((feature) => [feature.id, feature.objectId]));

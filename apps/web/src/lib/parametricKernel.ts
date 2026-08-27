@@ -159,7 +159,8 @@ function applyOperationTransform(brep: Brep, solid: AnySolid, operation: Extrude
 }
 
 function polyhedronSolid(brep: Brep, points: Array<[number, number, number]>, faces: number[][]): AnySolid {
-  return brep.unwrap(brep.polyhedron(points, faces)) as AnySolid;
+  const triangulated = brep.unwrap(brep.polyhedron(points, faces)) as AnySolid;
+  return brep.unwrap(brep.simplify(triangulated)) as AnySolid;
 }
 
 function angularPrimitiveSolid(brep: Brep, feature: PrimitiveFeature): AnySolid {
