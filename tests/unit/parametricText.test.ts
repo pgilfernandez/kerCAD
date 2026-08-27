@@ -4,9 +4,9 @@ import { addParametricText, parametricTextProfile, updateParametricTextSketch } 
 import { validateDrawnSketchProfile } from "@/lib/sketchProfileValidation";
 
 describe("parametric text", () => {
-  it("creates a valid deterministic profile for letters, numbers and accents", () => {
-    const profile = parametricTextProfile({ kind: "text", text: "eduCAD 3D á", size: 20, spacing: 1, align: "center" });
-    expect(profile.generator).toMatchObject({ kind: "text", text: "EDUCAD 3D A", align: "center" });
+  it("creates a valid profile from bundled web-font outlines", () => {
+    const profile = parametricTextProfile({ kind: "text", text: "eduCAD 3D á", font: "Sans", size: 20, spacing: 1, align: "center", verticalAlign: "center" });
+    expect(profile.generator).toMatchObject({ kind: "text", text: "eduCAD 3D á", font: "Sans", align: "center", verticalAlign: "center" });
     expect(profile.segments.length).toBeGreaterThan(20);
     expect(validateDrawnSketchProfile(profile).valid).toBe(true);
   });

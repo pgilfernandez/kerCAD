@@ -6268,6 +6268,8 @@ export function SketchForgeEditor({
       line: "Line: click points to draw straight segments",
       bezier: "Bézier: click and drag points to pull curve handles",
       smooth: "Smooth curve: click points to build a flowing path",
+      freehand: "Freehand: drag to draw a closed contour",
+      freehandSmooth: "Smooth freehand: drag to draw a closed Bézier contour",
       circle: "Circle: drag from the centre to define the radius",
       arc: "Arc: choose the centre, start point, and end point",
       select: "Select: edit sketch geometry or place and scale reference images",

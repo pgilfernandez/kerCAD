@@ -352,6 +352,11 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
         geometry.segments ??= [];
         geometry.circles ??= [];
         geometry.images ??= [];
+        if (geometry.generator?.kind === "text") {
+          geometry.generator.font = ["Sans", "Serif", "Script", "Monospace", "Rounded"].includes(geometry.generator.font) ? geometry.generator.font : "Sans";
+          geometry.generator.align = geometry.generator.align === "left" || geometry.generator.align === "right" ? geometry.generator.align : "center";
+          geometry.generator.verticalAlign = geometry.generator.verticalAlign === "bottom" || geometry.generator.verticalAlign === "top" ? geometry.generator.verticalAlign : "center";
+        }
         const lineIds = new Set(geometry.segments.filter((segment) => segment.kind === "line").map((segment) => segment.id));
         const segmentIds = new Set(geometry.segments.map((segment) => segment.id));
         const pointIds = new Set(geometry.points.map((point) => point.id));

@@ -1,6 +1,6 @@
 "use client";
 
-import { Anchor, Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, CircleDot, CornerDownRight, Diameter, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Move3d, MoveHorizontal, MoveVertical, MousePointer2, PenLine, Plus, Rotate3d, RotateCcw, Ruler, Scissors, Spline, Split, Type, Waves, X } from "lucide-react";
+import { Anchor, Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, CircleDot, CornerDownRight, Diameter, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Move3d, MoveHorizontal, MoveVertical, MousePointer2, PenLine, PenTool, Plus, Rotate3d, RotateCcw, Ruler, Scissors, Spline, Split, Waves, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent as ReactFocusEvent } from "react";
 import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyEdgePick, type TopologyFacePick } from "@/components/ParametricViewport";
@@ -44,6 +44,7 @@ import { binaryStlFromRenderMeshes } from "@/lib/stlExport";
 import { sketchProfileFromSvg } from "@/lib/svgImport";
 import { importSvgAsParametricExtrusion } from "@/lib/svgParametricImport";
 import { addParametricText } from "@/lib/parametricText";
+import { appendScribbleContour } from "@/lib/parametricScribble";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import { circleSketchPointId, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, solveSketchConstraints } from "@/lib/sketchConstraints";
 import { analyzeSketchConstraints } from "@/lib/sketchConstraintAnalysis";
@@ -248,7 +249,7 @@ export function SketchForgeParametricEditor() {
   const [alignOpen, setAlignOpen] = useState(false);
   const [cameraOrientation, setCameraOrientation] = useState<CameraOrientation>({ azimuth: -Math.PI / 4, polar: 1.02 });
   const [clipboardId, setClipboardId] = useState<string | null>(null);
-  const [sketchSession, setSketchSession] = useState<{ featureId: string | null; objectId: string | null; profile: SketchProfile } | null>(null);
+  const [sketchSession, setSketchSession] = useState<{ featureId: string | null; objectId: string | null; profile: SketchProfile; mode: "sketch" | "scribble" } | null>(null);
   const [sketchTool, setSketchTool] = useState<SketchTool>("line");
   const [sketchActivePointId, setSketchActivePointId] = useState<string | null>(null);
   const [sketchSelection, setSketchSelection] = useState<SketchSelection>(null);
@@ -639,11 +640,12 @@ export function SketchForgeParametricEditor() {
   const beginSketch = (featureId: string | null = null) => {
     const feature = featureId ? document.features.find((candidate): candidate is SketchFeature => candidate.kind === "sketch" && candidate.id === featureId && candidate.profile.shape === "drawn") : null;
     const profile = feature?.profile.shape === "drawn" ? cloneSketchProfile(feature.profile.geometry) : emptySketchProfile();
-    setSketchSession({ featureId: feature?.id ?? null, objectId: feature?.objectId ?? selectedObjectId, profile });
+    const mode = feature?.profile.shape === "drawn" && feature.profile.geometry.generator?.kind === "scribble" ? "scribble" : "sketch";
+    setSketchSession({ featureId: feature?.id ?? null, objectId: feature?.objectId ?? selectedObjectId, profile, mode });
     sketchHistoryRef.current = [cloneSketchProfile(profile)];
     sketchHistoryIndexRef.current = 0;
     setSketchHistoryIndex(0);
-    setSketchTool(feature ? "select" : "line");
+    setSketchTool(mode === "scribble" ? "freehand" : feature ? "select" : "line");
     setSketchActivePointId(null);
     setSketchSelection(null);
     setSketchMeasurement(null);
@@ -694,6 +696,7 @@ export function SketchForgeParametricEditor() {
       return;
     }
     let featureId = sketchSession.featureId ?? "";
+    let selectedFeatureId = featureId;
     let objectId = sketchSession.objectId;
     const changed = mutate((draft) => {
       if (featureId) {
@@ -712,8 +715,22 @@ export function SketchForgeParametricEditor() {
       }
       const feature = createDrawnSketchFeature(draft.features.filter((candidate) => candidate.kind === "sketch" && candidate.purpose === "user").length + 1, sketchSession.profile);
       feature.objectId = objectId ?? undefined;
+      if (sketchSession.mode === "scribble") {
+        feature.name = "Perfil Scribble";
+        feature.purpose = "primitive";
+        feature.visible = false;
+      }
       featureId = feature.id;
       draft.features.push(feature);
+      if (sketchSession.mode === "scribble") {
+        const extrusion = createExtrudeFeature(feature.id, draft.features.filter((candidate) => candidate.kind === "extrude").length + 1, false);
+        extrusion.objectId = objectId ?? undefined;
+        extrusion.name = "Scribble";
+        extrusion.distance = 4;
+        extrusion.dependencies = [{ type: "feature", id: feature.id }];
+        draft.features.push(extrusion);
+        selectedFeatureId = extrusion.id;
+      } else selectedFeatureId = feature.id;
     });
     if (!changed || !featureId) return;
     setSketchSession(null);
@@ -721,8 +738,9 @@ export function SketchForgeParametricEditor() {
     sketchHistoryIndexRef.current = -1;
     setSketchHistoryIndex(-1);
     setModelSidebarMode("normal");
-    setModelSelection([{ id: featureId, kind: "feature" }]);
-    setNotice({ type: "ok", text: sketchSession.featureId ? "Boceto actualizado" : "Boceto añadido al historial" });
+    if (sketchSession.featureId && sketchSession.mode === "scribble") selectedFeatureId = document.features.find((candidate) => candidate.kind === "extrude" && candidate.sketchId === sketchSession.featureId)?.id ?? sketchSession.featureId;
+    setModelSelection([{ id: selectedFeatureId || featureId, kind: "feature" }]);
+    setNotice({ type: "ok", text: sketchSession.mode === "scribble" ? (sketchSession.featureId ? "Scribble actualizado" : "Scribble añadido al historial") : sketchSession.featureId ? "Boceto actualizado" : "Boceto añadido al historial" });
   };
 
   const setSketchProfile = (update: (profile: SketchProfile) => SketchProfile) => {
@@ -2128,6 +2146,8 @@ export function SketchForgeParametricEditor() {
             <Tool label="Línea" active={sketchTool === "line"} onClick={() => chooseSketchTool("line")}><PenLine /></Tool>
             <Tool label="Curva Bézier" active={sketchTool === "bezier"} onClick={() => chooseSketchTool("bezier")}><Spline /></Tool>
             <Tool label="Curva suave" active={sketchTool === "smooth"} onClick={() => chooseSketchTool("smooth")}><Spline /></Tool>
+            <Tool label="Dibujo libre" active={sketchTool === "freehand"} onClick={() => chooseSketchTool("freehand")}><PenTool /></Tool>
+            <Tool label="Dibujo libre suavizado" active={sketchTool === "freehandSmooth"} onClick={() => chooseSketchTool("freehandSmooth")}><Waves /></Tool>
             <Tool label="Círculo" active={sketchTool === "circle"} onClick={() => chooseSketchTool("circle")}><Circle /></Tool>
             <Tool label="Arco por centro" active={sketchTool === "arc"} onClick={() => chooseSketchTool("arc")}><RotateCcw /></Tool>
           </ToolbarSection>
@@ -2172,12 +2192,12 @@ export function SketchForgeParametricEditor() {
             <ToolbarSection label="Shapes" className="toolbar-shapes-section">
               <button data-educad-popup="shapes" className={`shape-menu-trigger ${shapesOpen ? "active" : ""}`} aria-label="Añadir forma" onClick={() => setShapesOpen((value) => !value)}><ToolbarShapeAddIcon /></button>
               <Tool label="Crear boceto" onClick={() => { setShapesOpen(false); beginSketch(null); }}><ToolbarSketchIcon /></Tool>
-              <Tool label="Añadir texto" onClick={addText}><Type /></Tool>
               {shapesOpen && (
                 <div data-educad-popup="shapes" className="shape-menu-dropdown">
                   <div className="shape-menu-title">Formas</div>
                   <div className="shape-menu-list">
                     {parametricOperationCatalog.map((asset) => <button className="shape-menu-item" key={asset.kind} onClick={() => addShape(asset.kind)}><img src={asset.menuIcon} alt="" /><span>{asset.name}<small>{selectedObjectId ? "Nueva operación en el objeto" : asset.description}</small></span></button>)}
+                    <button className="shape-menu-item" onClick={addText}><img src="/assets/sketchforge/shape-icons-gray/raw/text.png" alt="" /><span>Texto<small>{selectedObjectId ? "Nueva operación en el objeto" : "Texto paramétrico extruido"}</small></span></button>
                   </div>
                 </div>
               )}
@@ -2259,6 +2279,14 @@ export function SketchForgeParametricEditor() {
           exactSnapStep={document.workplane.snapToGrid ? document.workplane.gridStep : 0}
           initialWorkspace={{ ...DEFAULT_WORKPLANE_WORKSPACE, width: document.workplane.width, depth: document.workplane.depth, sizePreset: `${document.workplane.width} x ${document.workplane.depth} mm`, gridBlockSize: document.workplane.gridStep, gridBlockPreset: `${document.workplane.gridStep} mm`, showGrid: document.workplane.gridVisible }}
           onPlanePoint={addSketchPoint}
+          onFreehandContour={(points, smooth) => {
+            try {
+              setSketchProfile((profile) => appendScribbleContour(profile, points, profile.generator?.kind === "scribble" ? profile.generator.smoothing : 0.8, smooth));
+              setSketchTool(smooth ? "freehandSmooth" : "freehand");
+            } catch (error) {
+              setNotice({ type: "error", text: error instanceof Error ? error.message : "No se pudo crear el contorno libre." });
+            }
+          }}
           onPointPress={pressSketchPoint}
           onSelectSegment={(id, additive = false) => {
             if (!additive) setSketchSelection({ kind: "segment", id });

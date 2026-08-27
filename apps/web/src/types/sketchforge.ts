@@ -138,13 +138,9 @@ export type SketchProfile = {
   circles?: SketchCircle[];
   images?: SketchImage[];
   constraints?: SketchConstraint[];
-  generator?: {
-    kind: "text";
-    text: string;
-    size: number;
-    spacing: number;
-    align: "left" | "center" | "right";
-  };
+  generator?:
+    | { kind: "text"; text: string; font: "Sans" | "Serif" | "Script" | "Monospace" | "Rounded"; size: number; spacing: number; align: "left" | "center" | "right"; verticalAlign: "bottom" | "center" | "top" }
+    | { kind: "scribble"; smoothing: number; smooth?: boolean };
 };
 
 export type SketchOperation = "extrude" | "revolve";

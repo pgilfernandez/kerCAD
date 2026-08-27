@@ -12,7 +12,7 @@ import { solveSketchConstraints } from "@/lib/sketchConstraints";
 import type { SketchProfileValidation } from "@/lib/sketchProfileValidation";
 import type { GridSize, SketchCircle, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchSegment, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
 
-export type SketchTool = "line" | "bezier" | "smooth" | "circle" | "arc" | "select" | "refine" | "trim" | "erase" | "measure";
+export type SketchTool = "line" | "bezier" | "smooth" | "freehand" | "freehandSmooth" | "circle" | "arc" | "select" | "refine" | "trim" | "erase" | "measure";
 export type SketchSelection =
   | { kind: "point"; id: string }
   | { kind: "segment"; id: string }
@@ -38,6 +38,7 @@ type SketchWorkspaceProps = {
   exactSnapStep?: number;
   initialWorkspace?: WorkplaneWorkspaceSettings;
   onPlanePoint: (point: { x: number; z: number }, handles?: { handleIn: { x: number; z: number }; handleOut: { x: number; z: number } }) => void;
+  onFreehandContour?: (points: Array<{ x: number; z: number }>, smooth: boolean) => void;
   onPointPress: (id: string, additive?: boolean) => void;
   onSelectSegment: (id: string, additive?: boolean) => void;
   onSelectMany: (pointIds: string[], segmentIds: string[], imageIds: string[], circleIds?: string[]) => void;
@@ -79,6 +80,7 @@ type PointerAction =
   | { kind: "move-handle"; pointerId: number; pointId: string; handle: "in" | "out"; current: { x: number; z: number } }
   | { kind: "pan"; pointerId: number; clientX: number; clientY: number }
   | { kind: "marquee"; pointerId: number; origin: { x: number; z: number }; current: { x: number; z: number } }
+  | { kind: "freehand"; pointerId: number; origin: { x: number; z: number }; current: { x: number; z: number }; points: Array<{ x: number; z: number }>; smooth: boolean }
   | { kind: "move-image"; pointerId: number; imageId: string; origin: { x: number; z: number }; current: { x: number; z: number }; start: SketchImage }
   | { kind: "resize-image"; pointerId: number; imageId: string; handle: ResizeHandle; current: { x: number; z: number }; start: SketchImage };
 
@@ -552,6 +554,7 @@ export function SketchWorkspace({
   exactSnapStep,
   initialWorkspace,
   onPlanePoint,
+  onFreehandContour,
   onPointPress,
   onSelectSegment,
   onSelectMany,
@@ -722,7 +725,7 @@ export function SketchWorkspace({
     return lines;
   }, [gridStep, workspace.depth]);
 
-  const pointFromEvent = (event: { clientX: number; clientY: number }, constrainToGrid = true) => {
+  const pointFromEvent = (event: { clientX: number; clientY: number }, constrainToGrid = true, snapEnabled = true) => {
     const svg = svgRef.current;
     const matrix = svg?.getScreenCTM();
     if (!svg || !matrix) return null;
@@ -730,7 +733,7 @@ export function SketchWorkspace({
     screenPoint.x = event.clientX;
     screenPoint.y = event.clientY;
     const local = screenPoint.matrixTransform(matrix.inverse());
-    const step = exactSnapStep === undefined ? snapStep(snap) : Math.max(0, exactSnapStep);
+    const step = snapEnabled ? (exactSnapStep === undefined ? snapStep(snap) : Math.max(0, exactSnapStep)) : 0;
     const x = snapValue(local.x, step);
     const z = snapValue(-local.y, step);
     return constrainToGrid
@@ -764,10 +767,14 @@ export function SketchWorkspace({
       return;
     }
     if (event.button !== 0 || (event.target !== event.currentTarget && (event.target as Element).closest("[data-sketch-entity]"))) return;
-    const point = pointFromEvent(event, tool !== "select");
+    const freehandTool = tool === "freehand" || tool === "freehandSmooth";
+    const point = pointFromEvent(event, tool !== "select" && !freehandTool, !freehandTool);
     if (!point) return;
     event.preventDefault();
-    if (tool === "bezier") {
+    if (freehandTool) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+      setPointerAction({ kind: "freehand", pointerId: event.pointerId, origin: point, current: point, points: [point], smooth: tool === "freehandSmooth" });
+    } else if (tool === "bezier") {
       event.currentTarget.setPointerCapture(event.pointerId);
       setPointerAction({ kind: "bezier", pointerId: event.pointerId, origin: point, current: point });
     } else if (tool === "circle") {
@@ -814,9 +821,12 @@ export function SketchWorkspace({
       setPointerAction({ ...pointerAction, clientX: event.clientX, clientY: event.clientY });
       return;
     }
-    const point = pointFromEvent(event, pointerAction?.kind !== "marquee");
+    const point = pointFromEvent(event, pointerAction?.kind !== "marquee" && pointerAction?.kind !== "freehand", pointerAction?.kind !== "freehand");
     setHover(point);
-    if (point && pointerAction) setPointerAction({ ...pointerAction, current: point });
+    if (point && pointerAction?.kind === "freehand") {
+      const last = pointerAction.points.at(-1)!;
+      if (Math.hypot(point.x - last.x, point.z - last.z) >= screenUnit * 2) setPointerAction({ ...pointerAction, current: point, points: [...pointerAction.points, point] });
+    } else if (point && pointerAction) setPointerAction({ ...pointerAction, current: point });
   };
 
   const finishPointerAction = (event: ReactPointerEvent<SVGSVGElement>) => {
@@ -824,6 +834,11 @@ export function SketchWorkspace({
     if (!action || action.pointerId !== event.pointerId) return;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     if (action.kind === "pan") {
+      setPointerAction(null);
+      return;
+    }
+    if (action.kind === "freehand") {
+      onFreehandContour?.([...action.points, action.current], action.smooth);
       setPointerAction(null);
       return;
     }
@@ -955,6 +970,7 @@ export function SketchWorkspace({
         >
           <g className="sketch-plate-world" transform="scale(1 -1)">
           <rect className="sketch-plate-background" x={-workspace.width / 2} y={-workspace.depth / 2} width={workspace.width} height={workspace.depth} />
+          {pointerAction?.kind === "freehand" ? <polyline className="sketch-freehand-preview" points={[...pointerAction.points, pointerAction.current].map((point) => `${point.x},${point.z}`).join(" ")} /> : null}
           {workspace.showGrid ? (
             <g className="sketch-grid" pointerEvents="none">
               {verticalLines.map((x, index) => <line className={Math.abs(x) < 0.0001 ? "axis" : index % WORKPLANE_MAJOR_GRID_INTERVAL === 0 ? "major" : "minor"} key={`x-${x}`} x1={x} y1={-workspace.depth / 2} x2={x} y2={workspace.depth / 2} />)}

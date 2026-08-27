@@ -5145,6 +5145,16 @@ button {
   vector-effect: non-scaling-stroke;
 }
 
+.sketch-freehand-preview {
+  fill: rgba(22, 159, 206, 0.12);
+  stroke: #169fce;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
 circle.sketch-preview-line {
   fill: rgba(98, 148, 214, 0.2);
 }
