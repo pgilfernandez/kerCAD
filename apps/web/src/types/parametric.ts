@@ -266,6 +266,10 @@ export type ParametricObjectRenderRecord = {
 export type BuildResult = {
   mesh: RenderMesh | null;
   objectRecords: ParametricObjectRenderRecord[];
+  renderDelta?: {
+    reusedObjectIds: string[];
+    activeObjects: Array<Omit<ParametricObjectRenderRecord, "mesh">>;
+  };
   operationContext: { featureId: string; objectId: string; color: string; mesh: RenderMesh; selectionMesh?: RenderMesh; detailMesh?: RenderMesh; detailColor?: "green" | "red" } | null;
   completedFeatureIds: string[];
   warning: string | null;

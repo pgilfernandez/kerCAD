@@ -17,6 +17,19 @@ function buildResult(): BuildResult {
   return { mesh: mesh(), objectRecords: [], operationContext: null, completedFeatureIds: [], warning: null };
 }
 
+function objectRecord(objectId: string, x: number) {
+  const recordMesh = mesh();
+  recordMesh.positions[0] = x;
+  return {
+    objectId,
+    renderId: `object:${objectId}`,
+    geometryFingerprint: `geometry:${objectId}:${x}`,
+    color: "#fff",
+    worldTransform: { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 } },
+    mesh: recordMesh,
+  } satisfies BuildResult["objectRecords"][number];
+}
+
 class FakeWorker {
   onmessage: ((event: MessageEvent<ParametricBuildWorkerResponse>) => void) | null = null;
   onerror: ((event: ErrorEvent) => void) | null = null;
@@ -68,5 +81,42 @@ describe("parametric build worker client", () => {
       mesh: result.mesh!,
     });
     expect(parametricBuildTransferables(result)).toHaveLength(4);
+  });
+
+  it("merges unchanged object meshes from incremental worker results", async () => {
+    const worker = new FakeWorker();
+    const client = new ParametricBuildWorkerClient(() => worker);
+    const firstPending = client.buildModel(createStarterDocument(1));
+    const firstRequest = worker.postMessage.mock.calls[0][0] as { requestId: number };
+    const first = buildResult();
+    first.objectRecords = [objectRecord("object-a", 1), objectRecord("object-b", 2)];
+    first.renderDelta = {
+      reusedObjectIds: [],
+      activeObjects: first.objectRecords.map(({ mesh: _mesh, ...metadata }) => metadata),
+    };
+    worker.onmessage?.({ data: { type: "model-built", requestId: firstRequest.requestId, result: first } } as MessageEvent<ParametricBuildWorkerResponse>);
+    const firstResult = await firstPending;
+
+    const secondPending = client.buildModel(createStarterDocument(2));
+    const secondRequest = worker.postMessage.mock.calls[1][0] as { requestId: number };
+    const changed = objectRecord("object-b", 4);
+    const second = buildResult();
+    second.objectRecords = [changed];
+    second.renderDelta = {
+      reusedObjectIds: ["object-a"],
+      activeObjects: [
+        { ...firstResult.objectRecords[0], mesh: undefined },
+        { ...changed, mesh: undefined },
+      ].map(({ mesh: _mesh, ...metadata }) => metadata),
+    };
+    worker.onmessage?.({ data: { type: "model-built", requestId: secondRequest.requestId, result: second } } as MessageEvent<ParametricBuildWorkerResponse>);
+
+    const result = await secondPending;
+    expect(result.objectRecords.map((record) => [record.objectId, record.mesh.positions[0]])).toEqual([
+      ["object-a", 1],
+      ["object-b", 4],
+    ]);
+    expect(result.mesh?.positions).toEqual(new Float32Array([1, 0, 0, 4, 0, 0]));
+    expect(result.renderDelta).toBeUndefined();
   });
 });

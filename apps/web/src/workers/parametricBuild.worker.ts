@@ -8,7 +8,7 @@ const workerScope: DedicatedWorkerGlobalScope = self as unknown as DedicatedWork
 workerScope.onmessage = (event: MessageEvent<ParametricBuildWorkerRequest>) => {
   const request = event.data;
   const build = request.type === "build-model"
-    ? buildParametricModel(request.document)
+    ? buildParametricModel(request.document, true)
     : buildParametricOperationContext(request.document, request.featureId ?? "");
   void build.then((result) => {
     const response: ParametricBuildWorkerResponse = request.type === "build-model"

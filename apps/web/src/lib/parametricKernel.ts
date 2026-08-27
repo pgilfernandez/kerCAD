@@ -371,30 +371,43 @@ function textExtrusionDirections(document: ParametricDocument, objectId: string,
   return containsOtherSolidGeometry ? [] : directions;
 }
 
-function objectRenderRecords(brep: Brep, document: ParametricDocument, worldSolids: Map<string, AnySolid>, objects: Map<string, ParametricObject>): ParametricObjectRenderRecord[] {
-  return [...worldSolids].map(([objectId, solid]) => {
-    const object = objects.get(objectId);
-    return {
-      objectId,
-      renderId: parametricObjectRenderId(objectId),
-      geometryFingerprint: parametricObjectGeometryFingerprint(document, objectId),
-      color: object?.color ?? "#d41721",
-      worldTransform: structuredClone(object?.transform ?? {
-        position: { x: 0, y: 0, z: 0 },
-        rotation: { x: 0, y: 0, z: 0 },
-        scale: { x: 1, y: 1, z: 1 },
-      }),
-      mesh: meshShape(brep, solid, textExtrusionDirections(document, objectId, object)),
-    };
-  });
+function objectRenderMetadata(document: ParametricDocument, objectId: string, objects: Map<string, ParametricObject>): Omit<ParametricObjectRenderRecord, "mesh"> {
+  const object = objects.get(objectId);
+  return {
+    objectId,
+    renderId: parametricObjectRenderId(objectId),
+    geometryFingerprint: parametricObjectGeometryFingerprint(document, objectId),
+    color: object?.color ?? "#d41721",
+    worldTransform: structuredClone(object?.transform ?? {
+      position: { x: 0, y: 0, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
+      scale: { x: 1, y: 1, z: 1 },
+    }),
+  };
 }
 
-function buildRenderOutput(brep: Brep, document: ParametricDocument, solids: Map<string, AnySolid>, objects: Map<string, ParametricObject>) {
+function objectRenderRecords(brep: Brep, document: ParametricDocument, worldSolids: Map<string, AnySolid>, objects: Map<string, ParametricObject>, omittedObjectIds: Set<string>): ParametricObjectRenderRecord[] {
+  return [...worldSolids]
+    .filter(([objectId]) => !omittedObjectIds.has(objectId))
+    .map(([objectId, solid]) => {
+      const object = objects.get(objectId);
+      return {
+        ...objectRenderMetadata(document, objectId, objects),
+        mesh: meshShape(brep, solid, textExtrusionDirections(document, objectId, object)),
+      };
+    });
+}
+
+function buildRenderOutput(brep: Brep, document: ParametricDocument, solids: Map<string, AnySolid>, objects: Map<string, ParametricObject>, reusedObjectIds: Set<string>, incrementalRender: boolean) {
   const worldSolids = worldObjectSolids(brep, solids, objects, true);
-  const combined = combinedObjectShape(brep, worldSolids);
+  const combined = incrementalRender ? null : combinedObjectShape(brep, worldSolids);
   return {
     mesh: combined ? meshShape(brep, combined) : null,
-    objectRecords: objectRenderRecords(brep, document, worldSolids, objects),
+    objectRecords: objectRenderRecords(brep, document, worldSolids, objects, incrementalRender ? reusedObjectIds : new Set()),
+    renderDelta: incrementalRender ? {
+      reusedObjectIds: [...reusedObjectIds].filter((objectId) => worldSolids.has(objectId)),
+      activeObjects: [...worldSolids.keys()].map((objectId) => objectRenderMetadata(document, objectId, objects)),
+    } : undefined,
   };
 }
 
@@ -634,7 +647,7 @@ function applyObjectBooleanFeature(brep: Brep, current: AnySolid, source: AnySol
   return refinedBooleanSolid(brep, brep.intersect(current, source));
 }
 
-async function buildParametricModelInternal(document: ParametricDocument, contextFeatureId: string | null, stopAtContext: boolean): Promise<BuildResult> {
+async function buildParametricModelInternal(document: ParametricDocument, contextFeatureId: string | null, stopAtContext: boolean, incrementalRender = false): Promise<BuildResult> {
   const brep = await loadBrepWithOcct();
   const sketches = new Map<string, SketchFeature>();
   const objects = new Map(document.objects.map((object) => [object.id, object]));
@@ -793,7 +806,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
       }
     }
   } catch (error) {
-    return { ...buildRenderOutput(brep, document, solids, objects), operationContext, completedFeatureIds, warning: errorMessage(error) };
+    return { ...buildRenderOutput(brep, document, solids, objects, reusableObjectIds, incrementalRender), operationContext, completedFeatureIds, warning: errorMessage(error) };
   }
 
   if (reuseObjectCache) {
@@ -808,11 +821,11 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
     }
   }
 
-  return { ...buildRenderOutput(brep, document, solids, objects), operationContext, completedFeatureIds, warning: null };
+  return { ...buildRenderOutput(brep, document, solids, objects, reusableObjectIds, incrementalRender), operationContext, completedFeatureIds, warning: null };
 }
 
-export function buildParametricModel(document: ParametricDocument): Promise<BuildResult> {
-  return buildParametricModelInternal(document, null, false);
+export function buildParametricModel(document: ParametricDocument, incrementalRender = false): Promise<BuildResult> {
+  return buildParametricModelInternal(document, null, false, incrementalRender);
 }
 
 export async function buildParametricOperationContext(document: ParametricDocument, featureId: string): Promise<BuildResult["operationContext"]> {
