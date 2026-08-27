@@ -247,8 +247,7 @@ function solidFromPrimitive(brep: Brep, feature: PrimitiveFeature): AnySolid {
   if (feature.primitive === "roundedBox") {
     const cornerRadius = feature.cornerRadius ?? 3;
     if (cornerRadius <= 0 || cornerRadius >= Math.min(feature.width, feature.depth) / 2) throw new Error(`${feature.name}: el radio debe ser menor que la mitad del ancho y de la profundidad.`);
-    const box = brep.box(feature.width, feature.depth, feature.height, { centered: true, at: [0, 0, feature.height / 2] });
-    solid = resultValue<AnySolid>(brep, brep.fillet(box, brep.edgeFinder().inDirection("Z"), cornerRadius));
+    solid = brep.sketchRoundedRectangle(feature.width, feature.depth, cornerRadius).extrude(feature.height) as AnySolid;
   } else if (feature.primitive === "cone") {
     solid = brep.cone(feature.width / 2, feature.topRadius ?? 0, feature.height, { at: [0, 0, 0] });
   } else if (feature.primitive === "tube") {
@@ -270,8 +269,10 @@ function solidFromPrimitive(brep: Brep, feature: PrimitiveFeature): AnySolid {
     solid = polygonPrismSolid(brep, feature);
   } else if (feature.primitive === "gear") {
     solid = educationalGearSolid(brep, feature);
-  } else {
+  } else if (feature.primitive === "sphere") {
     solid = brep.ellipsoid(feature.width / 2, feature.depth / 2, feature.height / 2, { at: [0, 0, 0] });
+  } else {
+    throw new Error(`${feature.name}: la forma primitiva no está implementada.`);
   }
   return applyOperationTransform(brep, solid, feature.transform);
 }
