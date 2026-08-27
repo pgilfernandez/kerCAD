@@ -23,6 +23,7 @@ import { assertValidParametricDependencies } from "@/lib/parametricDependencyGra
 import { assertValidParametricTopology, isParametricTopologyReference } from "@/lib/parametricTopology";
 import { globalParametricWorkplanePlacement, normalizeParametricWorkplanePlacement } from "@/lib/parametricWorkplane";
 import { circleSketchPointId } from "@/lib/sketchConstraints";
+import { PARAMETRIC_IMPORT_LIMITS } from "@/lib/parametricImportLimits";
 
 let localCounter = 0;
 export const CURRENT_PARAMETRIC_SCHEMA = "educad-parametric/v2" as const;
@@ -333,6 +334,13 @@ export function migrateParametricDocument(document: ParametricDocument): Paramet
 
 export function normalizeParametricDocument(document: ParametricDocument): ParametricDocument {
   const next = migrateParametricDocument(document);
+  next.objects ??= [];
+  next.topologyReferences ??= [];
+  if (next.objects.length > PARAMETRIC_IMPORT_LIMITS.objects) throw new Error(`El proyecto supera el límite de ${PARAMETRIC_IMPORT_LIMITS.objects.toLocaleString("es-ES")} objetos.`);
+  if (next.features.length > PARAMETRIC_IMPORT_LIMITS.features) throw new Error(`El proyecto supera el límite de ${PARAMETRIC_IMPORT_LIMITS.features.toLocaleString("es-ES")} operaciones.`);
+  if ((next.topologyReferences?.length ?? 0) > PARAMETRIC_IMPORT_LIMITS.topologyReferences) throw new Error(`El proyecto contiene demasiadas referencias topológicas.`);
+  const identifiers = [...next.objects.map((object) => object.id), ...next.features.map((feature) => feature.id), ...(next.topologyReferences ?? []).map((reference) => reference.id)];
+  if (new Set(identifiers).size !== identifiers.length) throw new Error("El proyecto contiene identificadores duplicados.");
   next.workplane ??= { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, ...globalParametricWorkplanePlacement() };
   next.workplane.width = Math.min(2000, Math.max(1, Number.isFinite(next.workplane.width) ? next.workplane.width : 200));
   next.workplane.depth = Math.min(2000, Math.max(1, Number.isFinite(next.workplane.depth) ? next.workplane.depth : 200));
@@ -355,10 +363,11 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
       object.referenceMesh.opacity = Math.min(1, Math.max(0.05, Number.isFinite(object.referenceMesh.opacity) ? object.referenceMesh.opacity : 0.4));
       object.referenceMesh.displayMode = object.referenceMesh.displayMode === "solid" || object.referenceMesh.displayMode === "wireframe" ? object.referenceMesh.displayMode : "solidEdges";
       object.referenceMesh.pickable = typeof object.referenceMesh.pickable === "boolean" ? object.referenceMesh.pickable : true;
-      object.referenceMesh.positions = Array.isArray(object.referenceMesh.positions) ? object.referenceMesh.positions.filter(Number.isFinite) : [];
-      object.referenceMesh.normals = Array.isArray(object.referenceMesh.normals) ? object.referenceMesh.normals.filter(Number.isFinite) : [];
-      object.referenceMesh.edges = Array.isArray(object.referenceMesh.edges) ? object.referenceMesh.edges.filter(Number.isFinite) : [];
-      if (object.referenceMesh.positions.length < 9 || object.referenceMesh.normals.length !== object.referenceMesh.positions.length) throw new Error(`${object.name}: la malla de referencia no es válida.`);
+      const positions = object.referenceMesh.positions;
+      const normals = object.referenceMesh.normals;
+      const edges = object.referenceMesh.edges;
+      if (!Array.isArray(positions) || !Array.isArray(normals) || !Array.isArray(edges) || positions.length < 9 || positions.length % 9 !== 0 || normals.length !== positions.length || edges.length % 6 !== 0 || positions.some((value) => !Number.isFinite(value)) || normals.some((value) => !Number.isFinite(value)) || edges.some((value) => !Number.isFinite(value))) throw new Error(`${object.name}: la malla de referencia no es válida.`);
+      if (positions.length / 9 > PARAMETRIC_IMPORT_LIMITS.referenceTriangles) throw new Error(`${object.name}: la malla de referencia contiene demasiados triángulos.`);
     }
     delete (object as ParametricObject & { originVisible?: boolean }).originVisible;
   }

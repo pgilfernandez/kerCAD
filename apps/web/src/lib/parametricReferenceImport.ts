@@ -5,6 +5,7 @@ import { colorForNewParametricObject } from "@/lib/parametricObjects";
 import { createParametricObject } from "@/lib/parametricDocument";
 import { parametricTransformMatrix } from "@/lib/parametricWorkplane";
 import type { ParametricDocument, ParametricObjectRenderRecord } from "@/types/parametric";
+import { assertImportByteLimit, PARAMETRIC_IMPORT_LIMITS } from "@/lib/parametricImportLimits";
 
 function triangleSoupFromGeometry(source: THREE.BufferGeometry) {
   const geometry = source.index ? source.toNonIndexed() : source.clone();
@@ -39,6 +40,8 @@ function parseReferenceMesh(sourceName: string, buffer: ArrayBuffer) {
   const positions = soups.flatMap((item) => item.positions);
   const normals = soups.flatMap((item) => item.normals);
   if (positions.length < 9) throw new Error(`El archivo ${format.toUpperCase()} no contiene triángulos.`);
+  if (positions.length / 9 > PARAMETRIC_IMPORT_LIMITS.referenceTriangles) throw new Error(`La referencia supera el límite de ${PARAMETRIC_IMPORT_LIMITS.referenceTriangles.toLocaleString("es-ES")} triángulos.`);
+  if (positions.some((value) => !Number.isFinite(value)) || normals.some((value) => !Number.isFinite(value))) throw new Error(`El archivo ${format.toUpperCase()} contiene coordenadas no válidas.`);
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
   geometry.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
@@ -62,6 +65,7 @@ function parseReferenceMesh(sourceName: string, buffer: ArrayBuffer) {
 }
 
 export function importReferenceMesh(document: ParametricDocument, sourceName: string, buffer: ArrayBuffer, random = Math.random) {
+  assertImportByteLimit("referencia", buffer.byteLength);
   const parsed = parseReferenceMesh(sourceName, buffer);
   const object = createParametricObject(document.objects.length + 1);
   object.name = sourceName.replace(/\.(?:stl|obj)$/i, "") || `Referencia ${parsed.format.toUpperCase()}`;

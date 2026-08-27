@@ -2,6 +2,7 @@ import { loadBrepWithOcct } from "@/lib/brepKernel";
 import { createImportedStepFeature, createParametricObject } from "@/lib/parametricDocument";
 import { colorForNewParametricObject } from "@/lib/parametricObjects";
 import type { ParametricDocument } from "@/types/parametric";
+import { assertImportByteLimit } from "@/lib/parametricImportLimits";
 
 export function appendImportedStepObject(document: ParametricDocument, sourceName: string, stepText: string, random = Math.random) {
   if (!stepText.trim()) throw new Error("El archivo STEP está vacío.");
@@ -16,6 +17,7 @@ export function appendImportedStepObject(document: ParametricDocument, sourceNam
 }
 
 export async function importStepAsParametricObject(document: ParametricDocument, sourceName: string, buffer: ArrayBuffer, random = Math.random) {
+  assertImportByteLimit("STEP", buffer.byteLength);
   const brep = await loadBrepWithOcct();
   const imported = await brep.importSTEP(new Blob([buffer]));
   if (!imported.ok) throw new Error(`No se pudo leer el STEP: ${String(imported.error.message ?? imported.error)}`);

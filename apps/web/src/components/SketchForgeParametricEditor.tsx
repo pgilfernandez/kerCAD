@@ -46,10 +46,11 @@ import { importSvgAsParametricExtrusion } from "@/lib/svgParametricImport";
 import { addParametricText } from "@/lib/parametricText";
 import { appendScribbleContour } from "@/lib/parametricScribble";
 import { appendDefaultSketchText, deleteSketchText, moveSketchText } from "@/lib/sketchText";
-import { EDUCAD_PACKAGE_MEDIA_TYPE, exportEducadProject, importEducadProject } from "@/lib/educadProject";
+import { EDUCAD_PACKAGE_LIMITS, EDUCAD_PACKAGE_MEDIA_TYPE, exportEducadProject, importEducadProject } from "@/lib/educadProject";
 import { mergeParametricProjects } from "@/lib/parametricProjectMerge";
 import { importStepAsParametricObject } from "@/lib/parametricStepImport";
 import { importReferenceMesh, parametricReferenceRenderRecords } from "@/lib/parametricReferenceImport";
+import { assertImportByteLimit } from "@/lib/parametricImportLimits";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import { circleSketchPointId, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, solveSketchConstraints } from "@/lib/sketchConstraints";
 import { analyzeSketchConstraints } from "@/lib/sketchConstraintAnalysis";
@@ -683,6 +684,7 @@ export function SketchForgeParametricEditor() {
   const importSvgIntoSketch = async (file: File) => {
     if (!sketchSession) return;
     try {
+      assertImportByteLimit("SVG", file.size);
       const imported = sketchProfileFromSvg(await file.text());
       const pointIds = imported.points.map((point) => point.id);
       const segmentIds = imported.segments.map((segment) => segment.id);
@@ -2129,6 +2131,8 @@ export function SketchForgeParametricEditor() {
 
   const importProject = async (file: File) => {
     try {
+      const packagedByName = file.name.toLowerCase().endsWith(".educad");
+      if (packagedByName ? file.size > EDUCAD_PACKAGE_LIMITS.archiveBytes : file.size > EDUCAD_PACKAGE_LIMITS.projectBytes) throw new Error(packagedByName ? "El proyecto supera el límite comprimido de 256 MB." : "El documento supera el límite de 32 MB.");
       const bytes = new Uint8Array(await file.arrayBuffer());
       const packaged = file.name.toLowerCase().endsWith(".educad") || bytes[0] === 0x50 && bytes[1] === 0x4b;
       let normalized: ParametricDocument;
@@ -2173,6 +2177,7 @@ export function SketchForgeParametricEditor() {
   const importManagedFile = async (file: File) => {
     if (/\.(?:stl|obj)$/i.test(file.name)) {
       try {
+        assertImportByteLimit("referencia", file.size);
         const draft = cloneDocument(document);
         const objectId = importReferenceMesh(draft, file.name, await file.arrayBuffer());
         commit(draft);
@@ -2185,6 +2190,7 @@ export function SketchForgeParametricEditor() {
     }
     if (/\.(?:step|stp)$/i.test(file.name)) {
       try {
+        assertImportByteLimit("STEP", file.size);
         setNotice({ type: "info", text: "Importando B-Rep STEP…" });
         const draft = cloneDocument(document);
         const imported = await importStepAsParametricObject(draft, file.name, await file.arrayBuffer());
@@ -2197,8 +2203,9 @@ export function SketchForgeParametricEditor() {
       return;
     }
     if (file.name.toLowerCase().endsWith(".svg") || file.type === "image/svg+xml") {
-      const awaitSource = await file.text();
       try {
+        assertImportByteLimit("SVG", file.size);
+        const awaitSource = await file.text();
         let result: ReturnType<typeof importSvgAsParametricExtrusion> | null = null;
         const changed = mutate((draft) => { result = importSvgAsParametricExtrusion(draft, awaitSource, file.name, selectedObjectId); });
         const completed = result as ReturnType<typeof importSvgAsParametricExtrusion> | null;
