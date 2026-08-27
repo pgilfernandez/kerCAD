@@ -205,6 +205,9 @@ export function SketchForgeParametricEditor() {
   const [build, setBuild] = useState<BuildResult>({ mesh: null, objectRecords: [], operationContext: null, completedFeatureIds: [], warning: null });
   const [operationContext, setOperationContext] = useState<BuildResult["operationContext"]>(null);
   const [kernelBusy, setKernelBusy] = useState(true);
+  const [contextBusy, setContextBusy] = useState(false);
+  const [topologyPreviewBusy, setTopologyPreviewBusy] = useState(false);
+  const [topologySelectionBusy, setTopologySelectionBusy] = useState(false);
   const [shapesOpen, setShapesOpen] = useState(false);
   const [modelSidebarMode, setModelSidebarMode] = useState<ModelSidebarMode | "hidden">("normal");
   const [exportOpen, setExportOpen] = useState(false);
@@ -403,6 +406,7 @@ export function SketchForgeParametricEditor() {
 
   useEffect(() => {
     setTopologyPreviewContext(null);
+    setTopologyPreviewBusy(false);
     const references = [...selectedTopologyFaces, ...selectedTopologyEdges];
     if ((!pendingEdgeTreatment && !pendingFaceExtrude && !pendingShell && !pendingRevolve) || references.length === 0 || ((pendingFaceExtrude || pendingRevolve) && selectedTopologyFaces.length !== 1)) return;
     const preview = cloneDocument(document);
@@ -466,12 +470,14 @@ export function SketchForgeParametricEditor() {
     }
     if (!featureId) return;
     let active = true;
-    const timeout = window.setTimeout(() => topologyPreviewWorkerRef.current?.buildContext(preview, featureId).then((result) => { if (active) setTopologyPreviewContext(result); }).catch(() => { if (active) setTopologyPreviewContext(null); }), 80);
-    return () => { active = false; window.clearTimeout(timeout); topologyPreviewWorkerRef.current?.cancel(); };
+    setTopologyPreviewBusy(true);
+    const timeout = window.setTimeout(() => topologyPreviewWorkerRef.current?.buildContext(preview, featureId).then((result) => { if (active) { setTopologyPreviewContext(result); setTopologyPreviewBusy(false); } }).catch(() => { if (active) { setTopologyPreviewContext(null); setTopologyPreviewBusy(false); } }), 80);
+    return () => { active = false; window.clearTimeout(timeout); topologyPreviewWorkerRef.current?.cancel(); setTopologyPreviewBusy(false); };
   }, [document, edgeTreatmentRadius, editingEdgeTreatmentId, editingFaceExtrudeId, editingRevolveId, editingShellId, pendingEdgeTreatment, pendingFaceExtrude, pendingRevolve, pendingShell, selectedTopologyEdges, selectedTopologyFaces]);
 
   useEffect(() => {
     setTopologySelectionBuild(null);
+    setTopologySelectionBusy(false);
     const editingFeatureId = editingEdgeTreatmentId ?? editingFaceExtrudeId ?? editingShellId ?? editingRevolveId;
     if (!editingFeatureId) return;
     const target = document.features.find((feature) => feature.id === editingFeatureId);
@@ -481,8 +487,9 @@ export function SketchForgeParametricEditor() {
     const targetIndex = operations.findIndex((feature) => feature.id === editingFeatureId);
     for (const feature of operations.slice(Math.max(0, targetIndex))) feature.suppressed = true;
     let active = true;
-    topologySelectionWorkerRef.current?.buildModel(preview).then((result) => { if (active) setTopologySelectionBuild(result); }).catch(() => { if (active) setTopologySelectionBuild(null); });
-    return () => { active = false; topologySelectionWorkerRef.current?.cancel(); };
+    setTopologySelectionBusy(true);
+    topologySelectionWorkerRef.current?.buildModel(preview).then((result) => { if (active) { setTopologySelectionBuild(result); setTopologySelectionBusy(false); } }).catch(() => { if (active) { setTopologySelectionBuild(null); setTopologySelectionBusy(false); } });
+    return () => { active = false; topologySelectionWorkerRef.current?.cancel(); setTopologySelectionBusy(false); };
   }, [document, editingEdgeTreatmentId, editingFaceExtrudeId, editingRevolveId, editingShellId]);
 
   useEffect(() => {
@@ -509,18 +516,21 @@ export function SketchForgeParametricEditor() {
   useEffect(() => {
     const counter = ++contextBuildCounter.current;
     setOperationContext(null);
+    setContextBusy(false);
     if (!selectedOperationTimeline) return;
     const buildDocument = buildDocumentRef.current;
+    setContextBusy(true);
     const timeout = window.setTimeout(() => {
       contextWorkerRef.current?.buildContext(buildDocument, selectedOperationTimeline.featureId).then((result) => {
-        if (counter === contextBuildCounter.current) setOperationContext(result);
+        if (counter === contextBuildCounter.current) { setOperationContext(result); setContextBusy(false); }
       }).catch(() => {
-        if (counter === contextBuildCounter.current) setOperationContext(null);
+        if (counter === contextBuildCounter.current) { setOperationContext(null); setContextBusy(false); }
       });
     }, 80);
     return () => {
       window.clearTimeout(timeout);
       contextWorkerRef.current?.cancel();
+      setContextBusy(false);
     };
   }, [geometryFingerprint, selectedOperationTimeline]);
 
@@ -612,6 +622,14 @@ export function SketchForgeParametricEditor() {
     return [{ feature, object, selected: modelSelection.some((item) => item.kind === "feature" && item.id === feature.id) }];
   }), [document.features, document.objects, modelSelection]);
   const snapAmount = document.workplane.snapToGrid ? document.workplane.gridStep : 0.01;
+  const viewportOverlayRightOffset = sketchSession ? 12 : modelSidebarMode === "normal" ? 252 : modelSidebarMode === "simplified" ? 80 : 12;
+  const backgroundProcessLabel = exporting
+    ? "Exportando STEP…"
+    : kernelBusy
+      ? "Regenerando modelo…"
+      : topologyPreviewBusy || topologySelectionBusy || contextBusy
+        ? "Actualizando vista…"
+        : null;
 
   const beginSketch = (featureId: string | null = null) => {
     const feature = featureId ? document.features.find((candidate): candidate is SketchFeature => candidate.kind === "sketch" && candidate.id === featureId && candidate.profile.shape === "drawn") : null;
@@ -2191,7 +2209,8 @@ export function SketchForgeParametricEditor() {
       </div>
 
       <section className={`educad-workplane-stage ${sketchSession ? "sketch-active" : ""}`}>
-        {showFps ? <FpsCounter rightOffset={modelSidebarMode === "normal" ? 252 : modelSidebarMode === "simplified" ? 80 : 12} /> : null}
+        {showFps ? <FpsCounter rightOffset={viewportOverlayRightOffset + 158} /> : null}
+        {backgroundProcessLabel ? <BackgroundProcessIndicator label={backgroundProcessLabel} rightOffset={viewportOverlayRightOffset} /> : null}
         {sketchSession ? <SketchWorkspace
           profile={sketchSession.profile}
           profileValidation={activeSketchProfileValidation}
@@ -2485,7 +2504,6 @@ export function SketchForgeParametricEditor() {
           <button aria-label="Acercar" onClick={() => setCamera("zoom-in")}><Plus size={28} /></button>
           <button aria-label="Alejar" onClick={() => setCamera("zoom-out")}><Minus size={28} /></button>
         </div>
-        {kernelBusy && <div className="educad-kernel-pill">Reconstruyendo OpenCascade…</div>}
         {build.warning && <div className="educad-rebuild-error"><strong>El historial se detuvo aquí</strong><span>{build.warning}</span></div>}
         {notice && <div className={`educad-reference-toast ${notice.type}`}>{notice.text}</div>}
         {modelSidebarMode !== "hidden" ? <ParametricModelSidebar
@@ -2594,6 +2612,10 @@ function FpsCounter({ rightOffset }: { rightOffset: number }) {
   }, []);
   const tone = fps > 0 && fps < 20 ? "low" : fps < 40 ? "medium" : "high";
   return <output className={`educad-fps-counter ${tone}`} aria-label={`Rendimiento: ${fps} fotogramas por segundo`} style={{ right: rightOffset }}>{fps} FPS</output>;
+}
+
+function BackgroundProcessIndicator({ label, rightOffset }: { label: string; rightOffset: number }) {
+  return <output className="educad-background-process" aria-live="polite" aria-label={label} style={{ right: rightOffset }}><span aria-hidden="true" />{label}</output>;
 }
 
 function ToolbarSection({ label, className = "", children }: { label: string; className?: string; children: React.ReactNode }) {
