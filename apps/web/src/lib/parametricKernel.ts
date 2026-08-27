@@ -3,6 +3,7 @@ import type { Edge, Face } from "brepjs";
 import { parametricObjectGeometryFingerprint } from "@/lib/parametricBuildState";
 import { topologicallySortedParametricFeatures } from "@/lib/parametricDependencyGraph";
 import { parametricTransformMatrix } from "@/lib/parametricWorkplane";
+import { combineProfileSolids, extrudePlanarProfile, facesFromPlanarProfile, type PlanarBrepLoop } from "@/lib/profileBrep";
 import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, PrimitiveFeature, RenderMesh, SketchFeature } from "@/types/parametric";
 
 type AnySolid = BrepSolid;
@@ -16,16 +17,6 @@ function resultValue<T>(brep: Brep, result: ReturnType<Brep["cut"]> | ReturnType
 
 function refinedBooleanSolid(brep: Brep, result: ReturnType<Brep["cut"]> | ReturnType<Brep["fuse"]> | ReturnType<Brep["intersect"]>) {
   return brep.unwrap(brep.simplify(resultValue<AnySolid>(brep, result))) as AnySolid;
-}
-
-function pointInPolygon(point: { x: number; y: number }, polygon: Array<{ x: number; y: number }>) {
-  let inside = false;
-  for (let index = 0, previous = polygon.length - 1; index < polygon.length; previous = index, index += 1) {
-    const current = polygon[index];
-    const prior = polygon[previous];
-    if ((current.y > point.y) !== (prior.y > point.y) && point.x < ((prior.x - current.x) * (point.y - current.y)) / (prior.y - current.y) + current.x) inside = !inside;
-  }
-  return inside;
 }
 
 function drawnSketchFaces(brep: Brep, sketch: SketchFeature): Face[] {
@@ -53,7 +44,7 @@ function drawnSketchFaces(brep: Brep, sketch: SketchFeature): Face[] {
     if (currentId !== startId || path.length < 3) throw new Error(`${sketch.name}: cierra el perfil antes de usarlo en una operación 3D.`);
     paths.push(path);
   }
-  const loops = [...paths.map((path) => {
+  const loops: PlanarBrepLoop[] = [...paths.map((path) => {
     const polygon = path.map(({ fromId }) => {
       const point = points.get(fromId);
       if (!point) throw new Error(`${sketch.name}: el boceto contiene referencias incompletas.`);
@@ -88,11 +79,7 @@ function drawnSketchFaces(brep: Brep, sketch: SketchFeature): Face[] {
       ])) as Edge;
     });
     const wire = brep.unwrap(brep.wireLoop(edges));
-    const area = Math.abs(polygon.reduce((sum, point, index) => {
-      const next = polygon[(index + 1) % polygon.length];
-      return sum + point.x * next.y - next.x * point.y;
-    }, 0) / 2);
-    return { wire, polygon, area, depth: 0 };
+    return { polygon, payload: { wire: wire as PlanarBrepLoop["payload"]["wire"] } };
   }), ...(profile.circles ?? []).filter((circle) => !circle.construction && circle.radius > 0).map((circle) => {
     const polygon = Array.from({ length: 64 }, (_, index) => {
       const angle = index / 64 * Math.PI * 2;
@@ -100,30 +87,15 @@ function drawnSketchFaces(brep: Brep, sketch: SketchFeature): Face[] {
     });
     const edge = brep.circle(circle.radius, { at: [circle.x, circle.z, 0] });
     const wire = brep.unwrap(brep.wireLoop([edge]));
-    return { wire, polygon, area: Math.PI * circle.radius ** 2, depth: 0 };
+    return { polygon, payload: { wire: wire as PlanarBrepLoop["payload"]["wire"] } };
   })];
-  if (!loops.length) throw new Error(`${sketch.name}: dibuja al menos un contorno cerrado.`);
-  for (const loop of loops) loop.depth = loops.filter((candidate) => candidate !== loop && candidate.area > loop.area && pointInPolygon(loop.polygon[0], candidate.polygon)).length;
-  const outerLoops = loops.filter((loop) => loop.depth % 2 === 0);
-  return outerLoops.map((outer) => {
-    const holes = loops.filter((candidate) => candidate.depth === outer.depth + 1 && pointInPolygon(candidate.polygon[0], outer.polygon));
-    return brep.unwrap(brep.face(outer.wire as Parameters<Brep["face"]>[0], holes.map((hole) => hole.wire) as Parameters<Brep["face"]>[1])) as Face;
-  });
-}
-
-function combineSketchSolids(brep: Brep, solids: AnySolid[]) {
-  if (!solids.length) throw new Error("El boceto no contiene ninguna región rellena.");
-  return solids.slice(1).reduce((current, solid) => refinedBooleanSolid(brep, brep.fuse(current, solid)), solids[0]);
+  return facesFromPlanarProfile(brep, loops, sketch.name);
 }
 
 function solidFromSketch(brep: Brep, sketch: SketchFeature, feature: ExtrudeFeature): AnySolid {
   const profile = sketch.profile;
   if (profile.shape === "drawn") {
-    const solids = drawnSketchFaces(brep, sketch).map((sourceFace) => {
-      const face = feature.symmetric ? brep.translate(sourceFace, [0, 0, -feature.distance / 2]) as Face : sourceFace;
-      return brep.unwrap(brep.extrude(face as Parameters<Brep["extrude"]>[0], feature.distance)) as AnySolid;
-    });
-    const solid = applySketchTransform(brep, combineSketchSolids(brep, solids), sketch);
+    const solid = applySketchTransform(brep, extrudePlanarProfile(brep, drawnSketchFaces(brep, sketch), feature.distance, feature.symmetric), sketch);
     return applyOperationTransform(brep, solid, feature.transform);
   }
   const centerZ = feature.symmetric ? 0 : feature.distance / 2;
@@ -528,7 +500,7 @@ function applyRevolveFeature(brep: Brep, document: ParametricDocument, current: 
     at = space.point(axisReference.reference.hint.midpoint);
     axis = space.direction(axisReference.reference.hint.direction);
   }
-  const tool = combineSketchSolids(brep, faces.map((face) => brep.unwrap(brep.revolve(face as Parameters<Brep["revolve"]>[0], { axis, at, angle: feature.angle * Math.PI / 180 })) as AnySolid));
+  const tool = combineProfileSolids(brep, faces.map((face) => brep.unwrap(brep.revolve(face as Parameters<Brep["revolve"]>[0], { axis, at, angle: feature.angle * Math.PI / 180 })) as AnySolid));
   return applyBooleanOperation(brep, current, tool, feature);
 }
 

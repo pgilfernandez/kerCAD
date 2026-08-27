@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 190 190"
+   version="1.1"
+   id="svg8"
+   sodipodi:docname="drop-to-workplane.svg"
+   inkscape:version="1.4.4 (dcaf3e7d, 2026-05-05)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs8" />
+  <sodipodi:namedview
+     id="namedview8"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="1.674832"
+     inkscape:cx="-24.480068"
+     inkscape:cy="113.14568"
+     inkscape:current-layer="svg8" />
+  <path
+     d="m 26.353382,138.83223 67.326489,-38.73019 69.966739,38.73019 -68.646611,40.06572 z"
+     fill="#ebeaeb"
+     id="path2"
+     style="stroke:#292422;stroke-width:7;stroke-linecap:round;stroke-linejoin:round" />
+  <g
+     fill="none"
+     stroke-width="3.01249"
+     id="g3"
+     style="stroke:#292422;stroke-linecap:round;stroke-linejoin:round"
+     transform="matrix(1.3201273,0,0,1.335524,-30.41209,-46.805595)">
+    <path
+       d="m 69,124 52,30 M 95,110 43,140 m 78,-16 -52,30 m 78,-15 -52,30"
+       id="path3"
+       style="stroke-width:3.01249" />
+  </g>
+  <path
+     d="M 62,39 95,20 129,39 95,59 Z"
+     fill="#ebeaeb"
+     id="path4"
+     style="stroke:#292422;stroke-width:7;stroke-linecap:round;stroke-linejoin:round" />
+  <path
+     d="M 62,39 95,59 V 97 L 62,77 Z"
+     fill="#cacace"
+     id="path5"
+     style="stroke:#292422;stroke-width:7;stroke-linecap:round;stroke-linejoin:round" />
+  <path
+     d="M 129,39 95,59 v 38 l 34,-20 z"
+     fill="#afb2b6"
+     id="path6"
+     style="stroke:#292422;stroke-width:7;stroke-linecap:round;stroke-linejoin:round" />
+  <path
+     d="m 95,101 v 43"
+     fill="none"
+     stroke-width="10"
+     id="path7"
+     style="stroke:#292422;stroke-linecap:round;stroke-linejoin:round" />
+  <path
+     d="m 79,130 16,16 16,-16"
+     fill="none"
+     stroke-width="10"
+     id="path8"
+     style="stroke:#292422;stroke-linecap:round;stroke-linejoin:round" />
+</svg>

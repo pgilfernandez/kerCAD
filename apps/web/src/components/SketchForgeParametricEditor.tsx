@@ -12,6 +12,7 @@ import {
   ToolbarCopyIcon,
   ToolbarDropToWorkplaneIcon,
   ToolbarDuplicateIcon,
+  ToolbarExtrudeIcon,
   ToolbarFilletIcon,
   ToolbarHomeIcon,
   ToolbarImportIcon,
@@ -21,7 +22,9 @@ import {
   ToolbarObjectBooleanIcon,
   ToolbarPasteIcon,
   ToolbarRedoIcon,
+  ToolbarRevolveIcon,
   ToolbarSettingsIcon,
+  ToolbarShellIcon,
   ToolbarShapeAddIcon,
   ToolbarSketchIcon,
   ToolbarSnapGridIcon,
@@ -2171,9 +2174,9 @@ export function SketchForgeParametricEditor() {
               <Tool label="Ajustar a rejilla" enabled={Boolean(selectedShape && document.workplane.snapToGrid)} onClick={() => selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: Math.round((selectedShape?.x ?? 0) / snapAmount) * snapAmount, z: Math.round((selectedShape?.z ?? 0) / snapAmount) * snapAmount }))}><ToolbarSnapGridIcon /></Tool>
               <Tool label="Chaflán" active={pendingEdgeTreatment === "chamfer"} onClick={() => beginEdgeTreatment("chamfer")}><ToolbarChamferIcon /></Tool>
               <Tool label="Redondeo" active={pendingEdgeTreatment === "fillet"} onClick={() => beginEdgeTreatment("fillet")}><ToolbarFilletIcon /></Tool>
-              <Tool label={selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? "Extruir boceto" : "Extruir cara"} active={Boolean(pendingFaceExtrude)} onClick={() => selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? addExtrudeFromSketch(selectedFeature) : beginFaceExtrude("add")}><img className="educad-toolbar-operation-icon" src="/assets/educad/operations/extrude.svg" alt="" /></Tool>
-              <Tool label="Vaciado" active={Boolean(pendingShell)} onClick={() => beginShell()}><img className="educad-toolbar-operation-icon" src="/assets/educad/operations/shell.svg" alt="" /></Tool>
-              <Tool label={selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? "Revolucionar boceto" : "Revolución"} active={Boolean(pendingRevolve)} onClick={() => selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? addRevolveFromSketch(selectedFeature) : beginRevolve()}><img className="educad-toolbar-operation-icon" src="/assets/educad/operations/revolve.svg" alt="" /></Tool>
+              <Tool label={selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? "Extruir boceto" : "Extruir cara"} active={Boolean(pendingFaceExtrude)} onClick={() => selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? addExtrudeFromSketch(selectedFeature) : beginFaceExtrude("add")}><ToolbarExtrudeIcon /></Tool>
+              <Tool label="Vaciado" active={Boolean(pendingShell)} onClick={() => beginShell()}><ToolbarShellIcon /></Tool>
+              <Tool label={selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? "Revolucionar boceto" : "Revolución"} active={Boolean(pendingRevolve)} onClick={() => selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? addRevolveFromSketch(selectedFeature) : beginRevolve()}><ToolbarRevolveIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label="Arrange">
               <Tool label={hasActiveWorkplane ? "Restaurar plano global" : placingWorkplane ? "Cancelar plano de trabajo" : "Colocar plano de trabajo"} active={placingWorkplane || hasActiveWorkplane} onClick={() => {
@@ -2209,7 +2212,7 @@ export function SketchForgeParametricEditor() {
       </div>
 
       <section className={`educad-workplane-stage ${sketchSession ? "sketch-active" : ""}`}>
-        {showFps ? <FpsCounter rightOffset={viewportOverlayRightOffset + 158} /> : null}
+        {showFps ? <FpsCounter /> : null}
         {backgroundProcessLabel ? <BackgroundProcessIndicator label={backgroundProcessLabel} rightOffset={viewportOverlayRightOffset} /> : null}
         {sketchSession ? <SketchWorkspace
           profile={sketchSession.profile}
@@ -2591,7 +2594,7 @@ export function SketchForgeParametricEditor() {
   );
 }
 
-function FpsCounter({ rightOffset }: { rightOffset: number }) {
+function FpsCounter() {
   const [fps, setFps] = useState(0);
   useEffect(() => {
     let frame = 0;
@@ -2611,7 +2614,7 @@ function FpsCounter({ rightOffset }: { rightOffset: number }) {
     return () => window.cancelAnimationFrame(frame);
   }, []);
   const tone = fps > 0 && fps < 20 ? "low" : fps < 40 ? "medium" : "high";
-  return <output className={`educad-fps-counter ${tone}`} aria-label={`Rendimiento: ${fps} fotogramas por segundo`} style={{ right: rightOffset }}>{fps} FPS</output>;
+  return <output className={`educad-fps-counter ${tone}`} aria-label={`Rendimiento: ${fps} fotogramas por segundo`}>{fps} FPS</output>;
 }
 
 function BackgroundProcessIndicator({ label, rightOffset }: { label: string; rightOffset: number }) {

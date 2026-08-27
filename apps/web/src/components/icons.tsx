@@ -66,6 +66,12 @@ function ToolbarCommandImage({ file, className }: ToolbarCommandImageProps) {
   return <img aria-hidden="true" className={["toolbar-command-icon", assetClassName, className].filter(Boolean).join(" ")} src={"/assets/sketchforge/" + file} alt="" draggable={false} />;
 }
 
+type EducadOperationImageProps = { file: string; className?: string };
+
+function EducadOperationImage({ file, className }: EducadOperationImageProps) {
+  return <img aria-hidden="true" className={["toolbar-command-icon", "educad-toolbar-operation-icon", className].filter(Boolean).join(" ")} src={`/assets/educad/operations/${file}`} alt="" draggable={false} />;
+}
+
 export function ToolbarHomeIcon() {
   return <ToolbarCommandImage file="toolbar-home.png" className="toolbar-user-art-icon" />;
 }
@@ -114,17 +120,8 @@ export function ToolbarSketchIcon() {
   return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/sketch.svg" alt="" draggable={false} />;
 }
 
-export function ToolbarBooleanModeIcon({ mode, ...props }: IconProps & { mode: "add" | "hole" | "common" }) {
-  const color = mode === "add" ? "#378451" : mode === "hole" ? "#b6524d" : "#7256aa";
-  const symbol = mode === "add" ? "+" : mode === "hole" ? "−" : "∩";
-  return (
-    <svg viewBox="0 0 48 48" aria-hidden="true" {...props}>
-      <rect x="8" y="12" width="23" height="23" rx="3" fill={color} opacity="0.22" stroke={color} strokeWidth="2.4" />
-      <rect x="17" y="8" width="23" height="23" rx="3" fill={mode === "common" ? color : "white"} fillOpacity={mode === "common" ? 0.38 : 0.8} stroke={color} strokeWidth="2.4" strokeDasharray={mode === "hole" ? "4 2" : undefined} />
-      <circle cx="34" cy="34" r="9" fill={color} stroke="white" strokeWidth="1.5" />
-      <text x="34" y="38" fill="white" fontSize="14" fontWeight="900" textAnchor="middle">{symbol}</text>
-    </svg>
-  );
+export function ToolbarBooleanModeIcon({ mode }: { mode: "add" | "hole" | "common" }) {
+  return <EducadOperationImage file={`boolean-${mode}.svg`} />;
 }
 
 export function ToolbarHideSelectedIcon(props: IconProps) {
@@ -162,44 +159,27 @@ export function ToolbarAlignIcon(props: IconProps) {
 }
 
 export function ToolbarMirrorIcon() {
-  return <ToolbarCommandImage file="toolbar-mirror.png" className="toolbar-user-art-icon" />;
+  return <EducadOperationImage file="mirror.svg" />;
 }
 
-export function ToolbarLinearPatternIcon(props: IconProps) {
-  return (
-    <svg viewBox="0 0 48 48" aria-hidden="true" {...props}>
-      <path d="M9 39 39 9" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-      {[10, 24, 38].map((coordinate) => <rect key={coordinate} x={coordinate - 5} y={43 - coordinate - 5} width="10" height="10" rx="1.5" fill="white" stroke="currentColor" strokeWidth="2.2" />)}
-    </svg>
-  );
+export function ToolbarLinearPatternIcon() {
+  return <EducadOperationImage file="linear-pattern.svg" />;
 }
 
-export function ToolbarPolarPatternIcon(props: IconProps) {
-  return (
-    <svg viewBox="0 0 48 48" aria-hidden="true" {...props}>
-      <circle cx="24" cy="24" r="14" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="3 3" />
-      {[0, 90, 180, 270].map((angle) => <rect key={angle} x="19" y="4" width="10" height="10" rx="1.5" fill="white" stroke="currentColor" strokeWidth="2.2" transform={`rotate(${angle} 24 24)`} />)}
-      <circle cx="24" cy="24" r="2.5" fill="currentColor" />
-    </svg>
-  );
+export function ToolbarPolarPatternIcon() {
+  return <EducadOperationImage file="polar-pattern.svg" />;
 }
 
-export function ToolbarObjectBooleanIcon(props: IconProps) {
-  return (
-    <svg viewBox="0 0 48 48" aria-hidden="true" {...props}>
-      <circle cx="19" cy="24" r="13" fill="currentColor" opacity="0.22" stroke="currentColor" strokeWidth="2.3" />
-      <circle cx="29" cy="24" r="13" fill="white" fillOpacity="0.72" stroke="currentColor" strokeWidth="2.3" />
-      <path d="M24 13a13 13 0 0 1 0 22 13 13 0 0 1 0-22Z" fill="currentColor" opacity="0.75" />
-    </svg>
-  );
+export function ToolbarObjectBooleanIcon() {
+  return <EducadOperationImage file="object-boolean.svg" />;
 }
 
 export function ToolbarChamferIcon() {
-  return <ToolbarCommandImage file="toolbar-chamfer.png" className="toolbar-user-art-icon" />;
+  return <EducadOperationImage file="chamfer.svg" />;
 }
 
 export function ToolbarFilletIcon() {
-  return <ToolbarCommandImage file="toolbar-fillet.png" className="toolbar-user-art-icon" />;
+  return <EducadOperationImage file="fillet.svg" />;
 }
 
 export function ToolbarPreserveEdgeIcon(props: IconProps) {
@@ -214,7 +194,19 @@ export function ToolbarPreserveEdgeIcon(props: IconProps) {
 }
 
 export function ToolbarSnapGridIcon() {
-  return <ToolbarCommandImage file="toolbar-snap-grid.png" className="toolbar-user-art-icon" />;
+  return <EducadOperationImage file="snap-grid.svg" />;
+}
+
+export function ToolbarExtrudeIcon() {
+  return <EducadOperationImage file="extrude.svg" />;
+}
+
+export function ToolbarRevolveIcon() {
+  return <EducadOperationImage file="revolve.svg" />;
+}
+
+export function ToolbarShellIcon() {
+  return <EducadOperationImage file="shell.svg" />;
 }
 
 export function ToolbarExportIcon() {
@@ -222,13 +214,13 @@ export function ToolbarExportIcon() {
 }
 
 export function ToolbarWorkplaneIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/sketchforge/toolbar-workplane.svg" alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/workplane.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarResetWorkplaneIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/sketchforge/toolbar-reset-workplane.svg" alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/workplane-reset.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarDropToWorkplaneIcon() {
-  return <ToolbarCommandImage file="toolbar-drop-workplane.png" className="toolbar-user-art-icon" />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/drop-to-workplane.svg" alt="" draggable={false} />;
 }

@@ -1,9 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
-  <path d="M8 36.5h27.5V9H8z" fill="#e8f6fb" stroke="#247b9c" stroke-width="2" stroke-linejoin="round"/>
-  <path d="M14 9v27.5M20 9v27.5M26 9v27.5M32 9v27.5M8 15h27.5M8 21h27.5M8 27h27.5M8 33h27.5" fill="none" stroke="#9ccfe0" stroke-width="1"/>
-  <path d="M13 31.5 20.5 23l7 4 9.2-12.4" fill="none" stroke="#126f96" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="13" cy="31.5" r="2.2" fill="#fff" stroke="#126f96" stroke-width="1.8"/>
-  <circle cx="20.5" cy="23" r="2.2" fill="#fff" stroke="#126f96" stroke-width="1.8"/>
-  <circle cx="27.5" cy="27" r="2.2" fill="#fff" stroke="#126f96" stroke-width="1.8"/>
-  <path d="m33.7 17.8 5.8-5.8 2.8 2.8-5.8 5.8-3.8.9z" fill="#f4a33b" stroke="#965d19" stroke-width="1.4" stroke-linejoin="round"/>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="190" height="190" viewBox="0 0 190 190">
+  <g stroke="#292422" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Sketch plane -->
+    <path d="M21 126 94 84l75 43-74 43Z" fill="#cacace" stroke-width="8"/>
+    <path d="m37 126 57-32 59 33-58 34Z" fill="#ebeaeb" stroke-width="5"/>
+
+    <!-- Construction grid -->
+    <g fill="none" stroke="#afb2b6" stroke-width="3">
+      <path d="m56 115 58 34M76 104l58 34M96 94l57 33"/>
+      <path d="m57 150 57-33M38 139l57-33M76 160l58-33"/>
+    </g>
+
+    <!-- Drawn profile -->
+    <path d="m53 133 24-17 25 13 28-20" fill="none" stroke="#1688b1" stroke-width="9"/>
+    <g fill="#fff" stroke="#1688b1" stroke-width="5">
+      <circle cx="53" cy="133" r="6"/>
+      <circle cx="77" cy="116" r="6"/>
+      <circle cx="102" cy="129" r="6"/>
+    </g>
+
+    <!-- Pencil -->
+    <path d="m63 105 64-64 22 22-64 64-29 8Z" fill="#f2a640" stroke-width="8"/>
+    <path d="m127 41 12-12q5-5 10 0l13 13q5 5 0 10l-13 11Z" fill="#cacace" stroke-width="8"/>
+    <path d="m63 105 22 22-29 8Z" fill="#ebeaeb" stroke-width="6"/>
+    <path d="m56 135 9-3-6-6Z" fill="#292422" stroke="none"/>
+    <path d="m119 49 22 22" fill="none" stroke-width="6"/>
+  </g>
 </svg>

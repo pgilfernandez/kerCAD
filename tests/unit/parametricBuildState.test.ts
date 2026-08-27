@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createStarterDocument } from "@/lib/parametricDocument";
+import { createObjectBooleanFeature, createStarterDocument } from "@/lib/parametricDocument";
 import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint, parametricObjectGeometryFingerprint } from "@/lib/parametricBuildState";
 import { addPrimitiveToSelection } from "@/lib/parametricObjects";
 
@@ -50,5 +50,19 @@ describe("parametric build state", () => {
 
     expect(parametricObjectGeometryFingerprint(document, firstId)).toBe(firstBefore);
     expect(parametricObjectGeometryFingerprint(document, second.objectId)).not.toBe(secondBefore);
+  });
+
+  it("invalidates a Boolean consumer when its reference object moves", () => {
+    const document = createStarterDocument(123);
+    const targetId = document.objects[0].id;
+    const source = addPrimitiveToSelection(document, null, "box");
+    const operation = createObjectBooleanFeature(1, source.objectId);
+    operation.objectId = targetId;
+    document.features.push(operation);
+    const before = parametricObjectGeometryFingerprint(document, targetId);
+
+    document.objects.find((object) => object.id === source.objectId)!.transform.position.y += 8;
+
+    expect(parametricObjectGeometryFingerprint(document, targetId)).not.toBe(before);
   });
 });
