@@ -33,13 +33,14 @@ import { canReorderParametricSelection, OBJECT_COLOR_PALETTE, parametricObjectTr
 import { parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import { parametricTextFontNames, updateParametricTextSketch } from "@/lib/parametricText";
 import { ToolbarBooleanModeIcon } from "@/components/icons";
+import { displayLengthToMillimeters, displayUnitLabel, millimetersToDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
 import type { ParametricDocument, ParametricFeature, ParametricObject } from "@/types/parametric";
 
 export type ModelSelectionKind = "object" | "feature";
 export type ModelSidebarMode = "normal" | "simplified";
 export type ModelTreeSelection = ParametricTreeSelection;
 
-const NumericStepContext = createContext({ input: 0.5, slider: 0.1 });
+const NumericStepContext = createContext({ input: 0.5, slider: 0.1, displayUnit: "mm" as ParametricDisplayUnit });
 
 type Props = {
   document: ParametricDocument;
@@ -47,6 +48,7 @@ type Props = {
   mode: ModelSidebarMode;
   editingOriginObjectId: string | null;
   gridStep: number;
+  displayUnit?: ParametricDisplayUnit;
   onSelectionChange: (selection: ModelTreeSelection[]) => void;
   onReorderSelection: (direction: "up" | "down") => void;
   onRenameSelection: (name: string) => void;
@@ -84,6 +86,7 @@ export function ParametricModelSidebar({
   mode,
   editingOriginObjectId,
   gridStep,
+  displayUnit = "mm",
   onSelectionChange,
   onReorderSelection,
   onRenameSelection,
@@ -172,7 +175,7 @@ export function ParametricModelSidebar({
   };
 
   return (
-    <NumericStepContext.Provider value={{ input: Math.max(0.0001, gridStep / 2), slider: Math.max(0.0001, gridStep / 10) }}><>
+    <NumericStepContext.Provider value={{ input: Math.max(0.0001, gridStep / 2), slider: Math.max(0.0001, gridStep / 10), displayUnit }}><>
     <aside className={`educad-model-sidebar ${mode}`} aria-label="Modelo paramétrico">
         <section className="educad-model-tree">
           <div ref={objectListRef} className="educad-object-list">
@@ -736,15 +739,23 @@ function DeferredTextInput({ value, maxLength, onCommit }: { value: string; maxL
 }
 
 function DeferredNumberInput({ value, min, max, step, unit, onCommit }: { value: number; min?: number; max?: number; step: number; unit?: string; onCommit: (value: number) => void }) {
-  const [draft, setDraft] = useState(String(value));
+  const { displayUnit } = useContext(NumericStepContext);
+  const isLength = unit === "mm";
+  const toDisplay = (next: number) => isLength ? millimetersToDisplayLength(next, displayUnit) : next;
+  const toInternal = (next: number) => isLength ? displayLengthToMillimeters(next, displayUnit) : next;
+  const displayValue = toDisplay(value);
+  const displayMin = min === undefined ? undefined : toDisplay(min);
+  const displayMax = max === undefined ? undefined : toDisplay(max);
+  const displayStep = toDisplay(step);
+  const [draft, setDraft] = useState(String(displayValue));
   const [editing, setEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => { if (!editing) setDraft(String(value)); }, [editing, value]);
+  useEffect(() => { if (!editing) setDraft(String(displayValue)); }, [displayUnit, displayValue, editing]);
   const steppedValue = (direction: 1 | -1) => {
     const parsed = Number(draft.replace(",", "."));
-    const base = Number.isFinite(parsed) ? parsed : value;
-    const next = Math.round((base + direction * step) * 1e10) / 1e10;
-    return Math.min(max ?? Number.POSITIVE_INFINITY, Math.max(min ?? Number.NEGATIVE_INFINITY, next));
+    const base = Number.isFinite(parsed) ? parsed : displayValue;
+    const next = Math.round((base + direction * displayStep) * 1e10) / 1e10;
+    return Math.min(displayMax ?? Number.POSITIVE_INFINITY, Math.max(displayMin ?? Number.NEGATIVE_INFINITY, next));
   };
   const nudge = (direction: 1 | -1) => {
     setEditing(true);
@@ -755,24 +766,26 @@ function DeferredNumberInput({ value, min, max, step, unit, onCommit }: { value:
     setEditing(false);
     const parsed = Number(draft.replace(",", "."));
     if (!Number.isFinite(parsed)) {
-      setDraft(String(value));
+      setDraft(String(displayValue));
       return;
     }
-    const next = Math.min(max ?? Number.POSITIVE_INFINITY, Math.max(min ?? Number.NEGATIVE_INFINITY, parsed));
-    setDraft(String(next));
-    if (next !== value) onCommit(next);
+    const nextDisplay = Math.min(displayMax ?? Number.POSITIVE_INFINITY, Math.max(displayMin ?? Number.NEGATIVE_INFINITY, parsed));
+    const next = toInternal(nextDisplay);
+    setDraft(String(nextDisplay));
+    if (Math.abs(next - value) > 1e-10) onCommit(next);
   };
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") event.currentTarget.blur();
     else if (event.key === "Escape") {
-      setDraft(String(value));
+      setDraft(String(displayValue));
       event.currentTarget.blur();
     } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
       event.preventDefault();
       nudge(event.key === "ArrowUp" ? 1 : -1);
     }
   };
-  return <span className="educad-number-input" onWheel={(event) => { event.preventDefault(); nudge(event.deltaY < 0 ? 1 : -1); }}><input ref={inputRef} type="text" inputMode="decimal" value={draft} onFocus={() => setEditing(true)} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={handleKeyDown} />{unit ? <small>{unit}</small> : null}<span className="educad-number-steppers"><button type="button" tabIndex={-1} aria-label="Aumentar valor" title="Aumentar" onPointerDown={(event) => { event.preventDefault(); nudge(1); }}>▲</button><button type="button" tabIndex={-1} aria-label="Disminuir valor" title="Disminuir" onPointerDown={(event) => { event.preventDefault(); nudge(-1); }}>▼</button></span></span>;
+  const visibleUnit = isLength ? displayUnitLabel(displayUnit) : unit;
+  return <span className="educad-number-input" onWheel={(event) => { event.preventDefault(); nudge(event.deltaY < 0 ? 1 : -1); }}><input ref={inputRef} type="text" inputMode="decimal" value={draft} onFocus={() => setEditing(true)} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={handleKeyDown} />{visibleUnit ? <small>{visibleUnit}</small> : null}<span className="educad-number-steppers"><button type="button" tabIndex={-1} aria-label="Aumentar valor" title="Aumentar" onPointerDown={(event) => { event.preventDefault(); nudge(1); }}>▲</button><button type="button" tabIndex={-1} aria-label="Disminuir valor" title="Disminuir" onPointerDown={(event) => { event.preventDefault(); nudge(-1); }}>▼</button></span></span>;
 }
 
 function BoundedNumberField({ label, value, min, max, unit = "mm", onChange }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (value: number) => void }) {

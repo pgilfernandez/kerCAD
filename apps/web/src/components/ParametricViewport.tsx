@@ -12,6 +12,7 @@ import { AdaptiveViewportResolution, viewportPerformanceOptions, viewportRenderP
 import { orthographicTouchTargetWorldSize, perspectiveTouchTargetWorldSize, viewportPointerDragIntent, type ViewportPointerDragIntent } from "@/lib/viewportPointer";
 import { parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
 import { ToolbarBooleanModeIcon } from "@/components/icons";
+import { displayLengthToMillimeters, displayUnitLabel, formatDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
 import type { ParametricDocument, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, RenderMesh, SketchFeature } from "@/types/parametric";
 
 export type CameraView = { name: "iso" | "top" | "front" | "right" | "zoom-in" | "zoom-out" | "home" | "fit" | "selection" | "custom"; token: number; direction?: [number, number, number] };
@@ -120,6 +121,7 @@ type Props = {
   renderQuality?: ViewportRenderQuality;
   displayMode?: ViewportDisplayMode;
   shadingMode?: ViewportShadingMode;
+  displayUnit?: ParametricDisplayUnit;
   selection?: ViewportSelection | null;
   snap?: number;
   onShapeParameterChange?: (parameter: ShapeParameter, value: number) => void;
@@ -405,7 +407,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
@@ -558,16 +560,19 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
 
   const beginDimensionEdit = (axis: ViewportDimensionAxis, input: HTMLInputElement) => {
     dimensionPinnedRef.current.add(axis);
-    input.value = formatViewportDimension(dimensionValue(axis));
+    const scalar = selectionRef.current?.shapeParameters?.shape === "polygon" && axis === "y";
+    input.value = scalar ? formatViewportDimension(dimensionValue(axis)) : formatDisplayLength(dimensionValue(axis), displayUnit);
     window.requestAnimationFrame(() => input.select());
     invalidateRef.current();
   };
 
   const commitDimensionEdit = (axis: ViewportDimensionAxis, input: HTMLInputElement) => {
     const selected = selectionRef.current;
-    const value = Number.parseFloat(input.value.replace(",", "."));
+    const parsedValue = Number.parseFloat(input.value.replace(",", "."));
+    const scalar = selected?.shapeParameters?.shape === "polygon" && axis === "y";
+    const value = scalar ? parsedValue : displayLengthToMillimeters(parsedValue, displayUnit);
     if (!selected || !Number.isFinite(value)) {
-      input.value = formatViewportDimension(dimensionValue(axis));
+      input.value = scalar ? formatViewportDimension(dimensionValue(axis)) : formatDisplayLength(dimensionValue(axis), displayUnit);
       invalidateRef.current();
       return;
     }
@@ -577,7 +582,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       const parameter = axis === "x" ? parameters.shape === "text" ? null : boxLike ? "width" : parameters.shape === "cone" ? "baseRadius" : parameters.shape === "tube" || parameters.shape === "gear" ? "outerRadius" : parameters.shape === "torus" ? "majorRadius" : "radius" : axis === "y" ? parameters.shape === "text" ? "size" : parameters.shape === "cone" ? "topRadius" : parameters.shape === "tube" ? "innerRadius" : parameters.shape === "polygon" ? "sides" : boxLike ? "depth" : null : axis === "z" ? parameters.shape === "torus" ? "tubeRadius" : parameters.shape !== "sphere" ? "height" : null : null;
       if (parameter && (parameter === "topRadius" ? value >= 0 : value > 0)) shapeParameterRef.current?.(parameter, value);
     }
-    input.value = formatViewportDimension(dimensionValue(axis));
+    input.value = scalar ? formatViewportDimension(dimensionValue(axis)) : formatDisplayLength(dimensionValue(axis), displayUnit);
     dimensionPinnedRef.current.add(axis);
     invalidateRef.current();
   };
@@ -686,7 +691,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           : parameters?.shape === "text"
             ? ["", "Tamaño", "Alto"]
             : [parameters?.shape === "box" || parameters?.shape === "roundedBox" || parameters?.shape === "pyramid" || parameters?.shape === "wedge" || parameters?.shape === "roof" || parameters?.shape === "roundRoof" ? "Ancho" : "Radio", "Largo", "Alto"];
-      const units = parameters?.shape === "polygon" ? ["mm", "", "mm"] : ["mm", "mm", "mm"];
+      const lengthUnit = displayUnitLabel(displayUnit);
+      const units = parameters?.shape === "polygon" ? [lengthUnit, "", lengthUnit] : [lengthUnit, lengthUnit, lengthUnit];
       const offsets = [[0, 18], [-24, 0], [22, 0]];
       points.forEach((point, index) => {
         const label = labels[index];
@@ -704,7 +710,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         label.style.left = `${(projected.x + 1) * host.clientWidth / 2}px`;
         label.style.top = `${(1 - projected.y) * host.clientHeight / 2}px`;
         label.style.transform = `translate(-50%, -50%) translate(${offsets[index][0]}px, ${offsets[index][1]}px)`;
-        if (document.activeElement !== label) label.value = `${names[index]} ${formatViewportDimension(values[index])} ${units[index]}`;
+        if (document.activeElement !== label) label.value = `${names[index]} ${units[index] ? formatDisplayLength(values[index], displayUnit) : formatViewportDimension(values[index])} ${units[index]}`;
       });
     };
     const updateOperationModeSelector = () => {
@@ -2108,7 +2114,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       [dimensionXRef.current, dimensionYRef.current, dimensionZRef.current].forEach((label) => { if (label) label.style.display = "none"; });
       invalidateRef.current = () => undefined;
     };
-  }, [projection, renderQuality, shadingMode]);
+  }, [displayUnit, projection, renderQuality, shadingMode]);
 
   useEffect(() => {
     const layer = faceExtrudeHandleRef.current;

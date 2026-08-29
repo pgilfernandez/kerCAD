@@ -50,6 +50,7 @@ import { mergeParametricProjects } from "@/lib/parametricProjectMerge";
 import { importStepAsParametricObject } from "@/lib/parametricStepImport";
 import { importReferenceMesh, parametricReferenceRenderRecords } from "@/lib/parametricReferenceImport";
 import { assertImportByteLimit } from "@/lib/parametricImportLimits";
+import { displayLengthToMillimeters, displayUnitLabel, millimetersToDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import { circleSketchPointId, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, solveSketchConstraints } from "@/lib/sketchConstraints";
 import { analyzeSketchConstraints } from "@/lib/sketchConstraintAnalysis";
@@ -106,6 +107,7 @@ const POSITION_TRIAD_VISIBLE_STORAGE_KEY = "educad.viewport.position-triad";
 const ROTATION_TRIAD_VISIBLE_STORAGE_KEY = "educad.viewport.rotation-triad";
 const DISPLAY_MODE_STORAGE_KEY = "educad.viewport.display-mode";
 const SHADING_MODE_STORAGE_KEY = "educad.viewport.shading-mode";
+const DISPLAY_UNIT_STORAGE_KEY = "educad.display-unit";
 type Notice = { type: "ok" | "info" | "error"; text: string } | null;
 
 function downloadBlob(blob: Blob, name: string) {
@@ -252,6 +254,7 @@ export function SketchForgeParametricEditor() {
   const [renderQuality, setRenderQuality] = useState<ViewportRenderQuality>("normal");
   const [displayMode, setDisplayMode] = useState<ViewportDisplayMode>("solid");
   const [shadingMode, setShadingMode] = useState<ViewportShadingMode>("shadows");
+  const [displayUnit, setDisplayUnit] = useState<ParametricDisplayUnit>("mm");
   const [showFps, setShowFps] = useState(false);
   const [showPositionTriad, setShowPositionTriad] = useState(true);
   const [showRotationTriad, setShowRotationTriad] = useState(true);
@@ -366,6 +369,7 @@ export function SketchForgeParametricEditor() {
       if (storedDisplayMode === "solid" || storedDisplayMode === "wireframe") setDisplayMode(storedDisplayMode);
       const storedShadingMode = localStorage.getItem(SHADING_MODE_STORAGE_KEY);
       if (storedShadingMode === "shadows" || storedShadingMode === "basic" || storedShadingMode === "unlit") setShadingMode(storedShadingMode);
+      if (localStorage.getItem(DISPLAY_UNIT_STORAGE_KEY) === "in") setDisplayUnit("in");
       setShowFps(localStorage.getItem(FPS_VISIBLE_STORAGE_KEY) === "true");
       setShowPositionTriad(localStorage.getItem(POSITION_TRIAD_VISIBLE_STORAGE_KEY) !== "false");
       setShowRotationTriad(localStorage.getItem(ROTATION_TRIAD_VISIBLE_STORAGE_KEY) !== "false");
@@ -399,6 +403,10 @@ export function SketchForgeParametricEditor() {
   useEffect(() => {
     if (hydrated) localStorage.setItem(SHADING_MODE_STORAGE_KEY, shadingMode);
   }, [hydrated, shadingMode]);
+
+  useEffect(() => {
+    if (hydrated) localStorage.setItem(DISPLAY_UNIT_STORAGE_KEY, displayUnit);
+  }, [displayUnit, hydrated]);
 
   useEffect(() => {
     if (hydrated) localStorage.setItem(FPS_VISIBLE_STORAGE_KEY, String(showFps));
@@ -1568,8 +1576,9 @@ export function SketchForgeParametricEditor() {
   };
   const commitGridNumber = (event: ReactFocusEvent<HTMLInputElement>, key: "width" | "depth" | "gridStep" | "activeSizePercent", minimum: number, maximum: number, fallback: number) => {
     const parsed = Number(event.currentTarget.value.replace(",", "."));
-    const value = Math.min(maximum, Math.max(minimum, Number.isFinite(parsed) ? parsed : fallback));
-    event.currentTarget.value = String(value);
+    const entered = key === "activeSizePercent" ? parsed : displayLengthToMillimeters(parsed, displayUnit);
+    const value = Math.min(maximum, Math.max(minimum, Number.isFinite(entered) ? entered : fallback));
+    event.currentTarget.value = String(key === "activeSizePercent" ? value : millimetersToDisplayLength(value, displayUnit));
     updateGridSettings({ [key]: value });
   };
 
@@ -2380,7 +2389,7 @@ export function SketchForgeParametricEditor() {
           pendingMeasurementStart={sketchMeasureStart}
           initialSnap={closestSketchGrid(document.workplane.gridStep, document.workplane.snapToGrid)}
           exactSnapStep={document.workplane.snapToGrid ? document.workplane.gridStep : 0}
-          initialWorkspace={{ ...DEFAULT_WORKPLANE_WORKSPACE, width: document.workplane.width, depth: document.workplane.depth, sizePreset: `${document.workplane.width} x ${document.workplane.depth} mm`, gridBlockSize: document.workplane.gridStep, gridBlockPreset: `${document.workplane.gridStep} mm`, showGrid: document.workplane.gridVisible }}
+          initialWorkspace={{ ...DEFAULT_WORKPLANE_WORKSPACE, units: displayUnit === "in" ? "Imperial" : "Metric (Default)", scale: displayUnit === "in" ? "1:1 (inches)" : "1:1 (millimeters)", width: document.workplane.width, depth: document.workplane.depth, sizePreset: `${document.workplane.width} x ${document.workplane.depth} mm`, gridBlockSize: document.workplane.gridStep, gridBlockPreset: `${document.workplane.gridStep} mm`, showGrid: document.workplane.gridVisible }}
           onPlanePoint={addSketchPoint}
           onFreehandContour={(points, smooth) => {
             try {
@@ -2558,6 +2567,7 @@ export function SketchForgeParametricEditor() {
           renderQuality={renderQuality}
           displayMode={displayMode}
           shadingMode={shadingMode}
+          displayUnit={displayUnit}
           selection={originEditObjectId || placingWorkplane || selectingTopologyFaces || selectingTopologyEdges ? null : selectedBox}
           snap={snapAmount}
           onOperationModeChange={setSelectedOperationMode}
@@ -2663,9 +2673,9 @@ export function SketchForgeParametricEditor() {
           <header><div><strong>Rejilla</strong></div><button type="button" aria-label="Cerrar" onClick={() => setWorkplaneOpen(false)}><X size={17} /></button></header>
           <label><span>Mostrar suelo XY</span><input type="checkbox" checked={workplaneDraft.gridVisible} onChange={(event) => updateGridSettings({ gridVisible: event.target.checked })} /></label>
           <label><span>Tamaño del plano activo</span><span className="educad-number-input"><input type="number" min="2" max="100" step="1" defaultValue={workplaneDraft.activeSizePercent} onBlur={(event) => commitGridNumber(event, "activeSizePercent", 2, 100, workplaneDraft.activeSizePercent)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>%</small></span></label>
-          <label><span>Ancho (eje X)</span><span className="educad-number-input"><input type="number" min="1" max="2000" step="1" defaultValue={workplaneDraft.width} onBlur={(event) => commitGridNumber(event, "width", 1, 2000, workplaneDraft.width)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>mm</small></span></label>
-          <label><span>Profundo (eje Y)</span><span className="educad-number-input"><input type="number" min="1" max="2000" step="1" defaultValue={workplaneDraft.depth} onBlur={(event) => commitGridNumber(event, "depth", 1, 2000, workplaneDraft.depth)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>mm</small></span></label>
-          <label><span>Paso de líneas</span><span className="educad-number-input"><input type="number" min="0.1" max="200" step="0.1" defaultValue={workplaneDraft.gridStep} onBlur={(event) => commitGridNumber(event, "gridStep", 0.1, 200, workplaneDraft.gridStep)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>mm</small></span></label>
+          <label><span>Ancho (eje X)</span><span className="educad-number-input"><input key={`width-${displayUnit}`} type="number" min={millimetersToDisplayLength(1, displayUnit)} max={millimetersToDisplayLength(2000, displayUnit)} step={millimetersToDisplayLength(1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.width, displayUnit)} onBlur={(event) => commitGridNumber(event, "width", 1, 2000, workplaneDraft.width)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
+          <label><span>Profundo (eje Y)</span><span className="educad-number-input"><input key={`depth-${displayUnit}`} type="number" min={millimetersToDisplayLength(1, displayUnit)} max={millimetersToDisplayLength(2000, displayUnit)} step={millimetersToDisplayLength(1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.depth, displayUnit)} onBlur={(event) => commitGridNumber(event, "depth", 1, 2000, workplaneDraft.depth)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
+          <label><span>Paso de líneas</span><span className="educad-number-input"><input key={`step-${displayUnit}`} type="number" min={millimetersToDisplayLength(0.1, displayUnit)} max={millimetersToDisplayLength(200, displayUnit)} step={millimetersToDisplayLength(0.1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.gridStep, displayUnit)} onBlur={(event) => commitGridNumber(event, "gridStep", 0.1, 200, workplaneDraft.gridStep)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
         </div> : null}
         <button
           className={`educad-sidebar-mode-control ${modelSidebarMode}`}
@@ -2695,6 +2705,7 @@ export function SketchForgeParametricEditor() {
           selection={modelSelection}
           mode={modelSidebarMode}
           gridStep={document.workplane.gridStep}
+          displayUnit={displayUnit}
           editingOriginObjectId={originEditObjectId}
           onSelectionChange={setModelSelection}
           onReorderSelection={reorderSelection}
@@ -2775,6 +2786,7 @@ export function SketchForgeParametricEditor() {
           <label><span>Nombre</span><input value={document.name} onFocus={beginTransaction} onBlur={finishTransaction} onChange={(event) => mutate((draft) => { draft.name = event.target.value; })} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); if (event.key === "Escape") { cancelTransaction(); event.currentTarget.blur(); } }} /></label>
           <label><span>Renderizado</span><select value={renderQuality} onChange={(event) => setRenderQuality(event.target.value as ViewportRenderQuality)}><option value="normal">Normal (suavizado)</option><option value="optimized">Optimizar rendimiento</option></select></label>
           <label><span>Sombreado</span><select value={shadingMode} onChange={(event) => setShadingMode(event.target.value as ViewportShadingMode)}><option value="shadows">Sombras</option><option value="basic">Sombras básicas</option><option value="unlit">Sin sombreado</option></select></label>
+          <label><span>Unidades</span><select value={displayUnit} onChange={(event) => setDisplayUnit(event.target.value as ParametricDisplayUnit)}><option value="mm">Milímetros (mm)</option><option value="in">Pulgadas (in)</option></select></label>
           <label className="educad-settings-toggle"><span>Mostrar FPS</span><input type="checkbox" checked={showFps} onChange={(event) => setShowFps(event.target.checked)} /></label>
           <p>El proyecto se guarda automáticamente. El renderizado, el sombreado y el contador FPS se recuerdan en este dispositivo.</p>
         </aside>
