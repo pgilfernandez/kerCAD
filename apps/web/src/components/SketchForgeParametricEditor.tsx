@@ -3,11 +3,10 @@
 import { Anchor, Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, CircleDot, CornerDownRight, Diameter, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Move3d, MoveHorizontal, MoveVertical, MousePointer2, PenLine, PenTool, Plus, Rotate3d, RotateCcw, Ruler, Scissors, Spline, Split, Type, Waves, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent as ReactFocusEvent } from "react";
 import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
-import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyEdgePick, type TopologyFacePick } from "@/components/ParametricViewport";
+import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyEdgePick, type TopologyFacePick, type ViewportDisplayMode, type ViewportShadingMode } from "@/components/ParametricViewport";
 import { SketchWorkspace, type SketchMeasurement, type SketchSelection, type SketchTool } from "@/components/SketchWorkspace";
 import {
   ToolbarAlignIcon,
-  ToolbarBooleanModeIcon,
   ToolbarChamferIcon,
   ToolbarCopyIcon,
   ToolbarDropToWorkplaneIcon,
@@ -105,6 +104,8 @@ const RENDER_QUALITY_STORAGE_KEY = "educad.viewport.render-mode";
 const FPS_VISIBLE_STORAGE_KEY = "educad.viewport.show-fps";
 const POSITION_TRIAD_VISIBLE_STORAGE_KEY = "educad.viewport.position-triad";
 const ROTATION_TRIAD_VISIBLE_STORAGE_KEY = "educad.viewport.rotation-triad";
+const DISPLAY_MODE_STORAGE_KEY = "educad.viewport.display-mode";
+const SHADING_MODE_STORAGE_KEY = "educad.viewport.shading-mode";
 type Notice = { type: "ok" | "info" | "error"; text: string } | null;
 
 function downloadBlob(blob: Blob, name: string) {
@@ -249,6 +250,8 @@ export function SketchForgeParametricEditor() {
   const [view, setView] = useState<CameraView>({ name: "iso", token: 0 });
   const [projection, setProjection] = useState<CameraProjection>("orthographic");
   const [renderQuality, setRenderQuality] = useState<ViewportRenderQuality>("normal");
+  const [displayMode, setDisplayMode] = useState<ViewportDisplayMode>("solid");
+  const [shadingMode, setShadingMode] = useState<ViewportShadingMode>("shadows");
   const [showFps, setShowFps] = useState(false);
   const [showPositionTriad, setShowPositionTriad] = useState(true);
   const [showRotationTriad, setShowRotationTriad] = useState(true);
@@ -359,6 +362,10 @@ export function SketchForgeParametricEditor() {
     try {
       const storedQuality = localStorage.getItem(RENDER_QUALITY_STORAGE_KEY);
       if (storedQuality === "normal" || storedQuality === "optimized") setRenderQuality(storedQuality);
+      const storedDisplayMode = localStorage.getItem(DISPLAY_MODE_STORAGE_KEY);
+      if (storedDisplayMode === "solid" || storedDisplayMode === "wireframe") setDisplayMode(storedDisplayMode);
+      const storedShadingMode = localStorage.getItem(SHADING_MODE_STORAGE_KEY);
+      if (storedShadingMode === "shadows" || storedShadingMode === "basic" || storedShadingMode === "unlit") setShadingMode(storedShadingMode);
       setShowFps(localStorage.getItem(FPS_VISIBLE_STORAGE_KEY) === "true");
       setShowPositionTriad(localStorage.getItem(POSITION_TRIAD_VISIBLE_STORAGE_KEY) !== "false");
       setShowRotationTriad(localStorage.getItem(ROTATION_TRIAD_VISIBLE_STORAGE_KEY) !== "false");
@@ -384,6 +391,14 @@ export function SketchForgeParametricEditor() {
   useEffect(() => {
     if (hydrated) localStorage.setItem(RENDER_QUALITY_STORAGE_KEY, renderQuality);
   }, [hydrated, renderQuality]);
+
+  useEffect(() => {
+    if (hydrated) localStorage.setItem(DISPLAY_MODE_STORAGE_KEY, displayMode);
+  }, [displayMode, hydrated]);
+
+  useEffect(() => {
+    if (hydrated) localStorage.setItem(SHADING_MODE_STORAGE_KEY, shadingMode);
+  }, [hydrated, shadingMode]);
 
   useEffect(() => {
     if (hydrated) localStorage.setItem(FPS_VISIBLE_STORAGE_KEY, String(showFps));
@@ -2297,9 +2312,6 @@ export function SketchForgeParametricEditor() {
           <div className="toolbar-spacer" />
           <div className="tool-group right">
             <ToolbarSection label="Modify" className="toolbar-modify-section">
-              <Tool label="Añadir" enabled={Boolean(selectedOperationId)} active={selectedOperation?.operation === "add"} onClick={() => setSelectedOperationMode("add")}><ToolbarBooleanModeIcon mode="add" /></Tool>
-              <Tool label="Hueco" enabled={Boolean(selectedOperationId)} active={selectedOperation?.operation === "cut"} onClick={() => setSelectedOperationMode("cut")}><ToolbarBooleanModeIcon mode="hole" /></Tool>
-              <Tool label="Común" enabled={Boolean(selectedOperationId)} active={selectedOperation?.operation === "intersect"} onClick={() => setSelectedOperationMode("intersect")}><ToolbarBooleanModeIcon mode="common" /></Tool>
               <div data-educad-popup="align" className="educad-align-tool">
                 <Tool label="Alinear" enabled={modelSelection.length > 1} active={alignOpen} onClick={() => setAlignOpen((value) => !value)}><ToolbarAlignIcon /></Tool>
                 {alignOpen ? <div className="educad-align-popover" role="dialog" aria-label="Alinear selección">
@@ -2544,8 +2556,11 @@ export function SketchForgeParametricEditor() {
           view={view}
           projection={projection}
           renderQuality={renderQuality}
+          displayMode={displayMode}
+          shadingMode={shadingMode}
           selection={originEditObjectId || placingWorkplane || selectingTopologyFaces || selectingTopologyEdges ? null : selectedBox}
           snap={snapAmount}
+          onOperationModeChange={setSelectedOperationMode}
           onShapeParameterChange={(parameter, value) => {
             if (!selectedOperationId) return;
             mutate((draft) => updateParametricShapeParameter(draft, selectedOperationId, parameter, value));
@@ -2663,6 +2678,9 @@ export function SketchForgeParametricEditor() {
         <div className="camera-controls" aria-label="Controles de cámara">
           <button className={showPositionTriad ? "active" : ""} aria-label={showPositionTriad ? "Ocultar triada de posición" : "Mostrar triada de posición"} aria-pressed={showPositionTriad} title="Triada de posición" onClick={() => setShowPositionTriad((visible) => !visible)}><Move3d size={22} /></button>
           <button className={showRotationTriad ? "active" : ""} aria-label={showRotationTriad ? "Ocultar triada de rotación" : "Mostrar triada de rotación"} aria-pressed={showRotationTriad} title="Triada de rotación" onClick={() => setShowRotationTriad((visible) => !visible)}><Rotate3d size={22} /></button>
+          <button className={displayMode === "wireframe" ? "active" : ""} aria-label={displayMode === "wireframe" ? "Desactivar vista alámbrica" : "Activar vista alámbrica"} aria-pressed={displayMode === "wireframe"} title="Vista alámbrica" onClick={() => setDisplayMode((current) => current === "solid" ? "wireframe" : "solid")}>
+            <svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path d="m12 2 8 4.5v11L12 22l-8-4.5v-11L12 2Zm0 0v9m8-4.5-8 4.5-8-4.5M12 11v11m-8-4.5 8-4.5 8 4.5" fill="none" stroke="currentColor" strokeWidth="1.55" strokeLinejoin="round" /></svg>
+          </button>
           <button aria-label={projection === "perspective" ? "Cambiar a vista ortográfica" : "Cambiar a perspectiva"} title={projection === "perspective" ? "Perspectiva" : "Ortográfica"} aria-pressed={projection === "orthographic"} onClick={() => setProjection((current) => current === "perspective" ? "orthographic" : "perspective")}><Box size={22} /></button>
           <button aria-label="Vista inicial" onClick={() => setCamera("home")}><Home size={24} /></button>
           <button aria-label="Encuadrar todo" title="Encuadrar todo" onClick={() => setCamera("fit")}><Maximize2 size={21} /></button>
@@ -2756,8 +2774,9 @@ export function SketchForgeParametricEditor() {
           <header><strong>Ajustes del diseño</strong><button onClick={() => setSettingsOpen(false)}><X /></button></header>
           <label><span>Nombre</span><input value={document.name} onFocus={beginTransaction} onBlur={finishTransaction} onChange={(event) => mutate((draft) => { draft.name = event.target.value; })} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); if (event.key === "Escape") { cancelTransaction(); event.currentTarget.blur(); } }} /></label>
           <label><span>Renderizado</span><select value={renderQuality} onChange={(event) => setRenderQuality(event.target.value as ViewportRenderQuality)}><option value="normal">Normal (suavizado)</option><option value="optimized">Optimizar rendimiento</option></select></label>
+          <label><span>Sombreado</span><select value={shadingMode} onChange={(event) => setShadingMode(event.target.value as ViewportShadingMode)}><option value="shadows">Sombras</option><option value="basic">Sombras básicas</option><option value="unlit">Sin sombreado</option></select></label>
           <label className="educad-settings-toggle"><span>Mostrar FPS</span><input type="checkbox" checked={showFps} onChange={(event) => setShowFps(event.target.checked)} /></label>
-          <p>El proyecto se guarda automáticamente. El renderizado y el contador FPS se recuerdan en este dispositivo.</p>
+          <p>El proyecto se guarda automáticamente. El renderizado, el sombreado y el contador FPS se recuerdan en este dispositivo.</p>
         </aside>
       )}
 

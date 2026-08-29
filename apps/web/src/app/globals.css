@@ -389,6 +389,39 @@ button {
 .pcad-stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
 .parametric-viewport { position: absolute; inset: 0; }
 .parametric-viewport canvas { display: block; width: 100%; height: 100%; outline: none; touch-action: none; }
+.educad-viewport-operation-modes {
+  position: absolute;
+  z-index: 7;
+  display: none;
+  gap: 3px;
+  padding: 4px;
+  background: rgba(247, 250, 252, 0.96);
+  border: 1px solid rgba(173, 193, 205, 0.9);
+  border-radius: 8px;
+  box-shadow: 0 5px 16px rgba(28, 55, 72, 0.2);
+  transform: translate(-50%, -100%);
+  backdrop-filter: blur(8px);
+}
+.educad-viewport-operation-modes button,
+.educad-operation-mode-buttons button {
+  display: grid;
+  place-items: center;
+  color: #617382;
+  background: #fff;
+  border: 1px solid #cbd7df;
+  cursor: pointer;
+}
+.educad-viewport-operation-modes button { width: 31px; height: 29px; padding: 2px; border-radius: 5px; }
+.educad-viewport-operation-modes button img,
+.educad-viewport-operation-modes button svg { width: 24px; height: 24px; object-fit: contain; }
+.educad-viewport-operation-modes button:hover,
+.educad-operation-mode-buttons button:hover { background: #edf5f8; }
+.educad-viewport-operation-modes .mode-add.active,
+.educad-operation-mode-buttons .mode-add.active { color: #167d54; background: #ddf4e8; border-color: #66b994; }
+.educad-viewport-operation-modes .mode-cut.active,
+.educad-operation-mode-buttons .mode-cut.active { color: #ba434c; background: #fbe4e6; border-color: #d98990; }
+.educad-viewport-operation-modes .mode-intersect.active,
+.educad-operation-mode-buttons .mode-intersect.active { color: #7f46a5; background: #efe3f6; border-color: #b58acb; }
 .parametric-selection-box {
   position: absolute;
   z-index: 5;
@@ -1245,6 +1278,20 @@ button {
 }
 
 .educad-feature-card > label:last-child { border-bottom: 0; }
+.educad-operation-mode-property {
+  display: grid;
+  min-height: 42px;
+  grid-template-columns: minmax(82px, 1fr) minmax(100px, 1.2fr);
+  align-items: center;
+  gap: 8px;
+  color: #5c7182;
+  border-bottom: 1px solid #edf1f4;
+  font-size: 9px;
+  font-weight: 800;
+}
+.educad-operation-mode-buttons { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; }
+.educad-operation-mode-buttons button { min-width: 0; height: 31px; padding: 3px; border-radius: 4px; }
+.educad-operation-mode-buttons svg { width: 22px; height: 22px; }
 .educad-feature-card > label.educad-range-property {
   display: block;
   padding: 8px 0 9px;

@@ -11,10 +11,13 @@ import { constrainViewportAxisDrag, coplanarFaceRegion, exactEdgeRegion, exactFa
 import { AdaptiveViewportResolution, viewportPerformanceOptions, viewportRenderProfile, type ViewportRenderQuality } from "@/lib/viewportPerformance";
 import { orthographicTouchTargetWorldSize, perspectiveTouchTargetWorldSize, viewportPointerDragIntent, type ViewportPointerDragIntent } from "@/lib/viewportPointer";
 import { parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
+import { ToolbarBooleanModeIcon } from "@/components/icons";
 import type { ParametricDocument, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, RenderMesh, SketchFeature } from "@/types/parametric";
 
 export type CameraView = { name: "iso" | "top" | "front" | "right" | "zoom-in" | "zoom-out" | "home" | "fit" | "selection" | "custom"; token: number; direction?: [number, number, number] };
 export type CameraProjection = "perspective" | "orthographic";
+export type ViewportDisplayMode = "solid" | "wireframe";
+export type ViewportShadingMode = "shadows" | "basic" | "unlit";
 export type CameraOrientation = { azimuth: number; polar: number };
 export type TopologyFacePick = {
   key: string;
@@ -115,9 +118,12 @@ type Props = {
   view: CameraView;
   projection?: CameraProjection;
   renderQuality?: ViewportRenderQuality;
+  displayMode?: ViewportDisplayMode;
+  shadingMode?: ViewportShadingMode;
   selection?: ViewportSelection | null;
   snap?: number;
   onShapeParameterChange?: (parameter: ShapeParameter, value: number) => void;
+  onOperationModeChange?: (operation: "add" | "cut" | "intersect") => void;
   onObjectOriginMove?: (objectId: string, position: { x: number; y: number; z: number }) => void;
   onObjectAxisMove?: (objectId: string, position: { x: number; y: number; z: number }) => void;
   onObjectRotate?: (objectId: string, axis: { x: number; y: number; z: number }, deltaDegrees: number, localAxis: "x" | "y" | "z") => void;
@@ -145,34 +151,39 @@ type CachedObjectRender = {
   geometryFingerprint: string | null;
   body: THREE.Mesh;
   edges: THREE.LineSegments;
+  wireframeEdges: LineSegments2;
+  referenceDisplayMode?: "solid" | "wireframe" | "solidEdges";
 };
 
 function setMaterialColor(material: THREE.Material, color: THREE.ColorRepresentation) {
-  if (material instanceof THREE.MeshLambertMaterial || material instanceof THREE.MeshStandardMaterial) material.color.set(color);
+  if (material instanceof THREE.MeshBasicMaterial || material instanceof THREE.MeshLambertMaterial || material instanceof THREE.MeshStandardMaterial) material.color.set(color);
 }
 
-function workplaneMaterial(quality: ViewportRenderQuality, color = "#ddf8ff", opacity = 0.68) {
+function workplaneMaterial(quality: ViewportRenderQuality, shading: ViewportShadingMode, color = "#ddf8ff", opacity = 0.68) {
+  if (shading === "unlit") return new THREE.MeshBasicMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide });
   return quality === "normal"
     ? new THREE.MeshStandardMaterial({ color, transparent: true, opacity, roughness: 1, metalness: 0, side: THREE.DoubleSide })
     : new THREE.MeshLambertMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide });
 }
 
-function objectMaterial(quality: ViewportRenderQuality, color: THREE.ColorRepresentation) {
+function objectMaterial(quality: ViewportRenderQuality, shading: ViewportShadingMode, color: THREE.ColorRepresentation) {
+  if (shading === "unlit") return new THREE.MeshBasicMaterial({ color, polygonOffset: true, polygonOffsetFactor: 1 });
   return quality === "normal"
     ? new THREE.MeshStandardMaterial({ color, roughness: 0.68, metalness: 0.03, polygonOffset: true, polygonOffsetFactor: 1 })
     : new THREE.MeshLambertMaterial({ color, polygonOffset: true, polygonOffsetFactor: 1 });
 }
 
-function referenceMaterial(quality: ViewportRenderQuality, color: THREE.ColorRepresentation, opacity: number) {
-  const material = objectMaterial(quality, color);
+function referenceMaterial(quality: ViewportRenderQuality, shading: ViewportShadingMode, color: THREE.ColorRepresentation, opacity: number) {
+  const material = objectMaterial(quality, shading, color);
   material.transparent = opacity < 1;
   material.opacity = opacity;
   material.depthWrite = opacity >= 1;
   return material;
 }
 
-function previewMaterial(quality: ViewportRenderQuality, color: THREE.ColorRepresentation, opacity: number) {
+function previewMaterial(quality: ViewportRenderQuality, shading: ViewportShadingMode, color: THREE.ColorRepresentation, opacity: number) {
   const shared = { color, transparent: opacity < 1, opacity, depthTest: false, depthWrite: false };
+  if (shading === "unlit") return new THREE.MeshBasicMaterial(shared);
   return quality === "normal"
     ? new THREE.MeshStandardMaterial({ ...shared, roughness: 0.7 })
     : new THREE.MeshLambertMaterial(shared);
@@ -258,13 +269,16 @@ function sketchOverlayPositions(feature: SketchFeature) {
 }
 
 function disposeCachedObjectRender(group: THREE.Group | null, cached: CachedObjectRender) {
-  group?.remove(cached.body, cached.edges);
+  group?.remove(cached.body, cached.edges, cached.wireframeEdges);
   cached.body.geometry.dispose();
   cached.edges.geometry.dispose();
+  cached.wireframeEdges.geometry.dispose();
   const bodyMaterials = Array.isArray(cached.body.material) ? cached.body.material : [cached.body.material];
   const edgeMaterials = Array.isArray(cached.edges.material) ? cached.edges.material : [cached.edges.material];
+  const wireframeMaterials = Array.isArray(cached.wireframeEdges.material) ? cached.wireframeEdges.material : [cached.wireframeEdges.material];
   bodyMaterials.forEach((material) => material.dispose());
   edgeMaterials.forEach((material) => material.dispose());
+  wireframeMaterials.forEach((material) => material.dispose());
 }
 
 function disposeObjectOriginMarker(marker: THREE.Object3D) {
@@ -391,12 +405,13 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", selection = null, snap = 1, onShapeParameterChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
   const dimensionYRef = useRef<HTMLInputElement>(null);
   const dimensionZRef = useRef<HTMLInputElement>(null);
+  const operationModeSelectorRef = useRef<HTMLDivElement>(null);
   const dimensionPinnedRef = useRef(new Set<ViewportDimensionAxis>());
   const dimensionHoverRef = useRef(new Set<ViewportDimensionAxis>());
   const dimensionHoverTimerRef = useRef<number | null>(null);
@@ -582,10 +597,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const resolution = new AdaptiveViewportResolution(window.devicePixelRatio, viewportPerformanceOptions(renderQuality));
     const renderer = new THREE.WebGLRenderer({ antialias: renderProfile.antialias, alpha: false, powerPreference: "high-performance" });
     renderer.setPixelRatio(resolution.pixelRatio);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = renderQuality === "normal" ? THREE.PCFShadowMap : THREE.BasicShadowMap;
-    renderer.shadowMap.autoUpdate = false;
-    renderer.shadowMap.needsUpdate = true;
+    renderer.shadowMap.enabled = shadingMode !== "unlit";
+    renderer.shadowMap.type = shadingMode === "basic" || renderQuality === "optimized" ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
+    renderer.shadowMap.autoUpdate = shadingMode !== "unlit";
+    renderer.shadowMap.needsUpdate = shadingMode !== "unlit";
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     host.appendChild(renderer.domElement);
 
@@ -692,6 +707,48 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         if (document.activeElement !== label) label.value = `${names[index]} ${formatViewportDimension(values[index])} ${units[index]}`;
       });
     };
+    const updateOperationModeSelector = () => {
+      const selector = operationModeSelectorRef.current;
+      const visualRoot = selectionVisualRootRef.current;
+      if (!selector || !visualRoot || !selectionRef.current?.operationPreview) {
+        if (selector) selector.style.display = "none";
+        return;
+      }
+      const bounds = new THREE.Box3().setFromObject(visualRoot);
+      if (bounds.isEmpty()) {
+        selector.style.display = "none";
+        return;
+      }
+      const projected = [
+        [bounds.min.x, bounds.min.y, bounds.min.z], [bounds.max.x, bounds.min.y, bounds.min.z],
+        [bounds.min.x, bounds.max.y, bounds.min.z], [bounds.max.x, bounds.max.y, bounds.min.z],
+        [bounds.min.x, bounds.min.y, bounds.max.z], [bounds.max.x, bounds.min.y, bounds.max.z],
+        [bounds.min.x, bounds.max.y, bounds.max.z], [bounds.max.x, bounds.max.y, bounds.max.z],
+      ].map(([x, y, z]) => new THREE.Vector3(x, y, z).project(camera)).filter((point) => point.z >= -1 && point.z <= 1);
+      if (projected.length === 0) {
+        selector.style.display = "none";
+        return;
+      }
+      const xs = projected.map((point) => (point.x + 1) * host.clientWidth / 2);
+      const ys = projected.map((point) => (1 - point.y) * host.clientHeight / 2);
+      selector.style.display = "flex";
+      selector.style.left = `${(Math.min(...xs) + Math.max(...xs)) / 2}px`;
+      selector.style.top = `${Math.min(...ys) - 20}px`;
+    };
+    const updateGroundOpacity = () => {
+      const belowGround = camera.position.y < 0;
+      workplaneRef.current?.traverse((child) => {
+        if (!child.userData.globalWorkplaneElement || !("material" in child)) return;
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        for (const material of materials) {
+          if (!(material instanceof THREE.Material)) continue;
+          const baseOpacity = Number(material.userData.baseOpacity ?? material.opacity);
+          material.userData.baseOpacity = baseOpacity;
+          material.transparent = true;
+          material.opacity = belowGround ? baseOpacity * 0.2 : baseOpacity;
+        }
+      });
+    };
     const requestRender = () => {
       if (!disposed && frame === 0) frame = requestAnimationFrame(render);
     };
@@ -707,8 +764,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           : perspectiveTouchTargetWorldSize(camera.position.distanceTo(worldPosition), camera.fov, renderer.domElement.clientHeight, 102);
         marker.scale.setScalar(Math.max(0.35, size));
       }
+      updateGroundOpacity();
       renderer.render(scene, camera);
       updateDimensionLabels();
+      updateOperationModeSelector();
       if (controlsChanged) requestRender();
     };
     const onControlsChange = () => {
@@ -727,6 +786,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     key.shadow.camera.right = 120;
     key.shadow.camera.top = 120;
     key.shadow.camera.bottom = -120;
+    key.shadow.bias = -0.00015;
+    key.shadow.normalBias = 0.035;
+    key.shadow.radius = renderQuality === "normal" ? 2 : 1;
     scene.add(key);
 
     const workplaneGroup = new THREE.Group();
@@ -1978,6 +2040,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       const height = Math.max(1, host.clientHeight);
       renderer.setSize(width, height, false);
       edgeHighlightMaterial.resolution.set(width, height);
+      for (const cached of objectRenderCacheRef.current.values()) {
+        const material = cached.wireframeEdges.material;
+        if (material instanceof LineMaterial) material.resolution.set(width, height);
+      }
       const aspect = width / height;
       if (camera instanceof THREE.PerspectiveCamera) camera.aspect = aspect;
       else {
@@ -2042,7 +2108,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       [dimensionXRef.current, dimensionYRef.current, dimensionZRef.current].forEach((label) => { if (label) label.style.display = "none"; });
       invalidateRef.current = () => undefined;
     };
-  }, [projection, renderQuality]);
+  }, [projection, renderQuality, shadingMode]);
 
   useEffect(() => {
     const layer = faceExtrudeHandleRef.current;
@@ -2107,7 +2173,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       layer.add(marker);
     }
     invalidateRef.current();
-  }, [editableOriginId, objectOrigins, operationOrigins, projection, renderQuality]);
+  }, [editableOriginId, objectOrigins, operationOrigins, projection, renderQuality, shadingMode]);
 
   useEffect(() => {
     const group = workplaneRef.current;
@@ -2130,11 +2196,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       const step = Math.max(requestedStep, Math.max(gridWidth, gridDepth) / 1000);
       const surface = new THREE.Mesh(
         new THREE.PlaneGeometry(gridWidth, gridDepth),
-        workplaneMaterial(renderQuality, yellow ? "#ffe99a" : "#ddf8ff", yellow ? 0.3 : 0.68),
+        workplaneMaterial(renderQuality, shadingMode, yellow ? "#ffe99a" : "#ddf8ff", yellow ? 0.3 : 0.68),
       );
       surface.rotation.x = -Math.PI / 2;
       surface.position.y = yellow ? 0.015 : -0.08;
-      surface.receiveShadow = !yellow;
+      surface.receiveShadow = !yellow && shadingMode !== "unlit";
+      surface.userData.globalWorkplaneElement = !yellow;
       target.add(surface);
       const minor: number[] = [];
       const major: number[] = [];
@@ -2162,6 +2229,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         geometry.setAttribute("position", new THREE.Float32BufferAttribute(values, 3));
         const lines = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color: palette[index], transparent: true, opacity: [0.55, 0.7, 0.88, 0.9][index] }));
         lines.position.y = 0.025;
+        lines.userData.globalWorkplaneElement = !yellow;
         target.add(lines);
       });
       if (!yellow) {
@@ -2183,6 +2251,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           headMesh.position.y = 0.055;
           line.renderOrder = 2;
           headMesh.renderOrder = 2;
+          line.userData.globalWorkplaneElement = true;
+          headMesh.userData.globalWorkplaneElement = true;
           target.add(line, headMesh);
         };
         addAxisArrow("#d83b3b", [
@@ -2210,7 +2280,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       group.add(active);
     }
     invalidateRef.current();
-  }, [projection, renderQuality, workplane.activeSizePercent, workplane.depth, workplane.gridStep, workplane.gridVisible, workplane.normal.x, workplane.normal.y, workplane.normal.z, workplane.origin.x, workplane.origin.y, workplane.origin.z, workplane.width, workplane.xAxis.x, workplane.xAxis.y, workplane.xAxis.z, workplane.yAxis.x, workplane.yAxis.y, workplane.yAxis.z]);
+  }, [projection, renderQuality, shadingMode, workplane.activeSizePercent, workplane.depth, workplane.gridStep, workplane.gridVisible, workplane.normal.x, workplane.normal.y, workplane.normal.z, workplane.origin.x, workplane.origin.y, workplane.origin.z, workplane.width, workplane.xAxis.x, workplane.xAxis.y, workplane.xAxis.z, workplane.yAxis.x, workplane.yAxis.y, workplane.yAxis.z]);
 
   useEffect(() => {
     const layer = sketchLayerRef.current;
@@ -2270,7 +2340,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       clearLayer();
       layer.clear();
     };
-  }, [projection, renderQuality, sketchOverlays]);
+  }, [projection, renderQuality, shadingMode, sketchOverlays]);
 
   useEffect(() => {
     const group = modelRef.current;
@@ -2298,8 +2368,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       const key = item.objectId ?? "__combined";
       const cached = objectRenderCacheRef.current.get(key);
       if (cached && item.geometryFingerprint !== null && cached.geometryFingerprint === item.geometryFingerprint) {
-        cached.body.visible = item.objectId !== isolatedHistoryObjectIdRef.current && item.reference?.displayMode !== "wireframe";
-        cached.edges.visible = item.reference?.displayMode !== "solid";
+        cached.referenceDisplayMode = item.reference?.displayMode;
+        cached.body.visible = displayMode === "solid" && item.objectId !== isolatedHistoryObjectIdRef.current && item.reference?.displayMode !== "wireframe";
+        cached.edges.visible = displayMode === "solid" && item.reference?.displayMode !== "solid";
+        cached.wireframeEdges.visible = displayMode === "wireframe";
         cached.body.userData.editorPickable = item.reference?.pickable ?? true;
         const materials = Array.isArray(cached.body.material) ? cached.body.material : [cached.body.material];
         for (const material of materials) setMaterialColor(material, item.color);
@@ -2317,15 +2389,15 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       geometry.boundsTree = new MeshBVH(geometry, { indirect: true });
       const body = new THREE.Mesh(
         geometry,
-        item.reference ? referenceMaterial(renderQuality, item.color, item.reference.opacity) : objectMaterial(renderQuality, item.color),
+        item.reference ? referenceMaterial(renderQuality, shadingMode, item.color, item.reference.opacity) : objectMaterial(renderQuality, shadingMode, item.color),
       );
       body.raycast = acceleratedRaycast;
-      body.castShadow = true;
-      body.receiveShadow = true;
+      body.castShadow = shadingMode !== "unlit";
+      body.receiveShadow = shadingMode !== "unlit";
       if (item.objectId) body.userData.objectId = item.objectId;
       body.userData.editorPickable = item.reference?.pickable ?? true;
       body.userData.renderId = item.renderId;
-      body.visible = item.objectId !== isolatedHistoryObjectIdRef.current;
+      body.visible = displayMode === "solid" && item.objectId !== isolatedHistoryObjectIdRef.current;
       group.add(body);
 
       const edgeGeometry = new THREE.BufferGeometry();
@@ -2340,12 +2412,20 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       edges.userData.renderId = item.renderId;
       edges.userData.finalReferenceWireframe = true;
       edges.renderOrder = 17;
+      edges.visible = displayMode === "solid";
+      const wireframeGeometry = new LineSegmentsGeometry();
+      wireframeGeometry.setPositions(item.mesh.edges);
+      const wireframeMaterial = new LineMaterial({ color: "#000000", linewidth: 2, depthTest: true });
+      wireframeMaterial.resolution.set(Math.max(1, rendererRef.current?.domElement.clientWidth ?? 1), Math.max(1, rendererRef.current?.domElement.clientHeight ?? 1));
+      const wireframeEdges = new LineSegments2(wireframeGeometry, wireframeMaterial);
+      wireframeEdges.visible = displayMode === "wireframe";
+      wireframeEdges.renderOrder = 17;
       if (item.reference) {
-        body.visible = item.reference.displayMode !== "wireframe" && item.objectId !== isolatedHistoryObjectIdRef.current;
-        edges.visible = item.reference.displayMode !== "solid";
+        body.visible = displayMode === "solid" && item.reference.displayMode !== "wireframe" && item.objectId !== isolatedHistoryObjectIdRef.current;
+        edges.visible = displayMode === "solid" && item.reference.displayMode !== "solid";
       }
-      group.add(edges);
-      objectRenderCacheRef.current.set(key, { geometryFingerprint: item.geometryFingerprint, body, edges });
+      group.add(edges, wireframeEdges);
+      objectRenderCacheRef.current.set(key, { geometryFingerprint: item.geometryFingerprint, body, edges, wireframeEdges, referenceDisplayMode: item.reference?.displayMode });
       resourcesChanged = true;
     }
 
@@ -2366,7 +2446,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       hasFittedRef.current = true;
     }
     invalidateRef.current();
-  }, [mesh, objectRecords, color, projection, renderQuality]);
+  }, [mesh, objectRecords, color, displayMode, projection, renderQuality, shadingMode]);
 
   useEffect(() => {
     const layer = topologyFaceLayerRef.current;
@@ -2433,7 +2513,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     for (const child of group.children) {
       if (!(child instanceof THREE.LineSegments) || !child.userData.finalReferenceWireframe) continue;
       const objectId = typeof child.userData.objectId === "string" ? child.userData.objectId : null;
-      child.visible = true;
+      child.visible = displayMode === "solid";
       const materials = Array.isArray(child.material) ? child.material : [child.material];
       for (const material of materials) {
         material.depthTest = finalReferenceWireframeDepthTest(objectId, selectedObjectIds);
@@ -2441,16 +2521,16 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       }
     }
     invalidateRef.current();
-  }, [selectedObjectIds]);
+  }, [displayMode, selectedObjectIds]);
 
   useEffect(() => {
-    const group = modelRef.current;
-    if (!group) return;
-    for (const child of group.children) {
-      if (child instanceof THREE.Mesh && typeof child.userData.objectId === "string") child.visible = child.userData.objectId !== isolatedHistoryObjectId;
+    for (const [objectId, cached] of objectRenderCacheRef.current) {
+      cached.body.visible = displayMode === "solid" && objectId !== isolatedHistoryObjectId && cached.referenceDisplayMode !== "wireframe";
+      cached.edges.visible = displayMode === "solid" && cached.referenceDisplayMode !== "solid";
+      cached.wireframeEdges.visible = displayMode === "wireframe";
     }
     invalidateRef.current();
-  }, [isolatedHistoryObjectId, projection, renderQuality]);
+  }, [displayMode, isolatedHistoryObjectId, projection, renderQuality, shadingMode]);
 
   useEffect(() => {
     if (!objectColors) return;
@@ -2466,7 +2546,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       }
     }
     invalidateRef.current();
-  }, [objectColors, projection, renderQuality]);
+  }, [objectColors, projection, renderQuality, shadingMode]);
 
   useEffect(() => {
     const group = modelRef.current;
@@ -2487,12 +2567,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       return;
     }
     const contextGroup = new THREE.Group();
-    if (operationContext.opacity > 0) {
+    if (displayMode === "solid" && operationContext.opacity > 0) {
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute("position", new THREE.BufferAttribute(operationContext.mesh.positions, 3));
       geometry.setAttribute("normal", new THREE.BufferAttribute(operationContext.mesh.normals, 3));
       geometry.setIndex(new THREE.BufferAttribute(operationContext.mesh.indices, 1));
-      const contextBody = new THREE.Mesh(geometry, previewMaterial(renderQuality, operationContext.color, operationContext.opacity));
+      const contextBody = new THREE.Mesh(geometry, previewMaterial(renderQuality, shadingMode, operationContext.color, operationContext.opacity));
       contextBody.renderOrder = 16;
       contextGroup.add(contextBody);
     }
@@ -2515,7 +2595,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     group.add(contextGroup);
     operationContextRef.current = contextGroup;
     invalidateRef.current();
-  }, [operationContext, projection, renderQuality]);
+  }, [displayMode, operationContext, projection, renderQuality, shadingMode]);
 
   useEffect(() => {
     const model = modelRef.current;
@@ -2555,7 +2635,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     if (selection.operationPreview) {
       const operationPreview = selection.operationPreview;
       const previewStyle = operationPreviewStyle(operationPreview.mode, operationPreview.historical);
-      if (previewStyle.fillOpacity !== null) {
+      if (displayMode === "solid" && previewStyle.fillOpacity !== null) {
         const previewGeometry = operationPreview.shape === "cylinder"
           ? new THREE.CylinderGeometry(0.5, 0.5, selection.height, 64)
           : operationPreview.shape === "cone"
@@ -2573,7 +2653,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         } else if (operationPreview.shape === "sphere") {
           previewGeometry.scale(selection.width, selection.depth, selection.height);
         }
-        const preview = new THREE.Mesh(previewGeometry, previewMaterial(renderQuality, operationPreview.color, previewStyle.fillOpacity));
+        const preview = new THREE.Mesh(previewGeometry, previewMaterial(renderQuality, shadingMode, operationPreview.color, previewStyle.fillOpacity));
         preview.userData.roundedBoxPreviewFill = operationPreview.shape === "roundedBox";
         preview.renderOrder = 17;
         previewRoot.add(preview);
@@ -2699,7 +2779,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     selectionRootRef.current = root;
     selectionVisualRootRef.current = visualRoot;
     invalidateRef.current();
-  }, [selection, projection, renderQuality, workplane.normal.x, workplane.normal.y, workplane.normal.z, workplane.xAxis.x, workplane.xAxis.y, workplane.xAxis.z, workplane.yAxis.x, workplane.yAxis.y, workplane.yAxis.z]);
+  }, [displayMode, selection, projection, renderQuality, shadingMode, workplane.normal.x, workplane.normal.y, workplane.normal.z, workplane.xAxis.x, workplane.xAxis.y, workplane.xAxis.z, workplane.yAxis.x, workplane.yAxis.y, workplane.yAxis.z]);
 
   useEffect(() => {
     const camera = cameraRef.current;
@@ -2785,6 +2865,18 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
 
   return <div className="parametric-viewport" ref={hostRef} aria-label="Vista 3D de la pieza">
     <div ref={selectionBoxRef} className="parametric-selection-box" aria-hidden="true" />
+    <div
+      ref={operationModeSelectorRef}
+      className="educad-viewport-operation-modes"
+      aria-label="Modo de la operación"
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      {(["add", "cut", "intersect"] as const).map((mode) => {
+        const activeMode = selection?.operationPreview?.mode === (mode === "cut" ? "hole" : mode === "intersect" ? "common" : "add");
+        const label = mode === "add" ? "Añadir" : mode === "cut" ? "Hueco" : "Común";
+        return <button key={mode} type="button" className={`mode-${mode} ${activeMode ? "active" : ""}`} aria-label={label} title={label} aria-pressed={activeMode} onClick={() => onOperationModeChange?.(mode)}><ToolbarBooleanModeIcon mode={mode === "cut" ? "hole" : mode === "intersect" ? "common" : "add"} /></button>;
+      })}
+    </div>
     <div className="parametric-selection-dimensions">
       {dimensionInput("x", dimensionXRef, "axis-x", "Editar dimensión X")}
       {dimensionInput("y", dimensionYRef, "axis-y", "Editar dimensión Y")}

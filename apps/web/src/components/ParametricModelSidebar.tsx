@@ -32,6 +32,7 @@ import { createContext, type CSSProperties, type KeyboardEvent, type MouseEvent,
 import { canReorderParametricSelection, OBJECT_COLOR_PALETTE, parametricObjectTree, sketchForExtrude, updateParametricTreeSelection, type ParametricTreeSelection } from "@/lib/parametricObjects";
 import { parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import { parametricTextFontNames, updateParametricTextSketch } from "@/lib/parametricText";
+import { ToolbarBooleanModeIcon } from "@/components/icons";
 import type { ParametricDocument, ParametricFeature, ParametricObject } from "@/types/parametric";
 
 export type ModelSelectionKind = "object" | "feature";
@@ -454,7 +455,7 @@ function ParametricFeatureInspector({
         <>
           <div className="educad-feature-card">
             <h3>Operación</h3>
-            <label><span>Modo</span><select value={feature.operation} onChange={(event) => onUpdate((draft) => { if (draft.kind === "extrude") draft.operation = event.target.value as typeof draft.operation; })}><option value="add">Añadir</option><option value="cut">Hueco</option><option value="intersect">Común</option></select></label>
+            <OperationModeButtons value={feature.operation} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "extrude") draft.operation = operation; })} />
           </div>
           <div className="educad-feature-card">
             <h3>Parámetros de la forma</h3>
@@ -486,7 +487,7 @@ function ParametricFeatureInspector({
         <>
           <div className="educad-feature-card">
             <h3>Operación</h3>
-            <label><span>Modo</span><select value={feature.operation} onChange={(event) => onUpdate((draft) => { if (draft.kind === "primitive") draft.operation = event.target.value as typeof draft.operation; })}><option value="add">Añadir</option><option value="cut">Hueco</option><option value="intersect">Común</option></select></label>
+            <OperationModeButtons value={feature.operation} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "primitive") draft.operation = operation; })} />
           </div>
           <div className="educad-feature-card">
             <h3>Parámetros de la forma</h3>
@@ -599,7 +600,7 @@ function ParametricFeatureInspector({
 
       {feature.kind === "faceExtrude" ? (
         <>
-          <div className="educad-feature-card"><h3>Operación</h3><label><span>Tipo</span><select value={feature.operation} onChange={(event) => onUpdate((draft) => { if (draft.kind === "faceExtrude") draft.operation = event.target.value as typeof draft.operation; })}><option value="add">Añadir</option><option value="cut">Hueco</option></select></label><BoundedNumberField label="Longitud" value={feature.distance} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "faceExtrude") draft.distance = Math.max(0.01, value); })} /></div>
+          <div className="educad-feature-card"><h3>Operación</h3><OperationModeButtons value={feature.operation} includeCommon={false} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "faceExtrude" && operation !== "intersect") draft.operation = operation; })} /><BoundedNumberField label="Longitud" value={feature.distance} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "faceExtrude") draft.distance = Math.max(0.01, value); })} /></div>
           <button className="educad-edit-topology-selection" type="button" onClick={() => onEditFaceExtrudeSelection(feature.id)}>Editar cara</button>
           <TransformSection description="Dirección normal a la cara"><p className="educad-transform-empty">La longitud se aplica perpendicularmente a la cara seleccionada.</p></TransformSection>
         </>
@@ -615,7 +616,7 @@ function ParametricFeatureInspector({
 
       {feature.kind === "revolve" ? (
         <>
-          <div className="educad-feature-card"><h3>Operación</h3><label><span>Tipo</span><select value={feature.operation} onChange={(event) => onUpdate((draft) => { if (draft.kind === "revolve") draft.operation = event.target.value as typeof draft.operation; })}><option value="add">Añadir</option><option value="cut">Hueco</option><option value="intersect">Común</option></select></label><label><span>Eje</span><select value={feature.axis} onChange={(event) => onUpdate((draft) => { if (draft.kind === "revolve") draft.axis = event.target.value as typeof draft.axis; })}><option value="x">X local</option><option value="y">Y local</option><option value="z">Z local</option>{feature.axis === "edge" ? <option value="edge">Arista seleccionada</option> : null}</select></label><BoundedNumberField label="Ángulo" value={feature.angle} min={-360} max={360} step={1} unit="°" onChange={(value) => onUpdate((draft) => { if (draft.kind === "revolve") draft.angle = Math.abs(value) < 1 ? (value < 0 ? -1 : 1) : Math.min(360, Math.max(-360, value)); })} /></div>
+          <div className="educad-feature-card"><h3>Operación</h3><OperationModeButtons value={feature.operation} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "revolve") draft.operation = operation; })} /><label><span>Eje</span><select value={feature.axis} onChange={(event) => onUpdate((draft) => { if (draft.kind === "revolve") draft.axis = event.target.value as typeof draft.axis; })}><option value="x">X local</option><option value="y">Y local</option><option value="z">Z local</option>{feature.axis === "edge" ? <option value="edge">Arista seleccionada</option> : null}</select></label><BoundedNumberField label="Ángulo" value={feature.angle} min={-360} max={360} step={1} unit="°" onChange={(value) => onUpdate((draft) => { if (draft.kind === "revolve") draft.angle = Math.abs(value) < 1 ? (value < 0 ? -1 : 1) : Math.min(360, Math.max(-360, value)); })} /></div>
           {revolveSketch && revolveSketch.profile.shape !== "drawn" ? <div className="educad-feature-card"><h3>Perfil de boceto</h3><ReadOnlyField label="Forma" value={revolveSketch.profile.shape === "rectangle" ? "Rectángulo" : "Círculo"} />{revolveSketch.profile.shape === "rectangle" ? <><BoundedNumberField label="Anchura" value={revolveSketch.profile.width} min={0.01} max={200} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} /><BoundedNumberField label="Profundidad" value={revolveSketch.profile.depth} min={0.01} max={200} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} /></> : <BoundedNumberField label="Radio" value={revolveSketch.profile.diameter / 2} min={0.01} max={100} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value * 2); })} />}</div> : null}
           {feature.source === "face" ? <div className="educad-topology-selection-actions"><button className="educad-edit-topology-selection" type="button" onClick={() => onEditRevolveFace(feature.id)}>Editar cara</button><button className="educad-edit-topology-selection" type="button" onClick={() => onEditRevolveAxis(feature.id)}>Editar eje</button></div> : <button className="educad-edit-topology-selection" type="button" onClick={() => onEditRevolveAxis(feature.id)}>Editar eje</button>}
           <TransformSection description="Eje local del objeto"><p className="educad-transform-empty">La cara gira alrededor del eje local seleccionado que pasa por el origen del objeto.</p></TransformSection>
@@ -692,7 +693,7 @@ function ParametricFeatureInspector({
         <>
           <div className="educad-feature-card">
             <h3>Operación</h3>
-            <label><span>Modo</span><select value={feature.operation} onChange={(event) => onUpdate((draft) => { if (draft.kind === "objectBoolean") draft.operation = event.target.value as typeof draft.operation; })}><option value="add">Añadir</option><option value="cut">Hueco</option><option value="intersect">Común</option></select></label>
+            <OperationModeButtons value={feature.operation} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "objectBoolean") draft.operation = operation; })} />
             <label><span>Objeto</span><select value={feature.sourceObjectId} onChange={(event) => onUpdate((draft) => { if (draft.kind !== "objectBoolean") return; draft.sourceObjectId = event.target.value; draft.dependencies = [{ type: "object", id: event.target.value }]; })}>{document.objects.filter((object) => object.id !== feature.objectId).map((object) => <option key={object.id} value={object.id}>{object.name}</option>)}</select></label>
           </div>
           <TransformSection description="Referencia entre objetos"><p className="educad-transform-empty">La geometría se actualiza con el objeto de referencia. Puedes ocultarlo en el árbol sin romper esta operación.</p></TransformSection>
@@ -706,6 +707,19 @@ function ParametricFeatureInspector({
     const { input: inputStep } = useContext(NumericStepContext);
     return <label><span>{label}</span><DeferredNumberInput value={value} min={min} step={inputStep} unit="mm" onCommit={onChange} /></label>;
   }
+}
+
+function OperationModeButtons({ value, includeCommon = true, onChange }: { value: "add" | "cut" | "intersect"; includeCommon?: boolean; onChange: (value: "add" | "cut" | "intersect") => void }) {
+  const modes = includeCommon ? (["add", "cut", "intersect"] as const) : (["add", "cut"] as const);
+  return <div className="educad-operation-mode-property">
+    <span>Modo</span>
+    <div className="educad-operation-mode-buttons">
+      {modes.map((mode) => {
+        const label = mode === "add" ? "Añadir" : mode === "cut" ? "Hueco" : "Común";
+        return <button key={mode} type="button" className={`mode-${mode} ${value === mode ? "active" : ""}`} title={label} aria-label={label} aria-pressed={value === mode} onClick={() => onChange(mode)}><ToolbarBooleanModeIcon mode={mode === "cut" ? "hole" : mode === "intersect" ? "common" : "add"} /></button>;
+      })}
+    </div>
+  </div>;
 }
 
 function DeferredTextInput({ value, maxLength, onCommit }: { value: string; maxLength: number; onCommit: (value: string) => void }) {
