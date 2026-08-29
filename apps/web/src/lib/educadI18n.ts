@@ -1,0 +1,57 @@
+export type EducadLocale = "es" | "en";
+
+const es = {
+  "settings.title": "Ajustes del diseño", "settings.name": "Nombre", "settings.rendering": "Renderizado",
+  "settings.renderNormal": "Normal (suavizado)", "settings.renderOptimized": "Optimizar rendimiento",
+  "settings.shading": "Sombreado", "settings.shadows": "Sombras", "settings.basicShadows": "Sombras básicas",
+  "settings.unlit": "Sin sombreado", "settings.units": "Unidades", "settings.millimeters": "Milímetros (mm)",
+  "settings.inches": "Pulgadas (in)", "settings.language": "Idioma", "settings.spanish": "Español",
+  "settings.english": "English", "settings.showFps": "Mostrar FPS",
+  "settings.autosave": "El proyecto se guarda automáticamente. Las preferencias visuales se recuerdan en este dispositivo.",
+  "grid.title": "Rejilla", "grid.showFloor": "Mostrar suelo XY", "grid.activeSize": "Tamaño del plano activo",
+  "grid.width": "Ancho (eje X)", "grid.depth": "Profundo (eje Y)", "grid.step": "Paso de líneas", "common.close": "Cerrar",
+  "camera.positionTriad": "Triada de posición", "camera.rotationTriad": "Triada de rotación", "camera.wireframe": "Vista alámbrica",
+  "camera.perspective": "Perspectiva", "camera.orthographic": "Ortográfica", "camera.home": "Vista inicial",
+  "camera.fit": "Encuadrar todo", "camera.selection": "Zoom a la selección", "camera.zoomIn": "Acercar", "camera.zoomOut": "Alejar",
+  "toolbar.new": "Nuevo diseño", "toolbar.copy": "Copiar", "toolbar.paste": "Pegar", "toolbar.duplicate": "Duplicar",
+  "toolbar.deleteSelection": "Eliminar selección", "toolbar.deleteOperation": "Eliminar operación", "toolbar.deleteObject": "Eliminar objeto",
+  "toolbar.undo": "Deshacer", "toolbar.redo": "Rehacer", "toolbar.addShape": "Añadir forma", "toolbar.createSketch": "Crear boceto",
+  "toolbar.align": "Alinear", "toolbar.mirror": "Espejo", "toolbar.linearPattern": "Matriz lineal", "toolbar.polarPattern": "Matriz polar",
+  "toolbar.objectBoolean": "Booleana entre objetos", "toolbar.snapGrid": "Ajustar a rejilla", "toolbar.chamfer": "Chaflán",
+  "toolbar.fillet": "Redondeo", "toolbar.extrudeFace": "Extruir cara", "toolbar.extrudeSketch": "Extruir boceto",
+  "toolbar.revolve": "Revolución", "toolbar.revolveSketch": "Revolucionar boceto", "toolbar.shell": "Vaciado",
+} as const;
+
+export type EducadTranslationKey = keyof typeof es;
+
+const en: Record<EducadTranslationKey, string> = {
+  "settings.title": "Design settings", "settings.name": "Name", "settings.rendering": "Rendering",
+  "settings.renderNormal": "Normal (antialiased)", "settings.renderOptimized": "Optimize performance",
+  "settings.shading": "Shading", "settings.shadows": "Shadows", "settings.basicShadows": "Basic shadows",
+  "settings.unlit": "Unlit", "settings.units": "Units", "settings.millimeters": "Millimeters (mm)",
+  "settings.inches": "Inches (in)", "settings.language": "Language", "settings.spanish": "Español",
+  "settings.english": "English", "settings.showFps": "Show FPS",
+  "settings.autosave": "The project is saved automatically. Visual preferences are remembered on this device.",
+  "grid.title": "Grid", "grid.showFloor": "Show XY floor", "grid.activeSize": "Active plane size",
+  "grid.width": "Width (X axis)", "grid.depth": "Depth (Y axis)", "grid.step": "Line spacing", "common.close": "Close",
+  "camera.positionTriad": "Position triad", "camera.rotationTriad": "Rotation triad", "camera.wireframe": "Wireframe view",
+  "camera.perspective": "Perspective", "camera.orthographic": "Orthographic", "camera.home": "Home view",
+  "camera.fit": "Fit all", "camera.selection": "Zoom to selection", "camera.zoomIn": "Zoom in", "camera.zoomOut": "Zoom out",
+  "toolbar.new": "New design", "toolbar.copy": "Copy", "toolbar.paste": "Paste", "toolbar.duplicate": "Duplicate",
+  "toolbar.deleteSelection": "Delete selection", "toolbar.deleteOperation": "Delete operation", "toolbar.deleteObject": "Delete object",
+  "toolbar.undo": "Undo", "toolbar.redo": "Redo", "toolbar.addShape": "Add shape", "toolbar.createSketch": "Create sketch",
+  "toolbar.align": "Align", "toolbar.mirror": "Mirror", "toolbar.linearPattern": "Linear pattern", "toolbar.polarPattern": "Polar pattern",
+  "toolbar.objectBoolean": "Boolean between objects", "toolbar.snapGrid": "Snap to grid", "toolbar.chamfer": "Chamfer",
+  "toolbar.fillet": "Fillet", "toolbar.extrudeFace": "Extrude face", "toolbar.extrudeSketch": "Extrude sketch",
+  "toolbar.revolve": "Revolve", "toolbar.revolveSketch": "Revolve sketch", "toolbar.shell": "Shell",
+};
+
+const translations: Record<EducadLocale, Record<EducadTranslationKey, string>> = { es, en };
+
+export function educadTranslate(locale: EducadLocale, key: EducadTranslationKey) {
+  return translations[locale][key];
+}
+
+export function normalizeEducadLocale(value: unknown): EducadLocale {
+  return value === "en" ? "en" : "es";
+}

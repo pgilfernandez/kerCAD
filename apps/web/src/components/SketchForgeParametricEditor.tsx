@@ -51,6 +51,7 @@ import { importStepAsParametricObject } from "@/lib/parametricStepImport";
 import { importReferenceMesh, parametricReferenceRenderRecords } from "@/lib/parametricReferenceImport";
 import { assertImportByteLimit } from "@/lib/parametricImportLimits";
 import { displayLengthToMillimeters, displayUnitLabel, millimetersToDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
+import { educadTranslate, normalizeEducadLocale, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import { circleSketchPointId, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, solveSketchConstraints } from "@/lib/sketchConstraints";
 import { analyzeSketchConstraints } from "@/lib/sketchConstraintAnalysis";
@@ -108,6 +109,7 @@ const ROTATION_TRIAD_VISIBLE_STORAGE_KEY = "educad.viewport.rotation-triad";
 const DISPLAY_MODE_STORAGE_KEY = "educad.viewport.display-mode";
 const SHADING_MODE_STORAGE_KEY = "educad.viewport.shading-mode";
 const DISPLAY_UNIT_STORAGE_KEY = "educad.display-unit";
+const LOCALE_STORAGE_KEY = "educad.locale";
 type Notice = { type: "ok" | "info" | "error"; text: string } | null;
 
 function downloadBlob(blob: Blob, name: string) {
@@ -255,6 +257,7 @@ export function SketchForgeParametricEditor() {
   const [displayMode, setDisplayMode] = useState<ViewportDisplayMode>("solid");
   const [shadingMode, setShadingMode] = useState<ViewportShadingMode>("shadows");
   const [displayUnit, setDisplayUnit] = useState<ParametricDisplayUnit>("mm");
+  const [locale, setLocale] = useState<EducadLocale>("es");
   const [showFps, setShowFps] = useState(false);
   const [showPositionTriad, setShowPositionTriad] = useState(true);
   const [showRotationTriad, setShowRotationTriad] = useState(true);
@@ -272,6 +275,7 @@ export function SketchForgeParametricEditor() {
   const sketchHistoryIndexRef = useRef(-1);
   const [sketchHistoryIndex, setSketchHistoryIndex] = useState(-1);
   const activeSketchProfileValidation = useMemo(() => sketchSession ? validateDrawnSketchProfile(sketchSession.profile) : null, [sketchSession]);
+  const t = useCallback((key: EducadTranslationKey) => educadTranslate(locale, key), [locale]);
 
   useEffect(() => {
     const closePopoversOutside = (event: PointerEvent) => {
@@ -370,6 +374,7 @@ export function SketchForgeParametricEditor() {
       const storedShadingMode = localStorage.getItem(SHADING_MODE_STORAGE_KEY);
       if (storedShadingMode === "shadows" || storedShadingMode === "basic" || storedShadingMode === "unlit") setShadingMode(storedShadingMode);
       if (localStorage.getItem(DISPLAY_UNIT_STORAGE_KEY) === "in") setDisplayUnit("in");
+      setLocale(normalizeEducadLocale(localStorage.getItem(LOCALE_STORAGE_KEY)));
       setShowFps(localStorage.getItem(FPS_VISIBLE_STORAGE_KEY) === "true");
       setShowPositionTriad(localStorage.getItem(POSITION_TRIAD_VISIBLE_STORAGE_KEY) !== "false");
       setShowRotationTriad(localStorage.getItem(ROTATION_TRIAD_VISIBLE_STORAGE_KEY) !== "false");
@@ -407,6 +412,12 @@ export function SketchForgeParametricEditor() {
   useEffect(() => {
     if (hydrated) localStorage.setItem(DISPLAY_UNIT_STORAGE_KEY, displayUnit);
   }, [displayUnit, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+    window.document.documentElement.lang = locale;
+  }, [hydrated, locale]);
 
   useEffect(() => {
     if (hydrated) localStorage.setItem(FPS_VISIBLE_STORAGE_KEY, String(showFps));
@@ -2292,21 +2303,21 @@ export function SketchForgeParametricEditor() {
           <div className="educad-sketch-finish-actions"><button className="educad-sketch-action primary" type="button" onClick={acceptSketch}><Check size={17} /><span>Aceptar boceto</span></button><button className="educad-sketch-action" type="button" onClick={cancelSketch}><X size={17} /><span>Cancelar</span></button></div>
         </div> :
         <div className="toolbar-mode-content geometry">
-          <ToolbarSection label="Home" className="toolbar-home-section"><Tool label="Nuevo diseño" onClick={() => setNewDocumentOpen(true)}><ToolbarHomeIcon /></Tool></ToolbarSection>
+          <ToolbarSection label="Home" className="toolbar-home-section"><Tool label={t("toolbar.new")} onClick={() => setNewDocumentOpen(true)}><ToolbarHomeIcon /></Tool></ToolbarSection>
           <div className="tool-group left">
             <ToolbarSection label="Clipboard">
-              <Tool label="Copiar" enabled={Boolean(selectedObjectId)} onClick={() => { setClipboardId(selectedObjectId); setNotice({ type: "info", text: "Objeto copiado" }); }}><ToolbarCopyIcon /></Tool>
-              <Tool label="Pegar" enabled={Boolean(clipboardId)} onClick={() => duplicateSelected(clipboardId)}><ToolbarPasteIcon /></Tool>
-              <Tool label="Duplicar" enabled={Boolean(selectedObjectId)} onClick={() => duplicateSelected()}><ToolbarDuplicateIcon /></Tool>
-              <Tool label={modelSelection.length > 1 ? "Eliminar selección" : selectionKind === "feature" ? "Eliminar operación" : "Eliminar objeto"} enabled={modelSelection.length > 0} onClick={deleteCurrentSelection}><ToolbarTrashIcon /></Tool>
+              <Tool label={t("toolbar.copy")} enabled={Boolean(selectedObjectId)} onClick={() => { setClipboardId(selectedObjectId); setNotice({ type: "info", text: "Objeto copiado" }); }}><ToolbarCopyIcon /></Tool>
+              <Tool label={t("toolbar.paste")} enabled={Boolean(clipboardId)} onClick={() => duplicateSelected(clipboardId)}><ToolbarPasteIcon /></Tool>
+              <Tool label={t("toolbar.duplicate")} enabled={Boolean(selectedObjectId)} onClick={() => duplicateSelected()}><ToolbarDuplicateIcon /></Tool>
+              <Tool label={modelSelection.length > 1 ? t("toolbar.deleteSelection") : selectionKind === "feature" ? t("toolbar.deleteOperation") : t("toolbar.deleteObject")} enabled={modelSelection.length > 0} onClick={deleteCurrentSelection}><ToolbarTrashIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label="History">
-              <Tool label="Deshacer" enabled={history.index > 0} onClick={undo}><ToolbarUndoIcon /></Tool>
-              <Tool label="Rehacer" enabled={history.index < history.entries.length - 1} onClick={redo}><ToolbarRedoIcon /></Tool>
+              <Tool label={t("toolbar.undo")} enabled={history.index > 0} onClick={undo}><ToolbarUndoIcon /></Tool>
+              <Tool label={t("toolbar.redo")} enabled={history.index < history.entries.length - 1} onClick={redo}><ToolbarRedoIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label="Shapes" className="toolbar-shapes-section">
-              <button data-educad-popup="shapes" className={`shape-menu-trigger ${shapesOpen ? "active" : ""}`} aria-label="Añadir forma" onClick={() => setShapesOpen((value) => !value)}><ToolbarShapeAddIcon /></button>
-              <Tool label="Crear boceto" onClick={() => { setShapesOpen(false); beginSketch(null); }}><ToolbarSketchIcon /></Tool>
+              <button data-educad-popup="shapes" className={`shape-menu-trigger ${shapesOpen ? "active" : ""}`} aria-label={t("toolbar.addShape")} onClick={() => setShapesOpen((value) => !value)}><ToolbarShapeAddIcon /></button>
+              <Tool label={t("toolbar.createSketch")} onClick={() => { setShapesOpen(false); beginSketch(null); }}><ToolbarSketchIcon /></Tool>
               {shapesOpen && (
                 <div data-educad-popup="shapes" className="shape-menu-dropdown">
                   <div className="shape-menu-title">Formas</div>
@@ -2322,7 +2333,7 @@ export function SketchForgeParametricEditor() {
           <div className="tool-group right">
             <ToolbarSection label="Modify" className="toolbar-modify-section">
               <div data-educad-popup="align" className="educad-align-tool">
-                <Tool label="Alinear" enabled={modelSelection.length > 1} active={alignOpen} onClick={() => setAlignOpen((value) => !value)}><ToolbarAlignIcon /></Tool>
+                <Tool label={t("toolbar.align")} enabled={modelSelection.length > 1} active={alignOpen} onClick={() => setAlignOpen((value) => !value)}><ToolbarAlignIcon /></Tool>
                 {alignOpen ? <div className="educad-align-popover" role="dialog" aria-label="Alinear selección">
                   <header><strong>Alinear</strong><span>Referencia: último seleccionado</span></header>
                   <div className="educad-align-grid"><div className="educad-align-head"><span /><strong>Mín.</strong><strong>Centro</strong><strong>Máx.</strong></div>
@@ -2670,12 +2681,12 @@ export function SketchForgeParametricEditor() {
           }}
         ><Magnet size={21} /></button>
         {workplaneOpen ? <div data-educad-popup="grid" className="educad-workplane-popover">
-          <header><div><strong>Rejilla</strong></div><button type="button" aria-label="Cerrar" onClick={() => setWorkplaneOpen(false)}><X size={17} /></button></header>
-          <label><span>Mostrar suelo XY</span><input type="checkbox" checked={workplaneDraft.gridVisible} onChange={(event) => updateGridSettings({ gridVisible: event.target.checked })} /></label>
-          <label><span>Tamaño del plano activo</span><span className="educad-number-input"><input type="number" min="2" max="100" step="1" defaultValue={workplaneDraft.activeSizePercent} onBlur={(event) => commitGridNumber(event, "activeSizePercent", 2, 100, workplaneDraft.activeSizePercent)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>%</small></span></label>
-          <label><span>Ancho (eje X)</span><span className="educad-number-input"><input key={`width-${displayUnit}`} type="number" min={millimetersToDisplayLength(1, displayUnit)} max={millimetersToDisplayLength(2000, displayUnit)} step={millimetersToDisplayLength(1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.width, displayUnit)} onBlur={(event) => commitGridNumber(event, "width", 1, 2000, workplaneDraft.width)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
-          <label><span>Profundo (eje Y)</span><span className="educad-number-input"><input key={`depth-${displayUnit}`} type="number" min={millimetersToDisplayLength(1, displayUnit)} max={millimetersToDisplayLength(2000, displayUnit)} step={millimetersToDisplayLength(1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.depth, displayUnit)} onBlur={(event) => commitGridNumber(event, "depth", 1, 2000, workplaneDraft.depth)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
-          <label><span>Paso de líneas</span><span className="educad-number-input"><input key={`step-${displayUnit}`} type="number" min={millimetersToDisplayLength(0.1, displayUnit)} max={millimetersToDisplayLength(200, displayUnit)} step={millimetersToDisplayLength(0.1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.gridStep, displayUnit)} onBlur={(event) => commitGridNumber(event, "gridStep", 0.1, 200, workplaneDraft.gridStep)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
+          <header><div><strong>{t("grid.title")}</strong></div><button type="button" aria-label={t("common.close")} onClick={() => setWorkplaneOpen(false)}><X size={17} /></button></header>
+          <label><span>{t("grid.showFloor")}</span><input type="checkbox" checked={workplaneDraft.gridVisible} onChange={(event) => updateGridSettings({ gridVisible: event.target.checked })} /></label>
+          <label><span>{t("grid.activeSize")}</span><span className="educad-number-input"><input type="number" min="2" max="100" step="1" defaultValue={workplaneDraft.activeSizePercent} onBlur={(event) => commitGridNumber(event, "activeSizePercent", 2, 100, workplaneDraft.activeSizePercent)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>%</small></span></label>
+          <label><span>{t("grid.width")}</span><span className="educad-number-input"><input key={`width-${displayUnit}`} type="number" min={millimetersToDisplayLength(1, displayUnit)} max={millimetersToDisplayLength(2000, displayUnit)} step={millimetersToDisplayLength(1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.width, displayUnit)} onBlur={(event) => commitGridNumber(event, "width", 1, 2000, workplaneDraft.width)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
+          <label><span>{t("grid.depth")}</span><span className="educad-number-input"><input key={`depth-${displayUnit}`} type="number" min={millimetersToDisplayLength(1, displayUnit)} max={millimetersToDisplayLength(2000, displayUnit)} step={millimetersToDisplayLength(1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.depth, displayUnit)} onBlur={(event) => commitGridNumber(event, "depth", 1, 2000, workplaneDraft.depth)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
+          <label><span>{t("grid.step")}</span><span className="educad-number-input"><input key={`step-${displayUnit}`} type="number" min={millimetersToDisplayLength(0.1, displayUnit)} max={millimetersToDisplayLength(200, displayUnit)} step={millimetersToDisplayLength(0.1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.gridStep, displayUnit)} onBlur={(event) => commitGridNumber(event, "gridStep", 0.1, 200, workplaneDraft.gridStep)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
         </div> : null}
         <button
           className={`educad-sidebar-mode-control ${modelSidebarMode}`}
@@ -2686,17 +2697,17 @@ export function SketchForgeParametricEditor() {
           {modelSidebarMode === "normal" ? <ChevronLeft size={23} /> : modelSidebarMode === "simplified" ? <ChevronDown size={23} /> : <ChevronRight size={23} />}
         </button>
         <div className="camera-controls" aria-label="Controles de cámara">
-          <button className={showPositionTriad ? "active" : ""} aria-label={showPositionTriad ? "Ocultar triada de posición" : "Mostrar triada de posición"} aria-pressed={showPositionTriad} title="Triada de posición" onClick={() => setShowPositionTriad((visible) => !visible)}><Move3d size={22} /></button>
-          <button className={showRotationTriad ? "active" : ""} aria-label={showRotationTriad ? "Ocultar triada de rotación" : "Mostrar triada de rotación"} aria-pressed={showRotationTriad} title="Triada de rotación" onClick={() => setShowRotationTriad((visible) => !visible)}><Rotate3d size={22} /></button>
-          <button className={displayMode === "wireframe" ? "active" : ""} aria-label={displayMode === "wireframe" ? "Desactivar vista alámbrica" : "Activar vista alámbrica"} aria-pressed={displayMode === "wireframe"} title="Vista alámbrica" onClick={() => setDisplayMode((current) => current === "solid" ? "wireframe" : "solid")}>
+          <button className={showPositionTriad ? "active" : ""} aria-label={t("camera.positionTriad")} aria-pressed={showPositionTriad} title={t("camera.positionTriad")} onClick={() => setShowPositionTriad((visible) => !visible)}><Move3d size={22} /></button>
+          <button className={showRotationTriad ? "active" : ""} aria-label={t("camera.rotationTriad")} aria-pressed={showRotationTriad} title={t("camera.rotationTriad")} onClick={() => setShowRotationTriad((visible) => !visible)}><Rotate3d size={22} /></button>
+          <button className={displayMode === "wireframe" ? "active" : ""} aria-label={t("camera.wireframe")} aria-pressed={displayMode === "wireframe"} title={t("camera.wireframe")} onClick={() => setDisplayMode((current) => current === "solid" ? "wireframe" : "solid")}>
             <svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path d="m12 2 8 4.5v11L12 22l-8-4.5v-11L12 2Zm0 0v9m8-4.5-8 4.5-8-4.5M12 11v11m-8-4.5 8-4.5 8 4.5" fill="none" stroke="currentColor" strokeWidth="1.55" strokeLinejoin="round" /></svg>
           </button>
-          <button aria-label={projection === "perspective" ? "Cambiar a vista ortográfica" : "Cambiar a perspectiva"} title={projection === "perspective" ? "Perspectiva" : "Ortográfica"} aria-pressed={projection === "orthographic"} onClick={() => setProjection((current) => current === "perspective" ? "orthographic" : "perspective")}><Box size={22} /></button>
-          <button aria-label="Vista inicial" onClick={() => setCamera("home")}><Home size={24} /></button>
-          <button aria-label="Encuadrar todo" title="Encuadrar todo" onClick={() => setCamera("fit")}><Maximize2 size={21} /></button>
-          <button aria-label="Zoom a la selección" title="Zoom a la selección" disabled={!selectedBox} onClick={() => setCamera("selection")}><Focus size={21} /></button>
-          <button aria-label="Acercar" onClick={() => setCamera("zoom-in")}><Plus size={28} /></button>
-          <button aria-label="Alejar" onClick={() => setCamera("zoom-out")}><Minus size={28} /></button>
+          <button aria-label={projection === "perspective" ? t("camera.orthographic") : t("camera.perspective")} title={projection === "perspective" ? t("camera.perspective") : t("camera.orthographic")} aria-pressed={projection === "orthographic"} onClick={() => setProjection((current) => current === "perspective" ? "orthographic" : "perspective")}><Box size={22} /></button>
+          <button aria-label={t("camera.home")} title={t("camera.home")} onClick={() => setCamera("home")}><Home size={24} /></button>
+          <button aria-label={t("camera.fit")} title={t("camera.fit")} onClick={() => setCamera("fit")}><Maximize2 size={21} /></button>
+          <button aria-label={t("camera.selection")} title={t("camera.selection")} disabled={!selectedBox} onClick={() => setCamera("selection")}><Focus size={21} /></button>
+          <button aria-label={t("camera.zoomIn")} title={t("camera.zoomIn")} onClick={() => setCamera("zoom-in")}><Plus size={28} /></button>
+          <button aria-label={t("camera.zoomOut")} title={t("camera.zoomOut")} onClick={() => setCamera("zoom-out")}><Minus size={28} /></button>
         </div>
         {build.warning && <div className="educad-rebuild-error"><strong>El historial se detuvo aquí</strong><span>{build.warning}</span></div>}
         {notice && <div className={`educad-reference-toast ${notice.type}`}>{notice.text}</div>}
@@ -2782,13 +2793,14 @@ export function SketchForgeParametricEditor() {
 
       {settingsOpen && (
         <aside data-educad-popup="settings" className="top-action-panel educad-settings-panel">
-          <header><strong>Ajustes del diseño</strong><button onClick={() => setSettingsOpen(false)}><X /></button></header>
-          <label><span>Nombre</span><input value={document.name} onFocus={beginTransaction} onBlur={finishTransaction} onChange={(event) => mutate((draft) => { draft.name = event.target.value; })} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); if (event.key === "Escape") { cancelTransaction(); event.currentTarget.blur(); } }} /></label>
-          <label><span>Renderizado</span><select value={renderQuality} onChange={(event) => setRenderQuality(event.target.value as ViewportRenderQuality)}><option value="normal">Normal (suavizado)</option><option value="optimized">Optimizar rendimiento</option></select></label>
-          <label><span>Sombreado</span><select value={shadingMode} onChange={(event) => setShadingMode(event.target.value as ViewportShadingMode)}><option value="shadows">Sombras</option><option value="basic">Sombras básicas</option><option value="unlit">Sin sombreado</option></select></label>
-          <label><span>Unidades</span><select value={displayUnit} onChange={(event) => setDisplayUnit(event.target.value as ParametricDisplayUnit)}><option value="mm">Milímetros (mm)</option><option value="in">Pulgadas (in)</option></select></label>
-          <label className="educad-settings-toggle"><span>Mostrar FPS</span><input type="checkbox" checked={showFps} onChange={(event) => setShowFps(event.target.checked)} /></label>
-          <p>El proyecto se guarda automáticamente. El renderizado, el sombreado y el contador FPS se recuerdan en este dispositivo.</p>
+          <header><strong>{t("settings.title")}</strong><button aria-label={t("common.close")} onClick={() => setSettingsOpen(false)}><X /></button></header>
+          <label><span>{t("settings.name")}</span><input value={document.name} onFocus={beginTransaction} onBlur={finishTransaction} onChange={(event) => mutate((draft) => { draft.name = event.target.value; })} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); if (event.key === "Escape") { cancelTransaction(); event.currentTarget.blur(); } }} /></label>
+          <label><span>{t("settings.language")}</span><select value={locale} onChange={(event) => setLocale(event.target.value as EducadLocale)}><option value="es">{t("settings.spanish")}</option><option value="en">{t("settings.english")}</option></select></label>
+          <label><span>{t("settings.rendering")}</span><select value={renderQuality} onChange={(event) => setRenderQuality(event.target.value as ViewportRenderQuality)}><option value="normal">{t("settings.renderNormal")}</option><option value="optimized">{t("settings.renderOptimized")}</option></select></label>
+          <label><span>{t("settings.shading")}</span><select value={shadingMode} onChange={(event) => setShadingMode(event.target.value as ViewportShadingMode)}><option value="shadows">{t("settings.shadows")}</option><option value="basic">{t("settings.basicShadows")}</option><option value="unlit">{t("settings.unlit")}</option></select></label>
+          <label><span>{t("settings.units")}</span><select value={displayUnit} onChange={(event) => setDisplayUnit(event.target.value as ParametricDisplayUnit)}><option value="mm">{t("settings.millimeters")}</option><option value="in">{t("settings.inches")}</option></select></label>
+          <label className="educad-settings-toggle"><span>{t("settings.showFps")}</span><input type="checkbox" checked={showFps} onChange={(event) => setShowFps(event.target.checked)} /></label>
+          <p>{t("settings.autosave")}</p>
         </aside>
       )}
 
