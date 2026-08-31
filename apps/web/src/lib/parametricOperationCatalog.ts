@@ -162,3 +162,23 @@ export const parametricOperationCatalog: ParametricOperationDefinition[] = [
 export function parametricOperationDefinition(kind: ParametricPrimitiveKind) {
   return parametricOperationCatalog.find((definition) => definition.kind === kind)!;
 }
+
+const englishPrimitiveNames: Record<ParametricPrimitiveKind, string> = {
+  box: "Box", roundedBox: "Rounded box", cylinder: "Cylinder", sphere: "Sphere", cone: "Cone", tube: "Tube",
+  halfSphere: "Half sphere", torus: "Torus", pyramid: "Pyramid", wedge: "Wedge", roof: "Roof",
+  roundRoof: "Round roof", polygon: "Polygon", gear: "Gear",
+};
+
+const englishPrimitiveDescriptions: Record<ParametricPrimitiveKind, string> = {
+  box: "Parametric rectangular prism", roundedBox: "Parametric box with rounded vertical corners",
+  cylinder: "Parametric circular cylinder", sphere: "Exact parametric sphere", cone: "Exact parametric cone or frustum",
+  tube: "Exact parametric tube with editable wall", halfSphere: "Exact parametric half sphere or half ellipsoid",
+  torus: "Exact parametric torus with editable major and tube radii", pyramid: "Exact parametric rectangular pyramid",
+  wedge: "Exact parametric triangular prism", roof: "Exact parametric gable roof", roundRoof: "Exact semicylindrical or semielliptical roof",
+  polygon: "Exact regular polygonal prism", gear: "Educational parametric spur gear",
+};
+
+export function localizedParametricOperationDefinition(kind: ParametricPrimitiveKind, locale: "es" | "en") {
+  const definition = parametricOperationDefinition(kind);
+  return locale === "es" ? definition : { ...definition, name: englishPrimitiveNames[kind], description: englishPrimitiveDescriptions[kind] };
+}

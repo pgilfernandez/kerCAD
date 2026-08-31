@@ -7,8 +7,10 @@ describe("eduCAD translations", () => {
     expect(educadTranslate("en", "toolbar.createSketch")).toBe("Create sketch");
   });
 
-  it("normalizes unsupported persisted locales to Spanish", () => {
+  it("uses English when no supported locale has been persisted", () => {
     expect(normalizeEducadLocale("en")).toBe("en");
-    expect(normalizeEducadLocale("fr")).toBe("es");
+    expect(normalizeEducadLocale("es")).toBe("es");
+    expect(normalizeEducadLocale("fr")).toBe("en");
+    expect(normalizeEducadLocale(null)).toBe("en");
   });
 });

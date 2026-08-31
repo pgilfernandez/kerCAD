@@ -58,6 +58,15 @@ const es = {
   "sketch.symmetry": "Simetría", "sketch.coincident": "Coincidente", "sketch.fixPoint": "Fijar punto",
   "sketch.dimensionLength": "Longitud", "sketch.distanceX": "Distancia X", "sketch.distanceY": "Distancia Y",
   "sketch.diameter": "Diámetro", "sketch.radius": "Radio", "sketch.angle": "Ángulo",
+  "notice.editingSketch": "Editando boceto", "notice.drawClosedContour": "Dibuja un contorno cerrado",
+  "notice.sketchCancelled": "Edición de boceto cancelada", "notice.closeContours": "Cierra todos los contornos antes de aceptar el boceto.",
+  "notice.sketchUpdated": "Boceto actualizado", "notice.sketchAdded": "Boceto añadido al historial",
+  "notice.scribbleUpdated": "Scribble actualizado", "notice.scribbleAdded": "Scribble añadido al historial",
+  "notice.constraintDeleted": "Restricción eliminada; geometría liberada", "notice.newOperationInObject": "Nueva operación en el objeto",
+  "notice.svgSketchImported": "SVG importado como geometría editable", "notice.svgSketchFailed": "No se pudo convertir el SVG en un boceto editable.",
+  "notice.invalidArcAngle": "El ángulo del arco debe estar entre 0° y 360°.", "notice.invalidAngle": "El ángulo debe ser un número válido.",
+  "notice.positiveDimension": "La cota debe ser un número mayor que cero.", "notice.sketchExtruded": "Extrusión creada desde el boceto",
+  "notice.sketchRevolved": "Revolución creada desde el boceto",
 } as const;
 
 export type EducadTranslationKey = keyof typeof es;
@@ -120,14 +129,23 @@ const en: Record<EducadTranslationKey, string> = {
   "sketch.symmetry": "Symmetry", "sketch.coincident": "Coincident", "sketch.fixPoint": "Fix point",
   "sketch.dimensionLength": "Length", "sketch.distanceX": "X distance", "sketch.distanceY": "Y distance",
   "sketch.diameter": "Diameter", "sketch.radius": "Radius", "sketch.angle": "Angle",
+  "notice.editingSketch": "Editing sketch", "notice.drawClosedContour": "Draw a closed contour",
+  "notice.sketchCancelled": "Sketch editing cancelled", "notice.closeContours": "Close every contour before accepting the sketch.",
+  "notice.sketchUpdated": "Sketch updated", "notice.sketchAdded": "Sketch added to history",
+  "notice.scribbleUpdated": "Scribble updated", "notice.scribbleAdded": "Scribble added to history",
+  "notice.constraintDeleted": "Constraint deleted; geometry released", "notice.newOperationInObject": "New operation in object",
+  "notice.svgSketchImported": "SVG imported as editable geometry", "notice.svgSketchFailed": "The SVG could not be converted into an editable sketch.",
+  "notice.invalidArcAngle": "The arc angle must be between 0° and 360°.", "notice.invalidAngle": "The angle must be a valid number.",
+  "notice.positiveDimension": "The dimension must be greater than zero.", "notice.sketchExtruded": "Extrusion created from sketch",
+  "notice.sketchRevolved": "Revolution created from sketch",
 };
 
 const translations: Record<EducadLocale, Record<EducadTranslationKey, string>> = { es, en };
 
 export function educadTranslate(locale: EducadLocale, key: EducadTranslationKey) {
-  return translations[locale][key];
+  return translations[locale]?.[key] ?? translations.en[key];
 }
 
 export function normalizeEducadLocale(value: unknown): EducadLocale {
-  return value === "en" ? "en" : "es";
+  return value === "es" ? "es" : "en";
 }

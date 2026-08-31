@@ -96,7 +96,7 @@ import {
   type SupportedPrimitive,
 } from "@/lib/parametricObjects";
 import { globalParametricWorkplanePlacement, objectPlacementForWorkplane, parametricWorkplaneFromFace, parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
-import { parametricOperationCatalog, parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
+import { localizedParametricOperationDefinition, parametricOperationCatalog, parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import type { ViewportRenderQuality } from "@/lib/viewportPerformance";
 import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricFeature, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, PrimitiveFeature, SketchFeature } from "@/types/parametric";
 import type { GridSize, SketchConstraint, SketchPoint, SketchProfile, WorkplaneShape } from "@/types/sketchforge";
@@ -108,6 +108,34 @@ const POSITION_TRIAD_VISIBLE_STORAGE_KEY = "educad.viewport.position-triad";
 const ROTATION_TRIAD_VISIBLE_STORAGE_KEY = "educad.viewport.rotation-triad";
 const DISPLAY_MODE_STORAGE_KEY = "educad.viewport.display-mode";
 const SHADING_MODE_STORAGE_KEY = "educad.viewport.shading-mode";
+
+function localizeNewDocumentEntries(previous: ParametricDocument, next: ParametricDocument, locale: EducadLocale) {
+  const previousObjectIds = new Set(previous.objects.map((object) => object.id));
+  next.objects.filter((object) => !previousObjectIds.has(object.id)).forEach((object, index) => { object.name = `${locale === "es" ? "Objeto" : "Object"} ${previous.objects.length + index + 1}`; });
+  const previousFeatureIds = new Set(previous.features.map((feature) => feature.id));
+  next.features.filter((feature) => !previousFeatureIds.has(feature.id)).forEach((feature) => {
+    const index = next.features.filter((candidate) => candidate.kind === feature.kind).findIndex((candidate) => candidate.id === feature.id) + 1;
+    const en = locale === "en";
+    if (feature.kind === "primitive") feature.name = localizedParametricOperationDefinition(feature.primitive, locale).name;
+    else if (feature.kind === "sketch") {
+      const generator = feature.profile.shape === "drawn" ? feature.profile.geometry.generator?.kind : null;
+      feature.name = generator === "text" ? (en ? "Text profile" : "Perfil de texto") : generator === "scribble" ? "Scribble profile" : `${en ? "Sketch" : "Boceto"} ${index}`;
+    } else if (feature.kind === "extrude") {
+      const sketch = next.features.find((candidate) => candidate.kind === "sketch" && candidate.id === feature.sketchId);
+      const generator = sketch?.kind === "sketch" && sketch.profile.shape === "drawn" ? sketch.profile.geometry.generator?.kind : null;
+      feature.name = generator === "text" ? (en ? "Text" : "Texto") : generator === "scribble" ? "Scribble" : `${en ? "Extrusion" : "Extrusión"} ${index}`;
+    }
+    else if (feature.kind === "hole") feature.name = `${en ? "Hole" : "Taladro"} ${index}`;
+    else if (feature.kind === "fillet") feature.name = `${feature.treatment === "chamfer" ? (en ? "Chamfer" : "Chaflán") : (en ? "Fillet" : "Redondeo")} ${index}`;
+    else if (feature.kind === "faceExtrude") feature.name = `${feature.operation === "cut" ? (en ? "Face cut" : "Hueco de cara") : (en ? "Face extrusion" : "Extrusión de cara")} ${index}`;
+    else if (feature.kind === "shell") feature.name = `${en ? "Shell" : "Vaciado"} ${index}`;
+    else if (feature.kind === "revolve") feature.name = `${en ? "Revolution" : "Revolución"} ${index}`;
+    else if (feature.kind === "mirror") feature.name = `${en ? "Mirror" : "Espejo"} ${index}`;
+    else if (feature.kind === "linearPattern") feature.name = `${en ? "Linear pattern" : "Matriz lineal"} ${index}`;
+    else if (feature.kind === "polarPattern") feature.name = `${en ? "Polar pattern" : "Matriz polar"} ${index}`;
+    else if (feature.kind === "objectBoolean") feature.name = `${en ? "Object boolean" : "Booleana de objeto"} ${index}`;
+  });
+}
 const DISPLAY_UNIT_STORAGE_KEY = "educad.display-unit";
 const LOCALE_STORAGE_KEY = "educad.locale";
 type Notice = { type: "ok" | "info" | "error"; text: string } | null;
@@ -257,7 +285,7 @@ export function SketchForgeParametricEditor() {
   const [displayMode, setDisplayMode] = useState<ViewportDisplayMode>("solid");
   const [shadingMode, setShadingMode] = useState<ViewportShadingMode>("shadows");
   const [displayUnit, setDisplayUnit] = useState<ParametricDisplayUnit>("mm");
-  const [locale, setLocale] = useState<EducadLocale>("es");
+  const [locale, setLocale] = useState<EducadLocale>("en");
   const [showFps, setShowFps] = useState(false);
   const [showPositionTriad, setShowPositionTriad] = useState(true);
   const [showRotationTriad, setShowRotationTriad] = useState(true);
@@ -618,6 +646,7 @@ export function SketchForgeParametricEditor() {
     const next = cloneDocument(document);
     try {
       mutator(next);
+      localizeNewDocumentEntries(document, next, locale);
       assertValidParametricDependencies(next);
       assertValidParametricTopology(next);
       commit(next);
@@ -626,7 +655,7 @@ export function SketchForgeParametricEditor() {
       setNotice({ type: "error", text: error instanceof Error ? error.message : "La operación crearía una dependencia no válida." });
       return false;
     }
-  }, [commit, document]);
+  }, [commit, document, locale]);
 
   const primarySelection = modelSelection.at(-1) ?? null;
   const selectedId = primarySelection?.id ?? null;
@@ -699,7 +728,7 @@ export function SketchForgeParametricEditor() {
     setSketchMeasurement(null);
     setSketchMeasureStart(null);
     setModelSidebarMode("hidden");
-    setNotice({ type: "info", text: feature ? "Editando boceto" : "Dibuja un contorno cerrado" });
+    setNotice({ type: "info", text: feature ? t("notice.editingSketch") : t("notice.drawClosedContour") });
   };
 
   const cancelSketch = () => {
@@ -712,7 +741,7 @@ export function SketchForgeParametricEditor() {
     sketchHistoryIndexRef.current = -1;
     setSketchHistoryIndex(-1);
     setModelSidebarMode("normal");
-    setNotice({ type: "info", text: "Edición de boceto cancelada" });
+    setNotice({ type: "info", text: t("notice.sketchCancelled") });
   };
 
   const importSvgIntoSketch = async (file: File) => {
@@ -732,16 +761,16 @@ export function SketchForgeParametricEditor() {
       setSketchSelection({ kind: "multiple", pointIds, segmentIds, circleIds, imageIds: [] });
       setSketchActivePointId(null);
       setSketchTool("select");
-      setNotice({ type: "ok", text: `SVG importado como ${segmentIds.length} segmentos y ${circleIds.length} círculos editables` });
+      setNotice({ type: "ok", text: `${t("notice.svgSketchImported")} · ${segmentIds.length} / ${circleIds.length}` });
     } catch (error) {
-      setNotice({ type: "error", text: error instanceof Error ? error.message : "No se pudo convertir el SVG en un boceto editable." });
+      setNotice({ type: "error", text: error instanceof Error ? error.message : t("notice.svgSketchFailed") });
     }
   };
 
   const acceptSketch = () => {
     const validation = sketchSession ? validateDrawnSketchProfile(sketchSession.profile) : null;
     if (!sketchSession || !validation?.valid) {
-      setNotice({ type: "error", text: validation?.diagnostics[0]?.message ?? "Cierra todos los contornos antes de aceptar el boceto." });
+      setNotice({ type: "error", text: validation?.diagnostics[0]?.message ?? t("notice.closeContours") });
       return;
     }
     let featureId = sketchSession.featureId ?? "";
@@ -763,6 +792,7 @@ export function SketchForgeParametricEditor() {
         }
       }
       const feature = createDrawnSketchFeature(draft.features.filter((candidate) => candidate.kind === "sketch" && candidate.purpose === "user").length + 1, sketchSession.profile);
+      feature.name = `${locale === "es" ? "Boceto" : "Sketch"} ${draft.features.filter((candidate) => candidate.kind === "sketch" && candidate.purpose === "user").length + 1}`;
       feature.objectId = objectId ?? undefined;
       if (sketchSession.mode === "scribble") {
         feature.name = "Perfil Scribble";
@@ -789,7 +819,7 @@ export function SketchForgeParametricEditor() {
     setModelSidebarMode("normal");
     if (sketchSession.featureId && sketchSession.mode === "scribble") selectedFeatureId = document.features.find((candidate) => candidate.kind === "extrude" && candidate.sketchId === sketchSession.featureId)?.id ?? sketchSession.featureId;
     setModelSelection([{ id: selectedFeatureId || featureId, kind: "feature" }]);
-    setNotice({ type: "ok", text: sketchSession.mode === "scribble" ? (sketchSession.featureId ? "Scribble actualizado" : "Scribble añadido al historial") : sketchSession.featureId ? "Boceto actualizado" : "Boceto añadido al historial" });
+    setNotice({ type: "ok", text: sketchSession.mode === "scribble" ? (sketchSession.featureId ? t("notice.scribbleUpdated") : t("notice.scribbleAdded")) : sketchSession.featureId ? t("notice.sketchUpdated") : t("notice.sketchAdded") });
   };
 
   const setSketchProfile = (update: (profile: SketchProfile) => SketchProfile) => {
@@ -1237,8 +1267,8 @@ export function SketchForgeParametricEditor() {
   const updateSketchConstraintValue = (constraintId: string, value: number) => {
     const constraint = sketchSession?.profile.constraints?.find((candidate) => candidate.id === constraintId);
     const signed = constraint?.kind === "angle";
-    if (constraint?.kind === "arcAngle" && (!Number.isFinite(value) || value <= 0 || value >= 360)) { setNotice({ type: "error", text: "El ángulo del arco debe estar entre 0° y 360°." }); return; }
-    if (!Number.isFinite(value) || (!signed && value <= 0)) { setNotice({ type: "error", text: signed ? "El ángulo debe ser un número válido." : "La cota debe ser un número mayor que cero." }); return; }
+    if (constraint?.kind === "arcAngle" && (!Number.isFinite(value) || value <= 0 || value >= 360)) { setNotice({ type: "error", text: t("notice.invalidArcAngle") }); return; }
+    if (!Number.isFinite(value) || (!signed && value <= 0)) { setNotice({ type: "error", text: signed ? t("notice.invalidAngle") : t("notice.positiveDimension") }); return; }
     setSketchProfile((profile) => solveSketchConstraints({
       ...profile,
       constraints: (profile.constraints ?? []).map((constraint) => constraint.id === constraintId && (constraint.kind === "distance" || constraint.kind === "radius" || constraint.kind === "diameter" || constraint.kind === "arcRadius" || constraint.kind === "arcDiameter" || constraint.kind === "arcAngle" || constraint.kind === "angle") ? { ...constraint, value } : constraint),
@@ -1247,7 +1277,7 @@ export function SketchForgeParametricEditor() {
 
   const deleteSketchConstraint = (constraintId: string) => {
     setSketchProfile((profile) => ({ ...profile, constraints: (profile.constraints ?? []).filter((constraint) => constraint.id !== constraintId) }));
-    setNotice({ type: "info", text: "Restricción eliminada; geometría liberada" });
+    setNotice({ type: "info", text: t("notice.constraintDeleted") });
   };
 
   const connectSketchPoint = (pointId: string) => {
@@ -1478,7 +1508,7 @@ export function SketchForgeParametricEditor() {
       featureId = feature.id;
       draft.features.push(feature);
     });
-    if (changed && featureId) { setModelSelection([{ id: featureId, kind: "feature" }]); setNotice({ type: "ok", text: "Extrusión creada desde el boceto" }); }
+    if (changed && featureId) { setModelSelection([{ id: featureId, kind: "feature" }]); setNotice({ type: "ok", text: t("notice.sketchExtruded") }); }
   };
 
   const addRevolveFromSketch = (sketch: SketchFeature) => {
@@ -1498,7 +1528,7 @@ export function SketchForgeParametricEditor() {
       featureId = feature.id;
       draft.features.push(feature);
     });
-    if (changed && featureId) { setModelSelection([{ id: featureId, kind: "feature" }]); setNotice({ type: "ok", text: "Revolución creada desde el boceto" }); }
+    if (changed && featureId) { setModelSelection([{ id: featureId, kind: "feature" }]); setNotice({ type: "ok", text: t("notice.sketchRevolved") }); }
   };
   const addMirrorOperation = () => {
     if (!selectedObjectId) return;
@@ -1608,6 +1638,8 @@ export function SketchForgeParametricEditor() {
     let result: ReturnType<typeof addPrimitiveToSelection> = { objectId: "", featureId: null, createdObject: false };
     mutate((draft) => {
       result = addPrimitiveToSelection(draft, selectedObjectId, kind);
+      const feature = draft.features.find((candidate) => candidate.id === result.featureId);
+      if (feature) feature.name = localizedParametricOperationDefinition(kind, locale).name;
     });
     if (result.featureId) {
       setModelSelection([{ id: result.featureId, kind: "feature" }]);
@@ -2322,7 +2354,7 @@ export function SketchForgeParametricEditor() {
                 <div data-educad-popup="shapes" className="shape-menu-dropdown">
                   <div className="shape-menu-title">Formas</div>
                   <div className="shape-menu-list">
-                    {parametricOperationCatalog.map((asset) => <button className="shape-menu-item" key={asset.kind} onClick={() => addShape(asset.kind)}><img src={asset.menuIcon} alt="" /><span>{asset.name}<small>{selectedObjectId ? "Nueva operación en el objeto" : asset.description}</small></span></button>)}
+                    {parametricOperationCatalog.map((asset) => { const localized = localizedParametricOperationDefinition(asset.kind, locale); return <button className="shape-menu-item" key={asset.kind} onClick={() => addShape(asset.kind)}><img src={asset.menuIcon} alt="" /><span>{localized.name}<small>{selectedObjectId ? t("notice.newOperationInObject") : localized.description}</small></span></button>; })}
                     <button className="shape-menu-item" onClick={addText}><img src="/assets/sketchforge/shape-icons-gray/raw/text.png" alt="" /><span>Texto<small>{selectedObjectId ? "Nueva operación en el objeto" : "Texto paramétrico extruido"}</small></span></button>
                   </div>
                 </div>
