@@ -34,6 +34,7 @@ import { parametricOperationDefinition } from "@/lib/parametricOperationCatalog"
 import { parametricTextFontNames, updateParametricTextSketch } from "@/lib/parametricText";
 import { ToolbarBooleanModeIcon } from "@/components/icons";
 import { displayLengthToMillimeters, displayUnitLabel, millimetersToDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
+import { educadTranslate, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
 import type { ParametricDocument, ParametricFeature, ParametricObject } from "@/types/parametric";
 
 export type ModelSelectionKind = "object" | "feature";
@@ -41,6 +42,11 @@ export type ModelSidebarMode = "normal" | "simplified";
 export type ModelTreeSelection = ParametricTreeSelection;
 
 const NumericStepContext = createContext({ input: 0.5, slider: 0.1, displayUnit: "mm" as ParametricDisplayUnit });
+const LocaleContext = createContext<EducadLocale>("es");
+const useSidebarTranslation = () => {
+  const locale = useContext(LocaleContext);
+  return (key: EducadTranslationKey) => educadTranslate(locale, key);
+};
 
 type Props = {
   document: ParametricDocument;
@@ -49,6 +55,7 @@ type Props = {
   editingOriginObjectId: string | null;
   gridStep: number;
   displayUnit?: ParametricDisplayUnit;
+  locale?: EducadLocale;
   onSelectionChange: (selection: ModelTreeSelection[]) => void;
   onReorderSelection: (direction: "up" | "down") => void;
   onRenameSelection: (name: string) => void;
@@ -87,6 +94,7 @@ export function ParametricModelSidebar({
   editingOriginObjectId,
   gridStep,
   displayUnit = "mm",
+  locale = "es",
   onSelectionChange,
   onReorderSelection,
   onRenameSelection,
@@ -125,6 +133,7 @@ export function ParametricModelSidebar({
   const primarySelection = selection.at(-1) ?? null;
   const selectedId = primarySelection?.id ?? null;
   const selectionKind = primarySelection?.kind ?? "object";
+  const t = (key: EducadTranslationKey) => educadTranslate(locale, key);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -175,8 +184,8 @@ export function ParametricModelSidebar({
   };
 
   return (
-    <NumericStepContext.Provider value={{ input: Math.max(0.0001, gridStep / 2), slider: Math.max(0.0001, gridStep / 10), displayUnit }}><>
-    <aside className={`educad-model-sidebar ${mode}`} aria-label="Modelo paramétrico">
+    <LocaleContext.Provider value={locale}><NumericStepContext.Provider value={{ input: Math.max(0.0001, gridStep / 2), slider: Math.max(0.0001, gridStep / 10), displayUnit }}><>
+    <aside className={`educad-model-sidebar ${mode}`} aria-label={educadTranslate(locale, "model.label")}>
         <section className="educad-model-tree">
           <div ref={objectListRef} className="educad-object-list">
             {objects.map((object) => {
@@ -226,13 +235,13 @@ export function ParametricModelSidebar({
         </section>
 
       {mode === "normal" ? <div className="educad-tree-toolbar" role="toolbar" aria-label="Acciones de la jerarquía">
-        <button disabled={!canReorderParametricSelection(document, selection, "up")} aria-label="Subir selección" title="Subir en la jerarquía" onClick={() => onReorderSelection("up")}><ArrowUp size={16} /></button>
-        <button disabled={!canReorderParametricSelection(document, selection, "down")} aria-label="Bajar selección" title="Bajar en la jerarquía" onClick={() => onReorderSelection("down")}><ArrowDown size={16} /></button>
+        <button disabled={!canReorderParametricSelection(document, selection, "up")} aria-label={t("model.moveUp")} title={t("model.moveUp")} onClick={() => onReorderSelection("up")}><ArrowUp size={16} /></button>
+        <button disabled={!canReorderParametricSelection(document, selection, "down")} aria-label={t("model.moveDown")} title={t("model.moveDown")} onClick={() => onReorderSelection("down")}><ArrowDown size={16} /></button>
         <span className="educad-tree-toolbar-separator" aria-hidden="true" />
-        <button disabled={selection.length === 0} aria-label="Editar nombre" title={selection.length > 1 ? "Renombrar todos los elementos seleccionados" : "Renombrar selección"} onClick={beginRename}><Pencil size={15} /></button>
-        <button className="educad-origin-tree-button" disabled={!selectedObject || selectedObject.locked} aria-label={editingOriginObjectId === selectedObject?.id ? "Finalizar edición del origen" : "Editar origen"} title={editingOriginObjectId === selectedObject?.id ? "Finalizar edición del origen" : "Editar origen"} aria-pressed={Boolean(selectedObject && editingOriginObjectId === selectedObject.id)} onClick={() => selectedObject && onToggleOriginEdit(selectedObject.id)}><Crosshair size={16} /></button>
+        <button disabled={selection.length === 0} aria-label={t("common.rename")} title={t("common.rename")} onClick={beginRename}><Pencil size={15} /></button>
+        <button className="educad-origin-tree-button" disabled={!selectedObject || selectedObject.locked} aria-label={t("model.editOrigin")} title={t("model.editOrigin")} aria-pressed={Boolean(selectedObject && editingOriginObjectId === selectedObject.id)} onClick={() => selectedObject && onToggleOriginEdit(selectedObject.id)}><Crosshair size={16} /></button>
         <span className="educad-tree-toolbar-separator" aria-hidden="true" />
-        <button className="danger" disabled={selection.length === 0} aria-label="Eliminar selección" title={selection.length > 1 ? `Eliminar ${selection.length} elementos` : selectionKind === "feature" ? "Eliminar operación" : "Eliminar objeto"} onClick={onDeleteSelection}><Trash2 size={16} /></button>
+        <button className="danger" disabled={selection.length === 0} aria-label={t("common.delete")} title={t("common.delete")} onClick={onDeleteSelection}><Trash2 size={16} /></button>
       </div> : null}
 
       {mode === "normal" ? <section className="educad-sidebar-editor">
@@ -275,20 +284,20 @@ export function ParametricModelSidebar({
             onEditRevolveAxis={onEditRevolveAxis}
           />
         ) : (
-          <div className="educad-no-selection"><Layers3 size={28} /><strong>Selecciona un objeto u operación</strong></div>
+          <div className="educad-no-selection"><Layers3 size={28} /><strong>{t("model.noSelection")}</strong><span>{t("model.noSelectionHint")}</span></div>
         )}
       </section> : null}
     </aside>
     {renameOpen ? (
       <div className="educad-dialog-backdrop" role="presentation" onPointerDown={closeRename}>
         <form className="educad-rename-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-rename-title" onPointerDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); commitRename(); }}>
-          <header><strong id="educad-rename-title">{selection.length > 1 ? `Renombrar ${selection.length} elementos` : "Renombrar selección"}</strong><button type="button" aria-label="Cancelar" onClick={closeRename}><X size={18} /></button></header>
+          <header><strong id="educad-rename-title">{t("model.renameTitle")}</strong><button type="button" aria-label={t("common.cancel")} onClick={closeRename}><X size={18} /></button></header>
           <label><span>{selection.length > 1 ? "Nombre común" : "Nombre"}</span><input autoFocus value={renameDraft} maxLength={80} placeholder={selection.length > 1 ? "Aplicar el mismo nombre a todos" : undefined} onChange={(event) => setRenameDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") closeRename(); }} /></label>
-          <footer><button type="button" onClick={closeRename}>Cancelar</button><button className="primary" type="submit" disabled={!renameDraft.trim()}>OK</button></footer>
+          <footer><button type="button" onClick={closeRename}>{t("common.cancel")}</button><button className="primary" type="submit" disabled={!renameDraft.trim()}>{t("common.accept")}</button></footer>
         </form>
       </div>
     ) : null}
-    </></NumericStepContext.Provider>
+    </></NumericStepContext.Provider></LocaleContext.Provider>
   );
 }
 
@@ -362,9 +371,10 @@ function ParametricObjectInspector({
 }
 
 function TransformSection({ children, description = "Posición · rotación · escala" }: { children: ReactNode; description?: string }) {
+  const t = useSidebarTranslation();
   return (
     <details className="educad-transform-section">
-      <summary><ChevronRight size={16} /><span>Transformación</span><small>{description}</small></summary>
+      <summary><ChevronRight size={16} /><span>{t("model.transform")}</span><small>{description}</small></summary>
       <div>{children}</div>
     </details>
   );
@@ -713,12 +723,13 @@ function ParametricFeatureInspector({
 }
 
 function OperationModeButtons({ value, includeCommon = true, onChange }: { value: "add" | "cut" | "intersect"; includeCommon?: boolean; onChange: (value: "add" | "cut" | "intersect") => void }) {
+  const t = useSidebarTranslation();
   const modes = includeCommon ? (["add", "cut", "intersect"] as const) : (["add", "cut"] as const);
   return <div className="educad-operation-mode-property">
-    <span>Modo</span>
+    <span>{t("model.mode")}</span>
     <div className="educad-operation-mode-buttons">
       {modes.map((mode) => {
-        const label = mode === "add" ? "Añadir" : mode === "cut" ? "Hueco" : "Común";
+        const label = mode === "add" ? t("model.add") : mode === "cut" ? t("model.hole") : t("model.common");
         return <button key={mode} type="button" className={`mode-${mode} ${value === mode ? "active" : ""}`} title={label} aria-label={label} aria-pressed={value === mode} onClick={() => onChange(mode)}><ToolbarBooleanModeIcon mode={mode === "cut" ? "hole" : mode === "intersect" ? "common" : "add"} /></button>;
       })}
     </div>

@@ -20,6 +20,13 @@ const es = {
   "toolbar.objectBoolean": "Booleana entre objetos", "toolbar.snapGrid": "Ajustar a rejilla", "toolbar.chamfer": "Chaflán",
   "toolbar.fillet": "Redondeo", "toolbar.extrudeFace": "Extruir cara", "toolbar.extrudeSketch": "Extruir boceto",
   "toolbar.revolve": "Revolución", "toolbar.revolveSketch": "Revolucionar boceto", "toolbar.shell": "Vaciado",
+  "common.cancel": "Cancelar", "common.accept": "Aceptar", "common.delete": "Eliminar", "common.rename": "Editar nombre",
+  "model.label": "Modelo paramétrico", "model.moveUp": "Subir", "model.moveDown": "Bajar", "model.editOrigin": "Editar origen",
+  "model.noSelection": "Nada seleccionado", "model.noSelectionHint": "Selecciona un objeto u operación para editar sus propiedades.",
+  "model.renameTitle": "Cambiar nombre", "model.operation": "Operación", "model.shapeParameters": "Parámetros de la forma",
+  "model.transform": "Transformación", "model.mode": "Modo", "model.add": "Añadir", "model.hole": "Hueco", "model.common": "Común",
+  "dialog.newTitle": "Nuevo diseño", "dialog.newWarning": "El proyecto actual se cerrará. Guarda antes si quieres conservar los últimos cambios.",
+  "dialog.save": "Guardar", "dialog.createNew": "Nuevo", "dialog.exportTitle": "Exportar diseño",
 } as const;
 
 export type EducadTranslationKey = keyof typeof es;
@@ -44,6 +51,13 @@ const en: Record<EducadTranslationKey, string> = {
   "toolbar.objectBoolean": "Boolean between objects", "toolbar.snapGrid": "Snap to grid", "toolbar.chamfer": "Chamfer",
   "toolbar.fillet": "Fillet", "toolbar.extrudeFace": "Extrude face", "toolbar.extrudeSketch": "Extrude sketch",
   "toolbar.revolve": "Revolve", "toolbar.revolveSketch": "Revolve sketch", "toolbar.shell": "Shell",
+  "common.cancel": "Cancel", "common.accept": "Accept", "common.delete": "Delete", "common.rename": "Rename",
+  "model.label": "Parametric model", "model.moveUp": "Move up", "model.moveDown": "Move down", "model.editOrigin": "Edit origin",
+  "model.noSelection": "Nothing selected", "model.noSelectionHint": "Select an object or operation to edit its properties.",
+  "model.renameTitle": "Rename", "model.operation": "Operation", "model.shapeParameters": "Shape parameters",
+  "model.transform": "Transform", "model.mode": "Mode", "model.add": "Add", "model.hole": "Hole", "model.common": "Common",
+  "dialog.newTitle": "New design", "dialog.newWarning": "The current project will be closed. Save first if you want to keep the latest changes.",
+  "dialog.save": "Save", "dialog.createNew": "New", "dialog.exportTitle": "Export design",
 };
 
 const translations: Record<EducadLocale, Record<EducadTranslationKey, string>> = { es, en };

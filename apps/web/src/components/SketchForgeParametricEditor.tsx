@@ -2717,6 +2717,7 @@ export function SketchForgeParametricEditor() {
           mode={modelSidebarMode}
           gridStep={document.workplane.gridStep}
           displayUnit={displayUnit}
+          locale={locale}
           editingOriginObjectId={originEditObjectId}
           onSelectionChange={setModelSelection}
           onReorderSelection={reorderSelection}
@@ -2761,7 +2762,7 @@ export function SketchForgeParametricEditor() {
 
       {exportOpen && (
         <aside data-educad-popup="export" className="top-action-panel export-action-panel educad-export-panel">
-          <header><div className="top-action-heading"><strong>Exportar</strong><span>Conserva los parámetros o fabrica la pieza</span></div><button onClick={() => setExportOpen(false)}><X /></button></header>
+          <header><div className="top-action-heading"><strong>{t("dialog.exportTitle")}</strong><span>Conserva los parámetros o fabrica la pieza</span></div><button aria-label={t("common.close")} onClick={() => setExportOpen(false)}><X /></button></header>
           <label className="educad-export-name"><span>Nombre del archivo</span><input type="text" value={exportFileName} maxLength={120} placeholder="modelo" onChange={(event) => setExportFileName(event.target.value)} /></label>
           <div className="educad-export-options">
             <button onClick={() => void exportProject()} disabled={projectExporting}><span className="export-format-icon">edu</span><strong>{projectExporting ? "Guardando…" : "Proyecto eduCAD"}</strong><small>Paquete editable con historial y recursos</small></button>
@@ -2774,9 +2775,9 @@ export function SketchForgeParametricEditor() {
       {newDocumentOpen ? (
         <div className="educad-dialog-backdrop" role="presentation" onPointerDown={() => setNewDocumentOpen(false)}>
           <section className="educad-new-document-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-new-document-title" onPointerDown={(event) => event.stopPropagation()}>
-            <header><strong id="educad-new-document-title">Crear un nuevo diseño</strong><button type="button" aria-label="Cancelar" onClick={() => setNewDocumentOpen(false)}><X size={18} /></button></header>
-            <p>Vas a cerrar el proyecto actual. Guarda una copia antes de crear un diseño nuevo si quieres conservarlo.</p>
-            <footer><button type="button" onClick={() => setNewDocumentOpen(false)}>Cancelar</button><button type="button" className="danger" onClick={newDocument}>Nuevo</button><button type="button" className="primary" onClick={openExportFromNewDocumentWarning}>Guardar</button></footer>
+            <header><strong id="educad-new-document-title">{t("dialog.newTitle")}</strong><button type="button" aria-label={t("common.cancel")} onClick={() => setNewDocumentOpen(false)}><X size={18} /></button></header>
+            <p>{t("dialog.newWarning")}</p>
+            <footer><button type="button" onClick={() => setNewDocumentOpen(false)}>{t("common.cancel")}</button><button type="button" className="danger" onClick={newDocument}>{t("dialog.createNew")}</button><button type="button" className="primary" onClick={openExportFromNewDocumentWarning}>{t("dialog.save")}</button></footer>
           </section>
         </div>
       ) : null}
