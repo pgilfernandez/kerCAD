@@ -36,8 +36,7 @@ function sketchDimensions(sketch: SketchFeature) {
 }
 export type ParametricTreeSelection = { id: string; kind: "object" | "feature" };
 export const OBJECT_COLOR_PALETTE = [
-  "#d41721", "#ff7a1a", "#f2cf10", "#33983d", "#18b99a", "#0098c7", "#3b82f6",
-  "#294c93", "#6e2786", "#c9009a", "#8a5a2b", "#ffffff", "#cfd8df", "#8a98a6", "#4b5563", "#111111",
+  "#bb0f17", "#e8731f", "#ddbd09", "#65c412", "#0f952a", "#18b99a", "#0098c7", "#3b82f6", "#8112cb", "#d03cab", "#b26519", "#ffffff", "#cfd8df", "#8a98a6", "#4b5563", "#111111",
 ];
 const NEW_OBJECT_COLOR_PALETTE = OBJECT_COLOR_PALETTE.slice(0, 10);
 export type ParametricObjectNode = {
