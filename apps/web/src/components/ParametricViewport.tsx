@@ -7,6 +7,7 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import { acceleratedRaycast, MeshBVH } from "three-mesh-bvh";
+import { Check, X } from "lucide-react";
 import { constrainViewportAxisDrag, coplanarFaceRegion, exactEdgeRegion, exactFaceRegion, finalReferenceWireframeDepthTest, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, type ViewportDimensionAxis, type ViewportEdgeGroup, type ViewportFaceGroup } from "@/lib/viewportGeometry";
 import { AdaptiveViewportResolution, viewportPerformanceOptions, viewportRenderProfile, type ViewportRenderQuality } from "@/lib/viewportPerformance";
 import { orthographicTouchTargetWorldSize, perspectiveTouchTargetWorldSize, viewportPointerDragIntent, type ViewportPointerDragIntent } from "@/lib/viewportPointer";
@@ -43,7 +44,7 @@ export type TopologyEdgePick = {
   length: number;
   edgeId: number;
 };
-type ShapeParameter = "width" | "depth" | "height" | "size" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "majorRadius" | "tubeRadius" | "cornerRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius";
+type ShapeParameter = "width" | "depth" | "height" | "size" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "thickness" | "majorRadius" | "tubeRadius" | "cornerRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius";
 
 export type ViewportSelection = {
   id: string;
@@ -152,6 +153,9 @@ type Props = {
   edgeTreatmentHandle?: { origin: { x: number; y: number; z: number }; radius: number; treatment: "fillet" | "chamfer" } | null;
   onEdgeTreatmentRadiusChange?: (radius: number) => void;
   onEdgeTreatmentTypeChange?: (treatment: "fillet" | "chamfer") => void;
+  onEdgeTreatmentAccept?: () => void;
+  onEdgeTreatmentCancel?: () => void;
+  edgeTreatmentCanAccept?: boolean;
 };
 
 type CachedObjectRender = {
@@ -467,7 +471,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
@@ -602,8 +606,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     if (!selected) return 0;
     const parameters = selected.shapeParameters;
     const boxLike = parameters && (parameters.shape === "box" || parameters.shape === "roundedBox" || parameters.shape === "pyramid" || parameters.shape === "wedge" || parameters.shape === "roof" || parameters.shape === "roundRoof");
-    const parameter = axis === "x" ? parameters?.shape === "text" ? null : boxLike ? "width" : parameters?.shape === "cone" ? "baseRadius" : parameters?.shape === "tube" || parameters?.shape === "gear" ? "outerRadius" : parameters?.shape === "torus" ? "majorRadius" : parameters ? "radius" : null
-      : axis === "y" ? parameters?.shape === "text" ? "size" : parameters?.shape === "cone" ? "topRadius" : parameters?.shape === "tube" ? "innerRadius" : parameters?.shape === "polygon" ? "sides" : boxLike ? "depth" : null
+    const parameter = axis === "x" ? parameters?.shape === "text" ? null : boxLike ? "width" : parameters?.shape === "cone" ? "baseRadius" : parameters?.shape === "tube" ? "innerRadius" : parameters?.shape === "gear" ? "outerRadius" : parameters?.shape === "torus" ? "majorRadius" : parameters ? "radius" : null
+      : axis === "y" ? parameters?.shape === "text" ? "size" : parameters?.shape === "cone" ? "topRadius" : parameters?.shape === "tube" ? "thickness" : parameters?.shape === "polygon" ? "sides" : boxLike ? "depth" : null
         : axis === "z" && parameters ? parameters.shape === "torus" ? "tubeRadius" : parameters.shape !== "sphere" ? "height" : null : null;
     const preview = shapeParameterPreviewRef.current;
     if (parameter && preview?.parameter === parameter) return preview.value;
@@ -615,6 +619,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     if (parameter === "topRadius" && parameters?.shape === "cone") return parameters.topRadius;
     if (parameter === "outerRadius" && (parameters?.shape === "tube" || parameters?.shape === "gear")) return parameters.outerRadius;
     if (parameter === "innerRadius" && parameters?.shape === "tube") return parameters.innerRadius;
+    if (parameter === "thickness" && parameters?.shape === "tube") return parameters.outerRadius - parameters.innerRadius;
     if (parameter === "sides" && parameters?.shape === "polygon") return parameters.sides;
     if (parameter === "majorRadius" && parameters?.shape === "torus") return parameters.majorRadius;
     if (parameter === "tubeRadius" && parameters?.shape === "torus") return parameters.tubeRadius;
@@ -646,7 +651,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const parameters = selected.shapeParameters;
     if (parameters) {
       const boxLike = parameters.shape === "box" || parameters.shape === "roundedBox" || parameters.shape === "pyramid" || parameters.shape === "wedge" || parameters.shape === "roof" || parameters.shape === "roundRoof";
-      const parameter = axis === "x" ? parameters.shape === "text" ? null : boxLike ? "width" : parameters.shape === "cone" ? "baseRadius" : parameters.shape === "tube" || parameters.shape === "gear" ? "outerRadius" : parameters.shape === "torus" ? "majorRadius" : "radius" : axis === "y" ? parameters.shape === "text" ? "size" : parameters.shape === "cone" ? "topRadius" : parameters.shape === "tube" ? "innerRadius" : parameters.shape === "polygon" ? "sides" : boxLike ? "depth" : null : axis === "z" ? parameters.shape === "torus" ? "tubeRadius" : parameters.shape !== "sphere" ? "height" : null : null;
+      const parameter = axis === "x" ? parameters.shape === "text" ? null : boxLike ? "width" : parameters.shape === "cone" ? "baseRadius" : parameters.shape === "tube" ? "innerRadius" : parameters.shape === "gear" ? "outerRadius" : parameters.shape === "torus" ? "majorRadius" : "radius" : axis === "y" ? parameters.shape === "text" ? "size" : parameters.shape === "cone" ? "topRadius" : parameters.shape === "tube" ? "thickness" : parameters.shape === "polygon" ? "sides" : boxLike ? "depth" : null : axis === "z" ? parameters.shape === "torus" ? "tubeRadius" : parameters.shape !== "sphere" ? "height" : null : null;
       if (parameter && (parameter === "topRadius" ? value >= 0 : value > 0)) shapeParameterRef.current?.(parameter, value);
     }
     input.value = scalar ? formatViewportDimension(dimensionValue(axis)) : formatDisplayLength(dimensionValue(axis), displayUnit);
@@ -664,7 +669,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const camera = projection === "orthographic"
       ? new THREE.OrthographicCamera(-90, 90, 90, -90, 0.1, 2000)
       : new THREE.PerspectiveCamera(38, 1, 0.1, 1000);
-    camera.position.set(118, 96, 118);
+    camera.position.set(118, 96, -118);
     const renderProfile = viewportRenderProfile(renderQuality);
     const resolution = new AdaptiveViewportResolution(window.devicePixelRatio, viewportPerformanceOptions(renderQuality));
     const renderer = new THREE.WebGLRenderer({ antialias: renderProfile.antialias, alpha: false, powerPreference: "high-performance" });
@@ -712,8 +717,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           ]
         : parameters?.shape === "tube"
           ? [
-              new THREE.Vector3(dimensionValue("x") * selected.width / Math.max(0.01, parameters.outerRadius * 2), 0, -dimensionValue("z") * selected.height / Math.max(0.01, parameters.height) / 2),
-              new THREE.Vector3(dimensionValue("y") * selected.width / Math.max(0.01, parameters.outerRadius * 2), 0, dimensionValue("z") * selected.height / Math.max(0.01, parameters.height) / 2),
+              new THREE.Vector3(dimensionValue("x") * selected.width / Math.max(0.01, parameters.outerRadius * 2), 0, 0),
+              new THREE.Vector3((parameters.innerRadius + dimensionValue("y")) * selected.width / Math.max(0.01, parameters.outerRadius * 2), 0, dimensionValue("z") * selected.height / Math.max(0.01, parameters.height) / 2),
               new THREE.Vector3(selected.width / 2, 0, 0),
             ]
         : parameters?.shape === "torus"
@@ -749,7 +754,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         ? parameters?.shape === "cone"
           ? ["Radio inferior", "Radio superior", "Alto"]
           : parameters?.shape === "tube"
-            ? ["Radio exterior", "Radio interior", "Alto"]
+            ? ["Radio", "Espesor", "Alto"]
             : parameters?.shape === "gear"
               ? ["Radio exterior", "", "Alto"]
               : parameters?.shape === "polygon"
@@ -762,7 +767,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         : parameters?.shape === "cone"
           ? ["Bottom radius", "Top radius", "Height"]
           : parameters?.shape === "tube"
-            ? ["Outer radius", "Inner radius", "Height"]
+            ? ["Radius", "Thickness", "Height"]
             : parameters?.shape === "gear"
               ? ["Outer radius", "", "Height"]
               : parameters?.shape === "polygon"
@@ -845,7 +850,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       }
       selector.style.display = "flex";
       selector.style.left = `${(point.x + 1) * host.clientWidth / 2}px`;
-      selector.style.top = `${(1 - point.y) * host.clientHeight / 2 - 20}px`;
+      selector.style.top = `${(1 - point.y) * host.clientHeight / 2 - 64}px`;
     };
     const updateGroundOpacity = () => {
       const belowGround = camera.position.y < 0;
@@ -864,6 +869,25 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const requestRender = () => {
       if (!disposed && frame === 0) frame = requestAnimationFrame(render);
     };
+    const updateYellowManipulatorScreenSizes = () => {
+      modelGroup.traverse((child) => {
+        if (!(child instanceof THREE.Mesh)) return;
+        const baseRadius = Number(child.userData.yellowManipulatorBaseRadius);
+        const diameterPixels = Number(child.userData.yellowManipulatorDiameterPixels);
+        if (!(baseRadius > 0) || !(diameterPixels > 0)) return;
+        const worldPosition = child.getWorldPosition(new THREE.Vector3());
+        const worldDiameter = camera instanceof THREE.OrthographicCamera
+          ? orthographicTouchTargetWorldSize(camera.top - camera.bottom, camera.zoom, renderer.domElement.clientHeight, diameterPixels)
+          : perspectiveTouchTargetWorldSize(camera.position.distanceTo(worldPosition), camera.fov, renderer.domElement.clientHeight, diameterPixels);
+        const parentScale = child.parent?.getWorldScale(new THREE.Vector3()) ?? new THREE.Vector3(1, 1, 1);
+        const worldRadiusScale = worldDiameter / (baseRadius * 2);
+        child.scale.set(
+          worldRadiusScale / Math.max(0.0001, Math.abs(parentScale.x)),
+          worldRadiusScale / Math.max(0.0001, Math.abs(parentScale.y)),
+          worldRadiusScale / Math.max(0.0001, Math.abs(parentScale.z)),
+        );
+      });
+    };
     const render = (now: number) => {
       frame = 0;
       const controlsChanged = controls.update();
@@ -876,6 +900,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           : perspectiveTouchTargetWorldSize(camera.position.distanceTo(worldPosition), camera.fov, renderer.domElement.clientHeight, 102);
         marker.scale.setScalar(Math.max(0.35, size));
       }
+      updateYellowManipulatorScreenSizes();
       updateGroundOpacity();
       renderer.render(scene, camera);
       updateDimensionLabels();
@@ -1520,13 +1545,17 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         const parameter = child.userData.shapeParameterVisual as ShapeParameter | undefined;
         const role = child.userData.shapeParameterVisualRole as "guide" | "handle" | "target" | undefined;
         if (!parameter || !role) return;
-        const end = parameter === "outerRadius"
-          ? new THREE.Vector3(worldOuterRadius + 3, 0, -worldHeight / 2)
-          : parameter === "innerRadius"
-            ? new THREE.Vector3(worldInnerRadius + 3, 0, worldHeight / 2)
+        const end = parameter === "innerRadius"
+          ? new THREE.Vector3(worldInnerRadius + 3, 0, 0)
+          : parameter === "thickness"
+            ? new THREE.Vector3(worldOuterRadius + 3, 0, worldHeight / 2)
             : new THREE.Vector3(0, 0, worldHeight / 2 + 3);
         if (role === "guide" && child instanceof LineSegments2) {
-          const start = parameter === "height" ? new THREE.Vector3(0, 0, -worldHeight / 2) : new THREE.Vector3(0, 0, end.z);
+          const start = parameter === "height"
+            ? new THREE.Vector3(0, 0, -worldHeight / 2)
+            : parameter === "thickness"
+              ? new THREE.Vector3(worldInnerRadius, 0, worldHeight / 2)
+              : new THREE.Vector3(0, 0, 0);
           updateYellowManipulatorLine(child, start, end);
         } else if (role === "handle" || role === "target") child.position.copy(end);
       });
@@ -1822,6 +1851,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
                 ? values.baseRadius * shapeParameterWorldScale
                 : parameter === "innerRadius" && values?.shape === "tube"
                   ? values.innerRadius * shapeParameterWorldScale
+                  : parameter === "thickness" && values?.shape === "tube"
+                    ? values.outerRadius * shapeParameterWorldScale
                   : parameter === "outerRadius" && (values?.shape === "tube" || values?.shape === "gear")
                     ? values.outerRadius * shapeParameterWorldScale
                   : parameter === "majorRadius" && values?.shape === "torus"
@@ -1851,6 +1882,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
                       : parameter === "topRadius" && values?.shape === "cone" ? values.topRadius
                         : parameter === "outerRadius" && (values?.shape === "tube" || values?.shape === "gear") ? values.outerRadius
                           : parameter === "innerRadius" && values?.shape === "tube" ? values.innerRadius
+                            : parameter === "thickness" && values?.shape === "tube" ? values.outerRadius - values.innerRadius
                             : parameter === "majorRadius" && values?.shape === "torus" ? values.majorRadius
                               : parameter === "tubeRadius" && values?.shape === "torus" ? values.tubeRadius
                                 : parameter === "cornerRadius" && values?.shape === "roundedBox" ? values.cornerRadius
@@ -1899,7 +1931,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       setPointer(event);
       if (!raycaster.ray.intersectPlane(dragPlane, dragPoint)) return;
       if (interaction === "edgeTreatmentRadius" && edgeTreatmentOriginWorld && edgeTreatmentAxisWorld) {
-        const grid = Math.max(0.01, snapRef.current / 10);
+        const grid = Math.max(0.01, snapRef.current);
         const coordinate = dragPoint.clone().sub(edgeTreatmentOriginWorld).dot(edgeTreatmentAxisWorld) - edgeTreatmentPointerOffset;
         pendingEdgeTreatmentRadius = Math.max(0.01, Math.round(coordinate / grid) * grid);
         const layer = edgeTreatmentHandleRef.current;
@@ -2061,18 +2093,21 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         const parameterStep = parameter === "cornerRadius" ? Math.max(0.01, grid / 10) : grid;
         const pointerCoordinate = (shapeParameterDragAxis === "y" ? localPointer.y : shapeParameterDragAxis === "z" ? localPointer.z : localPointer.x) * shapeParameterDragSign;
         const adjusted = pointerCoordinate - parameterPointerOffset;
+        const parameterAdjusted = parameter === "thickness" && selected.shapeParameters?.shape === "tube"
+          ? Math.max(0, Math.abs(adjusted) - selected.shapeParameters.innerRadius * shapeParameterWorldScale)
+          : adjusted;
         const visualExtent = parameter === "sides" || parameter === "teeth"
-          ? parameter === "sides" ? Math.min(32, Math.max(3, Math.round(Math.abs(adjusted)))) : Math.min(64, Math.max(6, Math.round(Math.abs(adjusted))))
+          ? parameter === "sides" ? Math.min(32, Math.max(3, Math.round(Math.abs(parameterAdjusted)))) : Math.min(64, Math.max(6, Math.round(Math.abs(parameterAdjusted))))
           : parameter === "height"
-          ? Math.max(parameterStep, Math.round((adjusted + resizeStart.height / 2) / parameterStep) * parameterStep)
-          : parameter === "topRadius" || parameter === "innerRadius" || parameter === "majorRadius" || parameter === "tubeRadius" || parameter === "cornerRadius" || parameter === "toothDepth" || parameter === "boreRadius"
-            ? Math.max(0, Math.round(Math.abs(adjusted) / parameterStep) * parameterStep)
-            : Math.max(parameterStep, Math.round(Math.abs(adjusted) * 2 / parameterStep) * parameterStep);
+          ? Math.max(parameterStep, Math.round((parameterAdjusted + resizeStart.height / 2) / parameterStep) * parameterStep)
+          : parameter === "topRadius" || parameter === "innerRadius" || parameter === "thickness" || parameter === "majorRadius" || parameter === "tubeRadius" || parameter === "cornerRadius" || parameter === "toothDepth" || parameter === "boreRadius"
+            ? Math.max(0, Math.round(Math.abs(parameterAdjusted) / parameterStep) * parameterStep)
+            : Math.max(parameterStep, Math.round(Math.abs(parameterAdjusted) * 2 / parameterStep) * parameterStep);
         const startExtent = parameter === "depth" || parameter === "size" ? resizeStart.depth : parameter === "height" ? resizeStart.height : resizeStart.width;
         const ratio = visualExtent / Math.max(0.01, startExtent);
         pendingShapeParameter.value = parameter === "sides" || parameter === "teeth"
           ? visualExtent
-          : parameter === "topRadius" || parameter === "innerRadius" || parameter === "majorRadius" || parameter === "tubeRadius" || parameter === "cornerRadius" || parameter === "toothDepth" || parameter === "boreRadius"
+          : parameter === "topRadius" || parameter === "innerRadius" || parameter === "thickness" || parameter === "majorRadius" || parameter === "tubeRadius" || parameter === "cornerRadius" || parameter === "toothDepth" || parameter === "boreRadius"
           ? visualExtent / Math.max(0.0001, shapeParameterWorldScale)
           : Math.max(0.1, shapeParameterStartValue * ratio);
         shapeParameterPreviewRef.current = pendingShapeParameter;
@@ -2095,10 +2130,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           if (parameter === "height") visualRoot.position.z = (visualExtent - resizeStart.height) / 2;
           updateConePreview(selected, baseRadius, topRadius, height);
         } else if (selected.shapeParameters?.shape === "tube") {
-          const outerRadius = parameter === "outerRadius" ? Math.max(selected.shapeParameters.innerRadius + 0.1, pendingShapeParameter.value) : selected.shapeParameters.outerRadius;
-          const innerRadius = parameter === "innerRadius" ? Math.min(selected.shapeParameters.outerRadius - 0.1, Math.max(0.1, pendingShapeParameter.value)) : selected.shapeParameters.innerRadius;
+          const originalThickness = selected.shapeParameters.outerRadius - selected.shapeParameters.innerRadius;
+          const innerRadius = parameter === "innerRadius" ? Math.max(0.1, pendingShapeParameter.value) : selected.shapeParameters.innerRadius;
+          const thickness = parameter === "thickness" ? Math.max(0.1, pendingShapeParameter.value) : originalThickness;
+          const outerRadius = innerRadius + thickness;
           const height = parameter === "height" ? pendingShapeParameter.value : selected.shapeParameters.height;
-          pendingShapeParameter.value = parameter === "outerRadius" ? outerRadius : parameter === "innerRadius" ? innerRadius : pendingShapeParameter.value;
+          pendingShapeParameter.value = parameter === "innerRadius" ? innerRadius : parameter === "thickness" ? thickness : pendingShapeParameter.value;
           shapeParameterPreviewRef.current = pendingShapeParameter;
           if (parameter === "height") visualRoot.position.z = (visualExtent - resizeStart.height) / 2;
           updateTubePreview(selected, outerRadius, innerRadius, height);
@@ -2439,6 +2476,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const handle = new THREE.Mesh(new THREE.SphereGeometry(1.0625, 18, 12), new THREE.MeshBasicMaterial({ color: 0xf0b83f, depthTest: false, depthWrite: false, transparent: true, opacity: 0.92 }));
     handle.position.copy(end);
     handle.userData.faceExtrudeHandle = true;
+    handle.userData.yellowManipulatorBaseRadius = 1.0625;
+    handle.userData.yellowManipulatorDiameterPixels = 28;
     handle.renderOrder = 32;
     addYellowManipulatorOutline(handle, 1.0625);
     layer.userData.origin = origin;
@@ -2474,11 +2513,15 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const handle = new THREE.Mesh(new THREE.SphereGeometry(1.7, 18, 12), new THREE.MeshBasicMaterial({ color: 0xf0b83f, depthTest: false, depthWrite: false, transparent: true, opacity: 0.92 }));
     handle.position.copy(end);
     handle.userData.edgeTreatmentRadiusHandle = true;
+    handle.userData.yellowManipulatorBaseRadius = 1.7;
+    handle.userData.yellowManipulatorDiameterPixels = 28;
     handle.renderOrder = 32;
     addYellowManipulatorOutline(handle, 1.7);
     const target = new THREE.Mesh(new THREE.SphereGeometry(5, 12, 8), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthTest: false, depthWrite: false }));
     target.position.copy(end);
     target.userData.edgeTreatmentRadiusTarget = true;
+    target.userData.yellowManipulatorBaseRadius = 5;
+    target.userData.yellowManipulatorDiameterPixels = 68;
     layer.userData.radius = edgeTreatmentHandle.radius;
     layer.add(guide, handle, target);
     invalidateRef.current();
@@ -2715,6 +2758,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         cached.body.userData.editorPickable = item.reference?.pickable ?? true;
         const materials = Array.isArray(cached.body.material) ? cached.body.material : [cached.body.material];
         for (const material of materials) setMaterialColor(material, item.color);
+        const wireframeMaterials = Array.isArray(cached.wireframeEdges.material) ? cached.wireframeEdges.material : [cached.wireframeEdges.material];
+        for (const material of wireframeMaterials) setMaterialColor(material, item.color);
         continue;
       }
       if (cached) disposeCachedObjectRender(group, cached);
@@ -2755,7 +2800,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       edges.visible = displayMode === "solid";
       const wireframeGeometry = new LineSegmentsGeometry();
       wireframeGeometry.setPositions(item.mesh.edges);
-      const wireframeMaterial = new LineMaterial({ color: "#000000", linewidth: 2, depthTest: true });
+      const wireframeMaterial = new LineMaterial({ color: item.color, linewidth: 2, depthTest: true });
       wireframeMaterial.resolution.set(Math.max(1, rendererRef.current?.domElement.clientWidth ?? 1), Math.max(1, rendererRef.current?.domElement.clientHeight ?? 1));
       const wireframeEdges = new LineSegments2(wireframeGeometry, wireframeMaterial);
       wireframeEdges.visible = displayMode === "wireframe";
@@ -2884,6 +2929,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       for (const material of materials) {
         setMaterialColor(material, nextColor);
       }
+    }
+    for (const [objectId, cached] of objectRenderCacheRef.current) {
+      const nextColor = objectColors[objectId];
+      if (!nextColor) continue;
+      const materials = Array.isArray(cached.wireframeEdges.material) ? cached.wireframeEdges.material : [cached.wireframeEdges.material];
+      for (const material of materials) setMaterialColor(material, nextColor);
     }
     invalidateRef.current();
   }, [objectColors, projection, renderQuality, shadingMode]);
@@ -3051,6 +3102,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       handle.renderOrder = 22;
       handle.userData.shapeParameterVisual = parameter;
       handle.userData.shapeParameterVisualRole = "handle";
+      handle.userData.yellowManipulatorBaseRadius = 1.7;
+      handle.userData.yellowManipulatorDiameterPixels = 28;
       addYellowManipulatorOutline(handle, 1.7);
       visualRoot.add(handle);
       const target = new THREE.Mesh(
@@ -3065,6 +3118,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       target.userData.hitTargetSize = 10;
       target.userData.shapeParameterVisual = parameter;
       target.userData.shapeParameterVisualRole = "target";
+      target.userData.yellowManipulatorBaseRadius = 5;
+      target.userData.yellowManipulatorDiameterPixels = 68;
       visualRoot.add(target);
       resizeHitboxesRef.current.push(target);
     };
@@ -3106,8 +3161,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     } else if (parameters?.shape === "tube") {
       const radialScale = selection.width / Math.max(0.01, parameters.outerRadius * 2);
       const innerRadius = parameters.innerRadius * radialScale;
-      addParameterHandle("outerRadius", "x", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(selection.width / 2 + 3, 0, -selection.height / 2));
-      addParameterHandle("innerRadius", "y", new THREE.Vector3(0, 0, selection.height / 2), new THREE.Vector3(innerRadius + 3, 0, selection.height / 2));
+      addParameterHandle("innerRadius", "x", new THREE.Vector3(0, 0, 0), new THREE.Vector3(innerRadius + 3, 0, 0));
+      addParameterHandle("thickness", "y", new THREE.Vector3(innerRadius, 0, selection.height / 2), new THREE.Vector3(selection.width / 2 + 3, 0, selection.height / 2));
       addParameterHandle("height", "z", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(0, 0, selection.height / 2 + 3));
     } else if (parameters?.shape === "gear") {
       const radialScale = selection.width / Math.max(0.01, parameters.outerRadius * 2);
@@ -3183,7 +3238,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       top: new THREE.Vector3(0, 1, 0.001),
       front: new THREE.Vector3(0, 0.001, 1),
       right: new THREE.Vector3(1, 0.001, 0),
-      home: new THREE.Vector3(118, 96, 118),
+      home: new THREE.Vector3(118, 96, -118),
     };
     camera.position.copy(target).add(vectors[view.name].normalize().multiplyScalar(distance));
     camera.up.set(0, 1, 0);
@@ -3233,8 +3288,14 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       aria-label={locale === "es" ? "Tipo de tratamiento de arista" : "Edge treatment type"}
       onPointerDown={(event) => event.stopPropagation()}
     >
-      <button type="button" className={edgeTreatmentHandle?.treatment === "fillet" ? "active" : ""} aria-label={locale === "es" ? "Redondeo" : "Fillet"} title={locale === "es" ? "Redondeo" : "Fillet"} aria-pressed={edgeTreatmentHandle?.treatment === "fillet"} onClick={() => onEdgeTreatmentTypeChange?.("fillet")}><ToolbarFilletIcon /></button>
-      <button type="button" className={edgeTreatmentHandle?.treatment === "chamfer" ? "active" : ""} aria-label={locale === "es" ? "Chaflán" : "Chamfer"} title={locale === "es" ? "Chaflán" : "Chamfer"} aria-pressed={edgeTreatmentHandle?.treatment === "chamfer"} onClick={() => onEdgeTreatmentTypeChange?.("chamfer")}><ToolbarChamferIcon /></button>
+      <div className="educad-viewport-edge-treatment-types">
+        <button type="button" className={edgeTreatmentHandle?.treatment === "fillet" ? "active" : ""} aria-label={locale === "es" ? "Redondeo" : "Fillet"} title={locale === "es" ? "Redondeo" : "Fillet"} aria-pressed={edgeTreatmentHandle?.treatment === "fillet"} onClick={() => onEdgeTreatmentTypeChange?.("fillet")}><ToolbarFilletIcon /></button>
+        <button type="button" className={edgeTreatmentHandle?.treatment === "chamfer" ? "active" : ""} aria-label={locale === "es" ? "Chaflán" : "Chamfer"} title={locale === "es" ? "Chaflán" : "Chamfer"} aria-pressed={edgeTreatmentHandle?.treatment === "chamfer"} onClick={() => onEdgeTreatmentTypeChange?.("chamfer")}><ToolbarChamferIcon /></button>
+      </div>
+      {onEdgeTreatmentCancel && onEdgeTreatmentAccept ? <div className="educad-viewport-edge-treatment-actions">
+        <button type="button" className="cancel" aria-label={locale === "es" ? "Cancelar" : "Cancel"} title={locale === "es" ? "Cancelar" : "Cancel"} onClick={onEdgeTreatmentCancel}><X /></button>
+        <button type="button" className="accept" disabled={!edgeTreatmentCanAccept} aria-label={locale === "es" ? "Aceptar" : "Accept"} title={locale === "es" ? "Aceptar" : "Accept"} onClick={onEdgeTreatmentAccept}><Check /></button>
+      </div> : null}
     </div>
     <div className="parametric-selection-dimensions">
       {dimensionInput("x", dimensionXRef, "axis-x", "Editar dimensión X")}

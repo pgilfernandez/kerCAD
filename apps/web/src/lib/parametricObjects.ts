@@ -124,10 +124,12 @@ export function addPrimitive(
       primitive.topRadius = definition.parameters.find((parameter) => parameter.key === "topRadius")?.defaultValue ?? 0;
     }
     if (kind === "tube") {
-      const outerRadius = definition.parameters.find((parameter) => parameter.key === "outerRadius")?.defaultValue ?? 10;
+      const innerRadius = definition.parameters.find((parameter) => parameter.key === "innerRadius")?.defaultValue ?? 6;
+      const thickness = definition.parameters.find((parameter) => parameter.key === "thickness")?.defaultValue ?? 4;
+      const outerRadius = innerRadius + thickness;
       primitive.width = outerRadius * 2;
       primitive.depth = outerRadius * 2;
-      primitive.innerRadius = definition.parameters.find((parameter) => parameter.key === "innerRadius")?.defaultValue ?? 6;
+      primitive.innerRadius = innerRadius;
     }
     if (kind === "halfSphere") {
       const radius = definition.parameters.find((parameter) => parameter.key === "radius")?.defaultValue ?? 10;
@@ -893,7 +895,7 @@ export function resizeParametricHeight(document: ParametricDocument, id: string,
 export function updateParametricShapeParameter(
   document: ParametricDocument,
   id: string,
-  parameter: "width" | "depth" | "height" | "size" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "majorRadius" | "tubeRadius" | "cornerRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius",
+  parameter: "width" | "depth" | "height" | "size" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "thickness" | "majorRadius" | "tubeRadius" | "cornerRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius",
   value: number,
 ) {
   if (!Number.isFinite(value) || (parameter === "topRadius" || parameter === "boreRadius" ? value < 0 : value <= 0)) return;
@@ -927,12 +929,14 @@ export function updateParametricShapeParameter(
       feature.topRadius = Math.max(0, value);
     } else if (feature.primitive === "cone" && parameter === "height") {
       feature.height = next;
-    } else if (feature.primitive === "tube" && parameter === "outerRadius") {
-      const radius = Math.max((feature.innerRadius ?? 0) + 0.1, next);
-      feature.width = radius * 2;
-      feature.depth = radius * 2;
     } else if (feature.primitive === "tube" && parameter === "innerRadius") {
-      feature.innerRadius = Math.min(feature.width / 2 - 0.1, next);
+      const thickness = Math.max(0.1, feature.width / 2 - (feature.innerRadius ?? 6));
+      feature.innerRadius = next;
+      feature.width = (next + thickness) * 2;
+      feature.depth = feature.width;
+    } else if (feature.primitive === "tube" && parameter === "thickness") {
+      feature.width = ((feature.innerRadius ?? 6) + next) * 2;
+      feature.depth = feature.width;
     } else if (feature.primitive === "tube" && parameter === "height") {
       feature.height = next;
     } else if (feature.primitive === "torus" && parameter === "majorRadius") {

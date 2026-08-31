@@ -34,7 +34,7 @@ import {
   ToolbarWorkplaneIcon,
   ToolbarResetWorkplaneIcon,
 } from "@/components/icons";
-import { cloneDocument, createDrawnSketchFeature, createExtrudeFeature, createFaceExtrudeFeature, createFilletFeature, createLinearPatternFeature, createMirrorFeature, createObjectBooleanFeature, createPolarPatternFeature, createRevolveFeature, createShellFeature, createStarterDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
+import { cloneDocument, createDrawnSketchFeature, createEmptyDocument, createExtrudeFeature, createFaceExtrudeFeature, createFilletFeature, createLinearPatternFeature, createMirrorFeature, createObjectBooleanFeature, createPolarPatternFeature, createRevolveFeature, createShellFeature, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { assertValidParametricDependencies } from "@/lib/parametricDependencyGraph";
 import { assertValidParametricTopology, recoverParametricTopologyReferenceInRecords } from "@/lib/parametricTopology";
 import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint } from "@/lib/parametricBuildState";
@@ -246,7 +246,7 @@ function withSmoothSketchHandles(profile: SketchProfile) {
 }
 
 export function SketchForgeParametricEditor() {
-  const initialDocument = useMemo(() => createStarterDocument(), []);
+  const initialDocument = useMemo(() => createEmptyDocument(), []);
   const [history, setHistory] = useState<ParametricHistoryState>(() => createParametricHistory(initialDocument));
   const document = currentHistoryDocument(history);
   const [modelSelection, setModelSelection] = useState<ModelTreeSelection[]>(initialDocument.objects[0] ? [{ id: initialDocument.objects[0].id, kind: "object" }] : []);
@@ -305,7 +305,16 @@ export function SketchForgeParametricEditor() {
   const sketchHistoryRef = useRef<SketchProfile[]>([]);
   const sketchHistoryIndexRef = useRef(-1);
   const [sketchHistoryIndex, setSketchHistoryIndex] = useState(-1);
-  const activeSketchProfileValidation = useMemo(() => sketchSession ? validateDrawnSketchProfile(sketchSession.profile) : null, [sketchSession]);
+  const activeSketchProfileValidation = useMemo(() => {
+    if (!sketchSession) return null;
+    const profile = sketchSession.profile;
+    const hasGeometry = profile.points.length > 0
+      || profile.segments.length > 0
+      || (profile.circles?.length ?? 0) > 0
+      || (profile.texts?.length ?? 0) > 0
+      || (profile.images?.length ?? 0) > 0;
+    return hasGeometry ? validateDrawnSketchProfile(profile) : null;
+  }, [sketchSession]);
   const t = useCallback((key: EducadTranslationKey) => educadTranslate(locale, key), [locale]);
 
   useEffect(() => {
@@ -694,10 +703,13 @@ export function SketchForgeParametricEditor() {
     rotationEditable: object.id === selectedOriginObjectId && showRotationTriad,
   })), [document.objects, originEditObjectId, selectedOriginObjectId, showPositionTriad, showRotationTriad]);
   const referenceObjectRecords = useMemo(() => parametricReferenceRenderRecords(document), [document]);
-  const viewportObjectRecords = useMemo(() => [
-    ...((editingEdgeTreatmentId || editingFaceExtrudeId || editingShellId || editingRevolveId) && topologySelectionBuild ? topologySelectionBuild : build).objectRecords,
-    ...referenceObjectRecords,
-  ], [build, editingEdgeTreatmentId, editingFaceExtrudeId, editingRevolveId, editingShellId, referenceObjectRecords, topologySelectionBuild]);
+  const viewportObjectRecords = useMemo(() => {
+    const visibleObjectIds = new Set(document.objects.filter((object) => object.visible !== false).map((object) => object.id));
+    return [
+      ...((editingEdgeTreatmentId || editingFaceExtrudeId || editingShellId || editingRevolveId) && topologySelectionBuild ? topologySelectionBuild : build).objectRecords,
+      ...referenceObjectRecords,
+    ].filter((record) => visibleObjectIds.has(record.objectId));
+  }, [build, document.objects, editingEdgeTreatmentId, editingFaceExtrudeId, editingRevolveId, editingShellId, referenceObjectRecords, topologySelectionBuild]);
   const selectedOperationVisible = selectedFeature?.kind !== "sketch" || selectedFeature.visible;
   const viewportOperationOrigins = useMemo(() => selectedObjectVisible && selectedOperationVisible && selectedOperationOriginId && (selectedBox || selectedSketchPlacement) ? [{
     featureId: selectedOperationOriginId,
@@ -1879,7 +1891,7 @@ export function SketchForgeParametricEditor() {
   const redo = () => setHistory(redoParametricHistory);
 
   const newDocument = () => {
-    const next = createStarterDocument();
+    const next = createEmptyDocument();
     localizeNewDocumentEntries({ ...next, objects: [], features: [] }, next, locale);
     next.name = locale === "es" ? "Nuevo diseño" : "New design";
     setHistory(createParametricHistory(next));
@@ -2662,7 +2674,7 @@ export function SketchForgeParametricEditor() {
           showPointActions={false}
           showGridControls={false}
         /> : <ParametricViewport
-          mesh={((editingEdgeTreatmentId || editingFaceExtrudeId || editingShellId || editingRevolveId) && topologySelectionBuild ? topologySelectionBuild : build).mesh}
+          mesh={viewportObjectRecords.length > 0 ? ((editingEdgeTreatmentId || editingFaceExtrudeId || editingShellId || editingRevolveId) && topologySelectionBuild ? topologySelectionBuild : build).mesh : null}
           objectRecords={viewportObjectRecords}
           objectColors={objectColors}
           objectOrigins={viewportObjectOrigins}
@@ -2746,6 +2758,9 @@ export function SketchForgeParametricEditor() {
             if (pendingEdgeTreatment) setPendingEdgeTreatment(treatment);
             else if (selectedEdgeTreatmentFeature) updateFeature(selectedEdgeTreatmentFeature.id, (feature) => { if (feature.kind === "fillet") feature.treatment = treatment; });
           }}
+          onEdgeTreatmentAccept={pendingEdgeTreatment ? acceptEdgeTreatment : undefined}
+          onEdgeTreatmentCancel={pendingEdgeTreatment ? cancelEdgeTreatment : undefined}
+          edgeTreatmentCanAccept={selectedTopologyFaces.length + selectedTopologyEdges.length > 0}
         />}
         {sketchSession ? <aside className="educad-sketch-constraints-panel" aria-label={t("sketch.constraints")}>
           <header>

@@ -2,7 +2,7 @@ export type ParametricPrimitiveKind = "box" | "roundedBox" | "cylinder" | "spher
 export type ParametricBooleanRole = "add" | "cut" | "intersect";
 
 export type ParametricParameterDefinition = {
-  key: "width" | "depth" | "height" | "diameter" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "majorRadius" | "tubeRadius" | "cornerRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius";
+  key: "width" | "depth" | "height" | "diameter" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "thickness" | "majorRadius" | "tubeRadius" | "cornerRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius";
   label: string;
   unit: "mm" | "";
   min: number;
@@ -91,7 +91,7 @@ export const parametricOperationCatalog: ParametricOperationDefinition[] = [
     description: "Tubo paramétrico exacto con pared editable",
     menuIcon: "assets/sketchforge/shape-icons-gray/tube.png",
     roles: roles("tube"),
-    parameters: [dimension("outerRadius", "Radio exterior", 10), dimension("innerRadius", "Radio interior", 6), dimension("height", "Altura")],
+    parameters: [dimension("innerRadius", "Radio", 6), dimension("thickness", "Espesor", 4), dimension("height", "Altura")],
   },
   {
     kind: "halfSphere",

@@ -38,9 +38,7 @@ export function createFeatureId(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}-${localCounter.toString(36)}`;
 }
 
-export function createStarterDocument(now = Date.now()): ParametricDocument {
-  const sketchId = createFeatureId("sketch");
-  const object = createParametricObject(1);
+export function createEmptyDocument(now = Date.now()): ParametricDocument {
   return {
     schema: CURRENT_PARAMETRIC_SCHEMA,
     id: createFeatureId("project"),
@@ -48,10 +46,21 @@ export function createStarterDocument(now = Date.now()): ParametricDocument {
     units: "mm",
     color: "#d41721",
     workplane: { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, ...globalParametricWorkplanePlacement() },
-    objects: [object],
+    objects: [],
     topologyReferences: [],
     createdAt: now,
     updatedAt: now,
+    features: [],
+  };
+}
+
+export function createStarterDocument(now = Date.now()): ParametricDocument {
+  const sketchId = createFeatureId("sketch");
+  const object = createParametricObject(1);
+  const document = createEmptyDocument(now);
+  return {
+    ...document,
+    objects: [object],
     features: [
       {
         id: sketchId,

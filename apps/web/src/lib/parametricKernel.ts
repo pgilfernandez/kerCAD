@@ -415,7 +415,7 @@ function objectRenderRecords(brep: Brep, document: ParametricDocument, worldSoli
 }
 
 function buildRenderOutput(brep: Brep, document: ParametricDocument, solids: Map<string, AnySolid>, objects: Map<string, ParametricObject>, reusedObjectIds: Set<string>, incrementalRender: boolean) {
-  const worldSolids = worldObjectSolids(brep, solids, objects, true);
+  const worldSolids = worldObjectSolids(brep, solids, objects);
   const combined = incrementalRender ? null : combinedObjectShape(brep, worldSolids);
   return {
     mesh: combined ? meshShape(brep, combined) : null,

@@ -36,7 +36,7 @@ import {
   createFilletFeature,
   createHoleFeature,
   createSketchFeature,
-  createStarterDocument,
+  createEmptyDocument,
   documentHasSolid,
   previousSketch,
   validateDocument,
@@ -106,7 +106,7 @@ function NumberField({ label, value, onChange, min = -1000, max = 1000, step = 1
 }
 
 export function ParametricCadEditor() {
-  const starter = useMemo(() => createStarterDocument(), []);
+  const starter = useMemo(() => createEmptyDocument(), []);
   const [history, setHistory] = useState<HistoryState>({ entries: [starter], index: 0 });
   const document = history.entries[history.index];
   const [selectedId, setSelectedId] = useState<string | null>(starter.features[0]?.id ?? null);
@@ -286,7 +286,7 @@ export function ParametricCadEditor() {
   };
 
   const newDocument = () => {
-    const next = createStarterDocument();
+    const next = createEmptyDocument();
     setHistory({ entries: [next], index: 0 });
     setSelectedId(next.features[0]?.id ?? null);
     setNotice({ tone: "info", text: "Se ha creado una pieza de ejemplo nueva." });

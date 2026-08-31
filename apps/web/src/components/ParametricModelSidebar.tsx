@@ -559,6 +559,8 @@ function ParametricFeatureInspector({
                     ? feature.topRadius ?? 0
                     : parameter.key === "innerRadius"
                       ? feature.innerRadius ?? 6
+                    : parameter.key === "thickness"
+                      ? Math.max(0.1, feature.width / 2 - (feature.innerRadius ?? 6))
                     : feature[parameter.key as "width" | "depth" | "height"]}
                 min={parameter.min}
                 max={parameter.max}
@@ -582,7 +584,13 @@ function ParametricFeatureInspector({
                     draft.width = radius * 2;
                     draft.depth = radius * 2;
                   } else if (parameter.key === "innerRadius") {
-                    draft.innerRadius = Math.min(draft.width / 2 - 0.1, Math.max(0.1, value));
+                    const thickness = Math.max(0.1, draft.width / 2 - (draft.innerRadius ?? 6));
+                    draft.innerRadius = Math.max(0.1, value);
+                    draft.width = (draft.innerRadius + thickness) * 2;
+                    draft.depth = draft.width;
+                  } else if (parameter.key === "thickness") {
+                    draft.width = ((draft.innerRadius ?? 6) + Math.max(0.1, value)) * 2;
+                    draft.depth = draft.width;
                   } else if (parameter.key === "majorRadius") {
                     draft.majorRadius = Math.max((draft.tubeRadius ?? 4) + 0.1, value);
                     draft.width = (draft.majorRadius + (draft.tubeRadius ?? 4)) * 2;

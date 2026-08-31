@@ -18,15 +18,17 @@ describe("parametric build state", () => {
     expect(parametricGeometryFingerprint(document)).toBe(initial);
   });
 
-  it("changes when exact geometry or visibility changes", () => {
+  it("changes for exact transforms but not viewport visibility", () => {
     const document = createStarterDocument(123);
     const initial = parametricGeometryFingerprint(document);
     document.objects[0].transform.position.x = 5;
     const moved = parametricGeometryFingerprint(document);
+    const objectMoved = parametricObjectGeometryFingerprint(document, document.objects[0].id);
     document.objects[0].visible = false;
 
     expect(moved).not.toBe(initial);
-    expect(parametricGeometryFingerprint(document)).not.toBe(moved);
+    expect(parametricGeometryFingerprint(document)).toBe(moved);
+    expect(parametricObjectGeometryFingerprint(document, document.objects[0].id)).toBe(objectMoved);
   });
 
   it("tracks appearance colours independently", () => {
