@@ -422,6 +422,8 @@ button {
 .educad-operation-mode-buttons .mode-cut.active { color: #ba434c; background: #fbe4e6; border-color: #d98990; }
 .educad-viewport-operation-modes .mode-intersect.active,
 .educad-operation-mode-buttons .mode-intersect.active { color: #7f46a5; background: #efe3f6; border-color: #b58acb; }
+.educad-viewport-edge-treatment-modes button.active,
+.educad-edge-treatment-mode-buttons button.active { color: #216d94; background: #def2fb; border-color: #70bad7; }
 .parametric-selection-box {
   position: absolute;
   z-index: 5;

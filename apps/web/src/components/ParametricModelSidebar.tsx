@@ -32,7 +32,7 @@ import { createContext, type CSSProperties, type KeyboardEvent, type MouseEvent,
 import { canReorderParametricSelection, OBJECT_COLOR_PALETTE, parametricObjectTree, sketchForExtrude, updateParametricTreeSelection, type ParametricTreeSelection } from "@/lib/parametricObjects";
 import { localizedParametricOperationDefinition, parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import { parametricTextFontNames, updateParametricTextSketch } from "@/lib/parametricText";
-import { ToolbarBooleanModeIcon } from "@/components/icons";
+import { ToolbarBooleanModeIcon, ToolbarChamferIcon, ToolbarFilletIcon } from "@/components/icons";
 import { displayLengthToMillimeters, displayUnitLabel, millimetersToDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
 import { educadTranslate, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
 import type { ParametricDocument, ParametricFeature, ParametricObject } from "@/types/parametric";
@@ -286,7 +286,7 @@ export function ParametricModelSidebar({
           </div>
         ) : edgeTreatmentDraft ? (
           <div className="educad-feature-inspector educad-edge-treatment-draft" aria-label="Selección temporal de caras y aristas">
-            <div className="educad-feature-card"><h3>{edgeTreatmentDraft.editing ? t("operation.edit") : t("operation.new")}</h3><label><span>{t("property.type")}</span><select value={edgeTreatmentDraft.treatment} onChange={(event) => onEdgeTreatmentDraftChange({ treatment: event.target.value as "fillet" | "chamfer" })}><option value="fillet">{t("operation.fillet")}</option><option value="chamfer">{t("operation.chamfer")}</option></select></label><BoundedNumberField label={edgeTreatmentDraft.treatment === "chamfer" ? t("property.distance") : t("property.radius")} value={edgeTreatmentDraft.radius} min={0.01} max={50} onChange={(radius) => onEdgeTreatmentDraftChange({ radius })} /></div>
+            <div className="educad-feature-card"><h3>{edgeTreatmentDraft.editing ? t("operation.edit") : t("operation.new")}</h3><EdgeTreatmentButtons value={edgeTreatmentDraft.treatment} onChange={(treatment) => onEdgeTreatmentDraftChange({ treatment })} /><BoundedNumberField label={edgeTreatmentDraft.treatment === "chamfer" ? t("property.distance") : t("property.radius")} value={edgeTreatmentDraft.radius} min={0.01} max={50} onChange={(radius) => onEdgeTreatmentDraftChange({ radius })} /></div>
             <div className="educad-topology-selection-actions"><button type="button" onClick={onCancelEdgeTreatment}>{t("common.cancel")}</button><button type="button" className="primary" disabled={edgeTreatmentDraft.faceCount + edgeTreatmentDraft.edgeCount === 0} onClick={onAcceptEdgeTreatment}>{t("common.accept")}</button></div>
             <p className="educad-topology-selection-count">caras / aristas: {edgeTreatmentDraft.faceCount} / {edgeTreatmentDraft.edgeCount}</p>
           </div>
@@ -636,8 +636,8 @@ function ParametricFeatureInspector({
 
       {feature.kind === "fillet" ? (
         <>
-          <div className="educad-feature-card"><h3>{t("model.operation")}</h3><label><span>{t("property.type")}</span><select value={feature.treatment} onChange={(event) => onUpdate((draft) => { if (draft.kind === "fillet") draft.treatment = event.target.value as typeof draft.treatment; })}><option value="fillet">{t("operation.fillet")}</option><option value="chamfer">{t("operation.chamfer")}</option></select></label><BoundedNumberField label={feature.treatment === "chamfer" ? t("property.distance") : t("property.radius")} value={feature.radius} min={0.01} max={50} onChange={(value) => onUpdate((draft) => { if (draft.kind === "fillet") draft.radius = Math.max(0.01, value); })} />{!(feature.selectionReferenceIds?.length ?? feature.edgeReferenceIds?.length) ? <label><span>{locale === "en" ? "Edges" : "Aristas"}</span><select value={feature.edges} onChange={(event) => onUpdate((draft) => { if (draft.kind === "fillet") draft.edges = event.target.value as typeof draft.edges; })}><option value="vertical">{locale === "en" ? "Vertical" : "Verticales"}</option><option value="all">{locale === "en" ? "All" : "Todas"}</option></select></label> : null}</div>
-          {(feature.selectionReferenceIds?.length ?? feature.edgeReferenceIds?.length) ? <><button className="educad-edit-topology-selection" type="button" onClick={() => onEditSelection(feature.id)}>{t("operation.editSelection")}</button><div className="educad-feature-card educad-topology-selection-summary"><ReadOnlyField label="Caras seleccionadas" value={String(treatmentFaceCount)} /><ReadOnlyField label="Aristas seleccionadas" value={String(treatmentEdgeCount)} /></div></> : null}
+          <div className="educad-feature-card"><h3>{t("model.operation")}</h3><EdgeTreatmentButtons value={feature.treatment} onChange={(treatment) => onUpdate((draft) => { if (draft.kind === "fillet") draft.treatment = treatment; })} /><BoundedNumberField label={feature.treatment === "chamfer" ? t("property.distance") : t("property.radius")} value={feature.radius} min={0.01} max={50} onChange={(value) => onUpdate((draft) => { if (draft.kind === "fillet") draft.radius = Math.max(0.01, value); })} />{!(feature.selectionReferenceIds?.length ?? feature.edgeReferenceIds?.length) ? <label><span>{locale === "en" ? "Edges" : "Aristas"}</span><select value={feature.edges} onChange={(event) => onUpdate((draft) => { if (draft.kind === "fillet") draft.edges = event.target.value as typeof draft.edges; })}><option value="vertical">{locale === "en" ? "Vertical" : "Verticales"}</option><option value="all">{locale === "en" ? "All" : "Todas"}</option></select></label> : null}</div>
+          {(feature.selectionReferenceIds?.length ?? feature.edgeReferenceIds?.length) ? <><button className="educad-edit-topology-selection" type="button" onClick={() => onEditSelection(feature.id)}>{t("operation.editSelection")}</button></> : null}
           <TransformSection description="Sin transformación propia"><p className="educad-transform-empty">Esta operación actúa sobre el resultado anterior del objeto.</p></TransformSection>
         </>
       ) : null}
@@ -763,6 +763,16 @@ function OperationModeButtons({ value, includeCommon = true, onChange }: { value
         const label = mode === "add" ? t("model.add") : mode === "cut" ? t("model.hole") : t("model.common");
         return <button key={mode} type="button" className={`mode-${mode} ${value === mode ? "active" : ""}`} title={label} aria-label={label} aria-pressed={value === mode} onClick={() => onChange(mode)}><ToolbarBooleanModeIcon mode={mode === "cut" ? "hole" : mode === "intersect" ? "common" : "add"} /></button>;
       })}
+    </div>
+  </div>;
+}
+
+function EdgeTreatmentButtons({ value, onChange }: { value: "fillet" | "chamfer"; onChange: (value: "fillet" | "chamfer") => void }) {
+  const t = useSidebarTranslation();
+  return <div className="educad-operation-mode-property">
+    <div className="educad-operation-mode-buttons educad-edge-treatment-mode-buttons">
+      <button type="button" className={`mode-fillet ${value === "fillet" ? "active" : ""}`} title={t("operation.fillet")} aria-label={t("operation.fillet")} aria-pressed={value === "fillet"} onClick={() => onChange("fillet")}><ToolbarFilletIcon /></button>
+      <button type="button" className={`mode-chamfer ${value === "chamfer" ? "active" : ""}`} title={t("operation.chamfer")} aria-label={t("operation.chamfer")} aria-pressed={value === "chamfer"} onClick={() => onChange("chamfer")}><ToolbarChamferIcon /></button>
     </div>
   </div>;
 }

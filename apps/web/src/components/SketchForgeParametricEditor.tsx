@@ -670,6 +670,7 @@ export function SketchForgeParametricEditor() {
   const selectionKind = primarySelection?.kind ?? "object";
   const selectedObjectId = objectIdForFeature(document, selectedId);
   const selectedFeature = selectionKind === "feature" ? document.features.find((feature) => feature.id === selectedId) ?? null : null;
+  const selectedEdgeTreatmentFeature = selectedFeature?.kind === "fillet" ? selectedFeature : null;
   const selectedOperationId = selectionKind === "feature" && document.features.some((feature) => feature.id === selectedId && (feature.kind === "extrude" || feature.kind === "primitive")) ? selectedId : null;
   const selectedOperation = selectedOperationId ? document.features.find((feature): feature is ExtrudeFeature | PrimitiveFeature => feature.id === selectedOperationId && (feature.kind === "extrude" || feature.kind === "primitive")) : null;
   const selectedSketchId = selectedFeature?.kind === "sketch" && selectedFeature.purpose === "user" ? selectedFeature.id : null;
@@ -712,6 +713,33 @@ export function SketchForgeParametricEditor() {
     if (object?.visible === false) return [];
     return [{ feature, object, selected: modelSelection.some((item) => item.kind === "feature" && item.id === feature.id) }];
   }), [document.features, document.objects, modelSelection]);
+  const edgeTreatmentHandle = useMemo(() => {
+    const editingReferences = [...selectedTopologyFaces, ...selectedTopologyEdges];
+    const feature = selectedEdgeTreatmentFeature;
+    const useDraft = Boolean(pendingEdgeTreatment && editingReferences.length > 0);
+    if (!useDraft && !feature) return null;
+    const references = useDraft
+      ? editingReferences
+      : (feature?.selectionReferenceIds ?? feature?.edgeReferenceIds ?? [])
+          .map((id) => document.topologyReferences.find((reference) => reference.id === id))
+          .filter((reference): reference is ParametricTopologyReference => Boolean(reference));
+    const objectId = references[0]?.objectId ?? feature?.objectId ?? null;
+    const object = objectId ? document.objects.find((candidate) => candidate.id === objectId) ?? null : null;
+    if (!object || object.visible === false) return null;
+    const points = references.flatMap((reference) => {
+      const hint = reference.reference.hint;
+      const point = hint.entityType === "edge" ? hint.midpoint : hint.centroid;
+      return point ? [new THREE.Vector3(...point)] : [];
+    });
+    const origin = points.length > 0
+      ? points.reduce((sum, point) => sum.add(point), new THREE.Vector3()).multiplyScalar(1 / points.length)
+      : new THREE.Vector3(object.transform.position.x, object.transform.position.y, object.transform.position.z);
+    return {
+      origin: { x: origin.x, y: origin.y, z: origin.z },
+      radius: useDraft ? edgeTreatmentRadius : feature!.radius,
+      treatment: useDraft ? pendingEdgeTreatment! : feature!.treatment,
+    };
+  }, [document.objects, document.topologyReferences, edgeTreatmentRadius, pendingEdgeTreatment, selectedEdgeTreatmentFeature, selectedTopologyEdges, selectedTopologyFaces]);
   const sketchSceneReference = useMemo<SketchSceneReference | null>(() => {
     const mesh = build.mesh;
     if (!sketchSession || !mesh?.positions.length) return null;
@@ -2708,6 +2736,15 @@ export function SketchForgeParametricEditor() {
           onFaceExtrudeDistanceChange={(distance, operation) => {
             if (pendingFaceExtrude) setPendingFaceExtrude((current) => current ? { ...current, distance, operation } : current);
             else if (faceExtrudeHandle?.featureId) updateFeature(faceExtrudeHandle.featureId, (feature) => { if (feature.kind === "faceExtrude") { feature.distance = distance; feature.operation = operation; } });
+          }}
+          edgeTreatmentHandle={edgeTreatmentHandle}
+          onEdgeTreatmentRadiusChange={(radius) => {
+            if (pendingEdgeTreatment) setEdgeTreatmentRadius(radius);
+            else if (selectedEdgeTreatmentFeature) updateFeature(selectedEdgeTreatmentFeature.id, (feature) => { if (feature.kind === "fillet") feature.radius = radius; });
+          }}
+          onEdgeTreatmentTypeChange={(treatment) => {
+            if (pendingEdgeTreatment) setPendingEdgeTreatment(treatment);
+            else if (selectedEdgeTreatmentFeature) updateFeature(selectedEdgeTreatmentFeature.id, (feature) => { if (feature.kind === "fillet") feature.treatment = treatment; });
           }}
         />}
         {sketchSession ? <aside className="educad-sketch-constraints-panel" aria-label={t("sketch.constraints")}>
