@@ -180,5 +180,22 @@ const englishPrimitiveDescriptions: Record<ParametricPrimitiveKind, string> = {
 
 export function localizedParametricOperationDefinition(kind: ParametricPrimitiveKind, locale: "es" | "en") {
   const definition = parametricOperationDefinition(kind);
-  return locale === "es" ? definition : { ...definition, name: englishPrimitiveNames[kind], description: englishPrimitiveDescriptions[kind] };
+  if (locale === "es") return definition;
+  const parameterLabels: Record<string, string> = {
+    Anchura: "Width", Ancho: "Width", Profundidad: "Depth", Largo: "Depth", Altura: "Height", Radio: "Radius",
+    "Radio de esquina": "Corner radius", "Radio inferior": "Bottom radius", "Radio superior": "Top radius",
+    "Radio exterior": "Outer radius", "Radio interior": "Inner radius", Espesor: "Thickness", Lados: "Sides",
+    Dientes: "Teeth", "Profundidad del diente": "Tooth depth", "Radio del eje": "Bore radius",
+  };
+  return {
+    ...definition,
+    name: englishPrimitiveNames[kind],
+    description: englishPrimitiveDescriptions[kind],
+    roles: {
+      add: { ...definition.roles.add, label: "Add" },
+      cut: { ...definition.roles.cut, label: "Hole" },
+      intersect: { ...definition.roles.intersect, label: "Common" },
+    },
+    parameters: definition.parameters.map((parameter) => ({ ...parameter, label: parameterLabels[parameter.label] ?? parameter.label })),
+  };
 }

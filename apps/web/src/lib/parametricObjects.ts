@@ -163,7 +163,7 @@ export function addPrimitive(
     return primitive.id;
   }
   const sketch = createSketchFeature(kind === "box" ? "rectangle" : "circle", count);
-  sketch.name = `Perfil de ${kind === "box" ? "Caja" : "Cilindro"}`;
+  sketch.name = `${kind === "box" ? "Box" : "Cylinder"} profile`;
   sketch.objectId = objectId;
   if (sketch.profile.shape === "rectangle") {
     sketch.profile.width = 20;
@@ -172,7 +172,7 @@ export function addPrimitive(
     sketch.profile.diameter = 20;
   }
   const extrusion = createExtrudeFeature(sketch.id, count, false);
-  extrusion.name = kind === "box" ? "Caja" : "Cilindro";
+  extrusion.name = kind === "box" ? "Box" : "Cylinder";
   extrusion.objectId = objectId;
   extrusion.distance = 20;
   extrusion.operation = "add";
@@ -372,7 +372,7 @@ export function duplicateParametricObject(document: ParametricDocument, id: stri
   if (!object) return null;
   const objectClone = structuredClone(object);
   objectClone.id = `${object.id}-copy-${Date.now().toString(36)}`;
-  objectClone.name = `${object.name} copia`;
+  objectClone.name = `${object.name} copy`;
   objectClone.transform.position.x += 10;
   objectClone.transform.position.y += 10;
 

@@ -32,7 +32,7 @@ describe("parametric document", () => {
       normal: { x: 0, y: 0, z: 1 },
     });
     expect(document.objects).toHaveLength(1);
-    expect(document.objects[0]).toMatchObject({ name: "Objeto 1", color: "#d41721", visible: true, locked: false, expanded: true, transform: { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 } } });
+    expect(document.objects[0]).toMatchObject({ name: "Object 1", color: "#d41721", visible: true, locked: false, expanded: true, transform: { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 } } });
     expect(document.features.map((feature) => feature.kind)).toEqual(["sketch", "extrude"]);
     expect(document.features[0]).toMatchObject({ kind: "sketch", visible: true });
     const [sketch, extrude] = document.features;
@@ -56,7 +56,7 @@ describe("parametric document", () => {
     const mirror = createMirrorFeature(2);
     expect(mirror).toMatchObject({
       kind: "mirror",
-      name: "Espejo 2",
+      name: "Mirror 2",
       axis: "x",
       duplicate: true,
       suppressed: false,
@@ -67,7 +67,7 @@ describe("parametric document", () => {
     const pattern = createLinearPatternFeature(1);
     expect(pattern).toMatchObject({
       kind: "linearPattern",
-      name: "Matriz lineal 1",
+      name: "Linear pattern 1",
       source: "body",
       axis: "x",
       count: 3,
@@ -80,7 +80,7 @@ describe("parametric document", () => {
     const pattern = createPolarPatternFeature(1);
     expect(pattern).toMatchObject({
       kind: "polarPattern",
-      name: "Matriz polar 1",
+      name: "Polar pattern 1",
       source: "body",
       axis: "z",
       count: 6,

@@ -44,7 +44,7 @@ export function createStarterDocument(now = Date.now()): ParametricDocument {
   return {
     schema: CURRENT_PARAMETRIC_SCHEMA,
     id: createFeatureId("project"),
-    name: "Nuevo diseño",
+    name: "New design",
     units: "mm",
     color: "#d41721",
     workplane: { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, ...globalParametricWorkplanePlacement() },
@@ -56,7 +56,7 @@ export function createStarterDocument(now = Date.now()): ParametricDocument {
       {
         id: sketchId,
         kind: "sketch",
-        name: "Boceto de Caja",
+        name: "Box profile",
         suppressed: false,
         visible: true,
         objectId: object.id,
@@ -70,7 +70,7 @@ export function createStarterDocument(now = Date.now()): ParametricDocument {
       {
         id: createFeatureId("extrude"),
         kind: "extrude",
-        name: "Caja",
+        name: "Box",
         suppressed: false,
         objectId: object.id,
         sketchId,
@@ -86,7 +86,7 @@ export function createStarterDocument(now = Date.now()): ParametricDocument {
 export function createParametricObject(index: number, position = { x: 0, y: 0, z: 0 }): ParametricObject {
   return {
     id: createFeatureId("object"),
-    name: `Objeto ${index}`,
+    name: `Object ${index}`,
     color: "#d41721",
     visible: true,
     locked: false,
@@ -103,7 +103,7 @@ export function createSketchFeature(shape: RectangleProfile["shape"] | CirclePro
   return {
     id: createFeatureId("sketch"),
     kind: "sketch",
-    name: `Boceto ${index}`,
+    name: `Sketch ${index}`,
     suppressed: false,
     visible: true,
     purpose: "primitive",
@@ -122,7 +122,7 @@ export function createDrawnSketchFeature(index: number, geometry: DrawnProfile["
   return {
     id: createFeatureId("sketch"),
     kind: "sketch",
-    name: `Boceto ${index}`,
+    name: `Sketch ${index}`,
     suppressed: false,
     visible: true,
     purpose: "user",
@@ -139,7 +139,7 @@ export function createExtrudeFeature(sketchId: string, index: number, _hasSolid:
   return {
     id: createFeatureId("extrude"),
     kind: "extrude",
-    name: `Extrusión ${index}`,
+    name: `Extrusion ${index}`,
     suppressed: false,
     sketchId,
     distance: 10,
@@ -154,7 +154,7 @@ export function createPrimitiveFeature(primitive: PrimitiveFeature["primitive"],
     id: createFeatureId("primitive"),
     kind: "primitive",
     primitive,
-    name: primitive === "roundedBox" ? "Caja redondeada" : primitive === "sphere" ? "Esfera" : primitive === "cone" ? "Cono" : primitive === "tube" ? "Tubo" : primitive === "halfSphere" ? "Semiesfera" : primitive === "torus" ? "Toro" : primitive === "pyramid" ? "Pirámide" : primitive === "wedge" ? "Cuña" : primitive === "roof" ? "Tejado" : primitive === "roundRoof" ? "Tejado redondo" : primitive === "polygon" ? "Polígono" : primitive === "gear" ? "Engranaje" : `Primitiva ${index}`,
+    name: primitive === "roundedBox" ? "Rounded box" : primitive === "sphere" ? "Sphere" : primitive === "cone" ? "Cone" : primitive === "tube" ? "Tube" : primitive === "halfSphere" ? "Half sphere" : primitive === "torus" ? "Torus" : primitive === "pyramid" ? "Pyramid" : primitive === "wedge" ? "Wedge" : primitive === "roof" ? "Roof" : primitive === "roundRoof" ? "Round roof" : primitive === "polygon" ? "Polygon" : primitive === "gear" ? "Gear" : `Primitive ${index}`,
     suppressed: false,
     width: 20,
     depth: 20,
@@ -174,7 +174,7 @@ export function createImportedStepFeature(sourceName: string, stepText: string, 
   return {
     id: createFeatureId("step"),
     kind: "importedStep",
-    name: sourceName.replace(/\.(?:step|stp)$/i, "") || `STEP importado ${index}`,
+    name: sourceName.replace(/\.(?:step|stp)$/i, "") || `Imported STEP ${index}`,
     suppressed: false,
     sourceName,
     stepText,
@@ -192,7 +192,7 @@ export function createHoleFeature(index: number): HoleFeature {
   return {
     id: createFeatureId("hole"),
     kind: "hole",
-    name: `Taladro ${index}`,
+    name: `Hole ${index}`,
     suppressed: false,
     x: 0,
     y: 0,
@@ -206,7 +206,7 @@ export function createFilletFeature(index: number, treatment: FilletFeature["tre
   return {
     id: createFeatureId("fillet"),
     kind: "fillet",
-    name: `${treatment === "chamfer" ? "Chaflán" : "Redondeo"} ${index}`,
+    name: `${treatment === "chamfer" ? "Chamfer" : "Fillet"} ${index}`,
     suppressed: false,
     treatment,
     radius: 2,
@@ -218,7 +218,7 @@ export function createFaceExtrudeFeature(index: number, operation: FaceExtrudeFe
   return {
     id: createFeatureId("face-extrude"),
     kind: "faceExtrude",
-    name: `${operation === "cut" ? "Hueco de cara" : "Extrusión de cara"} ${index}`,
+    name: `${operation === "cut" ? "Face cut" : "Face extrusion"} ${index}`,
     suppressed: false,
     operation,
     distance: 10,
@@ -230,7 +230,7 @@ export function createShellFeature(index: number): ShellFeature {
   return {
     id: createFeatureId("shell"),
     kind: "shell",
-    name: `Vaciado ${index}`,
+    name: `Shell ${index}`,
     suppressed: false,
     thickness: 2,
     faceReferenceIds: [],
@@ -241,7 +241,7 @@ export function createRevolveFeature(index: number, operation: RevolveFeature["o
   return {
     id: createFeatureId("revolve"),
     kind: "revolve",
-    name: `Revolución ${index}`,
+    name: `Revolution ${index}`,
     suppressed: false,
     source: "face",
     operation,
@@ -255,7 +255,7 @@ export function createMirrorFeature(index: number): MirrorFeature {
   return {
     id: createFeatureId("mirror"),
     kind: "mirror",
-    name: `Espejo ${index}`,
+    name: `Mirror ${index}`,
     suppressed: false,
     axis: "x",
     duplicate: true,
@@ -266,7 +266,7 @@ export function createLinearPatternFeature(index: number): LinearPatternFeature 
   return {
     id: createFeatureId("linear-pattern"),
     kind: "linearPattern",
-    name: `Matriz lineal ${index}`,
+    name: `Linear pattern ${index}`,
     suppressed: false,
     source: "body",
     axis: "x",
@@ -279,7 +279,7 @@ export function createPolarPatternFeature(index: number): PolarPatternFeature {
   return {
     id: createFeatureId("polar-pattern"),
     kind: "polarPattern",
-    name: `Matriz polar ${index}`,
+    name: `Polar pattern ${index}`,
     suppressed: false,
     source: "body",
     axis: "z",
@@ -293,7 +293,7 @@ export function createObjectBooleanFeature(index: number, sourceObjectId: string
   return {
     id: createFeatureId("object-boolean"),
     kind: "objectBoolean",
-    name: `Booleana de objeto ${index}`,
+    name: `Object boolean ${index}`,
     suppressed: false,
     sourceObjectId,
     operation: "add",

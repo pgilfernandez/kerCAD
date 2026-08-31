@@ -1812,6 +1812,8 @@ export function SketchForgeParametricEditor() {
 
   const newDocument = () => {
     const next = createStarterDocument();
+    localizeNewDocumentEntries({ ...next, objects: [], features: [] }, next, locale);
+    next.name = locale === "es" ? "Nuevo diseño" : "New design";
     setHistory(createParametricHistory(next));
     setModelSelection(next.objects[0] ? [{ id: next.objects[0].id, kind: "object" }] : []);
     setCamera("home");
@@ -2384,8 +2386,8 @@ export function SketchForgeParametricEditor() {
               <Tool label={selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? t("toolbar.revolveSketch") : t("toolbar.revolve")} active={Boolean(pendingRevolve)} onClick={() => selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? addRevolveFromSketch(selectedFeature) : beginRevolve()}><ToolbarRevolveIcon /></Tool>
               <Tool label={t("toolbar.shell")} active={Boolean(pendingShell)} onClick={() => beginShell()}><ToolbarShellIcon /></Tool>
             </ToolbarSection>
-            <ToolbarSection label="Arrange">
-              <Tool label={hasActiveWorkplane ? "Restaurar plano global" : placingWorkplane ? "Cancelar plano de trabajo" : "Colocar plano de trabajo"} active={placingWorkplane || hasActiveWorkplane} onClick={() => {
+            <ToolbarSection label={t("toolbar.arrange")}>
+              <Tool label={hasActiveWorkplane ? t("toolbar.resetWorkplane") : placingWorkplane ? t("toolbar.cancelWorkplane") : t("toolbar.placeWorkplane")} active={placingWorkplane || hasActiveWorkplane} onClick={() => {
                 if (hasActiveWorkplane) {
                   mutate((draft) => { Object.assign(draft.workplane, globalParametricWorkplanePlacement()); });
                   setPlacingWorkplane(false);
@@ -2404,14 +2406,14 @@ export function SketchForgeParametricEditor() {
                 setWorkplaneOpen(false);
                 setNotice({ type: "info", text: placingWorkplane ? "Colocación cancelada" : "Pasa sobre una cara y haz clic para colocar el plano de trabajo" });
               }}>{hasActiveWorkplane ? <ToolbarResetWorkplaneIcon /> : <ToolbarWorkplaneIcon />}</Tool>
-              <Tool label="Bajar al plano" enabled={Boolean(selectedShape)} onClick={() => updateSelected({ elevation: 0 })}><ToolbarDropToWorkplaneIcon /></Tool>
+              <Tool label={t("toolbar.dropToWorkplane")} enabled={Boolean(selectedShape)} onClick={() => updateSelected({ elevation: 0 })}><ToolbarDropToWorkplaneIcon /></Tool>
             </ToolbarSection>
           </div>
-          <ToolbarSection label="Manage" className="toolbar-actions-section">
+          <ToolbarSection label={t("toolbar.manage")} className="toolbar-actions-section">
             <div className="action-buttons">
-              <button className="action-icon-button" aria-label="Importar" onClick={() => importRef.current?.click()}><ToolbarImportIcon /></button>
-              <button data-educad-popup="export" className="action-icon-button" aria-label="Exportar" onClick={() => { if (!exportOpen) setExportFileName(document.name); setExportOpen((value) => !value); }}><ToolbarVectorExportIcon /></button>
-              <button data-educad-popup="settings" className="action-icon-button" aria-label="Ajustes" onClick={() => setSettingsOpen((value) => !value)}><ToolbarSettingsIcon /></button>
+              <button className="action-icon-button" aria-label={t("toolbar.import")} title={t("toolbar.import")} onClick={() => importRef.current?.click()}><ToolbarImportIcon /></button>
+              <button data-educad-popup="export" className="action-icon-button" aria-label={t("toolbar.export")} title={t("toolbar.export")} onClick={() => { if (!exportOpen) setExportFileName(document.name); setExportOpen((value) => !value); }}><ToolbarVectorExportIcon /></button>
+              <button data-educad-popup="settings" className="action-icon-button" aria-label={t("toolbar.settings")} title={t("toolbar.settings")} onClick={() => setSettingsOpen((value) => !value)}><ToolbarSettingsIcon /></button>
             </div>
           </ToolbarSection>
         </div>}

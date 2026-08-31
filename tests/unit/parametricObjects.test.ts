@@ -47,7 +47,7 @@ describe("parametric object workflow", () => {
     expect(sketch?.profile).toEqual({ shape: "circle", diameter: 20 });
     expect(sketch).toMatchObject({ objectId, x: 0, y: 0 });
     expect(cylinder).toMatchObject({ transform: { position: { x: 8, y: 6, z: 0 }, rotation: { x: 0, y: 0, z: 0 } } });
-    expect(parametricObjectTree(document)[0].operations.map((feature) => feature.name)).toEqual(["Caja", "Cilindro"]);
+    expect(parametricObjectTree(document)[0].operations.map((feature) => feature.name)).toEqual(["Box", "Cylinder"]);
     expect(workplaneShapeForObject(document, objectId)).toMatchObject({
       kind: "box",
       color: "#d41721",
@@ -254,12 +254,12 @@ describe("parametric object workflow", () => {
 
     const appended = addPrimitiveToSelection(document, existingObjectId, "cylinder");
     expect(appended).toMatchObject({ objectId: existingObjectId, createdObject: false });
-    expect(parametricObjectTree(document)[0].operations.map((feature) => feature.name)).toEqual(["Caja", "Cilindro"]);
+    expect(parametricObjectTree(document)[0].operations.map((feature) => feature.name)).toEqual(["Box", "Cylinder"]);
 
     const created = addPrimitiveToSelection(document, null, "box");
     expect(created.createdObject).toBe(true);
     expect(created.objectId).not.toBe(existingObjectId);
-    expect(parametricObjectTree(document).at(-1)?.operations.map((feature) => feature.name)).toEqual(["Caja"]);
+    expect(parametricObjectTree(document).at(-1)?.operations.map((feature) => feature.name)).toEqual(["Box"]);
   });
 
   it("reorders selected objects as a stable group", () => {
@@ -285,7 +285,7 @@ describe("parametric object workflow", () => {
 
     expect(reorderParametricSelection(document, [{ id: sphereId, kind: "feature" }], "up")).toBe(true);
     expect(parametricObjectTree(document)[0].operations.map((feature) => feature.id)).toEqual([
-      document.features.find((feature) => feature.kind === "extrude" && feature.name === "Caja")!.id,
+      document.features.find((feature) => feature.kind === "extrude" && feature.name === "Box")!.id,
       sphereId,
       cylinderId,
     ]);
@@ -547,8 +547,8 @@ describe("parametric object workflow", () => {
     const copySketch = sketchForExtrude(document, copyExtrude);
 
     expect(copyId).not.toBe(source.id);
-    expect(copy).toMatchObject({ name: "Objeto 1 copia", color: "#3b82f6", transform: { position: { x: 10, y: 10, z: 0 } } });
-    expect(copyExtrude).toMatchObject({ kind: "extrude", name: "Caja", operation: "add" });
+    expect(copy).toMatchObject({ name: "Object 1 copy", color: "#3b82f6", transform: { position: { x: 10, y: 10, z: 0 } } });
+    expect(copyExtrude).toMatchObject({ kind: "extrude", name: "Box", operation: "add" });
     expect(copySketch).toMatchObject({ x: 0, y: 0, objectId: copyId });
 
     deleteParametricObject(document, copyId!);
