@@ -247,24 +247,24 @@ export function ParametricModelSidebar({
       {mode === "normal" ? <section className="educad-sidebar-editor">
         {revolveDraft ? (
           <div className="educad-feature-inspector educad-edge-treatment-draft" aria-label="Revolución temporal">
-            <div className="educad-feature-card"><h3>{revolveDraft.editing ? "Editar revolución" : "Nueva revolución"}</h3><label><span>Tipo</span><select value={revolveDraft.operation} onChange={(event) => onRevolveDraftChange({ operation: event.target.value as typeof revolveDraft.operation })}><option value="add">Añadir</option><option value="cut">Hueco</option><option value="intersect">Común</option></select></label><label><span>Eje</span><select value={revolveDraft.axis} onChange={(event) => onRevolveDraftChange({ axis: event.target.value as typeof revolveDraft.axis })}><option value="x">X local</option><option value="y">Y local</option><option value="z">Z local</option><option value="edge" disabled={revolveDraft.edgeCount !== 1}>Arista seleccionada</option></select></label><BoundedNumberField label="Ángulo" value={revolveDraft.angle} min={-360} max={360} step={1} unit="°" onChange={(angle) => onRevolveDraftChange({ angle: Math.abs(angle) < 1 ? (angle < 0 ? -1 : 1) : angle })} /></div>
-            <div className="educad-topology-selection-actions"><button type="button" onClick={onCancelRevolve}>Cancelar</button><button type="button" className="primary" disabled={revolveDraft.faceCount !== 1 || (revolveDraft.axis === "edge" && revolveDraft.edgeCount !== 1)} onClick={onAcceptRevolve}>Aceptar</button></div><p className="educad-topology-selection-count">cara / eje: {revolveDraft.faceCount} / {revolveDraft.edgeCount}</p>
+            <div className="educad-feature-card"><h3>{revolveDraft.editing ? t("operation.edit") : t("operation.new")}</h3><label><span>{t("property.type")}</span><select value={revolveDraft.operation} onChange={(event) => onRevolveDraftChange({ operation: event.target.value as typeof revolveDraft.operation })}><option value="add">{t("model.add")}</option><option value="cut">{t("model.hole")}</option><option value="intersect">{t("model.common")}</option></select></label><label><span>{t("property.axis")}</span><select value={revolveDraft.axis} onChange={(event) => onRevolveDraftChange({ axis: event.target.value as typeof revolveDraft.axis })}><option value="x">X local</option><option value="y">Y local</option><option value="z">Z local</option><option value="edge" disabled={revolveDraft.edgeCount !== 1}>{t("operation.selectedEdge")}</option></select></label><BoundedNumberField label={t("property.angle")} value={revolveDraft.angle} min={-360} max={360} step={1} unit="°" onChange={(angle) => onRevolveDraftChange({ angle: Math.abs(angle) < 1 ? (angle < 0 ? -1 : 1) : angle })} /></div>
+            <div className="educad-topology-selection-actions"><button type="button" onClick={onCancelRevolve}>{t("common.cancel")}</button><button type="button" className="primary" disabled={revolveDraft.faceCount !== 1 || (revolveDraft.axis === "edge" && revolveDraft.edgeCount !== 1)} onClick={onAcceptRevolve}>{t("common.accept")}</button></div><p className="educad-topology-selection-count">cara / eje: {revolveDraft.faceCount} / {revolveDraft.edgeCount}</p>
           </div>
         ) : shellDraft ? (
           <div className="educad-feature-inspector educad-edge-treatment-draft" aria-label="Vaciado temporal">
-            <div className="educad-feature-card"><h3>{shellDraft.editing ? "Editar vaciado" : "Nuevo vaciado"}</h3><BoundedNumberField label="Espesor" value={shellDraft.thickness} min={0.01} max={50} onChange={onShellDraftChange} /></div>
-            <div className="educad-topology-selection-actions"><button type="button" onClick={onCancelShell}>Cancelar</button><button type="button" className="primary" disabled={shellDraft.faceCount === 0} onClick={onAcceptShell}>Aceptar</button></div>
+            <div className="educad-feature-card"><h3>{shellDraft.editing ? t("operation.edit") : t("operation.new")}</h3><BoundedNumberField label={t("property.thickness")} value={shellDraft.thickness} min={0.01} max={50} onChange={onShellDraftChange} /></div>
+            <div className="educad-topology-selection-actions"><button type="button" onClick={onCancelShell}>{t("common.cancel")}</button><button type="button" className="primary" disabled={shellDraft.faceCount === 0} onClick={onAcceptShell}>{t("common.accept")}</button></div>
             <p className="educad-topology-selection-count">caras abiertas: {shellDraft.faceCount}</p>
           </div>
         ) : faceExtrudeDraft ? (
           <div className="educad-feature-inspector educad-edge-treatment-draft" aria-label="Extrusión temporal de cara">
-            <div className="educad-feature-card"><h3>{faceExtrudeDraft.editing ? "Editar operación" : "Nueva operación"}</h3><label><span>Tipo</span><select value={faceExtrudeDraft.operation} onChange={(event) => onFaceExtrudeDraftChange({ operation: event.target.value as "add" | "cut" })}><option value="add">Añadir</option><option value="cut">Hueco</option></select></label><BoundedNumberField label="Longitud" value={faceExtrudeDraft.distance} min={0.01} max={200} onChange={(distance) => onFaceExtrudeDraftChange({ distance })} /></div>
-            <div className="educad-topology-selection-actions"><button type="button" onClick={onCancelFaceExtrude}>Cancelar</button><button type="button" className="primary" disabled={faceExtrudeDraft.faceCount !== 1} onClick={onAcceptFaceExtrude}>Aceptar</button></div>
+            <div className="educad-feature-card"><h3>{faceExtrudeDraft.editing ? t("operation.edit") : t("operation.new")}</h3><label><span>{t("property.type")}</span><select value={faceExtrudeDraft.operation} onChange={(event) => onFaceExtrudeDraftChange({ operation: event.target.value as "add" | "cut" })}><option value="add">{t("model.add")}</option><option value="cut">{t("model.hole")}</option></select></label><BoundedNumberField label={t("property.length")} value={faceExtrudeDraft.distance} min={0.01} max={200} onChange={(distance) => onFaceExtrudeDraftChange({ distance })} /></div>
+            <div className="educad-topology-selection-actions"><button type="button" onClick={onCancelFaceExtrude}>{t("common.cancel")}</button><button type="button" className="primary" disabled={faceExtrudeDraft.faceCount !== 1} onClick={onAcceptFaceExtrude}>{t("common.accept")}</button></div>
           </div>
         ) : edgeTreatmentDraft ? (
           <div className="educad-feature-inspector educad-edge-treatment-draft" aria-label="Selección temporal de caras y aristas">
-            <div className="educad-feature-card"><h3>{edgeTreatmentDraft.editing ? "Editar operación" : "Nueva operación"}</h3><label><span>Tipo</span><select value={edgeTreatmentDraft.treatment} onChange={(event) => onEdgeTreatmentDraftChange({ treatment: event.target.value as "fillet" | "chamfer" })}><option value="fillet">Redondeo</option><option value="chamfer">Chaflán</option></select></label><BoundedNumberField label={edgeTreatmentDraft.treatment === "chamfer" ? "Distancia" : "Radio"} value={edgeTreatmentDraft.radius} min={0.01} max={50} onChange={(radius) => onEdgeTreatmentDraftChange({ radius })} /></div>
-            <div className="educad-topology-selection-actions"><button type="button" onClick={onCancelEdgeTreatment}>Cancelar</button><button type="button" className="primary" disabled={edgeTreatmentDraft.faceCount + edgeTreatmentDraft.edgeCount === 0} onClick={onAcceptEdgeTreatment}>Aceptar</button></div>
+            <div className="educad-feature-card"><h3>{edgeTreatmentDraft.editing ? t("operation.edit") : t("operation.new")}</h3><label><span>{t("property.type")}</span><select value={edgeTreatmentDraft.treatment} onChange={(event) => onEdgeTreatmentDraftChange({ treatment: event.target.value as "fillet" | "chamfer" })}><option value="fillet">{t("operation.fillet")}</option><option value="chamfer">{t("operation.chamfer")}</option></select></label><BoundedNumberField label={edgeTreatmentDraft.treatment === "chamfer" ? t("property.distance") : t("property.radius")} value={edgeTreatmentDraft.radius} min={0.01} max={50} onChange={(radius) => onEdgeTreatmentDraftChange({ radius })} /></div>
+            <div className="educad-topology-selection-actions"><button type="button" onClick={onCancelEdgeTreatment}>{t("common.cancel")}</button><button type="button" className="primary" disabled={edgeTreatmentDraft.faceCount + edgeTreatmentDraft.edgeCount === 0} onClick={onAcceptEdgeTreatment}>{t("common.accept")}</button></div>
             <p className="educad-topology-selection-count">caras / aristas: {edgeTreatmentDraft.faceCount} / {edgeTreatmentDraft.edgeCount}</p>
           </div>
         ) : selection.length > 1 ? (
@@ -339,6 +339,7 @@ function ParametricObjectInspector({
   object: ParametricObject;
   onUpdate: (update: (object: ParametricObject) => void) => void;
 }) {
+  const t = useSidebarTranslation();
   const [colorOpen, setColorOpen] = useState(false);
   const colorPanelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -351,11 +352,11 @@ function ParametricObjectInspector({
   }, [colorOpen]);
   return (
     <div className="educad-feature-inspector educad-object-inspector">
-      {object.referenceMesh ? <div className="educad-feature-card"><h3>Referencia</h3><ReadOnlyField label="Archivo" value={object.referenceMesh.sourceName} /><ReadOnlyField label="Formato" value={object.referenceMesh.format.toUpperCase()} /><label><span>Opacidad</span><input type="range" min={0.05} max={1} step={0.05} value={object.referenceMesh.opacity} onChange={(event) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.opacity = Number(event.target.value); })} /></label><label><span>Visualización</span><select value={object.referenceMesh.displayMode} onChange={(event) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.displayMode = event.target.value as typeof draft.referenceMesh.displayMode; })}><option value="solidEdges">Sólido y aristas</option><option value="solid">Sólido</option><option value="wireframe">Alámbrico</option></select></label><label><span>Seleccionable</span><input type="checkbox" checked={object.referenceMesh.pickable} onChange={(event) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.pickable = event.target.checked; })} /></label></div> : null}
+      {object.referenceMesh ? <div className="educad-feature-card"><h3>{t("property.reference")}</h3><ReadOnlyField label={t("property.file")} value={object.referenceMesh.sourceName} /><ReadOnlyField label="Formato" value={object.referenceMesh.format.toUpperCase()} /><label><span>Opacidad</span><input type="range" min={0.05} max={1} step={0.05} value={object.referenceMesh.opacity} onChange={(event) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.opacity = Number(event.target.value); })} /></label><label><span>Visualización</span><select value={object.referenceMesh.displayMode} onChange={(event) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.displayMode = event.target.value as typeof draft.referenceMesh.displayMode; })}><option value="solidEdges">Sólido y aristas</option><option value="solid">Sólido</option><option value="wireframe">Alámbrico</option></select></label><label><span>Seleccionable</span><input type="checkbox" checked={object.referenceMesh.pickable} onChange={(event) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.pickable = event.target.checked; })} /></label></div> : null}
       <TransformSection>
-        <TransformGroup label="Posición" values={object.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.position[axis] = value; })} />
-        <TransformGroup label="Rotación" values={object.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.rotation[axis] = value; })} />
-        <TransformGroup label="Escala" values={object.transform.scale} unit="×" min={0.01} onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.scale[axis] = Math.max(0.01, value); })} />
+        <TransformGroup label={t("property.position")} values={object.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.position[axis] = value; })} />
+        <TransformGroup label={t("property.rotation")} values={object.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.rotation[axis] = value; })} />
+        <TransformGroup label={t("property.scale")} values={object.transform.scale} unit="×" min={0.01} onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.scale[axis] = Math.max(0.01, value); })} />
       </TransformSection>
       <div ref={colorPanelRef} className="educad-feature-card educad-object-appearance">
         <button className="educad-color-trigger" aria-expanded={colorOpen} onClick={() => setColorOpen((value) => !value)}>
@@ -428,6 +429,7 @@ function ParametricFeatureInspector({
   onEditRevolveFace: (featureId: string) => void;
   onEditRevolveAxis: (featureId: string) => void;
 }) {
+  const t = useSidebarTranslation();
   const onUpdate = (update: (feature: ParametricFeature) => void) => onUpdateFeature(feature.id, update);
   const primitiveSketch = feature.kind === "extrude" ? sketchForExtrude(document, feature) : null;
   const textGenerator = primitiveSketch?.profile.shape === "drawn" && primitiveSketch.profile.geometry.generator?.kind === "text" ? primitiveSketch.profile.geometry.generator : null;
@@ -449,11 +451,11 @@ function ParametricFeatureInspector({
 
       {feature.kind === "sketch" ? (
         <>
-          <div className="educad-feature-card"><h3>Operación</h3><ReadOnlyField label="Tipo" value="Boceto" /></div>
+          <div className="educad-feature-card"><h3>{t("model.operation")}</h3><ReadOnlyField label={t("property.type")} value={t("operation.sketch")} /></div>
           {feature.profile.shape === "drawn" ? <>
             <button className="educad-edit-topology-selection" type="button" onClick={() => onEditSketch(feature.id)}>Editar boceto</button>
           </> : <div className="educad-feature-card">
-            <h3>Parámetros de la forma</h3>
+            <h3>{t("model.shapeParameters")}</h3>
             <ReadOnlyField label="Perfil" value={feature.profile.shape === "rectangle" ? "Rectángulo" : "Círculo"} />
             {feature.profile.shape === "rectangle" ? <><NumberField label="Anchura" value={feature.profile.width} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} /><NumberField label="Profundidad" value={feature.profile.depth} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} /></> : <NumberField label="Diámetro" value={feature.profile.diameter} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value); })} />}
           </div>}
@@ -467,11 +469,11 @@ function ParametricFeatureInspector({
       {feature.kind === "extrude" ? (
         <>
           <div className="educad-feature-card">
-            <h3>Operación</h3>
+            <h3>{t("model.operation")}</h3>
             <OperationModeButtons value={feature.operation} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "extrude") draft.operation = operation; })} />
           </div>
           <div className="educad-feature-card">
-            <h3>Parámetros de la forma</h3>
+            <h3>{t("model.shapeParameters")}</h3>
             {textGenerator && primitiveSketch ? <>
               <label><span>Texto</span><DeferredTextInput value={textGenerator.text} maxLength={40} onCommit={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { text: value }); })} /></label>
               <label><span>Fuente web</span><select value={textGenerator.font ?? "Sans"} onChange={(event) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { font: event.target.value as typeof textGenerator.font }); })}>{parametricTextFontNames.map((font) => <option key={font} value={font}>{font}</option>)}</select></label>
@@ -499,11 +501,11 @@ function ParametricFeatureInspector({
       {feature.kind === "primitive" ? (
         <>
           <div className="educad-feature-card">
-            <h3>Operación</h3>
+            <h3>{t("model.operation")}</h3>
             <OperationModeButtons value={feature.operation} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "primitive") draft.operation = operation; })} />
           </div>
           <div className="educad-feature-card">
-            <h3>Parámetros de la forma</h3>
+            <h3>{t("model.shapeParameters")}</h3>
             {parametricOperationDefinition(feature.primitive).parameters.map((parameter) => (
               <BoundedNumberField
                 key={parameter.key}
@@ -588,15 +590,15 @@ function ParametricFeatureInspector({
 
       {feature.kind === "importedStep" ? (
         <>
-          <div className="educad-feature-card"><h3>Operación</h3><ReadOnlyField label="Tipo" value="STEP importado" /><ReadOnlyField label="Archivo" value={feature.sourceName} /><ReadOnlyField label="Geometría" value="B-Rep exacto" /></div>
+          <div className="educad-feature-card"><h3>{t("model.operation")}</h3><ReadOnlyField label={t("property.type")} value={t("operation.importedStep")} /><ReadOnlyField label={t("property.file")} value={feature.sourceName} /><ReadOnlyField label={t("property.geometry")} value={t("operation.exactBrep")} /></div>
           <TransformSection description="Transformación del objeto contenedor"><p className="educad-transform-empty">Esta es la geometría base. Las operaciones posteriores permanecen editables en el historial.</p></TransformSection>
         </>
       ) : null}
 
       {feature.kind === "hole" ? (
         <>
-          <div className="educad-feature-card"><h3>Operación</h3><ReadOnlyField label="Tipo" value="Taladro" /><label><span>Final</span><select value={feature.termination} onChange={(event) => onUpdate((draft) => { if (draft.kind === "hole") draft.termination = event.target.value as typeof draft.termination; })}><option value="through-all">Pasante</option><option value="blind">Ciego</option></select></label></div>
-          <div className="educad-feature-card"><h3>Parámetros de la forma</h3><BoundedNumberField label="Diámetro" value={feature.diameter} min={0.01} max={100} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.diameter = Math.max(0.01, value); })} />{feature.termination === "blind" ? <BoundedNumberField label="Profundidad" value={feature.depth} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.depth = Math.max(0.01, value); })} /> : null}</div>
+          <div className="educad-feature-card"><h3>{t("model.operation")}</h3><ReadOnlyField label={t("property.type")} value={t("operation.hole")} /><label><span>Final</span><select value={feature.termination} onChange={(event) => onUpdate((draft) => { if (draft.kind === "hole") draft.termination = event.target.value as typeof draft.termination; })}><option value="through-all">Pasante</option><option value="blind">Ciego</option></select></label></div>
+          <div className="educad-feature-card"><h3>{t("model.shapeParameters")}</h3><BoundedNumberField label={t("property.diameter")} value={feature.diameter} min={0.01} max={100} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.diameter = Math.max(0.01, value); })} />{feature.termination === "blind" ? <BoundedNumberField label={t("property.depth")} value={feature.depth} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.depth = Math.max(0.01, value); })} /> : null}</div>
           <TransformSection description="Posición">
             <div className="educad-feature-card educad-transform-card"><h3>Posición</h3><NumberField label="X" value={feature.x} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.x = value; })} /><NumberField label="Y" value={feature.y} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.y = value; })} /></div>
           </TransformSection>
@@ -605,15 +607,15 @@ function ParametricFeatureInspector({
 
       {feature.kind === "fillet" ? (
         <>
-          <div className="educad-feature-card"><h3>Operación</h3><label><span>Tipo</span><select value={feature.treatment} onChange={(event) => onUpdate((draft) => { if (draft.kind === "fillet") draft.treatment = event.target.value as typeof draft.treatment; })}><option value="fillet">Redondeo</option><option value="chamfer">Chaflán</option></select></label><BoundedNumberField label={feature.treatment === "chamfer" ? "Distancia" : "Radio"} value={feature.radius} min={0.01} max={50} onChange={(value) => onUpdate((draft) => { if (draft.kind === "fillet") draft.radius = Math.max(0.01, value); })} />{!(feature.selectionReferenceIds?.length ?? feature.edgeReferenceIds?.length) ? <label><span>Aristas</span><select value={feature.edges} onChange={(event) => onUpdate((draft) => { if (draft.kind === "fillet") draft.edges = event.target.value as typeof draft.edges; })}><option value="vertical">Verticales</option><option value="all">Todas</option></select></label> : null}</div>
-          {(feature.selectionReferenceIds?.length ?? feature.edgeReferenceIds?.length) ? <><button className="educad-edit-topology-selection" type="button" onClick={() => onEditSelection(feature.id)}>Editar caras y aristas</button><div className="educad-feature-card educad-topology-selection-summary"><ReadOnlyField label="Caras seleccionadas" value={String(treatmentFaceCount)} /><ReadOnlyField label="Aristas seleccionadas" value={String(treatmentEdgeCount)} /></div></> : null}
+          <div className="educad-feature-card"><h3>{t("model.operation")}</h3><label><span>{t("property.type")}</span><select value={feature.treatment} onChange={(event) => onUpdate((draft) => { if (draft.kind === "fillet") draft.treatment = event.target.value as typeof draft.treatment; })}><option value="fillet">{t("operation.fillet")}</option><option value="chamfer">{t("operation.chamfer")}</option></select></label><BoundedNumberField label={feature.treatment === "chamfer" ? t("property.distance") : t("property.radius")} value={feature.radius} min={0.01} max={50} onChange={(value) => onUpdate((draft) => { if (draft.kind === "fillet") draft.radius = Math.max(0.01, value); })} />{!(feature.selectionReferenceIds?.length ?? feature.edgeReferenceIds?.length) ? <label><span>Aristas</span><select value={feature.edges} onChange={(event) => onUpdate((draft) => { if (draft.kind === "fillet") draft.edges = event.target.value as typeof draft.edges; })}><option value="vertical">Verticales</option><option value="all">Todas</option></select></label> : null}</div>
+          {(feature.selectionReferenceIds?.length ?? feature.edgeReferenceIds?.length) ? <><button className="educad-edit-topology-selection" type="button" onClick={() => onEditSelection(feature.id)}>{t("operation.editSelection")}</button><div className="educad-feature-card educad-topology-selection-summary"><ReadOnlyField label="Caras seleccionadas" value={String(treatmentFaceCount)} /><ReadOnlyField label="Aristas seleccionadas" value={String(treatmentEdgeCount)} /></div></> : null}
           <TransformSection description="Sin transformación propia"><p className="educad-transform-empty">Esta operación actúa sobre el resultado anterior del objeto.</p></TransformSection>
         </>
       ) : null}
 
       {feature.kind === "faceExtrude" ? (
         <>
-          <div className="educad-feature-card"><h3>Operación</h3><OperationModeButtons value={feature.operation} includeCommon={false} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "faceExtrude" && operation !== "intersect") draft.operation = operation; })} /><BoundedNumberField label="Longitud" value={feature.distance} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "faceExtrude") draft.distance = Math.max(0.01, value); })} /></div>
+          <div className="educad-feature-card"><h3>{t("model.operation")}</h3><OperationModeButtons value={feature.operation} includeCommon={false} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "faceExtrude" && operation !== "intersect") draft.operation = operation; })} /><BoundedNumberField label={t("property.length")} value={feature.distance} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "faceExtrude") draft.distance = Math.max(0.01, value); })} /></div>
           <button className="educad-edit-topology-selection" type="button" onClick={() => onEditFaceExtrudeSelection(feature.id)}>Editar cara</button>
           <TransformSection description="Dirección normal a la cara"><p className="educad-transform-empty">La longitud se aplica perpendicularmente a la cara seleccionada.</p></TransformSection>
         </>
@@ -621,7 +623,7 @@ function ParametricFeatureInspector({
 
       {feature.kind === "shell" ? (
         <>
-          <div className="educad-feature-card"><h3>Operación</h3><ReadOnlyField label="Tipo" value="Vaciado" /><BoundedNumberField label="Espesor" value={feature.thickness} min={0.01} max={50} onChange={(value) => onUpdate((draft) => { if (draft.kind === "shell") draft.thickness = Math.max(0.01, value); })} /></div>
+          <div className="educad-feature-card"><h3>{t("model.operation")}</h3><ReadOnlyField label={t("property.type")} value={t("toolbar.shell")} /><BoundedNumberField label={t("property.thickness")} value={feature.thickness} min={0.01} max={50} onChange={(value) => onUpdate((draft) => { if (draft.kind === "shell") draft.thickness = Math.max(0.01, value); })} /></div>
           <button className="educad-edit-topology-selection" type="button" onClick={() => onEditShellSelection(feature.id)}>Editar caras abiertas</button>
           <TransformSection description="Sin transformación propia"><p className="educad-transform-empty">El vaciado desplaza las paredes hacia el interior y elimina las caras seleccionadas.</p></TransformSection>
         </>
@@ -629,7 +631,7 @@ function ParametricFeatureInspector({
 
       {feature.kind === "revolve" ? (
         <>
-          <div className="educad-feature-card"><h3>Operación</h3><OperationModeButtons value={feature.operation} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "revolve") draft.operation = operation; })} /><label><span>Eje</span><select value={feature.axis} onChange={(event) => onUpdate((draft) => { if (draft.kind === "revolve") draft.axis = event.target.value as typeof draft.axis; })}><option value="x">X local</option><option value="y">Y local</option><option value="z">Z local</option>{feature.axis === "edge" ? <option value="edge">Arista seleccionada</option> : null}</select></label><BoundedNumberField label="Ángulo" value={feature.angle} min={-360} max={360} step={1} unit="°" onChange={(value) => onUpdate((draft) => { if (draft.kind === "revolve") draft.angle = Math.abs(value) < 1 ? (value < 0 ? -1 : 1) : Math.min(360, Math.max(-360, value)); })} /></div>
+          <div className="educad-feature-card"><h3>{t("model.operation")}</h3><OperationModeButtons value={feature.operation} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "revolve") draft.operation = operation; })} /><label><span>{t("property.axis")}</span><select value={feature.axis} onChange={(event) => onUpdate((draft) => { if (draft.kind === "revolve") draft.axis = event.target.value as typeof draft.axis; })}><option value="x">X local</option><option value="y">Y local</option><option value="z">Z local</option>{feature.axis === "edge" ? <option value="edge">{t("operation.selectedEdge")}</option> : null}</select></label><BoundedNumberField label={t("property.angle")} value={feature.angle} min={-360} max={360} step={1} unit="°" onChange={(value) => onUpdate((draft) => { if (draft.kind === "revolve") draft.angle = Math.abs(value) < 1 ? (value < 0 ? -1 : 1) : Math.min(360, Math.max(-360, value)); })} /></div>
           {revolveSketch && revolveSketch.profile.shape !== "drawn" ? <div className="educad-feature-card"><h3>Perfil de boceto</h3><ReadOnlyField label="Forma" value={revolveSketch.profile.shape === "rectangle" ? "Rectángulo" : "Círculo"} />{revolveSketch.profile.shape === "rectangle" ? <><BoundedNumberField label="Anchura" value={revolveSketch.profile.width} min={0.01} max={200} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} /><BoundedNumberField label="Profundidad" value={revolveSketch.profile.depth} min={0.01} max={200} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} /></> : <BoundedNumberField label="Radio" value={revolveSketch.profile.diameter / 2} min={0.01} max={100} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value * 2); })} />}</div> : null}
           {feature.source === "face" ? <div className="educad-topology-selection-actions"><button className="educad-edit-topology-selection" type="button" onClick={() => onEditRevolveFace(feature.id)}>Editar cara</button><button className="educad-edit-topology-selection" type="button" onClick={() => onEditRevolveAxis(feature.id)}>Editar eje</button></div> : <button className="educad-edit-topology-selection" type="button" onClick={() => onEditRevolveAxis(feature.id)}>Editar eje</button>}
           <TransformSection description="Eje local del objeto"><p className="educad-transform-empty">La cara gira alrededor del eje local seleccionado que pasa por el origen del objeto.</p></TransformSection>
@@ -639,7 +641,7 @@ function ParametricFeatureInspector({
       {feature.kind === "mirror" ? (
         <>
           <div className="educad-feature-card">
-            <h3>Operación</h3>
+            <h3>{t("model.operation")}</h3>
             <label><span>Plano</span><select value={feature.axis} onChange={(event) => onUpdate((draft) => { if (draft.kind === "mirror") draft.axis = event.target.value as typeof draft.axis; })}><option value="x">YZ (eje X)</option><option value="y">XZ (eje Y)</option><option value="z">XY (eje Z)</option></select></label>
             <label><span>Resultado</span><select value={feature.duplicate ? "duplicate" : "transform"} onChange={(event) => onUpdate((draft) => { if (draft.kind === "mirror") draft.duplicate = event.target.value === "duplicate"; })}><option value="duplicate">Duplicar</option><option value="transform">Sólo transformar</option></select></label>
           </div>
@@ -650,7 +652,7 @@ function ParametricFeatureInspector({
       {feature.kind === "linearPattern" ? (
         <>
           <div className="educad-feature-card">
-            <h3>Operación</h3>
+            <h3>{t("model.operation")}</h3>
             <label><span>Origen</span><select value={feature.source === "feature" ? feature.sourceFeatureId ?? "body" : "body"} onChange={(event) => onUpdate((draft) => {
               if (draft.kind !== "linearPattern") return;
               if (event.target.value === "body") {
@@ -666,9 +668,9 @@ function ParametricFeatureInspector({
             <label><span>Eje</span><select value={feature.axis} onChange={(event) => onUpdate((draft) => { if (draft.kind === "linearPattern") draft.axis = event.target.value as typeof draft.axis; })}><option value="x">X local</option><option value="y">Y local</option><option value="z">Z local</option></select></label>
           </div>
           <div className="educad-feature-card">
-            <h3>Parámetros</h3>
-            <BoundedNumberField label="Cantidad" value={feature.count} min={2} max={50} step={1} onChange={(value) => onUpdate((draft) => { if (draft.kind === "linearPattern") draft.count = Math.min(50, Math.max(2, Math.round(value))); })} />
-            <BoundedNumberField label="Separación" value={feature.spacing} min={-1000} max={1000} unit="mm" onChange={(value) => onUpdate((draft) => { if (draft.kind === "linearPattern") draft.spacing = Math.abs(value) < 0.01 ? (value < 0 ? -0.01 : 0.01) : value; })} />
+            <h3>{t("operation.parameters")}</h3>
+            <BoundedNumberField label={t("property.count")} value={feature.count} min={2} max={50} step={1} onChange={(value) => onUpdate((draft) => { if (draft.kind === "linearPattern") draft.count = Math.min(50, Math.max(2, Math.round(value))); })} />
+            <BoundedNumberField label={t("property.spacing")} value={feature.spacing} min={-1000} max={1000} unit="mm" onChange={(value) => onUpdate((draft) => { if (draft.kind === "linearPattern") draft.spacing = Math.abs(value) < 0.01 ? (value < 0 ? -0.01 : 0.01) : value; })} />
           </div>
           <TransformSection description="Dirección local del objeto"><p className="educad-transform-empty">La cantidad incluye el original. Puede repetirse el cuerpo acumulado o la contribución de una operación anterior.</p></TransformSection>
         </>
@@ -677,7 +679,7 @@ function ParametricFeatureInspector({
       {feature.kind === "polarPattern" ? (
         <>
           <div className="educad-feature-card">
-            <h3>Operación</h3>
+            <h3>{t("model.operation")}</h3>
             <label><span>Origen</span><select value={feature.source === "feature" ? feature.sourceFeatureId ?? "body" : "body"} onChange={(event) => onUpdate((draft) => {
               if (draft.kind !== "polarPattern") return;
               if (event.target.value === "body") {
@@ -694,9 +696,9 @@ function ParametricFeatureInspector({
             <label><span>Distribución uniforme</span><input type="checkbox" checked={feature.equalSpacing} onChange={(event) => onUpdate((draft) => { if (draft.kind === "polarPattern") draft.equalSpacing = event.target.checked; })} /></label>
           </div>
           <div className="educad-feature-card">
-            <h3>Parámetros</h3>
-            <BoundedNumberField label="Cantidad" value={feature.count} min={2} max={50} step={1} onChange={(value) => onUpdate((draft) => { if (draft.kind === "polarPattern") draft.count = Math.min(50, Math.max(2, Math.round(value))); })} />
-            <BoundedNumberField label={feature.equalSpacing ? "Ángulo total" : "Paso angular"} value={feature.angle} min={-360} max={360} step={1} unit="°" onChange={(value) => onUpdate((draft) => { if (draft.kind === "polarPattern") draft.angle = Math.abs(value) < 0.1 ? (value < 0 ? -0.1 : 0.1) : value; })} />
+            <h3>{t("operation.parameters")}</h3>
+            <BoundedNumberField label={t("property.count")} value={feature.count} min={2} max={50} step={1} onChange={(value) => onUpdate((draft) => { if (draft.kind === "polarPattern") draft.count = Math.min(50, Math.max(2, Math.round(value))); })} />
+            <BoundedNumberField label={feature.equalSpacing ? t("property.totalAngle") : t("property.angularStep")} value={feature.angle} min={-360} max={360} step={1} unit="°" onChange={(value) => onUpdate((draft) => { if (draft.kind === "polarPattern") draft.angle = Math.abs(value) < 0.1 ? (value < 0 ? -0.1 : 0.1) : value; })} />
           </div>
           <TransformSection description="Rotación alrededor del origen local"><p className="educad-transform-empty">La cantidad incluye el original. El signo del ángulo determina el sentido de giro.</p></TransformSection>
         </>
@@ -705,7 +707,7 @@ function ParametricFeatureInspector({
       {feature.kind === "objectBoolean" ? (
         <>
           <div className="educad-feature-card">
-            <h3>Operación</h3>
+            <h3>{t("model.operation")}</h3>
             <OperationModeButtons value={feature.operation} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "objectBoolean") draft.operation = operation; })} />
             <label><span>Objeto</span><select value={feature.sourceObjectId} onChange={(event) => onUpdate((draft) => { if (draft.kind !== "objectBoolean") return; draft.sourceObjectId = event.target.value; draft.dependencies = [{ type: "object", id: event.target.value }]; })}>{document.objects.filter((object) => object.id !== feature.objectId).map((object) => <option key={object.id} value={object.id}>{object.name}</option>)}</select></label>
           </div>

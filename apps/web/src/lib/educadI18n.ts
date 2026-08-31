@@ -27,6 +27,17 @@ const es = {
   "model.transform": "Transformación", "model.mode": "Modo", "model.add": "Añadir", "model.hole": "Hueco", "model.common": "Común",
   "dialog.newTitle": "Nuevo diseño", "dialog.newWarning": "El proyecto actual se cerrará. Guarda antes si quieres conservar los últimos cambios.",
   "dialog.save": "Guardar", "dialog.createNew": "Nuevo", "dialog.exportTitle": "Exportar diseño",
+  "property.type": "Tipo", "property.position": "Posición", "property.rotation": "Rotación", "property.scale": "Escala",
+  "property.axis": "Eje", "property.angle": "Ángulo", "property.length": "Longitud", "property.radius": "Radio",
+  "property.distance": "Distancia", "property.thickness": "Espesor", "property.width": "Anchura", "property.depth": "Profundidad",
+  "property.height": "Altura", "property.file": "Archivo", "property.geometry": "Geometría", "property.reference": "Referencia",
+  "property.diameter": "Diámetro", "property.result": "Resultado", "property.source": "Origen", "property.plane": "Plano",
+  "property.count": "Cantidad", "property.spacing": "Separación", "property.totalAngle": "Ángulo total", "property.angularStep": "Paso angular",
+  "operation.new": "Nueva operación", "operation.edit": "Editar operación", "operation.editSelection": "Editar caras y aristas",
+  "operation.sketch": "Boceto", "operation.importedStep": "STEP importado", "operation.exactBrep": "B-Rep exacto",
+  "operation.hole": "Taladro", "operation.fillet": "Redondeo", "operation.chamfer": "Chaflán", "operation.revolve": "Revolución",
+  "operation.mirror": "Espejo", "operation.linearPattern": "Matriz lineal", "operation.polarPattern": "Matriz polar",
+  "operation.fullBody": "Cuerpo completo", "operation.selectedEdge": "Arista seleccionada", "operation.parameters": "Parámetros",
 } as const;
 
 export type EducadTranslationKey = keyof typeof es;
@@ -58,6 +69,17 @@ const en: Record<EducadTranslationKey, string> = {
   "model.transform": "Transform", "model.mode": "Mode", "model.add": "Add", "model.hole": "Hole", "model.common": "Common",
   "dialog.newTitle": "New design", "dialog.newWarning": "The current project will be closed. Save first if you want to keep the latest changes.",
   "dialog.save": "Save", "dialog.createNew": "New", "dialog.exportTitle": "Export design",
+  "property.type": "Type", "property.position": "Position", "property.rotation": "Rotation", "property.scale": "Scale",
+  "property.axis": "Axis", "property.angle": "Angle", "property.length": "Length", "property.radius": "Radius",
+  "property.distance": "Distance", "property.thickness": "Thickness", "property.width": "Width", "property.depth": "Depth",
+  "property.height": "Height", "property.file": "File", "property.geometry": "Geometry", "property.reference": "Reference",
+  "property.diameter": "Diameter", "property.result": "Result", "property.source": "Source", "property.plane": "Plane",
+  "property.count": "Count", "property.spacing": "Spacing", "property.totalAngle": "Total angle", "property.angularStep": "Angular step",
+  "operation.new": "New operation", "operation.edit": "Edit operation", "operation.editSelection": "Edit faces and edges",
+  "operation.sketch": "Sketch", "operation.importedStep": "Imported STEP", "operation.exactBrep": "Exact B-Rep",
+  "operation.hole": "Hole", "operation.fillet": "Fillet", "operation.chamfer": "Chamfer", "operation.revolve": "Revolve",
+  "operation.mirror": "Mirror", "operation.linearPattern": "Linear pattern", "operation.polarPattern": "Polar pattern",
+  "operation.fullBody": "Full body", "operation.selectedEdge": "Selected edge", "operation.parameters": "Parameters",
 };
 
 const translations: Record<EducadLocale, Record<EducadTranslationKey, string>> = { es, en };
