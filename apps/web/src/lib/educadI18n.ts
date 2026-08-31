@@ -38,6 +38,21 @@ const es = {
   "operation.hole": "Taladro", "operation.fillet": "Redondeo", "operation.chamfer": "Chaflán", "operation.revolve": "Revolución",
   "operation.mirror": "Espejo", "operation.linearPattern": "Matriz lineal", "operation.polarPattern": "Matriz polar",
   "operation.fullBody": "Cuerpo completo", "operation.selectedEdge": "Arista seleccionada", "operation.parameters": "Parámetros",
+  "sketch.tools": "Herramientas de boceto", "sketch.draw": "Dibujar", "sketch.edit": "Editar", "sketch.point": "Punto",
+  "sketch.history": "Historial", "sketch.inspect": "Inspeccionar", "sketch.import": "Importar", "sketch.line": "Línea",
+  "sketch.bezier": "Curva Bézier", "sketch.smoothCurve": "Curva suave", "sketch.freehand": "Dibujo libre",
+  "sketch.smoothFreehand": "Dibujo libre suavizado", "sketch.text": "Texto", "sketch.circle": "Círculo", "sketch.centerArc": "Arco por centro",
+  "sketch.select": "Seleccionar", "sketch.refine": "Refinar", "sketch.trim": "Recortar", "sketch.erase": "Borrar",
+  "sketch.eraseSelection": "Borrar selección", "sketch.construction": "Geometría de construcción", "sketch.corner": "Esquina",
+  "sketch.smooth": "Suave", "sketch.splitHandles": "Separar tiradores", "sketch.undo": "Deshacer boceto", "sketch.redo": "Rehacer boceto",
+  "sketch.measure": "Medir", "sketch.importSvg": "Importar SVG editable", "sketch.accept": "Aceptar boceto",
+  "sketch.constraints": "Restricciones", "sketch.constraintHint": "Selecciona geometría para habilitar herramientas",
+  "sketch.geometric": "Geométricas", "sketch.dimensions": "Cotas", "sketch.horizontal": "Horizontal", "sketch.vertical": "Vertical",
+  "sketch.parallel": "Paralela", "sketch.perpendicular": "Perpendicular", "sketch.concentric": "Concéntrica", "sketch.equal": "Igual",
+  "sketch.midpoint": "Punto medio", "sketch.pointOnGeometry": "Punto sobre geometría", "sketch.tangent": "Tangente",
+  "sketch.symmetry": "Simetría", "sketch.coincident": "Coincidente", "sketch.fixPoint": "Fijar punto",
+  "sketch.dimensionLength": "Longitud", "sketch.distanceX": "Distancia X", "sketch.distanceY": "Distancia Y",
+  "sketch.diameter": "Diámetro", "sketch.radius": "Radio", "sketch.angle": "Ángulo",
 } as const;
 
 export type EducadTranslationKey = keyof typeof es;
@@ -80,6 +95,21 @@ const en: Record<EducadTranslationKey, string> = {
   "operation.hole": "Hole", "operation.fillet": "Fillet", "operation.chamfer": "Chamfer", "operation.revolve": "Revolve",
   "operation.mirror": "Mirror", "operation.linearPattern": "Linear pattern", "operation.polarPattern": "Polar pattern",
   "operation.fullBody": "Full body", "operation.selectedEdge": "Selected edge", "operation.parameters": "Parameters",
+  "sketch.tools": "Sketch tools", "sketch.draw": "Draw", "sketch.edit": "Edit", "sketch.point": "Point",
+  "sketch.history": "History", "sketch.inspect": "Inspect", "sketch.import": "Import", "sketch.line": "Line",
+  "sketch.bezier": "Bezier curve", "sketch.smoothCurve": "Smooth curve", "sketch.freehand": "Freehand",
+  "sketch.smoothFreehand": "Smooth freehand", "sketch.text": "Text", "sketch.circle": "Circle", "sketch.centerArc": "Center arc",
+  "sketch.select": "Select", "sketch.refine": "Refine", "sketch.trim": "Trim", "sketch.erase": "Erase",
+  "sketch.eraseSelection": "Erase selection", "sketch.construction": "Construction geometry", "sketch.corner": "Corner",
+  "sketch.smooth": "Smooth", "sketch.splitHandles": "Split handles", "sketch.undo": "Undo sketch", "sketch.redo": "Redo sketch",
+  "sketch.measure": "Measure", "sketch.importSvg": "Import editable SVG", "sketch.accept": "Accept sketch",
+  "sketch.constraints": "Constraints", "sketch.constraintHint": "Select geometry to enable tools",
+  "sketch.geometric": "Geometric", "sketch.dimensions": "Dimensions", "sketch.horizontal": "Horizontal", "sketch.vertical": "Vertical",
+  "sketch.parallel": "Parallel", "sketch.perpendicular": "Perpendicular", "sketch.concentric": "Concentric", "sketch.equal": "Equal",
+  "sketch.midpoint": "Midpoint", "sketch.pointOnGeometry": "Point on geometry", "sketch.tangent": "Tangent",
+  "sketch.symmetry": "Symmetry", "sketch.coincident": "Coincident", "sketch.fixPoint": "Fix point",
+  "sketch.dimensionLength": "Length", "sketch.distanceX": "X distance", "sketch.distanceY": "Y distance",
+  "sketch.diameter": "Diameter", "sketch.radius": "Radius", "sketch.angle": "Angle",
 };
 
 const translations: Record<EducadLocale, Record<EducadTranslationKey, string>> = { es, en };
