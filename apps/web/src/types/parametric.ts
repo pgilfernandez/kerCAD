@@ -296,5 +296,6 @@ export type BuildResult = {
   };
   operationContext: { featureId: string; objectId: string; color: string; mesh: RenderMesh; selectionMesh?: RenderMesh; detailMesh?: RenderMesh; detailColor?: "green" | "red" } | null;
   completedFeatureIds: string[];
+  failedFeatureId: string | null;
   warning: string | null;
 };

@@ -250,7 +250,7 @@ export function SketchForgeParametricEditor() {
   const [history, setHistory] = useState<ParametricHistoryState>(() => createParametricHistory(initialDocument));
   const document = currentHistoryDocument(history);
   const [modelSelection, setModelSelection] = useState<ModelTreeSelection[]>(initialDocument.objects[0] ? [{ id: initialDocument.objects[0].id, kind: "object" }] : []);
-  const [build, setBuild] = useState<BuildResult>({ mesh: null, objectRecords: [], operationContext: null, completedFeatureIds: [], warning: null });
+  const [build, setBuild] = useState<BuildResult>({ mesh: null, objectRecords: [], operationContext: null, completedFeatureIds: [], failedFeatureId: null, warning: null });
   const [operationContext, setOperationContext] = useState<BuildResult["operationContext"]>(null);
   const [kernelBusy, setKernelBusy] = useState(true);
   const [contextBusy, setContextBusy] = useState(false);
@@ -594,6 +594,10 @@ export function SketchForgeParametricEditor() {
       buildWorkerRef.current?.buildModel(buildDocument).then((result) => {
         if (counter !== buildCounter.current) return;
         setBuild(result);
+        if (result.failedFeatureId && buildDocument.features.some((feature) => feature.id === result.failedFeatureId)) {
+          setModelSelection([{ id: result.failedFeatureId, kind: "feature" }]);
+          setModelSidebarMode("normal");
+        }
         setKernelBusy(false);
       }).catch((error: unknown) => {
         if (counter !== buildCounter.current) return;

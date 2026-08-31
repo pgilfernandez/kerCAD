@@ -681,6 +681,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
     return fingerprint;
   };
   let operationContext: BuildResult["operationContext"] = null;
+  let activeFeatureId: string | null = null;
   let lastObjectId = "legacy";
   const reuseObjectCache = contextFeatureId === null && !stopAtContext;
   const reusableObjectIds = new Set<string>();
@@ -712,6 +713,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
   try {
     for (const feature of topologicallySortedParametricFeatures(document)) {
       if (feature.suppressed) continue;
+      activeFeatureId = feature.id;
       if (feature.objectId && reusableObjectIds.has(feature.objectId)) {
         if (feature.kind !== "sketch") lastObjectId = feature.objectId;
         completedFeatureIds.push(feature.id);
@@ -742,7 +744,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
             color: objects.get(objectId)?.color ?? "#d41721",
             mesh: meshShape(brep, applyObjectTransform(brep, result, objects.get(objectId))),
           };
-          if (stopAtContext) return { mesh: null, objectRecords: [], operationContext, completedFeatureIds, warning: null };
+          if (stopAtContext) return { mesh: null, objectRecords: [], operationContext, completedFeatureIds, failedFeatureId: null, warning: null };
         }
         continue;
       }
@@ -771,7 +773,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
             color: objects.get(objectId)?.color ?? "#d41721",
             mesh: meshShape(brep, applyObjectTransform(brep, selectedResult, objects.get(objectId))),
           } : null;
-          if (stopAtContext) return { mesh: null, objectRecords: [], operationContext, completedFeatureIds, warning: null };
+          if (stopAtContext) return { mesh: null, objectRecords: [], operationContext, completedFeatureIds, failedFeatureId: null, warning: null };
         }
         continue;
       }
@@ -871,11 +873,11 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
           detailMesh: detail ? meshShape(brep, applyObjectTransform(brep, detail, objects.get(objectId))) : undefined,
           detailColor: feature.kind === "shell" || (feature.kind === "faceExtrude" && feature.operation === "cut") ? "red" : "green",
         } : null;
-        if (stopAtContext) return { mesh: null, objectRecords: [], operationContext, completedFeatureIds, warning: null };
+        if (stopAtContext) return { mesh: null, objectRecords: [], operationContext, completedFeatureIds, failedFeatureId: null, warning: null };
       }
     }
   } catch (error) {
-    return { ...buildRenderOutput(brep, document, solids, objects, reusableObjectIds, incrementalRender), operationContext, completedFeatureIds, warning: errorMessage(error) };
+    return { ...buildRenderOutput(brep, document, solids, objects, reusableObjectIds, incrementalRender), operationContext, completedFeatureIds, failedFeatureId: activeFeatureId, warning: errorMessage(error) };
   }
 
   if (reuseObjectCache) {
@@ -900,7 +902,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
     }
   }
 
-  return { ...buildRenderOutput(brep, document, solids, objects, reusableObjectIds, incrementalRender), operationContext, completedFeatureIds, warning: null };
+  return { ...buildRenderOutput(brep, document, solids, objects, reusableObjectIds, incrementalRender), operationContext, completedFeatureIds, failedFeatureId: null, warning: null };
 }
 
 export function buildParametricModel(document: ParametricDocument, incrementalRender = false): Promise<BuildResult> {
