@@ -377,11 +377,6 @@ function ParametricObjectInspector({
   return (
     <div className="educad-feature-inspector educad-object-inspector">
       {object.referenceMesh ? <div className="educad-feature-card"><h3>{t("property.reference")}</h3><ReadOnlyField label={t("property.file")} value={object.referenceMesh.sourceName} /><ReadOnlyField label="Formato" value={object.referenceMesh.format.toUpperCase()} /><label><span>Opacidad</span><input type="range" min={0.05} max={1} step={0.05} value={object.referenceMesh.opacity} onChange={(event) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.opacity = Number(event.target.value); })} /></label><label><span>Visualización</span><select value={object.referenceMesh.displayMode} onChange={(event) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.displayMode = event.target.value as typeof draft.referenceMesh.displayMode; })}><option value="solidEdges">Sólido y aristas</option><option value="solid">Sólido</option><option value="wireframe">Alámbrico</option></select></label><label><span>Seleccionable</span><input type="checkbox" checked={object.referenceMesh.pickable} onChange={(event) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.pickable = event.target.checked; })} /></label></div> : null}
-      <TransformSection>
-        <TransformGroup label={t("property.position")} values={object.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.position[axis] = value; })} />
-        <TransformGroup label={t("property.rotation")} values={object.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.rotation[axis] = value; })} />
-        <TransformGroup label={t("property.scale")} values={object.transform.scale} unit="×" min={0.01} onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.scale[axis] = Math.max(0.01, value); })} />
-      </TransformSection>
       <div ref={colorPanelRef} className="educad-feature-card educad-object-appearance">
         <button className="educad-color-trigger" aria-expanded={colorOpen} onClick={() => setColorOpen((value) => !value)}>
           <span>Color</span><span className="educad-color-preview" style={{ "--object-color": object.color } as CSSProperties} /><strong>{object.color.toUpperCase()}</strong><ChevronDown size={15} />
@@ -391,6 +386,11 @@ function ParametricObjectInspector({
           <label className="educad-custom-color" title="Color personalizado"><input type="color" value={object.color} onChange={(event) => onUpdate((draft) => { draft.color = event.target.value; })} /><span>+</span></label>
         </div> : null}
       </div>
+      <TransformSection>
+        <TransformGroup label={t("property.position")} values={object.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.position[axis] = value; })} />
+        <TransformGroup label={t("property.rotation")} values={object.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.rotation[axis] = value; })} />
+        <TransformGroup label={t("property.scale")} values={object.transform.scale} unit="×" min={0.01} onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.scale[axis] = Math.max(0.01, value); })} />
+      </TransformSection>
     </div>
   );
 }
