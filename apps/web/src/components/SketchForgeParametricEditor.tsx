@@ -682,7 +682,7 @@ export function SketchForgeParametricEditor() {
     : kernelBusy
       ? t("status.regenerating")
       : topologyPreviewBusy || topologySelectionBusy || contextBusy
-        ? "Actualizando vista…"
+        ? t("status.updatingView")
         : null;
 
   const beginSketch = (featureId: string | null = null) => {
@@ -2673,7 +2673,7 @@ export function SketchForgeParametricEditor() {
           className={`educad-workplane-snap-button ${document.workplane.snapToGrid ? "active" : ""}`}
           aria-label={document.workplane.snapToGrid ? t("grid.disableSnap") : t("grid.enableSnap")}
           aria-pressed={document.workplane.snapToGrid}
-          title={document.workplane.snapToGrid ? "Snap to grid: activado" : "Snap to grid: desactivado"}
+          title={document.workplane.snapToGrid ? t("grid.snapEnabled") : t("grid.snapDisabled")}
           onClick={() => {
             const enabled = !document.workplane.snapToGrid;
             mutate((draft) => { draft.workplane.snapToGrid = enabled; });
