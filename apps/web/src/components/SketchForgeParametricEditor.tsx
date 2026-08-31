@@ -678,9 +678,9 @@ export function SketchForgeParametricEditor() {
   const snapAmount = document.workplane.snapToGrid ? document.workplane.gridStep : 0.01;
   const viewportOverlayRightOffset = sketchSession ? 12 : modelSidebarMode === "normal" ? 252 : modelSidebarMode === "simplified" ? 80 : 12;
   const backgroundProcessLabel = exporting
-    ? "Exportando STEP…"
+    ? t("status.exportingStep")
     : kernelBusy
-      ? "Regenerando modelo…"
+      ? t("status.regenerating")
       : topologyPreviewBusy || topologySelectionBusy || contextBusy
         ? "Actualizando vista…"
         : null;
@@ -2256,7 +2256,7 @@ export function SketchForgeParametricEditor() {
   };
 
   if (!hydrated) {
-    return <main className="educad-reference-shell"><div className="editor-loading-screen"><div className="editor-loading-toolbar" /><div className="educad-initial-loading">Preparando el espacio de trabajo…</div></div></main>;
+    return <main className="educad-reference-shell"><div className="editor-loading-screen"><div className="editor-loading-toolbar" /><div className="educad-initial-loading">{t("status.loadingWorkspace")}</div></div></main>;
   }
 
   return (
@@ -2668,10 +2668,10 @@ export function SketchForgeParametricEditor() {
           </section>
         </aside> : null}
         <ViewCube orientation={cameraOrientation} onDirection={(direction) => setView((current) => ({ name: "custom", direction, token: current.token + 1 }))} />
-        <button data-educad-popup="grid" className={`educad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label="Ajustes de rejilla" title="Rejilla" onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><Grid3X3 size={22} /></button>
+        <button data-educad-popup="grid" className={`educad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label={t("grid.settings")} title={t("grid.title")} onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><Grid3X3 size={22} /></button>
         <button
           className={`educad-workplane-snap-button ${document.workplane.snapToGrid ? "active" : ""}`}
-          aria-label={document.workplane.snapToGrid ? "Desactivar ajuste a rejilla" : "Activar ajuste a rejilla"}
+          aria-label={document.workplane.snapToGrid ? t("grid.disableSnap") : t("grid.enableSnap")}
           aria-pressed={document.workplane.snapToGrid}
           title={document.workplane.snapToGrid ? "Snap to grid: activado" : "Snap to grid: desactivado"}
           onClick={() => {
@@ -2785,9 +2785,9 @@ export function SketchForgeParametricEditor() {
       {pendingProjectImport ? (
         <div className="educad-dialog-backdrop" role="presentation" onPointerDown={() => setPendingProjectImport(null)}>
           <section className="educad-new-document-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-import-project-title" onPointerDown={(event) => event.stopPropagation()}>
-            <header><strong id="educad-import-project-title">Importar proyecto eduCAD</strong><button type="button" aria-label="Cancelar" onClick={() => setPendingProjectImport(null)}><X size={18} /></button></header>
+            <header><strong id="educad-import-project-title">{t("dialog.importProject")}</strong><button type="button" aria-label={t("common.cancel")} onClick={() => setPendingProjectImport(null)}><X size={18} /></button></header>
             <p><strong>{pendingProjectImport.document.name || pendingProjectImport.fileName}</strong> contiene {pendingProjectImport.document.objects.length} objeto{pendingProjectImport.document.objects.length === 1 ? "" : "s"}. Puedes abrirlo como proyecto independiente o añadir sus objetos al diseño actual.</p>
-            <footer><button type="button" onClick={() => setPendingProjectImport(null)}>Cancelar</button><button type="button" onClick={openPendingProject}>Abrir</button><button type="button" className="primary" onClick={mergePendingProject}>Añadir al actual</button></footer>
+            <footer><button type="button" onClick={() => setPendingProjectImport(null)}>{t("common.cancel")}</button><button type="button" onClick={openPendingProject}>{t("common.open")}</button><button type="button" className="primary" onClick={mergePendingProject}>{t("dialog.addToCurrent")}</button></footer>
           </section>
         </div>
       ) : null}
