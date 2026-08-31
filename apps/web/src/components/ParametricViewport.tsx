@@ -122,6 +122,8 @@ type Props = {
   displayMode?: ViewportDisplayMode;
   shadingMode?: ViewportShadingMode;
   displayUnit?: ParametricDisplayUnit;
+  locale?: "en" | "es";
+  parameterHandlesVisible?: boolean;
   selection?: ViewportSelection | null;
   snap?: number;
   onShapeParameterChange?: (parameter: ShapeParameter, value: number) => void;
@@ -208,6 +210,15 @@ function roundedBoxPreviewGeometry(width: number, depth: number, height: number,
   const geometry = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false, curveSegments: 12 });
   geometry.translate(0, 0, -height / 2);
   return geometry;
+}
+
+function roundedBoxRadiusHandlePoints(width: number, depth: number, height: number, radius: number) {
+  const center = new THREE.Vector3(width / 2 - radius, -depth / 2 + radius, height / 2);
+  const outward = new THREE.Vector3(1, -1, 0).normalize();
+  return {
+    start: center,
+    end: center.clone().addScaledVector(outward, radius * 2 + 4),
+  };
 }
 
 function sketchOverlayPositions(feature: SketchFeature) {
@@ -322,6 +333,18 @@ function addYellowManipulatorOutline(handle: THREE.Mesh, radius: number) {
   outline.renderOrder = handle.renderOrder - 1;
   outline.userData.yellowManipulatorOutline = true;
   handle.add(outline);
+}
+
+function preserveYellowManipulatorShape(root: THREE.Object3D) {
+  const inverseScale = new THREE.Vector3(
+    1 / Math.max(0.0001, Math.abs(root.scale.x)),
+    1 / Math.max(0.0001, Math.abs(root.scale.y)),
+    1 / Math.max(0.0001, Math.abs(root.scale.z)),
+  );
+  root.traverse((child) => {
+    const role = child.userData.shapeParameterVisualRole;
+    if (role === "handle" || role === "target") child.scale.copy(inverseScale);
+  });
 }
 
 function coplanarFaceGeometry(source: THREE.BufferGeometry, faceIndex: number) {
@@ -441,7 +464,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
@@ -631,7 +654,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const camera = projection === "orthographic"
       ? new THREE.OrthographicCamera(-90, 90, 90, -90, 0.1, 2000)
       : new THREE.PerspectiveCamera(38, 1, 0.1, 1000);
-    camera.position.set(-95, 78, -110);
+    camera.position.set(118, 96, 118);
     const renderProfile = viewportRenderProfile(renderQuality);
     const resolution = new AdaptiveViewportResolution(window.devicePixelRatio, viewportPerformanceOptions(renderQuality));
     const renderer = new THREE.WebGLRenderer({ antialias: renderProfile.antialias, alpha: false, powerPreference: "high-performance" });
@@ -652,7 +675,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     controls.mouseButtons.RIGHT = THREE.MOUSE.ROTATE;
     controls.touches.ONE = THREE.TOUCH.ROTATE;
     controls.touches.TWO = THREE.TOUCH.DOLLY_PAN;
-    controls.target.set(0, 5, 0);
+    controls.target.set(0, 0, 0);
     controls.minDistance = 18;
     controls.maxDistance = 420;
     let frame = 0;
@@ -712,22 +735,40 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         dimensionValue("z") * Math.abs(visualRoot.scale.z),
       ];
       const axes: ViewportDimensionAxis[] = ["x", "y", "z"];
-      const names = parameters?.shape === "cone"
-        ? ["Radio inferior", "Radio superior", "Alto"]
-        : parameters?.shape === "tube"
-          ? ["Radio exterior", "Radio interior", "Alto"]
-          : parameters?.shape === "gear"
-            ? ["Radio exterior", "", "Alto"]
-          : parameters?.shape === "polygon"
-            ? ["Radio", "Lados", "Alto"]
-          : parameters?.shape === "torus"
-            ? ["Radio", "Largo", "Espesor"]
-          : parameters?.shape === "text"
-            ? ["", "Tamaño", "Alto"]
-            : [parameters?.shape === "box" || parameters?.shape === "roundedBox" || parameters?.shape === "pyramid" || parameters?.shape === "wedge" || parameters?.shape === "roof" || parameters?.shape === "roundRoof" ? "Ancho" : "Radio", "Largo", "Alto"];
+      const names = locale === "es"
+        ? parameters?.shape === "cone"
+          ? ["Radio inferior", "Radio superior", "Alto"]
+          : parameters?.shape === "tube"
+            ? ["Radio exterior", "Radio interior", "Alto"]
+            : parameters?.shape === "gear"
+              ? ["Radio exterior", "", "Alto"]
+              : parameters?.shape === "polygon"
+                ? ["Radio", "Lados", "Alto"]
+                : parameters?.shape === "torus"
+                  ? ["Radio", "Largo", "Espesor"]
+                  : parameters?.shape === "text"
+                    ? ["", "Tamaño", "Alto"]
+                    : [parameters?.shape === "box" || parameters?.shape === "roundedBox" || parameters?.shape === "pyramid" || parameters?.shape === "wedge" || parameters?.shape === "roof" || parameters?.shape === "roundRoof" ? "Ancho" : "Radio", "Largo", "Alto"]
+        : parameters?.shape === "cone"
+          ? ["Bottom radius", "Top radius", "Height"]
+          : parameters?.shape === "tube"
+            ? ["Outer radius", "Inner radius", "Height"]
+            : parameters?.shape === "gear"
+              ? ["Outer radius", "", "Height"]
+              : parameters?.shape === "polygon"
+                ? ["Radius", "Sides", "Height"]
+                : parameters?.shape === "torus"
+                  ? ["Radius", "Length", "Thickness"]
+                  : parameters?.shape === "text"
+                    ? ["", "Size", "Height"]
+                    : [parameters?.shape === "box" || parameters?.shape === "roundedBox" || parameters?.shape === "pyramid" || parameters?.shape === "wedge" || parameters?.shape === "roof" || parameters?.shape === "roundRoof" ? "Width" : "Radius", "Depth", "Height"];
       const lengthUnit = displayUnitLabel(displayUnit);
       const units = parameters?.shape === "polygon" ? [lengthUnit, "", lengthUnit] : [lengthUnit, lengthUnit, lengthUnit];
       const offsets = [[0, 18], [-24, 0], [22, 0]];
+      if (parameters?.shape === "text") {
+        // push the `size` label a bit outward so it doesn't overlap the yellow circle
+        offsets[1] = [-40, 0];
+      }
       points.forEach((point, index) => {
         const label = labels[index];
         if (!label) return;
@@ -817,19 +858,22 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     controls.addEventListener("change", onControlsChange);
     invalidateRef.current = requestRender;
 
-    scene.add(new THREE.HemisphereLight("#ffffff", "#9fb4bf", 2.1));
-    const key = new THREE.DirectionalLight("#ffffff", 3.2);
-    key.position.set(80, 130, 70);
+    scene.add(new THREE.HemisphereLight("#ffffff", "#d6edf5", 2.1));
+    const key = new THREE.DirectionalLight("#ffffff", 3.1);
+    key.position.set(70, 130, 75);
     key.castShadow = true;
     key.shadow.mapSize.set(renderProfile.shadowMapSize, renderProfile.shadowMapSize);
     key.shadow.camera.left = -120;
     key.shadow.camera.right = 120;
     key.shadow.camera.top = 120;
     key.shadow.camera.bottom = -120;
-    key.shadow.bias = -0.00015;
-    key.shadow.normalBias = 0.035;
+    key.shadow.bias = -0.00008;
+    key.shadow.normalBias = 0.045;
     key.shadow.radius = renderQuality === "normal" ? 2 : 1;
     scene.add(key);
+    const fill = new THREE.DirectionalLight("#c8f4ff", 1.2);
+    fill.position.set(-95, 45, -60);
+    scene.add(fill);
 
     const workplaneGroup = new THREE.Group();
     scene.add(workplaneGroup);
@@ -884,6 +928,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     let shapeParameterStartValue = 0;
     let shapeParameterWorldScale = 1;
     let shapeParameterDragAxis: "x" | "y" | "z" = "x";
+    let shapeParameterDragSign: 1 | -1 = 1;
     let parameterPointerOffset = 0;
     let parameterWorldToLocal: THREE.Matrix4 | null = null;
     let resizeStart: ViewportSelection | null = null;
@@ -1436,15 +1481,23 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         const parameter = child.userData.shapeParameterVisual as ShapeParameter | undefined;
         const role = child.userData.shapeParameterVisualRole as "guide" | "handle" | "target" | undefined;
         if (!parameter || !role) return;
+        const baseZ = -worldHeight / 2;
+        const radiusHandle = roundedBoxRadiusHandlePoints(worldWidth, worldDepth, worldHeight, worldRadius);
         const end = parameter === "width"
-          ? new THREE.Vector3(worldWidth / 2 + 3, 0, 0)
+          ? new THREE.Vector3(worldWidth / 2 + 3, 0, baseZ)
           : parameter === "depth"
-            ? new THREE.Vector3(0, worldDepth / 2 + 3, 0)
+            ? new THREE.Vector3(0, worldDepth / 2 + 3, baseZ)
             : parameter === "height"
               ? new THREE.Vector3(0, 0, worldHeight / 2 + 3)
-              : new THREE.Vector3(worldRadius + 3, 0, worldHeight / 2);
+              : parameter === "cornerRadius"
+                ? radiusHandle.end
+                : new THREE.Vector3(worldRadius + 3, 0, worldHeight / 2);
         if (role === "guide" && child instanceof LineSegments2) {
-          const start = parameter === "height" ? new THREE.Vector3(0, 0, -worldHeight / 2) : parameter === "cornerRadius" ? new THREE.Vector3(0, 0, worldHeight / 2) : new THREE.Vector3();
+          const start = parameter === "height"
+            ? new THREE.Vector3(0, 0, baseZ)
+            : parameter === "cornerRadius"
+              ? radiusHandle.start
+              : new THREE.Vector3(0, 0, baseZ);
           updateYellowManipulatorLine(child, start, end);
         }
         else if (role === "handle" || role === "target") child.position.copy(end);
@@ -1644,6 +1697,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           const center = root.getWorldPosition(new THREE.Vector3());
           const rootQuaternion = root.getWorldQuaternion(new THREE.Quaternion());
           shapeParameterDragAxis = resizeHit.object.userData.shapeParameterDragAxis === "z" ? "z" : resizeHit.object.userData.shapeParameterDragAxis === "y" ? "y" : parameter === "depth" ? "y" : parameter === "height" ? "z" : "x";
+          shapeParameterDragSign = resizeHit.object.userData.shapeParameterDragSign === -1 ? -1 : 1;
           const localAxis = shapeParameterDragAxis === "y" ? new THREE.Vector3(0, 1, 0) : shapeParameterDragAxis === "z" ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(1, 0, 0);
           const axis = localAxis.applyQuaternion(rootQuaternion).normalize();
           const cameraDirection = camera.getWorldDirection(new THREE.Vector3()).normalize();
@@ -1668,7 +1722,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
               : parameter === "tubeRadius" && values?.shape === "torus"
               ? selected.height / Math.max(0.01, values.tubeRadius * 2)
               : parameter === "cornerRadius" && values?.shape === "roundedBox"
-                ? selected.width / Math.max(0.01, values.width)
+                ? Math.min(selected.width / Math.max(0.01, values.width), selected.depth / Math.max(0.01, values.depth)) * (Math.SQRT2 - 1)
               : values?.shape === "cone" || values?.shape === "tube" || values?.shape === "gear" || values?.shape === "torus"
               ? selected.width / Math.max(0.01, (values.shape === "cone" ? values.baseRadius : values.shape === "tube" || values.shape === "gear" ? values.outerRadius : values.majorRadius + values.tubeRadius) * 2)
               : parameter === "height" && values && values.shape !== "sphere"
@@ -1699,7 +1753,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
                   : parameter === "boreRadius" && values?.shape === "gear"
                     ? values.boreRadius * shapeParameterWorldScale
                 : parameter === "depth" || (parameter === "size" && values?.shape === "text") ? selected.depth / 2 : parameter === "height" ? selected.height / 2 : selected.width / 2;
-            const pointerCoordinate = shapeParameterDragAxis === "y" ? localPointer.y : shapeParameterDragAxis === "z" ? localPointer.z : localPointer.x;
+            const pointerCoordinate = (shapeParameterDragAxis === "y" ? localPointer.y : shapeParameterDragAxis === "z" ? localPointer.z : localPointer.x) * shapeParameterDragSign;
             parameterPointerOffset = pointerCoordinate - visualHalfExtent;
             const boxLikeValues = values && (values.shape === "box" || values.shape === "roundedBox" || values.shape === "pyramid" || values.shape === "wedge" || values.shape === "roof" || values.shape === "roundRoof");
             const value = parameter === "width" && boxLikeValues ? values.width
@@ -1901,7 +1955,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         const localPointer = dragPoint.clone().applyMatrix4(parameterWorldToLocal);
         const parameter = pendingShapeParameter.parameter;
         const parameterStep = parameter === "cornerRadius" ? Math.max(0.01, grid / 10) : grid;
-        const pointerCoordinate = shapeParameterDragAxis === "y" ? localPointer.y : shapeParameterDragAxis === "z" ? localPointer.z : localPointer.x;
+        const pointerCoordinate = (shapeParameterDragAxis === "y" ? localPointer.y : shapeParameterDragAxis === "z" ? localPointer.z : localPointer.x) * shapeParameterDragSign;
         const adjusted = pointerCoordinate - parameterPointerOffset;
         const visualExtent = parameter === "sides" || parameter === "teeth"
           ? parameter === "sides" ? Math.min(32, Math.max(3, Math.round(Math.abs(adjusted)))) : Math.min(64, Math.max(6, Math.round(Math.abs(adjusted))))
@@ -1928,6 +1982,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           const cornerRadius = parameter === "cornerRadius" ? pendingShapeParameter.value : selected.shapeParameters.cornerRadius;
           if (parameter === "cornerRadius") pendingShapeParameter.value = Math.min(width / 2 - 0.1, depth / 2 - 0.1, Math.max(0.1, cornerRadius));
           shapeParameterPreviewRef.current = pendingShapeParameter;
+          if (parameter === "height") visualRoot.position.z = (visualExtent - resizeStart.height) / 2;
           updateRoundedBoxPreview(selected, width, depth, height, parameter === "cornerRadius" ? pendingShapeParameter.value : Math.min(cornerRadius, width / 2 - 0.1, depth / 2 - 0.1));
         } else if (selected.shapeParameters?.shape === "cone") {
           const baseRadius = parameter === "baseRadius" ? pendingShapeParameter.value : selected.shapeParameters.baseRadius;
@@ -1974,6 +2029,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           visualRoot.scale.x = ratio;
           visualRoot.scale.y = ratio;
         }
+        preserveYellowManipulatorShape(visualRoot);
       }
       requestRender();
     };
@@ -2189,7 +2245,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       [dimensionXRef.current, dimensionYRef.current, dimensionZRef.current].forEach((label) => { if (label) label.style.display = "none"; });
       invalidateRef.current = () => undefined;
     };
-  }, [displayUnit, projection, renderQuality, shadingMode]);
+  }, [displayUnit, locale, projection, renderQuality, shadingMode]);
 
   useEffect(() => {
     const layer = faceExtrudeHandleRef.current;
@@ -2203,7 +2259,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         materials.forEach((material) => material.dispose());
       });
     }
-    if (!faceExtrudeHandle) {
+    if (!faceExtrudeHandle || !parameterHandlesVisible) {
       invalidateRef.current();
       return;
     }
@@ -2225,7 +2281,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     layer.userData.operation = faceExtrudeHandle.operation;
     layer.add(guide, handle);
     invalidateRef.current();
-  }, [faceExtrudeHandle]);
+  }, [faceExtrudeHandle, parameterHandlesVisible]);
 
   useEffect(() => {
     const layer = originLayerRef.current;
@@ -2697,6 +2753,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     selectionRootRef.current = null;
     selectionVisualRootRef.current = null;
     resizeHitboxesRef.current = [];
+    if (!parameterHandlesVisible) {
+      dimensionPinnedRef.current.clear();
+      dimensionHoverRef.current.clear();
+      [dimensionXRef.current, dimensionYRef.current, dimensionZRef.current].forEach((label) => { if (label) label.style.display = "none"; });
+    }
     if (!selection) {
       invalidateRef.current();
       return;
@@ -2772,7 +2833,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       start: THREE.Vector3,
       end: THREE.Vector3,
       dragAxis?: "x" | "y" | "z",
+      dragSign: 1 | -1 = 1,
     ) => {
+      if (!parameterHandlesVisible) return;
       if (selection.parameterHandles && !selection.parameterHandles.includes(parameter)) return;
       const guide = yellowManipulatorLine(start, end, "#d6a600");
       guide.renderOrder = 21;
@@ -2797,6 +2860,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       target.userData.shapeParameter = parameter;
       target.userData.dimensionAxis = axis;
       target.userData.shapeParameterDragAxis = dragAxis;
+      target.userData.shapeParameterDragSign = dragSign;
       target.userData.hitTargetSize = 10;
       target.userData.shapeParameterVisual = parameter;
       target.userData.shapeParameterVisualRole = "target";
@@ -2804,12 +2868,15 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       resizeHitboxesRef.current.push(target);
     };
     if (parameters?.shape === "box" || parameters?.shape === "roundedBox") {
-      addParameterHandle("width", "x", new THREE.Vector3(0, 0, 0), new THREE.Vector3(selection.width / 2 + 3, 0, 0));
-      addParameterHandle("depth", "y", new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, selection.depth / 2 + 3, 0));
-      addParameterHandle("height", "z", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(0, 0, selection.height / 2 + 3));
+      const baseZ = -selection.height / 2;
+      addParameterHandle("width", "x", new THREE.Vector3(0, 0, baseZ), new THREE.Vector3(selection.width / 2 + 3, 0, baseZ));
+      addParameterHandle("depth", "y", new THREE.Vector3(0, 0, baseZ), new THREE.Vector3(0, selection.depth / 2 + 3, baseZ));
+      addParameterHandle("height", "z", new THREE.Vector3(0, 0, baseZ), new THREE.Vector3(0, 0, selection.height / 2 + 3));
       if (parameters.shape === "roundedBox") {
-        const radiusScale = selection.width / Math.max(0.01, parameters.width);
-        addParameterHandle("cornerRadius", "x", new THREE.Vector3(0, 0, selection.height / 2), new THREE.Vector3(parameters.cornerRadius * radiusScale + 3, 0, selection.height / 2));
+        const radiusScale = Math.min(selection.width / Math.max(0.01, parameters.width), selection.depth / Math.max(0.01, parameters.depth));
+        const worldRadius = parameters.cornerRadius * radiusScale;
+        const radiusHandle = roundedBoxRadiusHandlePoints(selection.width, selection.depth, selection.height, worldRadius);
+        addParameterHandle("cornerRadius", "x", radiusHandle.start, radiusHandle.end, "x");
       }
     } else if (parameters?.shape === "text") {
       addParameterHandle("size", "y", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(0, selection.depth / 2 + 3, -selection.height / 2), "y");
@@ -2820,8 +2887,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       addParameterHandle("depth", "y", new THREE.Vector3(0, 0, base), new THREE.Vector3(0, selection.depth / 2 + 3, base));
       addParameterHandle("height", "z", new THREE.Vector3(0, 0, base), new THREE.Vector3(0, 0, selection.height / 2 + 3));
     } else if (parameters?.shape === "cylinder") {
-      addParameterHandle("radius", "x", new THREE.Vector3(0, 0, 0), new THREE.Vector3(selection.width / 2 + 3, 0, 0));
-      addParameterHandle("height", "z", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(0, 0, selection.height / 2 + 3));
+      const baseZ = -selection.height / 2;
+      addParameterHandle("radius", "x", new THREE.Vector3(0, 0, baseZ), new THREE.Vector3(selection.width / 2 + 3, 0, baseZ));
+      addParameterHandle("height", "z", new THREE.Vector3(0, 0, baseZ), new THREE.Vector3(0, 0, selection.height / 2 + 3));
     } else if (parameters?.shape === "sphere") {
       addParameterHandle("radius", "x", new THREE.Vector3(0, 0, 0), new THREE.Vector3(selection.width / 2 + 3, 0, 0));
     } else if (parameters?.shape === "polygon") {
@@ -2860,7 +2928,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     selectionRootRef.current = root;
     selectionVisualRootRef.current = visualRoot;
     invalidateRef.current();
-  }, [displayMode, selection, projection, renderQuality, shadingMode, workplane.normal.x, workplane.normal.y, workplane.normal.z, workplane.xAxis.x, workplane.xAxis.y, workplane.xAxis.z, workplane.yAxis.x, workplane.yAxis.y, workplane.yAxis.z]);
+  }, [displayMode, parameterHandlesVisible, selection, projection, renderQuality, shadingMode, workplane.normal.x, workplane.normal.y, workplane.normal.z, workplane.xAxis.x, workplane.xAxis.y, workplane.xAxis.z, workplane.yAxis.x, workplane.yAxis.y, workplane.yAxis.z]);
 
   useEffect(() => {
     const camera = cameraRef.current;
@@ -2910,11 +2978,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       return;
     }
     const vectors: Record<"iso" | "top" | "front" | "right" | "home", THREE.Vector3> = {
-      iso: new THREE.Vector3(-1, 0.78, 1),
+      iso: new THREE.Vector3(118, 96, 118),
       top: new THREE.Vector3(0, 1, 0.001),
       front: new THREE.Vector3(0, 0.001, 1),
       right: new THREE.Vector3(1, 0.001, 0),
-      home: new THREE.Vector3(-1, 0.78, 1),
+      home: new THREE.Vector3(118, 96, 118),
     };
     camera.position.copy(target).add(vectors[view.name].normalize().multiplyScalar(distance));
     camera.up.set(0, 1, 0);

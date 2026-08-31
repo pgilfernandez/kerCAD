@@ -23,6 +23,11 @@ export type SketchSelection =
   | { kind: "multiple"; pointIds: string[]; segmentIds: string[]; circleIds?: string[]; imageIds?: string[] }
   | null;
 export type SketchMeasurement = { start: SketchPoint; end: SketchPoint } | null;
+export type SketchSceneReference = {
+  positions: Float32Array;
+  indices: Uint32Array;
+  edges: Float32Array;
+};
 
 type SketchWorkspaceProps = {
   profile: SketchProfile;
@@ -30,6 +35,7 @@ type SketchWorkspaceProps = {
   operation?: SketchOperation;
   revolvePreviewPositions?: number[] | null;
   referenceShapes: WorkplaneShape[];
+  sceneReference?: SketchSceneReference | null;
   tool: SketchTool;
   activePointId: string | null;
   selected: SketchSelection;
@@ -551,6 +557,7 @@ export function SketchWorkspace({
   operation = "extrude",
   revolvePreviewPositions = null,
   referenceShapes,
+  sceneReference = null,
   tool,
   activePointId,
   selected,
@@ -974,6 +981,25 @@ export function SketchWorkspace({
     () => new Map(referenceShapes.map((shape) => [shape.id, importedMeshFootprint(shape)])),
     [referenceShapes],
   );
+  const sceneReferencePaths = useMemo(() => {
+    if (!sceneReference) return null;
+    const { positions, indices, edges } = sceneReference;
+    const faceCommands: string[] = [];
+    for (let index = 0; index + 2 < indices.length; index += 3) {
+      const a = indices[index] * 3;
+      const b = indices[index + 1] * 3;
+      const c = indices[index + 2] * 3;
+      const signedArea = (positions[b] - positions[a]) * (positions[c + 1] - positions[a + 1])
+        - (positions[b + 1] - positions[a + 1]) * (positions[c] - positions[a]);
+      if (signedArea <= 1e-8) continue;
+      faceCommands.push(`M ${positions[a]} ${positions[a + 1]} L ${positions[b]} ${positions[b + 1]} L ${positions[c]} ${positions[c + 1]} Z`);
+    }
+    const edgeCommands: string[] = [];
+    for (let index = 0; index + 5 < edges.length; index += 6) {
+      edgeCommands.push(`M ${edges[index]} ${edges[index + 1]} L ${edges[index + 3]} ${edges[index + 4]}`);
+    }
+    return { faces: faceCommands.join(" "), edges: edgeCommands.join(" ") };
+  }, [sceneReference]);
   const invalidSegmentIds = useMemo(() => new Set(profileValidation?.diagnostics.flatMap((diagnostic) => diagnostic.segmentIds ?? []) ?? []), [profileValidation]);
   const invalidCircleIds = useMemo(() => new Set(profileValidation?.diagnostics.flatMap((diagnostic) => diagnostic.circleIds ?? []) ?? []), [profileValidation]);
   const invalidPointIds = useMemo(() => new Set(profileValidation?.diagnostics.flatMap((diagnostic) => diagnostic.pointIds ?? []) ?? []), [profileValidation]);
@@ -1073,6 +1099,10 @@ export function SketchWorkspace({
             ))}
           </g>
           <g className="sketch-reference-shapes" pointerEvents="none">
+            {sceneReferencePaths ? <g className="sketch-scene-reference">
+              <path className="faces" d={sceneReferencePaths.faces} />
+              <path className="edges" d={sceneReferencePaths.edges} />
+            </g> : null}
             {referenceShapes.filter((shape) => !shape.hidden).map((shape) => {
               const footprint = referenceFootprints.get(shape.id);
               return (

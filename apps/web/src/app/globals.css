@@ -4971,6 +4971,18 @@ button {
   vector-effect: non-scaling-stroke;
 }
 
+.sketch-scene-reference .faces {
+  fill: rgba(108, 141, 159, 0.2);
+  stroke: none;
+}
+
+.sketch-scene-reference .edges {
+  fill: none;
+  stroke: rgba(55, 75, 88, 0.4);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
 .sketch-reference-images image {
   cursor: move;
   image-rendering: auto;
@@ -5810,6 +5822,15 @@ circle.sketch-preview-line {
   background: #def5fb;
   border-color: #6fc8df;
   box-shadow: inset 3px 0 0 #079bc6;
+}
+
+.camera-controls button.educad-parameter-handles-toggle { color: #9b7908; }
+.camera-controls button.educad-parameter-handles-toggle:hover { color: #d6a600; }
+.camera-controls button.educad-parameter-handles-toggle.active {
+  color: #d6a600;
+  background: #fff6cf;
+  border-color: #e1c651;
+  box-shadow: inset 3px 0 0 #d6a600;
 }
 
 .workplane-control-group {

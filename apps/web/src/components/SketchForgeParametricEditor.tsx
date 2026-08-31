@@ -2,9 +2,10 @@
 
 import { Anchor, Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, CircleDot, CornerDownRight, Diameter, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Move3d, MoveHorizontal, MoveVertical, MousePointer2, PenLine, PenTool, Plus, Rotate3d, RotateCcw, Ruler, Scissors, Spline, Split, Type, Waves, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent as ReactFocusEvent } from "react";
+import * as THREE from "three";
 import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyEdgePick, type TopologyFacePick, type ViewportDisplayMode, type ViewportShadingMode } from "@/components/ParametricViewport";
-import { SketchWorkspace, type SketchMeasurement, type SketchSelection, type SketchTool } from "@/components/SketchWorkspace";
+import { SketchWorkspace, type SketchMeasurement, type SketchSceneReference, type SketchSelection, type SketchTool } from "@/components/SketchWorkspace";
 import {
   ToolbarAlignIcon,
   ToolbarChamferIcon,
@@ -95,7 +96,7 @@ import {
   type ParametricAlignmentAxis,
   type SupportedPrimitive,
 } from "@/lib/parametricObjects";
-import { globalParametricWorkplanePlacement, objectPlacementForWorkplane, parametricWorkplaneFromFace, parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
+import { globalParametricWorkplanePlacement, objectPlacementForWorkplane, parametricTransformMatrix, parametricWorkplaneFromFace, parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
 import { localizedParametricOperationDefinition, parametricOperationCatalog, parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import type { ViewportRenderQuality } from "@/lib/viewportPerformance";
 import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricFeature, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, PrimitiveFeature, SketchFeature } from "@/types/parametric";
@@ -106,6 +107,7 @@ const RENDER_QUALITY_STORAGE_KEY = "educad.viewport.render-mode";
 const FPS_VISIBLE_STORAGE_KEY = "educad.viewport.show-fps";
 const POSITION_TRIAD_VISIBLE_STORAGE_KEY = "educad.viewport.position-triad";
 const ROTATION_TRIAD_VISIBLE_STORAGE_KEY = "educad.viewport.rotation-triad";
+const PARAMETER_HANDLES_VISIBLE_STORAGE_KEY = "educad.viewport.parameter-handles";
 const DISPLAY_MODE_STORAGE_KEY = "educad.viewport.display-mode";
 const SHADING_MODE_STORAGE_KEY = "educad.viewport.shading-mode";
 
@@ -289,6 +291,7 @@ export function SketchForgeParametricEditor() {
   const [showFps, setShowFps] = useState(false);
   const [showPositionTriad, setShowPositionTriad] = useState(true);
   const [showRotationTriad, setShowRotationTriad] = useState(true);
+  const [showParameterHandles, setShowParameterHandles] = useState(true);
   const [originEditObjectId, setOriginEditObjectId] = useState<string | null>(null);
   const [alignOpen, setAlignOpen] = useState(false);
   const [cameraOrientation, setCameraOrientation] = useState<CameraOrientation>({ azimuth: -Math.PI / 4, polar: 1.02 });
@@ -406,6 +409,7 @@ export function SketchForgeParametricEditor() {
       setShowFps(localStorage.getItem(FPS_VISIBLE_STORAGE_KEY) === "true");
       setShowPositionTriad(localStorage.getItem(POSITION_TRIAD_VISIBLE_STORAGE_KEY) !== "false");
       setShowRotationTriad(localStorage.getItem(ROTATION_TRIAD_VISIBLE_STORAGE_KEY) !== "false");
+      setShowParameterHandles(localStorage.getItem(PARAMETER_HANDLES_VISIBLE_STORAGE_KEY) !== "false");
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored) as unknown;
@@ -458,6 +462,10 @@ export function SketchForgeParametricEditor() {
   useEffect(() => {
     if (hydrated) localStorage.setItem(ROTATION_TRIAD_VISIBLE_STORAGE_KEY, String(showRotationTriad));
   }, [hydrated, showRotationTriad]);
+
+  useEffect(() => {
+    if (hydrated) localStorage.setItem(PARAMETER_HANDLES_VISIBLE_STORAGE_KEY, String(showParameterHandles));
+  }, [hydrated, showParameterHandles]);
 
   useEffect(() => {
     const createWorker = () => new Worker(new URL("../workers/parametricBuild.worker.ts", import.meta.url), { type: "module" });
@@ -704,6 +712,38 @@ export function SketchForgeParametricEditor() {
     if (object?.visible === false) return [];
     return [{ feature, object, selected: modelSelection.some((item) => item.kind === "feature" && item.id === feature.id) }];
   }), [document.features, document.objects, modelSelection]);
+  const sketchSceneReference = useMemo<SketchSceneReference | null>(() => {
+    const mesh = build.mesh;
+    if (!sketchSession || !mesh?.positions.length) return null;
+    const feature = sketchSession.featureId
+      ? document.features.find((candidate): candidate is SketchFeature => candidate.id === sketchSession.featureId && candidate.kind === "sketch") ?? null
+      : null;
+    const objectId = feature?.objectId ?? sketchSession.objectId;
+    const object = objectId ? document.objects.find((candidate) => candidate.id === objectId) ?? null : null;
+    const basePlacement = object
+      ? parametricTransformMatrix(object.transform)
+      : parametricTransformMatrix(objectPlacementForWorkplane(document.workplane));
+    const sketchPlacement = feature
+      ? parametricTransformMatrix({ position: { x: feature.x, y: feature.y, z: feature.offset }, rotation: feature.rotation })
+      : new THREE.Matrix4();
+    const worldToSketch = basePlacement.multiply(sketchPlacement).invert();
+    const transformPositions = (source: Float32Array) => {
+      const transformed = new Float32Array(source.length);
+      const point = new THREE.Vector3();
+      for (let index = 0; index + 2 < source.length; index += 3) {
+        point.set(source[index], source[index + 1], source[index + 2]).applyMatrix4(worldToSketch);
+        transformed[index] = point.x;
+        transformed[index + 1] = point.y;
+        transformed[index + 2] = point.z;
+      }
+      return transformed;
+    };
+    return {
+      positions: transformPositions(mesh.positions),
+      indices: mesh.indices,
+      edges: transformPositions(mesh.edges),
+    };
+  }, [build.mesh, document.features, document.objects, document.workplane, sketchSession?.featureId, sketchSession?.objectId]);
   const snapAmount = document.workplane.snapToGrid ? document.workplane.gridStep : 0.01;
   const viewportOverlayRightOffset = sketchSession ? 12 : modelSidebarMode === "normal" ? 302 : modelSidebarMode === "simplified" ? 80 : 12;
   const backgroundProcessLabel = exporting
@@ -2427,6 +2467,7 @@ export function SketchForgeParametricEditor() {
           profileValidation={activeSketchProfileValidation}
           operation="extrude"
           referenceShapes={[]}
+          sceneReference={sketchSceneReference}
           tool={sketchTool}
           activePointId={sketchActivePointId}
           selected={sketchSelection}
@@ -2613,6 +2654,8 @@ export function SketchForgeParametricEditor() {
           displayMode={displayMode}
           shadingMode={shadingMode}
           displayUnit={displayUnit}
+          locale={locale}
+          parameterHandlesVisible={showParameterHandles}
           selection={originEditObjectId || placingWorkplane || selectingTopologyFaces || selectingTopologyEdges ? null : selectedBox}
           snap={snapAmount}
           onOperationModeChange={setSelectedOperationMode}
@@ -2733,6 +2776,7 @@ export function SketchForgeParametricEditor() {
         <div className="camera-controls" aria-label="Controles de cámara">
           <button className={showPositionTriad ? "active" : ""} aria-label={t("camera.positionTriad")} aria-pressed={showPositionTriad} title={t("camera.positionTriad")} onClick={() => setShowPositionTriad((visible) => !visible)}><Move3d size={22} /></button>
           <button className={showRotationTriad ? "active" : ""} aria-label={t("camera.rotationTriad")} aria-pressed={showRotationTriad} title={t("camera.rotationTriad")} onClick={() => setShowRotationTriad((visible) => !visible)}><Rotate3d size={22} /></button>
+          <button className={showParameterHandles ? "active educad-parameter-handles-toggle" : "educad-parameter-handles-toggle"} aria-label={t("camera.parameterHandles")} aria-pressed={showParameterHandles} title={t("camera.parameterHandles")} onClick={() => setShowParameterHandles((visible) => !visible)}><CircleDot size={22} /></button>
           <button className={displayMode === "wireframe" ? "active" : ""} aria-label={t("camera.wireframe")} aria-pressed={displayMode === "wireframe"} title={t("camera.wireframe")} onClick={() => setDisplayMode((current) => current === "solid" ? "wireframe" : "solid")}>
             <svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path d="m12 2 8 4.5v11L12 22l-8-4.5v-11L12 2Zm0 0v9m8-4.5-8 4.5-8-4.5M12 11v11m-8-4.5 8-4.5 8 4.5" fill="none" stroke="currentColor" strokeWidth="1.55" strokeLinejoin="round" /></svg>
           </button>
