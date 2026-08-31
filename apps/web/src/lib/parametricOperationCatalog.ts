@@ -145,7 +145,7 @@ export const parametricOperationCatalog: ParametricOperationDefinition[] = [
     kind: "polygon",
     name: "Polígono",
     description: "Prisma poligonal regular paramétrico exacto",
-    menuIcon: "assets/sketchforge/shape-icons-gray/cylinder.png",
+    menuIcon: "assets/educad/shapes/polygon.svg",
     roles: roles("polygon"),
     parameters: [dimension("radius", "Radio", 10), count("sides", "Lados", 6, 3, 32), dimension("height", "Altura")],
   },

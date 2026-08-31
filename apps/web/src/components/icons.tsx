@@ -73,7 +73,8 @@ function EducadOperationImage({ file, className }: EducadOperationImageProps) {
 }
 
 export function ToolbarHomeIcon() {
-  return <ToolbarCommandImage file="toolbar-home.png" className="toolbar-user-art-icon" />;
+  // return <ToolbarCommandImage file="toolbar-home.png" className="toolbar-user-art-icon" />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/document_new.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarCopyIcon() {
@@ -101,11 +102,14 @@ export function ToolbarRedoIcon() {
 }
 
 export function ToolbarImportIcon() {
-  return <ToolbarCommandImage file="toolbar-import.png" className="toolbar-user-art-icon" />;
+  // return <ToolbarCommandImage file="toolbar-import.png" className="toolbar-user-art-icon" />;
+  // return <EducadOperationImage file="import.svg" />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/import.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarVectorExportIcon() {
-  return <ToolbarCommandImage file="toolbar-export.png" className="toolbar-user-art-icon" />;
+  // return <ToolbarCommandImage file="toolbar-export.png" className="toolbar-user-art-icon" />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/export.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarSettingsIcon() {
