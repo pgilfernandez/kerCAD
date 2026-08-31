@@ -411,9 +411,9 @@ button {
   border: 1px solid #cbd7df;
   cursor: pointer;
 }
-.educad-viewport-operation-modes button { width: 31px; height: 29px; padding: 2px; border-radius: 5px; }
+.educad-viewport-operation-modes button { width: 47px; height: 44px; padding: 3px; border-radius: 7px; }
 .educad-viewport-operation-modes button img,
-.educad-viewport-operation-modes button svg { width: 24px; height: 24px; object-fit: contain; }
+.educad-viewport-operation-modes button svg { width: 36px; height: 36px; object-fit: contain; }
 .educad-viewport-operation-modes button:hover,
 .educad-operation-mode-buttons button:hover { background: #edf5f8; }
 .educad-viewport-operation-modes .mode-add.active,
@@ -1193,6 +1193,7 @@ button {
 .educad-transform-section > summary small { color: #8a9ba7; font-size: 7.5px; font-weight: 700; }
 .educad-transform-section > div { padding: 0 8px 8px; border-top: 1px solid #edf1f4; }
 .educad-transform-section .educad-transform-card { margin: 8px 0 0; padding: 7px 5px 4px; background: #fbfcfd; }
+.educad-shape-parameters > div > .educad-feature-card { margin: 8px 0 0; padding: 7px 5px 4px; background: #fbfcfd; }
 .educad-transform-empty { margin: 8px 5px 0; padding: 9px; color: #7d909d; background: #fbfcfd; border-radius: 5px; font-size: 8px; line-height: 1.45; }
 
 .educad-object-appearance { padding: 6px; }
@@ -1279,23 +1280,22 @@ button {
 
 .educad-feature-card > label:last-child { border-bottom: 0; }
 .educad-operation-mode-property {
-  display: grid;
+  display: block;
   min-height: 42px;
-  grid-template-columns: minmax(82px, 1fr) minmax(100px, 1.2fr);
-  align-items: center;
-  gap: 8px;
+  padding: 5px 0;
   color: #5c7182;
   border-bottom: 1px solid #edf1f4;
   font-size: 9px;
   font-weight: 800;
 }
-.educad-operation-mode-buttons { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; }
+.educad-operation-mode-buttons { display: grid; width: 100%; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; }
 .educad-operation-mode-buttons button { min-width: 0; height: 31px; padding: 3px; border-radius: 4px; }
 .educad-operation-mode-buttons svg { width: 22px; height: 22px; }
 .educad-feature-card > label.educad-range-property {
   display: block;
   padding: 8px 0 9px;
 }
+.educad-feature-card > label.educad-compact-number-property { min-height: 32px; }
 .educad-range-header { display: grid; min-height: 30px; grid-template-columns: minmax(82px, 1fr) minmax(100px, 1.2fr); align-items: center; gap: 8px; }
 .educad-range-control { display: block; height: 22px; padding: 4px 2px 0; }
 .educad-range-control input[type="range"] {

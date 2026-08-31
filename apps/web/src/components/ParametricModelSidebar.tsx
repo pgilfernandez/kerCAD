@@ -406,6 +406,11 @@ function TransformSection({ children, description = "Posición · rotación · e
   );
 }
 
+function ShapeParametersSection({ children }: { children: ReactNode }) {
+  const t = useSidebarTranslation();
+  return <details className="educad-transform-section educad-shape-parameters" open><summary><ChevronRight size={16} /><span>{t("model.shapeParameters")}</span></summary><div><div className="educad-feature-card">{children}</div></div></details>;
+}
+
 function TransformGroup({
   label,
   values,
@@ -481,11 +486,10 @@ function ParametricFeatureInspector({
           <div className="educad-feature-card"><h3>{t("model.operation")}</h3><ReadOnlyField label={t("property.type")} value={t("operation.sketch")} /></div>
           {feature.profile.shape === "drawn" ? <>
             <button className="educad-edit-topology-selection" type="button" onClick={() => onEditSketch(feature.id)}>Editar boceto</button>
-          </> : <div className="educad-feature-card">
-            <h3>{t("model.shapeParameters")}</h3>
+          </> : <ShapeParametersSection>
             <ReadOnlyField label="Perfil" value={feature.profile.shape === "rectangle" ? (locale === "en" ? "Rectangle" : "Rectángulo") : (locale === "en" ? "Circle" : "Círculo")} />
             {feature.profile.shape === "rectangle" ? <><NumberField label="Anchura" value={feature.profile.width} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} /><NumberField label="Profundidad" value={feature.profile.depth} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} /></> : <NumberField label="Diámetro" value={feature.profile.diameter} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value); })} />}
-          </div>}
+          </ShapeParametersSection>}
           <TransformSection>
             <TransformGroup label="Posición" values={{ x: feature.x, y: feature.y, z: feature.offset }} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind !== "sketch") return; if (axis === "x") draft.x = value; else if (axis === "y") draft.y = value; else draft.offset = value; })} />
             <TransformGroup label="Rotación" values={feature.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "sketch") draft.rotation[axis] = value; })} />
@@ -499,8 +503,7 @@ function ParametricFeatureInspector({
             <h3>{t("model.operation")}</h3>
             <OperationModeButtons value={feature.operation} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "extrude") draft.operation = operation; })} />
           </div>
-          <div className="educad-feature-card">
-            <h3>{t("model.shapeParameters")}</h3>
+          <ShapeParametersSection>
             {textGenerator && primitiveSketch ? <>
               <label><span>{localizedSidebarLiteral(locale, "Texto")}</span><DeferredTextInput value={textGenerator.text} maxLength={40} onCommit={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { text: value }); })} /></label>
               <label><span>{localizedSidebarLiteral(locale, "Fuente web")}</span><select value={textGenerator.font ?? "Sans"} onChange={(event) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { font: event.target.value as typeof textGenerator.font }); })}>{parametricTextFontNames.map((font) => <option key={font} value={font}>{font}</option>)}</select></label>
@@ -517,7 +520,7 @@ function ParametricFeatureInspector({
               <BoundedNumberField label="Radio" value={primitiveSketch.profile.diameter / 2} min={0.01} max={100} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value * 2); })} />
             ) : null}
             <BoundedNumberField label="Altura" value={feature.distance} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.distance = Math.max(0.01, value); })} />
-          </div>
+          </ShapeParametersSection>
           <TransformSection description="Posición · rotación">
             <TransformGroup label="Posición" values={feature.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.transform.position[axis] = value; })} />
             <TransformGroup label="Rotación" values={feature.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.transform.rotation[axis] = value; })} />
@@ -531,8 +534,7 @@ function ParametricFeatureInspector({
             <h3>{t("model.operation")}</h3>
             <OperationModeButtons value={feature.operation} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "primitive") draft.operation = operation; })} />
           </div>
-          <div className="educad-feature-card">
-            <h3>{t("model.shapeParameters")}</h3>
+          <ShapeParametersSection>
             {localizedParametricOperationDefinition(feature.primitive, locale).parameters.map((parameter) => (
               <BoundedNumberField
                 key={parameter.key}
@@ -607,7 +609,7 @@ function ParametricFeatureInspector({
                 })}
               />
             ))}
-          </div>
+          </ShapeParametersSection>
           <TransformSection description="Posición · rotación">
             <TransformGroup label="Posición" values={feature.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "primitive") draft.transform.position[axis] = value; })} />
             <TransformGroup label="Rotación" values={feature.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "primitive") draft.transform.rotation[axis] = value; })} />
@@ -625,7 +627,7 @@ function ParametricFeatureInspector({
       {feature.kind === "hole" ? (
         <>
           <div className="educad-feature-card"><h3>{t("model.operation")}</h3><ReadOnlyField label={t("property.type")} value={t("operation.hole")} /><label><span>{locale === "en" ? "Termination" : "Final"}</span><select value={feature.termination} onChange={(event) => onUpdate((draft) => { if (draft.kind === "hole") draft.termination = event.target.value as typeof draft.termination; })}><option value="through-all">{locale === "en" ? "Through all" : "Pasante"}</option><option value="blind">{locale === "en" ? "Blind" : "Ciego"}</option></select></label></div>
-          <div className="educad-feature-card"><h3>{t("model.shapeParameters")}</h3><BoundedNumberField label={t("property.diameter")} value={feature.diameter} min={0.01} max={100} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.diameter = Math.max(0.01, value); })} />{feature.termination === "blind" ? <BoundedNumberField label={t("property.depth")} value={feature.depth} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.depth = Math.max(0.01, value); })} /> : null}</div>
+          <ShapeParametersSection><BoundedNumberField label={t("property.diameter")} value={feature.diameter} min={0.01} max={100} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.diameter = Math.max(0.01, value); })} />{feature.termination === "blind" ? <BoundedNumberField label={t("property.depth")} value={feature.depth} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.depth = Math.max(0.01, value); })} /> : null}</ShapeParametersSection>
           <TransformSection description="Posición">
             <div className="educad-feature-card educad-transform-card"><h3>Posición</h3><NumberField label="X" value={feature.x} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.x = value; })} /><NumberField label="Y" value={feature.y} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.y = value; })} /></div>
           </TransformSection>
@@ -756,7 +758,6 @@ function OperationModeButtons({ value, includeCommon = true, onChange }: { value
   const t = useSidebarTranslation();
   const modes = includeCommon ? (["add", "cut", "intersect"] as const) : (["add", "cut"] as const);
   return <div className="educad-operation-mode-property">
-    <span>{t("model.mode")}</span>
     <div className="educad-operation-mode-buttons">
       {modes.map((mode) => {
         const label = mode === "add" ? t("model.add") : mode === "cut" ? t("model.hole") : t("model.common");
@@ -833,22 +834,9 @@ function BoundedNumberField({ label, value, min, max, unit = "mm", onChange }: {
   const steps = useContext(NumericStepContext);
   const localizedLabel = useLocalizedSidebarLiteral(label);
   const clampedValue = Math.min(max, Math.max(min, value));
-  const [draft, setDraft] = useState(clampedValue);
-  const [dragging, setDragging] = useState(false);
-  useEffect(() => {
-    if (!dragging) setDraft(clampedValue);
-  }, [clampedValue, dragging]);
-  const percent = ((draft - min) / Math.max(Number.EPSILON, max - min)) * 100;
-  const commit = () => {
-    setDragging(false);
-    const next = Math.min(max, Math.max(min, draft));
-    setDraft(next);
-    if (next !== value) onChange(next);
-  };
   return (
-    <label className="educad-range-property" style={{ "--slider-pos": `${percent}%` } as CSSProperties}>
-      <span className="educad-range-header"><span>{localizedLabel}</span><DeferredNumberInput value={draft} min={min} max={max} step={steps.input} unit={unit} onCommit={(next) => { setDraft(next); if (next !== value) onChange(next); }} /></span>
-      <span className="educad-range-control"><input type="range" aria-label={localizedLabel} value={draft} min={min} max={max} step={steps.slider} onPointerDown={() => setDragging(true)} onPointerUp={commit} onPointerCancel={commit} onChange={(event) => setDraft(Number(event.target.value))} onBlur={commit} /></span>
+    <label className="educad-compact-number-property">
+      <span>{localizedLabel}</span><DeferredNumberInput value={clampedValue} min={min} max={max} step={steps.input} unit={unit} onCommit={(next) => onChange(Math.min(max, Math.max(min, next)))} />
     </label>
   );
 }

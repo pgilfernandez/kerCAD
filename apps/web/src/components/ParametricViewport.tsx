@@ -297,6 +297,33 @@ function clearObjectOriginLayer(layer: THREE.Group) {
   layer.clear();
 }
 
+function yellowManipulatorLine(start: THREE.Vector3, end: THREE.Vector3, color: THREE.ColorRepresentation) {
+  const geometry = new LineSegmentsGeometry();
+  geometry.setPositions([start.x, start.y, start.z, end.x, end.y, end.z]);
+  return new LineSegments2(geometry, new LineMaterial({
+    color,
+    linewidth: 2,
+    depthTest: false,
+    depthWrite: false,
+    transparent: true,
+    opacity: 0.92,
+  }));
+}
+
+function updateYellowManipulatorLine(line: LineSegments2, start: THREE.Vector3, end: THREE.Vector3) {
+  line.geometry.setPositions([start.x, start.y, start.z, end.x, end.y, end.z]);
+}
+
+function addYellowManipulatorOutline(handle: THREE.Mesh, radius: number) {
+  const outline = new THREE.Mesh(
+    new THREE.SphereGeometry(radius * 1.12, 18, 12),
+    new THREE.MeshBasicMaterial({ color: 0xb67c00, side: THREE.BackSide, depthTest: false, depthWrite: false, transparent: true, opacity: 0.92 }),
+  );
+  outline.renderOrder = handle.renderOrder - 1;
+  outline.userData.yellowManipulatorOutline = true;
+  handle.add(outline);
+}
+
 function coplanarFaceGeometry(source: THREE.BufferGeometry, faceIndex: number) {
   const positions = source.getAttribute("position");
   const indices = source.getIndex();
@@ -330,6 +357,13 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   if (positionVisible) for (const [axis, direction, color, hoverColor] of axes) {
     const arrow = new THREE.ArrowHelper(direction, undefined, 1, color, 0.28, 0.16);
     arrow.line.visible = false;
+    const arrowMaterials = Array.isArray(arrow.cone.material) ? arrow.cone.material : [arrow.cone.material];
+    for (const material of arrowMaterials) {
+      material.transparent = true;
+      material.opacity = 0.92;
+      material.depthTest = false;
+      material.depthWrite = false;
+    }
     arrow.cone.userData.originAxis = axis;
     arrow.cone.userData.originTip = true;
     arrow.cone.userData.originDragHandle = true;
@@ -338,7 +372,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
     arrow.cone.userData.handleHoverColor = hoverColor;
     const shaft = new THREE.Mesh(
       new THREE.CylinderGeometry(0.015, 0.015, 0.72, 12),
-      new THREE.MeshBasicMaterial({ color, depthTest: false, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ color, depthTest: false, depthWrite: false, transparent: true, opacity: 0.92 }),
     );
     shaft.position.copy(direction).multiplyScalar(0.36);
     shaft.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
@@ -1217,6 +1251,29 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       }
       if (changed) requestRender();
     };
+    let hoveredShapeParameter: ShapeParameter | null = null;
+    const setShapeParameterHandleHover = (parameter: ShapeParameter | null) => {
+      if (hoveredShapeParameter === parameter) return;
+      hoveredShapeParameter = parameter;
+      selectionVisualRootRef.current?.traverse((child) => {
+        if (!(child instanceof THREE.Mesh) || child.userData.shapeParameterVisualRole !== "handle") return;
+        const material = child.material;
+        if (!(material instanceof THREE.MeshBasicMaterial)) return;
+        material.color.set(child.userData.shapeParameterVisual === parameter ? 0xffe000 : 0xf2c94c);
+      });
+      requestRender();
+    };
+    let faceExtrudeHandleHovered = false;
+    const setFaceExtrudeHandleHover = (hovered: boolean) => {
+      if (faceExtrudeHandleHovered === hovered) return;
+      faceExtrudeHandleHovered = hovered;
+      faceExtrudeHandleRef.current?.traverse((child) => {
+        if (!(child instanceof THREE.Mesh) || !child.userData.faceExtrudeHandle) return;
+        const material = child.material;
+        if (material instanceof THREE.MeshBasicMaterial) material.color.set(hovered ? 0xffe000 : 0xf0b83f);
+      });
+      requestRender();
+    };
     const sketchTransformRootForFeature = (featureId: string): THREE.Object3D | null => {
       let found: THREE.Object3D | null = null;
       sketchLayer.traverse((child) => {
@@ -1230,14 +1287,30 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       const originHandle = originHandleAtPointer();
       setOriginHandleHover(originHandle);
       if (originHandle) {
+        setShapeParameterHandleHover(null);
+        setFaceExtrudeHandleHover(false);
         renderer.domElement.style.cursor = "crosshair";
         return [];
       }
       setOriginHandleHover(null);
       renderer.domElement.style.cursor = "default";
-      if (!selectionRef.current) return [];
+      const faceExtrudeLayer = faceExtrudeHandleRef.current;
+      const faceExtrudeHit = faceExtrudeLayer
+        ? raycaster.intersectObject(faceExtrudeLayer, true).some((hit) => hit.object.userData.faceExtrudeHandle)
+        : false;
+      setFaceExtrudeHandleHover(faceExtrudeHit);
+      if (faceExtrudeHit) {
+        setShapeParameterHandleHover(null);
+        renderer.domElement.style.cursor = "crosshair";
+        return [];
+      }
+      if (!selectionRef.current) {
+        setShapeParameterHandleHover(null);
+        return [];
+      }
       updateManipulatorHitTargets(event.pointerType);
       const resizeHit = raycaster.intersectObjects(resizeHitboxesRef.current, false)[0];
+      setShapeParameterHandleHover((resizeHit?.object.userData.shapeParameter as ShapeParameter | undefined) ?? null);
       if (resizeHit) {
         const axis = resizeHit.object.userData.dimensionAxis;
         return axis === "x" || axis === "y" || axis === "z" ? [axis] : [];
@@ -1310,9 +1383,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           : parameter === "topRadius"
             ? new THREE.Vector3(worldTopRadius + 3, 0, worldHeight / 2)
             : new THREE.Vector3(0, 0, worldHeight / 2 + 3);
-        if (role === "guide" && child instanceof THREE.Line) {
+        if (role === "guide" && child instanceof LineSegments2) {
           const start = parameter === "height" ? new THREE.Vector3(0, 0, -worldHeight / 2) : new THREE.Vector3(0, 0, end.z);
-          child.geometry.setFromPoints([start, end]);
+          updateYellowManipulatorLine(child, start, end);
         } else if (role === "handle" || role === "target") child.position.copy(end);
       });
     };
@@ -1337,9 +1410,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           : parameter === "innerRadius"
             ? new THREE.Vector3(worldInnerRadius + 3, 0, worldHeight / 2)
             : new THREE.Vector3(0, 0, worldHeight / 2 + 3);
-        if (role === "guide" && child instanceof THREE.Line) {
+        if (role === "guide" && child instanceof LineSegments2) {
           const start = parameter === "height" ? new THREE.Vector3(0, 0, -worldHeight / 2) : new THREE.Vector3(0, 0, end.z);
-          child.geometry.setFromPoints([start, end]);
+          updateYellowManipulatorLine(child, start, end);
         } else if (role === "handle" || role === "target") child.position.copy(end);
       });
     };
@@ -1370,9 +1443,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
             : parameter === "height"
               ? new THREE.Vector3(0, 0, worldHeight / 2 + 3)
               : new THREE.Vector3(worldRadius + 3, 0, worldHeight / 2);
-        if (role === "guide" && child instanceof THREE.Line) {
+        if (role === "guide" && child instanceof LineSegments2) {
           const start = parameter === "height" ? new THREE.Vector3(0, 0, -worldHeight / 2) : parameter === "cornerRadius" ? new THREE.Vector3(0, 0, worldHeight / 2) : new THREE.Vector3();
-          child.geometry.setFromPoints([start, end]);
+          updateYellowManipulatorLine(child, start, end);
         }
         else if (role === "handle" || role === "target") child.position.copy(end);
       });
@@ -1400,9 +1473,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         const end = parameter === "majorRadius"
           ? new THREE.Vector3(worldMajorRadius + worldHalfHeight + 3, 0, 0)
           : new THREE.Vector3(worldMajorRadius, 0, worldHalfHeight + 3);
-        if (role === "guide" && child instanceof THREE.Line) {
+        if (role === "guide" && child instanceof LineSegments2) {
           const start = parameter === "majorRadius" ? new THREE.Vector3(0, 0, 0) : new THREE.Vector3(worldMajorRadius, 0, 0);
-          child.geometry.setFromPoints([start, end]);
+          updateYellowManipulatorLine(child, start, end);
         }
         else if (role === "handle" || role === "target") child.position.copy(end);
       });
@@ -1419,7 +1492,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         if (child.userData.shapeParameterVisual !== "sides") return;
         const role = child.userData.shapeParameterVisualRole as "guide" | "handle" | "target" | undefined;
         const end = new THREE.Vector3(0, handleOffset + sides, selected.height / 2);
-        if (role === "guide" && child instanceof THREE.Line) child.geometry.setFromPoints([new THREE.Vector3(0, 0, selected.height / 2), end]);
+        if (role === "guide" && child instanceof LineSegments2) updateYellowManipulatorLine(child, new THREE.Vector3(0, 0, selected.height / 2), end);
         else if (role === "handle" || role === "target") child.position.copy(end);
       });
     };
@@ -1450,13 +1523,13 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
               : parameter === "teeth"
                 ? new THREE.Vector3(0, teethOffset + teeth, 0)
                 : new THREE.Vector3(0, 0, worldHeight / 2 + 3);
-        if (role === "guide" && child instanceof THREE.Line) {
+        if (role === "guide" && child instanceof LineSegments2) {
           const start = parameter === "height"
             ? new THREE.Vector3(0, 0, -worldHeight / 2)
             : parameter === "toothDepth"
               ? new THREE.Vector3(worldOuterRadius - worldToothDepth, 0, worldHeight / 2)
               : new THREE.Vector3(0, 0, end.z);
-          child.geometry.setFromPoints([start, end]);
+          updateYellowManipulatorLine(child, start, end);
         } else if (role === "handle" || role === "target") child.position.copy(end);
       });
     };
@@ -1700,7 +1773,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           const end = origin.clone().addScaledVector(direction, pendingFaceExtrudeDistance + 2);
           const guide = layer.children.find((child) => child.userData.faceExtrudeGuide);
           const handle = layer.children.find((child) => child.userData.faceExtrudeHandle);
-          if (guide instanceof THREE.Line) guide.geometry.setFromPoints([origin, end]);
+          if (guide instanceof LineSegments2) updateYellowManipulatorLine(guide, origin, end);
           if (handle) handle.position.copy(end);
         }
         requestRender();
@@ -2022,6 +2095,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     };
     const leaveManipulatorArea = () => {
       setOriginHandleHover(null);
+      setShapeParameterHandleHover(null);
+      setFaceExtrudeHandleHover(false);
       if (workplaneFaceSelectionRef.current || topologyFaceSelectionRef.current || topologyEdgeSelectionRef.current) {
         faceHighlight.visible = false;
         edgeHighlight.visible = false;
@@ -2121,11 +2196,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     if (!layer) return;
     for (const child of [...layer.children]) {
       layer.remove(child);
-      if (child instanceof THREE.Mesh || child instanceof THREE.Line) {
-        child.geometry.dispose();
-        const materials = Array.isArray(child.material) ? child.material : [child.material];
+      child.traverse((item) => {
+        if (!(item instanceof THREE.Mesh || item instanceof THREE.Line)) return;
+        item.geometry.dispose();
+        const materials = Array.isArray(item.material) ? item.material : [item.material];
         materials.forEach((material) => material.dispose());
-      }
+      });
     }
     if (!faceExtrudeHandle) {
       invalidateRef.current();
@@ -2135,13 +2211,14 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const sign = faceExtrudeHandle.operation === "cut" ? -1 : 1;
     const direction = new THREE.Vector3(faceExtrudeHandle.normal.x, faceExtrudeHandle.normal.y, faceExtrudeHandle.normal.z).normalize().multiplyScalar(sign);
     const end = origin.clone().addScaledVector(direction, faceExtrudeHandle.distance + 2);
-    const guide = new THREE.Line(new THREE.BufferGeometry().setFromPoints([origin, end]), new THREE.LineBasicMaterial({ color: 0xf0b83f, depthTest: false, depthWrite: false }));
+    const guide = yellowManipulatorLine(origin, end, 0xf0b83f);
     guide.userData.faceExtrudeGuide = true;
     guide.renderOrder = 31;
-    const handle = new THREE.Mesh(new THREE.SphereGeometry(1.25, 18, 12), new THREE.MeshBasicMaterial({ color: 0xf0b83f, depthTest: false, depthWrite: false }));
+    const handle = new THREE.Mesh(new THREE.SphereGeometry(1.0625, 18, 12), new THREE.MeshBasicMaterial({ color: 0xf0b83f, depthTest: false, depthWrite: false, transparent: true, opacity: 0.92 }));
     handle.position.copy(end);
     handle.userData.faceExtrudeHandle = true;
     handle.renderOrder = 32;
+    addYellowManipulatorOutline(handle, 1.0625);
     layer.userData.origin = origin;
     layer.userData.direction = direction;
     layer.userData.distance = faceExtrudeHandle.distance;
@@ -2697,26 +2774,24 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       dragAxis?: "x" | "y" | "z",
     ) => {
       if (selection.parameterHandles && !selection.parameterHandles.includes(parameter)) return;
-      const guide = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([start, end]),
-        new THREE.LineBasicMaterial({ color: "#d6a600", depthTest: false, transparent: true, opacity: 0.9 }),
-      );
+      const guide = yellowManipulatorLine(start, end, "#d6a600");
       guide.renderOrder = 21;
       guide.userData.shapeParameterVisual = parameter;
       guide.userData.shapeParameterVisualRole = "guide";
       visualRoot.add(guide);
       const handle = new THREE.Mesh(
-        new THREE.SphereGeometry(2, 18, 12),
-        new THREE.MeshBasicMaterial({ color: "#f2c94c", depthTest: false }),
+        new THREE.SphereGeometry(1.7, 18, 12),
+        new THREE.MeshBasicMaterial({ color: "#f2c94c", depthTest: false, depthWrite: false, transparent: true, opacity: 0.92 }),
       );
       handle.position.copy(end);
       handle.renderOrder = 22;
       handle.userData.shapeParameterVisual = parameter;
       handle.userData.shapeParameterVisualRole = "handle";
+      addYellowManipulatorOutline(handle, 1.7);
       visualRoot.add(handle);
       const target = new THREE.Mesh(
         new THREE.SphereGeometry(5, 12, 8),
-        new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
+        new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthTest: false, depthWrite: false }),
       );
       target.position.copy(end);
       target.userData.shapeParameter = parameter;
