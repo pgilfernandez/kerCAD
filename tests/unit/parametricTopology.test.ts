@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { createFilletFeature, createStarterDocument } from "@/lib/parametricDocument";
+import { createFaceExtrudeFeature, createFilletFeature, createRevolveFeature, createShellFeature, createStarterDocument } from "@/lib/parametricDocument";
 import { deleteParametricFeature, duplicateParametricObject } from "@/lib/parametricObjects";
 import {
   assertValidParametricTopology,
   isParametricTopologyReference,
+  parametricTopologyEditingSourceFeature,
   parametricTopologyReferenceIsAvailable,
   ParametricTopologyError,
   recoverParametricTopologyReference,
@@ -25,6 +26,21 @@ function edgeReference(objectId: string, sourceFeatureId: string): ParametricTop
 }
 
 describe("stable parametric topology references", () => {
+  it("edits every topology operation against its immediate previous result", () => {
+    const document = createStarterDocument(1);
+    const objectId = document.objects[0].id;
+    const base = document.features.find((feature) => feature.objectId === objectId && feature.kind !== "sketch")!;
+    const operations = [createFilletFeature(1), createFaceExtrudeFeature(1), createShellFeature(1), createRevolveFeature(1)];
+    for (const operation of operations) {
+      operation.objectId = objectId;
+      document.features.push(operation);
+    }
+    expect(parametricTopologyEditingSourceFeature(document, operations[0].id)?.id).toBe(base.id);
+    for (let index = 1; index < operations.length; index += 1) {
+      expect(parametricTopologyEditingSourceFeature(document, operations[index].id)?.id).toBe(operations[index - 1].id);
+    }
+  });
+
   it("detects an exact edge reference that disappeared after a rebuild", () => {
     const document = createStarterDocument(1);
     const source = document.features.find((feature) => feature.kind === "extrude")!;

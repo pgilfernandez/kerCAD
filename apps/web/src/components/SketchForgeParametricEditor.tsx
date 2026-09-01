@@ -36,7 +36,7 @@ import {
 } from "@/components/icons";
 import { cloneDocument, createDrawnSketchFeature, createEmptyDocument, createExtrudeFeature, createFaceExtrudeFeature, createFilletFeature, createLinearPatternFeature, createMirrorFeature, createObjectBooleanFeature, createPolarPatternFeature, createRevolveFeature, createShellFeature, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { assertValidParametricDependencies } from "@/lib/parametricDependencyGraph";
-import { assertValidParametricTopology, recoverParametricTopologyReferenceInRecords } from "@/lib/parametricTopology";
+import { assertValidParametricTopology, parametricTopologyEditingSourceFeature, recoverParametricTopologyReferenceInRecords } from "@/lib/parametricTopology";
 import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint } from "@/lib/parametricBuildState";
 import { exportParametricStep } from "@/lib/parametricKernel";
 import { ParametricBuildWorkerClient } from "@/lib/parametricBuildWorker";
@@ -616,9 +616,7 @@ export function SketchForgeParametricEditor() {
     if (!editingFeatureId) return;
     const target = document.features.find((feature) => feature.id === editingFeatureId);
     if (!target?.objectId) return;
-    const operations = document.features.filter((feature) => feature.objectId === target.objectId && feature.kind !== "sketch");
-    const targetIndex = operations.findIndex((feature) => feature.id === editingFeatureId);
-    const previousFeature = targetIndex > 0 ? operations[targetIndex - 1] : null;
+    const previousFeature = parametricTopologyEditingSourceFeature(document, editingFeatureId);
     if (!previousFeature) return;
     let active = true;
     setTopologySelectionBusy(true);
@@ -2276,7 +2274,7 @@ export function SketchForgeParametricEditor() {
     if (!source) return;
     const reference: ParametricTopologyReference = {
       id: `selected-face-${face.key}`,
-      name: `Cara de ${source.name}`,
+      name: `${locale === "es" ? "Cara de" : "Face of"} ${source.name}`,
       objectId: face.objectId,
       sourceFeatureId: source.id,
       reference: {
@@ -2316,7 +2314,7 @@ export function SketchForgeParametricEditor() {
     if (!source) return;
     const reference: ParametricTopologyReference = {
       id: `selected-edge-${edge.key}`,
-      name: `Arista de ${source.name}`,
+      name: `${locale === "es" ? "Arista de" : "Edge of"} ${source.name}`,
       objectId: edge.objectId,
       sourceFeatureId: source.id,
       reference: {

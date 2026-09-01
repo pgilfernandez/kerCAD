@@ -1,4 +1,4 @@
-import type { ParametricDocument, ParametricObjectRenderRecord, ParametricTopologyReference } from "@/types/parametric";
+import type { ParametricDocument, ParametricFeature, ParametricObjectRenderRecord, ParametricTopologyReference } from "@/types/parametric";
 import { exactEdgeRegion, exactFaceRegion } from "@/lib/viewportGeometry";
 
 export class ParametricTopologyError extends Error {
@@ -38,6 +38,14 @@ export function isParametricTopologyReference(value: unknown): value is Parametr
 
 export function parametricTopologyReferenceIsAvailable(reference: ParametricTopologyReference, records: readonly ParametricObjectRenderRecord[]) {
   return recoverParametricTopologyReferenceInRecords(reference, records) !== null;
+}
+
+export function parametricTopologyEditingSourceFeature(document: ParametricDocument, featureId: string): ParametricFeature | null {
+  const target = document.features.find((feature) => feature.id === featureId);
+  if (!target?.objectId) return null;
+  const operations = document.features.filter((feature) => feature.objectId === target.objectId && feature.kind !== "sketch");
+  const targetIndex = operations.findIndex((feature) => feature.id === featureId);
+  return targetIndex > 0 ? operations[targetIndex - 1] : null;
 }
 
 export function recoverParametricTopologyReferenceInRecords(reference: ParametricTopologyReference, records: readonly ParametricObjectRenderRecord[]) {
