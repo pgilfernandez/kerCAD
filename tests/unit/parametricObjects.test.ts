@@ -21,6 +21,7 @@ import {
   objectIdForFeature,
   parametricObjectTree,
   renameParametricSelection,
+  resetParametricFeature,
   reorderParametricSelection,
   resizeParametricSelection,
   resizeParametricHeight,
@@ -31,7 +32,7 @@ import {
   updateParametricTreeSelection,
   updateParametricShapeParameter,
 } from "@/lib/parametricObjects";
-import { createFilletFeature, createLinearPatternFeature, createStarterDocument } from "@/lib/parametricDocument";
+import { createFilletFeature, createLinearPatternFeature, createPrimitiveFeature, createStarterDocument } from "@/lib/parametricDocument";
 
 describe("parametric object workflow", () => {
   it("adds a simple shape as a real sketch and extrusion", () => {
@@ -120,12 +121,12 @@ describe("parametric object workflow", () => {
     });
 
     updateParametricShapeParameter(document, result.featureId!, "innerRadius", 8);
-    updateParametricShapeParameter(document, result.featureId!, "outerRadius", 7);
+    updateParametricShapeParameter(document, result.featureId!, "thickness", 7);
     updateParametricShapeParameter(document, result.featureId!, "height", 35);
-    expect(feature).toMatchObject({ width: 16.2, depth: 16.2, innerRadius: 8, height: 35 });
+    expect(feature).toMatchObject({ width: 30, depth: 30, innerRadius: 8, height: 35 });
 
     updateParametricShapeParameter(document, result.featureId!, "innerRadius", 20);
-    expect(feature).toMatchObject({ innerRadius: 8 });
+    expect(feature).toMatchObject({ width: 54, depth: 54, innerRadius: 20 });
   });
 
   it("adds and edits an exact half sphere from its flat base", () => {
@@ -690,5 +691,42 @@ describe("parametric object workflow", () => {
     deleteParametricFeature(document, source.id);
 
     expect(document.features.some((feature) => feature.id === pattern.id)).toBe(false);
+  });
+
+  it("resets editable operation parameters without replacing history identity or topology inputs", () => {
+    const document = createStarterDocument(123);
+    const objectId = document.objects[0].id;
+    const primitive = createPrimitiveFeature("roundedBox", 1);
+    primitive.objectId = objectId;
+    primitive.name = "Custom enclosure";
+    primitive.width = 72;
+    primitive.depth = 48;
+    primitive.height = 16;
+    primitive.cornerRadius = 7;
+    primitive.operation = "cut";
+    primitive.transform.position.x = 25;
+    document.features.push(primitive);
+    const fillet = createFilletFeature(1, "chamfer");
+    fillet.objectId = objectId;
+    fillet.radius = 9;
+    fillet.selectionReferenceIds = ["edge-reference"];
+    document.features.push(fillet);
+
+    expect(resetParametricFeature(document, primitive.id)).toBe(true);
+    expect(primitive).toMatchObject({
+      id: primitive.id,
+      name: "Custom enclosure",
+      objectId,
+      width: 20,
+      depth: 20,
+      height: 20,
+      cornerRadius: 3,
+      operation: "add",
+      transform: { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 } },
+    });
+
+    expect(resetParametricFeature(document, fillet.id)).toBe(true);
+    expect(fillet).toMatchObject({ treatment: "fillet", radius: 2, selectionReferenceIds: ["edge-reference"] });
+    expect(resetParametricFeature(document, document.features[0].id)).toBe(false);
   });
 });

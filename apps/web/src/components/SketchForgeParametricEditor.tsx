@@ -86,6 +86,7 @@ import {
   objectIdForFeature,
   canReorderParametricSelection,
   renameParametricSelection,
+  resetParametricFeature,
   reorderParametricSelection,
   updateParametricShapeParameter,
   viewportSelectionForFeature,
@@ -1913,6 +1914,11 @@ export function SketchForgeParametricEditor() {
     mutate((draft) => { renameParametricSelection(draft, modelSelection, name); });
   };
 
+  const resetSelectedFeature = (featureId: string) => {
+    if (!mutate((draft) => resetParametricFeature(draft, featureId))) return;
+    setNotice({ type: "ok", text: t("notice.operationReset") });
+  };
+
   const alignSelection = (axis: ParametricAlignmentAxis, anchor: ParametricAlignmentAnchor) => {
     let moved = 0;
     let referenceId: string | null = null;
@@ -2482,7 +2488,7 @@ export function SketchForgeParametricEditor() {
           <div className="educad-sketch-finish-actions"><button className="educad-sketch-action primary" type="button" onClick={acceptSketch}><Check size={17} /><span>{t("sketch.accept")}</span></button><button className="educad-sketch-action" type="button" onClick={cancelSketch}><X size={17} /><span>{t("common.cancel")}</span></button></div>
         </div> :
         <div className="toolbar-mode-content geometry">
-          <ToolbarSection label="Home" className="toolbar-home-section"><Tool label={t("toolbar.new")} onClick={() => setNewDocumentOpen(true)}><ToolbarHomeIcon /></Tool></ToolbarSection>
+          <ToolbarSection label="New" className="toolbar-home-section"><Tool label={t("toolbar.new")} onClick={() => setNewDocumentOpen(true)}><ToolbarHomeIcon /></Tool></ToolbarSection>
           <div className="tool-group left">
             <ToolbarSection label="Clipboard">
               <Tool label={t("toolbar.copy")} enabled={Boolean(selectedObjectId)} onClick={() => { setClipboardId(selectedObjectId); setNotice({ type: "info", text: "Objeto copiado" }); }}><ToolbarCopyIcon /></Tool>
@@ -2918,6 +2924,7 @@ export function SketchForgeParametricEditor() {
           onSelectionChange={setModelSelection}
           onReorderSelection={reorderSelection}
           onRenameSelection={renameSelection}
+          onResetFeature={resetSelectedFeature}
           onDeleteSelection={deleteCurrentSelection}
           onToggleOriginEdit={toggleOriginEdit}
           onEditFeatureSelection={(featureId) => {

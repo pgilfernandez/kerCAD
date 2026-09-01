@@ -38,6 +38,77 @@ export type ParametricTreeSelection = { id: string; kind: "object" | "feature" }
 export const OBJECT_COLOR_PALETTE = [
   "#bb0f17", "#e8731f", "#ddbd09", "#65c412", "#0f952a", "#18b99a", "#0098c7", "#3b82f6", "#8112cb", "#d03cab", "#b26519", "#ffffff", "#cfd8df", "#8a98a6", "#4b5563", "#111111",
 ];
+
+export function canResetParametricFeature(feature: ParametricFeature) {
+  return feature.kind !== "sketch" && feature.kind !== "importedStep";
+}
+
+export function resetParametricFeature(document: ParametricDocument, featureId: string) {
+  const feature = document.features.find((candidate) => candidate.id === featureId);
+  if (!feature || !canResetParametricFeature(feature)) return false;
+  const zeroTransform = () => ({ position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 } });
+  if (feature.kind === "extrude") {
+    feature.distance = 10;
+    feature.symmetric = false;
+    feature.operation = "add";
+    feature.transform = zeroTransform();
+  } else if (feature.kind === "primitive") {
+    const defaults = createPrimitiveFeature(feature.primitive, 1);
+    feature.width = defaults.width;
+    feature.depth = defaults.depth;
+    feature.height = defaults.height;
+    feature.operation = defaults.operation;
+    feature.transform = defaults.transform;
+    feature.topRadius = defaults.topRadius;
+    feature.innerRadius = defaults.innerRadius;
+    feature.majorRadius = defaults.majorRadius;
+    feature.tubeRadius = defaults.tubeRadius;
+    feature.cornerRadius = defaults.cornerRadius;
+    feature.sides = defaults.sides;
+    feature.teeth = defaults.teeth;
+    feature.toothDepth = defaults.toothDepth;
+    feature.boreRadius = defaults.boreRadius;
+  } else if (feature.kind === "hole") {
+    feature.x = 0;
+    feature.y = 0;
+    feature.diameter = 8;
+    feature.termination = "through-all";
+    feature.depth = 10;
+  } else if (feature.kind === "fillet") {
+    feature.treatment = "fillet";
+    feature.radius = 2;
+    feature.edges = "vertical";
+  } else if (feature.kind === "faceExtrude") {
+    feature.operation = "add";
+    feature.distance = 10;
+  } else if (feature.kind === "shell") {
+    feature.thickness = 2;
+  } else if (feature.kind === "revolve") {
+    feature.operation = "add";
+    feature.angle = 360;
+    feature.axis = "z";
+    delete feature.axisReferenceId;
+  } else if (feature.kind === "mirror") {
+    feature.axis = "x";
+    feature.duplicate = true;
+  } else if (feature.kind === "linearPattern") {
+    feature.source = "body";
+    delete feature.sourceFeatureId;
+    feature.axis = "x";
+    feature.count = 3;
+    feature.spacing = 20;
+  } else if (feature.kind === "polarPattern") {
+    feature.source = "body";
+    delete feature.sourceFeatureId;
+    feature.axis = "z";
+    feature.count = 6;
+    feature.angle = 360;
+    feature.equalSpacing = true;
+  } else if (feature.kind === "objectBoolean") {
+    feature.operation = "add";
+  }
+  return true;
+}
 const NEW_OBJECT_COLOR_PALETTE = OBJECT_COLOR_PALETTE.slice(0, 10);
 export type ParametricObjectNode = {
   id: string;

@@ -21,6 +21,7 @@ import {
   Pencil,
   Radius,
   Rows3,
+  RotateCcw,
   RotateCw,
   Combine,
   Triangle,
@@ -29,7 +30,7 @@ import {
   X,
 } from "lucide-react";
 import { createContext, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode, useContext, useEffect, useRef, useState } from "react";
-import { canReorderParametricSelection, OBJECT_COLOR_PALETTE, parametricObjectTree, sketchForExtrude, updateParametricTreeSelection, type ParametricTreeSelection } from "@/lib/parametricObjects";
+import { canReorderParametricSelection, canResetParametricFeature, OBJECT_COLOR_PALETTE, parametricObjectTree, sketchForExtrude, updateParametricTreeSelection, type ParametricTreeSelection } from "@/lib/parametricObjects";
 import { localizedParametricOperationDefinition, parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import { parametricTextFontNames, updateParametricTextSketch } from "@/lib/parametricText";
 import { ToolbarBooleanModeIcon, ToolbarChamferIcon, ToolbarFilletIcon } from "@/components/icons";
@@ -82,6 +83,7 @@ type Props = {
   onSelectionChange: (selection: ModelTreeSelection[]) => void;
   onReorderSelection: (direction: "up" | "down") => void;
   onRenameSelection: (name: string) => void;
+  onResetFeature: (featureId: string) => void;
   onDeleteSelection: () => void;
   onToggleOriginEdit: (objectId: string) => void;
   onEditFeatureSelection: (featureId: string) => void;
@@ -121,6 +123,7 @@ export function ParametricModelSidebar({
   onSelectionChange,
   onReorderSelection,
   onRenameSelection,
+  onResetFeature,
   onDeleteSelection,
   onToggleOriginEdit,
   onEditFeatureSelection,
@@ -272,6 +275,7 @@ export function ParametricModelSidebar({
         <button disabled={!canReorderParametricSelection(document, selection, "down")} aria-label={t("model.moveDown")} title={t("model.moveDown")} onClick={() => onReorderSelection("down")}><ArrowDown size={16} /></button>
         <span className="educad-tree-toolbar-separator" aria-hidden="true" />
         <button disabled={selection.length === 0} aria-label={t("common.rename")} title={t("common.rename")} onClick={beginRename}><Pencil size={15} /></button>
+        <button disabled={!selectedFeature || !canResetParametricFeature(selectedFeature)} aria-label={t("operation.reset")} title={t("operation.reset")} onClick={() => selectedFeature && onResetFeature(selectedFeature.id)}><RotateCcw size={16} /></button>
         <button className="educad-origin-tree-button" disabled={!selectedObject || selectedObject.locked} aria-label={t("model.editOrigin")} title={t("model.editOrigin")} aria-pressed={Boolean(selectedObject && editingOriginObjectId === selectedObject.id)} onClick={() => selectedObject && onToggleOriginEdit(selectedObject.id)}><Crosshair size={16} /></button>
         <span className="educad-tree-toolbar-separator" aria-hidden="true" />
         <button className="danger" disabled={selection.length === 0} aria-label={t("common.delete")} title={t("common.delete")} onClick={onDeleteSelection}><Trash2 size={16} /></button>
