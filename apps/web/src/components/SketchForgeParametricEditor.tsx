@@ -1,6 +1,6 @@
 "use client";
 
-import { Anchor, Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, CircleDot, CornerDownRight, Diameter, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Move3d, MoveHorizontal, MoveVertical, MousePointer2, PenLine, PenTool, Plus, Rotate3d, RotateCcw, Ruler, Scissors, Spline, Split, Type, Waves, X } from "lucide-react";
+import { Anchor, Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, CircleDot, CornerDownRight, Diameter, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Move3d, MoveHorizontal, MoveVertical, MousePointer2, PenLine, PenTool, Plus, Rotate3d, RotateCcw, Ruler, Scissors, Spline, Split, Trash2, Type, Waves, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent as ReactFocusEvent } from "react";
 import * as THREE from "three";
 import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
@@ -104,6 +104,8 @@ import type { GridSize, SketchConstraint, SketchPoint, SketchProfile, WorkplaneS
 
 const STORAGE_KEY = "educad.parametric.document.v1";
 const RECOVERY_STORAGE_KEY = "educad.parametric.document.recovery.v1";
+const SNAPSHOTS_STORAGE_KEY = "educad.parametric.snapshots.v1";
+const MAX_LOCAL_SNAPSHOTS = 5;
 const RENDER_QUALITY_STORAGE_KEY = "educad.viewport.render-mode";
 const FPS_VISIBLE_STORAGE_KEY = "educad.viewport.show-fps";
 const POSITION_TRIAD_VISIBLE_STORAGE_KEY = "educad.viewport.position-triad";
@@ -111,6 +113,7 @@ const ROTATION_TRIAD_VISIBLE_STORAGE_KEY = "educad.viewport.rotation-triad";
 const PARAMETER_HANDLES_VISIBLE_STORAGE_KEY = "educad.viewport.parameter-handles";
 const DISPLAY_MODE_STORAGE_KEY = "educad.viewport.display-mode";
 const SHADING_MODE_STORAGE_KEY = "educad.viewport.shading-mode";
+type LocalProjectSnapshot = { id: string; createdAt: number; document: ParametricDocument };
 
 function localizeNewDocumentEntries(previous: ParametricDocument, next: ParametricDocument, locale: EducadLocale) {
   const previousObjectIds = new Set(previous.objects.map((object) => object.id));
@@ -263,6 +266,7 @@ export function SketchForgeParametricEditor() {
   const [exportFileName, setExportFileName] = useState(document.name);
   const [newDocumentOpen, setNewDocumentOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [localSnapshots, setLocalSnapshots] = useState<LocalProjectSnapshot[]>([]);
   const [notice, setNotice] = useState<Notice>(null);
   const [workplaneOpen, setWorkplaneOpen] = useState(false);
   const [workplaneDraft, setWorkplaneDraft] = useState(document.workplane);
@@ -440,6 +444,16 @@ export function SketchForgeParametricEditor() {
           setNotice({ type: "info", text: educadTranslate(normalizeEducadLocale(localStorage.getItem(LOCALE_STORAGE_KEY)), "notice.autosaveRecovered") });
         }
       } else if (stored) localStorage.removeItem(STORAGE_KEY);
+      try {
+        const candidates = JSON.parse(localStorage.getItem(SNAPSHOTS_STORAGE_KEY) ?? "[]") as unknown;
+        if (Array.isArray(candidates)) setLocalSnapshots(candidates.filter((entry): entry is LocalProjectSnapshot => {
+          if (!entry || typeof entry !== "object") return false;
+          const candidate = entry as Partial<LocalProjectSnapshot>;
+          return typeof candidate.id === "string" && typeof candidate.createdAt === "number" && validateDocument(candidate.document);
+        }).slice(0, MAX_LOCAL_SNAPSHOTS));
+      } catch {
+        localStorage.removeItem(SNAPSHOTS_STORAGE_KEY);
+      }
     } catch {}
     setHydrated(true);
   }, []);
@@ -1926,6 +1940,28 @@ export function SketchForgeParametricEditor() {
     setNewDocumentOpen(false);
   };
 
+  const storeLocalSnapshots = (snapshots: LocalProjectSnapshot[]) => {
+    const limited = snapshots.slice(0, MAX_LOCAL_SNAPSHOTS);
+    setLocalSnapshots(limited);
+    try { localStorage.setItem(SNAPSHOTS_STORAGE_KEY, JSON.stringify(limited)); } catch {}
+  };
+
+  const createLocalSnapshot = () => {
+    const now = Date.now();
+    storeLocalSnapshots([{ id: `snapshot-${now}`, createdAt: now, document: cloneDocument(document) }, ...localSnapshots]);
+    setNotice({ type: "ok", text: t("notice.snapshotCreated") });
+  };
+
+  const restoreLocalSnapshot = (snapshot: LocalProjectSnapshot) => {
+    const restored = normalizeParametricDocument(cloneDocument(snapshot.document));
+    setHistory(createParametricHistory(restored));
+    setModelSelection(restored.objects[0] ? [{ id: restored.objects[0].id, kind: "object" }] : []);
+    setSettingsOpen(false);
+    setNotice({ type: "ok", text: t("notice.snapshotRestored") });
+  };
+
+  const deleteLocalSnapshot = (snapshotId: string) => storeLocalSnapshots(localSnapshots.filter((snapshot) => snapshot.id !== snapshotId));
+
   const openExportFromNewDocumentWarning = () => {
     setNewDocumentOpen(false);
     setExportFileName(document.name);
@@ -2956,6 +2992,14 @@ export function SketchForgeParametricEditor() {
           <label><span>{t("settings.shading")}</span><select value={shadingMode} onChange={(event) => setShadingMode(event.target.value as ViewportShadingMode)}><option value="shadows">{t("settings.shadows")}</option><option value="basic">{t("settings.basicShadows")}</option><option value="unlit">{t("settings.unlit")}</option></select></label>
           <label><span>{t("settings.units")}</span><select value={displayUnit} onChange={(event) => setDisplayUnit(event.target.value as ParametricDisplayUnit)}><option value="mm">{t("settings.millimeters")}</option><option value="in">{t("settings.inches")}</option></select></label>
           <label className="educad-settings-toggle"><span>{t("settings.showFps")}</span><input type="checkbox" checked={showFps} onChange={(event) => setShowFps(event.target.checked)} /></label>
+          <section className="educad-local-snapshots">
+            <header><strong>{t("settings.snapshots")}</strong><button type="button" onClick={createLocalSnapshot}>{t("settings.createSnapshot")}</button></header>
+            {localSnapshots.length > 0 ? <div>{localSnapshots.map((snapshot) => <article key={snapshot.id}>
+              <span><strong>{snapshot.document.name}</strong><small>{new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" }).format(snapshot.createdAt)}</small></span>
+              <button type="button" onClick={() => restoreLocalSnapshot(snapshot)}>{t("settings.restoreSnapshot")}</button>
+              <button type="button" className="delete" aria-label={t("common.delete")} title={t("common.delete")} onClick={() => deleteLocalSnapshot(snapshot.id)}><Trash2 size={14} /></button>
+            </article>)}</div> : <p>{t("settings.noSnapshots")}</p>}
+          </section>
           <p>{t("settings.autosave")}</p>
         </aside>
       )}
