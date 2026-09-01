@@ -103,6 +103,7 @@ import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricFeature
 import type { GridSize, SketchConstraint, SketchPoint, SketchProfile, WorkplaneShape } from "@/types/sketchforge";
 
 const STORAGE_KEY = "educad.parametric.document.v1";
+const RECOVERY_STORAGE_KEY = "educad.parametric.document.recovery.v1";
 const RENDER_QUALITY_STORAGE_KEY = "educad.viewport.render-mode";
 const FPS_VISIBLE_STORAGE_KEY = "educad.viewport.show-fps";
 const POSITION_TRIAD_VISIBLE_STORAGE_KEY = "educad.viewport.position-triad";
@@ -419,23 +420,43 @@ export function SketchForgeParametricEditor() {
       setShowPositionTriad(localStorage.getItem(POSITION_TRIAD_VISIBLE_STORAGE_KEY) !== "false");
       setShowRotationTriad(localStorage.getItem(ROTATION_TRIAD_VISIBLE_STORAGE_KEY) !== "false");
       setShowParameterHandles(localStorage.getItem(PARAMETER_HANDLES_VISIBLE_STORAGE_KEY) !== "false");
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as unknown;
-        if (validateDocument(parsed)) {
-          const normalized = normalizeParametricDocument(parsed);
-          setHistory(createParametricHistory(normalized));
-          setModelSelection(normalized.objects[0] ? [{ id: normalized.objects[0].id, kind: "object" }] : []);
+      const restoreDocument = (serialized: string | null) => {
+        if (!serialized) return null;
+        try {
+          const parsed = JSON.parse(serialized) as unknown;
+          return validateDocument(parsed) ? normalizeParametricDocument(parsed) : null;
+        } catch {
+          return null;
         }
-      }
-    } catch {
-      localStorage.removeItem(STORAGE_KEY);
-    }
+      };
+      const stored = localStorage.getItem(STORAGE_KEY);
+      const primary = restoreDocument(stored);
+      const recovered = primary ?? restoreDocument(localStorage.getItem(RECOVERY_STORAGE_KEY));
+      if (recovered) {
+        setHistory(createParametricHistory(recovered));
+        setModelSelection(recovered.objects[0] ? [{ id: recovered.objects[0].id, kind: "object" }] : []);
+        if (!primary) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(recovered));
+          setNotice({ type: "info", text: educadTranslate(normalizeEducadLocale(localStorage.getItem(LOCALE_STORAGE_KEY)), "notice.autosaveRecovered") });
+        }
+      } else if (stored) localStorage.removeItem(STORAGE_KEY);
+    } catch {}
     setHydrated(true);
   }, []);
 
   useEffect(() => {
-    if (hydrated) localStorage.setItem(STORAGE_KEY, JSON.stringify(document));
+    if (!hydrated) return;
+    const serialized = JSON.stringify(document);
+    try {
+      const previous = localStorage.getItem(STORAGE_KEY);
+      if (previous && previous !== serialized) {
+        try {
+          const parsed = JSON.parse(previous) as unknown;
+          if (validateDocument(parsed)) localStorage.setItem(RECOVERY_STORAGE_KEY, previous);
+        } catch {}
+      }
+      localStorage.setItem(STORAGE_KEY, serialized);
+    } catch {}
   }, [document, hydrated]);
 
   useEffect(() => {
