@@ -232,7 +232,7 @@ export function ParametricModelSidebar({
                   <div className={`educad-object-row ${objectSelected ? "selected" : ""} ${object.object.visible ? "" : "hidden"} ${object.object.locked ? "locked" : ""}`} style={{ "--object-color": object.object.color } as CSSProperties}>
                     <button
                       className="educad-tree-toggle"
-                      aria-label={isExpanded ? `Contraer ${object.name}` : `Desplegar ${object.name}`}
+                      aria-label={`${isExpanded ? t("model.collapse") : t("model.expand")} ${object.name}`}
                       aria-expanded={isExpanded}
                       onClick={() => onUpdateObject(object.id, (draft) => { draft.expanded = !draft.expanded; })}
                     >
@@ -243,12 +243,12 @@ export function ParametricModelSidebar({
                       <span><strong>{object.name}</strong></span>
                     </button>
                     <div className="educad-tree-actions">
-                      <button aria-label={object.object.visible ? `Ocultar ${object.name}` : `Mostrar ${object.name}`} title={object.object.visible ? "Ocultar" : "Mostrar"} aria-pressed={!object.object.visible} onClick={() => onUpdateObject(object.id, (draft) => { draft.visible = !draft.visible; })}>{object.object.visible ? <Eye size={15} /> : <EyeOff size={15} />}</button>
-                      <button aria-label={object.object.locked ? `Desbloquear ${object.name}` : `Bloquear ${object.name}`} title={object.object.locked ? "Desbloquear" : "Bloquear"} aria-pressed={object.object.locked} onClick={() => onUpdateObject(object.id, (draft) => { draft.locked = !draft.locked; })}>{object.object.locked ? <LockKeyhole size={15} /> : <LockKeyholeOpen size={15} />}</button>
+                      <button aria-label={`${object.object.visible ? t("model.hide") : t("model.show")} ${object.name}`} title={object.object.visible ? t("model.hide") : t("model.show")} aria-pressed={!object.object.visible} onClick={() => onUpdateObject(object.id, (draft) => { draft.visible = !draft.visible; })}>{object.object.visible ? <Eye size={15} /> : <EyeOff size={15} />}</button>
+                      <button aria-label={`${object.object.locked ? t("model.unlock") : t("model.lock")} ${object.name}`} title={object.object.locked ? t("model.unlock") : t("model.lock")} aria-pressed={object.object.locked} onClick={() => onUpdateObject(object.id, (draft) => { draft.locked = !draft.locked; })}>{object.object.locked ? <LockKeyhole size={15} /> : <LockKeyholeOpen size={15} />}</button>
                     </div>
                   </div>
                   {isExpanded ? (
-                    <div className="educad-operation-list" role="group" aria-label={`Operaciones de ${object.name}`}>
+                    <div className="educad-operation-list" role="group" aria-label={`${t("model.operationsFor")} ${object.name}`}>
                       {object.operations.map((feature) => (
                         <div key={feature.id} className={`educad-operation-row ${selection.some((candidate) => candidate.kind === "feature" && candidate.id === feature.id) ? "selected" : ""} ${feature.suppressed ? "suppressed" : ""} ${feature.kind === "sketch" && !feature.visible ? "hidden" : ""} ${operationClass(feature)}`}>
                           <button className="educad-operation-select" title={feature.name} onClick={(event) => selectNode({ id: feature.id, kind: "feature" }, event)}>
@@ -257,8 +257,8 @@ export function ParametricModelSidebar({
                             <span className="educad-operation-name"><strong>{feature.name}</strong></span>
                           </button>
                           <div className="educad-tree-actions">
-                            {feature.kind === "sketch" ? <button aria-label={feature.visible ? `Ocultar ${feature.name}` : `Mostrar ${feature.name}`} title={feature.visible ? "Ocultar boceto" : "Mostrar boceto"} aria-pressed={!feature.visible} onClick={() => onUpdateFeature(feature.id, (draft) => { if (draft.kind === "sketch") draft.visible = !draft.visible; })}>{feature.visible ? <Eye size={15} /> : <EyeOff size={15} />}</button> : null}
-                            <button aria-label={feature.suppressed ? `Activar ${feature.name}` : `Suprimir ${feature.name}`} title={feature.suppressed ? "Activar" : "Suprimir"} aria-pressed={feature.suppressed} onClick={() => onUpdateFeature(feature.id, (draft) => { draft.suppressed = !draft.suppressed; })}><CircleOff size={15} /></button>
+                            {feature.kind === "sketch" ? <button aria-label={`${feature.visible ? t("model.hide") : t("model.show")} ${feature.name}`} title={feature.visible ? t("model.hideSketch") : t("model.showSketch")} aria-pressed={!feature.visible} onClick={() => onUpdateFeature(feature.id, (draft) => { if (draft.kind === "sketch") draft.visible = !draft.visible; })}>{feature.visible ? <Eye size={15} /> : <EyeOff size={15} />}</button> : null}
+                            <button aria-label={`${feature.suppressed ? t("model.activate") : t("model.suppress")} ${feature.name}`} title={feature.suppressed ? t("model.activate") : t("model.suppress")} aria-pressed={feature.suppressed} onClick={() => onUpdateFeature(feature.id, (draft) => { draft.suppressed = !draft.suppressed; })}><CircleOff size={15} /></button>
                           </div>
                         </div>
                       ))}
@@ -270,7 +270,7 @@ export function ParametricModelSidebar({
           </div>
         </section>
 
-      {mode === "normal" ? <div className="educad-tree-toolbar" role="toolbar" aria-label="Acciones de la jerarquía">
+      {mode === "normal" ? <div className="educad-tree-toolbar" role="toolbar" aria-label={t("model.treeActions")}>
         <button disabled={!canReorderParametricSelection(document, selection, "up")} aria-label={t("model.moveUp")} title={t("model.moveUp")} onClick={() => onReorderSelection("up")}><ArrowUp size={16} /></button>
         <button disabled={!canReorderParametricSelection(document, selection, "down")} aria-label={t("model.moveDown")} title={t("model.moveDown")} onClick={() => onReorderSelection("down")}><ArrowDown size={16} /></button>
         <span className="educad-tree-toolbar-separator" aria-hidden="true" />
@@ -283,29 +283,29 @@ export function ParametricModelSidebar({
 
       {mode === "normal" ? <section className="educad-sidebar-editor">
         {revolveDraft ? (
-          <div className="educad-feature-inspector educad-edge-treatment-draft" aria-label="Revolución temporal">
+          <div className="educad-feature-inspector educad-edge-treatment-draft" aria-label={t("operation.previewRevolve")}>
             <div className="educad-feature-card"><h3>{revolveDraft.editing ? t("operation.edit") : t("operation.new")}</h3><label><span>{t("property.type")}</span><select value={revolveDraft.operation} onChange={(event) => onRevolveDraftChange({ operation: event.target.value as typeof revolveDraft.operation })}><option value="add">{t("model.add")}</option><option value="cut">{t("model.hole")}</option><option value="intersect">{t("model.common")}</option></select></label><label><span>{t("property.axis")}</span><select value={revolveDraft.axis} onChange={(event) => onRevolveDraftChange({ axis: event.target.value as typeof revolveDraft.axis })}><option value="x">X local</option><option value="y">Y local</option><option value="z">Z local</option><option value="edge" disabled={revolveDraft.edgeCount !== 1}>{t("operation.selectedEdge")}</option></select></label><BoundedNumberField label={t("property.angle")} value={revolveDraft.angle} min={-360} max={360} step={1} unit="°" onChange={(angle) => onRevolveDraftChange({ angle: Math.abs(angle) < 1 ? (angle < 0 ? -1 : 1) : angle })} /></div>
-            <div className="educad-topology-selection-actions"><button type="button" onClick={onCancelRevolve}>{t("common.cancel")}</button><button type="button" className="primary" disabled={revolveDraft.faceCount !== 1 || (revolveDraft.axis === "edge" && revolveDraft.edgeCount !== 1)} onClick={onAcceptRevolve}>{t("common.accept")}</button></div><p className="educad-topology-selection-count">cara / eje: {revolveDraft.faceCount} / {revolveDraft.edgeCount}</p>
+            <div className="educad-topology-selection-actions"><button type="button" onClick={onCancelRevolve}>{t("common.cancel")}</button><button type="button" className="primary" disabled={revolveDraft.faceCount !== 1 || (revolveDraft.axis === "edge" && revolveDraft.edgeCount !== 1)} onClick={onAcceptRevolve}>{t("common.accept")}</button></div><p className="educad-topology-selection-count">{t("operation.faceAxis")}: {revolveDraft.faceCount} / {revolveDraft.edgeCount}</p>
           </div>
         ) : shellDraft ? (
-          <div className="educad-feature-inspector educad-edge-treatment-draft" aria-label="Vaciado temporal">
+          <div className="educad-feature-inspector educad-edge-treatment-draft" aria-label={t("operation.previewShell")}>
             <div className="educad-feature-card"><h3>{shellDraft.editing ? t("operation.edit") : t("operation.new")}</h3><BoundedNumberField label={t("property.thickness")} value={shellDraft.thickness} min={0.01} max={50} onChange={onShellDraftChange} /></div>
             <div className="educad-topology-selection-actions"><button type="button" onClick={onCancelShell}>{t("common.cancel")}</button><button type="button" className="primary" disabled={shellDraft.faceCount === 0} onClick={onAcceptShell}>{t("common.accept")}</button></div>
-            <p className="educad-topology-selection-count">caras abiertas: {shellDraft.faceCount}</p>
+            <p className="educad-topology-selection-count">{t("operation.openFaces")}: {shellDraft.faceCount}</p>
           </div>
         ) : faceExtrudeDraft ? (
-          <div className="educad-feature-inspector educad-edge-treatment-draft" aria-label="Extrusión temporal de cara">
+          <div className="educad-feature-inspector educad-edge-treatment-draft" aria-label={t("operation.previewFaceExtrude")}>
             <div className="educad-feature-card"><h3>{faceExtrudeDraft.editing ? t("operation.edit") : t("operation.new")}</h3><label><span>{t("property.type")}</span><select value={faceExtrudeDraft.operation} onChange={(event) => onFaceExtrudeDraftChange({ operation: event.target.value as "add" | "cut" })}><option value="add">{t("model.add")}</option><option value="cut">{t("model.hole")}</option></select></label><BoundedNumberField label={t("property.length")} value={faceExtrudeDraft.distance} min={0.01} max={200} onChange={(distance) => onFaceExtrudeDraftChange({ distance })} /></div>
             <div className="educad-topology-selection-actions"><button type="button" onClick={onCancelFaceExtrude}>{t("common.cancel")}</button><button type="button" className="primary" disabled={faceExtrudeDraft.faceCount !== 1} onClick={onAcceptFaceExtrude}>{t("common.accept")}</button></div>
           </div>
         ) : edgeTreatmentDraft ? (
-          <div className="educad-feature-inspector educad-edge-treatment-draft" aria-label="Selección temporal de caras y aristas">
+          <div className="educad-feature-inspector educad-edge-treatment-draft" aria-label={t("operation.previewTopology")}>
             <div className="educad-feature-card"><h3>{edgeTreatmentDraft.editing ? t("operation.edit") : t("operation.new")}</h3><EdgeTreatmentButtons value={edgeTreatmentDraft.treatment} onChange={(treatment) => onEdgeTreatmentDraftChange({ treatment })} /><BoundedNumberField label={edgeTreatmentDraft.treatment === "chamfer" ? t("property.distance") : t("property.radius")} value={edgeTreatmentDraft.radius} min={0.01} max={50} onChange={(radius) => onEdgeTreatmentDraftChange({ radius })} /></div>
             <div className="educad-topology-selection-actions"><button type="button" onClick={onCancelEdgeTreatment}>{t("common.cancel")}</button><button type="button" className="primary" disabled={edgeTreatmentDraft.faceCount + edgeTreatmentDraft.edgeCount === 0} onClick={onAcceptEdgeTreatment}>{t("common.accept")}</button></div>
-            <p className="educad-topology-selection-count">caras / aristas: {edgeTreatmentDraft.faceCount} / {edgeTreatmentDraft.edgeCount}</p>
+            <p className="educad-topology-selection-count">{t("operation.facesEdges")}: {edgeTreatmentDraft.faceCount} / {edgeTreatmentDraft.edgeCount}</p>
           </div>
         ) : selection.length > 1 ? (
-          <div className="educad-no-selection educad-multi-selection"><Layers3 size={28} /><strong>{selection.length} elementos seleccionados</strong><span>{selection.filter((item) => item.kind === "object").length} objetos · {selection.filter((item) => item.kind === "feature").length} operaciones</span><small>Usa Ctrl/Cmd para alternar elementos o Shift para seleccionar un rango.</small></div>
+          <div className="educad-no-selection educad-multi-selection"><Layers3 size={28} /><strong>{selection.length} {t("model.selected")}</strong><span>{selection.filter((item) => item.kind === "object").length} {t("model.objects")} · {selection.filter((item) => item.kind === "feature").length} {t("model.operations")}</span><small>{t("model.multiSelectionHint")}</small></div>
         ) : selectedObject ? (
           <ParametricObjectInspector object={selectedObject} onUpdate={(update) => onUpdateObject(selectedObject.id, update)} />
         ) : selectedFeature ? (
@@ -329,7 +329,7 @@ export function ParametricModelSidebar({
       <div className="educad-dialog-backdrop" role="presentation" onPointerDown={closeRename}>
         <form className="educad-rename-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-rename-title" onPointerDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); commitRename(); }}>
           <header><strong id="educad-rename-title">{t("model.renameTitle")}</strong><button type="button" aria-label={t("common.cancel")} onClick={closeRename}><X size={18} /></button></header>
-          <label><span>{selection.length > 1 ? "Nombre común" : "Nombre"}</span><input ref={renameInputRef} autoFocus value={renameDraft} maxLength={80} placeholder={selection.length > 1 ? "Aplicar el mismo nombre a todos" : undefined} onChange={(event) => setRenameDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") closeRename(); }} /></label>
+          <label><span>{selection.length > 1 ? t("model.commonName") : t("model.name")}</span><input ref={renameInputRef} autoFocus value={renameDraft} maxLength={80} placeholder={selection.length > 1 ? t("model.applyCommonName") : undefined} onChange={(event) => setRenameDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") closeRename(); }} /></label>
           <footer><button type="button" onClick={closeRename}>{t("common.cancel")}</button><button className="primary" type="submit" disabled={!renameDraft.trim()}>{t("common.accept")}</button></footer>
         </form>
       </div>
@@ -340,29 +340,31 @@ export function ParametricModelSidebar({
 
 function FeatureIcon({ document, feature }: { document: ParametricDocument; feature: ParametricFeature }) {
   const locale = useContext(LocaleContext);
-  if (feature.kind === "sketch") return <DraftingCompass className="sketch" size={16} />;
+  const t = (key: EducadTranslationKey) => educadTranslate(locale, key);
+  if (feature.kind === "sketch") return <DraftingCompass className="sketch" size={16} role="img" aria-label={t("operation.sketch")} />;
   if (feature.kind === "extrude") {
     const sketch = sketchForExtrude(document, feature);
     const role = feature.operation === "cut" ? "hole" : feature.operation === "intersect" ? "common" : "add";
-    const label = feature.operation === "cut" ? "Hueco" : feature.operation === "intersect" ? "Común" : "Añadir";
+    const label = feature.operation === "cut" ? t("model.hole") : feature.operation === "intersect" ? t("model.common") : t("model.add");
     const generatedText = sketch?.profile.shape === "drawn" && sketch.profile.geometry.generator?.kind === "text";
-    return <span className={`educad-operation-icon ${role}`} role="img" aria-label={`${generatedText ? "Texto" : sketch?.profile.shape === "circle" ? "Cilindro" : "Caja"}: ${label}`}>{generatedText ? <Type size={17} /> : sketch?.profile.shape === "circle" ? <CircleDot size={17} /> : <Box size={17} />}<small aria-hidden="true">{role === "add" ? "+" : role === "hole" ? "−" : "∩"}</small></span>;
+    const shapeName = generatedText ? t("sketch.text") : localizedParametricOperationDefinition(sketch?.profile.shape === "circle" ? "cylinder" : "box", locale).name;
+    return <span className={`educad-operation-icon ${role}`} role="img" aria-label={`${shapeName}: ${label}`}>{generatedText ? <Type size={17} /> : sketch?.profile.shape === "circle" ? <CircleDot size={17} /> : <Box size={17} />}<small aria-hidden="true">{role === "add" ? "+" : role === "hole" ? "−" : "∩"}</small></span>;
   }
   if (feature.kind === "primitive") {
     const definition = localizedParametricOperationDefinition(feature.primitive, locale);
     const role = feature.operation === "cut" ? "hole" : feature.operation === "intersect" ? "common" : "add";
     return <span className={`educad-operation-icon ${role}`} role="img" aria-label={`${definition.name}: ${definition.roles[feature.operation].label}`}><Circle size={17} /><small aria-hidden="true">{role === "add" ? "+" : role === "hole" ? "−" : "∩"}</small></span>;
   }
-  if (feature.kind === "importedStep") return <FileBox className="imported-step" size={16} />;
-  if (feature.kind === "hole") return <CircleDot className="drill-hole" size={16} />;
-  if (feature.kind === "faceExtrude") return <span className={`educad-operation-icon ${feature.operation === "cut" ? "hole" : "add"}`} role="img" aria-label={feature.operation === "cut" ? "Hueco desde cara" : "Extrusión desde cara"}><Box size={17} /><small aria-hidden="true">{feature.operation === "cut" ? "−" : "+"}</small></span>;
-  if (feature.kind === "shell") return <img className="educad-operation-asset-icon" src="/assets/educad/operations/shell.svg" alt="Vaciado" />;
-  if (feature.kind === "revolve") return <img className="educad-operation-asset-icon" src="/assets/educad/operations/revolve.svg" alt="Revolución" />;
-  if (feature.kind === "mirror") return <FlipHorizontal2 className="mirror" size={16} />;
-  if (feature.kind === "linearPattern") return <Rows3 className="linear-pattern" size={16} />;
-  if (feature.kind === "polarPattern") return <RotateCw className="polar-pattern" size={16} />;
-  if (feature.kind === "objectBoolean") return <Combine className="object-boolean" size={16} />;
-  return feature.treatment === "chamfer" ? <Triangle className="chamfer" size={16} /> : <Radius className="fillet" size={16} />;
+  if (feature.kind === "importedStep") return <FileBox className="imported-step" size={16} role="img" aria-label={t("operation.importedStep")} />;
+  if (feature.kind === "hole") return <CircleDot className="drill-hole" size={16} role="img" aria-label={t("operation.hole")} />;
+  if (feature.kind === "faceExtrude") return <span className={`educad-operation-icon ${feature.operation === "cut" ? "hole" : "add"}`} role="img" aria-label={feature.operation === "cut" ? t("operation.facePocket") : t("operation.faceExtrude")}><Box size={17} /><small aria-hidden="true">{feature.operation === "cut" ? "−" : "+"}</small></span>;
+  if (feature.kind === "shell") return <img className="educad-operation-asset-icon" src="/assets/educad/operations/shell.svg" alt={t("toolbar.shell")} />;
+  if (feature.kind === "revolve") return <img className="educad-operation-asset-icon" src="/assets/educad/operations/revolve.svg" alt={t("operation.revolve")} />;
+  if (feature.kind === "mirror") return <FlipHorizontal2 className="mirror" size={16} role="img" aria-label={t("operation.mirror")} />;
+  if (feature.kind === "linearPattern") return <Rows3 className="linear-pattern" size={16} role="img" aria-label={t("operation.linearPattern")} />;
+  if (feature.kind === "polarPattern") return <RotateCw className="polar-pattern" size={16} role="img" aria-label={t("operation.polarPattern")} />;
+  if (feature.kind === "objectBoolean") return <Combine className="object-boolean" size={16} role="img" aria-label={t("toolbar.objectBoolean")} />;
+  return feature.treatment === "chamfer" ? <Triangle className="chamfer" size={16} role="img" aria-label={t("operation.chamfer")} /> : <Radius className="fillet" size={16} role="img" aria-label={t("operation.fillet")} />;
 }
 
 function operationClass(feature: ParametricFeature) {
@@ -378,6 +380,7 @@ function ParametricObjectInspector({
   onUpdate: (update: (object: ParametricObject) => void) => void;
 }) {
   const t = useSidebarTranslation();
+  const locale = useContext(LocaleContext);
   const [colorOpen, setColorOpen] = useState(false);
   const colorPanelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -390,13 +393,13 @@ function ParametricObjectInspector({
   }, [colorOpen]);
   return (
     <div className="educad-feature-inspector educad-object-inspector">
-      {object.referenceMesh ? <div className="educad-feature-card"><h3>{t("property.reference")}</h3><ReadOnlyField label={t("property.file")} value={object.referenceMesh.sourceName} /><ReadOnlyField label="Formato" value={object.referenceMesh.format.toUpperCase()} /><label><span>Opacidad</span><input type="range" min={0.05} max={1} step={0.05} value={object.referenceMesh.opacity} onChange={(event) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.opacity = Number(event.target.value); })} /></label><label><span>Visualización</span><select value={object.referenceMesh.displayMode} onChange={(event) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.displayMode = event.target.value as typeof draft.referenceMesh.displayMode; })}><option value="solidEdges">Sólido y aristas</option><option value="solid">Sólido</option><option value="wireframe">Alámbrico</option></select></label><label><span>Seleccionable</span><input type="checkbox" checked={object.referenceMesh.pickable} onChange={(event) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.pickable = event.target.checked; })} /></label></div> : null}
+      {object.referenceMesh ? <div className="educad-feature-card"><h3>{t("property.reference")}</h3><ReadOnlyField label={t("property.file")} value={object.referenceMesh.sourceName} /><ReadOnlyField label={t("property.format")} value={object.referenceMesh.format.toUpperCase()} /><label><span>{t("property.opacity")}</span><input type="range" min={0.05} max={1} step={0.05} value={object.referenceMesh.opacity} onChange={(event) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.opacity = Number(event.target.value); })} /></label><label><span>{t("property.display")}</span><select value={object.referenceMesh.displayMode} onChange={(event) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.displayMode = event.target.value as typeof draft.referenceMesh.displayMode; })}><option value="solidEdges">{t("display.solidEdges")}</option><option value="solid">{t("display.solid")}</option><option value="wireframe">{t("display.wireframe")}</option></select></label><label><span>{t("property.pickable")}</span><input type="checkbox" checked={object.referenceMesh.pickable} onChange={(event) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.pickable = event.target.checked; })} /></label></div> : null}
       <div ref={colorPanelRef} className="educad-feature-card educad-object-appearance">
         <button className="educad-color-trigger" aria-expanded={colorOpen} onClick={() => setColorOpen((value) => !value)}>
-          <span>Color</span><span className="educad-color-preview" style={{ "--object-color": object.color } as CSSProperties} /><strong>{object.color.toUpperCase()}</strong><ChevronDown size={15} />
+          <span>{t("property.color")}</span><span className="educad-color-preview" style={{ "--object-color": object.color } as CSSProperties} /><strong>{object.color.toUpperCase()}</strong><ChevronDown size={15} />
         </button>
-        {colorOpen ? <div className="educad-color-palette" role="group" aria-label="Color del objeto">
-          {OBJECT_COLOR_PALETTE.map((color) => <button key={color} className={object.color.toLowerCase() === color ? "selected" : ""} aria-label={`Color ${color}`} title={color.toUpperCase()} style={{ "--object-color": color } as CSSProperties} onClick={() => { onUpdate((draft) => { draft.color = color; }); setColorOpen(false); }} />)}
+        {colorOpen ? <div className="educad-color-palette" role="group" aria-label={`${t("property.color")} ${locale === "en" ? "of object" : "del objeto"}`}>
+          {OBJECT_COLOR_PALETTE.map((color) => <button key={color} className={object.color.toLowerCase() === color ? "selected" : ""} aria-label={`${t("property.color")} ${color}`} title={color.toUpperCase()} style={{ "--object-color": color } as CSSProperties} onClick={() => { onUpdate((draft) => { draft.color = color; }); setColorOpen(false); }} />)}
           <label className="educad-custom-color" title="Color personalizado"><input type="color" value={object.color} onChange={(event) => onUpdate((draft) => { draft.color = event.target.value; })} /><span>+</span></label>
         </div> : null}
       </div>
@@ -813,6 +816,7 @@ function DeferredTextInput({ value, maxLength, onCommit }: { value: string; maxL
 }
 
 function DeferredNumberInput({ value, min, max, step, unit, onCommit }: { value: number; min?: number; max?: number; step: number; unit?: string; onCommit: (value: number) => void }) {
+  const t = useSidebarTranslation();
   const { displayUnit } = useContext(NumericStepContext);
   const isLength = unit === "mm";
   const toDisplay = (next: number) => isLength ? millimetersToDisplayLength(next, displayUnit) : next;
@@ -859,7 +863,7 @@ function DeferredNumberInput({ value, min, max, step, unit, onCommit }: { value:
     }
   };
   const visibleUnit = isLength ? displayUnitLabel(displayUnit) : unit;
-  return <span className="educad-number-input" onWheel={(event) => { event.preventDefault(); nudge(event.deltaY < 0 ? 1 : -1); }}><input ref={inputRef} type="text" inputMode="decimal" value={draft} onFocus={() => setEditing(true)} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={handleKeyDown} />{visibleUnit ? <small>{visibleUnit}</small> : null}<span className="educad-number-steppers"><button type="button" tabIndex={-1} aria-label="Aumentar valor" title="Aumentar" onPointerDown={(event) => { event.preventDefault(); nudge(1); }}>▲</button><button type="button" tabIndex={-1} aria-label="Disminuir valor" title="Disminuir" onPointerDown={(event) => { event.preventDefault(); nudge(-1); }}>▼</button></span></span>;
+  return <span className="educad-number-input" onWheel={(event) => { event.preventDefault(); nudge(event.deltaY < 0 ? 1 : -1); }}><input ref={inputRef} type="text" inputMode="decimal" value={draft} onFocus={() => setEditing(true)} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={handleKeyDown} />{visibleUnit ? <small>{visibleUnit}</small> : null}<span className="educad-number-steppers"><button type="button" tabIndex={-1} aria-label={t("input.increment")} title={t("input.increment")} onPointerDown={(event) => { event.preventDefault(); nudge(1); }}>▲</button><button type="button" tabIndex={-1} aria-label={t("input.decrement")} title={t("input.decrement")} onPointerDown={(event) => { event.preventDefault(); nudge(-1); }}>▼</button></span></span>;
 }
 
 function BoundedNumberField({ label, value, min, max, unit = "mm", onChange }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (value: number) => void }) {
