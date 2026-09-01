@@ -26,7 +26,7 @@ function simplify(points: ScribblePoint[], tolerance: number): ScribblePoint[] {
 
 export function simplifyScribbleContour(points: ScribblePoint[], smoothing = 0.8) {
   const cleaned = points.filter((point, index) => index === 0 || Math.hypot(point.x - points[index - 1].x, point.z - points[index - 1].z) > 0.05);
-  if (cleaned.length < 3) throw new Error("Dibuja un contorno más largo antes de soltar.");
+  if (cleaned.length < 3) throw new Error("Draw a longer contour before releasing the pointer.");
   const closed = Math.hypot(cleaned[0].x - cleaned.at(-1)!.x, cleaned[0].z - cleaned.at(-1)!.z) < 0.05 ? cleaned.slice(0, -1) : cleaned;
   const simplified = simplify([...closed, closed[0]], Math.max(0.05, smoothing)).slice(0, -1);
   if (simplified.length < 3) throw new Error("El trazo no encierra una superficie reconocible.");

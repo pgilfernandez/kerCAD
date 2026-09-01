@@ -89,45 +89,45 @@ export function assertValidParametricTopology(document: ParametricDocument) {
   const featureById = new Map(document.features.map((feature) => [feature.id, feature]));
   const references = new Map<string, ParametricTopologyReference>();
   for (const reference of document.topologyReferences) {
-    if (!isParametricTopologyReference(reference)) throw new ParametricTopologyError("El proyecto contiene una referencia de cara o arista no válida.");
-    if (references.has(reference.id)) throw new ParametricTopologyError(`La referencia topológica ${reference.id} está duplicada.`);
-    if (!objectIds.has(reference.objectId)) throw new ParametricTopologyError(`${reference.name}: el objeto de origen ya no existe.`);
+    if (!isParametricTopologyReference(reference)) throw new ParametricTopologyError("The project contains an invalid face or edge reference.");
+    if (references.has(reference.id)) throw new ParametricTopologyError(`Topological reference ${reference.id} is duplicated.`);
+    if (!objectIds.has(reference.objectId)) throw new ParametricTopologyError(`${reference.name}: source object no longer exists.`);
     const source = featureById.get(reference.sourceFeatureId);
-    if (!source) throw new ParametricTopologyError(`${reference.name}: la operación de origen ya no existe.`);
-    if (source.objectId !== reference.objectId) throw new ParametricTopologyError(`${reference.name}: la operación de origen pertenece a otro objeto.`);
+    if (!source) throw new ParametricTopologyError(`${reference.name}: source operation no longer exists.`);
+    if (source.objectId !== reference.objectId) throw new ParametricTopologyError(`${reference.name}: source operation belongs to another object.`);
     references.set(reference.id, reference);
   }
   for (const feature of document.features) {
     if (feature.kind === "revolve" && feature.source === "sketch") {
       const sketch = feature.sketchId ? featureById.get(feature.sketchId) : null;
-      if (!sketch || sketch.kind !== "sketch") throw new ParametricTopologyError(`${feature.name}: el boceto referenciado ya no existe.`);
-      if (feature.objectId && sketch.objectId !== feature.objectId) throw new ParametricTopologyError(`${feature.name}: el boceto pertenece a otro objeto.`);
+      if (!sketch || sketch.kind !== "sketch") throw new ParametricTopologyError(`${feature.name}: referenced sketch no longer exists.`);
+      if (feature.objectId && sketch.objectId !== feature.objectId) throw new ParametricTopologyError(`${feature.name}: sketch belongs to another object.`);
       if (feature.axis === "edge") {
         const axisReference = feature.axisReferenceId ? references.get(feature.axisReferenceId) : null;
-        if (!axisReference || axisReference.reference.hint.entityType !== "edge") throw new ParametricTopologyError(`${feature.name}: falta la arista usada como eje.`);
-        if (feature.objectId && axisReference.objectId !== feature.objectId) throw new ParametricTopologyError(`${feature.name}: el eje pertenece a otro objeto.`);
+        if (!axisReference || axisReference.reference.hint.entityType !== "edge") throw new ParametricTopologyError(`${feature.name}: the edge used as the axis is missing.`);
+        if (feature.objectId && axisReference.objectId !== feature.objectId) throw new ParametricTopologyError(`${feature.name}: axis belongs to another object.`);
       }
       continue;
     }
     if (feature.kind === "faceExtrude" || feature.kind === "revolve") {
-      if (!feature.faceReferenceId) throw new ParametricTopologyError(`${feature.name}: la cara referenciada ya no existe.`);
+      if (!feature.faceReferenceId) throw new ParametricTopologyError(`${feature.name}: referenced face no longer exists.`);
       const reference = references.get(feature.faceReferenceId);
-      if (!reference) throw new ParametricTopologyError(`${feature.name}: la cara referenciada ya no existe.`);
-      if (reference.reference.hint.entityType !== "face") throw new ParametricTopologyError(`${feature.name}: la referencia seleccionada no es una cara.`);
-      if (feature.objectId && reference.objectId !== feature.objectId) throw new ParametricTopologyError(`${feature.name}: la cara pertenece a otro objeto.`);
+      if (!reference) throw new ParametricTopologyError(`${feature.name}: referenced face no longer exists.`);
+      if (reference.reference.hint.entityType !== "face") throw new ParametricTopologyError(`${feature.name}: selected reference is not a face.`);
+      if (feature.objectId && reference.objectId !== feature.objectId) throw new ParametricTopologyError(`${feature.name}: face belongs to another object.`);
       if (feature.kind === "revolve" && feature.axis === "edge") {
         const axisReference = feature.axisReferenceId ? references.get(feature.axisReferenceId) : null;
-        if (!axisReference || axisReference.reference.hint.entityType !== "edge") throw new ParametricTopologyError(`${feature.name}: falta la arista usada como eje.`);
-        if (feature.objectId && axisReference.objectId !== feature.objectId) throw new ParametricTopologyError(`${feature.name}: el eje pertenece a otro objeto.`);
+        if (!axisReference || axisReference.reference.hint.entityType !== "edge") throw new ParametricTopologyError(`${feature.name}: the edge used as the axis is missing.`);
+        if (feature.objectId && axisReference.objectId !== feature.objectId) throw new ParametricTopologyError(`${feature.name}: axis belongs to another object.`);
       }
       continue;
     }
     if (feature.kind === "shell") {
       for (const referenceId of feature.faceReferenceIds) {
         const reference = references.get(referenceId);
-        if (!reference) throw new ParametricTopologyError(`${feature.name}: una cara referenciada ya no existe.`);
-        if (reference.reference.hint.entityType !== "face") throw new ParametricTopologyError(`${feature.name}: la referencia seleccionada no es una cara.`);
-        if (feature.objectId && reference.objectId !== feature.objectId) throw new ParametricTopologyError(`${feature.name}: la cara pertenece a otro objeto.`);
+        if (!reference) throw new ParametricTopologyError(`${feature.name}: a referenced face no longer exists.`);
+        if (reference.reference.hint.entityType !== "face") throw new ParametricTopologyError(`${feature.name}: selected reference is not a face.`);
+        if (feature.objectId && reference.objectId !== feature.objectId) throw new ParametricTopologyError(`${feature.name}: face belongs to another object.`);
       }
       continue;
     }
@@ -135,8 +135,8 @@ export function assertValidParametricTopology(document: ParametricDocument) {
     const selectionIds = feature.selectionReferenceIds ?? feature.edgeReferenceIds ?? [];
     for (const referenceId of selectionIds) {
       const reference = references.get(referenceId);
-      if (!reference) throw new ParametricTopologyError(`${feature.name}: la entidad referenciada ya no existe.`);
-      if (feature.objectId && reference.objectId !== feature.objectId) throw new ParametricTopologyError(`${feature.name}: la selección pertenece a otro objeto.`);
+      if (!reference) throw new ParametricTopologyError(`${feature.name}: referenced entity no longer exists.`);
+      if (feature.objectId && reference.objectId !== feature.objectId) throw new ParametricTopologyError(`${feature.name}: selection belongs to another object.`);
     }
   }
 }

@@ -29,7 +29,7 @@ describe("stable parametric topology references", () => {
     const document = createStarterDocument(1);
     const source = document.features.find((feature) => feature.kind === "extrude")!;
     const reference = edgeReference(document.objects[0].id, source.id);
-    reference.reference.hint.topologyId = 73;
+    reference.reference.hint = { entityType: "edge", topologyId: 73 };
     const record: ParametricObjectRenderRecord = {
       objectId: document.objects[0].id,
       renderId: "object:test",
@@ -65,8 +65,8 @@ describe("stable parametric topology references", () => {
   });
 
   it("keeps one editable edge-treatment feature for fillet and chamfer", () => {
-    expect(createFilletFeature(1)).toMatchObject({ treatment: "fillet", name: "Redondeo 1", radius: 2 });
-    expect(createFilletFeature(2, "chamfer")).toMatchObject({ treatment: "chamfer", name: "Chaflán 2", radius: 2 });
+    expect(createFilletFeature(1)).toMatchObject({ treatment: "fillet", name: "Fillet 1", radius: 2 });
+    expect(createFilletFeature(2, "chamfer")).toMatchObject({ treatment: "chamfer", name: "Chamfer 2", radius: 2 });
   });
 
   it("reports broken references instead of silently selecting another edge", () => {

@@ -33,13 +33,13 @@ function pointInPolygon(point: SketchOutlinePoint, polygon: readonly SketchOutli
  * holes and nested islands. This is shared by sketches and future outline
  * sources such as text, Scribble and direct SVG solids.
  */
-export function classifyPlanarProfileLoops<T>(loops: readonly PlanarProfileLoop<T>[], label = "El perfil"): Array<PlanarProfileRegion<T>> {
-  if (!loops.length) throw new Error(`${label} no contiene ningún contorno cerrado.`);
+export function classifyPlanarProfileLoops<T>(loops: readonly PlanarProfileLoop<T>[], label = "The profile"): Array<PlanarProfileRegion<T>> {
+  if (!loops.length) throw new Error(`${label} does not contain a closed contour.`);
   for (const loop of loops) {
-    if (loop.polygon.length < 3 || loop.polygon.some((point) => !Number.isFinite(point.x) || !Number.isFinite(point.y))) throw new Error(`${label} contiene un contorno incompleto.`);
-    if (Math.abs(signedArea(loop.polygon)) <= 1e-8) throw new Error(`${label} contiene un contorno sin área.`);
+    if (loop.polygon.length < 3 || loop.polygon.some((point) => !Number.isFinite(point.x) || !Number.isFinite(point.y))) throw new Error(`${label} contains an incomplete contour.`);
+    if (Math.abs(signedArea(loop.polygon)) <= 1e-8) throw new Error(`${label} contains a contour with no area.`);
   }
-  if (findSketchOutlineIntersection(loops.map((loop) => loop.polygon))) throw new Error(`${label} contiene contornos que se cruzan o se tocan.`);
+  if (findSketchOutlineIntersection(loops.map((loop) => loop.polygon))) throw new Error(`${label} contains contours that intersect or touch.`);
 
   const classified = loops.map((loop) => ({ loop, area: Math.abs(signedArea(loop.polygon)), depth: 0 }));
   for (const entry of classified) {

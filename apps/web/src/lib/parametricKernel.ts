@@ -27,7 +27,7 @@ function refinedBooleanSolid(brep: Brep, result: ReturnType<Brep["cut"]> | Retur
 }
 
 function drawnSketchFaces(brep: Brep, sketch: SketchFeature): Face[] {
-  if (sketch.profile.shape !== "drawn") throw new Error(`${sketch.name}: el perfil no es un boceto dibujado.`);
+  if (sketch.profile.shape !== "drawn") throw new Error(`${sketch.name}: profile is not a drawn sketch.`);
   const profile = sketch.profile.geometry;
   const points = new Map(profile.points.map((point) => [point.id, point]));
   const unused = new Map(profile.segments.filter((segment) => !segment.construction).map((segment) => [segment.id, segment]));
@@ -48,19 +48,19 @@ function drawnSketchFaces(brep: Brep, sketch: SketchFeature): Face[] {
       currentId = toId;
       if (currentId === startId) break;
     }
-    if (currentId !== startId || path.length < 3) throw new Error(`${sketch.name}: cierra el perfil antes de usarlo en una operación 3D.`);
+    if (currentId !== startId || path.length < 3) throw new Error(`${sketch.name}: close the profile before using it in a 3D operation.`);
     paths.push(path);
   }
   const loops: PlanarBrepLoop[] = [...paths.map((path) => {
     const polygon = path.map(({ fromId }) => {
       const point = points.get(fromId);
-      if (!point) throw new Error(`${sketch.name}: el boceto contiene referencias incompletas.`);
+      if (!point) throw new Error(`${sketch.name}: sketch contains incomplete references.`);
       return { x: point.x, y: point.z };
     });
     const edges = path.map(({ segment, fromId, toId }) => {
       const from = points.get(fromId);
       const to = points.get(toId);
-      if (!from || !to) throw new Error(`${sketch.name}: el boceto contiene referencias incompletas.`);
+      if (!from || !to) throw new Error(`${sketch.name}: sketch contains incomplete references.`);
       const fromVec: [number, number, number] = [from.x, from.z, 0];
       const toVec: [number, number, number] = [to.x, to.z, 0];
       if (segment.kind === "arc" && segment.center) {
@@ -229,24 +229,24 @@ function educationalGearSolid(brep: Brep, feature: PrimitiveFeature): AnySolid {
 
 function solidFromPrimitive(brep: Brep, feature: PrimitiveFeature): AnySolid {
   if (feature.width <= 0 || feature.depth <= 0 || feature.height <= 0) {
-    throw new Error(`${feature.name}: todas las dimensiones deben ser mayores que cero.`);
+    throw new Error(`${feature.name}: all dimensions must be greater than zero.`);
   }
   if (feature.primitive === "cone" && (feature.topRadius ?? 0) < 0) {
-    throw new Error(`${feature.name}: el radio superior no puede ser negativo.`);
+    throw new Error(`${feature.name}: top radius cannot be negative.`);
   }
   if (feature.primitive === "tube" && ((feature.innerRadius ?? 0) <= 0 || (feature.innerRadius ?? 0) >= feature.width / 2)) {
-    throw new Error(`${feature.name}: el radio interior debe ser mayor que cero y menor que el exterior.`);
+    throw new Error(`${feature.name}: inner radius must be greater than zero and smaller than outer radius.`);
   }
   if (feature.primitive === "torus" && ((feature.tubeRadius ?? 0) <= 0 || (feature.majorRadius ?? 0) <= (feature.tubeRadius ?? 0))) {
-    throw new Error(`${feature.name}: el radio mayor debe ser mayor que el radio del tubo.`);
+    throw new Error(`${feature.name}: major radius must be greater than tube radius.`);
   }
   if (feature.primitive === "gear" && ((feature.toothDepth ?? 0) <= 0 || (feature.toothDepth ?? 0) >= feature.width / 2 || (feature.boreRadius ?? 0) >= feature.width / 2 - (feature.toothDepth ?? 0))) {
-    throw new Error(`${feature.name}: la profundidad de diente y el radio del eje no caben en el radio exterior.`);
+    throw new Error(`${feature.name}: tooth depth and bore radius do not fit within the outer radius.`);
   }
   let solid: AnySolid;
   if (feature.primitive === "roundedBox") {
     const cornerRadius = feature.cornerRadius ?? 3;
-    if (cornerRadius <= 0 || cornerRadius >= Math.min(feature.width, feature.depth) / 2) throw new Error(`${feature.name}: el radio debe ser menor que la mitad del ancho y de la profundidad.`);
+    if (cornerRadius <= 0 || cornerRadius >= Math.min(feature.width, feature.depth) / 2) throw new Error(`${feature.name}: radius must be smaller than half the width and depth.`);
     solid = brep.sketchRoundedRectangle(feature.width, feature.depth, cornerRadius).extrude(feature.height) as AnySolid;
   } else if (feature.primitive === "cone") {
     solid = brep.cone(feature.width / 2, feature.topRadius ?? 0, feature.height, { at: [0, 0, 0] });
@@ -272,15 +272,15 @@ function solidFromPrimitive(brep: Brep, feature: PrimitiveFeature): AnySolid {
   } else if (feature.primitive === "sphere") {
     solid = brep.ellipsoid(feature.width / 2, feature.depth / 2, feature.height / 2, { at: [0, 0, 0] });
   } else {
-    throw new Error(`${feature.name}: la forma primitiva no está implementada.`);
+    throw new Error(`${feature.name}: primitive shape is not implemented.`);
   }
   return applyOperationTransform(brep, solid, feature.transform);
 }
 
 async function solidFromImportedStep(brep: Brep, feature: Extract<ParametricDocument["features"][number], { kind: "importedStep" }>): Promise<AnySolid> {
   const imported = await brep.importSTEP(new Blob([feature.stepText]));
-  if (!imported.ok) throw new Error(`${feature.name}: no se pudo reconstruir el B-Rep STEP (${String(imported.error.message ?? imported.error)}).`);
-  if (brep.mesh(imported.value).vertices.length < 9) throw new Error(`${feature.name}: el STEP no contiene geometría sólida.`);
+  if (!imported.ok) throw new Error(`${feature.name}: STEP B-Rep could not be rebuilt (${String(imported.error.message ?? imported.error)}).`);
+  if (brep.mesh(imported.value).vertices.length < 9) throw new Error(`${feature.name}: STEP file does not contain solid geometry.`);
   return imported.value as unknown as AnySolid;
 }
 
@@ -291,7 +291,7 @@ function applyBooleanOperation(
   feature: Pick<ExtrudeFeature | PrimitiveFeature, "name" | "operation">,
 ) {
   if (!current) {
-    if (feature.operation !== "add") throw new Error(`${feature.name}: la primera operación del objeto debe ser Añadir.`);
+    if (feature.operation !== "add") throw new Error(`${feature.name}: the first operation in an object must use Add mode.`);
     return tool;
   }
   if (feature.operation === "add") return refinedBooleanSolid(brep, brep.fuse(current, tool));
@@ -459,7 +459,7 @@ function topologyReferenceSpace(document: ParametricDocument, objectId?: string)
 }
 
 function resolveStoredFace(brep: Brep, document: ParametricDocument, current: AnySolid, stored: ParametricTopologyReference, featureName: string) {
-  if (stored.reference.hint.entityType !== "face") throw new Error(`${featureName}: la referencia no es una cara.`);
+  if (stored.reference.hint.entityType !== "face") throw new Error(`${featureName}: reference is not a face.`);
   const candidates = brep.getFaces(current);
   const hint = stored.reference.hint;
   const space = topologyReferenceSpace(document, stored.objectId);
@@ -480,12 +480,12 @@ function resolveStoredFace(brep: Brep, document: ParametricDocument, current: An
   } else if (hint.topologyId !== undefined) face = candidates.find((candidate) => brep.getHashCode(candidate) === hint.topologyId) as Face | undefined;
   if (face) return face;
   const resolution = brep.resolveRefIn(stored.reference as Parameters<Brep["resolveRefIn"]>[0], current);
-  if (!resolution.ok) throw new Error(`${featureName}: no se pudo recuperar una cara (${resolution.reason}).`);
+  if (!resolution.ok) throw new Error(`${featureName}: face could not be recovered (${resolution.reason}).`);
   return resolution.entity as Face;
 }
 
 function resolveStoredEdge(brep: Brep, document: ParametricDocument, current: AnySolid, stored: ParametricTopologyReference, featureName: string) {
-  if (stored.reference.hint.entityType !== "edge") throw new Error(`${featureName}: la referencia no es una arista.`);
+  if (stored.reference.hint.entityType !== "edge") throw new Error(`${featureName}: reference is not an edge.`);
   const candidates = brep.getEdges(current) as Edge[];
   const hint = stored.reference.hint;
   const space = topologyReferenceSpace(document, stored.objectId);
@@ -502,7 +502,7 @@ function resolveStoredEdge(brep: Brep, document: ParametricDocument, current: An
   } else if (hint.topologyId !== undefined) edge = candidates.find((candidate) => brep.getHashCode(candidate) === hint.topologyId);
   if (edge) return edge;
   const resolution = brep.resolveRefIn(stored.reference as Parameters<Brep["resolveRefIn"]>[0], current);
-  if (!resolution.ok) throw new Error(`${featureName}: no se pudo recuperar una arista (${resolution.reason}).`);
+  if (!resolution.ok) throw new Error(`${featureName}: edge could not be recovered (${resolution.reason}).`);
   return resolution.entity as Edge;
 }
 
@@ -512,7 +512,7 @@ function applyFilletFeature(brep: Brep, document: ParametricDocument, current: A
     const edges: Edge[] = [];
     for (const referenceId of selectionReferenceIds) {
       const stored = document.topologyReferences.find((reference) => reference.id === referenceId);
-      if (!stored) throw new Error(`${feature.name}: la selección ya no existe.`);
+      if (!stored) throw new Error(`${feature.name}: selection no longer exists.`);
       if (stored.reference.hint.entityType === "face") {
         const face = resolveStoredFace(brep, document, current, stored, feature.name);
         edges.push(...brep.getEdges(face) as Edge[]);
@@ -531,7 +531,7 @@ function applyFilletFeature(brep: Brep, document: ParametricDocument, current: A
 
 function applyFaceExtrudeFeature(brep: Brep, document: ParametricDocument, current: AnySolid, feature: Extract<ParametricDocument["features"][number], { kind: "faceExtrude" }>) {
   const stored = document.topologyReferences.find((reference) => reference.id === feature.faceReferenceId);
-  if (!stored || stored.reference.hint.entityType !== "face") throw new Error(`${feature.name}: la cara seleccionada ya no existe.`);
+  if (!stored || stored.reference.hint.entityType !== "face") throw new Error(`${feature.name}: selected face no longer exists.`);
   const face = resolveStoredFace(brep, document, current, stored, feature.name);
   const normal = stored.reference.hint.normal ?? [0, 0, 1];
   const object = document.objects.find((candidate) => candidate.id === feature.objectId);
@@ -556,10 +556,10 @@ function applyFaceExtrudeFeature(brep: Brep, document: ParametricDocument, curre
 function applyShellFeature(brep: Brep, document: ParametricDocument, current: AnySolid, feature: Extract<ParametricDocument["features"][number], { kind: "shell" }>) {
   const faces = feature.faceReferenceIds.map((referenceId) => {
     const stored = document.topologyReferences.find((reference) => reference.id === referenceId);
-    if (!stored || stored.reference.hint.entityType !== "face") throw new Error(`${feature.name}: una cara abierta ya no existe.`);
+    if (!stored || stored.reference.hint.entityType !== "face") throw new Error(`${feature.name}: an open face no longer exists.`);
     return resolveStoredFace(brep, document, current, stored, feature.name);
   });
-  if (faces.length === 0) throw new Error(`${feature.name}: selecciona al menos una cara para abrir.`);
+  if (faces.length === 0) throw new Error(`${feature.name}: select at least one face to open.`);
   return resultValue<AnySolid>(brep, brep.shell(current, faces as Parameters<Brep["shell"]>[1], feature.thickness));
 }
 
@@ -567,18 +567,18 @@ function applyRevolveFeature(brep: Brep, document: ParametricDocument, current: 
   let faces: Face[];
   if (feature.source === "sketch") {
     const sketch = document.features.find((candidate): candidate is SketchFeature => candidate.kind === "sketch" && candidate.id === feature.sketchId);
-    if (!sketch) throw new Error(`${feature.name}: el boceto seleccionado ya no existe.`);
+    if (!sketch) throw new Error(`${feature.name}: selected sketch no longer exists.`);
     faces = facesFromSketch(brep, sketch);
   } else {
     const stored = document.topologyReferences.find((reference) => reference.id === feature.faceReferenceId);
-    if (!stored || stored.reference.hint.entityType !== "face") throw new Error(`${feature.name}: la cara seleccionada ya no existe.`);
+    if (!stored || stored.reference.hint.entityType !== "face") throw new Error(`${feature.name}: selected face no longer exists.`);
     faces = [resolveStoredFace(brep, document, current, stored, feature.name)];
   }
   let axis: [number, number, number] = feature.axis === "x" ? [1, 0, 0] : feature.axis === "y" ? [0, 1, 0] : [0, 0, 1];
   let at: [number, number, number] = [0, 0, 0];
   if (feature.axis === "edge") {
     const axisReference = document.topologyReferences.find((reference) => reference.id === feature.axisReferenceId);
-    if (!axisReference || axisReference.reference.hint.entityType !== "edge" || !axisReference.reference.hint.midpoint || !axisReference.reference.hint.direction) throw new Error(`${feature.name}: el eje seleccionado ya no existe.`);
+    if (!axisReference || axisReference.reference.hint.entityType !== "edge" || !axisReference.reference.hint.midpoint || !axisReference.reference.hint.direction) throw new Error(`${feature.name}: selected axis no longer exists.`);
     resolveStoredEdge(brep, document, current, axisReference, feature.name);
     const space = topologyReferenceSpace(document, axisReference.objectId);
     at = space.point(axisReference.reference.hint.midpoint);
@@ -596,7 +596,7 @@ function applyMirrorFeature(brep: Brep, current: AnySolid, feature: Extract<Para
 
 function applyLinearPatternFeature(brep: Brep, current: AnySolid, feature: Extract<ParametricDocument["features"][number], { kind: "linearPattern" }>, sourceState?: OperationSolidState) {
   let result = current;
-  if (feature.source === "feature" && !sourceState) throw new Error(`${feature.name}: la operación de origen ya no está disponible.`);
+  if (feature.source === "feature" && !sourceState) throw new Error(`${feature.name}: source operation is no longer available.`);
   const added = feature.source === "body"
     ? current
     : sourceState!.added !== undefined
@@ -622,7 +622,7 @@ function applyLinearPatternFeature(brep: Brep, current: AnySolid, feature: Extra
 
 function applyPolarPatternFeature(brep: Brep, current: AnySolid, feature: Extract<ParametricDocument["features"][number], { kind: "polarPattern" }>, sourceState?: OperationSolidState) {
   let result = current;
-  if (feature.source === "feature" && !sourceState) throw new Error(`${feature.name}: la operación de origen ya no está disponible.`);
+  if (feature.source === "feature" && !sourceState) throw new Error(`${feature.name}: source operation is no longer available.`);
   const added = feature.source === "body"
     ? current
     : sourceState!.added !== undefined
@@ -730,7 +730,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
       }
       if (feature.kind === "importedStep") {
         const objectId = feature.objectId ?? "legacy";
-        if (solids.has(objectId)) throw new Error(`${feature.name}: el STEP importado debe ser la primera operación del objeto.`);
+        if (solids.has(objectId)) throw new Error(`${feature.name}: imported STEP must be the first operation in the object.`);
         lastObjectId = objectId;
         const result = await solidFromImportedStep(brep, feature);
         solids.set(objectId, result);
@@ -750,8 +750,8 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
       }
       if (feature.kind === "extrude" || feature.kind === "primitive") {
         const sketch = feature.kind === "extrude" ? sketches.get(feature.sketchId) : null;
-        if (feature.kind === "extrude" && !sketch) throw new Error(`${feature.name}: no se encuentra el boceto de origen.`);
-        if (feature.kind === "extrude" && feature.distance <= 0) throw new Error(`${feature.name}: la distancia debe ser mayor que cero.`);
+        if (feature.kind === "extrude" && !sketch) throw new Error(`${feature.name}: source sketch could not be found.`);
+        if (feature.kind === "extrude" && feature.distance <= 0) throw new Error(`${feature.name}: distance must be greater than zero.`);
         const objectId = feature.objectId ?? "legacy";
         lastObjectId = objectId;
         const current = solids.get(objectId) ?? null;
@@ -779,11 +779,11 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
       }
       const objectId = feature.objectId ?? lastObjectId;
       let current = solids.get(objectId) ?? null;
-      if (!current) throw new Error(`${feature.name}: primero hace falta crear un sólido.`);
+      if (!current) throw new Error(`${feature.name}: create a solid first.`);
       const previousSolid = current;
       const selectionMesh = feature.id === contextFeatureId ? meshShape(brep, applyObjectTransform(brep, current, objects.get(objectId))) : undefined;
       if (feature.kind === "hole") {
-        if (feature.diameter <= 0) throw new Error(`${feature.name}: el diámetro debe ser mayor que cero.`);
+        if (feature.diameter <= 0) throw new Error(`${feature.name}: diameter must be greater than zero.`);
         const bounds = brep.getBounds(current);
         const baseZ = feature.termination === "through-all" ? bounds.zMin - 1 : bounds.zMax - feature.depth;
         const height = feature.termination === "through-all" ? bounds.zMax - bounds.zMin + 2 : feature.depth + 1;
@@ -796,22 +796,22 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         continue;
       }
       if (feature.kind === "fillet") {
-        if (feature.radius <= 0) throw new Error(`${feature.name}: el radio debe ser mayor que cero.`);
+        if (feature.radius <= 0) throw new Error(`${feature.name}: radius must be greater than zero.`);
         current = applyFilletFeature(brep, document, current, feature);
         solids.set(objectId, current);
         completedFeatureIds.push(feature.id);
       } else if (feature.kind === "faceExtrude") {
-        if (feature.distance <= 0) throw new Error(`${feature.name}: la longitud debe ser mayor que cero.`);
+        if (feature.distance <= 0) throw new Error(`${feature.name}: length must be greater than zero.`);
         current = applyFaceExtrudeFeature(brep, document, current, feature);
         solids.set(objectId, current);
         completedFeatureIds.push(feature.id);
       } else if (feature.kind === "shell") {
-        if (feature.thickness <= 0) throw new Error(`${feature.name}: el espesor debe ser mayor que cero.`);
+        if (feature.thickness <= 0) throw new Error(`${feature.name}: thickness must be greater than zero.`);
         current = applyShellFeature(brep, document, current, feature);
         solids.set(objectId, current);
         completedFeatureIds.push(feature.id);
       } else if (feature.kind === "revolve") {
-        if (Math.abs(feature.angle) < 1 || Math.abs(feature.angle) > 360) throw new Error(`${feature.name}: el ángulo debe estar entre -360 y 360 grados y no puede ser cero.`);
+        if (Math.abs(feature.angle) < 1 || Math.abs(feature.angle) > 360) throw new Error(`${feature.name}: angle must be between -360 and 360 degrees and cannot be zero.`);
         current = applyRevolveFeature(brep, document, current, feature);
         solids.set(objectId, current);
         completedFeatureIds.push(feature.id);
@@ -820,15 +820,15 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         solids.set(objectId, current);
         completedFeatureIds.push(feature.id);
       } else if (feature.kind === "linearPattern") {
-        if (feature.count < 2 || feature.count > 50) throw new Error(`${feature.name}: la cantidad debe estar entre 2 y 50.`);
-        if (Math.abs(feature.spacing) < 0.01) throw new Error(`${feature.name}: la separación no puede ser cero.`);
+        if (feature.count < 2 || feature.count > 50) throw new Error(`${feature.name}: count must be between 2 and 50.`);
+        if (Math.abs(feature.spacing) < 0.01) throw new Error(`${feature.name}: spacing cannot be zero.`);
         const sourceState = feature.source === "feature" && feature.sourceFeatureId ? operationStates.get(feature.sourceFeatureId) : undefined;
         current = applyLinearPatternFeature(brep, current, feature, sourceState);
         solids.set(objectId, current);
         completedFeatureIds.push(feature.id);
       } else if (feature.kind === "polarPattern") {
-        if (feature.count < 2 || feature.count > 50) throw new Error(`${feature.name}: la cantidad debe estar entre 2 y 50.`);
-        if (Math.abs(feature.angle) < 0.1 || Math.abs(feature.angle) > 360) throw new Error(`${feature.name}: el ángulo debe estar entre -360 y 360 grados y no puede ser cero.`);
+        if (feature.count < 2 || feature.count > 50) throw new Error(`${feature.name}: count must be between 2 and 50.`);
+        if (Math.abs(feature.angle) < 0.1 || Math.abs(feature.angle) > 360) throw new Error(`${feature.name}: angle must be between -360 and 360 degrees and cannot be zero.`);
         const sourceState = feature.source === "feature" && feature.sourceFeatureId ? operationStates.get(feature.sourceFeatureId) : undefined;
         current = applyPolarPatternFeature(brep, current, feature, sourceState);
         solids.set(objectId, current);
@@ -837,8 +837,8 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         const sourceSolid = solids.get(feature.sourceObjectId);
         const sourceObject = objects.get(feature.sourceObjectId);
         const targetObject = objects.get(objectId);
-        if (!sourceSolid || !sourceObject || !targetObject) throw new Error(`${feature.name}: el objeto de referencia ya no está disponible.`);
-        if (feature.sourceObjectId === objectId) throw new Error(`${feature.name}: un objeto no puede combinarse consigo mismo.`);
+        if (!sourceSolid || !sourceObject || !targetObject) throw new Error(`${feature.name}: reference object is no longer available.`);
+        if (feature.sourceObjectId === objectId) throw new Error(`${feature.name}: an object cannot be combined with itself.`);
         const tool = solidInTargetObjectSpace(brep, sourceSolid, sourceObject, targetObject);
         current = applyObjectBooleanFeature(brep, current, tool, feature);
         solids.set(objectId, current);
@@ -982,7 +982,7 @@ export async function exportParametricStep(document: ParametricDocument): Promis
     }
     if (feature.kind === "importedStep") {
       const objectId = feature.objectId ?? "legacy";
-      if (solids.has(objectId)) throw new Error(`${feature.name}: el STEP importado debe ser la primera operación del objeto.`);
+      if (solids.has(objectId)) throw new Error(`${feature.name}: imported STEP must be the first operation in the object.`);
       lastObjectId = objectId;
       const result = await solidFromImportedStep(brep, feature);
       solids.set(objectId, result);
@@ -991,7 +991,7 @@ export async function exportParametricStep(document: ParametricDocument): Promis
     }
     if (feature.kind === "extrude" || feature.kind === "primitive") {
       const sketch = feature.kind === "extrude" ? sketches.get(feature.sketchId) : null;
-      if (feature.kind === "extrude" && !sketch) throw new Error("El historial contiene una referencia de boceto rota.");
+      if (feature.kind === "extrude" && !sketch) throw new Error("The history contains a broken sketch reference.");
       const objectId = feature.objectId ?? "legacy";
       lastObjectId = objectId;
       const current = solids.get(objectId) ?? null;
@@ -1027,13 +1027,13 @@ export async function exportParametricStep(document: ParametricDocument): Promis
       const sourceSolid = solids.get(feature.sourceObjectId);
       const sourceObject = objects.get(feature.sourceObjectId);
       const targetObject = objects.get(objectId);
-      if (!sourceSolid || !sourceObject || !targetObject) throw new Error(`${feature.name}: el objeto de referencia ya no está disponible.`);
+      if (!sourceSolid || !sourceObject || !targetObject) throw new Error(`${feature.name}: reference object is no longer available.`);
       current = applyObjectBooleanFeature(brep, current, solidInTargetObjectSpace(brep, sourceSolid, sourceObject, targetObject), feature);
     }
     solids.set(objectId, current);
     if (!operationStates.has(feature.id)) operationStates.set(feature.id, { before: previousSolid, after: current });
   }
   const result = combinedObjectShape(brep, worldObjectSolids(brep, solids, objects));
-  if (!result) throw new Error("No hay ningún sólido para exportar.");
+  if (!result) throw new Error("There is no solid to export.");
   return brep.unwrap(brep.exportSTEP(result));
 }

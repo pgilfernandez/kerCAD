@@ -124,7 +124,7 @@ export function parametricTextProfile(settings: ParametricTextSettings): SketchP
     for (const loop of glyph.loops) addCurveLoop(profile, loop, cursor - minX, size);
     cursor += Math.max(size * 0.2, maxX - minX) + Math.max(0, normalized.spacing);
   }
-  if (!profile.segments.length) throw new Error("Escribe al menos un carácter visible.");
+  if (!profile.segments.length) throw new Error("Enter at least one visible character.");
   const minX = Math.min(...profile.points.map((point) => point.x));
   const maxX = Math.max(...profile.points.map((point) => point.x));
   const minZ = Math.min(...profile.points.map((point) => point.z));

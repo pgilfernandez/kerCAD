@@ -15,7 +15,7 @@ export function facesFromPlanarProfile(brep: Brep, loops: readonly PlanarBrepLoo
 }
 
 export function extrudePlanarProfile(brep: Brep, faces: readonly Face[], distance: number, symmetric: boolean): BrepSolid {
-  if (!Number.isFinite(distance) || distance <= 0) throw new Error("La distancia de extrusión debe ser positiva.");
+  if (!Number.isFinite(distance) || distance <= 0) throw new Error("Extrusion distance must be positive.");
   const solids = faces.map((sourceFace) => {
     const face = symmetric ? brep.translate(sourceFace, [0, 0, -distance / 2]) as Face : sourceFace;
     return brep.unwrap(brep.extrude(face as Parameters<Brep["extrude"]>[0], distance)) as BrepSolid;
@@ -24,7 +24,7 @@ export function extrudePlanarProfile(brep: Brep, faces: readonly Face[], distanc
 }
 
 export function combineProfileSolids(brep: Brep, solids: readonly BrepSolid[]): BrepSolid {
-  if (!solids.length) throw new Error("El perfil no contiene ninguna región rellena.");
+  if (!solids.length) throw new Error("The profile does not contain a filled region.");
   if (solids.length === 1) return solids[0];
   // Text and imported SVG profiles commonly contain many disconnected regions.
   // A single multi-body boolean avoids simplifying the accumulated result after

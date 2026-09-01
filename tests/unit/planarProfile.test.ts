@@ -23,11 +23,11 @@ describe("shared planar profiles", () => {
   });
 
   it("rejects crossing contours before creating CAD geometry", () => {
-    expect(() => classifyPlanarProfileLoops([square(5), square(5, 4)], "SVG")).toThrow("se cruzan o se tocan");
+    expect(() => classifyPlanarProfileLoops([square(5), square(5, 4)], "SVG")).toThrow("intersect or touch");
   });
 
   it("rejects empty and zero-area profiles with a useful source label", () => {
-    expect(() => classifyPlanarProfileLoops([], "Texto")).toThrow("Texto no contiene ningún contorno");
-    expect(() => classifyPlanarProfileLoops([{ polygon: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }], payload: null }], "Scribble")).toThrow("sin área");
+    expect(() => classifyPlanarProfileLoops([], "Text")).toThrow("Text does not contain a closed contour");
+    expect(() => classifyPlanarProfileLoops([{ polygon: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }], payload: null }], "Scribble")).toThrow("no area");
   });
 });

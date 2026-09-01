@@ -161,7 +161,7 @@ function intervalAt(parameters: number[], clicked: number) {
 function trimSegment(profile: SketchProfile, segment: SketchSegment, click: PlanePoint, createId: (prefix: string) => string): TrimResult {
   const start = profile.points.find((point) => point.id === segment.startId);
   const end = profile.points.find((point) => point.id === segment.endId);
-  if (!start || !end) return { profile, trimmed: false, message: "La geometría seleccionada ya no existe." };
+  if (!start || !end) return { profile, trimmed: false, message: "The selected geometry no longer exists." };
   const polylines = otherPolylines(profile, { kind: "segment", id: segment.id });
   let clickedParameter = 0;
   const intersections: number[] = [];
@@ -193,7 +193,7 @@ function trimSegment(profile: SketchProfile, segment: SketchSegment, click: Plan
       }
     }
   } else if (segment.kind === "bezier" || segment.kind === "smooth") {
-    if (!start.handleOut || !end.handleIn) return { profile, trimmed: false, message: "La curva no dispone de tiradores válidos para recortarse." };
+    if (!start.handleOut || !end.handleIn) return { profile, trimmed: false, message: "The curve does not have valid handles for trimming." };
     const samples = Array.from({ length: 129 }, (_, index) => cubicPoint(start, start.handleOut!, end.handleIn!, end, index / 128));
     let closestDistance = Number.POSITIVE_INFINITY;
     for (let index = 1; index < samples.length; index += 1) {
@@ -224,7 +224,7 @@ function trimSegment(profile: SketchProfile, segment: SketchSegment, click: Plan
   }
 
   const interval = intervalAt(intersections, clickedParameter);
-  if (!interval) return { profile, trimmed: false, message: "Esta geometría necesita al menos una intersección interior para poder recortarse." };
+  if (!interval) return { profile, trimmed: false, message: "This geometry needs at least one internal intersection before it can be trimmed." };
   const next = cloneProfile(profile);
   next.segments = next.segments.filter((candidate) => candidate.id !== segment.id);
   next.constraints = (next.constraints ?? []).filter((constraint) => !sketchConstraintUsesSegment(constraint, segment.id));
@@ -257,7 +257,7 @@ function trimCircle(profile: SketchProfile, circle: SketchCircle, click: PlanePo
     for (const point of circleLineIntersections(circle, circle.radius, polyline[index - 1], polyline[index])) parameters.push(positiveAngle(Math.atan2(point.z - circle.z, point.x - circle.x)) / TAU);
   }
   const boundaries = uniqueParameters(parameters).filter((value) => value >= 0 && value < 1);
-  if (boundaries.length < 2) return { profile, trimmed: false, message: "El círculo necesita dos intersecciones diferentes para poder recortarse." };
+  if (boundaries.length < 2) return { profile, trimmed: false, message: "The circle needs two distinct intersections before it can be trimmed." };
   const clicked = positiveAngle(Math.atan2(click.z - circle.z, click.x - circle.x)) / TAU;
   let intervalStart = boundaries[boundaries.length - 1];
   let intervalEnd = boundaries[0] + 1;
@@ -284,8 +284,8 @@ function trimCircle(profile: SketchProfile, circle: SketchCircle, click: PlanePo
 export function trimSketchGeometry(profile: SketchProfile, target: TrimTarget, click: PlanePoint, createId: (prefix: string) => string): TrimResult {
   if (target.kind === "segment") {
     const segment = profile.segments.find((candidate) => candidate.id === target.id);
-    return segment ? trimSegment(profile, segment, click, createId) : { profile, trimmed: false, message: "La geometría seleccionada ya no existe." };
+    return segment ? trimSegment(profile, segment, click, createId) : { profile, trimmed: false, message: "The selected geometry no longer exists." };
   }
   const circle = profile.circles?.find((candidate) => candidate.id === target.id);
-  return circle ? trimCircle(profile, circle, click, createId) : { profile, trimmed: false, message: "El círculo seleccionado ya no existe." };
+  return circle ? trimCircle(profile, circle, click, createId) : { profile, trimmed: false, message: "The selected circle no longer exists." };
 }

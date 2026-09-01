@@ -14,12 +14,12 @@ function explicitDependencyId(
   objectIds: Set<string>,
 ) {
   if (reference.type === "feature") {
-    if (!featureIds.has(reference.id)) throw new ParametricDependencyError(`La operación referenciada ${reference.id} no existe.`);
+    if (!featureIds.has(reference.id)) throw new ParametricDependencyError(`Referenced operation ${reference.id} does not exist.`);
     return reference.id;
   }
-  if (!objectIds.has(reference.id)) throw new ParametricDependencyError(`El objeto referenciado ${reference.id} no existe.`);
+  if (!objectIds.has(reference.id)) throw new ParametricDependencyError(`Referenced object ${reference.id} does not exist.`);
   const dependency = lastOperationByObject.get(reference.id);
-  if (!dependency) throw new ParametricDependencyError(`El objeto referenciado ${reference.id} todavía no tiene operaciones.`);
+  if (!dependency) throw new ParametricDependencyError(`Referenced object ${reference.id} does not have any operations yet.`);
   return dependency;
 }
 
@@ -35,7 +35,7 @@ export function parametricFeatureDependencies(document: ParametricDocument) {
   for (const feature of document.features) {
     const inputs = new Set<string>();
     if (feature.kind === "extrude") {
-      if (!featureIds.has(feature.sketchId)) throw new ParametricDependencyError(`${feature.name}: no se encuentra el boceto de origen.`);
+      if (!featureIds.has(feature.sketchId)) throw new ParametricDependencyError(`${feature.name}: source sketch could not be found.`);
       inputs.add(feature.sketchId);
     }
     if (feature.objectId && feature.kind !== "sketch") {
@@ -46,7 +46,7 @@ export function parametricFeatureDependencies(document: ParametricDocument) {
     for (const reference of feature.dependencies ?? []) {
       inputs.add(explicitDependencyId(reference, featureIds, lastOperationByObject, objectIds));
     }
-    if (inputs.has(feature.id)) throw new ParametricDependencyError(`${feature.name} no puede depender de sí misma.`);
+    if (inputs.has(feature.id)) throw new ParametricDependencyError(`${feature.name} cannot depend on itself.`);
     dependencies.set(feature.id, inputs);
   }
   return dependencies;
@@ -78,7 +78,7 @@ export function topologicallySortedParametricFeatures(document: ParametricDocume
   }
   if (sorted.length !== document.features.length) {
     const cyclic = document.features.filter((feature) => (pendingCount.get(feature.id) ?? 0) > 0).map((feature) => feature.name);
-    throw new ParametricDependencyError(`Se ha detectado una referencia cíclica: ${cyclic.join(" → ")}.`);
+    throw new ParametricDependencyError(`A cyclic reference was detected: ${cyclic.join(" → ")}.`);
   }
   return sorted;
 }

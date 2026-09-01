@@ -199,7 +199,7 @@ export function validateDrawnSketchProfile(profile: SketchProfile): SketchProfil
     const start = pointById.get(segment.startId);
     const end = pointById.get(segment.endId);
     if (!start || !end || segment.startId === segment.endId || Math.hypot((end?.x ?? 0) - (start?.x ?? 0), (end?.z ?? 0) - (start?.z ?? 0)) <= epsilon) {
-      diagnostics.push({ code: "degenerate", severity: "error", message: "Hay un segmento sin longitud o con referencias inválidas.", segmentIds: [segment.id], pointIds: [segment.startId, segment.endId] });
+      diagnostics.push({ code: "degenerate", severity: "error", message: "A segment has zero length or invalid references.", segmentIds: [segment.id], pointIds: [segment.startId, segment.endId] });
       continue;
     }
     degree.set(segment.startId, (degree.get(segment.startId) ?? 0) + 1);
@@ -213,14 +213,14 @@ export function validateDrawnSketchProfile(profile: SketchProfile): SketchProfil
   const openPointIds = [...degree].filter(([, count]) => count === 1).map(([id]) => id);
   const branchPointIds = [...degree].filter(([, count]) => count > 2).map(([id]) => id);
   if (openPointIds.length) diagnostics.push({ code: "open", severity: "error", message: `El perfil tiene ${openPointIds.length} extremo${openPointIds.length === 1 ? "" : "s"} abierto${openPointIds.length === 1 ? "" : "s"}.`, pointIds: openPointIds });
-  if (branchPointIds.length) diagnostics.push({ code: "branch", severity: "error", message: "El perfil contiene bifurcaciones que no forman contornos válidos.", pointIds: branchPointIds });
+  if (branchPointIds.length) diagnostics.push({ code: "branch", severity: "error", message: "The profile contains branches that do not form valid contours.", pointIds: branchPointIds });
 
   const duplicateCircles = new Map<string, string>();
   for (const circle of circles) {
-    if (!Number.isFinite(circle.radius) || circle.radius <= epsilon) diagnostics.push({ code: "degenerate", severity: "error", message: "Hay un círculo con radio nulo.", circleIds: [circle.id] });
+    if (!Number.isFinite(circle.radius) || circle.radius <= epsilon) diagnostics.push({ code: "degenerate", severity: "error", message: "A circle has a zero radius.", circleIds: [circle.id] });
     const key = `${Math.round(circle.x / epsilon)}:${Math.round(circle.z / epsilon)}:${Math.round(circle.radius / epsilon)}`;
     const duplicate = duplicateCircles.get(key);
-    if (duplicate) diagnostics.push({ code: "duplicate", severity: "error", message: "Hay círculos duplicados superpuestos.", circleIds: [duplicate, circle.id] });
+    if (duplicate) diagnostics.push({ code: "duplicate", severity: "error", message: "Duplicate circles overlap.", circleIds: [duplicate, circle.id] });
     else duplicateCircles.set(key, circle.id);
   }
 
@@ -252,7 +252,7 @@ export function validateDrawnSketchProfile(profile: SketchProfile): SketchProfil
         const pairKey = [first.kind + first.id, second.kind + second.id].sort().join(":");
         if (reportedPairs.has(pairKey)) continue;
         reportedPairs.add(pairKey);
-        diagnostics.push({ code: "intersection", severity: "error", message: "Dos contornos se cruzan o se tocan de forma no válida.", segmentIds: [first, second].filter((entity) => entity.kind === "segment").map((entity) => entity.id), circleIds: [first, second].filter((entity) => entity.kind === "circle").map((entity) => entity.id) });
+        diagnostics.push({ code: "intersection", severity: "error", message: "Two contours intersect or touch in an invalid way.", segmentIds: [first, second].filter((entity) => entity.kind === "segment").map((entity) => entity.id), circleIds: [first, second].filter((entity) => entity.kind === "circle").map((entity) => entity.id) });
       }
     }
   }

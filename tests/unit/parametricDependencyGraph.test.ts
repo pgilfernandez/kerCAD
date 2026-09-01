@@ -16,7 +16,7 @@ describe("parametric dependency graph", () => {
     const objectId = document.objects[0].id;
     addPrimitiveToSelection(document, objectId, "cylinder");
     const operations = topologicallySortedParametricFeatures(document).filter((feature) => feature.objectId === objectId && feature.kind !== "sketch");
-    expect(operations.map((feature) => feature.name)).toEqual(["Caja", "Cilindro"]);
+    expect(operations.map((feature) => feature.name)).toEqual(["Box", "Cylinder"]);
   });
 
   it("orders cross-object references before their consumers", () => {
@@ -42,7 +42,7 @@ describe("parametric dependency graph", () => {
     expect(() => topologicallySortedParametricFeatures(document)).toThrow(ParametricDependencyError);
 
     secondOperation.dependencies = [{ type: "object", id: "missing-object" }];
-    expect(() => topologicallySortedParametricFeatures(document)).toThrow("no existe");
+    expect(() => topologicallySortedParametricFeatures(document)).toThrow("does not exist");
   });
 
   it("remaps internal references when an object is duplicated", () => {
