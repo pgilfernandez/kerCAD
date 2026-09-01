@@ -328,7 +328,11 @@ export function SketchForgeParametricEditor() {
       const popup = target?.closest<HTMLElement>("[data-educad-popup]")?.dataset.educadPopup ?? null;
       if (popup !== "shapes") setShapesOpen(false);
       if (popup !== "align") setAlignOpen(false);
-      if (popup !== "grid") setWorkplaneOpen(false);
+      if (popup !== "grid") {
+        const activeElement = window.document.activeElement;
+        if (activeElement instanceof HTMLInputElement && activeElement.closest('[data-educad-popup="grid"]')) activeElement.blur();
+        setWorkplaneOpen(false);
+      }
       if (popup !== "export") setExportOpen(false);
       if (popup !== "settings") setSettingsOpen(false);
     };

@@ -2619,6 +2619,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         const length = Math.min(gridWidth, gridDepth) * 0.09;
         const inset = Math.min(gridWidth, gridDepth) * 0.025;
         const head = length * 0.18;
+        const headOffset = head * 0.12;
         const originX = -halfWidth + inset;
         const originZ = halfDepth - inset;
         const addAxisArrow = (color: string, shaft: number[], headPositions: number[]) => {
@@ -2641,20 +2642,20 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         addAxisArrow("#d83b3b", [
           originX, 0, originZ, originX + length, 0, originZ,
         ], [
-          originX + length, 0, originZ, originX + length - head, 0, originZ - head * 0.55,
-          originX + length - head, 0, originZ + head * 0.55,
+          originX + length + headOffset, 0, originZ, originX + length - head + headOffset, 0, originZ - head * 0.44,
+          originX + length - head + headOffset, 0, originZ + head * 0.44,
         ]);
         addAxisArrow("#319653", [
           originX, 0, originZ, originX, 0, originZ - length,
         ], [
-          originX, 0, originZ - length, originX - head * 0.55, 0, originZ - length + head,
-          originX + head * 0.55, 0, originZ - length + head,
+          originX, 0, originZ - length - headOffset, originX - head * 0.44, 0, originZ - length + head - headOffset,
+          originX + head * 0.44, 0, originZ - length + head - headOffset,
         ]);
         addAxisArrow("#3279d6", [
           originX, 0, originZ, originX, length, originZ,
         ], [
-          originX, length, originZ, originX - head * 0.55, length - head, originZ,
-          originX + head * 0.55, length - head, originZ,
+          originX, length + headOffset, originZ, originX - head * 0.44, length - head + headOffset, originZ,
+          originX + head * 0.44, length - head + headOffset, originZ,
         ]);
       }
     };
