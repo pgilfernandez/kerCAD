@@ -448,14 +448,22 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   if (positionVisible || rotationEditable) {
     const center = new THREE.Mesh(
       new THREE.SphereGeometry(0.036, 10, 8),
-      new THREE.MeshBasicMaterial({ color: editable ? 0x8a45b8 : 0xffffff, depthTest: false, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ color: editable ? 0x8a45b8 : 0xffffff, depthTest: false, depthWrite: false, transparent: true, opacity: 1 }),
     );
+    center.userData.originCenter = true;
     if (positionVisible) center.userData.originAxis = "xy";
     if (positionVisible && !editable) {
       center.userData.snapDragHandle = true;
       center.userData.handleGroup = "snap:center";
       center.userData.handleColor = 0xffffff;
       center.userData.handleHoverColor = 0xffd84a;
+      const centerTarget = new THREE.Mesh(
+        new THREE.SphereGeometry(0.09, 10, 8),
+        new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthTest: false, depthWrite: false }),
+      );
+      centerTarget.userData.snapDragHandle = true;
+      centerTarget.userData.handleGroup = "snap:center";
+      marker.add(centerTarget);
     }
     marker.add(center);
   }
@@ -466,7 +474,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
       material.depthTest = false;
       material.depthWrite = false;
     }
-    child.renderOrder = 30;
+    child.renderOrder = child.userData.originCenter ? 32 : 30;
   });
   return marker;
 }
@@ -1459,7 +1467,6 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     };
     const snapTargetAtPointer = (event: PointerEvent): THREE.Vector3 | null => {
       const bounds = renderer.domElement.getBoundingClientRect();
-      const selectedObjectIds = new Set(selectedObjectIdsRef.current);
       const pointerX = event.clientX - bounds.left;
       const pointerY = event.clientY - bounds.top;
       let closestPoint: THREE.Vector3 | null = null;
@@ -1471,13 +1478,13 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         const screenX = (projected.x + 1) * bounds.width / 2;
         const screenY = (1 - projected.y) * bounds.height / 2;
         const distance = Math.hypot(screenX - pointerX, screenY - pointerY);
-        if (distance <= 20 && distance < closestDistance) {
+        if (distance <= 28 && distance < closestDistance) {
           closestPoint = point.clone();
           closestDistance = distance;
         }
       };
-      for (const [objectId, cached] of objectRenderCacheRef.current) {
-        if (selectedObjectIds.has(objectId) || !cached.body.visible || !cached.edges.visible) continue;
+      for (const cached of objectRenderCacheRef.current.values()) {
+        if (!cached.body.visible && !cached.edges.visible && !cached.wireframeEdges.visible) continue;
         const positions = cached.edges.geometry.getAttribute("position");
         if (!positions) continue;
         const groups = cached.edges.geometry.userData.edgeGroups as ViewportEdgeGroup[] | undefined;
