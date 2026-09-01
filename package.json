@@ -19,6 +19,7 @@
     "test": "vitest run --config tests/vitest.config.ts",
     "test:watch": "vitest --config tests/vitest.config.ts",
     "test:e2e": "vitest run --config tests/vitest.e2e.config.ts",
+    "test:browser": "playwright test",
     "perf": "vitest run --config tests/vitest.perf.config.ts --reporter verbose",
     "perf:parametric": "vitest run --config tests/vitest.perf.config.ts tests/perf/parametric-classroom.perf.ts --reporter verbose",
     "ci": "npm run typecheck && npm run test",
@@ -48,6 +49,7 @@
     "three-mesh-bvh": "^0.9.13"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/node": "^22.15.18",
     "@types/react": "^19.1.4",
     "@types/react-dom": "^19.1.5",

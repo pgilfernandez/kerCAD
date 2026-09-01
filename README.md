@@ -76,8 +76,11 @@ Verificación:
 ```bash
 npm run typecheck
 npm run test
+npm run test:browser
 npm run build
 ```
+
+La matriz automatizada y las comprobaciones manuales recomendadas para Chrome/Edge, Android, Safari/iPadOS y Firefox se describen en [Browser and device compatibility](docs/browser-compatibility.md).
 
 El núcleo OpenCascade pesa aproximadamente 22 MB y se carga de forma diferida la primera vez que se reconstruye una pieza. Después queda reutilizado durante la sesión.
 

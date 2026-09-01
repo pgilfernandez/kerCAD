@@ -30,3 +30,9 @@ jobs:
 
       - name: Parametric interaction performance budgets
         run: npm run perf:parametric
+
+      - name: Install browser smoke-test runtime
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser and device smoke matrix
+        run: npm run test:browser

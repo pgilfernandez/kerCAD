@@ -8229,6 +8229,10 @@ circle.sketch-preview-line {
 }
 
 @media (max-width: 980px) {
+  .educad-reference-shell {
+    min-width: 320px;
+  }
+
   .toolbar-mode-content.geometry,
   .toolbar-mode-content.sketch {
     overflow-x: auto;
