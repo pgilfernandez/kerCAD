@@ -165,7 +165,7 @@ export class ParametricBuildWorkerClient {
     if (this.worker) return this.worker;
     const worker = this.createWorker();
     worker.onmessage = (event) => this.handleMessage(event.data);
-    worker.onerror = (event) => this.failActive(event.message || "El worker CAD ha fallado.");
+    worker.onerror = (event) => this.failActive(event.message || "The CAD worker failed.");
     worker.onmessageerror = () => this.failActive("The CAD worker returned invalid data.");
     this.worker = worker;
     return worker;

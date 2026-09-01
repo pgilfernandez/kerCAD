@@ -616,15 +616,49 @@ export function SketchForgeParametricEditor() {
     if (!editingFeatureId) return;
     const target = document.features.find((feature) => feature.id === editingFeatureId);
     if (!target?.objectId) return;
-    const preview = cloneDocument(document);
-    const operations = preview.features.filter((feature) => feature.objectId === target.objectId && feature.kind !== "sketch");
+    const operations = document.features.filter((feature) => feature.objectId === target.objectId && feature.kind !== "sketch");
     const targetIndex = operations.findIndex((feature) => feature.id === editingFeatureId);
-    for (const feature of operations.slice(Math.max(0, targetIndex))) feature.suppressed = true;
+    const previousFeature = targetIndex > 0 ? operations[targetIndex - 1] : null;
+    if (!previousFeature) return;
     let active = true;
     setTopologySelectionBusy(true);
-    topologySelectionWorkerRef.current?.buildModel(preview).then((result) => { if (active) { setTopologySelectionBuild(result); setTopologySelectionBusy(false); } }).catch(() => { if (active) { setTopologySelectionBuild(null); setTopologySelectionBusy(false); } });
+    topologySelectionWorkerRef.current?.buildContext(document, previousFeature.id).then((context) => {
+      if (!active) return;
+      if (!context) {
+        setTopologySelectionBuild(null);
+        setTopologySelectionBusy(false);
+        return;
+      }
+      const object = document.objects.find((candidate) => candidate.id === target.objectId);
+      const currentRecord = build.objectRecords.find((record) => record.objectId === target.objectId);
+      if (!object) {
+        setTopologySelectionBuild(null);
+        setTopologySelectionBusy(false);
+        return;
+      }
+      const previousRecord: ParametricObjectRenderRecord = {
+        objectId: object.id,
+        renderId: currentRecord?.renderId ?? `object:${object.id}`,
+        geometryFingerprint: `${geometryFingerprint}:before:${editingFeatureId}`,
+        color: object.color,
+        worldTransform: object.transform,
+        mesh: context.mesh,
+      };
+      const objectRecords = currentRecord
+        ? build.objectRecords.map((record) => record.objectId === object.id ? previousRecord : record)
+        : [...build.objectRecords, previousRecord];
+      setTopologySelectionBuild({
+        mesh: null,
+        objectRecords,
+        operationContext: null,
+        completedFeatureIds: [],
+        failedFeatureId: null,
+        warning: null,
+      });
+      setTopologySelectionBusy(false);
+    }).catch(() => { if (active) { setTopologySelectionBuild(null); setTopologySelectionBusy(false); } });
     return () => { active = false; topologySelectionWorkerRef.current?.cancel(); setTopologySelectionBusy(false); };
-  }, [document, editingEdgeTreatmentId, editingFaceExtrudeId, editingRevolveId, editingShellId]);
+  }, [build.objectRecords, document, editingEdgeTreatmentId, editingFaceExtrudeId, editingRevolveId, editingShellId, geometryFingerprint]);
 
   useEffect(() => {
     const counter = ++buildCounter.current;
