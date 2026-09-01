@@ -241,6 +241,7 @@ export type ParametricDocument = {
     width: number;
     depth: number;
     gridStep: number;
+    snapSpacing: number;
     snapToGrid: boolean;
     gridVisible: boolean;
     activeSizePercent: number;

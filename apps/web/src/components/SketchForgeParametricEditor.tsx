@@ -823,7 +823,7 @@ export function SketchForgeParametricEditor() {
       edges: transformPositions(mesh.edges),
     };
   }, [build.mesh, document.features, document.objects, document.workplane, sketchSession?.featureId, sketchSession?.objectId]);
-  const snapAmount = document.workplane.snapToGrid ? document.workplane.gridStep : 0.01;
+  const snapAmount = document.workplane.snapToGrid ? document.workplane.snapSpacing : 0.01;
   const viewportOverlayRightOffset = sketchSession ? 12 : modelSidebarMode === "normal" ? 302 : modelSidebarMode === "simplified" ? 80 : 12;
   const backgroundProcessLabel = exporting
     ? t("status.exportingStep")
@@ -1730,11 +1730,11 @@ export function SketchForgeParametricEditor() {
     };
   }, [document, modelSelection, pendingFaceExtrude, selectedTopologyFaces]);
   const hasActiveWorkplane = !parametricWorkplaneIsGlobal(document.workplane);
-  const updateGridSettings = (patch: Partial<Pick<ParametricDocument["workplane"], "width" | "depth" | "gridStep" | "gridVisible" | "activeSizePercent">>) => {
+  const updateGridSettings = (patch: Partial<Pick<ParametricDocument["workplane"], "width" | "depth" | "gridStep" | "snapSpacing" | "gridVisible" | "activeSizePercent">>) => {
     setWorkplaneDraft((current) => ({ ...current, ...patch }));
     mutate((draft) => { Object.assign(draft.workplane, patch); });
   };
-  const commitGridNumber = (event: ReactFocusEvent<HTMLInputElement>, key: "width" | "depth" | "gridStep" | "activeSizePercent", minimum: number, maximum: number, fallback: number) => {
+  const commitGridNumber = (event: ReactFocusEvent<HTMLInputElement>, key: "width" | "depth" | "gridStep" | "snapSpacing" | "activeSizePercent", minimum: number, maximum: number, fallback: number) => {
     const parsed = Number(event.currentTarget.value.replace(",", "."));
     const entered = key === "activeSizePercent" ? parsed : displayLengthToMillimeters(parsed, displayUnit);
     const value = Math.min(maximum, Math.max(minimum, Number.isFinite(entered) ? entered : fallback));
@@ -2574,8 +2574,8 @@ export function SketchForgeParametricEditor() {
           selected={sketchSelection}
           measurement={sketchMeasurement}
           pendingMeasurementStart={sketchMeasureStart}
-          initialSnap={closestSketchGrid(document.workplane.gridStep, document.workplane.snapToGrid)}
-          exactSnapStep={document.workplane.snapToGrid ? document.workplane.gridStep : 0}
+          initialSnap={closestSketchGrid(document.workplane.snapSpacing, document.workplane.snapToGrid)}
+          exactSnapStep={document.workplane.snapToGrid ? document.workplane.snapSpacing : 0}
           initialWorkspace={{ ...DEFAULT_WORKPLANE_WORKSPACE, units: displayUnit === "in" ? "Imperial" : "Metric (Default)", scale: displayUnit === "in" ? "1:1 (inches)" : "1:1 (millimeters)", width: document.workplane.width, depth: document.workplane.depth, sizePreset: `${document.workplane.width} x ${document.workplane.depth} mm`, gridBlockSize: document.workplane.gridStep, gridBlockPreset: `${document.workplane.gridStep} mm`, showGrid: document.workplane.gridVisible }}
           onPlanePoint={addSketchPoint}
           onFreehandContour={(points, smooth) => {
@@ -2877,6 +2877,7 @@ export function SketchForgeParametricEditor() {
           <label><span>{t("grid.width")}</span><span className="educad-number-input"><input key={`width-${displayUnit}`} type="number" min={millimetersToDisplayLength(1, displayUnit)} max={millimetersToDisplayLength(2000, displayUnit)} step={millimetersToDisplayLength(1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.width, displayUnit)} onBlur={(event) => commitGridNumber(event, "width", 1, 2000, workplaneDraft.width)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
           <label><span>{t("grid.depth")}</span><span className="educad-number-input"><input key={`depth-${displayUnit}`} type="number" min={millimetersToDisplayLength(1, displayUnit)} max={millimetersToDisplayLength(2000, displayUnit)} step={millimetersToDisplayLength(1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.depth, displayUnit)} onBlur={(event) => commitGridNumber(event, "depth", 1, 2000, workplaneDraft.depth)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
           <label><span>{t("grid.step")}</span><span className="educad-number-input"><input key={`step-${displayUnit}`} type="number" min={millimetersToDisplayLength(0.1, displayUnit)} max={millimetersToDisplayLength(200, displayUnit)} step={millimetersToDisplayLength(0.1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.gridStep, displayUnit)} onBlur={(event) => commitGridNumber(event, "gridStep", 0.1, 200, workplaneDraft.gridStep)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
+          <label><span>{t("grid.snapSpacing")}</span><span className="educad-number-input"><input key={`snap-spacing-${displayUnit}`} type="number" min={millimetersToDisplayLength(0.1, displayUnit)} max={millimetersToDisplayLength(200, displayUnit)} step={millimetersToDisplayLength(0.1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.snapSpacing, displayUnit)} onBlur={(event) => commitGridNumber(event, "snapSpacing", 0.1, 200, workplaneDraft.snapSpacing)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
         </div> : null}
         <button
           className={`educad-sidebar-mode-control ${modelSidebarMode}`}

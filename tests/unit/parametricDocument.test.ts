@@ -23,6 +23,7 @@ describe("parametric document", () => {
       width: 200,
       depth: 200,
       gridStep: 5,
+      snapSpacing: 5,
       snapToGrid: true,
       gridVisible: true,
       activeSizePercent: 10,
@@ -183,6 +184,7 @@ describe("parametric document", () => {
       width: 200,
       depth: 200,
       gridStep: 5,
+      snapSpacing: 5,
       snapToGrid: true,
       gridVisible: true,
       activeSizePercent: 10,
@@ -191,7 +193,12 @@ describe("parametric document", () => {
     });
 
     const invalid = createStarterDocument(123);
-    invalid.workplane = { width: 10, depth: 9000, gridStep: 0, snapToGrid: false } as typeof invalid.workplane;
-    expect(normalizeParametricDocument(invalid).workplane).toMatchObject({ width: 10, depth: 2000, gridStep: 0.1, snapToGrid: false });
+    invalid.workplane = { width: 10, depth: 9000, gridStep: 0, snapSpacing: 500, snapToGrid: false } as typeof invalid.workplane;
+    expect(normalizeParametricDocument(invalid).workplane).toMatchObject({ width: 10, depth: 2000, gridStep: 0.1, snapSpacing: 200, snapToGrid: false });
+
+    const legacy = createStarterDocument(123);
+    delete (legacy.workplane as Partial<typeof legacy.workplane>).snapSpacing;
+    legacy.workplane.gridStep = 12;
+    expect(normalizeParametricDocument(legacy).workplane.snapSpacing).toBe(12);
   });
 });

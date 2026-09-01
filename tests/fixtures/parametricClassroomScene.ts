@@ -67,7 +67,7 @@ export function createParametricClassroomScene(objectCount = 12): ParametricDocu
     name: "Classroom performance scene",
     units: "mm",
     color: CLASSROOM_COLORS[0],
-    workplane: { width: 240, depth: 180, gridStep: 5, snapToGrid: true },
+    workplane: { width: 240, depth: 180, gridStep: 5, snapSpacing: 5, snapToGrid: true },
     objects,
     features,
     topologyReferences: [],
