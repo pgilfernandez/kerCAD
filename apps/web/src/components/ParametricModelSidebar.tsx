@@ -151,6 +151,7 @@ export function ParametricModelSidebar({
   const objects = parametricObjectTree(document);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameDraft, setRenameDraft] = useState("");
+  const renameInputRef = useRef<HTMLInputElement>(null);
   const objectListRef = useRef<HTMLDivElement>(null);
   const rangeAnchorRef = useRef<ModelTreeSelection | null>(null);
   const primarySelection = selection.at(-1) ?? null;
@@ -164,6 +165,15 @@ export function ParametricModelSidebar({
     });
     return () => window.cancelAnimationFrame(frame);
   }, [document.objects, selectedId, selectionKind, selection.length]);
+
+  useEffect(() => {
+    if (!renameOpen) return;
+    const frame = window.requestAnimationFrame(() => {
+      renameInputRef.current?.focus();
+      renameInputRef.current?.select();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [renameOpen]);
 
   const visibleNodes: ModelTreeSelection[] = objects.flatMap((object) => [
     { id: object.id, kind: "object" as const },
@@ -315,7 +325,7 @@ export function ParametricModelSidebar({
       <div className="educad-dialog-backdrop" role="presentation" onPointerDown={closeRename}>
         <form className="educad-rename-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-rename-title" onPointerDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); commitRename(); }}>
           <header><strong id="educad-rename-title">{t("model.renameTitle")}</strong><button type="button" aria-label={t("common.cancel")} onClick={closeRename}><X size={18} /></button></header>
-          <label><span>{selection.length > 1 ? "Nombre común" : "Nombre"}</span><input autoFocus value={renameDraft} maxLength={80} placeholder={selection.length > 1 ? "Aplicar el mismo nombre a todos" : undefined} onChange={(event) => setRenameDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") closeRename(); }} /></label>
+          <label><span>{selection.length > 1 ? "Nombre común" : "Nombre"}</span><input ref={renameInputRef} autoFocus value={renameDraft} maxLength={80} placeholder={selection.length > 1 ? "Aplicar el mismo nombre a todos" : undefined} onChange={(event) => setRenameDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") closeRename(); }} /></label>
           <footer><button type="button" onClick={closeRename}>{t("common.cancel")}</button><button className="primary" type="submit" disabled={!renameDraft.trim()}>{t("common.accept")}</button></footer>
         </form>
       </div>
