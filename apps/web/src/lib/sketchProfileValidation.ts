@@ -206,7 +206,7 @@ export function validateDrawnSketchProfile(profile: SketchProfile): SketchProfil
     degree.set(segment.endId, (degree.get(segment.endId) ?? 0) + 1);
     const key = [segment.startId, segment.endId].sort().join(":");
     const duplicate = duplicateSegments.get(key);
-    if (duplicate) diagnostics.push({ code: "duplicate", severity: "error", message: "Hay segmentos duplicados superpuestos.", segmentIds: [duplicate, segment.id] });
+    if (duplicate) diagnostics.push({ code: "duplicate", severity: "error", message: "Duplicate segments overlap.", segmentIds: [duplicate, segment.id] });
     else duplicateSegments.set(key, segment.id);
   }
 

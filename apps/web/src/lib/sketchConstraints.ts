@@ -64,17 +64,17 @@ export function sketchConstraintConflict(profile: SketchProfile, candidate: Sket
   if (candidate.kind === "tangentLineCircle") {
     const segment = profile.segments.find((item) => item.id === candidate.segmentId && item.kind === "line");
     const circle = profile.circles?.find((item) => item.id === candidate.circleId);
-    if (!segment || !circle) return "La tangencia requiere una línea recta y un círculo válidos.";
+    if (!segment || !circle) return "Tangency requires a valid straight line and circle.";
     const centerId = circleSketchPointId(circle.id, "center");
-    if (constraints.some((constraint) => constraint.kind === "fixed" && coincidentSketchPoints(profile, centerId, constraint.pointId))) return "El centro del círculo está fijado; libéralo antes de aplicar la tangencia.";
+    if (constraints.some((constraint) => constraint.kind === "fixed" && coincidentSketchPoints(profile, centerId, constraint.pointId))) return "The circle center is fixed; release it before applying tangency.";
   }
   if (candidate.kind === "tangentCircles") {
     const circles = candidate.circleIds.map((id) => profile.circles?.find((circle) => circle.id === id));
-    if (candidate.circleIds[0] === candidate.circleIds[1] || circles.some((circle) => !circle)) return "La tangencia requiere dos círculos diferentes.";
+    if (candidate.circleIds[0] === candidate.circleIds[1] || circles.some((circle) => !circle)) return "Tangency requires two different circles.";
     const fixedCenters = candidate.circleIds.map((circleId) => constraints.find((constraint) => constraint.kind === "fixed" && constraint.pointId === circleSketchPointId(circleId, "center")));
     if (fixedCenters.every(Boolean) && circles[0] && circles[1]) {
       const distance = Math.hypot(circles[1].x - circles[0].x, circles[1].z - circles[0].z);
-      if (Math.abs(distance - circles[0].radius - circles[1].radius) > 0.000001) return "Los dos centros están fijados y los círculos no son tangentes.";
+      if (Math.abs(distance - circles[0].radius - circles[1].radius) > 0.000001) return "Both centers are fixed and the circles are not tangent.";
     }
   }
   if (candidate.kind === "symmetric") {
@@ -82,123 +82,123 @@ export function sketchConstraintConflict(profile: SketchProfile, candidate: Sket
     const first = sketchConstraintPoint(profile, firstId);
     const second = sketchConstraintPoint(profile, secondId);
     const axis = profile.segments.find((segment) => segment.id === candidate.segmentId && segment.kind === "line");
-    if (firstId === secondId || !first || !second || !axis) return "La simetría requiere dos puntos diferentes y una línea recta como eje.";
-    if ([axis.startId, axis.endId].includes(firstId) || [axis.startId, axis.endId].includes(secondId)) return "Los puntos del eje no pueden usarse como puntos simétricos.";
+    if (firstId === secondId || !first || !second || !axis) return "Symmetry requires two different points and a straight line as its axis.";
+    if ([axis.startId, axis.endId].includes(firstId) || [axis.startId, axis.endId].includes(secondId)) return "Axis points cannot also be used as symmetric points.";
     const fixed = candidate.pointIds.map((pointId) => constraints.some((constraint) => constraint.kind === "fixed" && coincidentSketchPoints(profile, pointId, constraint.pointId)));
-    if (fixed.every(Boolean)) return "Los dos puntos están fijados; libera uno antes de aplicar la simetría.";
+    if (fixed.every(Boolean)) return "Both points are fixed; release one before applying symmetry.";
   }
   if (candidate.kind === "midpoint" || candidate.kind === "pointOnObject") {
     const point = sketchConstraintPoint(profile, candidate.pointId);
     const segment = profile.segments.find((item) => item.id === candidate.segmentId && item.kind === "line");
-    if (!point || !segment) return "La relación requiere un punto y una línea recta válidos.";
-    if (segment.startId === candidate.pointId || segment.endId === candidate.pointId) return candidate.kind === "midpoint" ? "Un extremo de la línea no puede ser también su punto medio." : "El extremo ya pertenece a la línea.";
-    if (constraints.some((constraint) => constraint.kind === "fixed" && coincidentSketchPoints(profile, candidate.pointId, constraint.pointId))) return "El punto está fijado; libéralo antes de aplicar esta relación.";
+    if (!point || !segment) return "The relation requires a valid point and straight line.";
+    if (segment.startId === candidate.pointId || segment.endId === candidate.pointId) return candidate.kind === "midpoint" ? "A line endpoint cannot also be its midpoint." : "The endpoint already belongs to the line.";
+    if (constraints.some((constraint) => constraint.kind === "fixed" && coincidentSketchPoints(profile, candidate.pointId, constraint.pointId))) return "The point is fixed; release it before applying this relation.";
   }
   if (candidate.kind === "equalLength") {
     const segments = candidate.segmentIds.map((id) => profile.segments.find((segment) => segment.id === id && segment.kind === "line"));
-    if (candidate.segmentIds[0] === candidate.segmentIds[1] || segments.some((segment) => !segment)) return "La igualdad requiere dos líneas rectas diferentes.";
+    if (candidate.segmentIds[0] === candidate.segmentIds[1] || segments.some((segment) => !segment)) return "Equality requires two different straight lines.";
     const lengths = candidate.segmentIds.map((segmentId) => constraints.find((constraint) => constraint.kind === "distance" && constraint.segmentId === segmentId && constraint.axis === "aligned"));
-    if (lengths[0]?.kind === "distance" && lengths[1]?.kind === "distance" && Math.abs(lengths[0].value - lengths[1].value) > 0.000001) return "Las líneas tienen cotas de longitud diferentes.";
+    if (lengths[0]?.kind === "distance" && lengths[1]?.kind === "distance" && Math.abs(lengths[0].value - lengths[1].value) > 0.000001) return "The lines have different length dimensions.";
   }
   if (candidate.kind === "concentric" || candidate.kind === "equalRadius") {
     const circles = candidate.circleIds.map((id) => profile.circles?.find((circle) => circle.id === id));
-    if (candidate.circleIds[0] === candidate.circleIds[1] || circles.some((circle) => !circle)) return "La relación requiere dos círculos diferentes.";
+    if (candidate.circleIds[0] === candidate.circleIds[1] || circles.some((circle) => !circle)) return "The relation requires two different circles.";
     if (candidate.kind === "concentric") {
       const fixed = candidate.circleIds.map((circleId) => constraints.find((constraint) => constraint.kind === "fixed" && constraint.pointId === circleSketchPointId(circleId, "center")));
-      if (fixed[0]?.kind === "fixed" && fixed[1]?.kind === "fixed" && (Math.abs(fixed[0].x - fixed[1].x) > 0.000001 || Math.abs(fixed[0].z - fixed[1].z) > 0.000001)) return "Los centros están fijados en posiciones diferentes.";
+      if (fixed[0]?.kind === "fixed" && fixed[1]?.kind === "fixed" && (Math.abs(fixed[0].x - fixed[1].x) > 0.000001 || Math.abs(fixed[0].z - fixed[1].z) > 0.000001)) return "The centers are fixed at different positions.";
     } else {
       const radii = candidate.circleIds.map((circleId) => constraints.find((constraint): constraint is Extract<SketchConstraint, { kind: "radius" | "diameter" }> => (constraint.kind === "radius" || constraint.kind === "diameter") && constraint.circleId === circleId));
       const values = radii.map((constraint) => constraint && (constraint.kind === "diameter" ? constraint.value / 2 : constraint.value));
-      if (values[0] != null && values[1] != null && Math.abs(values[0] - values[1]) > 0.000001) return "Los círculos tienen cotas de radio diferentes.";
+      if (values[0] != null && values[1] != null && Math.abs(values[0] - values[1]) > 0.000001) return "The circles have different radius dimensions.";
     }
   }
   if (candidate.kind === "parallel" || candidate.kind === "perpendicular") {
     const [firstId, secondId] = candidate.segmentIds;
-    if (firstId === secondId) return "Selecciona dos líneas diferentes.";
+    if (firstId === secondId) return "Select two different lines.";
     const segments = candidate.segmentIds.map((id) => profile.segments.find((segment) => segment.id === id && segment.kind === "line"));
-    if (segments.some((segment) => !segment)) return "La relación requiere dos líneas rectas válidas.";
+    if (segments.some((segment) => !segment)) return "The relation requires two valid straight lines.";
     const samePair = (constraint: Extract<SketchConstraint, { kind: "parallel" | "perpendicular" }>) => constraint.segmentIds.every((id) => candidate.segmentIds.includes(id));
     const opposite = candidate.kind === "parallel" ? "perpendicular" : "parallel";
-    if (constraints.some((constraint) => constraint.kind === opposite && samePair(constraint))) return `Las mismas líneas no pueden ser ${candidate.kind === "parallel" ? "paralelas y perpendiculares" : "perpendiculares y paralelas"}.`;
-    if (constraints.some((constraint) => constraint.kind === "angle" && candidate.segmentIds.every((id) => constraint.segmentIds.includes(id)))) return "Elimina primero la cota angular entre estas líneas.";
+    if (constraints.some((constraint) => constraint.kind === opposite && samePair(constraint))) return `The same lines cannot be both ${candidate.kind === "parallel" ? "parallel and perpendicular" : "perpendicular and parallel"}.`;
+    if (constraints.some((constraint) => constraint.kind === "angle" && candidate.segmentIds.every((id) => constraint.segmentIds.includes(id)))) return "Remove the angular dimension between these lines first.";
     const fullyFixed = segments.map((segment) => segment && [segment.startId, segment.endId].every((id) => constraints.some((constraint) => constraint.kind === "fixed" && constraint.pointId === id)));
-    if (fullyFixed.every(Boolean)) return "Las dos líneas están completamente fijadas y no pueden reorientarse.";
+    if (fullyFixed.every(Boolean)) return "Both lines are fully fixed and cannot be reoriented.";
   }
   if (candidate.kind === "horizontal" || candidate.kind === "vertical" || candidate.kind === "distance") {
     const segment = profile.segments.find((item) => item.id === candidate.segmentId);
-    if (!segment) return "La geometría seleccionada ya no existe.";
-    if (coincidentSketchPoints(profile, segment.startId, segment.endId)) return "No se puede acotar ni orientar una línea cuyos extremos son coincidentes.";
+    if (!segment) return "The selected geometry no longer exists.";
+    if (coincidentSketchPoints(profile, segment.startId, segment.endId)) return "A line with coincident endpoints cannot be dimensioned or oriented.";
     const fixed = constraints.filter((constraint) => constraint.kind === "fixed" && (constraint.pointId === segment.startId || constraint.pointId === segment.endId));
-    if (fixed.length === 2) return "Los dos extremos ya están fijados; esta restricción sería redundante.";
+    if (fixed.length === 2) return "Both endpoints are already fixed; this constraint would be redundant.";
     const onSegment = constraints.filter((constraint) => sketchConstraintUsesSegment(constraint, segment.id));
     if (candidate.kind === "horizontal") {
-      if (onSegment.some((constraint) => constraint.kind === "vertical")) return "Una misma línea no puede ser horizontal y vertical.";
-      if (onSegment.some((constraint) => constraint.kind === "distance" && constraint.axis === "z")) return "Una línea horizontal no puede tener una distancia Y distinta de cero.";
-      if (onSegment.some((constraint) => constraint.kind === "angle")) return "Elimina primero la cota angular de esta línea.";
+      if (onSegment.some((constraint) => constraint.kind === "vertical")) return "The same line cannot be both horizontal and vertical.";
+      if (onSegment.some((constraint) => constraint.kind === "distance" && constraint.axis === "z")) return "A horizontal line cannot have a non-zero Y distance.";
+      if (onSegment.some((constraint) => constraint.kind === "angle")) return "Remove this line's angular dimension first.";
     } else if (candidate.kind === "vertical") {
-      if (onSegment.some((constraint) => constraint.kind === "horizontal")) return "Una misma línea no puede ser vertical y horizontal.";
-      if (onSegment.some((constraint) => constraint.kind === "distance" && constraint.axis === "x")) return "Una línea vertical no puede tener una distancia X distinta de cero.";
-      if (onSegment.some((constraint) => constraint.kind === "angle")) return "Elimina primero la cota angular de esta línea.";
+      if (onSegment.some((constraint) => constraint.kind === "horizontal")) return "The same line cannot be both vertical and horizontal.";
+      if (onSegment.some((constraint) => constraint.kind === "distance" && constraint.axis === "x")) return "A vertical line cannot have a non-zero X distance.";
+      if (onSegment.some((constraint) => constraint.kind === "angle")) return "Remove this line's angular dimension first.";
     } else if (candidate.kind === "distance") {
-      if (candidate.axis === "x" && onSegment.some((constraint) => constraint.kind === "vertical")) return "Una línea vertical no puede tener una distancia X distinta de cero.";
-      if (candidate.axis === "z" && onSegment.some((constraint) => constraint.kind === "horizontal")) return "Una línea horizontal no puede tener una distancia Y distinta de cero.";
-      if (candidate.axis === "aligned" && onSegment.some((constraint) => constraint.kind === "distance" && constraint.axis !== "aligned")) return "La longitud no puede combinarse aquí con cotas X o Y; elimina primero esas cotas.";
-      if (candidate.axis !== "aligned" && onSegment.some((constraint) => constraint.kind === "distance" && constraint.axis === "aligned")) return "La cota X/Y no puede combinarse aquí con una longitud; elimina primero la longitud.";
-      if (candidate.axis !== "aligned" && onSegment.some((constraint) => constraint.kind === "angle")) return "Una cota X/Y no puede combinarse con una cota angular en la misma línea.";
+      if (candidate.axis === "x" && onSegment.some((constraint) => constraint.kind === "vertical")) return "A vertical line cannot have a non-zero X distance.";
+      if (candidate.axis === "z" && onSegment.some((constraint) => constraint.kind === "horizontal")) return "A horizontal line cannot have a non-zero Y distance.";
+      if (candidate.axis === "aligned" && onSegment.some((constraint) => constraint.kind === "distance" && constraint.axis !== "aligned")) return "Length cannot be combined here with X or Y dimensions; remove those dimensions first.";
+      if (candidate.axis !== "aligned" && onSegment.some((constraint) => constraint.kind === "distance" && constraint.axis === "aligned")) return "An X/Y dimension cannot be combined here with a length; remove the length first.";
+      if (candidate.axis !== "aligned" && onSegment.some((constraint) => constraint.kind === "angle")) return "An X/Y dimension cannot be combined with an angular dimension on the same line.";
     }
   }
   if (candidate.kind === "coincident") {
     const [firstId, secondId] = candidate.pointIds;
     const firstCirclePoint = circleSketchPointReference(firstId);
     const secondCirclePoint = circleSketchPointReference(secondId);
-    if (firstCirclePoint && secondCirclePoint && firstCirclePoint.circleId === secondCirclePoint.circleId && firstCirclePoint.point !== secondCirclePoint.point) return "El centro de un círculo no puede coincidir con su propio punto de radio.";
+    if (firstCirclePoint && secondCirclePoint && firstCirclePoint.circleId === secondCirclePoint.circleId && firstCirclePoint.point !== secondCirclePoint.point) return "A circle center cannot coincide with its own radius point.";
     const segment = profile.segments.find((item) => (item.startId === firstId && item.endId === secondId) || (item.startId === secondId && item.endId === firstId));
-    if (segment && constraints.some((constraint) => constraint.kind === "distance" && constraint.segmentId === segment.id)) return "No se pueden hacer coincidentes los extremos de una línea que tiene una cota de distancia.";
+    if (segment && constraints.some((constraint) => constraint.kind === "distance" && constraint.segmentId === segment.id)) return "The endpoints of a dimensioned line cannot be made coincident.";
     const firstFixed = constraints.find((constraint) => constraint.kind === "fixed" && constraint.pointId === firstId);
     const secondFixed = constraints.find((constraint) => constraint.kind === "fixed" && constraint.pointId === secondId);
-    if (firstFixed?.kind === "fixed" && secondFixed?.kind === "fixed" && (Math.abs(firstFixed.x - secondFixed.x) > 0.000001 || Math.abs(firstFixed.z - secondFixed.z) > 0.000001)) return "Dos puntos fijados en posiciones diferentes no pueden hacerse coincidentes.";
+    if (firstFixed?.kind === "fixed" && secondFixed?.kind === "fixed" && (Math.abs(firstFixed.x - secondFixed.x) > 0.000001 || Math.abs(firstFixed.z - secondFixed.z) > 0.000001)) return "Two points fixed at different positions cannot be made coincident.";
   }
   if (candidate.kind === "fixed") {
     const circlePoint = circleSketchPointReference(candidate.pointId);
-    if (circlePoint?.point === "radius" && constraints.some((constraint) => (constraint.kind === "radius" || constraint.kind === "diameter") && constraint.circleId === circlePoint.circleId)) return "El punto radial no puede fijarse mientras el círculo tenga una cota de radio o diámetro.";
+    if (circlePoint?.point === "radius" && constraints.some((constraint) => (constraint.kind === "radius" || constraint.kind === "diameter") && constraint.circleId === circlePoint.circleId)) return "The radius point cannot be fixed while the circle has a radius or diameter dimension.";
     for (const segment of profile.segments.filter((item) => item.startId === candidate.pointId || item.endId === candidate.pointId)) {
       const otherId = segment.startId === candidate.pointId ? segment.endId : segment.startId;
       const otherFixed = constraints.some((constraint) => constraint.kind === "fixed" && constraint.pointId === otherId);
-      if (otherFixed && constraints.some((constraint) => sketchConstraintUsesSegment(constraint, segment.id))) return "No se pueden fijar ambos extremos: la línea ya tiene restricciones que quedarían redundantes.";
+      if (otherFixed && constraints.some((constraint) => sketchConstraintUsesSegment(constraint, segment.id))) return "Both endpoints cannot be fixed because the line already has constraints that would become redundant.";
     }
     const coincidentFixed = constraints.find((constraint) => constraint.kind === "fixed" && coincidentSketchPoints(profile, candidate.pointId, constraint.pointId));
-    if (coincidentFixed?.kind === "fixed" && (Math.abs(coincidentFixed.x - candidate.x) > 0.000001 || Math.abs(coincidentFixed.z - candidate.z) > 0.000001)) return "Este punto coincide con otro punto fijado en una posición diferente.";
+    if (coincidentFixed?.kind === "fixed" && (Math.abs(coincidentFixed.x - candidate.x) > 0.000001 || Math.abs(coincidentFixed.z - candidate.z) > 0.000001)) return "This point coincides with another point fixed at a different position.";
   }
   if (candidate.kind === "angle") {
     for (const segmentId of candidate.segmentIds) {
       const onSegment = constraints.filter((constraint) => sketchConstraintUsesSegment(constraint, segmentId));
-      if (onSegment.some((constraint) => constraint.kind === "angle")) return "La línea ya participa en una cota angular; elimina primero esa cota.";
-      if (onSegment.some((constraint) => constraint.kind === "horizontal" || constraint.kind === "vertical")) return "Una cota angular no puede combinarse con una orientación horizontal o vertical en la misma línea.";
-      if (onSegment.some((constraint) => constraint.kind === "distance" && constraint.axis !== "aligned")) return "Una cota angular no puede combinarse con cotas X/Y en la misma línea.";
-      if (onSegment.some((constraint) => constraint.kind === "parallel" || constraint.kind === "perpendicular")) return "Elimina primero la relación paralela o perpendicular de esta línea.";
+      if (onSegment.some((constraint) => constraint.kind === "angle")) return "The line already participates in an angular dimension; remove that dimension first.";
+      if (onSegment.some((constraint) => constraint.kind === "horizontal" || constraint.kind === "vertical")) return "An angular dimension cannot be combined with a horizontal or vertical orientation on the same line.";
+      if (onSegment.some((constraint) => constraint.kind === "distance" && constraint.axis !== "aligned")) return "An angular dimension cannot be combined with X/Y dimensions on the same line.";
+      if (onSegment.some((constraint) => constraint.kind === "parallel" || constraint.kind === "perpendicular")) return "Remove this line's parallel or perpendicular relation first.";
     }
   }
   if (candidate.kind === "radius" || candidate.kind === "diameter") {
     const opposite = candidate.kind === "radius" ? "diameter" : "radius";
-    if (constraints.some((constraint) => constraint.kind === opposite && constraint.circleId === candidate.circleId)) return `El círculo ya está restringido por ${opposite === "radius" ? "radio" : "diámetro"}; elimina primero esa cota.`;
-    if (constraints.some((constraint) => constraint.kind === "fixed" && constraint.pointId === circleSketchPointId(candidate.circleId, "radius"))) return "Elimina primero la restricción fija del punto radial.";
+    if (constraints.some((constraint) => constraint.kind === opposite && constraint.circleId === candidate.circleId)) return `The circle already has a ${opposite === "radius" ? "radius" : "diameter"} constraint; remove that dimension first.`;
+    if (constraints.some((constraint) => constraint.kind === "fixed" && constraint.pointId === circleSketchPointId(candidate.circleId, "radius"))) return "Remove the fixed constraint from the radius point first.";
   }
   if (candidate.kind === "arcRadius" || candidate.kind === "arcDiameter" || candidate.kind === "arcAngle") {
     const arc = profile.segments.find((segment) => segment.id === candidate.segmentId && segment.kind === "arc" && segment.center);
-    if (!arc) return "La cota requiere un arco válido.";
+    if (!arc) return "The dimension requires a valid arc.";
     if (candidate.kind === "arcRadius" || candidate.kind === "arcDiameter") {
       const opposite = candidate.kind === "arcRadius" ? "arcDiameter" : "arcRadius";
-      if (constraints.some((constraint) => constraint.kind === opposite && constraint.segmentId === candidate.segmentId)) return `El arco ya está restringido por ${opposite === "arcRadius" ? "radio" : "diámetro"}; elimina primero esa cota.`;
+      if (constraints.some((constraint) => constraint.kind === opposite && constraint.segmentId === candidate.segmentId)) return `The arc already has a ${opposite === "arcRadius" ? "radius" : "diameter"} constraint; remove that dimension first.`;
     }
-    if (candidate.kind === "arcAngle" && (candidate.value <= 0 || candidate.value >= 360)) return "El ángulo del arco debe estar entre 0° y 360°.";
+    if (candidate.kind === "arcAngle" && (candidate.value <= 0 || candidate.value >= 360)) return "The arc angle must be between 0° and 360°.";
   }
-  if ((candidate.kind === "distance" || candidate.kind === "radius" || candidate.kind === "diameter" || candidate.kind === "arcRadius" || candidate.kind === "arcDiameter") && (!Number.isFinite(candidate.value) || candidate.value <= 0)) return "La cota debe ser mayor que cero.";
-  if (candidate.kind === "arcAngle" && !Number.isFinite(candidate.value)) return "El ángulo debe ser un número válido.";
-  if (candidate.kind === "angle" && !Number.isFinite(candidate.value)) return "El ángulo debe ser un número válido.";
+  if ((candidate.kind === "distance" || candidate.kind === "radius" || candidate.kind === "diameter" || candidate.kind === "arcRadius" || candidate.kind === "arcDiameter") && (!Number.isFinite(candidate.value) || candidate.value <= 0)) return "The dimension must be greater than zero.";
+  if (candidate.kind === "arcAngle" && !Number.isFinite(candidate.value)) return "The angle must be a valid number.";
+  if (candidate.kind === "angle" && !Number.isFinite(candidate.value)) return "The angle must be a valid number.";
   const numerical = sketchConstraintRankGain(profile, candidate);
   if (numerical.gain === 0) return numerical.residual > 1e-3
-    ? "Esta restricción es incompatible con las restricciones existentes."
-    : "Esta restricción es redundante: la geometría ya está definida de esa forma.";
+    ? "This constraint is incompatible with the existing constraints."
+    : "This constraint is redundant because the geometry is already defined that way.";
   return null;
 }
 

@@ -162,18 +162,18 @@ export function addParametricText(document: ParametricDocument, selectedObjectId
       const placement = objectPlacementForWorkplane(document.workplane);
       object.transform.position = placement.position;
       object.transform.rotation = placement.rotation;
-      object.name = "Texto";
+      object.name = "Text";
     }
   }
   const profile = parametricTextProfile({ kind: "text", text: "eduCAD", font: "Sans", size: 20, spacing: 1, align: "center", verticalAlign: "center" });
   const sketch = createDrawnSketchFeature(document.features.filter((feature) => feature.kind === "sketch" && feature.purpose === "user").length + 1, profile);
   sketch.objectId = objectId;
-  sketch.name = "Perfil de texto";
+  sketch.name = "Text profile";
   sketch.visible = false;
   sketch.purpose = "primitive";
   const extrusion = createExtrudeFeature(sketch.id, document.features.filter((feature) => feature.kind === "extrude").length + 1, false);
   extrusion.objectId = objectId;
-  extrusion.name = "Texto";
+  extrusion.name = "Text";
   extrusion.distance = 4;
   extrusion.dependencies = [{ type: "feature", id: sketch.id }];
   document.features.push(sketch, extrusion);

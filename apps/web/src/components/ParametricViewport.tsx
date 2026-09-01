@@ -973,7 +973,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     modelGroup.add(edgeHighlight);
     edgeHighlightRef.current = edgeHighlight;
     const topologyFaceLayer = new THREE.Group();
-    topologyFaceLayer.name = "Caras seleccionadas";
+    topologyFaceLayer.name = "Selected faces";
     modelGroup.add(topologyFaceLayer);
     topologyFaceLayerRef.current = topologyFaceLayer;
     const faceExtrudeHandleLayer = new THREE.Group();

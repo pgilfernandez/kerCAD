@@ -10,6 +10,7 @@ import { mirrorSign, resizedImportedMeshPositions } from "@/lib/workplaneShapes"
 import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE, normalizeSnapGrid, normalizeWorkspaceSettings } from "@/lib/workplaneSettings";
 import { solveSketchConstraints } from "@/lib/sketchConstraints";
 import type { SketchProfileValidation } from "@/lib/sketchProfileValidation";
+import type { EducadLocale } from "@/lib/educadI18n";
 import type { GridSize, SketchCircle, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchSegment, SketchText, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
 
 export type SketchTool = "line" | "bezier" | "smooth" | "freehand" | "freehandSmooth" | "text" | "circle" | "arc" | "select" | "refine" | "trim" | "erase" | "measure";
@@ -30,6 +31,7 @@ export type SketchSceneReference = {
 };
 
 type SketchWorkspaceProps = {
+  locale?: EducadLocale;
   profile: SketchProfile;
   profileValidation?: SketchProfileValidation | null;
   operation?: SketchOperation;
@@ -176,7 +178,7 @@ function dimensionPillSize(label: string, screenUnit: number, extra = 24) {
   };
 }
 
-function SketchDimensionInput({ id, label, indicator, value, accuracy, screenUnit, align = "center", allowSigned = false, onCommit, onDelete }: { id: string; label: string; indicator: string; value: number; accuracy: 1 | 2 | 3; screenUnit: number; align?: "center" | "start"; allowSigned?: boolean; onCommit?: (id: string, value: number) => void; onDelete?: (id: string) => void }) {
+function SketchDimensionInput({ id, label, indicator, value, accuracy, screenUnit, locale, align = "center", allowSigned = false, onCommit, onDelete }: { id: string; label: string; indicator: string; value: number; accuracy: 1 | 2 | 3; screenUnit: number; locale: EducadLocale; align?: "center" | "start"; allowSigned?: boolean; onCommit?: (id: string, value: number) => void; onDelete?: (id: string) => void }) {
   const formatted = formatDimension(value, accuracy);
   const [draft, setDraft] = useState(formatted);
   const [editing, setEditing] = useState(false);
@@ -228,7 +230,7 @@ function SketchDimensionInput({ id, label, indicator, value, accuracy, screenUni
     <text className="sketch-dimension-editor-indicator" pointerEvents="none" x={x + indicatorWidth / 2} y={5 * screenUnit} fontSize={11 * screenUnit}>{indicator}</text>
     <line className="sketch-constraint-remove-separator" pointerEvents="none" x1={x + indicatorWidth} y1={-pill.height / 2 + 4 * screenUnit} x2={x + indicatorWidth} y2={pill.height / 2 - 4 * screenUnit} />
     <line className="sketch-constraint-remove-separator" pointerEvents="none" x1={x + pill.width - removeWidth} y1={-pill.height / 2 + 4 * screenUnit} x2={x + pill.width - removeWidth} y2={pill.height / 2 - 4 * screenUnit} />
-    <g className="sketch-constraint-remove" role="button" tabIndex={0} aria-label={`Eliminar restricción ${label}`} onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); onDelete?.(id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); onDelete?.(id); } }}>
+    <g className="sketch-constraint-remove" role="button" tabIndex={0} aria-label={`${locale === "es" ? "Eliminar restricción" : "Delete constraint"} ${label}`} onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); onDelete?.(id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); onDelete?.(id); } }}>
       <rect x={x + pill.width - removeWidth} y={-pill.height / 2} width={removeWidth} height={pill.height} />
       <text pointerEvents="none" x={x + pill.width - removeWidth / 2} y={5 * screenUnit} fontSize={14 * screenUnit}>×</text>
     </g>
@@ -236,7 +238,7 @@ function SketchDimensionInput({ id, label, indicator, value, accuracy, screenUni
   </g>;
 }
 
-function SketchConstraintBadge({ id, label, x, z, screenUnit, onDelete }: { id: string; label: string; x: number; z: number; screenUnit: number; onDelete?: (id: string) => void }) {
+function SketchConstraintBadge({ id, label, x, z, screenUnit, locale, onDelete }: { id: string; label: string; x: number; z: number; screenUnit: number; locale: EducadLocale; onDelete?: (id: string) => void }) {
   const width = 34 * screenUnit;
   const height = 18 * screenUnit;
   const removeWidth = 17 * screenUnit;
@@ -244,7 +246,7 @@ function SketchConstraintBadge({ id, label, x, z, screenUnit, onDelete }: { id: 
     <rect x={-width / 2} y={-height / 2} width={width} height={height} rx={3 * screenUnit} />
     <text pointerEvents="none" x={-removeWidth / 2} y={4 * screenUnit} fontSize={11 * screenUnit}>{label}</text>
     <line pointerEvents="none" x1={0} y1={-height / 2 + 3 * screenUnit} x2={0} y2={height / 2 - 3 * screenUnit} />
-    <g className="sketch-constraint-remove" role="button" tabIndex={0} aria-label={`Eliminar restricción ${label}`} onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); onDelete?.(id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); onDelete?.(id); } }}>
+    <g className="sketch-constraint-remove" role="button" tabIndex={0} aria-label={`${locale === "es" ? "Eliminar restricción" : "Delete constraint"} ${label}`} onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); onDelete?.(id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); onDelete?.(id); } }}>
       <rect x={0} y={-height / 2} width={removeWidth} height={height} />
       <text pointerEvents="none" x={removeWidth / 2} y={4 * screenUnit} fontSize={12 * screenUnit}>×</text>
     </g>
@@ -552,6 +554,7 @@ function importedMeshFootprint(shape: WorkplaneShape): SketchReferenceFootprint 
 }
 
 export function SketchWorkspace({
+  locale = "en",
   profile,
   profileValidation = null,
   operation = "extrude",
@@ -1008,9 +1011,9 @@ export function SketchWorkspace({
     <main className="sketch-workspace-stage">
       <div className="sketch-mode-badge">{operation === "revolve" ? "Revolve sketch" : "Sketch view"}</div>
       {profileValidation ? <aside className={`sketch-profile-status ${profileValidation.valid ? "valid" : "invalid"}`}>
-        <strong>{profileValidation.valid ? `Perfil válido · ${profileValidation.closedContourCount} contorno${profileValidation.closedContourCount === 1 ? "" : "s"}` : "Perfil no válido"}</strong>
+        <strong>{profileValidation.valid ? locale === "es" ? `Perfil válido · ${profileValidation.closedContourCount} contorno${profileValidation.closedContourCount === 1 ? "" : "s"}` : `Valid profile · ${profileValidation.closedContourCount} contour${profileValidation.closedContourCount === 1 ? "" : "s"}` : locale === "es" ? "Perfil no válido" : "Invalid profile"}</strong>
         {!profileValidation.valid ? <span>{profileValidation.diagnostics[0]?.message}</span> : null}
-        {profileValidation.diagnostics.length > 1 ? <small>+{profileValidation.diagnostics.length - 1} problema{profileValidation.diagnostics.length === 2 ? "" : "s"}</small> : null}
+        {profileValidation.diagnostics.length > 1 ? <small>+{profileValidation.diagnostics.length - 1} {locale === "es" ? `problema${profileValidation.diagnostics.length === 2 ? "" : "s"}` : `problem${profileValidation.diagnostics.length === 2 ? "" : "s"}`}</small> : null}
       </aside> : null}
       {operation === "revolve" ? <SketchRevolvePreview positions={revolvePreviewPositions} /> : null}
       <div className="camera-controls sketch-camera-controls" aria-label="Sketch view controls">
@@ -1227,7 +1230,7 @@ export function SketchWorkspace({
               if (!segment) return null;
               const dimension = segmentDimension(segment, pointById);
               if (!dimension) return null;
-              return <SketchConstraintBadge key={constraint.id} id={constraint.id} label={constraint.kind === "horizontal" ? "H" : "V"} x={dimension.midpoint.x} z={dimension.midpoint.z - 14 * screenUnit} screenUnit={screenUnit} onDelete={onDeleteConstraint} />;
+              return <SketchConstraintBadge key={constraint.id} id={constraint.id} label={constraint.kind === "horizontal" ? "H" : "V"} x={dimension.midpoint.x} z={dimension.midpoint.z - 14 * screenUnit} screenUnit={screenUnit} locale={locale} onDelete={onDeleteConstraint} />;
             })}
             {(displayProfile.constraints ?? []).map((constraint) => {
               if (constraint.kind !== "parallel" && constraint.kind !== "perpendicular") return null;
@@ -1238,7 +1241,7 @@ export function SketchWorkspace({
               if (dimensions.length !== 2) return null;
               const x = (dimensions[0].midpoint.x + dimensions[1].midpoint.x) / 2;
               const z = (dimensions[0].midpoint.z + dimensions[1].midpoint.z) / 2 - 14 * screenUnit;
-              return <SketchConstraintBadge key={constraint.id} id={constraint.id} label={constraint.kind === "parallel" ? "∥" : "⊥"} x={x} z={z} screenUnit={screenUnit} onDelete={onDeleteConstraint} />;
+              return <SketchConstraintBadge key={constraint.id} id={constraint.id} label={constraint.kind === "parallel" ? "∥" : "⊥"} x={x} z={z} screenUnit={screenUnit} locale={locale} onDelete={onDeleteConstraint} />;
             })}
             {(displayProfile.constraints ?? []).map((constraint) => {
               if (constraint.kind !== "equalLength") return null;
@@ -1249,7 +1252,7 @@ export function SketchWorkspace({
               if (dimensions.length !== 2) return null;
               const x = (dimensions[0].midpoint.x + dimensions[1].midpoint.x) / 2;
               const z = (dimensions[0].midpoint.z + dimensions[1].midpoint.z) / 2 + 14 * screenUnit;
-              return <SketchConstraintBadge key={constraint.id} id={constraint.id} label="=" x={x} z={z} screenUnit={screenUnit} onDelete={onDeleteConstraint} />;
+              return <SketchConstraintBadge key={constraint.id} id={constraint.id} label="=" x={x} z={z} screenUnit={screenUnit} locale={locale} onDelete={onDeleteConstraint} />;
             })}
             {(displayProfile.constraints ?? []).map((constraint) => {
               if (constraint.kind !== "concentric" && constraint.kind !== "equalRadius") return null;
@@ -1257,13 +1260,13 @@ export function SketchWorkspace({
               if (circles.length !== 2) return null;
               const x = (circles[0].x + circles[1].x) / 2 + 18 * screenUnit;
               const z = (circles[0].z + circles[1].z) / 2 - 12 * screenUnit;
-              return <SketchConstraintBadge key={constraint.id} id={constraint.id} label={constraint.kind === "concentric" ? "◎" : "="} x={x} z={z} screenUnit={screenUnit} onDelete={onDeleteConstraint} />;
+              return <SketchConstraintBadge key={constraint.id} id={constraint.id} label={constraint.kind === "concentric" ? "◎" : "="} x={x} z={z} screenUnit={screenUnit} locale={locale} onDelete={onDeleteConstraint} />;
             })}
             {(displayProfile.constraints ?? []).map((constraint) => {
               if (constraint.kind !== "midpoint" && constraint.kind !== "pointOnObject") return null;
               const point = pointById.get(constraint.pointId);
               if (!point) return null;
-              return <SketchConstraintBadge key={constraint.id} id={constraint.id} label={constraint.kind === "midpoint" ? "M" : "∈"} x={point.x + 18 * screenUnit} z={point.z + 13 * screenUnit} screenUnit={screenUnit} onDelete={onDeleteConstraint} />;
+              return <SketchConstraintBadge key={constraint.id} id={constraint.id} label={constraint.kind === "midpoint" ? "M" : "∈"} x={point.x + 18 * screenUnit} z={point.z + 13 * screenUnit} screenUnit={screenUnit} locale={locale} onDelete={onDeleteConstraint} />;
             })}
             {(displayProfile.constraints ?? []).map((constraint) => {
               if (constraint.kind === "tangentLineCircle") {
@@ -1271,27 +1274,27 @@ export function SketchWorkspace({
                 const dimension = segment ? segmentDimension(segment, pointById) : null;
                 const circle = displayProfile.circles?.find((candidate) => candidate.id === constraint.circleId);
                 if (!dimension || !circle) return null;
-                return <SketchConstraintBadge key={constraint.id} id={constraint.id} label="T" x={(dimension.midpoint.x + circle.x) / 2} z={(dimension.midpoint.z + circle.z) / 2 - 14 * screenUnit} screenUnit={screenUnit} onDelete={onDeleteConstraint} />;
+                return <SketchConstraintBadge key={constraint.id} id={constraint.id} label="T" x={(dimension.midpoint.x + circle.x) / 2} z={(dimension.midpoint.z + circle.z) / 2 - 14 * screenUnit} screenUnit={screenUnit} locale={locale} onDelete={onDeleteConstraint} />;
               }
               if (constraint.kind === "tangentCircles") {
                 const circles = constraint.circleIds.map((id) => displayProfile.circles?.find((circle) => circle.id === id)).filter(Boolean) as SketchCircle[];
                 if (circles.length !== 2) return null;
-                return <SketchConstraintBadge key={constraint.id} id={constraint.id} label="T" x={(circles[0].x + circles[1].x) / 2} z={(circles[0].z + circles[1].z) / 2 - 14 * screenUnit} screenUnit={screenUnit} onDelete={onDeleteConstraint} />;
+                return <SketchConstraintBadge key={constraint.id} id={constraint.id} label="T" x={(circles[0].x + circles[1].x) / 2} z={(circles[0].z + circles[1].z) / 2 - 14 * screenUnit} screenUnit={screenUnit} locale={locale} onDelete={onDeleteConstraint} />;
               }
               if (constraint.kind === "symmetric") {
                 const points = constraint.pointIds.map((id) => pointById.get(id)).filter(Boolean) as SketchPoint[];
                 if (points.length !== 2) return null;
-                return <SketchConstraintBadge key={constraint.id} id={constraint.id} label="S" x={(points[0].x + points[1].x) / 2 + 18 * screenUnit} z={(points[0].z + points[1].z) / 2} screenUnit={screenUnit} onDelete={onDeleteConstraint} />;
+                return <SketchConstraintBadge key={constraint.id} id={constraint.id} label="S" x={(points[0].x + points[1].x) / 2 + 18 * screenUnit} z={(points[0].z + points[1].z) / 2} screenUnit={screenUnit} locale={locale} onDelete={onDeleteConstraint} />;
               }
               return null;
             })}
             {(displayProfile.constraints ?? []).filter((constraint) => constraint.kind === "fixed").map((constraint) => {
               const point = pointById.get(constraint.pointId);
-              return point ? <SketchConstraintBadge key={constraint.id} id={constraint.id} label="F" x={point.x + 18 * screenUnit} z={point.z - 12 * screenUnit} screenUnit={screenUnit} onDelete={onDeleteConstraint} /> : null;
+              return point ? <SketchConstraintBadge key={constraint.id} id={constraint.id} label="F" x={point.x + 18 * screenUnit} z={point.z - 12 * screenUnit} screenUnit={screenUnit} locale={locale} onDelete={onDeleteConstraint} /> : null;
             })}
             {(displayProfile.constraints ?? []).filter((constraint) => constraint.kind === "coincident").map((constraint) => {
               const point = pointById.get(constraint.pointIds[0]);
-              return point ? <SketchConstraintBadge key={constraint.id} id={constraint.id} label="C" x={point.x - 18 * screenUnit} z={point.z + 13 * screenUnit} screenUnit={screenUnit} onDelete={onDeleteConstraint} /> : null;
+              return point ? <SketchConstraintBadge key={constraint.id} id={constraint.id} label="C" x={point.x - 18 * screenUnit} z={point.z + 13 * screenUnit} screenUnit={screenUnit} locale={locale} onDelete={onDeleteConstraint} /> : null;
             })}
           </g>
           <g className="sketch-segment-dimensions">
@@ -1301,7 +1304,7 @@ export function SketchWorkspace({
               const constraints = (displayProfile.constraints ?? []).filter((candidate): candidate is Extract<NonNullable<SketchProfile["constraints"]>[number], { kind: "distance" }> => candidate.kind === "distance" && candidate.segmentId === segment.id);
               if (constraints.length) return constraints.map((constraint, index) => (
                 <g key={`dimension-${constraint.id}`} transform={`translate(${dimension.midpoint.x} ${dimension.midpoint.z + labelOffset + index * 30 * screenUnit})`}>
-                  <SketchDimensionInput id={constraint.id} label={constraint.axis === "x" ? "Distancia X" : constraint.axis === "z" ? "Distancia Y" : "Longitud"} indicator={constraint.axis === "x" ? "H" : constraint.axis === "z" ? "V" : "D"} value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
+                  <SketchDimensionInput id={constraint.id} label={locale === "es" ? constraint.axis === "x" ? "Distancia X" : constraint.axis === "z" ? "Distancia Y" : "Longitud" : constraint.axis === "x" ? "X distance" : constraint.axis === "z" ? "Y distance" : "Length"} indicator={constraint.axis === "x" ? "H" : constraint.axis === "z" ? "V" : "D"} value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
                 </g>
               ));
               const label = formatDimension(dimension.length, workspace.accuracy);
@@ -1325,7 +1328,7 @@ export function SketchWorkspace({
               const x = dimensions.reduce((total, dimension) => total + dimension.midpoint.x, 0) / dimensions.length;
               const z = dimensions.reduce((total, dimension) => total + dimension.midpoint.z, 0) / dimensions.length + labelOffset + 30 * screenUnit;
               return <g key={`angle-${constraint.id}`} transform={`translate(${x} ${z})`}>
-                <SketchDimensionInput id={constraint.id} label="Ángulo" indicator="A" value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} allowSigned onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
+                <SketchDimensionInput id={constraint.id} label={locale === "es" ? "Ángulo" : "Angle"} indicator="A" value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} allowSigned onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
               </g>;
             })}
           </g>
@@ -1428,7 +1431,7 @@ export function SketchWorkspace({
             {displayCircles.map((circle) => {
               const constraint = (displayProfile.constraints ?? []).find((candidate) => (candidate.kind === "radius" || candidate.kind === "diameter") && candidate.circleId === circle.id);
               if (constraint?.kind === "radius" || constraint?.kind === "diameter") return <g key={`radius-${constraint.id}`} transform={`translate(${circle.x + circle.radius + 12 * screenUnit} ${circle.z + 18 * screenUnit})`}>
-                <SketchDimensionInput id={constraint.id} label={constraint.kind === "diameter" ? "Diámetro" : "Radio"} indicator={constraint.kind === "diameter" ? "Ø" : "R"} value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} align="start" onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
+                <SketchDimensionInput id={constraint.id} label={locale === "es" ? constraint.kind === "diameter" ? "Diámetro" : "Radio" : constraint.kind === "diameter" ? "Diameter" : "Radius"} indicator={constraint.kind === "diameter" ? "Ø" : "R"} value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} align="start" onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
               </g>;
               const label = `R ${formatDimension(circle.radius, workspace.accuracy)}`;
               const pill = dimensionPillSize(label, screenUnit, 18);
@@ -1456,13 +1459,13 @@ export function SketchWorkspace({
               const radialPill = dimensionPillSize(radialLabel, screenUnit, 18);
               return <g key={`arc-dimensions-${segment.id}`}>
                 {radialConstraint ? <g transform={`translate(${radialPosition.x} ${radialPosition.z})`}>
-                  <SketchDimensionInput id={radialConstraint.id} label={radialConstraint.kind === "arcDiameter" ? "Diámetro" : "Radio"} indicator={radialConstraint.kind === "arcDiameter" ? "Ø" : "R"} value={radialConstraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} align="start" onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
+                  <SketchDimensionInput id={radialConstraint.id} label={locale === "es" ? radialConstraint.kind === "arcDiameter" ? "Diámetro" : "Radio" : radialConstraint.kind === "arcDiameter" ? "Diameter" : "Radius"} indicator={radialConstraint.kind === "arcDiameter" ? "Ø" : "R"} value={radialConstraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} align="start" onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
                 </g> : <g pointerEvents="none" transform={`translate(${radialPosition.x} ${radialPosition.z})`}>
                   <rect x={0} y={-radialPill.height / 2} width={radialPill.width} height={radialPill.height} rx={radialPill.radius} />
                   <text x={radialPill.width / 2} y={5 * screenUnit} fontSize={13 * screenUnit}>{radialLabel}</text>
                 </g>}
                 {angleConstraint ? <g transform={`translate(${anglePosition.x} ${anglePosition.z})`}>
-                  <SketchDimensionInput id={angleConstraint.id} label="Ángulo del arco" indicator="A" value={angleConstraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
+                  <SketchDimensionInput id={angleConstraint.id} label={locale === "es" ? "Ángulo del arco" : "Arc angle"} indicator="A" value={angleConstraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
                 </g> : null}
               </g>;
             })}

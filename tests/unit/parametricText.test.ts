@@ -19,7 +19,7 @@ describe("parametric text", () => {
     const sketch = document.features.find((feature) => feature.id === result.sketchId);
     const extrusion = document.features.find((feature) => feature.id === result.extrusionId);
     expect(sketch).toMatchObject({ kind: "sketch", purpose: "primitive", visible: false });
-    expect(extrusion).toMatchObject({ kind: "extrude", name: "Texto", distance: 4, operation: "add" });
+    expect(extrusion).toMatchObject({ kind: "extrude", name: "Text", distance: 4, operation: "add" });
   });
 
   it("regenerates geometry when its text parameters change", () => {

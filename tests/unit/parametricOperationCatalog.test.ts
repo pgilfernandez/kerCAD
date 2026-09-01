@@ -37,12 +37,11 @@ describe("parametric operation catalog", () => {
     expect(definition.parameters.find((parameter) => parameter.key === "topRadius")).toMatchObject({ min: 0, defaultValue: 0 });
   });
 
-  it("defines an exact tube by its two radii and height", () => {
+  it("defines an exact tube by its inner radius, thickness and height", () => {
     const definition = parametricOperationDefinition("tube");
 
-    expect(definition.parameters.map((parameter) => parameter.key)).toEqual(["outerRadius", "innerRadius", "height"]);
-    expect(definition.parameters.find((parameter) => parameter.key === "innerRadius")?.defaultValue)
-      .toBeLessThan(definition.parameters.find((parameter) => parameter.key === "outerRadius")!.defaultValue);
+    expect(definition.parameters.map((parameter) => parameter.key)).toEqual(["innerRadius", "thickness", "height"]);
+    expect(definition.parameters.find((parameter) => parameter.key === "thickness")?.defaultValue).toBeGreaterThan(0);
   });
 
   it("defines a half sphere with independent radius and height", () => {

@@ -5,14 +5,14 @@ import { importReferenceMesh } from "../../apps/web/src/lib/parametricReferenceI
 
 describe("parametric import hardening", () => {
   it("rejects oversized sources before parsing", () => {
-    expect(() => assertImportByteLimit("SVG", PARAMETRIC_IMPORT_LIMITS.svgBytes + 1)).toThrow("límite de 8 MB");
+    expect(() => assertImportByteLimit("SVG", PARAMETRIC_IMPORT_LIMITS.svgBytes + 1)).toThrow("8 MB limit");
     expect(() => assertImportByteLimit("STEP", PARAMETRIC_IMPORT_LIMITS.stepBytes)).not.toThrow();
   });
 
   it("rejects duplicate document identifiers", () => {
     const document = createStarterDocument(1);
     document.features[1].id = document.features[0].id;
-    expect(() => normalizeParametricDocument(document)).toThrow("identificadores duplicados");
+    expect(() => normalizeParametricDocument(document)).toThrow("duplicated identifiers");
   });
 
   it("rejects non-finite reference coordinates without shifting the mesh", () => {

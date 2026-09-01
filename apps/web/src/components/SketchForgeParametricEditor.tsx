@@ -919,7 +919,7 @@ export function SketchForgeParametricEditor() {
       feature.name = `${locale === "es" ? "Boceto" : "Sketch"} ${draft.features.filter((candidate) => candidate.kind === "sketch" && candidate.purpose === "user").length + 1}`;
       feature.objectId = objectId ?? undefined;
       if (sketchSession.mode === "scribble") {
-        feature.name = "Perfil Scribble";
+        feature.name = locale === "es" ? "Perfil Scribble" : "Scribble profile";
         feature.purpose = "primitive";
         feature.visible = false;
       }
@@ -1253,12 +1253,12 @@ export function SketchForgeParametricEditor() {
   };
 
   const sketchConstraintStatus = useMemo(() => {
-    if (!sketchSession) return { kind: "under", label: "Boceto libre" };
+    if (!sketchSession) return { kind: "under", label: locale === "es" ? "Boceto libre" : "Free sketch" };
     const analysis = analyzeSketchConstraints(sketchSession.profile);
-    if (analysis.status === "over") return { kind: "over", label: `Conflicto · ${analysis.conflictingConstraintIds.length}` };
-    if (analysis.status === "full") return { kind: "full", label: "Totalmente restringido" };
-    return { kind: "under", label: `${analysis.degreesOfFreedom} GDL` };
-  }, [sketchSession]);
+    if (analysis.status === "over") return { kind: "over", label: `${locale === "es" ? "Conflicto" : "Conflict"} · ${analysis.conflictingConstraintIds.length}` };
+    if (analysis.status === "full") return { kind: "full", label: locale === "es" ? "Totalmente restringido" : "Fully constrained" };
+    return { kind: "under", label: `${analysis.degreesOfFreedom} ${locale === "es" ? "GDL" : "DOF"}` };
+  }, [locale, sketchSession]);
 
   const selectedDimensionSegment = selectedConstraintSegments.length === 1 ? selectedConstraintSegments[0] : null;
   const selectedDimensionCircle = sketchSession && sketchSelection?.kind === "circle"
@@ -2574,6 +2574,7 @@ export function SketchForgeParametricEditor() {
         {showFps ? <FpsCounter /> : null}
         {backgroundProcessLabel ? <BackgroundProcessIndicator label={backgroundProcessLabel} rightOffset={viewportOverlayRightOffset} /> : null}
         {sketchSession ? <SketchWorkspace
+          locale={locale}
           profile={sketchSession.profile}
           profileValidation={activeSketchProfileValidation}
           operation="extrude"

@@ -45,7 +45,7 @@ describe("sketch arc dimensions", () => {
     const profile = arcProfile();
     profile.constraints = [{ id: "radius", kind: "arcRadius", segmentId: "arc", value: 10 }];
 
-    expect(sketchConstraintConflict(profile, { id: "diameter", kind: "arcDiameter", segmentId: "arc", value: 20 })).toContain("radio");
-    expect(sketchConstraintConflict(profile, { id: "angle", kind: "arcAngle", segmentId: "arc", value: 360 })).toContain("entre 0° y 360°");
+    expect(sketchConstraintConflict(profile, { id: "diameter", kind: "arcDiameter", segmentId: "arc", value: 20 })).toContain("radius");
+    expect(sketchConstraintConflict(profile, { id: "angle", kind: "arcAngle", segmentId: "arc", value: 360 })).toContain("between 0° and 360°");
   });
 });
