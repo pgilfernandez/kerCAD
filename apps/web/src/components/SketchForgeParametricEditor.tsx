@@ -157,7 +157,7 @@ function downloadBlob(blob: Blob, name: string) {
 }
 
 function fileName(value: string) {
-  return value.trim().replace(/\.(?:educad\.json|json|step|stp|stl)$/i, "").toLowerCase().replace(/[^a-z0-9áéíóúüñ]+/gi, "-").replace(/^-|-$/g, "") || "modelo";
+  return value.trim().replace(/\.(?:educad\.json|json|step|stp|stl)$/i, "").toLowerCase().replace(/[^a-z0-9áéíóúüñ]+/gi, "-").replace(/^-|-$/g, "") || "model";
 }
 
 function emptySketchProfile(): SketchProfile {
@@ -358,7 +358,7 @@ export function SketchForgeParametricEditor() {
       setEditingShellId(null);
       setPendingRevolve(null);
       setEditingRevolveId(null);
-      setNotice({ type: "info", text: placingWorkplane ? "Colocación del plano de trabajo cancelada" : "Selección topológica cancelada" });
+      setNotice({ type: "info", text: placingWorkplane ? t("notice.workplaneCancelled") : t("notice.topologyCancelled") });
     };
     window.addEventListener("keydown", cancel);
     return () => window.removeEventListener("keydown", cancel);
@@ -691,7 +691,7 @@ export function SketchForgeParametricEditor() {
     setSelectedTopologyFaces(availableFaces);
     setSelectedTopologyEdges(availableEdges);
     if (removed === 0) return;
-    setNotice({ type: "error", text: `${removed} referencia${removed === 1 ? "" : "s"} topológica${removed === 1 ? "" : "s"} ya no existe${removed === 1 ? "" : "n"} tras reconstruir la pieza` });
+    setNotice({ type: "error", text: `${removed} ${t(removed === 1 ? "notice.topologyReferenceRemoved" : "notice.topologyReferencesRemoved")}` });
   }, [build.objectRecords, editingEdgeTreatmentId, editingFaceExtrudeId, editingRevolveId, editingShellId, selectedTopologyEdges, selectedTopologyFaces, topologySelectionBuild]);
 
   const commit = useCallback((next: ParametricDocument) => {
@@ -713,7 +713,7 @@ export function SketchForgeParametricEditor() {
       commit(next);
       return true;
     } catch (error) {
-      setNotice({ type: "error", text: error instanceof Error ? error.message : "La operación crearía una dependencia no válida." });
+      setNotice({ type: "error", text: error instanceof Error ? error.message : t("notice.invalidDependency") });
       return false;
     }
   }, [commit, document, locale]);
@@ -1622,7 +1622,7 @@ export function SketchForgeParametricEditor() {
   const addExtrudeFromSketch = (sketch: SketchFeature) => {
     if (sketch.profile.shape !== "drawn") return;
     const validation = validateDrawnSketchProfile(sketch.profile.geometry);
-    if (!validation.valid) { setNotice({ type: "error", text: `No se puede extruir: ${validation.diagnostics[0]?.message ?? "el perfil no es válido."}` }); return; }
+    if (!validation.valid) { setNotice({ type: "error", text: `${t("notice.cannotExtrude")}: ${validation.diagnostics[0]?.message ?? t("notice.invalidProfile")}` }); return; }
     let featureId = "";
     const changed = mutate((draft) => {
       if (!sketch.objectId) return;
@@ -1638,7 +1638,7 @@ export function SketchForgeParametricEditor() {
   const addRevolveFromSketch = (sketch: SketchFeature) => {
     if (sketch.profile.shape !== "drawn") return;
     const validation = validateDrawnSketchProfile(sketch.profile.geometry);
-    if (!validation.valid) { setNotice({ type: "error", text: `No se puede revolucionar: ${validation.diagnostics[0]?.message ?? "el perfil no es válido."}` }); return; }
+    if (!validation.valid) { setNotice({ type: "error", text: `${t("notice.cannotRevolve")}: ${validation.diagnostics[0]?.message ?? t("notice.invalidProfile")}` }); return; }
     let featureId = "";
     const changed = mutate((draft) => {
       if (!sketch.objectId) return;
@@ -1667,7 +1667,7 @@ export function SketchForgeParametricEditor() {
     });
     if (changed && featureId) {
       setModelSelection([{ id: featureId, kind: "feature" }]);
-      setNotice({ type: "ok", text: "Operación espejo creada" });
+      setNotice({ type: "ok", text: t("notice.mirrorCreated") });
     }
   };
   const addLinearPatternOperation = () => {
@@ -1683,7 +1683,7 @@ export function SketchForgeParametricEditor() {
     });
     if (changed && featureId) {
       setModelSelection([{ id: featureId, kind: "feature" }]);
-      setNotice({ type: "ok", text: "Matriz lineal creada" });
+      setNotice({ type: "ok", text: t("notice.linearPatternCreated") });
     }
   };
   const addPolarPatternOperation = () => {
@@ -1699,7 +1699,7 @@ export function SketchForgeParametricEditor() {
     });
     if (changed && featureId) {
       setModelSelection([{ id: featureId, kind: "feature" }]);
-      setNotice({ type: "ok", text: "Matriz polar creada" });
+      setNotice({ type: "ok", text: t("notice.polarPatternCreated") });
     }
   };
   const addObjectBooleanOperation = () => {
@@ -1715,7 +1715,7 @@ export function SketchForgeParametricEditor() {
     });
     if (changed && featureId) {
       setModelSelection([{ id: featureId, kind: "feature" }]);
-      setNotice({ type: "ok", text: "Booleana entre objetos creada" });
+      setNotice({ type: "ok", text: t("notice.objectBooleanCreated") });
     }
   };
   const faceExtrudeHandle = useMemo(() => {
@@ -1769,7 +1769,7 @@ export function SketchForgeParametricEditor() {
       setModelSelection([{ id: result.featureId, kind: "feature" }]);
     }
     setShapesOpen(false);
-    setNotice({ type: "ok", text: `${parametricOperationDefinition(kind).name} ${result.createdObject ? "creada en un objeto nuevo" : "añadida al final del objeto activo"}` });
+    setNotice({ type: "ok", text: `${localizedParametricOperationDefinition(kind, locale).name} ${result.createdObject ? t("notice.createdInNewObject") : t("notice.addedToActiveObject")}` });
   };
 
   const addText = () => {
@@ -1779,7 +1779,7 @@ export function SketchForgeParametricEditor() {
     if (!changed || !completed) return;
     setModelSelection([{ id: completed.extrusionId, kind: "feature" }]);
     setShapesOpen(false);
-    setNotice({ type: "ok", text: selectedObjectId ? "Texto añadido al objeto activo" : "Texto creado en un objeto nuevo" });
+    setNotice({ type: "ok", text: selectedObjectId ? t("notice.textAdded") : t("notice.textCreated") });
   };
 
   const removeSelected = useCallback(() => {
@@ -1798,7 +1798,7 @@ export function SketchForgeParametricEditor() {
     if (nextId) {
       setModelSelection([{ id: nextId, kind: "object" }]);
     }
-    setNotice({ type: "ok", text: "Forma duplicada" });
+    setNotice({ type: "ok", text: t("notice.shapeDuplicated") });
   }, [mutate, selectedObjectId]);
 
   const deleteFeature = useCallback((id: string) => {
@@ -1809,7 +1809,7 @@ export function SketchForgeParametricEditor() {
     if (!deleted) return;
     const nextId = result.nextId ?? result.objectId;
     setModelSelection(nextId ? [{ id: nextId, kind: result.nextId && result.nextId !== result.objectId ? "feature" : "object" }] : []);
-    setNotice({ type: "ok", text: "Operación eliminada" });
+    setNotice({ type: "ok", text: t("notice.operationDeleted") });
   }, [mutate]);
 
   const deleteCurrentSelection = useCallback(() => {
@@ -1822,7 +1822,7 @@ export function SketchForgeParametricEditor() {
     }
     if (!mutate((draft) => deleteParametricSelection(draft, modelSelection))) return;
     setModelSelection([]);
-    setNotice({ type: "ok", text: `${modelSelection.length} elementos eliminados` });
+    setNotice({ type: "ok", text: `${modelSelection.length} ${t("notice.itemsDeleted")}` });
   }, [deleteFeature, modelSelection, mutate, removeSelected]);
 
   useEffect(() => {
@@ -1931,8 +1931,8 @@ export function SketchForgeParametricEditor() {
     const reference = document.objects.find((object) => object.id === referenceId)
       ?? document.features.find((feature) => feature.id === referenceId);
     setNotice(moved > 0
-      ? { type: "ok", text: `${moved} elemento${moved === 1 ? "" : "s"} alineado${moved === 1 ? "" : "s"} con ${reference?.name ?? "la referencia"}` }
-      : { type: "info", text: "No hay elementos móviles que alinear con esa referencia." });
+      ? { type: "ok", text: `${moved} ${t(moved === 1 ? "notice.alignedWithSingle" : "notice.alignedWith")} ${reference?.name ?? t("notice.reference")}` }
+      : { type: "info", text: t("notice.noMovableAlignment") });
   };
 
   const setCamera = (name: CameraView["name"]) => setView((current) => ({ name, token: current.token + 1 }));
@@ -1946,7 +1946,7 @@ export function SketchForgeParametricEditor() {
     setHistory(createParametricHistory(next));
     setModelSelection(next.objects[0] ? [{ id: next.objects[0].id, kind: "object" }] : []);
     setCamera("home");
-    setNotice({ type: "info", text: "Nuevo diseño" });
+    setNotice({ type: "info", text: t("notice.newDesign") });
     setNewDocumentOpen(false);
   };
 
@@ -1999,7 +1999,7 @@ export function SketchForgeParametricEditor() {
     setSelectedTopologyEdges(savedReferences.filter((reference) => reference.reference.hint.entityType === "edge"));
     setPlacingWorkplane(false);
     setOriginEditObjectId(null);
-    setNotice({ type: "info", text: "Pulsa caras o aristas para añadirlas o retirarlas de la selección" });
+    setNotice({ type: "info", text: t("notice.topologyHint") });
   };
 
   const cancelEdgeTreatment = () => {
@@ -2009,14 +2009,14 @@ export function SketchForgeParametricEditor() {
     setSelectedTopologyEdges([]);
     setPendingEdgeTreatment(null);
     setEditingEdgeTreatmentId(null);
-    setNotice({ type: "info", text: "Operación temporal cancelada" });
+    setNotice({ type: "info", text: t("notice.temporaryCancelled") });
   };
 
   const acceptEdgeTreatment = () => {
     const selection = [...selectedTopologyFaces, ...selectedTopologyEdges];
     const objectIds = [...new Set(selection.map((reference) => reference.objectId))];
     if (!pendingEdgeTreatment || selection.length === 0 || objectIds.length !== 1) {
-      setNotice({ type: "error", text: "Selecciona una o varias caras o aristas del mismo objeto." });
+      setNotice({ type: "error", text: t("notice.selectTopologySameObject") });
       return;
     }
     let featureId = "";
@@ -2043,7 +2043,7 @@ export function SketchForgeParametricEditor() {
     setSelectedTopologyEdges([]);
     setPendingEdgeTreatment(null);
     setEditingEdgeTreatmentId(null);
-    setNotice({ type: "ok", text: `${pendingEdgeTreatment === "chamfer" ? "Chaflán" : "Redondeo"} paramétrico ${editingEdgeTreatmentId ? "actualizado" : "añadido"} sobre ${selection.length} elemento${selection.length === 1 ? "" : "s"}` });
+    setNotice({ type: "ok", text: `${t(pendingEdgeTreatment === "chamfer" ? "operation.chamfer" : "operation.fillet")} ${t("notice.parametric")} ${t(editingEdgeTreatmentId ? "notice.updated" : "notice.added")} · ${selection.length} ${t(selection.length === 1 ? "notice.element" : "notice.elements")}` });
   };
 
   const beginFaceExtrude = (operation: "add" | "cut" = "add", featureId: string | null = null) => {
@@ -2064,7 +2064,7 @@ export function SketchForgeParametricEditor() {
     setSelectedTopologyEdges([]);
     setPlacingWorkplane(false);
     setOriginEditObjectId(null);
-    setNotice({ type: "info", text: "Selecciona una cara plana para extruir o ahuecar" });
+    setNotice({ type: "info", text: t("notice.selectPlanarFaceExtrude") });
   };
 
   const cancelFaceExtrude = () => {
@@ -2074,13 +2074,13 @@ export function SketchForgeParametricEditor() {
     setEditingRevolveId(null);
     setSelectingTopologyFaces(false);
     setSelectedTopologyFaces([]);
-    setNotice({ type: "info", text: "Extrusión temporal cancelada" });
+    setNotice({ type: "info", text: t("notice.faceExtrudeCancelled") });
   };
 
   const acceptFaceExtrude = () => {
     const reference = selectedTopologyFaces[0];
     if (!pendingFaceExtrude || !reference) {
-      setNotice({ type: "error", text: "Selecciona una cara plana." });
+      setNotice({ type: "error", text: t("notice.selectPlanarFace") });
       return;
     }
     let featureId = "";
@@ -2103,7 +2103,7 @@ export function SketchForgeParametricEditor() {
     setEditingFaceExtrudeId(null);
     setSelectingTopologyFaces(false);
     setSelectedTopologyFaces([]);
-    setNotice({ type: "ok", text: `${pendingFaceExtrude.operation === "cut" ? "Hueco" : "Extrusión"} de cara ${editingFaceExtrudeId ? "actualizado" : "añadido"}` });
+    setNotice({ type: "ok", text: `${t(pendingFaceExtrude.operation === "cut" ? "operation.facePocket" : "operation.faceExtrude")} ${t(editingFaceExtrudeId ? "notice.updated" : "notice.added")}` });
   };
 
   const beginShell = (featureId: string | null = null) => {
@@ -2124,7 +2124,7 @@ export function SketchForgeParametricEditor() {
     setSelectedTopologyEdges([]);
     setPlacingWorkplane(false);
     setOriginEditObjectId(null);
-    setNotice({ type: "info", text: "Selecciona las caras que quedarán abiertas" });
+    setNotice({ type: "info", text: t("notice.selectOpenFaces") });
   };
 
   const cancelShell = () => {
@@ -2132,12 +2132,12 @@ export function SketchForgeParametricEditor() {
     setEditingShellId(null);
     setSelectingTopologyFaces(false);
     setSelectedTopologyFaces([]);
-    setNotice({ type: "info", text: "Vaciado temporal cancelado" });
+    setNotice({ type: "info", text: t("notice.temporaryCancelled") });
   };
 
   const acceptShell = () => {
     if (!pendingShell || selectedTopologyFaces.length === 0 || new Set(selectedTopologyFaces.map((reference) => reference.objectId)).size !== 1) {
-      setNotice({ type: "error", text: "Selecciona una o varias caras del mismo objeto." });
+      setNotice({ type: "error", text: t("notice.selectFacesSameObject") });
       return;
     }
     let featureId = "";
@@ -2159,7 +2159,7 @@ export function SketchForgeParametricEditor() {
     setEditingShellId(null);
     setSelectingTopologyFaces(false);
     setSelectedTopologyFaces([]);
-    setNotice({ type: "ok", text: `Vaciado ${editingShellId ? "actualizado" : "añadido"}` });
+    setNotice({ type: "ok", text: `${t("toolbar.shell")} ${t(editingShellId ? "notice.updated" : "notice.added")}` });
   };
 
   const beginRevolve = (featureId: string | null = null, target: "face" | "axis" | "both" = "both") => {
@@ -2181,7 +2181,7 @@ export function SketchForgeParametricEditor() {
     setSelectedTopologyEdges(savedAxis ? [savedAxis] : []);
     setPlacingWorkplane(false);
     setOriginEditObjectId(null);
-    setNotice({ type: "info", text: "Selecciona una cara plana para revolucionar" });
+    setNotice({ type: "info", text: t("notice.selectPlanarFaceRevolve") });
   };
 
   const cancelRevolve = () => {
@@ -2191,13 +2191,13 @@ export function SketchForgeParametricEditor() {
     setSelectingTopologyEdges(false);
     setSelectedTopologyFaces([]);
     setSelectedTopologyEdges([]);
-    setNotice({ type: "info", text: "Revolución temporal cancelada" });
+    setNotice({ type: "info", text: t("notice.revolveCancelled") });
   };
 
   const acceptRevolve = () => {
     const reference = selectedTopologyFaces[0];
     if (!pendingRevolve || !reference || (pendingRevolve.axis === "edge" && selectedTopologyEdges.length !== 1)) {
-      setNotice({ type: "error", text: pendingRevolve?.axis === "edge" ? "Selecciona una cara plana y una arista recta como eje." : "Selecciona una cara plana." });
+      setNotice({ type: "error", text: t(pendingRevolve?.axis === "edge" ? "notice.selectPlanarFaceAndAxis" : "notice.selectPlanarFace") });
       return;
     }
     let featureId = "";
@@ -2227,12 +2227,12 @@ export function SketchForgeParametricEditor() {
     setSelectingTopologyEdges(false);
     setSelectedTopologyFaces([]);
     setSelectedTopologyEdges([]);
-    setNotice({ type: "ok", text: `Revolución ${editingRevolveId ? "actualizada" : "añadida"}` });
+    setNotice({ type: "ok", text: `${t("operation.revolve")} ${t(editingRevolveId ? "notice.updatedFeminine" : "notice.addedFeminine")}` });
   };
 
   const selectTopologyFace = (face: TopologyFacePick) => {
     if ((pendingFaceExtrude || pendingRevolve) && !face.planar) {
-      setNotice({ type: "error", text: pendingRevolve ? "La revolución requiere una cara plana." : "La extrusión desde cara requiere una cara plana." });
+      setNotice({ type: "error", text: pendingRevolve ? t("notice.revolvePlanar") : t("notice.faceExtrudePlanar") });
       return;
     }
     const objectOperations = document.features.filter((feature) => feature.objectId === face.objectId && feature.kind !== "sketch");
@@ -2272,7 +2272,7 @@ export function SketchForgeParametricEditor() {
 
   const selectTopologyEdge = (edge: TopologyEdgePick) => {
     if (pendingRevolve && !edge.straight) {
-      setNotice({ type: "error", text: "El eje de revolución debe ser una arista recta." });
+      setNotice({ type: "error", text: t("notice.revolveStraightAxis") });
       return;
     }
     const objectOperations = document.features.filter((feature) => feature.objectId === edge.objectId && feature.kind !== "sketch");
@@ -2316,10 +2316,10 @@ export function SketchForgeParametricEditor() {
       const bytes = await exportEducadProject(document);
       const archive = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
       downloadBlob(new Blob([archive], { type: EDUCAD_PACKAGE_MEDIA_TYPE }), `${fileName(exportFileName)}.educad`);
-      setNotice({ type: "ok", text: "Proyecto eduCAD guardado" });
+      setNotice({ type: "ok", text: t("notice.projectSaved") });
       setExportOpen(false);
     } catch (error) {
-      setNotice({ type: "error", text: error instanceof Error ? error.message : "No se pudo guardar el proyecto" });
+      setNotice({ type: "error", text: error instanceof Error ? error.message : t("notice.saveFailed") });
     } finally {
       setProjectExporting(false);
     }
@@ -2329,10 +2329,10 @@ export function SketchForgeParametricEditor() {
     setExporting(true);
     try {
       downloadBlob(await exportParametricStep(document), `${fileName(exportFileName)}.step`);
-      setNotice({ type: "ok", text: "STEP B-Rep exportado" });
+      setNotice({ type: "ok", text: t("notice.stepExported") });
       setExportOpen(false);
     } catch (error) {
-      setNotice({ type: "error", text: error instanceof Error ? error.message : "No se pudo exportar" });
+      setNotice({ type: "error", text: error instanceof Error ? error.message : t("notice.exportFailed") });
     } finally {
       setExporting(false);
     }
@@ -2342,17 +2342,17 @@ export function SketchForgeParametricEditor() {
     try {
       const buffer = binaryStlFromRenderMeshes(build.objectRecords.map((item) => item.mesh), exportFileName);
       downloadBlob(new Blob([buffer], { type: "model/stl" }), `${fileName(exportFileName)}.stl`);
-      setNotice({ type: "ok", text: `STL binario exportado · ${build.objectRecords.length} objeto${build.objectRecords.length === 1 ? "" : "s"}` });
+      setNotice({ type: "ok", text: `${t("notice.binaryStlExported")} · ${build.objectRecords.length} ${t(build.objectRecords.length === 1 ? "dialog.object" : "dialog.objects")}` });
       setExportOpen(false);
     } catch (error) {
-      setNotice({ type: "error", text: error instanceof Error ? error.message : "No se pudo exportar el STL" });
+      setNotice({ type: "error", text: error instanceof Error ? error.message : t("notice.stlExportFailed") });
     }
   };
 
   const importProject = async (file: File) => {
     try {
       const packagedByName = file.name.toLowerCase().endsWith(".educad");
-      if (packagedByName ? file.size > EDUCAD_PACKAGE_LIMITS.archiveBytes : file.size > EDUCAD_PACKAGE_LIMITS.projectBytes) throw new Error(packagedByName ? "El proyecto supera el límite comprimido de 256 MB." : "El documento supera el límite de 32 MB.");
+      if (packagedByName ? file.size > EDUCAD_PACKAGE_LIMITS.archiveBytes : file.size > EDUCAD_PACKAGE_LIMITS.projectBytes) throw new Error(t(packagedByName ? "notice.archiveTooLarge" : "notice.documentTooLarge"));
       const bytes = new Uint8Array(await file.arrayBuffer());
       const packaged = file.name.toLowerCase().endsWith(".educad") || bytes[0] === 0x50 && bytes[1] === 0x4b;
       let normalized: ParametricDocument;
@@ -2363,12 +2363,12 @@ export function SketchForgeParametricEditor() {
         assetCount = restored.assets.length;
       } else {
         const parsed = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
-        if (!validateDocument(parsed)) throw new Error("Este no es un proyecto eduCAD compatible.");
+        if (!validateDocument(parsed)) throw new Error(t("notice.incompatibleProject"));
         normalized = normalizeParametricDocument(parsed);
       }
       setPendingProjectImport({ document: normalized, assetCount, fileName: file.name });
     } catch (error) {
-      setNotice({ type: "error", text: error instanceof Error ? error.message : "No se pudo abrir" });
+      setNotice({ type: "error", text: error instanceof Error ? error.message : t("notice.openFailed") });
     }
   };
 
@@ -2377,7 +2377,7 @@ export function SketchForgeParametricEditor() {
     const opened = pendingProjectImport.document;
     setHistory(createParametricHistory(opened));
     setModelSelection(opened.objects[0] ? [{ id: opened.objects[0].id, kind: "object" }] : []);
-    setNotice({ type: "ok", text: pendingProjectImport.assetCount ? `Proyecto abierto · ${pendingProjectImport.assetCount} recurso${pendingProjectImport.assetCount === 1 ? "" : "s"}` : "Proyecto abierto" });
+    setNotice({ type: "ok", text: pendingProjectImport.assetCount ? `${t("notice.projectOpened")} · ${pendingProjectImport.assetCount} ${t(pendingProjectImport.assetCount === 1 ? "notice.resource" : "notice.resources")}` : t("notice.projectOpened") });
     setPendingProjectImport(null);
   };
 
@@ -2387,38 +2387,38 @@ export function SketchForgeParametricEditor() {
       const merged = mergeParametricProjects(document, pendingProjectImport.document);
       commit(merged.document);
       setModelSelection(merged.importedObjectIds.map((id) => ({ id, kind: "object" as const })));
-      setNotice({ type: "ok", text: `${merged.importedObjectIds.length} objeto${merged.importedObjectIds.length === 1 ? "" : "s"} añadido${merged.importedObjectIds.length === 1 ? "" : "s"} al proyecto` });
+      setNotice({ type: "ok", text: `${merged.importedObjectIds.length} ${t(merged.importedObjectIds.length === 1 ? "notice.projectAddedSingle" : "notice.projectAdded")}` });
       setPendingProjectImport(null);
     } catch (error) {
-      setNotice({ type: "error", text: error instanceof Error ? error.message : "No se pudo añadir el proyecto" });
+      setNotice({ type: "error", text: error instanceof Error ? error.message : t("notice.addProjectFailed") });
     }
   };
 
   const importManagedFile = async (file: File) => {
     if (/\.(?:stl|obj)$/i.test(file.name)) {
       try {
-        assertImportByteLimit("referencia", file.size);
+        assertImportByteLimit("reference", file.size);
         const draft = cloneDocument(document);
         const objectId = importReferenceMesh(draft, file.name, await file.arrayBuffer());
         commit(draft);
         setModelSelection([{ id: objectId, kind: "object" }]);
-        setNotice({ type: "ok", text: `${file.name.toLowerCase().endsWith(".obj") ? "OBJ" : "STL"} importado como referencia` });
+        setNotice({ type: "ok", text: `${file.name.toLowerCase().endsWith(".obj") ? "OBJ" : "STL"} ${t("notice.referenceImported")}` });
       } catch (error) {
-        setNotice({ type: "error", text: error instanceof Error ? error.message : "No se pudo importar la referencia." });
+        setNotice({ type: "error", text: error instanceof Error ? error.message : t("notice.referenceImportFailed") });
       }
       return;
     }
     if (/\.(?:step|stp)$/i.test(file.name)) {
       try {
         assertImportByteLimit("STEP", file.size);
-        setNotice({ type: "info", text: "Importando B-Rep STEP…" });
+        setNotice({ type: "info", text: t("notice.importingStep") });
         const draft = cloneDocument(document);
         const imported = await importStepAsParametricObject(draft, file.name, await file.arrayBuffer());
         commit(draft);
         setModelSelection([{ id: imported.featureId, kind: "feature" }]);
-        setNotice({ type: "ok", text: "STEP importado como geometría base editable" });
+        setNotice({ type: "ok", text: t("notice.stepImported") });
       } catch (error) {
-        setNotice({ type: "error", text: error instanceof Error ? error.message : "No se pudo importar el STEP." });
+        setNotice({ type: "error", text: error instanceof Error ? error.message : t("notice.stepImportFailed") });
       }
       return;
     }
@@ -2431,9 +2431,9 @@ export function SketchForgeParametricEditor() {
         const completed = result as ReturnType<typeof importSvgAsParametricExtrusion> | null;
         if (!changed || !completed) return;
         setModelSelection([{ id: completed.extrusionId, kind: "feature" }]);
-        setNotice({ type: "ok", text: `SVG importado como extrusión paramétrica · ${completed.segmentCount} segmentos y ${completed.circleCount} círculos` });
+        setNotice({ type: "ok", text: `${t("notice.svgImported")} · ${completed.segmentCount} ${t("notice.segments")} · ${completed.circleCount} ${t("notice.circles")}` });
       } catch (error) {
-        setNotice({ type: "error", text: error instanceof Error ? error.message : "No se pudo importar el SVG." });
+        setNotice({ type: "error", text: error instanceof Error ? error.message : t("notice.svgImportFailed") });
       }
       return;
     }
@@ -2488,27 +2488,27 @@ export function SketchForgeParametricEditor() {
           <div className="educad-sketch-finish-actions"><button className="educad-sketch-action primary" type="button" onClick={acceptSketch}><Check size={17} /><span>{t("sketch.accept")}</span></button><button className="educad-sketch-action" type="button" onClick={cancelSketch}><X size={17} /><span>{t("common.cancel")}</span></button></div>
         </div> :
         <div className="toolbar-mode-content geometry">
-          <ToolbarSection label="New" className="toolbar-home-section"><Tool label={t("toolbar.new")} onClick={() => setNewDocumentOpen(true)}><ToolbarHomeIcon /></Tool></ToolbarSection>
+          <ToolbarSection label={t("toolbar.newGroup")} className="toolbar-home-section"><Tool label={t("toolbar.new")} onClick={() => setNewDocumentOpen(true)}><ToolbarHomeIcon /></Tool></ToolbarSection>
           <div className="tool-group left">
-            <ToolbarSection label="Clipboard">
-              <Tool label={t("toolbar.copy")} enabled={Boolean(selectedObjectId)} onClick={() => { setClipboardId(selectedObjectId); setNotice({ type: "info", text: "Objeto copiado" }); }}><ToolbarCopyIcon /></Tool>
+            <ToolbarSection label={t("toolbar.clipboard")}>
+              <Tool label={t("toolbar.copy")} enabled={Boolean(selectedObjectId)} onClick={() => { setClipboardId(selectedObjectId); setNotice({ type: "info", text: t("notice.objectCopied") }); }}><ToolbarCopyIcon /></Tool>
               <Tool label={t("toolbar.paste")} enabled={Boolean(clipboardId)} onClick={() => duplicateSelected(clipboardId)}><ToolbarPasteIcon /></Tool>
               <Tool label={t("toolbar.duplicate")} enabled={Boolean(selectedObjectId)} onClick={() => duplicateSelected()}><ToolbarDuplicateIcon /></Tool>
               <Tool label={modelSelection.length > 1 ? t("toolbar.deleteSelection") : selectionKind === "feature" ? t("toolbar.deleteOperation") : t("toolbar.deleteObject")} enabled={modelSelection.length > 0} onClick={deleteCurrentSelection}><ToolbarTrashIcon /></Tool>
             </ToolbarSection>
-            <ToolbarSection label="History">
+            <ToolbarSection label={t("toolbar.history")}>
               <Tool label={t("toolbar.undo")} enabled={history.index > 0} onClick={undo}><ToolbarUndoIcon /></Tool>
               <Tool label={t("toolbar.redo")} enabled={history.index < history.entries.length - 1} onClick={redo}><ToolbarRedoIcon /></Tool>
             </ToolbarSection>
-            <ToolbarSection label="Shapes" className="toolbar-shapes-section">
+            <ToolbarSection label={t("toolbar.shapes")} className="toolbar-shapes-section">
               <button data-educad-popup="shapes" className={`shape-menu-trigger ${shapesOpen ? "active" : ""}`} aria-label={t("toolbar.addShape")} onClick={() => setShapesOpen((value) => !value)}><ToolbarShapeAddIcon /></button>
               <Tool label={t("toolbar.createSketch")} onClick={() => { setShapesOpen(false); beginSketch(null); }}><ToolbarSketchIcon /></Tool>
               {shapesOpen && (
                 <div data-educad-popup="shapes" className="shape-menu-dropdown">
-                  <div className="shape-menu-title">Formas</div>
+                  <div className="shape-menu-title">{t("toolbar.shapes")}</div>
                   <div className="shape-menu-list">
                     {parametricOperationCatalog.map((asset) => { const localized = localizedParametricOperationDefinition(asset.kind, locale); return <button className="shape-menu-item" key={asset.kind} onClick={() => addShape(asset.kind)}><img src={asset.menuIcon} alt="" /><span>{localized.name}<small>{selectedObjectId ? t("notice.newOperationInObject") : localized.description}</small></span></button>; })}
-                    <button className="shape-menu-item" onClick={addText}><img src="/assets/sketchforge/shape-icons-gray/raw/text.png" alt="" /><span>Texto<small>{selectedObjectId ? "Nueva operación en el objeto" : "Texto paramétrico extruido"}</small></span></button>
+                    <button className="shape-menu-item" onClick={addText}><img src="/assets/sketchforge/shape-icons-gray/raw/text.png" alt="" /><span>{t("toolbar.text")}<small>{selectedObjectId ? t("toolbar.textInObject") : t("toolbar.extrudedText")}</small></span></button>
                   </div>
                 </div>
               )}
@@ -2516,13 +2516,13 @@ export function SketchForgeParametricEditor() {
           </div>
           <div className="toolbar-spacer" />
           <div className="tool-group right">
-            <ToolbarSection label="Modify" className="toolbar-modify-section">
+            <ToolbarSection label={t("toolbar.modify")} className="toolbar-modify-section">
               <div data-educad-popup="align" className="educad-align-tool">
                 <Tool label={t("toolbar.align")} enabled={modelSelection.length > 1} active={alignOpen} onClick={() => setAlignOpen((value) => !value)}><ToolbarAlignIcon /></Tool>
-                {alignOpen ? <div className="educad-align-popover" role="dialog" aria-label="Alinear selección">
-                  <header><strong>Alinear</strong><span>Referencia: último seleccionado</span></header>
-                  <div className="educad-align-grid"><div className="educad-align-head"><span /><strong>Mín.</strong><strong>Centro</strong><strong>Máx.</strong></div>
-                    {(["x", "y", "z"] as const).map((axis) => <div className="educad-align-row" key={axis}><strong className={`axis-${axis}`}>{axis.toUpperCase()}</strong>{(["min", "center", "max"] as const).map((anchor) => <button key={anchor} onClick={() => alignSelection(axis, anchor)} aria-label={`Alinear ${axis.toUpperCase()} por ${anchor === "min" ? "mínimos" : anchor === "center" ? "centros" : "máximos"}`}>{anchor === "min" ? "◧←" : anchor === "center" ? "◫" : "→◧"}</button>)}</div>)}
+                {alignOpen ? <div className="educad-align-popover" role="dialog" aria-label={t("align.title")}>
+                  <header><strong>{t("align.action")}</strong><span>{t("align.referenceLast")}</span></header>
+                  <div className="educad-align-grid"><div className="educad-align-head"><span /><strong>{t("align.minimum")}</strong><strong>{t("align.center")}</strong><strong>{t("align.maximum")}</strong></div>
+                    {(["x", "y", "z"] as const).map((axis) => <div className="educad-align-row" key={axis}><strong className={`axis-${axis}`}>{axis.toUpperCase()}</strong>{(["min", "center", "max"] as const).map((anchor) => <button key={anchor} onClick={() => alignSelection(axis, anchor)} aria-label={`${t("align.action")} ${axis.toUpperCase()} · ${anchor === "min" ? t("align.minimum") : anchor === "center" ? t("align.center") : t("align.maximum")}`}>{anchor === "min" ? "◧←" : anchor === "center" ? "◫" : "→◧"}</button>)}</div>)}
                   </div>
                 </div> : null}
               </div>
@@ -2546,7 +2546,7 @@ export function SketchForgeParametricEditor() {
                   setSelectingTopologyEdges(false);
                   setSelectedTopologyFaces([]);
                   setSelectedTopologyEdges([]);
-                  setNotice({ type: "ok", text: "Plano de trabajo global restaurado" });
+                  setNotice({ type: "ok", text: t("notice.workplaneRestored") });
                   return;
                 }
                 setPlacingWorkplane((current) => !current);
@@ -2555,7 +2555,7 @@ export function SketchForgeParametricEditor() {
                 setSelectedTopologyFaces([]);
                 setSelectedTopologyEdges([]);
                 setWorkplaneOpen(false);
-                setNotice({ type: "info", text: placingWorkplane ? "Colocación cancelada" : "Pasa sobre una cara y haz clic para colocar el plano de trabajo" });
+                setNotice({ type: "info", text: placingWorkplane ? t("notice.placementCancelled") : t("notice.workplanePlaceHint") });
               }}>{hasActiveWorkplane ? <ToolbarResetWorkplaneIcon /> : <ToolbarWorkplaneIcon />}</Tool>
               <Tool label={t("toolbar.dropToWorkplane")} enabled={Boolean(selectedShape)} onClick={() => updateSelected({ elevation: 0 })}><ToolbarDropToWorkplaneIcon /></Tool>
             </ToolbarSection>
@@ -2593,7 +2593,7 @@ export function SketchForgeParametricEditor() {
               setSketchProfile((profile) => appendScribbleContour(profile, points, profile.generator?.kind === "scribble" ? profile.generator.smoothing : 0.8, smooth));
               setSketchTool(smooth ? "freehandSmooth" : "freehand");
             } catch (error) {
-              setNotice({ type: "error", text: error instanceof Error ? error.message : "No se pudo crear el contorno libre." });
+              setNotice({ type: "error", text: error instanceof Error ? error.message : t("notice.freehandFailed") });
             }
           }}
           onAddText={(position) => {
@@ -2805,7 +2805,7 @@ export function SketchForgeParametricEditor() {
           onWorkplaneFaceSelect={({ origin, normal }) => {
             mutate((draft) => { Object.assign(draft.workplane, parametricWorkplaneFromFace(origin, normal)); });
             setPlacingWorkplane(false);
-            setNotice({ type: "ok", text: "Plano de trabajo colocado sobre la cara" });
+            setNotice({ type: "ok", text: t("notice.workplanePlaced") });
           }}
           topologyFaceSelection={selectingTopologyFaces}
           onTopologyFaceSelect={selectTopologyFace}
@@ -2891,13 +2891,13 @@ export function SketchForgeParametricEditor() {
         </div> : null}
         <button
           className={`educad-sidebar-mode-control ${modelSidebarMode}`}
-          aria-label={modelSidebarMode === "normal" ? "Simplificar jerarquía" : modelSidebarMode === "simplified" ? "Ocultar jerarquía" : "Mostrar jerarquía"}
-          title={modelSidebarMode === "normal" ? "Panel visible" : modelSidebarMode === "simplified" ? "Panel simplificado" : "Panel oculto"}
+          aria-label={modelSidebarMode === "normal" ? t("sidebar.simplify") : modelSidebarMode === "simplified" ? t("sidebar.hide") : t("sidebar.show")}
+          title={modelSidebarMode === "normal" ? t("sidebar.visible") : modelSidebarMode === "simplified" ? t("sidebar.simplified") : t("sidebar.hidden")}
           onClick={() => setModelSidebarMode((current) => current === "normal" ? "simplified" : current === "simplified" ? "hidden" : "normal")}
         >
           {modelSidebarMode === "normal" ? <ChevronLeft size={23} /> : modelSidebarMode === "simplified" ? <ChevronDown size={23} /> : <ChevronRight size={23} />}
         </button>
-        <div className="camera-controls" aria-label="Controles de cámara">
+        <div className="camera-controls" aria-label={t("camera.controls")}>
           <button className={showPositionTriad ? "active" : ""} aria-label={t("camera.positionTriad")} aria-pressed={showPositionTriad} title={t("camera.positionTriad")} onClick={() => setShowPositionTriad((visible) => !visible)}><Move3d size={22} /></button>
           <button className={showRotationTriad ? "active" : ""} aria-label={t("camera.rotationTriad")} aria-pressed={showRotationTriad} title={t("camera.rotationTriad")} onClick={() => setShowRotationTriad((visible) => !visible)}><Rotate3d size={22} /></button>
           <button className={showParameterHandles ? "active educad-parameter-handles-toggle" : "educad-parameter-handles-toggle"} aria-label={t("camera.parameterHandles")} aria-pressed={showParameterHandles} title={t("camera.parameterHandles")} onClick={() => setShowParameterHandles((visible) => !visible)}><CircleDot size={22} /></button>
@@ -2911,7 +2911,7 @@ export function SketchForgeParametricEditor() {
           <button aria-label={t("camera.zoomIn")} title={t("camera.zoomIn")} onClick={() => setCamera("zoom-in")}><Plus size={28} /></button>
           <button aria-label={t("camera.zoomOut")} title={t("camera.zoomOut")} onClick={() => setCamera("zoom-out")}><Minus size={28} /></button>
         </div>
-        {build.warning && <div className="educad-rebuild-error"><strong>El historial se detuvo aquí</strong><span>{build.warning}</span></div>}
+        {build.warning && <div className="educad-rebuild-error"><strong>{t("history.stopped")}</strong><span>{build.warning}</span></div>}
         {notice && <div className={`educad-reference-toast ${notice.type}`}>{notice.text}</div>}
         {modelSidebarMode !== "hidden" ? <ParametricModelSidebar
           document={document}
@@ -2965,12 +2965,12 @@ export function SketchForgeParametricEditor() {
 
       {exportOpen && (
         <aside data-educad-popup="export" className="top-action-panel export-action-panel educad-export-panel">
-          <header><div className="top-action-heading"><strong>{t("dialog.exportTitle")}</strong><span>Conserva los parámetros o fabrica la pieza</span></div><button aria-label={t("common.close")} onClick={() => setExportOpen(false)}><X /></button></header>
-          <label className="educad-export-name"><span>Nombre del archivo</span><input type="text" value={exportFileName} maxLength={120} placeholder="modelo" onChange={(event) => setExportFileName(event.target.value)} /></label>
+          <header><div className="top-action-heading"><strong>{t("dialog.exportTitle")}</strong><span>{t("dialog.exportSubtitle")}</span></div><button aria-label={t("common.close")} onClick={() => setExportOpen(false)}><X /></button></header>
+          <label className="educad-export-name"><span>{t("dialog.fileName")}</span><input type="text" value={exportFileName} maxLength={120} placeholder="model" onChange={(event) => setExportFileName(event.target.value)} /></label>
           <div className="educad-export-options">
-            <button onClick={() => void exportProject()} disabled={projectExporting}><span className="export-format-icon">edu</span><strong>{projectExporting ? "Guardando…" : "Proyecto eduCAD"}</strong><small>Paquete editable con historial y recursos</small></button>
-            <button onClick={() => void exportStep()} disabled={exporting || kernelBusy || !build.mesh}><span className="export-format-icon step">STEP</span><strong>{exporting ? "Exportando…" : "Modelo STEP"}</strong><small>B-Rep exacto para fabricación</small></button>
-            <button onClick={exportStl} disabled={kernelBusy || build.objectRecords.length === 0}><span className="export-format-icon">STL</span><strong>Modelo STL</strong><small>Binario, en milímetros y listo para imprimir</small></button>
+            <button onClick={() => void exportProject()} disabled={projectExporting}><span className="export-format-icon">edu</span><strong>{projectExporting ? t("dialog.saving") : t("dialog.projectFormat")}</strong><small>{t("dialog.projectFormatHint")}</small></button>
+            <button onClick={() => void exportStep()} disabled={exporting || kernelBusy || !build.mesh}><span className="export-format-icon step">STEP</span><strong>{exporting ? t("dialog.exporting") : t("dialog.stepFormat")}</strong><small>{t("dialog.stepFormatHint")}</small></button>
+            <button onClick={exportStl} disabled={kernelBusy || build.objectRecords.length === 0}><span className="export-format-icon">STL</span><strong>{t("dialog.stlFormat")}</strong><small>{t("dialog.stlFormatHint")}</small></button>
           </div>
         </aside>
       )}
@@ -2989,7 +2989,7 @@ export function SketchForgeParametricEditor() {
         <div className="educad-dialog-backdrop" role="presentation" onPointerDown={() => setPendingProjectImport(null)}>
           <section className="educad-new-document-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-import-project-title" onPointerDown={(event) => event.stopPropagation()}>
             <header><strong id="educad-import-project-title">{t("dialog.importProject")}</strong><button type="button" aria-label={t("common.cancel")} onClick={() => setPendingProjectImport(null)}><X size={18} /></button></header>
-            <p><strong>{pendingProjectImport.document.name || pendingProjectImport.fileName}</strong> contiene {pendingProjectImport.document.objects.length} objeto{pendingProjectImport.document.objects.length === 1 ? "" : "s"}. Puedes abrirlo como proyecto independiente o añadir sus objetos al diseño actual.</p>
+            <p><strong>{pendingProjectImport.document.name || pendingProjectImport.fileName}</strong> {t("dialog.contains")} {pendingProjectImport.document.objects.length} {t(pendingProjectImport.document.objects.length === 1 ? "dialog.object" : "dialog.objects")}. {t("dialog.importChoice")}</p>
             <footer><button type="button" onClick={() => setPendingProjectImport(null)}>{t("common.cancel")}</button><button type="button" onClick={openPendingProject}>{t("common.open")}</button><button type="button" className="primary" onClick={mergePendingProject}>{t("dialog.addToCurrent")}</button></footer>
           </section>
         </div>

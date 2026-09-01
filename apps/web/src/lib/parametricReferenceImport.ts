@@ -65,7 +65,7 @@ function parseReferenceMesh(sourceName: string, buffer: ArrayBuffer) {
 }
 
 export function importReferenceMesh(document: ParametricDocument, sourceName: string, buffer: ArrayBuffer, random = Math.random) {
-  assertImportByteLimit("referencia", buffer.byteLength);
+  assertImportByteLimit("reference", buffer.byteLength);
   const parsed = parseReferenceMesh(sourceName, buffer);
   const object = createParametricObject(document.objects.length + 1);
   object.name = sourceName.replace(/\.(?:stl|obj)$/i, "") || `Referencia ${parsed.format.toUpperCase()}`;
