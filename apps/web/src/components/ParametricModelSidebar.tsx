@@ -34,6 +34,7 @@ import { canReorderParametricSelection, canResetParametricFeature, OBJECT_COLOR_
 import { localizedParametricOperationDefinition, parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import { parametricTextFontNames, updateParametricTextSketch } from "@/lib/parametricText";
 import { ToolbarBooleanModeIcon, ToolbarChamferIcon, ToolbarFilletIcon } from "@/components/icons";
+import { useAccessibleDialog } from "@/components/useAccessibleDialog";
 import { displayLengthToMillimeters, displayUnitLabel, millimetersToDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
 import { educadTranslate, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
 import type { ParametricDocument, ParametricFeature, ParametricObject } from "@/types/parametric";
@@ -218,6 +219,7 @@ export function ParametricModelSidebar({
     onRenameSelection(name);
     closeRename();
   };
+  const renameDialogRef = useAccessibleDialog<HTMLFormElement>(renameOpen, closeRename, renameInputRef);
 
   return (
     <LocaleContext.Provider value={locale}><NumericStepContext.Provider value={{ input: Math.max(0.0001, gridStep / 2), slider: Math.max(0.0001, gridStep / 10), displayUnit }}><>
@@ -327,7 +329,7 @@ export function ParametricModelSidebar({
     </aside>
     {renameOpen ? (
       <div className="educad-dialog-backdrop" role="presentation" onPointerDown={closeRename}>
-        <form className="educad-rename-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-rename-title" onPointerDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); commitRename(); }}>
+        <form ref={renameDialogRef} className="educad-rename-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-rename-title" tabIndex={-1} onPointerDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); commitRename(); }}>
           <header><strong id="educad-rename-title">{t("model.renameTitle")}</strong><button type="button" aria-label={t("common.cancel")} onClick={closeRename}><X size={18} /></button></header>
           <label><span>{selection.length > 1 ? t("model.commonName") : t("model.name")}</span><input ref={renameInputRef} autoFocus value={renameDraft} maxLength={80} placeholder={selection.length > 1 ? t("model.applyCommonName") : undefined} onChange={(event) => setRenameDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") closeRename(); }} /></label>
           <footer><button type="button" onClick={closeRename}>{t("common.cancel")}</button><button className="primary" type="submit" disabled={!renameDraft.trim()}>{t("common.accept")}</button></footer>

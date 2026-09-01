@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyEdgePick, type TopologyFacePick, type ViewportDisplayMode, type ViewportShadingMode } from "@/components/ParametricViewport";
 import { SketchWorkspace, type SketchMeasurement, type SketchSceneReference, type SketchSelection, type SketchTool } from "@/components/SketchWorkspace";
+import { useAccessibleDialog } from "@/components/useAccessibleDialog";
 import {
   ToolbarAlignIcon,
   ToolbarChamferIcon,
@@ -366,6 +367,8 @@ export function SketchForgeParametricEditor() {
   const [exporting, setExporting] = useState(false);
   const [projectExporting, setProjectExporting] = useState(false);
   const [pendingProjectImport, setPendingProjectImport] = useState<{ document: ParametricDocument; assetCount: number; fileName: string } | null>(null);
+  const newDocumentDialogRef = useAccessibleDialog(newDocumentOpen, () => setNewDocumentOpen(false));
+  const importProjectDialogRef = useAccessibleDialog(Boolean(pendingProjectImport), () => setPendingProjectImport(null));
   const [hydrated, setHydrated] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
   const sketchSvgImportRef = useRef<HTMLInputElement>(null);
@@ -3010,9 +3013,9 @@ export function SketchForgeParametricEditor() {
 
       {newDocumentOpen ? (
         <div className="educad-dialog-backdrop" role="presentation" onPointerDown={() => setNewDocumentOpen(false)}>
-          <section className="educad-new-document-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-new-document-title" onPointerDown={(event) => event.stopPropagation()}>
+          <section ref={newDocumentDialogRef} className="educad-new-document-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-new-document-title" aria-describedby="educad-new-document-description" tabIndex={-1} onPointerDown={(event) => event.stopPropagation()}>
             <header><strong id="educad-new-document-title">{t("dialog.newTitle")}</strong><button type="button" aria-label={t("common.cancel")} onClick={() => setNewDocumentOpen(false)}><X size={18} /></button></header>
-            <p>{t("dialog.newWarning")}</p>
+            <p id="educad-new-document-description">{t("dialog.newWarning")}</p>
             <footer><button type="button" onClick={() => setNewDocumentOpen(false)}>{t("common.cancel")}</button><button type="button" className="danger" onClick={newDocument}>{t("dialog.createNew")}</button><button type="button" className="primary" onClick={openExportFromNewDocumentWarning}>{t("dialog.save")}</button></footer>
           </section>
         </div>
@@ -3020,9 +3023,9 @@ export function SketchForgeParametricEditor() {
 
       {pendingProjectImport ? (
         <div className="educad-dialog-backdrop" role="presentation" onPointerDown={() => setPendingProjectImport(null)}>
-          <section className="educad-new-document-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-import-project-title" onPointerDown={(event) => event.stopPropagation()}>
+          <section ref={importProjectDialogRef} className="educad-new-document-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-import-project-title" aria-describedby="educad-import-project-description" tabIndex={-1} onPointerDown={(event) => event.stopPropagation()}>
             <header><strong id="educad-import-project-title">{t("dialog.importProject")}</strong><button type="button" aria-label={t("common.cancel")} onClick={() => setPendingProjectImport(null)}><X size={18} /></button></header>
-            <p><strong>{pendingProjectImport.document.name || pendingProjectImport.fileName}</strong> {t("dialog.contains")} {pendingProjectImport.document.objects.length} {t(pendingProjectImport.document.objects.length === 1 ? "dialog.object" : "dialog.objects")}. {t("dialog.importChoice")}</p>
+            <p id="educad-import-project-description"><strong>{pendingProjectImport.document.name || pendingProjectImport.fileName}</strong> {t("dialog.contains")} {pendingProjectImport.document.objects.length} {t(pendingProjectImport.document.objects.length === 1 ? "dialog.object" : "dialog.objects")}. {t("dialog.importChoice")}</p>
             <footer><button type="button" onClick={() => setPendingProjectImport(null)}>{t("common.cancel")}</button><button type="button" onClick={openPendingProject}>{t("common.open")}</button><button type="button" className="primary" onClick={mergePendingProject}>{t("dialog.addToCurrent")}</button></footer>
           </section>
         </div>
