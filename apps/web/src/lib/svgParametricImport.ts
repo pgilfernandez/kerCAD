@@ -8,12 +8,12 @@ import type { SketchProfile } from "@/types/sketchforge";
 
 function svgOperationName(fileName: string) {
   const withoutExtension = fileName.replace(/\.svg$/i, "").trim();
-  return withoutExtension || "SVG importado";
+  return withoutExtension || "Imported SVG";
 }
 
 export function appendSvgProfileAsParametricExtrusion(document: ParametricDocument, profile: SketchProfile, fileName: string, selectedObjectId: string | null) {
   const validation = validateDrawnSketchProfile(profile);
-  if (!validation.valid) throw new Error(validation.diagnostics[0]?.message ?? "El SVG no contiene un perfil cerrado válido.");
+  if (!validation.valid) throw new Error(validation.diagnostics[0]?.message ?? "The SVG does not contain a valid closed profile.");
 
   let objectId = selectedObjectId && document.objects.some((object) => object.id === selectedObjectId) ? selectedObjectId : null;
   if (!objectId) {
@@ -30,7 +30,7 @@ export function appendSvgProfileAsParametricExtrusion(document: ParametricDocume
   const name = svgOperationName(fileName);
   const sketch = createDrawnSketchFeature(document.features.filter((feature) => feature.kind === "sketch" && feature.purpose === "user").length + 1, profile);
   sketch.objectId = objectId;
-  sketch.name = `${name} · Boceto`;
+  sketch.name = `${name} · Sketch`;
   sketch.visible = false;
 
   const extrusion = createExtrudeFeature(sketch.id, document.features.filter((feature) => feature.kind === "extrude").length + 1, false);

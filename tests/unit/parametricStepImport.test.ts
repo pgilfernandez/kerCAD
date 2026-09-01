@@ -26,7 +26,7 @@ describe("parametric STEP import", () => {
     const feature = document.features[0];
     if (feature.kind === "importedStep") feature.stepText = "";
 
-    expect(() => normalizeParametricDocument(document)).toThrow("contenido STEP está vacío");
+    expect(() => normalizeParametricDocument(document)).toThrow("STEP content is empty");
   });
 
   it("keeps the imported B-Rep as the first operation", () => {

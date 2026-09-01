@@ -25,7 +25,7 @@ type PendingBuild = {
 };
 
 function abortError() {
-  const error = new Error("La reconstrucción CAD anterior ha sido cancelada.");
+  const error = new Error("The previous CAD rebuild was cancelled.");
   error.name = "AbortError";
   return error;
 }
@@ -166,7 +166,7 @@ export class ParametricBuildWorkerClient {
     const worker = this.createWorker();
     worker.onmessage = (event) => this.handleMessage(event.data);
     worker.onerror = (event) => this.failActive(event.message || "El worker CAD ha fallado.");
-    worker.onmessageerror = () => this.failActive("El worker CAD devolvió datos no válidos.");
+    worker.onmessageerror = () => this.failActive("The CAD worker returned invalid data.");
     this.worker = worker;
     return worker;
   }

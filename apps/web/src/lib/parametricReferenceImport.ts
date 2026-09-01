@@ -39,15 +39,15 @@ function parseReferenceMesh(sourceName: string, buffer: ArrayBuffer) {
   }
   const positions = soups.flatMap((item) => item.positions);
   const normals = soups.flatMap((item) => item.normals);
-  if (positions.length < 9) throw new Error(`El archivo ${format.toUpperCase()} no contiene triángulos.`);
-  if (positions.length / 9 > PARAMETRIC_IMPORT_LIMITS.referenceTriangles) throw new Error(`La referencia supera el límite de ${PARAMETRIC_IMPORT_LIMITS.referenceTriangles.toLocaleString("es-ES")} triángulos.`);
-  if (positions.some((value) => !Number.isFinite(value)) || normals.some((value) => !Number.isFinite(value))) throw new Error(`El archivo ${format.toUpperCase()} contiene coordenadas no válidas.`);
+  if (positions.length < 9) throw new Error(`The ${format.toUpperCase()} file does not contain triangles.`);
+  if (positions.length / 9 > PARAMETRIC_IMPORT_LIMITS.referenceTriangles) throw new Error(`The reference exceeds the ${PARAMETRIC_IMPORT_LIMITS.referenceTriangles.toLocaleString("en-US")} triangle limit.`);
+  if (positions.some((value) => !Number.isFinite(value)) || normals.some((value) => !Number.isFinite(value))) throw new Error(`The ${format.toUpperCase()} file contains invalid coordinates.`);
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
   geometry.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
   geometry.computeBoundingBox();
   const bounds = geometry.boundingBox;
-  if (!bounds) throw new Error(`No se pudo calcular el tamaño del ${format.toUpperCase()}.`);
+  if (!bounds) throw new Error(`Could not calculate the size of the ${format.toUpperCase()} file.`);
   const centerX = (bounds.min.x + bounds.max.x) / 2;
   const centerY = (bounds.min.y + bounds.max.y) / 2;
   for (let index = 0; index < positions.length; index += 3) {

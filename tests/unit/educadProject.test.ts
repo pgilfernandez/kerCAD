@@ -25,7 +25,7 @@ describe("eduCAD project packages", () => {
     project.name = "Manipulado";
     files["project.json"] = strToU8(JSON.stringify(project));
 
-    await expect(importEducadProject(zipSync(files))).rejects.toThrow("integridad");
+    await expect(importEducadProject(zipSync(files))).rejects.toThrow("integrity");
   });
 
   it("rejects unsafe asset paths before reading their contents", async () => {
@@ -34,13 +34,13 @@ describe("eduCAD project packages", () => {
     manifest.assets.push({ id: "bad", path: "assets/../bad.svg", name: "bad.svg", mediaType: "image/svg+xml", sourceFormat: "svg", byteLength: 0, sha256: "0".repeat(64) });
     files["manifest.json"] = strToU8(JSON.stringify(manifest));
 
-    await expect(importEducadProject(zipSync(files))).rejects.toThrow("recurso duplicado o no válido");
+    await expect(importEducadProject(zipSync(files))).rejects.toThrow("duplicated or invalid asset");
   });
 
   it("rejects files not declared by the package manifest", async () => {
     const files = unzipSync(await exportEducadProject(createStarterDocument(123)));
     files["unexpected.bin"] = new Uint8Array([1, 2, 3]);
 
-    await expect(importEducadProject(zipSync(files))).rejects.toThrow("no están declarados");
+    await expect(importEducadProject(zipSync(files))).rejects.toThrow("not declared");
   });
 });

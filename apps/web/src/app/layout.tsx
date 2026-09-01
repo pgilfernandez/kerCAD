@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "eduCAD — CAD paramétrico para aprender",
-  description: "Editor CAD paramétrico, local y open source orientado a educación.",
+  title: "eduCAD — Parametric CAD for learning",
+  description: "Local, open-source parametric CAD editor designed for education.",
 };
 
 export default function RootLayout({

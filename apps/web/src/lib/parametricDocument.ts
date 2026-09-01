@@ -332,10 +332,10 @@ export function migrateParametricDocument(document: ParametricDocument): Paramet
   let next = structuredClone(document);
   const visited = new Set<ParametricSchema>();
   while (next.schema !== CURRENT_PARAMETRIC_SCHEMA) {
-    if (visited.has(next.schema)) throw new Error(`Se ha detectado un ciclo de migración para ${next.schema}.`);
+    if (visited.has(next.schema)) throw new Error(`A migration cycle was detected for ${next.schema}.`);
     visited.add(next.schema);
     const migration = documentMigrations[next.schema];
-    if (!migration) throw new Error(`La versión ${next.schema} no es compatible con esta versión de eduCAD.`);
+    if (!migration) throw new Error(`Version ${next.schema} is not supported by this version of eduCAD.`);
     next = migration(next);
   }
   return next;
@@ -345,11 +345,11 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
   const next = migrateParametricDocument(document);
   next.objects ??= [];
   next.topologyReferences ??= [];
-  if (next.objects.length > PARAMETRIC_IMPORT_LIMITS.objects) throw new Error(`El proyecto supera el límite de ${PARAMETRIC_IMPORT_LIMITS.objects.toLocaleString("es-ES")} objetos.`);
-  if (next.features.length > PARAMETRIC_IMPORT_LIMITS.features) throw new Error(`El proyecto supera el límite de ${PARAMETRIC_IMPORT_LIMITS.features.toLocaleString("es-ES")} operaciones.`);
-  if ((next.topologyReferences?.length ?? 0) > PARAMETRIC_IMPORT_LIMITS.topologyReferences) throw new Error(`El proyecto contiene demasiadas referencias topológicas.`);
+  if (next.objects.length > PARAMETRIC_IMPORT_LIMITS.objects) throw new Error(`The project exceeds the ${PARAMETRIC_IMPORT_LIMITS.objects.toLocaleString("en-US")} object limit.`);
+  if (next.features.length > PARAMETRIC_IMPORT_LIMITS.features) throw new Error(`The project exceeds the ${PARAMETRIC_IMPORT_LIMITS.features.toLocaleString("en-US")} operation limit.`);
+  if ((next.topologyReferences?.length ?? 0) > PARAMETRIC_IMPORT_LIMITS.topologyReferences) throw new Error("The project contains too many topological references.");
   const identifiers = [...next.objects.map((object) => object.id), ...next.features.map((feature) => feature.id), ...(next.topologyReferences ?? []).map((reference) => reference.id)];
-  if (new Set(identifiers).size !== identifiers.length) throw new Error("El proyecto contiene identificadores duplicados.");
+  if (new Set(identifiers).size !== identifiers.length) throw new Error("The project contains duplicated identifiers.");
   next.workplane ??= { width: 200, depth: 200, gridStep: 5, snapSpacing: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, ...globalParametricWorkplanePlacement() };
   next.workplane.width = Math.min(2000, Math.max(1, Number.isFinite(next.workplane.width) ? next.workplane.width : 200));
   next.workplane.depth = Math.min(2000, Math.max(1, Number.isFinite(next.workplane.depth) ? next.workplane.depth : 200));
@@ -376,8 +376,8 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
       const positions = object.referenceMesh.positions;
       const normals = object.referenceMesh.normals;
       const edges = object.referenceMesh.edges;
-      if (!Array.isArray(positions) || !Array.isArray(normals) || !Array.isArray(edges) || positions.length < 9 || positions.length % 9 !== 0 || normals.length !== positions.length || edges.length % 6 !== 0 || positions.some((value) => !Number.isFinite(value)) || normals.some((value) => !Number.isFinite(value)) || edges.some((value) => !Number.isFinite(value))) throw new Error(`${object.name}: la malla de referencia no es válida.`);
-      if (positions.length / 9 > PARAMETRIC_IMPORT_LIMITS.referenceTriangles) throw new Error(`${object.name}: la malla de referencia contiene demasiados triángulos.`);
+      if (!Array.isArray(positions) || !Array.isArray(normals) || !Array.isArray(edges) || positions.length < 9 || positions.length % 9 !== 0 || normals.length !== positions.length || edges.length % 6 !== 0 || positions.some((value) => !Number.isFinite(value)) || normals.some((value) => !Number.isFinite(value)) || edges.some((value) => !Number.isFinite(value))) throw new Error(`${object.name}: reference mesh is invalid.`);
+      if (positions.length / 9 > PARAMETRIC_IMPORT_LIMITS.referenceTriangles) throw new Error(`${object.name}: reference mesh contains too many triangles.`);
     }
     delete (object as ParametricObject & { originVisible?: boolean }).originVisible;
   }
@@ -431,7 +431,7 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
     if ((feature.kind === "extrude" || feature.kind === "primitive") && (feature.operation as string) === "new") feature.operation = "add";
     if (feature.kind === "importedStep") {
       feature.sourceName = typeof feature.sourceName === "string" && feature.sourceName.trim() ? feature.sourceName : `${feature.name}.step`;
-      if (typeof feature.stepText !== "string" || !feature.stepText.trim()) throw new Error(`${feature.name}: el contenido STEP está vacío.`);
+      if (typeof feature.stepText !== "string" || !feature.stepText.trim()) throw new Error(`${feature.name}: STEP content is empty.`);
     }
     if (feature.kind === "fillet") {
       feature.treatment ??= "fillet";
@@ -498,7 +498,7 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
     const operations = next.features.filter((feature) => feature.objectId === object.id && feature.kind !== "sketch");
     const importedBases = operations.filter((feature) => feature.kind === "importedStep");
     if (importedBases.length > 1 || (importedBases[0] && operations[0]?.id !== importedBases[0].id)) {
-      throw new Error(`${object.name}: el STEP importado debe ser la primera y única geometría base del objeto.`);
+      throw new Error(`${object.name}: imported STEP must be the first and only base geometry in the object.`);
     }
   }
 

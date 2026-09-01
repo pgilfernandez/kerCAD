@@ -376,7 +376,7 @@ function coplanarFaceGeometry(source: THREE.BufferGeometry, faceIndex: number) {
 
 function objectOriginMarker(targetId: string, editable: boolean, targetKind: "object" | "feature" = "object", positionVisible = true, rotationEditable = false) {
   const marker = new THREE.Group();
-  marker.name = `${targetKind === "object" ? "Origen" : "Operación"} ${targetId}`;
+  marker.name = `${targetKind === "object" ? "Origin" : "Operation"} ${targetId}`;
   marker.userData.transformTargetId = targetId;
   marker.userData.transformTargetKind = targetKind;
   const axes: Array<["x" | "y" | "z", THREE.Vector3, number, number]> = [
@@ -951,11 +951,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     modelGroup.add(workplaneSelectionPlanes);
     workplaneSelectionPlanesRef.current = workplaneSelectionPlanes;
     const sketchLayer = new THREE.Group();
-    sketchLayer.name = "Bocetos 2D";
+    sketchLayer.name = "2D sketches";
     modelGroup.add(sketchLayer);
     sketchLayerRef.current = sketchLayer;
     const originLayer = new THREE.Group();
-    originLayer.name = "Orígenes de objetos";
+    originLayer.name = "Object origins";
     modelGroup.add(originLayer);
     const faceHighlight = new THREE.Mesh(
       new THREE.BufferGeometry(),
@@ -977,11 +977,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     modelGroup.add(topologyFaceLayer);
     topologyFaceLayerRef.current = topologyFaceLayer;
     const faceExtrudeHandleLayer = new THREE.Group();
-    faceExtrudeHandleLayer.name = "Longitud de extrusión";
+    faceExtrudeHandleLayer.name = "Extrusion length";
     modelGroup.add(faceExtrudeHandleLayer);
     faceExtrudeHandleRef.current = faceExtrudeHandleLayer;
     const edgeTreatmentHandleLayer = new THREE.Group();
-    edgeTreatmentHandleLayer.name = "Radio de redondeo o chaflán";
+    edgeTreatmentHandleLayer.name = "Fillet or chamfer radius";
     modelGroup.add(edgeTreatmentHandleLayer);
     edgeTreatmentHandleRef.current = edgeTreatmentHandleLayer;
 
@@ -3282,17 +3282,17 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     }}
   />;
 
-  return <div className="parametric-viewport" ref={hostRef} aria-label="Vista 3D de la pieza">
+  return <div className="parametric-viewport" ref={hostRef} aria-label={locale === "es" ? "Vista 3D de la pieza" : "3D model view"}>
     <div ref={selectionBoxRef} className="parametric-selection-box" aria-hidden="true" />
     <div
       ref={operationModeSelectorRef}
       className="educad-viewport-operation-modes"
-      aria-label="Modo de la operación"
+      aria-label={locale === "es" ? "Modo de la operación" : "Operation mode"}
       onPointerDown={(event) => event.stopPropagation()}
     >
       {(["add", "cut", "intersect"] as const).map((mode) => {
         const activeMode = selection?.operationPreview?.mode === (mode === "cut" ? "hole" : mode === "intersect" ? "common" : "add");
-        const label = mode === "add" ? "Añadir" : mode === "cut" ? "Hueco" : "Común";
+        const label = locale === "es" ? mode === "add" ? "Añadir" : mode === "cut" ? "Hueco" : "Común" : mode === "add" ? "Add" : mode === "cut" ? "Hole" : "Common";
         return <button key={mode} type="button" className={`mode-${mode} ${activeMode ? "active" : ""}`} aria-label={label} title={label} aria-pressed={activeMode} onClick={() => onOperationModeChange?.(mode)}><ToolbarBooleanModeIcon mode={mode === "cut" ? "hole" : mode === "intersect" ? "common" : "add"} /></button>;
       })}
     </div>
@@ -3312,9 +3312,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       </div> : null}
     </div>
     <div className="parametric-selection-dimensions">
-      {dimensionInput("x", dimensionXRef, "axis-x", "Editar dimensión X")}
-      {dimensionInput("y", dimensionYRef, "axis-y", "Editar dimensión Y")}
-      {dimensionInput("z", dimensionZRef, "axis-z", "Editar dimensión Z")}
+      {dimensionInput("x", dimensionXRef, "axis-x", locale === "es" ? "Editar dimensión X" : "Edit X dimension")}
+      {dimensionInput("y", dimensionYRef, "axis-y", locale === "es" ? "Editar dimensión Y" : "Edit Y dimension")}
+      {dimensionInput("z", dimensionZRef, "axis-z", locale === "es" ? "Editar dimensión Z" : "Edit Z dimension")}
     </div>
   </div>;
 }

@@ -20,11 +20,11 @@ export function binaryStlFromRenderMeshes(meshes: RenderMesh[], name = "eduCAD m
   if (meshes.length === 0) throw new Error("No hay objetos visibles que exportar.");
   let triangleCount = 0;
   for (const mesh of meshes) {
-    if (mesh.indices.length % 3 !== 0) throw new Error("La malla contiene índices incompletos.");
+    if (mesh.indices.length % 3 !== 0) throw new Error("The mesh contains incomplete indices.");
     triangleCount += mesh.indices.length / 3;
   }
-  if (triangleCount === 0) throw new Error("Los objetos visibles no contienen triángulos exportables.");
-  if (triangleCount > 0xffffffff) throw new Error("La malla supera el límite del formato STL.");
+  if (triangleCount === 0) throw new Error("Visible objects do not contain exportable triangles.");
+  if (triangleCount > 0xffffffff) throw new Error("The mesh exceeds the STL format limit.");
 
   const buffer = new ArrayBuffer(84 + triangleCount * 50);
   const bytes = new Uint8Array(buffer);
@@ -39,12 +39,12 @@ export function binaryStlFromRenderMeshes(meshes: RenderMesh[], name = "eduCAD m
       const bi = mesh.indices[index + 1] * 3;
       const ci = mesh.indices[index + 2] * 3;
       if (ci + 2 >= mesh.positions.length || bi + 2 >= mesh.positions.length || ai + 2 >= mesh.positions.length) {
-        throw new Error("La malla contiene una referencia de vértice inválida.");
+        throw new Error("The mesh contains an invalid vertex reference.");
       }
       const ax = mesh.positions[ai]; const ay = mesh.positions[ai + 1]; const az = mesh.positions[ai + 2];
       const bx = mesh.positions[bi]; const by = mesh.positions[bi + 1]; const bz = mesh.positions[bi + 2];
       const cx = mesh.positions[ci]; const cy = mesh.positions[ci + 1]; const cz = mesh.positions[ci + 2];
-      if (![ax, ay, az, bx, by, bz, cx, cy, cz].every(Number.isFinite)) throw new Error("La malla contiene coordenadas no válidas.");
+      if (![ax, ay, az, bx, by, bz, cx, cy, cz].every(Number.isFinite)) throw new Error("The mesh contains invalid coordinates.");
       writeNormal(view, offset, ax, ay, az, bx, by, bz, cx, cy, cz);
       offset += 12;
       for (const value of [ax, ay, az, bx, by, bz, cx, cy, cz]) {

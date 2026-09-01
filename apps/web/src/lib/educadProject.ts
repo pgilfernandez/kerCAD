@@ -71,13 +71,13 @@ function extensionForSource(sourceFormat: ProjectAssetSourceFormat) {
 
 function inputBytes(input: ArrayBuffer | Uint8Array) {
   const bytes = input instanceof Uint8Array ? new Uint8Array(input) : new Uint8Array(input.slice(0));
-  if (!bytes.byteLength) throw new Error("El proyecto eduCAD está vacío.");
+  if (!bytes.byteLength) throw new Error("The eduCAD project is empty.");
   return bytes;
 }
 
 function inspectZip(bytes: Uint8Array) {
-  if (bytes.byteLength > EDUCAD_PACKAGE_LIMITS.archiveBytes) throw new Error("El proyecto supera el límite comprimido de 256 MB.");
-  if (bytes.byteLength < 22) throw new Error("El archivo no es un paquete eduCAD válido.");
+  if (bytes.byteLength > EDUCAD_PACKAGE_LIMITS.archiveBytes) throw new Error("The compressed project exceeds the 256 MB limit.");
+  if (bytes.byteLength < 22) throw new Error("The file is not a valid eduCAD package.");
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   let directoryEnd = -1;
   for (let offset = bytes.byteLength - 22, minimum = Math.max(0, bytes.byteLength - 65_557); offset >= minimum; offset -= 1) {
@@ -86,18 +86,18 @@ function inspectZip(bytes: Uint8Array) {
       break;
     }
   }
-  if (directoryEnd < 0) throw new Error("El paquete eduCAD no contiene un directorio ZIP válido.");
+  if (directoryEnd < 0) throw new Error("The eduCAD package does not contain a valid ZIP directory.");
   const entryCount = view.getUint16(directoryEnd + 10, true);
   const directorySize = view.getUint32(directoryEnd + 12, true);
   const directoryOffset = view.getUint32(directoryEnd + 16, true);
-  if (entryCount === 0xffff || directorySize === 0xffffffff || directoryOffset === 0xffffffff) throw new Error("Los paquetes ZIP64 no son compatibles.");
-  if (!entryCount || entryCount > EDUCAD_PACKAGE_LIMITS.entries) throw new Error("El paquete contiene demasiados archivos.");
-  if (directoryOffset + directorySize > bytes.byteLength) throw new Error("El directorio del paquete está truncado.");
+  if (entryCount === 0xffff || directorySize === 0xffffffff || directoryOffset === 0xffffffff) throw new Error("ZIP64 packages are not supported.");
+  if (!entryCount || entryCount > EDUCAD_PACKAGE_LIMITS.entries) throw new Error("The package contains too many files.");
+  if (directoryOffset + directorySize > bytes.byteLength) throw new Error("The package directory is truncated.");
   const names = new Set<string>();
   let expandedBytes = 0;
   let offset = directoryOffset;
   for (let index = 0; index < entryCount; index += 1) {
-    if (offset + 46 > bytes.byteLength || view.getUint32(offset, true) !== 0x02014b50) throw new Error("El directorio del paquete está dañado.");
+    if (offset + 46 > bytes.byteLength || view.getUint32(offset, true) !== 0x02014b50) throw new Error("The package directory is corrupted.");
     const flags = view.getUint16(offset + 8, true);
     const method = view.getUint16(offset + 10, true);
     const expanded = view.getUint32(offset + 24, true);
@@ -105,20 +105,20 @@ function inspectZip(bytes: Uint8Array) {
     const extraLength = view.getUint16(offset + 30, true);
     const commentLength = view.getUint16(offset + 32, true);
     const end = offset + 46 + nameLength + extraLength + commentLength;
-    if (end > bytes.byteLength) throw new Error("Una entrada del paquete está truncada.");
-    if (flags & 1) throw new Error("Los paquetes eduCAD cifrados no son compatibles.");
-    if (method !== 0 && method !== 8) throw new Error("El paquete usa una compresión no compatible.");
+    if (end > bytes.byteLength) throw new Error("A package entry is truncated.");
+    if (flags & 1) throw new Error("Encrypted eduCAD packages are not supported.");
+    if (method !== 0 && method !== 8) throw new Error("The package uses an unsupported compression method.");
     const name = strFromU8(bytes.subarray(offset + 46, offset + 46 + nameLength));
-    if (!safeArchivePath(name) || names.has(name)) throw new Error("El paquete contiene una ruta insegura o duplicada.");
+    if (!safeArchivePath(name) || names.has(name)) throw new Error("The package contains an unsafe or duplicated path.");
     const entryLimit = name === "manifest.json" ? EDUCAD_PACKAGE_LIMITS.manifestBytes : name === "project.json" ? EDUCAD_PACKAGE_LIMITS.projectBytes : EDUCAD_PACKAGE_LIMITS.assetBytes;
-    if (expanded === 0xffffffff) throw new Error("Los paquetes ZIP64 no son compatibles.");
-    if (expanded > entryLimit) throw new Error(`El archivo '${name}' supera el límite permitido.`);
+    if (expanded === 0xffffffff) throw new Error("ZIP64 packages are not supported.");
+    if (expanded > entryLimit) throw new Error(`File '${name}' exceeds the allowed limit.`);
     names.add(name);
     expandedBytes += expanded;
     offset = end;
   }
-  if (!names.has("manifest.json") || !names.has("project.json")) throw new Error("Al paquete le faltan manifest.json o project.json.");
-  if (expandedBytes > EDUCAD_PACKAGE_LIMITS.expandedBytes) throw new Error("El proyecto supera el límite expandido de 512 MB.");
+  if (!names.has("manifest.json") || !names.has("project.json")) throw new Error("The package is missing manifest.json or project.json.");
+  if (expandedBytes > EDUCAD_PACKAGE_LIMITS.expandedBytes) throw new Error("The expanded project exceeds the 512 MB limit.");
 }
 
 function isSourceFormat(value: unknown): value is ProjectAssetSourceFormat {
@@ -126,18 +126,18 @@ function isSourceFormat(value: unknown): value is ProjectAssetSourceFormat {
 }
 
 function parseManifest(raw: unknown): EducadPackageManifestV1 {
-  if (!raw || typeof raw !== "object") throw new Error("manifest.json no es válido.");
+  if (!raw || typeof raw !== "object") throw new Error("manifest.json is invalid.");
   const manifest = raw as Partial<EducadPackageManifestV1>;
-  if (manifest.schema !== EDUCAD_PACKAGE_SCHEMA || manifest.formatVersion !== EDUCAD_PACKAGE_VERSION || manifest.minimumReaderVersion !== 1 || typeof manifest.createdWithVersion !== "string") throw new Error("La versión del paquete eduCAD no es compatible.");
-  if (!manifest.document || manifest.document.path !== "project.json" || !Number.isSafeInteger(manifest.document.byteLength) || manifest.document.byteLength < 0 || manifest.document.byteLength > EDUCAD_PACKAGE_LIMITS.projectBytes || typeof manifest.document.sha256 !== "string" || !/^[a-f0-9]{64}$/.test(manifest.document.sha256)) throw new Error("La entrada del documento no es válida.");
-  if (!Array.isArray(manifest.assets)) throw new Error("La lista de recursos no es válida.");
+  if (manifest.schema !== EDUCAD_PACKAGE_SCHEMA || manifest.formatVersion !== EDUCAD_PACKAGE_VERSION || manifest.minimumReaderVersion !== 1 || typeof manifest.createdWithVersion !== "string") throw new Error("The eduCAD package version is not supported.");
+  if (!manifest.document || manifest.document.path !== "project.json" || !Number.isSafeInteger(manifest.document.byteLength) || manifest.document.byteLength < 0 || manifest.document.byteLength > EDUCAD_PACKAGE_LIMITS.projectBytes || typeof manifest.document.sha256 !== "string" || !/^[a-f0-9]{64}$/.test(manifest.document.sha256)) throw new Error("The document entry is invalid.");
+  if (!Array.isArray(manifest.assets)) throw new Error("The asset list is invalid.");
   const ids = new Set<string>();
   const paths = new Set<string>();
   const hashes = new Set<string>();
   for (const asset of manifest.assets) {
-    if (!asset || typeof asset.id !== "string" || !asset.id || ids.has(asset.id) || typeof asset.path !== "string" || !asset.path.startsWith("assets/") || !safeArchivePath(asset.path) || paths.has(asset.path)) throw new Error("El manifiesto contiene un recurso duplicado o no válido.");
-    if (typeof asset.name !== "string" || typeof asset.mediaType !== "string" || !isSourceFormat(asset.sourceFormat) || !Number.isSafeInteger(asset.byteLength) || asset.byteLength < 0 || asset.byteLength > EDUCAD_PACKAGE_LIMITS.assetBytes || !/^[a-f0-9]{64}$/.test(asset.sha256) || hashes.has(asset.sha256)) throw new Error(`El recurso '${asset.id}' no es válido.`);
-    if (asset.path !== `assets/${asset.sha256}.${extensionForSource(asset.sourceFormat)}`) throw new Error(`La ruta del recurso '${asset.id}' no coincide con su contenido.`);
+    if (!asset || typeof asset.id !== "string" || !asset.id || ids.has(asset.id) || typeof asset.path !== "string" || !asset.path.startsWith("assets/") || !safeArchivePath(asset.path) || paths.has(asset.path)) throw new Error("The manifest contains a duplicated or invalid asset.");
+    if (typeof asset.name !== "string" || typeof asset.mediaType !== "string" || !isSourceFormat(asset.sourceFormat) || !Number.isSafeInteger(asset.byteLength) || asset.byteLength < 0 || asset.byteLength > EDUCAD_PACKAGE_LIMITS.assetBytes || !/^[a-f0-9]{64}$/.test(asset.sha256) || hashes.has(asset.sha256)) throw new Error(`Asset '${asset.id}' is invalid.`);
+    if (asset.path !== `assets/${asset.sha256}.${extensionForSource(asset.sourceFormat)}`) throw new Error(`Path for asset '${asset.id}' does not match its content.`);
     ids.add(asset.id);
     paths.add(asset.path);
     hashes.add(asset.sha256);
@@ -146,19 +146,19 @@ function parseManifest(raw: unknown): EducadPackageManifestV1 {
 }
 
 export async function exportEducadProject(document: ParametricDocument, assets: ProjectAsset[] = [], compressionLevel: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 = 6) {
-  if (!validateDocument(document)) throw new Error("El documento eduCAD no es válido.");
+  if (!validateDocument(document)) throw new Error("The eduCAD document is invalid.");
   const projectBytes = strToU8(`${JSON.stringify(document, null, 2)}\n`);
-  if (projectBytes.byteLength > EDUCAD_PACKAGE_LIMITS.projectBytes) throw new Error("El documento supera el límite de 32 MB.");
+  if (projectBytes.byteLength > EDUCAD_PACKAGE_LIMITS.projectBytes) throw new Error("The document exceeds the 32 MB limit.");
   const files: Record<string, Uint8Array> = { "project.json": projectBytes };
   const records: PackageAssetRecord[] = [];
   const hashes = new Set<string>();
   const ids = new Set<string>();
   for (const input of assets) {
     const asset = normalizeProjectAsset(input);
-    if (asset.bytes.byteLength > EDUCAD_PACKAGE_LIMITS.assetBytes) throw new Error(`El recurso '${asset.name}' supera el límite de 128 MB.`);
+    if (asset.bytes.byteLength > EDUCAD_PACKAGE_LIMITS.assetBytes) throw new Error(`Asset '${asset.name}' exceeds the 128 MB limit.`);
     const sha256 = await sha256Hex(asset.bytes);
     if (hashes.has(sha256)) continue;
-    if (!asset.id || ids.has(asset.id)) throw new Error(`El identificador de recurso '${asset.id}' está duplicado.`);
+    if (!asset.id || ids.has(asset.id)) throw new Error(`Asset identifier '${asset.id}' is duplicated.`);
     const path = `assets/${sha256}.${extensionForSource(asset.sourceFormat)}`;
     records.push({ id: asset.id, path, name: asset.name, mediaType: asset.mediaType || defaultMediaTypeForSource(asset.sourceFormat), sourceFormat: asset.sourceFormat, byteLength: asset.bytes.byteLength, sha256 });
     files[path] = asset.bytes;
@@ -184,7 +184,7 @@ export async function importEducadProject(input: ArrayBuffer | Uint8Array): Prom
   try {
     files = await unzipAsync(bytes);
   } catch (error) {
-    throw new Error(`No se ha podido expandir el proyecto: ${error instanceof Error ? error.message : "ZIP dañado"}.`);
+    throw new Error(`The project could not be expanded: ${error instanceof Error ? error.message : "corrupted ZIP"}.`);
   }
   let manifestRaw: unknown;
   let documentRaw: unknown;
@@ -192,18 +192,18 @@ export async function importEducadProject(input: ArrayBuffer | Uint8Array): Prom
     manifestRaw = JSON.parse(strFromU8(files["manifest.json"]));
     documentRaw = JSON.parse(strFromU8(files["project.json"]));
   } catch {
-    throw new Error("El manifiesto o el documento JSON están dañados.");
+    throw new Error("The manifest or JSON document is corrupted.");
   }
   const manifest = parseManifest(manifestRaw);
   const expectedPaths = new Set(["manifest.json", manifest.document.path, ...manifest.assets.map((asset) => asset.path)]);
-  if (Object.keys(files).some((path) => !expectedPaths.has(path))) throw new Error("El paquete contiene archivos que no están declarados en el manifiesto.");
+  if (Object.keys(files).some((path) => !expectedPaths.has(path))) throw new Error("The package contains files that are not declared in the manifest.");
   const projectBytes = files[manifest.document.path];
-  if (projectBytes.byteLength !== manifest.document.byteLength || await sha256Hex(projectBytes) !== manifest.document.sha256) throw new Error("El documento no supera la comprobación de integridad.");
-  if (!validateDocument(documentRaw)) throw new Error("project.json no contiene un documento eduCAD compatible.");
+  if (projectBytes.byteLength !== manifest.document.byteLength || await sha256Hex(projectBytes) !== manifest.document.sha256) throw new Error("The document failed its integrity check.");
+  if (!validateDocument(documentRaw)) throw new Error("project.json does not contain a compatible eduCAD document.");
   const assets: ProjectAsset[] = [];
   for (const record of manifest.assets) {
     const assetBytes = files[record.path];
-    if (!assetBytes || assetBytes.byteLength !== record.byteLength || await sha256Hex(assetBytes) !== record.sha256) throw new Error(`El recurso '${record.name}' no supera la comprobación de integridad.`);
+    if (!assetBytes || assetBytes.byteLength !== record.byteLength || await sha256Hex(assetBytes) !== record.sha256) throw new Error(`Asset '${record.name}' failed its integrity check.`);
     assets.push({ id: record.id, name: record.name, mediaType: record.mediaType, sourceFormat: record.sourceFormat, bytes: new Uint8Array(assetBytes), byteLength: assetBytes.byteLength, sha256: record.sha256 });
   }
   return { document: normalizeParametricDocument(documentRaw), assets, manifest };
