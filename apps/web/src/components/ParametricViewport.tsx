@@ -2097,7 +2097,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         if (!parameterWorldToLocal) return;
         const localPointer = dragPoint.clone().applyMatrix4(parameterWorldToLocal);
         const parameter = pendingShapeParameter.parameter;
-        const parameterStep = parameter === "cornerRadius" ? Math.max(0.01, grid / 10) : grid;
+        const parameterStep = grid;
         const pointerCoordinate = (shapeParameterDragAxis === "y" ? localPointer.y : shapeParameterDragAxis === "z" ? localPointer.z : localPointer.x) * shapeParameterDragSign;
         const adjusted = pointerCoordinate - parameterPointerOffset;
         const parameterAdjusted = parameter === "thickness" && selected.shapeParameters?.shape === "tube"
