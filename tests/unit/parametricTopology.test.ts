@@ -5,6 +5,7 @@ import {
   assertValidParametricTopology,
   isParametricTopologyReference,
   parametricTopologyEditingSourceFeature,
+  parametricTopologySelectionsMatch,
   parametricTopologyReferenceIsAvailable,
   ParametricTopologyError,
   recoverParametricTopologyReference,
@@ -26,6 +27,19 @@ function edgeReference(objectId: string, sourceFeatureId: string): ParametricTop
 }
 
 describe("stable parametric topology references", () => {
+  it("matches the same selected entity even when persistent and temporary IDs differ", () => {
+    const document = createStarterDocument(1);
+    const source = document.features.find((feature) => feature.kind === "extrude")!;
+    const stored = edgeReference(document.objects[0].id, source.id);
+    stored.id = "stored-edge";
+    stored.reference.hint.topologyId = 73;
+    const temporary = structuredClone(stored);
+    temporary.id = "selected-edge-object:edge:73";
+    expect(parametricTopologySelectionsMatch(stored, temporary)).toBe(true);
+    temporary.reference.hint.topologyId = 74;
+    expect(parametricTopologySelectionsMatch(stored, temporary)).toBe(false);
+  });
+
   it("edits every topology operation against its immediate previous result", () => {
     const document = createStarterDocument(1);
     const objectId = document.objects[0].id;

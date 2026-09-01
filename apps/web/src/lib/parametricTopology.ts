@@ -40,6 +40,27 @@ export function parametricTopologyReferenceIsAvailable(reference: ParametricTopo
   return recoverParametricTopologyReferenceInRecords(reference, records) !== null;
 }
 
+export function parametricTopologySelectionsMatch(left: ParametricTopologyReference, right: ParametricTopologyReference) {
+  if (left.objectId !== right.objectId) return false;
+  const leftHint = left.reference.hint;
+  const rightHint = right.reference.hint;
+  if (leftHint.entityType !== rightHint.entityType) return false;
+  if (leftHint.entityType === "face" && rightHint.entityType === "face") {
+    if (leftHint.topologyId !== undefined && rightHint.topologyId !== undefined) {
+      return leftHint.topologyId === rightHint.topologyId
+        && (leftHint.originId === undefined || rightHint.originId === undefined || leftHint.originId === rightHint.originId);
+    }
+    if (!leftHint.centroid || !rightHint.centroid) return false;
+    return Math.hypot(...leftHint.centroid.map((value, index) => value - rightHint.centroid![index])) <= 1e-5;
+  }
+  if (leftHint.entityType === "edge" && rightHint.entityType === "edge") {
+    if (leftHint.topologyId !== undefined && rightHint.topologyId !== undefined) return leftHint.topologyId === rightHint.topologyId;
+    if (!leftHint.midpoint || !rightHint.midpoint) return false;
+    return Math.hypot(...leftHint.midpoint.map((value, index) => value - rightHint.midpoint![index])) <= 1e-5;
+  }
+  return false;
+}
+
 export function parametricTopologyEditingSourceFeature(document: ParametricDocument, featureId: string): ParametricFeature | null {
   const target = document.features.find((feature) => feature.id === featureId);
   if (!target?.objectId) return null;

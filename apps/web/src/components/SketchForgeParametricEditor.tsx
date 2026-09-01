@@ -36,7 +36,7 @@ import {
 } from "@/components/icons";
 import { cloneDocument, createDrawnSketchFeature, createEmptyDocument, createExtrudeFeature, createFaceExtrudeFeature, createFilletFeature, createLinearPatternFeature, createMirrorFeature, createObjectBooleanFeature, createPolarPatternFeature, createRevolveFeature, createShellFeature, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { assertValidParametricDependencies } from "@/lib/parametricDependencyGraph";
-import { assertValidParametricTopology, parametricTopologyEditingSourceFeature, recoverParametricTopologyReferenceInRecords } from "@/lib/parametricTopology";
+import { assertValidParametricTopology, parametricTopologyEditingSourceFeature, parametricTopologySelectionsMatch, recoverParametricTopologyReferenceInRecords } from "@/lib/parametricTopology";
 import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint } from "@/lib/parametricBuildState";
 import { exportParametricStep } from "@/lib/parametricKernel";
 import { ParametricBuildWorkerClient } from "@/lib/parametricBuildWorker";
@@ -2297,8 +2297,8 @@ export function SketchForgeParametricEditor() {
     if (!face.additive) setSelectedTopologyEdges([]);
     setSelectedTopologyFaces((current) => {
       if (!face.additive) return face.selected ? [reference] : [];
-      if (!face.selected) return current.filter((candidate) => candidate.id !== reference.id);
-      return current.some((candidate) => candidate.id === reference.id) ? current : [...current, reference];
+      if (!face.selected) return current.filter((candidate) => !parametricTopologySelectionsMatch(candidate, reference));
+      return current.some((candidate) => parametricTopologySelectionsMatch(candidate, reference)) ? current : [...current, reference];
     });
   };
 
@@ -2337,8 +2337,8 @@ export function SketchForgeParametricEditor() {
     if (!edge.additive) setSelectedTopologyFaces([]);
     setSelectedTopologyEdges((current) => {
       if (!edge.additive) return edge.selected ? [reference] : [];
-      if (!edge.selected) return current.filter((candidate) => candidate.id !== reference.id);
-      return current.some((candidate) => candidate.id === reference.id) ? current : [...current, reference];
+      if (!edge.selected) return current.filter((candidate) => !parametricTopologySelectionsMatch(candidate, reference));
+      return current.some((candidate) => parametricTopologySelectionsMatch(candidate, reference)) ? current : [...current, reference];
     });
   };
 
