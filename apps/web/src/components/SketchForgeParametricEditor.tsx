@@ -2473,7 +2473,7 @@ export function SketchForgeParametricEditor() {
   };
 
   if (!hydrated) {
-    return <main className="educad-reference-shell"><div className="editor-loading-screen"><div className="editor-loading-toolbar" /><div className="educad-initial-loading">{t("status.loadingWorkspace")}</div></div></main>;
+    return <main className="educad-reference-shell" aria-busy="true"><div className="editor-loading-screen"><div className="editor-loading-toolbar" /><div className="educad-initial-loading" role="status" aria-live="polite" aria-atomic="true">{t("status.loadingWorkspace")}</div></div></main>;
   }
 
   return (
@@ -2869,7 +2869,7 @@ export function SketchForgeParametricEditor() {
         {sketchSession ? <aside className="educad-sketch-constraints-panel" aria-label={t("sketch.constraints")}>
           <header>
             <div><strong>{t("sketch.constraints")}</strong><span>{t("sketch.constraintHint")}</span></div>
-            <output className={`educad-sketch-constraint-status ${sketchConstraintStatus.kind}`}>{sketchConstraintStatus.label}</output>
+            <output className={`educad-sketch-constraint-status ${sketchConstraintStatus.kind}`} role="status" aria-live="polite" aria-atomic="true">{sketchConstraintStatus.label}</output>
           </header>
           <section>
             <h2>{t("sketch.geometric")}</h2>
@@ -2944,8 +2944,8 @@ export function SketchForgeParametricEditor() {
           <button aria-label={t("camera.zoomIn")} title={t("camera.zoomIn")} onClick={() => setCamera("zoom-in")}><Plus size={28} /></button>
           <button aria-label={t("camera.zoomOut")} title={t("camera.zoomOut")} onClick={() => setCamera("zoom-out")}><Minus size={28} /></button>
         </div>
-        {build.warning && <div className="educad-rebuild-error"><strong>{t("history.stopped")}</strong><span>{build.warning}</span></div>}
-        {notice && <div className={`educad-reference-toast ${notice.type}`}>{notice.text}</div>}
+        {build.warning && <div className="educad-rebuild-error" role="alert" aria-live="assertive" aria-atomic="true"><strong>{t("history.stopped")}</strong><span>{build.warning}</span></div>}
+        {notice && <div className={`educad-reference-toast ${notice.type}`} role={notice.type === "error" ? "alert" : "status"} aria-live={notice.type === "error" ? "assertive" : "polite"} aria-atomic="true">{notice.text}</div>}
         {modelSidebarMode !== "hidden" ? <ParametricModelSidebar
           document={document}
           selection={modelSelection}
@@ -3075,11 +3075,11 @@ function FpsCounter() {
     return () => window.cancelAnimationFrame(frame);
   }, []);
   const tone = fps > 0 && fps < 20 ? "low" : fps < 40 ? "medium" : "high";
-  return <output className={`educad-fps-counter ${tone}`} aria-label={`Rendimiento: ${fps} fotogramas por segundo`}>{fps} FPS</output>;
+  return <output className={`educad-fps-counter ${tone}`} aria-label={`${fps} frames per second`}>{fps} FPS</output>;
 }
 
 function BackgroundProcessIndicator({ label, rightOffset }: { label: string; rightOffset: number }) {
-  return <output className="educad-background-process" aria-live="polite" aria-label={label} style={{ right: rightOffset }}><span aria-hidden="true" />{label}</output>;
+  return <output className="educad-background-process" role="status" aria-live="polite" aria-atomic="true" aria-busy="true" aria-label={label} style={{ right: rightOffset }}><span aria-hidden="true" />{label}</output>;
 }
 
 function ToolbarSection({ label, className = "", children }: { label: string; className?: string; children: React.ReactNode }) {

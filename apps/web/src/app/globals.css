@@ -9078,3 +9078,21 @@ html[data-theme="dark"] .cube-face:focus-visible {
 html[data-theme="dark"] .grid-settings {
   color: #a9bdca;
 }
+
+/* Keyboard and motion accessibility ------------------------------------- */
+
+.educad-reference-shell :where(button, input, select, textarea, [role="button"], [role="menuitem"], [role="radio"], [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid #159fc9;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .educad-reference-shell *,
+  .educad-reference-shell *::before,
+  .educad-reference-shell *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
