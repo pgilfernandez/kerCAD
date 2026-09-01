@@ -2650,6 +2650,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           originX, 0, originZ - length, originX - head * 0.55, 0, originZ - length + head,
           originX + head * 0.55, 0, originZ - length + head,
         ]);
+        addAxisArrow("#3279d6", [
+          originX, 0, originZ, originX, length, originZ,
+        ], [
+          originX, length, originZ, originX - head * 0.55, length - head, originZ,
+          originX + head * 0.55, length - head, originZ,
+        ]);
       }
     };
     if (workplane.gridVisible) addGrid(group, width, depth);
