@@ -596,8 +596,16 @@ function applyRevolveFeature(brep: Brep, document: ParametricDocument, current: 
 }
 
 function applyMirrorFeature(brep: Brep, current: AnySolid, feature: Extract<ParametricDocument["features"][number], { kind: "mirror" }>) {
-  const normal: [number, number, number] = feature.axis === "x" ? [1, 0, 0] : feature.axis === "y" ? [0, 1, 0] : [0, 0, 1];
-  const mirrored = brep.mirror(current, { normal }) as AnySolid;
+  const fallbackNormal: [number, number, number] = feature.axis === "x" ? [1, 0, 0] : feature.axis === "y" ? [0, 1, 0] : [0, 0, 1];
+  const customNormal = feature.planeNormal;
+  const normalLength = customNormal ? Math.hypot(customNormal.x, customNormal.y, customNormal.z) : 0;
+  const normal: [number, number, number] = customNormal && normalLength > 1e-8
+    ? [customNormal.x / normalLength, customNormal.y / normalLength, customNormal.z / normalLength]
+    : fallbackNormal;
+  const origin = feature.planeOrigin ?? { x: 0, y: 0, z: 0 };
+  const shifted = origin.x || origin.y || origin.z ? brep.translate(current, [-origin.x, -origin.y, -origin.z]) as AnySolid : current;
+  let mirrored = brep.mirror(shifted, { normal }) as AnySolid;
+  if (origin.x || origin.y || origin.z) mirrored = brep.translate(mirrored, [origin.x, origin.y, origin.z]) as AnySolid;
   return feature.duplicate ? refinedBooleanSolid(brep, brep.fuse(current, mirrored)) : mirrored;
 }
 

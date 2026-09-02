@@ -13,10 +13,10 @@ import { AdaptiveViewportResolution, viewportPerformanceOptions, viewportRenderP
 import { orthographicTouchTargetWorldSize, perspectiveTouchTargetWorldSize, viewportPointerDragIntent, type ViewportPointerDragIntent } from "@/lib/viewportPointer";
 import { parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
 import { ToolbarBooleanModeIcon, ToolbarChamferIcon, ToolbarFilletIcon } from "@/components/icons";
-import { displayLengthToMillimeters, displayUnitLabel, formatDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
+import { displayLengthToMillimeters, displayUnitLabel, formatDisplayLength, millimetersToDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
 import type { ParametricDocument, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, RenderMesh, SketchFeature } from "@/types/parametric";
 
-export type CameraView = { name: "iso" | "top" | "front" | "right" | "zoom-in" | "zoom-out" | "home" | "fit" | "selection" | "custom"; token: number; direction?: [number, number, number] };
+export type CameraView = { name: "iso" | "top" | "front" | "right" | "zoom-in" | "zoom-out" | "home" | "fit" | "selection" | "custom"; token: number; direction?: [number, number, number]; smooth?: boolean };
 export type CameraProjection = "perspective" | "orthographic";
 export type ViewportDisplayMode = "solid" | "wireframe";
 export type ViewportShadingMode = "shadows" | "basic" | "unlit";
@@ -46,6 +46,64 @@ export type TopologyEdgePick = {
   edgeId: number;
 };
 type ShapeParameter = "width" | "depth" | "height" | "size" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "thickness" | "majorRadius" | "tubeRadius" | "cornerRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius";
+
+function ViewportEdgeRadiusInput({ radius, displayUnit, snap, locale, onCommit }: { radius: number; displayUnit: ParametricDisplayUnit; snap: number; locale: "en" | "es"; onCommit: (radius: number) => void }) {
+  const [draft, setDraft] = useState(() => formatDisplayLength(radius, displayUnit));
+  const editingRef = useRef(false);
+
+  useEffect(() => {
+    if (!editingRef.current) setDraft(formatDisplayLength(radius, displayUnit));
+  }, [radius, displayUnit]);
+
+  const restore = () => setDraft(formatDisplayLength(radius, displayUnit));
+  const commit = () => {
+    editingRef.current = false;
+    const parsed = Number.parseFloat(draft.replace(",", "."));
+    const nextRadius = displayLengthToMillimeters(parsed, displayUnit);
+    if (!Number.isFinite(nextRadius) || nextRadius <= 0) {
+      restore();
+      return;
+    }
+    setDraft(formatDisplayLength(nextRadius, displayUnit));
+    if (Math.abs(nextRadius - radius) > 1e-6) onCommit(nextRadius);
+  };
+  const step = millimetersToDisplayLength(Math.max(0.01, snap / 2), displayUnit);
+  const label = locale === "es" ? "Radio" : "Radius";
+
+  return <label className="educad-viewport-edge-treatment-radius">
+    <span>{label}</span>
+    <div>
+      <input
+        type="text"
+        inputMode="decimal"
+        aria-label={label}
+        value={draft}
+        onFocus={(event) => {
+          editingRef.current = true;
+          event.currentTarget.select();
+        }}
+        onChange={(event) => setDraft(event.currentTarget.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") event.currentTarget.blur();
+          if (event.key === "Escape") {
+            editingRef.current = false;
+            restore();
+            event.currentTarget.blur();
+          }
+          if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+            event.preventDefault();
+            const current = Number.parseFloat(draft.replace(",", "."));
+            const fallback = millimetersToDisplayLength(radius, displayUnit);
+            const next = Math.max(step, (Number.isFinite(current) ? current : fallback) + (event.key === "ArrowUp" ? step : -step));
+            setDraft(String(Number(next.toFixed(displayUnit === "in" ? 4 : 3))));
+          }
+        }}
+      />
+      <span>{displayUnitLabel(displayUnit)}</span>
+    </div>
+  </label>;
+}
 
 export type ViewportSelection = {
   id: string;
@@ -498,6 +556,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const cameraRef = useRef<THREE.PerspectiveCamera | THREE.OrthographicCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
+  const cameraTransitionRef = useRef<number | null>(null);
   const modelRef = useRef<THREE.Group | null>(null);
   const originLayerRef = useRef<THREE.Group | null>(null);
   const workplaneRef = useRef<THREE.Group | null>(null);
@@ -935,7 +994,13 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       orientationRef.current?.({ azimuth: controls.getAzimuthalAngle(), polar: controls.getPolarAngle() });
       requestRender();
     };
+    const onControlsStart = () => {
+      if (cameraTransitionRef.current === null) return;
+      cancelAnimationFrame(cameraTransitionRef.current);
+      cameraTransitionRef.current = null;
+    };
     controls.addEventListener("change", onControlsChange);
+    controls.addEventListener("start", onControlsStart);
     invalidateRef.current = requestRender;
 
     scene.add(new THREE.HemisphereLight("#ffffff", "#d6edf5", 2.1));
@@ -2149,7 +2214,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         const parameterAdjusted = parameter === "thickness" && selected.shapeParameters?.shape === "tube"
           ? Math.max(0, Math.abs(adjusted) - selected.shapeParameters.innerRadius * shapeParameterWorldScale)
           : adjusted;
-        const visualExtent = parameter === "sides" || parameter === "teeth"
+        let visualExtent = parameter === "sides" || parameter === "teeth"
           ? parameter === "sides" ? Math.min(32, Math.max(3, Math.round(Math.abs(parameterAdjusted)))) : Math.min(64, Math.max(6, Math.round(Math.abs(parameterAdjusted))))
           : parameter === "height"
           ? Math.max(parameterStep, Math.round((parameterAdjusted + resizeStart.height / 2) / parameterStep) * parameterStep)
@@ -2157,12 +2222,18 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
             ? Math.max(0, Math.round(Math.abs(parameterAdjusted) / parameterStep) * parameterStep)
             : Math.max(parameterStep, Math.round(Math.abs(parameterAdjusted) * 2 / parameterStep) * parameterStep);
         const startExtent = parameter === "depth" || parameter === "size" ? resizeStart.depth : parameter === "height" ? resizeStart.height : resizeStart.width;
-        const ratio = visualExtent / Math.max(0.01, startExtent);
+        let ratio = visualExtent / Math.max(0.01, startExtent);
         pendingShapeParameter.value = parameter === "sides" || parameter === "teeth"
           ? visualExtent
           : parameter === "topRadius" || parameter === "innerRadius" || parameter === "thickness" || parameter === "majorRadius" || parameter === "tubeRadius" || parameter === "cornerRadius" || parameter === "toothDepth" || parameter === "boreRadius"
           ? visualExtent / Math.max(0.0001, shapeParameterWorldScale)
           : Math.max(0.1, shapeParameterStartValue * ratio);
+        if (parameter !== "sides" && parameter !== "teeth") {
+          const minimum = parameter === "topRadius" || parameter === "boreRadius" ? 0 : parameterStep;
+          pendingShapeParameter.value = Math.max(minimum, Math.round(pendingShapeParameter.value / parameterStep) * parameterStep);
+          ratio = pendingShapeParameter.value / Math.max(0.0001, shapeParameterStartValue);
+          visualExtent = startExtent * ratio;
+        }
         shapeParameterPreviewRef.current = pendingShapeParameter;
         root.position.copy(resizeRootStart);
         visualRoot.position.set(0, 0, 0);
@@ -2426,6 +2497,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       observer.disconnect();
       controls.dispose();
       controls.removeEventListener("change", onControlsChange);
+      controls.removeEventListener("start", onControlsStart);
+      if (cameraTransitionRef.current !== null) cancelAnimationFrame(cameraTransitionRef.current);
+      cameraTransitionRef.current = null;
       renderer.domElement.removeEventListener("pointerdown", onPointerDown);
       renderer.domElement.removeEventListener("pointermove", onPointerMove);
       renderer.domElement.removeEventListener("pointerleave", leaveManipulatorArea);
@@ -2482,7 +2556,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       Math.max(0.1, workplane.gridStep) * 2,
       Math.min(Math.max(1, workplane.width), Math.max(1, workplane.depth)) * workplane.activeSizePercent / 100,
     );
-    const addStandardPlane = (plane: "XZ" | "YZ", color: string, rotation: THREE.Euler) => {
+    const addStandardPlane = (plane: "XY" | "XZ" | "YZ", color: string, rotation: THREE.Euler) => {
       const surface = new THREE.Mesh(
         new THREE.PlaneGeometry(side, side),
         new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthTest: false, depthWrite: false }),
@@ -2499,6 +2573,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       border.renderOrder = 8;
       layer.add(surface, border);
     };
+    addStandardPlane("XY", "#729ed8", new THREE.Euler(0, 0, 0));
     addStandardPlane("XZ", "#72bf78", new THREE.Euler(Math.PI / 2, 0, 0));
     addStandardPlane("YZ", "#dd7777", new THREE.Euler(0, Math.PI / 2, 0));
     invalidateRef.current();
@@ -3256,8 +3331,43 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const camera = cameraRef.current;
     const controls = controlsRef.current;
     if (!camera || !controls) return;
+    if (cameraTransitionRef.current !== null) cancelAnimationFrame(cameraTransitionRef.current);
+    cameraTransitionRef.current = null;
     const target = controls.target;
     const distance = Math.max(75, camera.position.distanceTo(target));
+    const animateToDirection = (requestedDirection: THREE.Vector3) => {
+      if (cameraTransitionRef.current !== null) cancelAnimationFrame(cameraTransitionRef.current);
+      const destination = requestedDirection.clone().normalize();
+      const startDirection = camera.position.clone().sub(target).normalize();
+      const rotation = new THREE.Quaternion().setFromUnitVectors(startDirection, destination);
+      const identity = new THREE.Quaternion();
+      const targetPosition = target.clone();
+      const duration = 220 + startDirection.angleTo(destination) / Math.PI * 300;
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || duration <= 225) {
+        camera.position.copy(targetPosition).addScaledVector(destination, distance);
+        camera.up.set(0, 1, 0);
+        camera.lookAt(targetPosition);
+        controls.update();
+        invalidateRef.current();
+        cameraTransitionRef.current = null;
+        return;
+      }
+      const startedAt = performance.now();
+      const step = (now: number) => {
+        const progress = Math.min(1, (now - startedAt) / duration);
+        const eased = progress * progress * (3 - 2 * progress);
+        const frameRotation = identity.clone().slerp(rotation, eased);
+        const direction = startDirection.clone().applyQuaternion(frameRotation).normalize();
+        camera.position.copy(targetPosition).addScaledVector(direction, distance);
+        camera.up.set(0, 1, 0);
+        camera.lookAt(targetPosition);
+        controls.update();
+        invalidateRef.current();
+        if (progress < 1) cameraTransitionRef.current = requestAnimationFrame(step);
+        else cameraTransitionRef.current = null;
+      };
+      cameraTransitionRef.current = requestAnimationFrame(step);
+    };
     if (view.name === "zoom-in" || view.name === "zoom-out") {
       if (camera instanceof THREE.OrthographicCamera) {
         camera.zoom *= view.name === "zoom-in" ? 1.32 : 0.76;
@@ -3290,13 +3400,13 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       return;
     }
     if (view.name === "custom") {
-      if (view.direction) {
-        const direction = new THREE.Vector3(...view.direction).normalize();
-        camera.position.copy(target).add(direction.multiplyScalar(distance));
+      if (view.direction && view.smooth === false) {
+        camera.position.copy(target).add(new THREE.Vector3(...view.direction).normalize().multiplyScalar(distance));
         camera.up.set(0, 1, 0);
         camera.lookAt(target);
         controls.update();
-      }
+        invalidateRef.current();
+      } else if (view.direction) animateToDirection(new THREE.Vector3(...view.direction));
       return;
     }
     const vectors: Record<"iso" | "top" | "front" | "right" | "home", THREE.Vector3> = {
@@ -3306,11 +3416,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       right: new THREE.Vector3(1, 0.001, 0),
       home: new THREE.Vector3(-118, 96, 118),
     };
-    camera.position.copy(target).add(vectors[view.name].normalize().multiplyScalar(distance));
-    camera.up.set(0, 1, 0);
-    camera.lookAt(target);
-    controls.update();
-    invalidateRef.current();
+    animateToDirection(vectors[view.name]);
+    return () => {
+      if (cameraTransitionRef.current !== null) cancelAnimationFrame(cameraTransitionRef.current);
+      cameraTransitionRef.current = null;
+    };
   }, [view]);
 
   const dimensionInput = (axis: ViewportDimensionAxis, ref: typeof dimensionXRef, className: string, label: string) => <input
@@ -3358,6 +3468,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         <button type="button" className={edgeTreatmentHandle?.treatment === "fillet" ? "active" : ""} aria-label={locale === "es" ? "Redondeo" : "Fillet"} title={locale === "es" ? "Redondeo" : "Fillet"} aria-pressed={edgeTreatmentHandle?.treatment === "fillet"} onClick={() => onEdgeTreatmentTypeChange?.("fillet")}><ToolbarFilletIcon /></button>
         <button type="button" className={edgeTreatmentHandle?.treatment === "chamfer" ? "active" : ""} aria-label={locale === "es" ? "Chaflán" : "Chamfer"} title={locale === "es" ? "Chaflán" : "Chamfer"} aria-pressed={edgeTreatmentHandle?.treatment === "chamfer"} onClick={() => onEdgeTreatmentTypeChange?.("chamfer")}><ToolbarChamferIcon /></button>
       </div>
+      {edgeTreatmentHandle && onEdgeTreatmentRadiusChange ? <ViewportEdgeRadiusInput radius={edgeTreatmentHandle.radius} displayUnit={displayUnit} snap={snap} locale={locale} onCommit={onEdgeTreatmentRadiusChange} /> : null}
       {onEdgeTreatmentCancel && onEdgeTreatmentAccept ? <div className="educad-viewport-edge-treatment-actions">
         <button type="button" className="cancel" aria-label={locale === "es" ? "Cancelar" : "Cancel"} title={locale === "es" ? "Cancelar" : "Cancel"} onClick={onEdgeTreatmentCancel}><X /></button>
         <button type="button" className="accept" disabled={!edgeTreatmentCanAccept} aria-label={locale === "es" ? "Aceptar" : "Accept"} title={locale === "es" ? "Aceptar" : "Accept"} onClick={onEdgeTreatmentAccept}><Check /></button>

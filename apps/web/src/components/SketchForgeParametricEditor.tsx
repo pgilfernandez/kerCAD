@@ -274,6 +274,7 @@ export function SketchForgeParametricEditor() {
   const [workplaneOpen, setWorkplaneOpen] = useState(false);
   const [workplaneDraft, setWorkplaneDraft] = useState(document.workplane);
   const [placingWorkplane, setPlacingWorkplane] = useState(false);
+  const [editingMirrorPlaneId, setEditingMirrorPlaneId] = useState<string | null>(null);
   const [selectingTopologyFaces, setSelectingTopologyFaces] = useState(false);
   const [selectedTopologyFaces, setSelectedTopologyFaces] = useState<ParametricTopologyReference[]>([]);
   const [selectingTopologyEdges, setSelectingTopologyEdges] = useState(false);
@@ -344,10 +345,11 @@ export function SketchForgeParametricEditor() {
   }, []);
 
   useEffect(() => {
-    if (!placingWorkplane && !selectingTopologyFaces && !selectingTopologyEdges) return;
+    if (!placingWorkplane && !editingMirrorPlaneId && !selectingTopologyFaces && !selectingTopologyEdges) return;
     const cancel = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       setPlacingWorkplane(false);
+      setEditingMirrorPlaneId(null);
       setSelectingTopologyFaces(false);
       setSelectingTopologyEdges(false);
       setSelectedTopologyFaces([]);
@@ -360,11 +362,11 @@ export function SketchForgeParametricEditor() {
       setEditingShellId(null);
       setPendingRevolve(null);
       setEditingRevolveId(null);
-      setNotice({ type: "info", text: placingWorkplane ? t("notice.workplaneCancelled") : t("notice.topologyCancelled") });
+      setNotice({ type: "info", text: placingWorkplane || editingMirrorPlaneId ? t("notice.workplaneCancelled") : t("notice.topologyCancelled") });
     };
     window.addEventListener("keydown", cancel);
     return () => window.removeEventListener("keydown", cancel);
-  }, [placingWorkplane, selectingTopologyEdges, selectingTopologyFaces]);
+  }, [editingMirrorPlaneId, placingWorkplane, selectingTopologyEdges, selectingTopologyFaces, t]);
   const [exporting, setExporting] = useState(false);
   const [projectExporting, setProjectExporting] = useState(false);
   const [pendingProjectImport, setPendingProjectImport] = useState<{ document: ParametricDocument; assetCount: number; fileName: string } | null>(null);
@@ -1773,6 +1775,15 @@ export function SketchForgeParametricEditor() {
     };
   }, [document, modelSelection, pendingFaceExtrude, selectedTopologyFaces]);
   const hasActiveWorkplane = !parametricWorkplaneIsGlobal(document.workplane);
+  const beginMirrorPlaneSelection = (featureId: string) => {
+    setEditingMirrorPlaneId(featureId);
+    setPlacingWorkplane(false);
+    setSelectingTopologyFaces(false);
+    setSelectingTopologyEdges(false);
+    setSelectedTopologyFaces([]);
+    setSelectedTopologyEdges([]);
+    setNotice({ type: "info", text: locale === "es" ? "Selecciona una cara o uno de los planos principales" : "Select a face or one of the principal planes" });
+  };
   const toggleWorkplanePlacement = () => {
     if (hasActiveWorkplane) {
       mutate((draft) => { Object.assign(draft.workplane, globalParametricWorkplanePlacement()); });
@@ -1785,6 +1796,7 @@ export function SketchForgeParametricEditor() {
       return;
     }
     setPlacingWorkplane((current) => !current);
+    setEditingMirrorPlaneId(null);
     setSelectingTopologyFaces(false);
     setSelectingTopologyEdges(false);
     setSelectedTopologyFaces([]);
@@ -2575,6 +2587,15 @@ export function SketchForgeParametricEditor() {
               )}
             </ToolbarSection>
             <ToolbarSection label={t("toolbar.modify")} className="toolbar-modify-section">
+              <Tool label={t("toolbar.chamfer")} active={pendingEdgeTreatment === "chamfer"} onClick={() => beginEdgeTreatment("chamfer")}><ToolbarChamferIcon /></Tool>
+              <Tool label={t("toolbar.fillet")} active={pendingEdgeTreatment === "fillet"} onClick={() => beginEdgeTreatment("fillet")}><ToolbarFilletIcon /></Tool>
+              <Tool label={selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? t("toolbar.extrudeSketch") : t("toolbar.extrudeFace")} active={Boolean(pendingFaceExtrude)} onClick={() => selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? addExtrudeFromSketch(selectedFeature) : beginFaceExtrude("add")}><ToolbarExtrudeIcon /></Tool>
+              <Tool label={selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? t("toolbar.revolveSketch") : t("toolbar.revolve")} active={Boolean(pendingRevolve)} onClick={() => selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? addRevolveFromSketch(selectedFeature) : beginRevolve()}><ToolbarRevolveIcon /></Tool>
+              <Tool label={t("toolbar.shell")} active={Boolean(pendingShell)} onClick={() => beginShell()}><ToolbarShellIcon /></Tool>
+              <Tool label={t("toolbar.mirror")} enabled={Boolean(selectedObjectId)} onClick={addMirrorOperation}><ToolbarMirrorIcon /></Tool>
+              <Tool label={t("toolbar.linearPattern")} enabled={Boolean(selectedObjectId)} onClick={addLinearPatternOperation}><ToolbarLinearPatternIcon /></Tool>
+              <Tool label={t("toolbar.polarPattern")} enabled={Boolean(selectedObjectId)} onClick={addPolarPatternOperation}><ToolbarPolarPatternIcon /></Tool>
+              <Tool label={t("toolbar.objectBoolean")} enabled={Boolean(selectedObjectId && document.objects.some((object) => object.id !== selectedObjectId))} onClick={addObjectBooleanOperation}><ToolbarObjectBooleanIcon /></Tool>
               <div data-educad-popup="align" className="educad-align-tool">
                 <Tool label={t("toolbar.align")} enabled={modelSelection.length > 1} active={alignOpen} onClick={() => setAlignOpen((value) => !value)}><ToolbarAlignIcon /></Tool>
                 {alignOpen ? <div className="educad-align-popover" role="dialog" aria-label={t("align.title")}>
@@ -2584,16 +2605,7 @@ export function SketchForgeParametricEditor() {
                   </div>
                 </div> : null}
               </div>
-              <Tool label={t("toolbar.mirror")} enabled={Boolean(selectedObjectId)} onClick={addMirrorOperation}><ToolbarMirrorIcon /></Tool>
-              <Tool label={t("toolbar.linearPattern")} enabled={Boolean(selectedObjectId)} onClick={addLinearPatternOperation}><ToolbarLinearPatternIcon /></Tool>
-              <Tool label={t("toolbar.polarPattern")} enabled={Boolean(selectedObjectId)} onClick={addPolarPatternOperation}><ToolbarPolarPatternIcon /></Tool>
-              <Tool label={t("toolbar.objectBoolean")} enabled={Boolean(selectedObjectId && document.objects.some((object) => object.id !== selectedObjectId))} onClick={addObjectBooleanOperation}><ToolbarObjectBooleanIcon /></Tool>
               <Tool label={t("toolbar.snapGrid")} enabled={Boolean(selectedShape && document.workplane.snapToGrid)} onClick={() => selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: Math.round((selectedShape?.x ?? 0) / snapAmount) * snapAmount, z: Math.round((selectedShape?.z ?? 0) / snapAmount) * snapAmount }))}><ToolbarSnapGridIcon /></Tool>
-              <Tool label={t("toolbar.chamfer")} active={pendingEdgeTreatment === "chamfer"} onClick={() => beginEdgeTreatment("chamfer")}><ToolbarChamferIcon /></Tool>
-              <Tool label={t("toolbar.fillet")} active={pendingEdgeTreatment === "fillet"} onClick={() => beginEdgeTreatment("fillet")}><ToolbarFilletIcon /></Tool>
-              <Tool label={selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? t("toolbar.extrudeSketch") : t("toolbar.extrudeFace")} active={Boolean(pendingFaceExtrude)} onClick={() => selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? addExtrudeFromSketch(selectedFeature) : beginFaceExtrude("add")}><ToolbarExtrudeIcon /></Tool>
-              <Tool label={selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? t("toolbar.revolveSketch") : t("toolbar.revolve")} active={Boolean(pendingRevolve)} onClick={() => selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? addRevolveFromSketch(selectedFeature) : beginRevolve()}><ToolbarRevolveIcon /></Tool>
-              <Tool label={t("toolbar.shell")} active={Boolean(pendingShell)} onClick={() => beginShell()}><ToolbarShellIcon /></Tool>
               <Tool label={t("toolbar.dropToWorkplane")} enabled={Boolean(selectedShape)} onClick={() => updateSelected({ elevation: 0 })}><ToolbarDropToWorkplaneIcon /></Tool>
             </ToolbarSection>
           </div>
@@ -2806,7 +2818,7 @@ export function SketchForgeParametricEditor() {
           displayUnit={displayUnit}
           locale={locale}
           parameterHandlesVisible={showParameterHandles}
-          selection={originEditObjectId || placingWorkplane || selectingTopologyFaces || selectingTopologyEdges ? null : selectedBox}
+          selection={originEditObjectId || placingWorkplane || editingMirrorPlaneId || selectingTopologyFaces || selectingTopologyEdges ? null : selectedBox}
           snap={snapAmount}
           onOperationModeChange={setSelectedOperationMode}
           onShapeParameterChange={(parameter, value) => {
@@ -2844,11 +2856,29 @@ export function SketchForgeParametricEditor() {
           onEmptySelect={() => {
             setModelSelection([]);
           }}
-          workplaneFaceSelection={placingWorkplane}
+          workplaneFaceSelection={placingWorkplane || Boolean(editingMirrorPlaneId)}
           onWorkplaneFaceSelect={({ origin, normal }) => {
-            mutate((draft) => { Object.assign(draft.workplane, parametricWorkplaneFromFace(origin, normal)); });
-            setPlacingWorkplane(false);
-            setNotice({ type: "ok", text: t("notice.workplanePlaced") });
+            if (editingMirrorPlaneId) {
+              mutate((draft) => {
+                const feature = draft.features.find((candidate) => candidate.id === editingMirrorPlaneId);
+                if (feature?.kind !== "mirror") return;
+                const object = draft.objects.find((candidate) => candidate.id === feature.objectId);
+                if (!object) return;
+                const objectMatrix = parametricTransformMatrix(object.transform);
+                const localOrigin = new THREE.Vector3(origin.x, origin.y, origin.z).applyMatrix4(objectMatrix.clone().invert());
+                const localNormal = new THREE.Vector3(normal.x, normal.y, normal.z)
+                  .applyMatrix3(new THREE.Matrix3().setFromMatrix4(objectMatrix).transpose())
+                  .normalize();
+                feature.planeOrigin = { x: localOrigin.x, y: localOrigin.y, z: localOrigin.z };
+                feature.planeNormal = { x: localNormal.x, y: localNormal.y, z: localNormal.z };
+              });
+              setEditingMirrorPlaneId(null);
+              setNotice({ type: "ok", text: locale === "es" ? "Plano de espejo definido" : "Mirror plane set" });
+            } else {
+              mutate((draft) => { Object.assign(draft.workplane, parametricWorkplaneFromFace(origin, normal)); });
+              setPlacingWorkplane(false);
+              setNotice({ type: "ok", text: t("notice.workplanePlaced") });
+            }
           }}
           topologyFaceSelection={selectingTopologyFaces}
           onTopologyFaceSelect={selectTopologyFace}
@@ -2910,7 +2940,7 @@ export function SketchForgeParametricEditor() {
             </div>
           </section>
         </aside> : null}
-        <ViewCube orientation={cameraOrientation} onDirection={(direction) => setView((current) => ({ name: "custom", direction, token: current.token + 1 }))} />
+        <ViewCube orientation={cameraOrientation} onDirection={(direction, smooth = true) => setView((current) => ({ name: "custom", direction, smooth, token: current.token + 1 }))} />
         <button data-educad-popup="grid" className={`educad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label={t("grid.settings")} title={t("grid.title")} onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><Grid3X3 size={22} /></button>
         <button
           className={`educad-workplane-snap-button ${document.workplane.snapToGrid ? "active" : ""}`}
@@ -2986,6 +3016,7 @@ export function SketchForgeParametricEditor() {
           onEditShellSelection={(featureId) => beginShell(featureId)}
           onEditRevolveFace={(featureId) => beginRevolve(featureId, "face")}
           onEditRevolveAxis={(featureId) => beginRevolve(featureId, "axis")}
+          onEditMirrorPlane={beginMirrorPlaneSelection}
           edgeTreatmentDraft={pendingEdgeTreatment ? { treatment: pendingEdgeTreatment, radius: edgeTreatmentRadius, faceCount: selectedTopologyFaces.length, edgeCount: selectedTopologyEdges.length, editing: Boolean(editingEdgeTreatmentId) } : null}
           onEdgeTreatmentDraftChange={(update) => {
             if (update.treatment) setPendingEdgeTreatment(update.treatment);
@@ -3108,21 +3139,21 @@ function SketchSideTool({ label, enabled = true, active, onClick, children }: { 
   return <button className={`educad-sketch-side-tool ${active ? "active" : ""}`} type="button" aria-label={label} aria-pressed={active} disabled={!enabled} title={label} onClick={onClick}><span className="educad-sketch-side-tool-icon">{children}</span></button>;
 }
 
-function ViewCube({ orientation, onDirection }: { orientation: CameraOrientation; onDirection: (direction: [number, number, number]) => void }) {
+function ViewCube({ orientation, onDirection }: { orientation: CameraOrientation; onDirection: (direction: [number, number, number], smooth?: boolean) => void }) {
   const dragRef = useRef<{ pointerId: number; x: number; y: number; azimuth: number; polar: number } | null>(null);
   const draggedRef = useRef(false);
   const cubeTransform = `rotateX(${orientation.polar * 180 / Math.PI - 90}deg) rotateY(${-orientation.azimuth * 180 / Math.PI}deg)`;
   const chooseDirection = (direction: [number, number, number]) => {
-    if (!draggedRef.current) onDirection(direction);
+    if (!draggedRef.current) onDirection(direction, true);
     draggedRef.current = false;
   };
   const edgeViews: Array<{ className: string; direction: [number, number, number] }> = [
-    { className: "front-top", direction: [0, -1, 1] }, { className: "front-bottom", direction: [0, 1, 1] },
-    { className: "back-top", direction: [0, -1, -1] }, { className: "back-bottom", direction: [0, 1, -1] },
+    { className: "front-top", direction: [0, 1, 1] }, { className: "front-bottom", direction: [0, -1, 1] },
+    { className: "back-top", direction: [0, 1, -1] }, { className: "back-bottom", direction: [0, -1, -1] },
     { className: "front-right", direction: [1, 0, 1] }, { className: "front-left", direction: [-1, 0, 1] },
     { className: "back-right", direction: [1, 0, -1] }, { className: "back-left", direction: [-1, 0, -1] },
-    { className: "top-right", direction: [1, -1, 0] }, { className: "top-left", direction: [-1, -1, 0] },
-    { className: "bottom-right", direction: [1, 1, 0] }, { className: "bottom-left", direction: [-1, 1, 0] },
+    { className: "top-right", direction: [1, 1, 0] }, { className: "top-left", direction: [-1, 1, 0] },
+    { className: "bottom-right", direction: [1, -1, 0] }, { className: "bottom-left", direction: [-1, -1, 0] },
   ];
   const cornerViews = ([-1, 1] as const).flatMap((x) => ([-1, 1] as const).flatMap((y) => ([-1, 1] as const).map((z) => [x, y, z] as [number, number, number])));
   return <div
@@ -3143,7 +3174,7 @@ function ViewCube({ orientation, onDirection }: { orientation: CameraOrientation
       if (!event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.setPointerCapture(event.pointerId);
       const azimuth = drag.azimuth - dx * 0.012;
       const polar = Math.min(Math.PI - 0.03, Math.max(0.03, drag.polar - dy * 0.012));
-      onDirection([Math.sin(polar) * Math.sin(azimuth), Math.cos(polar), Math.sin(polar) * Math.cos(azimuth)]);
+      onDirection([Math.sin(polar) * Math.sin(azimuth), Math.cos(polar), Math.sin(polar) * Math.cos(azimuth)], false);
     }}
     onPointerUp={(event) => {
       if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
@@ -3162,7 +3193,8 @@ function ViewCube({ orientation, onDirection }: { orientation: CameraOrientation
     {cornerViews.map((direction) => {
       const yaw = Math.atan2(direction[0], direction[2]) * 180 / Math.PI;
       const pitch = -Math.asin(direction[1] / Math.sqrt(3)) * 180 / Math.PI;
-      return <button key={direction.join(":")} type="button" className="cube-corner" style={{ transform: `rotateY(${yaw}deg) rotateX(${pitch}deg) translateZ(46.8px)` }} aria-label={`Corner view ${direction.join(", ")}`} onClick={() => chooseDirection(direction)} />;
+      const cameraDirection: [number, number, number] = [direction[0], -direction[1], direction[2]];
+      return <button key={direction.join(":")} type="button" className="cube-corner" style={{ transform: `rotateY(${yaw}deg) rotateX(${pitch}deg) translateZ(46.8px)` }} aria-label={`Corner view ${cameraDirection.join(", ")}`} onClick={() => chooseDirection(cameraDirection)} />;
     })}
   </div></div>;
 }

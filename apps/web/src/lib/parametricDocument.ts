@@ -443,6 +443,10 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
     }
     if (feature.kind === "mirror") {
       feature.axis = feature.axis === "y" || feature.axis === "z" ? feature.axis : "x";
+      if (!feature.planeOrigin || !feature.planeNormal || ![feature.planeOrigin.x, feature.planeOrigin.y, feature.planeOrigin.z, feature.planeNormal.x, feature.planeNormal.y, feature.planeNormal.z].every(Number.isFinite)) {
+        feature.planeOrigin = undefined;
+        feature.planeNormal = undefined;
+      }
       feature.duplicate = typeof feature.duplicate === "boolean" ? feature.duplicate : true;
     }
     if (feature.kind === "linearPattern") {

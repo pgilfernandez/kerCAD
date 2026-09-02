@@ -172,6 +172,9 @@ export type MirrorFeature = BaseFeature & {
   kind: "mirror";
   /** Local axis normal to the mirror plane. */
   axis: "x" | "y" | "z";
+  /** Optional custom plane, expressed in the container object's local space. */
+  planeOrigin?: ParametricVector3;
+  planeNormal?: ParametricVector3;
   /** Keep the previous result together with its mirrored copy. */
   duplicate: boolean;
 };
