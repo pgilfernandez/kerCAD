@@ -54,6 +54,7 @@ import { importReferenceMesh, parametricReferenceRenderRecords } from "@/lib/par
 import { assertImportByteLimit } from "@/lib/parametricImportLimits";
 import { displayLengthToMillimeters, displayUnitLabel, millimetersToDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
 import { educadTranslate, normalizeEducadLocale, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
+import { parametricRebuildSuggestion } from "@/lib/parametricRebuildDiagnostics";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import { circleSketchPointId, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, solveSketchConstraints } from "@/lib/sketchConstraints";
 import { analyzeSketchConstraints } from "@/lib/sketchConstraintAnalysis";
@@ -872,6 +873,8 @@ export function SketchForgeParametricEditor() {
       : topologyPreviewBusy || topologySelectionBusy || contextBusy
         ? t("status.updatingView")
         : null;
+  const failedFeature = build.failedFeatureId ? document.features.find((feature) => feature.id === build.failedFeatureId) ?? null : null;
+  const rebuildSuggestion = build.warning ? t(parametricRebuildSuggestion(failedFeature, build.warning)) : null;
 
   const beginSketch = (featureId: string | null = null) => {
     const feature = featureId ? document.features.find((candidate): candidate is SketchFeature => candidate.kind === "sketch" && candidate.id === featureId && candidate.profile.shape === "drawn") : null;
@@ -2947,7 +2950,7 @@ export function SketchForgeParametricEditor() {
           <button aria-label={t("camera.zoomIn")} title={t("camera.zoomIn")} onClick={() => setCamera("zoom-in")}><Plus size={28} /></button>
           <button aria-label={t("camera.zoomOut")} title={t("camera.zoomOut")} onClick={() => setCamera("zoom-out")}><Minus size={28} /></button>
         </div>
-        {build.warning && <div className="educad-rebuild-error" role="alert" aria-live="assertive" aria-atomic="true"><strong>{t("history.stopped")}</strong><span>{build.warning}</span></div>}
+        {build.warning && <div className="educad-rebuild-error" role="alert" aria-live="assertive" aria-atomic="true"><strong>{t("history.stopped")}</strong><span>{build.warning}</span>{rebuildSuggestion ? <small><b>{t("rebuild.suggestionLabel")}:</b> {rebuildSuggestion}</small> : null}</div>}
         {notice && <div className={`educad-reference-toast ${notice.type}`} role={notice.type === "error" ? "alert" : "status"} aria-live={notice.type === "error" ? "assertive" : "polite"} aria-atomic="true">{notice.text}</div>}
         {modelSidebarMode !== "hidden" ? <ParametricModelSidebar
           document={document}

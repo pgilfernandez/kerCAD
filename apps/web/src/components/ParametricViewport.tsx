@@ -539,6 +539,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const activeWorkplaneRef = useRef(workplane);
   const isolatedHistoryObjectIdRef = useRef(isolatedHistoryObjectId);
   const invalidateRef = useRef<() => void>(() => undefined);
+  const groundOpacityDirtyRef = useRef(true);
   const hasFittedRef = useRef(false);
   const objectRenderCacheRef = useRef(new Map<string, CachedObjectRender>());
 
@@ -684,7 +685,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     renderer.setPixelRatio(resolution.pixelRatio);
     renderer.shadowMap.enabled = shadingMode !== "unlit";
     renderer.shadowMap.type = shadingMode === "basic" || renderQuality === "optimized" ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
-    renderer.shadowMap.autoUpdate = shadingMode !== "unlit";
+    // The light and shadow camera are fixed. Camera orbit/pan does not change
+    // the shadow texture, so only rebuild it when scene resources change.
+    renderer.shadowMap.autoUpdate = renderProfile.shadowMapAutoUpdate;
     renderer.shadowMap.needsUpdate = shadingMode !== "unlit";
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     host.appendChild(renderer.domElement);
@@ -860,8 +863,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       selector.style.left = `${(point.x + 1) * host.clientWidth / 2}px`;
       selector.style.top = `${(1 - point.y) * host.clientHeight / 2 - 64}px`;
     };
+    let cameraWasBelowGround: boolean | null = null;
     const updateGroundOpacity = () => {
       const belowGround = camera.position.y < 0;
+      if (!groundOpacityDirtyRef.current && belowGround === cameraWasBelowGround) return;
+      cameraWasBelowGround = belowGround;
+      groundOpacityDirtyRef.current = false;
       workplaneRef.current?.traverse((child) => {
         if (!child.userData.globalWorkplaneElement || !("material" in child)) return;
         const materials = Array.isArray(child.material) ? child.material : [child.material];
@@ -877,17 +884,19 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const requestRender = () => {
       if (!disposed && frame === 0) frame = requestAnimationFrame(render);
     };
+    const yellowWorldPosition = new THREE.Vector3();
+    const yellowParentScale = new THREE.Vector3();
     const updateYellowManipulatorScreenSizes = () => {
-      modelGroup.traverse((child) => {
+      const updateRoot = (root: THREE.Object3D | null) => root?.traverse((child) => {
         if (!(child instanceof THREE.Mesh)) return;
         const baseRadius = Number(child.userData.yellowManipulatorBaseRadius);
         const diameterPixels = Number(child.userData.yellowManipulatorDiameterPixels);
         if (!(baseRadius > 0) || !(diameterPixels > 0)) return;
-        const worldPosition = child.getWorldPosition(new THREE.Vector3());
+        const worldPosition = child.getWorldPosition(yellowWorldPosition);
         const worldDiameter = camera instanceof THREE.OrthographicCamera
           ? orthographicTouchTargetWorldSize(camera.top - camera.bottom, camera.zoom, renderer.domElement.clientHeight, diameterPixels)
           : perspectiveTouchTargetWorldSize(camera.position.distanceTo(worldPosition), camera.fov, renderer.domElement.clientHeight, diameterPixels);
-        const parentScale = child.parent?.getWorldScale(new THREE.Vector3()) ?? new THREE.Vector3(1, 1, 1);
+        const parentScale = child.parent?.getWorldScale(yellowParentScale) ?? yellowParentScale.set(1, 1, 1);
         const worldRadiusScale = worldDiameter / (baseRadius * 2);
         child.scale.set(
           worldRadiusScale / Math.max(0.0001, Math.abs(parentScale.x)),
@@ -895,14 +904,18 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           worldRadiusScale / Math.max(0.0001, Math.abs(parentScale.z)),
         );
       });
+      updateRoot(selectionVisualRootRef.current);
+      updateRoot(faceExtrudeHandleRef.current);
+      updateRoot(edgeTreatmentHandleRef.current);
     };
+    const originWorldPosition = new THREE.Vector3();
     const render = (now: number) => {
       frame = 0;
       const controlsChanged = controls.update();
       const nextPixelRatio = resolution.recordFrame(now);
       if (nextPixelRatio !== null) renderer.setPixelRatio(nextPixelRatio);
       for (const marker of originLayer.children) {
-        const worldPosition = marker.getWorldPosition(new THREE.Vector3());
+        const worldPosition = marker.getWorldPosition(originWorldPosition);
         const size = camera instanceof THREE.OrthographicCamera
           ? orthographicTouchTargetWorldSize(camera.top - camera.bottom, camera.zoom, renderer.domElement.clientHeight, 102)
           : perspectiveTouchTargetWorldSize(camera.position.distanceTo(worldPosition), camera.fov, renderer.domElement.clientHeight, 102);
@@ -2676,6 +2689,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       addGrid(active, side, side, true);
       group.add(active);
     }
+    groundOpacityDirtyRef.current = true;
     invalidateRef.current();
   }, [projection, renderQuality, shadingMode, workplane.activeSizePercent, workplane.depth, workplane.gridStep, workplane.gridVisible, workplane.normal.x, workplane.normal.y, workplane.normal.z, workplane.origin.x, workplane.origin.y, workplane.origin.z, workplane.width, workplane.xAxis.x, workplane.xAxis.y, workplane.xAxis.z, workplane.yAxis.x, workplane.yAxis.y, workplane.yAxis.z]);
 

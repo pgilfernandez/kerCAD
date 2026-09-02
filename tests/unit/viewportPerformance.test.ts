@@ -8,8 +8,8 @@ function frames(controller: AdaptiveViewportResolution, start: number, milliseco
 
 describe("adaptive viewport resolution", () => {
   it("keeps antialiasing in normal mode and caps fill cost in optimized mode", () => {
-    expect(viewportRenderProfile("normal")).toMatchObject({ antialias: true, shadowMapSize: 1024, physicallyBasedMaterials: true });
-    expect(viewportRenderProfile("optimized")).toMatchObject({ antialias: false, shadowMapSize: 512, physicallyBasedMaterials: false });
+    expect(viewportRenderProfile("normal")).toMatchObject({ antialias: true, shadowMapSize: 1024, shadowMapAutoUpdate: false, physicallyBasedMaterials: true });
+    expect(viewportRenderProfile("optimized")).toMatchObject({ antialias: false, shadowMapSize: 512, shadowMapAutoUpdate: false, physicallyBasedMaterials: false });
     expect(new AdaptiveViewportResolution(2, viewportPerformanceOptions("normal")).pixelRatio).toBe(1.5);
     expect(new AdaptiveViewportResolution(2, viewportPerformanceOptions("optimized")).pixelRatio).toBe(1);
   });

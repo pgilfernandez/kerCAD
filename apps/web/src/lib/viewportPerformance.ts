@@ -10,13 +10,14 @@ export type ViewportRenderProfile = {
   antialias: boolean;
   maximumPixelRatio: number;
   shadowMapSize: number;
+  shadowMapAutoUpdate: boolean;
   physicallyBasedMaterials: boolean;
 };
 
 export function viewportRenderProfile(quality: ViewportRenderQuality): ViewportRenderProfile {
   return quality === "optimized"
-    ? { antialias: false, maximumPixelRatio: 1, shadowMapSize: 512, physicallyBasedMaterials: false }
-    : { antialias: true, maximumPixelRatio: 1.5, shadowMapSize: 1024, physicallyBasedMaterials: true };
+    ? { antialias: false, maximumPixelRatio: 1, shadowMapSize: 512, shadowMapAutoUpdate: false, physicallyBasedMaterials: false }
+    : { antialias: true, maximumPixelRatio: 1.5, shadowMapSize: 1024, shadowMapAutoUpdate: false, physicallyBasedMaterials: true };
 }
 
 export function viewportPerformanceOptions(quality: ViewportRenderQuality): ViewportPerformanceOptions {

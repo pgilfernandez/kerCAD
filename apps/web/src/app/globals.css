@@ -798,6 +798,9 @@ button {
   font-size: 10px;
 }
 
+.educad-rebuild-error small { max-width: 480px; margin-top: 3px; color: #704f4b; font-size: 9px; line-height: 1.35; }
+.educad-rebuild-error small b { color: #914944; }
+
 .educad-reference-toast {
   position: absolute;
   bottom: 18px;
