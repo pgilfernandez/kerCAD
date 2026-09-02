@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
@@ -21,6 +21,7 @@ export type CameraProjection = "perspective" | "orthographic";
 export type ViewportDisplayMode = "solid" | "wireframe";
 export type ViewportShadingMode = "shadows" | "basic" | "unlit";
 export type CameraOrientation = { azimuth: number; polar: number };
+type ViewportMoveDimension = { originX: number; originY: number; currentX: number; currentY: number; startX: number; startY: number; endX: number; endY: number; labelX: number; labelY: number; value: string };
 export type TopologyFacePick = {
   key: string;
   objectId: string;
@@ -491,6 +492,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const dimensionHoverRef = useRef(new Set<ViewportDimensionAxis>());
   const dimensionHoverTimerRef = useRef<number | null>(null);
   const dimensionSelectionIdRef = useRef<string | null>(selection?.id ?? null);
+  const [moveDimension, setMoveDimension] = useState<ViewportMoveDimension | null>(null);
   const shapeParameterPreviewRef = useRef<{ parameter: ShapeParameter; value: number } | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | THREE.OrthographicCamera | null>(null);
@@ -676,8 +678,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     scene.background = new THREE.Color("#edf4f7");
     hasFittedRef.current = false;
     const camera = projection === "orthographic"
-      ? new THREE.OrthographicCamera(-90, 90, 90, -90, 0.01, 2000)
-      : new THREE.PerspectiveCamera(38, 1, 0.01, 1000);
+      ? new THREE.OrthographicCamera(-90, 90, 90, -90, 0, 2000)
+      : new THREE.PerspectiveCamera(38, 1, 0.001, 1000);
     camera.position.set(118, 96, -118);
     const renderProfile = viewportRenderProfile(renderQuality);
     const resolution = new AdaptiveViewportResolution(window.devicePixelRatio, viewportPerformanceOptions(renderQuality));
@@ -1046,6 +1048,32 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     let sketchPreviewStartWorldPosition: THREE.Vector3 | null = null;
     let sketchPreviewStartWorldQuaternion: THREE.Quaternion | null = null;
     let pickCandidate: { pointerId: number; pointerType: string; x: number; y: number; dragIntent: ViewportPointerDragIntent } | null = null;
+    const updateMoveDimension = (start: THREE.Vector3, end: THREE.Vector3, value: number) => {
+      const project = (point: THREE.Vector3) => {
+        const projected = point.clone().project(camera);
+        return { x: (projected.x + 1) * renderer.domElement.clientWidth / 2, y: (1 - projected.y) * renderer.domElement.clientHeight / 2 };
+      };
+      const first = project(start);
+      const second = project(end);
+      const dx = second.x - first.x;
+      const dy = second.y - first.y;
+      const length = Math.hypot(dx, dy);
+      if (length < 0.5 || Math.abs(value) < 1e-9) { setMoveDimension(null); return; }
+      const offset = 28;
+      const normalX = -dy / length;
+      const normalY = dx / length;
+      const startX = first.x + normalX * offset;
+      const startY = first.y + normalY * offset;
+      const endX = second.x + normalX * offset;
+      const endY = second.y + normalY * offset;
+      setMoveDimension({
+        originX: first.x, originY: first.y, currentX: second.x, currentY: second.y,
+        startX, startY, endX, endY,
+        labelX: (startX + endX) / 2 + normalX * 13,
+        labelY: (startY + endY) / 2 + normalY * 13,
+        value: `${formatDisplayLength(value, displayUnit)} ${displayUnitLabel(displayUnit)}`,
+      });
+    };
     const disposeTemporaryLineGroup = (group: THREE.Group | null) => {
       if (!group) return;
       group.parent?.remove(group);
@@ -1707,6 +1735,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     };
     const onPointerDown = (event: PointerEvent) => {
       if (event.button !== 0) return;
+      setMoveDimension(null);
       setPointer(event);
       const edgeTreatmentLayer = edgeTreatmentHandleRef.current;
       const edgeTreatmentHit = edgeTreatmentLayer ? raycaster.intersectObject(edgeTreatmentLayer, true).find((hit) => hit.object.userData.edgeTreatmentRadiusTarget) : null;
@@ -2058,6 +2087,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         originDragMarker.position.copy(target);
         pendingAxisMove.position = { x: target.x, y: target.y, z: target.z };
         const delta = target.clone().sub(originDragStart);
+        updateMoveDimension(originLayer.localToWorld(originDragStart.clone()), originLayer.localToWorld(target.clone()), delta.length());
         const root = selectionRootRef.current;
         if (root && axisMoveRootStart) root.position.copy(axisMoveRootStart).add(delta);
         if (sketchPreviewRoot?.parent && sketchPreviewStartWorldPosition) {
@@ -2086,6 +2116,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           next.set(constrained.x, constrained.y, constrained.z);
         }
         originDragMarker.position.copy(next);
+        const movement = next.clone().sub(originDragStart);
+        const signedDistance = originDragAxis === "x" ? movement.x : originDragAxis === "y" ? movement.y : originDragAxis === "z" ? movement.z : movement.length();
+        updateMoveDimension(originLayer.localToWorld(originDragStart.clone()), originLayer.localToWorld(next.clone()), signedDistance);
         if (interaction === "origin" && pendingOrigin) pendingOrigin.position = { x: next.x, y: next.y, z: next.z };
         if (interaction === "axisMove" && pendingAxisMove) {
           pendingAxisMove.position = { x: next.x, y: next.y, z: next.z };
@@ -2195,6 +2228,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       requestRender();
     };
     const stopDragging = (event: PointerEvent, cancelled = false) => {
+      setMoveDimension(null);
       if (!interaction) {
         const candidate = pickCandidate;
         pickCandidate = null;
@@ -2851,10 +2885,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       controls.target.copy(center);
       const distance = Math.max(55, Math.max(size.x, size.y, size.z) * 2.35);
       camera.position.copy(center).add(new THREE.Vector3(-distance, distance * 0.72, distance));
-      // Keep close geometry visible while still scaling the depth range for
-      // unusually large models. The former distance / 1000 plane could cut a
-      // visibly thick slice from a part when the camera approached it.
-      camera.near = Math.max(0.01, distance / 10000);
+      // The orthographic view can start at the camera plane itself. Perspective
+      // requires a positive value, but 0.001 mm keeps the cut effectively
+      // invisible even when navigating inside a small part. Do not scale this
+      // with model size: that made clipping return after fitting large models.
+      camera.near = camera instanceof THREE.OrthographicCamera ? 0 : 0.001;
       camera.far = distance * 12;
       if (camera instanceof THREE.OrthographicCamera) camera.zoom = Math.min(8, Math.max(0.1, 110 / Math.max(size.x, size.y, size.z, 1)));
       camera.updateProjectionMatrix();
@@ -3269,7 +3304,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       top: new THREE.Vector3(0, 1, 0.001),
       front: new THREE.Vector3(0, 0.001, 1),
       right: new THREE.Vector3(1, 0.001, 0),
-      home: new THREE.Vector3(118, 96, -118),
+      home: new THREE.Vector3(-118, 96, 118),
     };
     camera.position.copy(target).add(vectors[view.name].normalize().multiplyScalar(distance));
     camera.up.set(0, 1, 0);
@@ -3328,6 +3363,15 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         <button type="button" className="accept" disabled={!edgeTreatmentCanAccept} aria-label={locale === "es" ? "Aceptar" : "Accept"} title={locale === "es" ? "Aceptar" : "Accept"} onClick={onEdgeTreatmentAccept}><Check /></button>
       </div> : null}
     </div>
+    {moveDimension ? <div className="parametric-move-dimension" aria-live="polite">
+      <svg aria-hidden="true">
+        <defs><marker id="parametric-move-arrow" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto-start-reverse"><path d="M 0 0 L 7 3.5 L 0 7 z" /></marker></defs>
+        <line className="extension" x1={moveDimension.originX} y1={moveDimension.originY} x2={moveDimension.startX} y2={moveDimension.startY} />
+        <line className="extension" x1={moveDimension.currentX} y1={moveDimension.currentY} x2={moveDimension.endX} y2={moveDimension.endY} />
+        <line className="distance" x1={moveDimension.startX} y1={moveDimension.startY} x2={moveDimension.endX} y2={moveDimension.endY} />
+      </svg>
+      <span style={{ left: moveDimension.labelX, top: moveDimension.labelY }}>{moveDimension.value}</span>
+    </div> : null}
     <div className="parametric-selection-dimensions">
       {dimensionInput("x", dimensionXRef, "axis-x", locale === "es" ? "Editar dimensión X" : "Edit X dimension")}
       {dimensionInput("y", dimensionYRef, "axis-y", locale === "es" ? "Editar dimensión Y" : "Edit Y dimension")}

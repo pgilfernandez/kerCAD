@@ -1773,6 +1773,25 @@ export function SketchForgeParametricEditor() {
     };
   }, [document, modelSelection, pendingFaceExtrude, selectedTopologyFaces]);
   const hasActiveWorkplane = !parametricWorkplaneIsGlobal(document.workplane);
+  const toggleWorkplanePlacement = () => {
+    if (hasActiveWorkplane) {
+      mutate((draft) => { Object.assign(draft.workplane, globalParametricWorkplanePlacement()); });
+      setPlacingWorkplane(false);
+      setSelectingTopologyFaces(false);
+      setSelectingTopologyEdges(false);
+      setSelectedTopologyFaces([]);
+      setSelectedTopologyEdges([]);
+      setNotice({ type: "ok", text: t("notice.workplaneRestored") });
+      return;
+    }
+    setPlacingWorkplane((current) => !current);
+    setSelectingTopologyFaces(false);
+    setSelectingTopologyEdges(false);
+    setSelectedTopologyFaces([]);
+    setSelectedTopologyEdges([]);
+    setWorkplaneOpen(false);
+    setNotice({ type: "info", text: placingWorkplane ? t("notice.placementCancelled") : t("notice.workplanePlaceHint") });
+  };
   const updateGridSettings = (patch: Partial<Pick<ParametricDocument["workplane"], "width" | "depth" | "gridStep" | "snapSpacing" | "gridVisible" | "activeSizePercent">>) => {
     setWorkplaneDraft((current) => ({ ...current, ...patch }));
     mutate((draft) => { Object.assign(draft.workplane, patch); });
@@ -2555,9 +2574,6 @@ export function SketchForgeParametricEditor() {
                 </div>
               )}
             </ToolbarSection>
-          </div>
-          <div className="toolbar-spacer" />
-          <div className="tool-group right">
             <ToolbarSection label={t("toolbar.modify")} className="toolbar-modify-section">
               <div data-educad-popup="align" className="educad-align-tool">
                 <Tool label={t("toolbar.align")} enabled={modelSelection.length > 1} active={alignOpen} onClick={() => setAlignOpen((value) => !value)}><ToolbarAlignIcon /></Tool>
@@ -2578,30 +2594,10 @@ export function SketchForgeParametricEditor() {
               <Tool label={selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? t("toolbar.extrudeSketch") : t("toolbar.extrudeFace")} active={Boolean(pendingFaceExtrude)} onClick={() => selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? addExtrudeFromSketch(selectedFeature) : beginFaceExtrude("add")}><ToolbarExtrudeIcon /></Tool>
               <Tool label={selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? t("toolbar.revolveSketch") : t("toolbar.revolve")} active={Boolean(pendingRevolve)} onClick={() => selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? addRevolveFromSketch(selectedFeature) : beginRevolve()}><ToolbarRevolveIcon /></Tool>
               <Tool label={t("toolbar.shell")} active={Boolean(pendingShell)} onClick={() => beginShell()}><ToolbarShellIcon /></Tool>
-            </ToolbarSection>
-            <ToolbarSection label={t("toolbar.arrange")}>
-              <Tool label={hasActiveWorkplane ? t("toolbar.resetWorkplane") : placingWorkplane ? t("toolbar.cancelWorkplane") : t("toolbar.placeWorkplane")} active={placingWorkplane || hasActiveWorkplane} onClick={() => {
-                if (hasActiveWorkplane) {
-                  mutate((draft) => { Object.assign(draft.workplane, globalParametricWorkplanePlacement()); });
-                  setPlacingWorkplane(false);
-                  setSelectingTopologyFaces(false);
-                  setSelectingTopologyEdges(false);
-                  setSelectedTopologyFaces([]);
-                  setSelectedTopologyEdges([]);
-                  setNotice({ type: "ok", text: t("notice.workplaneRestored") });
-                  return;
-                }
-                setPlacingWorkplane((current) => !current);
-                setSelectingTopologyFaces(false);
-                setSelectingTopologyEdges(false);
-                setSelectedTopologyFaces([]);
-                setSelectedTopologyEdges([]);
-                setWorkplaneOpen(false);
-                setNotice({ type: "info", text: placingWorkplane ? t("notice.placementCancelled") : t("notice.workplanePlaceHint") });
-              }}>{hasActiveWorkplane ? <ToolbarResetWorkplaneIcon /> : <ToolbarWorkplaneIcon />}</Tool>
               <Tool label={t("toolbar.dropToWorkplane")} enabled={Boolean(selectedShape)} onClick={() => updateSelected({ elevation: 0 })}><ToolbarDropToWorkplaneIcon /></Tool>
             </ToolbarSection>
           </div>
+          <div className="toolbar-spacer" />
           <ToolbarSection label={t("toolbar.manage")} className="toolbar-actions-section">
             <div className="action-buttons">
               <button className="action-icon-button" aria-label={t("toolbar.import")} title={t("toolbar.import")} onClick={() => importRef.current?.click()}><ToolbarImportIcon /></button>
@@ -2944,19 +2940,22 @@ export function SketchForgeParametricEditor() {
         >
           {modelSidebarMode === "normal" ? <ChevronLeft size={23} /> : modelSidebarMode === "simplified" ? <ChevronDown size={23} /> : <ChevronRight size={23} />}
         </button>
-        <div className="camera-controls" aria-label={t("camera.controls")}>
-          <button className={showPositionTriad ? "active" : ""} aria-label={t("camera.positionTriad")} aria-pressed={showPositionTriad} title={t("camera.positionTriad")} onClick={() => setShowPositionTriad((visible) => !visible)}><Move3d size={22} /></button>
-          <button className={showRotationTriad ? "active" : ""} aria-label={t("camera.rotationTriad")} aria-pressed={showRotationTriad} title={t("camera.rotationTriad")} onClick={() => setShowRotationTriad((visible) => !visible)}><Rotate3d size={22} /></button>
-          <button className={showParameterHandles ? "active educad-parameter-handles-toggle" : "educad-parameter-handles-toggle"} aria-label={t("camera.parameterHandles")} aria-pressed={showParameterHandles} title={t("camera.parameterHandles")} onClick={() => setShowParameterHandles((visible) => !visible)}><CircleDot size={22} /></button>
+        <div className="viewport-display-controls" aria-label={t("camera.controls")}>
           <button className={displayMode === "wireframe" ? "active" : ""} aria-label={t("camera.wireframe")} aria-pressed={displayMode === "wireframe"} title={t("camera.wireframe")} onClick={() => setDisplayMode((current) => current === "solid" ? "wireframe" : "solid")}>
             <svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path d="m12 2 8 4.5v11L12 22l-8-4.5v-11L12 2Zm0 0v9m8-4.5-8 4.5-8-4.5M12 11v11m-8-4.5 8-4.5 8 4.5" fill="none" stroke="currentColor" strokeWidth="1.55" strokeLinejoin="round" /></svg>
           </button>
           <button aria-label={projection === "perspective" ? t("camera.orthographic") : t("camera.perspective")} title={projection === "perspective" ? t("camera.perspective") : t("camera.orthographic")} aria-pressed={projection === "orthographic"} onClick={() => setProjection((current) => current === "perspective" ? "orthographic" : "perspective")}><Box size={22} /></button>
+          <button className={showPositionTriad ? "active" : ""} aria-label={t("camera.positionTriad")} aria-pressed={showPositionTriad} title={t("camera.positionTriad")} onClick={() => setShowPositionTriad((visible) => !visible)}><Move3d size={22} /></button>
+          <button className={showRotationTriad ? "active" : ""} aria-label={t("camera.rotationTriad")} aria-pressed={showRotationTriad} title={t("camera.rotationTriad")} onClick={() => setShowRotationTriad((visible) => !visible)}><Rotate3d size={22} /></button>
+          <button className={showParameterHandles ? "active educad-parameter-handles-toggle" : "educad-parameter-handles-toggle"} aria-label={t("camera.parameterHandles")} aria-pressed={showParameterHandles} title={t("camera.parameterHandles")} onClick={() => setShowParameterHandles((visible) => !visible)}><CircleDot size={22} /></button>
+        </div>
+        <div className="camera-controls" aria-label={t("camera.controls")}>
           <button aria-label={t("camera.home")} title={t("camera.home")} onClick={() => setCamera("home")}><Home size={24} /></button>
           <button aria-label={t("camera.fit")} title={t("camera.fit")} onClick={() => setCamera("fit")}><Maximize2 size={21} /></button>
           <button aria-label={t("camera.selection")} title={t("camera.selection")} disabled={!selectedBox} onClick={() => setCamera("selection")}><Focus size={21} /></button>
           <button aria-label={t("camera.zoomIn")} title={t("camera.zoomIn")} onClick={() => setCamera("zoom-in")}><Plus size={28} /></button>
           <button aria-label={t("camera.zoomOut")} title={t("camera.zoomOut")} onClick={() => setCamera("zoom-out")}><Minus size={28} /></button>
+          <button className={placingWorkplane || hasActiveWorkplane ? "active" : ""} aria-label={hasActiveWorkplane ? t("toolbar.resetWorkplane") : placingWorkplane ? t("toolbar.cancelWorkplane") : t("toolbar.placeWorkplane")} aria-pressed={placingWorkplane || hasActiveWorkplane} title={hasActiveWorkplane ? t("toolbar.resetWorkplane") : placingWorkplane ? t("toolbar.cancelWorkplane") : t("toolbar.placeWorkplane")} onClick={toggleWorkplanePlacement}>{hasActiveWorkplane ? <ToolbarResetWorkplaneIcon /> : <ToolbarWorkplaneIcon />}</button>
         </div>
         {build.warning && <div className="educad-rebuild-error" role="alert" aria-live="assertive" aria-atomic="true"><strong>{t("history.stopped")}</strong><span>{build.warning}</span>{rebuildSuggestion ? <small><b>{t("rebuild.suggestionLabel")}:</b> {rebuildSuggestion}</small> : null}</div>}
         {notice && <div className={`educad-reference-toast ${notice.type}`} role={notice.type === "error" ? "alert" : "status"} aria-live={notice.type === "error" ? "assertive" : "polite"} aria-atomic="true">{notice.text}</div>}
@@ -3117,6 +3116,15 @@ function ViewCube({ orientation, onDirection }: { orientation: CameraOrientation
     if (!draggedRef.current) onDirection(direction);
     draggedRef.current = false;
   };
+  const edgeViews: Array<{ className: string; direction: [number, number, number] }> = [
+    { className: "front-top", direction: [0, -1, 1] }, { className: "front-bottom", direction: [0, 1, 1] },
+    { className: "back-top", direction: [0, -1, -1] }, { className: "back-bottom", direction: [0, 1, -1] },
+    { className: "front-right", direction: [1, 0, 1] }, { className: "front-left", direction: [-1, 0, 1] },
+    { className: "back-right", direction: [1, 0, -1] }, { className: "back-left", direction: [-1, 0, -1] },
+    { className: "top-right", direction: [1, -1, 0] }, { className: "top-left", direction: [-1, -1, 0] },
+    { className: "bottom-right", direction: [1, 1, 0] }, { className: "bottom-left", direction: [-1, 1, 0] },
+  ];
+  const cornerViews = ([-1, 1] as const).flatMap((x) => ([-1, 1] as const).flatMap((y) => ([-1, 1] as const).map((z) => [x, y, z] as [number, number, number])));
   return <div
     className="view-cube"
     aria-label="Cubo de vistas interactivo"
@@ -3143,5 +3151,18 @@ function ViewCube({ orientation, onDirection }: { orientation: CameraOrientation
       window.setTimeout(() => { draggedRef.current = false; }, 0);
     }}
     onPointerCancel={() => { dragRef.current = null; draggedRef.current = false; }}
-  ><div className="view-cube-inner" style={{ transform: cubeTransform }}><button type="button" className="cube-face cube-top" aria-label="Vista inferior" onClick={() => chooseDirection([0, -1, 0.001])}>BOTTOM</button><button type="button" className="cube-face cube-bottom" aria-label="Vista superior" onClick={() => chooseDirection([0, 1, 0.001])}>TOP</button><button type="button" className="cube-face cube-front" aria-label="Vista frontal" onClick={() => chooseDirection([0, 0.001, 1])}>FRONT</button><button type="button" className="cube-face cube-back" aria-label="Vista trasera" onClick={() => chooseDirection([0, 0.001, -1])}>BACK</button><button type="button" className="cube-face cube-right" aria-label="Vista izquierda" onClick={() => chooseDirection([-1, 0.001, 0])}>LEFT</button><button type="button" className="cube-face cube-left" aria-label="Vista derecha" onClick={() => chooseDirection([1, 0.001, 0])}>RIGHT</button></div></div>;
+  ><div className="view-cube-inner" style={{ transform: cubeTransform }}>
+    <button type="button" className="cube-face cube-top" aria-label="Bottom view" onClick={() => chooseDirection([0, -1, 0.001])}>BOTTOM</button>
+    <button type="button" className="cube-face cube-bottom" aria-label="Top view" onClick={() => chooseDirection([0, 1, 0.001])}>TOP</button>
+    <button type="button" className="cube-face cube-front" aria-label="Front view" onClick={() => chooseDirection([0, 0.001, 1])}>FRONT</button>
+    <button type="button" className="cube-face cube-back" aria-label="Back view" onClick={() => chooseDirection([0, 0.001, -1])}>BACK</button>
+    <button type="button" className="cube-face cube-right" aria-label="Left view" onClick={() => chooseDirection([-1, 0.001, 0])}>LEFT</button>
+    <button type="button" className="cube-face cube-left" aria-label="Right view" onClick={() => chooseDirection([1, 0.001, 0])}>RIGHT</button>
+    {edgeViews.map((view) => <button key={view.className} type="button" className={`cube-bevel cube-bevel-${view.className}`} aria-label={`Edge view ${view.direction.join(", ")}`} onClick={() => chooseDirection(view.direction)} />)}
+    {cornerViews.map((direction) => {
+      const yaw = Math.atan2(direction[0], direction[2]) * 180 / Math.PI;
+      const pitch = -Math.asin(direction[1] / Math.sqrt(3)) * 180 / Math.PI;
+      return <button key={direction.join(":")} type="button" className="cube-corner" style={{ transform: `rotateY(${yaw}deg) rotateX(${pitch}deg) translateZ(46.8px)` }} aria-label={`Corner view ${direction.join(", ")}`} onClick={() => chooseDirection(direction)} />;
+    })}
+  </div></div>;
 }

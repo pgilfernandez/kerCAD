@@ -467,6 +467,13 @@ button {
 .parametric-selection-dimensions .axis-y { color: #287d43; }
 .parametric-selection-dimensions .axis-z { color: #236ebd; }
 .parametric-selection-dimensions .axis-r { color: #8a45b8; }
+.parametric-move-dimension { position: absolute; inset: 0; z-index: 7; overflow: hidden; pointer-events: none; }
+.parametric-move-dimension svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.parametric-move-dimension line { vector-effect: non-scaling-stroke; }
+.parametric-move-dimension .extension { stroke: rgba(38, 56, 70, 0.45); stroke-width: 1.25; stroke-dasharray: 3 3; }
+.parametric-move-dimension .distance { stroke: #263846; stroke-width: 1.8; marker-start: url("#parametric-move-arrow"); marker-end: url("#parametric-move-arrow"); }
+.parametric-move-dimension marker path { fill: #263846; }
+.parametric-move-dimension span { position: absolute; min-width: 54px; padding: 4px 8px; color: #263846; text-align: center; background: rgba(255, 255, 255, 0.94); border: 1px solid #b9c9d3; border-radius: 4px; box-shadow: 0 2px 7px rgba(30, 54, 70, 0.14); transform: translate(-50%, -50%); font-size: 10px; font-weight: 700; white-space: nowrap; }
 
 .pcad-view-buttons {
   position: absolute;
@@ -638,6 +645,7 @@ button {
 }
 
 .educad-workplane-stage {
+  --viewport-tool-offset: 156px;
   position: fixed;
   inset: var(--editor-toolbar-height) 0 0;
   overflow: hidden;
@@ -5746,11 +5754,12 @@ circle.sketch-preview-line {
 
 .cube-face {
   position: absolute;
-  inset: 0;
+  top: 6px;
+  left: 6px;
   display: grid;
   place-items: center;
-  width: 58px;
-  height: 58px;
+  width: 46px;
+  height: 46px;
   background: rgba(255, 255, 255, 0.9);
   border: 2px solid #cfd7df;
   padding: 0;
@@ -5801,13 +5810,60 @@ circle.sketch-preview-line {
   transform: rotateY(-90deg) translateZ(29px);
 }
 
-.camera-controls {
+.cube-bevel,
+.cube-corner {
   position: absolute;
-  top: 173px;
-  left: 10px;
+  display: block;
+  padding: 0;
+  background: rgba(232, 239, 244, 0.96);
+  border: 1px solid #c1ced7;
+  cursor: pointer;
+  appearance: none;
+  backface-visibility: hidden;
+  transform-origin: center;
+}
+
+.cube-bevel { top: 25px; left: 6px; width: 46px; height: 8px; }
+.cube-bevel-front-top { transform: rotateX(45deg) translateZ(36.77px); }
+.cube-bevel-front-bottom { transform: rotateX(-45deg) translateZ(36.77px); }
+.cube-bevel-back-top { transform: rotateX(135deg) translateZ(36.77px); }
+.cube-bevel-back-bottom { transform: rotateX(-135deg) translateZ(36.77px); }
+.cube-bevel-front-right,
+.cube-bevel-front-left,
+.cube-bevel-back-right,
+.cube-bevel-back-left { top: 6px; left: 25px; width: 8px; height: 46px; }
+.cube-bevel-front-right { transform: rotateY(45deg) translateZ(36.77px); }
+.cube-bevel-front-left { transform: rotateY(-45deg) translateZ(36.77px); }
+.cube-bevel-back-right { transform: rotateY(135deg) translateZ(36.77px); }
+.cube-bevel-back-left { transform: rotateY(-135deg) translateZ(36.77px); }
+.cube-bevel-top-right { transform: rotateZ(-45deg) rotateY(90deg) translateZ(36.77px); }
+.cube-bevel-top-left { transform: rotateZ(45deg) rotateY(-90deg) translateZ(36.77px); }
+.cube-bevel-bottom-right { transform: rotateZ(45deg) rotateY(90deg) translateZ(36.77px); }
+.cube-bevel-bottom-left { transform: rotateZ(-45deg) rotateY(-90deg) translateZ(36.77px); }
+
+.cube-corner {
+  top: 24px;
+  left: 24px;
+  width: 10px;
+  height: 10px;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+.cube-bevel:hover,
+.cube-bevel:focus-visible,
+.cube-corner:hover,
+.cube-corner:focus-visible {
+  z-index: 2;
+  background: #bfe7f4;
+  border-color: #55a9c7;
+  outline: none;
+}
+
+.camera-controls,
+.viewport-display-controls {
+  position: absolute;
   z-index: 8;
   display: flex;
-  flex-direction: column;
   gap: 2px;
   padding: 5px;
   background: #f4f7f9;
@@ -5817,7 +5873,11 @@ circle.sketch-preview-line {
   backdrop-filter: blur(14px) saturate(1.15);
 }
 
-.camera-controls button {
+.camera-controls { top: var(--viewport-tool-offset); left: 10px; flex-direction: column; }
+.viewport-display-controls { top: 22px; left: var(--viewport-tool-offset); flex-direction: row; }
+
+.camera-controls button,
+.viewport-display-controls button {
   position: relative;
   display: grid;
   width: 44px;
@@ -5832,7 +5892,8 @@ circle.sketch-preview-line {
   transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease, transform 140ms ease;
 }
 
-.camera-controls button:hover {
+.camera-controls button:hover,
+.viewport-display-controls button:hover {
   color: #071f32;
   background: rgba(223, 239, 247, 0.82);
   border-color: rgba(155, 190, 207, 0.7);
@@ -5843,6 +5904,7 @@ circle.sketch-preview-line {
   outline: 2px solid #28a9d2;
   outline-offset: 1px;
 }
+.viewport-display-controls button:focus-visible { outline: 2px solid #28a9d2; outline-offset: 1px; }
 .camera-controls button:disabled { opacity: 0.35; cursor: default; transform: none; }
 .camera-controls button:disabled:hover { color: #173b5a; background: transparent; border-color: transparent; transform: none; }
 
@@ -5851,16 +5913,21 @@ circle.sketch-preview-line {
 }
 
 .camera-controls button.active,
-.camera-controls button[aria-pressed="true"] {
+.camera-controls button[aria-pressed="true"],
+.viewport-display-controls button.active,
+.viewport-display-controls button[aria-pressed="true"] {
   color: #006b94;
   background: #def5fb;
   border-color: #6fc8df;
   box-shadow: inset 3px 0 0 #079bc6;
 }
 
-.camera-controls button.educad-parameter-handles-toggle { color: #9b7908; }
-.camera-controls button.educad-parameter-handles-toggle:hover { color: #d6a600; }
-.camera-controls button.educad-parameter-handles-toggle.active {
+.camera-controls button.educad-parameter-handles-toggle,
+.viewport-display-controls button.educad-parameter-handles-toggle { color: #9b7908; }
+.camera-controls button.educad-parameter-handles-toggle:hover,
+.viewport-display-controls button.educad-parameter-handles-toggle:hover { color: #d6a600; }
+.camera-controls button.educad-parameter-handles-toggle.active,
+.viewport-display-controls button.educad-parameter-handles-toggle.active {
   color: #d6a600;
   background: #fff6cf;
   border-color: #e1c651;
@@ -8348,6 +8415,11 @@ circle.sketch-preview-line {
     transform-origin: top left;
   }
 
+  .viewport-display-controls {
+    transform: scale(0.82);
+    transform-origin: top left;
+  }
+
   .workplane-plane {
     inset: 0;
   }
@@ -8566,6 +8638,7 @@ html[data-theme="dark"] .visibility-dropdown,
 html[data-theme="dark"] .top-action-panel,
 html[data-theme="dark"] .edge-modifier-panel,
 html[data-theme="dark"] .camera-controls,
+html[data-theme="dark"] .viewport-display-controls,
 html[data-theme="dark"] .ruler-tool-popover,
 html[data-theme="dark"] .editor-toast,
 html[data-theme="dark"] .snap-menu {
@@ -8627,12 +8700,14 @@ html[data-theme="dark"] .snap-menu .selected {
 }
 
 html[data-theme="dark"] .camera-controls button,
+html[data-theme="dark"] .viewport-display-controls button,
 html[data-theme="dark"] .snap-menu button,
 html[data-theme="dark"] .snap-row {
   color: #c0d1dc;
 }
 
-html[data-theme="dark"] .camera-controls button:hover {
+html[data-theme="dark"] .camera-controls button:hover,
+html[data-theme="dark"] .viewport-display-controls button:hover {
   color: #ecf8ff;
   background: rgba(46, 70, 84, 0.9);
   border-color: #4c6979;
