@@ -9,6 +9,7 @@ import {
   parametricTopologyReferenceIsAvailable,
   ParametricTopologyError,
   recoverParametricTopologyReference,
+  transformParametricObjectTopologyHints,
 } from "@/lib/parametricTopology";
 import type { ParametricObjectRenderRecord, ParametricTopologyReference } from "@/types/parametric";
 
@@ -76,6 +77,48 @@ describe("stable parametric topology references", () => {
     expect(parametricTopologyReferenceIsAvailable(reference, [record])).toBe(false);
     record.mesh.edgeGroups![0].edgeId = 73;
     expect(parametricTopologyReferenceIsAvailable(reference, [record])).toBe(true);
+  });
+
+  it("keeps an exact topology reference when its containing object moves", () => {
+    const document = createStarterDocument(1);
+    const source = document.features.find((feature) => feature.kind === "extrude")!;
+    const reference = edgeReference(document.objects[0].id, source.id);
+    reference.reference.hint.topologyId = 73;
+    const record: ParametricObjectRenderRecord = {
+      objectId: document.objects[0].id,
+      renderId: "object:moved",
+      geometryFingerprint: "moved",
+      color: "#fff",
+      worldTransform: { ...document.objects[0].transform, position: { x: 250, y: -80, z: 40 } },
+      mesh: {
+        positions: new Float32Array(), normals: new Float32Array(), indices: new Uint32Array(),
+        edges: new Float32Array([250, -80, 40, 250, -80, 60]),
+        edgeGroups: [{ start: 0, count: 2, edgeId: 73 }],
+        metrics: { width: 0, depth: 0, height: 20, volume: 0 },
+      },
+    };
+
+    expect(parametricTopologyReferenceIsAvailable(reference, [record])).toBe(true);
+  });
+
+  it("moves stored geometric hints with the containing object transform", () => {
+    const document = createStarterDocument(1);
+    const object = document.objects[0];
+    const source = document.features.find((feature) => feature.kind === "extrude")!;
+    const reference = edgeReference(object.id, source.id);
+    reference.reference.hint.direction = [1, 0, 0];
+    document.topologyReferences.push(reference);
+    const previousTransform = structuredClone(object.transform);
+
+    object.transform.position = { x: 10, y: 20, z: 30 };
+    object.transform.rotation.z = 90;
+    transformParametricObjectTopologyHints(document, object.id, previousTransform);
+
+    expect(reference.reference.hint.midpoint?.[0]).toBeCloseTo(20);
+    expect(reference.reference.hint.midpoint?.[1]).toBeCloseTo(30);
+    expect(reference.reference.hint.midpoint?.[2]).toBeCloseTo(40);
+    expect(reference.reference.hint.direction?.[0]).toBeCloseTo(0);
+    expect(reference.reference.hint.direction?.[1]).toBeCloseTo(1);
   });
 
   it("stores lineage and geometric hints in a serializable document record", () => {

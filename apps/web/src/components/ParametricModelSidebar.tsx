@@ -78,6 +78,7 @@ type Props = {
   selection: ModelTreeSelection[];
   mode: ModelSidebarMode;
   editingOriginObjectId: string | null;
+  failedFeatureId?: string | null;
   gridStep: number;
   displayUnit?: ParametricDisplayUnit;
   locale?: EducadLocale;
@@ -118,6 +119,7 @@ export function ParametricModelSidebar({
   selection,
   mode,
   editingOriginObjectId,
+  failedFeatureId = null,
   gridStep,
   displayUnit = "mm",
   locale = "es",
@@ -252,7 +254,7 @@ export function ParametricModelSidebar({
                   {isExpanded ? (
                     <div className="educad-operation-list" role="group" aria-label={`${t("model.operationsFor")} ${object.name}`}>
                       {object.operations.map((feature) => (
-                        <div key={feature.id} className={`educad-operation-row ${selection.some((candidate) => candidate.kind === "feature" && candidate.id === feature.id) ? "selected" : ""} ${feature.suppressed ? "suppressed" : ""} ${feature.kind === "sketch" && !feature.visible ? "hidden" : ""} ${operationClass(feature)}`}>
+                        <div key={feature.id} aria-invalid={feature.id === failedFeatureId || undefined} className={`educad-operation-row ${selection.some((candidate) => candidate.kind === "feature" && candidate.id === feature.id) ? "selected" : ""} ${feature.id === failedFeatureId ? "rebuild-failed" : ""} ${feature.suppressed ? "suppressed" : ""} ${feature.kind === "sketch" && !feature.visible ? "hidden" : ""} ${operationClass(feature)}`}>
                           <button className="educad-operation-select" title={feature.name} onClick={(event) => selectNode({ id: feature.id, kind: "feature" }, event)}>
                             <span className="educad-tree-branch" aria-hidden="true" />
                             <FeatureIcon document={document} feature={feature} />
@@ -507,11 +509,11 @@ function ParametricFeatureInspector({
             <button className="educad-edit-topology-selection" type="button" onClick={() => onEditSketch(feature.id)}>{t("operation.editSketch")}</button>
           </> : <ShapeParametersSection>
             <ReadOnlyField label={t("property.profile")} value={feature.profile.shape === "rectangle" ? t("value.rectangle") : t("value.circle")} />
-            {feature.profile.shape === "rectangle" ? <><NumberField label="Anchura" value={feature.profile.width} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} /><NumberField label="Profundidad" value={feature.profile.depth} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} /></> : <NumberField label="Diámetro" value={feature.profile.diameter} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value); })} />}
+            {feature.profile.shape === "rectangle" ? <><NumberField label={t("property.width")} value={feature.profile.width} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} /><NumberField label={t("property.depth")} value={feature.profile.depth} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} /></> : <NumberField label={t("property.diameter")} value={feature.profile.diameter} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value); })} />}
           </ShapeParametersSection>}
           <TransformSection>
-            <TransformGroup label="Posición" values={{ x: feature.x, y: feature.y, z: feature.offset }} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind !== "sketch") return; if (axis === "x") draft.x = value; else if (axis === "y") draft.y = value; else draft.offset = value; })} />
-            <TransformGroup label="Rotación" values={feature.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "sketch") draft.rotation[axis] = value; })} />
+            <TransformGroup label={t("property.position")} values={{ x: feature.x, y: feature.y, z: feature.offset }} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind !== "sketch") return; if (axis === "x") draft.x = value; else if (axis === "y") draft.y = value; else draft.offset = value; })} />
+            <TransformGroup label={t("property.rotation")} values={feature.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "sketch") draft.rotation[axis] = value; })} />
           </TransformSection>
         </>
       ) : null}
@@ -526,23 +528,23 @@ function ParametricFeatureInspector({
             {textGenerator && primitiveSketch ? <>
               <label><span>{localizedSidebarLiteral(locale, "Texto")}</span><DeferredTextInput value={textGenerator.text} maxLength={40} onCommit={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { text: value }); })} /></label>
               <label><span>{localizedSidebarLiteral(locale, "Fuente web")}</span><select value={textGenerator.font ?? "Sans"} onChange={(event) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { font: event.target.value as typeof textGenerator.font }); })}>{parametricTextFontNames.map((font) => <option key={font} value={font}>{font}</option>)}</select></label>
-              <BoundedNumberField label="Tamaño" value={textGenerator.size} min={1} max={200} unit="mm" onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { size: value }); })} />
-              <BoundedNumberField label="Espaciado" value={textGenerator.spacing} min={0} max={100} unit="mm" onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { spacing: value }); })} />
+              <BoundedNumberField label={t("property.size")} value={textGenerator.size} min={1} max={200} unit="mm" onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { size: value }); })} />
+              <BoundedNumberField label={t("property.spacing")} value={textGenerator.spacing} min={0} max={100} unit="mm" onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { spacing: value }); })} />
               <label><span>{localizedSidebarLiteral(locale, "Alineación")}</span><select value={textGenerator.align} onChange={(event) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { align: event.target.value as typeof textGenerator.align }); })}><option value="left">{locale === "en" ? "Left" : "Izquierda"}</option><option value="center">{locale === "en" ? "Center" : "Centro"}</option><option value="right">{locale === "en" ? "Right" : "Derecha"}</option></select></label>
               <label><span>{localizedSidebarLiteral(locale, "Alineación vertical")}</span><select value={textGenerator.verticalAlign ?? "center"} onChange={(event) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { verticalAlign: event.target.value as typeof textGenerator.verticalAlign }); })}><option value="bottom">{locale === "en" ? "Bottom" : "Inferior"}</option><option value="center">{locale === "en" ? "Center" : "Centro"}</option><option value="top">{locale === "en" ? "Top" : "Superior"}</option></select></label>
             </> : scribbleGenerator && primitiveSketch ? <button className="educad-edit-topology-selection" type="button" onClick={() => onEditSketch(primitiveSketch.id)}>{t("operation.editScribble")}</button> : primitiveSketch?.profile.shape === "rectangle" ? (
               <>
-                <BoundedNumberField label="Anchura" value={primitiveSketch.profile.width} min={0.01} max={200} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} />
-                <BoundedNumberField label="Profundidad" value={primitiveSketch.profile.depth} min={0.01} max={200} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} />
+                <BoundedNumberField label={t("property.width")} value={primitiveSketch.profile.width} min={0.01} max={200} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} />
+                <BoundedNumberField label={t("property.depth")} value={primitiveSketch.profile.depth} min={0.01} max={200} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} />
               </>
             ) : primitiveSketch?.profile.shape === "circle" ? (
-              <BoundedNumberField label="Radio" value={primitiveSketch.profile.diameter / 2} min={0.01} max={100} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value * 2); })} />
+              <BoundedNumberField label={t("property.radius")} value={primitiveSketch.profile.diameter / 2} min={0.01} max={100} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value * 2); })} />
             ) : null}
-            <BoundedNumberField label="Altura" value={feature.distance} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.distance = Math.max(0.01, value); })} />
+            <BoundedNumberField label={t("property.height")} value={feature.distance} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.distance = Math.max(0.01, value); })} />
           </ShapeParametersSection>
           <TransformSection description="Posición · rotación">
-            <TransformGroup label="Posición" values={feature.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.transform.position[axis] = value; })} />
-            <TransformGroup label="Rotación" values={feature.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.transform.rotation[axis] = value; })} />
+            <TransformGroup label={t("property.position")} values={feature.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.transform.position[axis] = value; })} />
+            <TransformGroup label={t("property.rotation")} values={feature.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.transform.rotation[axis] = value; })} />
           </TransformSection>
         </>
       ) : null}
@@ -638,8 +640,8 @@ function ParametricFeatureInspector({
             ))}
           </ShapeParametersSection>
           <TransformSection description="Posición · rotación">
-            <TransformGroup label="Posición" values={feature.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "primitive") draft.transform.position[axis] = value; })} />
-            <TransformGroup label="Rotación" values={feature.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "primitive") draft.transform.rotation[axis] = value; })} />
+            <TransformGroup label={t("property.position")} values={feature.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "primitive") draft.transform.position[axis] = value; })} />
+            <TransformGroup label={t("property.rotation")} values={feature.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "primitive") draft.transform.rotation[axis] = value; })} />
           </TransformSection>
         </>
       ) : null}
@@ -688,7 +690,7 @@ function ParametricFeatureInspector({
       {feature.kind === "revolve" ? (
         <>
           <div className="educad-feature-card"><h3>{t("model.operation")}</h3><OperationModeButtons value={feature.operation} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "revolve") draft.operation = operation; })} /><label><span>{t("property.axis")}</span><select value={feature.axis} onChange={(event) => onUpdate((draft) => { if (draft.kind === "revolve") draft.axis = event.target.value as typeof draft.axis; })}><option value="x">{t("value.localX")}</option><option value="y">{t("value.localY")}</option><option value="z">{t("value.localZ")}</option>{feature.axis === "edge" ? <option value="edge">{t("operation.selectedEdge")}</option> : null}</select></label><BoundedNumberField label={t("property.angle")} value={feature.angle} min={-360} max={360} step={1} unit="°" onChange={(value) => onUpdate((draft) => { if (draft.kind === "revolve") draft.angle = Math.abs(value) < 1 ? (value < 0 ? -1 : 1) : Math.min(360, Math.max(-360, value)); })} /></div>
-          {revolveSketch && revolveSketch.profile.shape !== "drawn" ? <div className="educad-feature-card"><h3>{t("operation.sketchProfile")}</h3><ReadOnlyField label={t("property.shape")} value={revolveSketch.profile.shape === "rectangle" ? t("value.rectangle") : t("value.circle")} />{revolveSketch.profile.shape === "rectangle" ? <><BoundedNumberField label="Anchura" value={revolveSketch.profile.width} min={0.01} max={200} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} /><BoundedNumberField label="Profundidad" value={revolveSketch.profile.depth} min={0.01} max={200} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} /></> : <BoundedNumberField label="Radio" value={revolveSketch.profile.diameter / 2} min={0.01} max={100} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value * 2); })} />}</div> : null}
+          {revolveSketch && revolveSketch.profile.shape !== "drawn" ? <div className="educad-feature-card"><h3>{t("operation.sketchProfile")}</h3><ReadOnlyField label={t("property.shape")} value={revolveSketch.profile.shape === "rectangle" ? t("value.rectangle") : t("value.circle")} />{revolveSketch.profile.shape === "rectangle" ? <><BoundedNumberField label={t("property.width")} value={revolveSketch.profile.width} min={0.01} max={200} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} /><BoundedNumberField label={t("property.depth")} value={revolveSketch.profile.depth} min={0.01} max={200} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} /></> : <BoundedNumberField label={t("property.radius")} value={revolveSketch.profile.diameter / 2} min={0.01} max={100} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value * 2); })} />}</div> : null}
           {feature.source === "face" ? <div className="educad-topology-selection-actions"><button className="educad-edit-topology-selection" type="button" onClick={() => onEditRevolveFace(feature.id)}>{t("operation.editFace")}</button><button className="educad-edit-topology-selection" type="button" onClick={() => onEditRevolveAxis(feature.id)}>{t("operation.editAxis")}</button></div> : <button className="educad-edit-topology-selection" type="button" onClick={() => onEditRevolveAxis(feature.id)}>{t("operation.editAxis")}</button>}
           <TransformSection description="Eje local del objeto"><p className="educad-transform-empty">{t("help.revolve")}</p></TransformSection>
         </>

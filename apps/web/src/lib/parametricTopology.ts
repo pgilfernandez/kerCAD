@@ -1,10 +1,50 @@
-import type { ParametricDocument, ParametricFeature, ParametricObjectRenderRecord, ParametricTopologyReference } from "@/types/parametric";
+import * as THREE from "three";
+import type { ParametricDocument, ParametricFeature, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference } from "@/types/parametric";
 import { exactEdgeRegion, exactFaceRegion } from "@/lib/viewportGeometry";
+import { parametricTransformMatrix } from "@/lib/parametricWorkplane";
 
 export class ParametricTopologyError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "ParametricTopologyError";
+  }
+}
+
+export function transformParametricObjectTopologyHints(
+  document: ParametricDocument,
+  objectId: string,
+  previousTransform: ParametricObject["transform"],
+) {
+  const object = document.objects.find((candidate) => candidate.id === objectId);
+  if (!object) return;
+  const previousMatrix = parametricTransformMatrix(previousTransform);
+  const nextMatrix = parametricTransformMatrix(object.transform);
+  const delta = nextMatrix.clone().multiply(previousMatrix.invert());
+  const directionMatrix = new THREE.Matrix3().setFromMatrix4(delta);
+  const normalMatrix = new THREE.Matrix3().getNormalMatrix(delta);
+  const previousScale = (Math.abs(previousTransform.scale.x) + Math.abs(previousTransform.scale.y) + Math.abs(previousTransform.scale.z)) / 3;
+  const nextScale = (Math.abs(object.transform.scale.x) + Math.abs(object.transform.scale.y) + Math.abs(object.transform.scale.z)) / 3;
+  const lengthRatio = nextScale / Math.max(0.0001, previousScale);
+  const transformPoint = (point: [number, number, number]) => {
+    const value = new THREE.Vector3(...point).applyMatrix4(delta);
+    return [value.x, value.y, value.z] as [number, number, number];
+  };
+  const transformDirection = (direction: [number, number, number], matrix: THREE.Matrix3) => {
+    const value = new THREE.Vector3(...direction).applyMatrix3(matrix).normalize();
+    return [value.x, value.y, value.z] as [number, number, number];
+  };
+  for (const stored of document.topologyReferences) {
+    if (stored.objectId !== objectId) continue;
+    const hint = stored.reference.hint;
+    if (hint.entityType === "face") {
+      if (hint.centroid) hint.centroid = transformPoint(hint.centroid);
+      if (hint.normal) hint.normal = transformDirection(hint.normal, normalMatrix);
+      if (hint.area !== undefined) hint.area *= lengthRatio * lengthRatio;
+    } else {
+      if (hint.midpoint) hint.midpoint = transformPoint(hint.midpoint);
+      if (hint.direction) hint.direction = transformDirection(hint.direction, directionMatrix);
+      if (hint.length !== undefined) hint.length *= lengthRatio;
+    }
   }
 }
 
@@ -75,6 +115,9 @@ export function recoverParametricTopologyReferenceInRecords(reference: Parametri
   const hint = reference.reference.hint;
   if (hint.entityType === "face") {
     const groups = record.mesh.faceGroups ?? [];
+    const exact = hint.topologyId === undefined ? undefined : groups.find((group) => group.faceId === hint.topologyId
+      && (hint.originId === undefined || group.origin === hint.originId));
+    if (exact) return reference;
     const candidates = groups.flatMap((group) => {
       const region = exactFaceRegion(record.mesh.positions, record.mesh.indices, group.start / 3, groups);
       if (!region) return [];
@@ -96,6 +139,7 @@ export function recoverParametricTopologyReferenceInRecords(reference: Parametri
     return recovered;
   }
   const groups = record.mesh.edgeGroups ?? [];
+  if (hint.topologyId !== undefined && groups.some((group) => group.edgeId === hint.topologyId)) return reference;
   const candidates = groups.flatMap((group) => {
     const region = exactEdgeRegion(record.mesh.edges, group.start, groups);
     if (!region) return [];

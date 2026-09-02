@@ -5,6 +5,7 @@ import type { ParametricPrimitiveKind } from "@/lib/parametricOperationCatalog";
 import { parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import type { WorkplaneShape } from "@/types/sketchforge";
 import { objectPlacementForWorkplane, operationPlacementForWorkplane, parametricRotationFromMatrix, parametricTransformMatrix } from "@/lib/parametricWorkplane";
+import { transformParametricObjectTopologyHints } from "@/lib/parametricTopology";
 import * as THREE from "three";
 
 export type SupportedPrimitive = ParametricPrimitiveKind;
@@ -710,9 +711,11 @@ export function applyParametricSelectionWorldDelta(
   if (kind === "object") {
     const object = document.objects.find((candidate) => candidate.id === id);
     if (!object) return;
+    const previousTransform = structuredClone(object.transform);
     object.transform.position.x += delta.x;
     object.transform.position.y += delta.y;
     object.transform.position.z += delta.z;
+    transformParametricObjectTopologyHints(document, id, previousTransform);
     return;
   }
   const feature = document.features.find((candidate): candidate is MovableOperation => candidate.id === id && isMovableOperation(candidate));
@@ -752,7 +755,11 @@ export function applyParametricSelectionWorkplaneRotation(
   });
   if (kind === "object") {
     const object = document.objects.find((candidate) => candidate.id === id);
-    if (object) object.transform.rotation = parametricRotationFromMatrix(delta.multiply(rotationMatrix(object.transform.rotation)));
+    if (object) {
+      const previousTransform = structuredClone(object.transform);
+      object.transform.rotation = parametricRotationFromMatrix(delta.multiply(rotationMatrix(object.transform.rotation)));
+      transformParametricObjectTopologyHints(document, id, previousTransform);
+    }
     return;
   }
   const feature = document.features.find((candidate): candidate is MovableOperation => candidate.id === id && isMovableOperation(candidate));
@@ -775,6 +782,7 @@ export function rotateParametricObjectAroundLocalAxis(
   if (!Number.isFinite(deltaDegrees)) return;
   const object = document.objects.find((candidate) => candidate.id === id);
   if (!object) return;
+  const previousTransform = structuredClone(object.transform);
   const current = new THREE.Quaternion().setFromEuler(new THREE.Euler(
     THREE.MathUtils.degToRad(object.transform.rotation.x),
     THREE.MathUtils.degToRad(object.transform.rotation.y),
@@ -784,6 +792,7 @@ export function rotateParametricObjectAroundLocalAxis(
   const direction = axis === "x" ? new THREE.Vector3(1, 0, 0) : axis === "y" ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, 0, 1);
   current.multiply(new THREE.Quaternion().setFromAxisAngle(direction, THREE.MathUtils.degToRad(deltaDegrees)));
   object.transform.rotation = parametricRotationFromMatrix(new THREE.Matrix4().makeRotationFromQuaternion(current));
+  transformParametricObjectTopologyHints(document, id, previousTransform);
 }
 
 export function applyOperationWorldRotation(document: ParametricDocument, id: string, rotation: number) {
@@ -1081,6 +1090,7 @@ export function updateParametricShapeParameter(
 export function applyWorkplanePatch(document: ParametricDocument, id: string, patch: Partial<WorkplaneShape>) {
   const object = document.objects.find((candidate) => candidate.id === id);
   if (!object) return;
+  const previousTransform = structuredClone(object.transform);
   const feature = document.features.find((candidate): candidate is ExtrudeFeature => candidate.kind === "extrude" && candidate.objectId === id);
   if (typeof patch.color === "string") object.color = patch.color;
   if (typeof patch.hidden === "boolean" && feature) feature.suppressed = patch.hidden;
@@ -1088,4 +1098,5 @@ export function applyWorkplanePatch(document: ParametricDocument, id: string, pa
   if (typeof patch.z === "number") object.transform.position.y = patch.z;
   if (typeof patch.elevation === "number") object.transform.position.z = patch.elevation;
   if (typeof patch.rotation === "number") object.transform.rotation.z = patch.rotation;
+  transformParametricObjectTopologyHints(document, id, previousTransform);
 }

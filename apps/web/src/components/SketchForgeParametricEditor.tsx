@@ -37,7 +37,7 @@ import {
 } from "@/components/icons";
 import { cloneDocument, createDrawnSketchFeature, createEmptyDocument, createExtrudeFeature, createFaceExtrudeFeature, createFilletFeature, createLinearPatternFeature, createMirrorFeature, createObjectBooleanFeature, createPolarPatternFeature, createRevolveFeature, createShellFeature, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { assertValidParametricDependencies } from "@/lib/parametricDependencyGraph";
-import { assertValidParametricTopology, parametricTopologyEditingSourceFeature, parametricTopologySelectionsMatch, recoverParametricTopologyReferenceInRecords } from "@/lib/parametricTopology";
+import { assertValidParametricTopology, parametricTopologyEditingSourceFeature, parametricTopologySelectionsMatch, recoverParametricTopologyReferenceInRecords, transformParametricObjectTopologyHints } from "@/lib/parametricTopology";
 import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint } from "@/lib/parametricBuildState";
 import { exportParametricStep } from "@/lib/parametricKernel";
 import { ParametricBuildWorkerClient } from "@/lib/parametricBuildWorker";
@@ -1927,7 +1927,11 @@ export function SketchForgeParametricEditor() {
   const updateObject = (id: string, update: (object: ParametricObject) => void) => {
     mutate((draft) => {
       const object = draft.objects.find((candidate) => candidate.id === id);
-      if (object) update(object);
+      if (object) {
+        const previousTransform = structuredClone(object.transform);
+        update(object);
+        transformParametricObjectTopologyHints(draft, id, previousTransform);
+      }
     });
   };
 
@@ -2816,7 +2820,11 @@ export function SketchForgeParametricEditor() {
           onObjectOriginMove={(objectId, position) => mutate((draft) => moveParametricObjectOrigin(draft, objectId, position))}
           onObjectAxisMove={(objectId, position) => mutate((draft) => {
             const object = draft.objects.find((candidate) => candidate.id === objectId);
-            if (object) object.transform.position = { ...position };
+            if (object) {
+              const previousTransform = structuredClone(object.transform);
+              object.transform.position = { ...position };
+              transformParametricObjectTopologyHints(draft, objectId, previousTransform);
+            }
           })}
           onObjectRotate={(objectId, _axis, deltaDegrees, localAxis) => mutate((draft) => rotateParametricObjectAroundLocalAxis(draft, objectId, localAxis, deltaDegrees))}
           onOperationAxisMove={(featureId, delta) => mutate((draft) => applyParametricSelectionWorldDelta(draft, featureId, "feature", delta))}
@@ -2960,6 +2968,7 @@ export function SketchForgeParametricEditor() {
           displayUnit={displayUnit}
           locale={locale}
           editingOriginObjectId={originEditObjectId}
+          failedFeatureId={build.failedFeatureId}
           onSelectionChange={setModelSelection}
           onReorderSelection={reorderSelection}
           onRenameSelection={renameSelection}

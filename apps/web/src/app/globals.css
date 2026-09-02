@@ -1073,6 +1073,13 @@ button {
 .educad-operation-row.operation-add.selected { background: #e8f5ed; border-color: #95c9a5; }
 .educad-operation-row.operation-hole.selected { background: #fae9e8; border-color: #dda3a0; }
 .educad-operation-row.operation-common.selected { background: #f0ebfa; border-color: #b8a8d8; }
+.educad-operation-row.rebuild-failed,
+.educad-operation-row.rebuild-failed.selected {
+  color: #713c3a;
+  background: #f8d9d7;
+  border-color: #dfa29e;
+}
+.educad-operation-row.rebuild-failed:hover { background: #f4cbc8; }
 .educad-operation-row.suppressed { opacity: 0.45; }
 .educad-operation-select {
   display: grid;

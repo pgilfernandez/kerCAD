@@ -676,8 +676,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     scene.background = new THREE.Color("#edf4f7");
     hasFittedRef.current = false;
     const camera = projection === "orthographic"
-      ? new THREE.OrthographicCamera(-90, 90, 90, -90, 0.1, 2000)
-      : new THREE.PerspectiveCamera(38, 1, 0.1, 1000);
+      ? new THREE.OrthographicCamera(-90, 90, 90, -90, 0.01, 2000)
+      : new THREE.PerspectiveCamera(38, 1, 0.01, 1000);
     camera.position.set(118, 96, -118);
     const renderProfile = viewportRenderProfile(renderQuality);
     const resolution = new AdaptiveViewportResolution(window.devicePixelRatio, viewportPerformanceOptions(renderQuality));
@@ -2851,7 +2851,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       controls.target.copy(center);
       const distance = Math.max(55, Math.max(size.x, size.y, size.z) * 2.35);
       camera.position.copy(center).add(new THREE.Vector3(-distance, distance * 0.72, distance));
-      camera.near = Math.max(0.1, distance / 1000);
+      // Keep close geometry visible while still scaling the depth range for
+      // unusually large models. The former distance / 1000 plane could cut a
+      // visibly thick slice from a part when the camera approached it.
+      camera.near = Math.max(0.01, distance / 10000);
       camera.far = distance * 12;
       if (camera instanceof THREE.OrthographicCamera) camera.zoom = Math.min(8, Math.max(0.1, 110 / Math.max(size.x, size.y, size.z, 1)));
       camera.updateProjectionMatrix();

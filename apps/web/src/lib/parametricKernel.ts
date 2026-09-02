@@ -463,8 +463,13 @@ function resolveStoredFace(brep: Brep, document: ParametricDocument, current: An
   const candidates = brep.getFaces(current);
   const hint = stored.reference.hint;
   const space = topologyReferenceSpace(document, stored.objectId);
-  let face: Face | undefined;
-  if (hint.centroid && hint.area !== undefined) {
+  // Object placement does not alter the local B-Rep identity. Prefer the
+  // stable topology id before comparing world-space geometric hints, which
+  // may legitimately move when the containing object is transformed.
+  let face = hint.topologyId === undefined
+    ? undefined
+    : candidates.find((candidate) => brep.getHashCode(candidate) === hint.topologyId) as Face | undefined;
+  if (!face && hint.centroid && hint.area !== undefined) {
     const targetCenter = space.point(hint.centroid);
     const targetArea = hint.area / space.areaScale;
     const targetNormal = hint.normal ? space.direction(hint.normal) : null;
@@ -477,7 +482,7 @@ function resolveStoredFace(brep: Brep, document: ParametricDocument, current: An
       return { candidate, score: centerDistance + areaDifference + normalDifference };
     }).sort((a, b) => a.score - b.score)[0];
     if (nearest && nearest.score <= 0.5) face = nearest.candidate as Face;
-  } else if (hint.topologyId !== undefined) face = candidates.find((candidate) => brep.getHashCode(candidate) === hint.topologyId) as Face | undefined;
+  }
   if (face) return face;
   const resolution = brep.resolveRefIn(stored.reference as Parameters<Brep["resolveRefIn"]>[0], current);
   if (!resolution.ok) throw new Error(`${featureName}: face could not be recovered (${resolution.reason}).`);
@@ -489,8 +494,10 @@ function resolveStoredEdge(brep: Brep, document: ParametricDocument, current: An
   const candidates = brep.getEdges(current) as Edge[];
   const hint = stored.reference.hint;
   const space = topologyReferenceSpace(document, stored.objectId);
-  let edge: Edge | undefined;
-  if (hint.midpoint) {
+  let edge = hint.topologyId === undefined
+    ? undefined
+    : candidates.find((candidate) => brep.getHashCode(candidate) === hint.topologyId);
+  if (!edge && hint.midpoint) {
     const target = space.point(hint.midpoint);
     const targetLength = hint.length === undefined ? 1 : hint.length / space.lengthScale;
     const nearest = candidates.map((candidate) => {
@@ -499,7 +506,7 @@ function resolveStoredEdge(brep: Brep, document: ParametricDocument, current: An
       return { candidate, score: (Math.hypot(midpoint[0] - target[0], midpoint[1] - target[1], midpoint[2] - target[2]) + Math.abs(length - targetLength)) / Math.max(1, targetLength) };
     }).sort((a, b) => a.score - b.score)[0];
     if (nearest && nearest.score <= 0.35) edge = nearest.candidate;
-  } else if (hint.topologyId !== undefined) edge = candidates.find((candidate) => brep.getHashCode(candidate) === hint.topologyId);
+  }
   if (edge) return edge;
   const resolution = brep.resolveRefIn(stored.reference as Parameters<Brep["resolveRefIn"]>[0], current);
   if (!resolution.ok) throw new Error(`${featureName}: edge could not be recovered (${resolution.reason}).`);
