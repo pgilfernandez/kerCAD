@@ -8319,6 +8319,10 @@ circle.sketch-preview-line {
     --editor-toolbar-height: 184px;
   }
 
+  .secondary-toolbar:has(.toolbar-mode-content.geometry) .toolbar-workspace-tabs {
+    height: calc(var(--editor-toolbar-height) - var(--editor-toolbar-tools-height) - var(--editor-toolbar-tools-height));
+  }
+
   .toolbar-mode-content.geometry {
     top: calc(var(--editor-toolbar-height) - var(--editor-toolbar-tools-height) - var(--editor-toolbar-tools-height));
     display: grid;
