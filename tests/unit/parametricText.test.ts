@@ -32,6 +32,22 @@ describe("parametric text", () => {
     expect(sketch.profile.shape === "drawn" ? sketch.profile.geometry.segments.length : 0).toBeLessThan(before);
   });
 
+  it("moves the viewport bounding box with text alignment", () => {
+    const document = createStarterDocument(123);
+    const result = addParametricText(document, document.objects[0].id);
+    const sketch = document.features.find((feature) => feature.id === result.sketchId);
+    if (sketch?.kind !== "sketch") throw new Error("Missing generated text sketch");
+    const centered = viewportSelectionForFeature(document, result.extrusionId);
+
+    updateParametricTextSketch(sketch, { align: "left", verticalAlign: "bottom" });
+    const aligned = viewportSelectionForFeature(document, result.extrusionId);
+
+    expect(centered?.center?.x).toBeCloseTo(0, 5);
+    expect(centered?.center?.y).toBeCloseTo(0, 5);
+    expect(aligned?.center?.x).toBeCloseTo((aligned?.width ?? 0) / 2, 5);
+    expect(aligned?.center?.y).toBeCloseTo((aligned?.depth ?? 0) / 2, 5);
+  });
+
   it("reuses unit glyph curves without sharing sketch entities", () => {
     const settings = { kind: "text", text: "e", font: "Sans", size: 20, spacing: 0, align: "center", verticalAlign: "center" } as const;
     const first = parametricTextProfile(settings);

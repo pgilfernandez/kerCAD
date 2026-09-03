@@ -21,18 +21,26 @@ function isMovableOperation(feature: ParametricFeature): feature is MovableOpera
 }
 
 function sketchDimensions(sketch: SketchFeature) {
-  if (sketch.profile.shape === "rectangle") return { width: sketch.profile.width, depth: sketch.profile.depth };
-  if (sketch.profile.shape === "circle") return { width: sketch.profile.diameter, depth: sketch.profile.diameter };
+  if (sketch.profile.shape === "rectangle") return { width: sketch.profile.width, depth: sketch.profile.depth, centerX: 0, centerY: 0 };
+  if (sketch.profile.shape === "circle") return { width: sketch.profile.diameter, depth: sketch.profile.diameter, centerX: 0, centerY: 0 };
   const points = sketch.profile.geometry.points;
   const circles = sketch.profile.geometry.circles ?? [];
   const minX = [...points.map((point) => point.x), ...circles.map((circle) => circle.x - circle.radius)];
   const maxX = [...points.map((point) => point.x), ...circles.map((circle) => circle.x + circle.radius)];
   const minZ = [...points.map((point) => point.z), ...circles.map((circle) => circle.z - circle.radius)];
   const maxZ = [...points.map((point) => point.z), ...circles.map((circle) => circle.z + circle.radius)];
-  if (!minX.length) return { width: 0.1, depth: 0.1 };
+  if (!minX.length) return { width: 0.1, depth: 0.1, centerX: 0, centerY: 0 };
+  const bounds = {
+    minX: Math.min(...minX),
+    maxX: Math.max(...maxX),
+    minY: Math.min(...minZ),
+    maxY: Math.max(...maxZ),
+  };
   return {
-    width: Math.max(0.1, Math.max(...maxX) - Math.min(...minX)),
-    depth: Math.max(0.1, Math.max(...maxZ) - Math.min(...minZ)),
+    width: Math.max(0.1, bounds.maxX - bounds.minX),
+    depth: Math.max(0.1, bounds.maxY - bounds.minY),
+    centerX: (bounds.minX + bounds.maxX) / 2,
+    centerY: (bounds.minY + bounds.maxY) / 2,
   };
 }
 export type ParametricTreeSelection = { id: string; kind: "object" | "feature" };
@@ -569,11 +577,11 @@ export function viewportSelectionForObject(document: ParametricDocument, id: str
   };
 }
 
-function operationWorldTransform(object: ParametricObject, feature: TransformableOperation, height: number) {
+function operationWorldTransform(object: ParametricObject, feature: TransformableOperation, height: number, planarCenter = { x: 0, y: 0 }) {
   const matrix = parametricTransformMatrix(object.transform).multiply(parametricTransformMatrix({ ...feature.transform, scale: { x: 1, y: 1, z: 1 } }));
   const origin = new THREE.Vector3().applyMatrix4(matrix);
   const centerOffset = feature.kind === "primitive" && (feature.primitive === "sphere" || feature.primitive === "torus") ? 0 : height / 2;
-  const center = new THREE.Vector3(0, 0, centerOffset).applyMatrix4(matrix);
+  const center = new THREE.Vector3(planarCenter.x, planarCenter.y, centerOffset).applyMatrix4(matrix);
   const rotationMatrix = parametricTransformMatrix({ ...object.transform, scale: { x: 1, y: 1, z: 1 } })
     .multiply(parametricTransformMatrix({ ...feature.transform, scale: { x: 1, y: 1, z: 1 } }));
   const quaternion = new THREE.Quaternion();
@@ -605,7 +613,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
   const baseWidth = feature.kind === "primitive" ? feature.width : sketchSize!.width;
   const baseDepth = feature.kind === "primitive" ? feature.depth : sketchSize!.depth;
   const baseHeight = feature.kind === "primitive" ? feature.height : feature.distance;
-  const world = operationWorldTransform(object, feature, baseHeight);
+  const world = operationWorldTransform(object, feature, baseHeight, sketchSize ? { x: sketchSize.centerX, y: sketchSize.centerY } : undefined);
   const width = baseWidth * object.transform.scale.x;
   const depth = baseDepth * object.transform.scale.y;
   const operations = document.features.filter((candidate) => candidate.objectId === object.id && candidate.kind !== "sketch");
