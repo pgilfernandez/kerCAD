@@ -1782,7 +1782,7 @@ export function SketchForgeParametricEditor() {
     setSelectingTopologyEdges(false);
     setSelectedTopologyFaces([]);
     setSelectedTopologyEdges([]);
-    setNotice({ type: "info", text: locale === "es" ? "Selecciona una cara o uno de los planos principales" : "Select a face or one of the principal planes" });
+    setNotice({ type: "info", text: t("notice.selectMirrorPlane") });
   };
   const toggleWorkplanePlacement = () => {
     if (hasActiveWorkplane) {
@@ -2873,7 +2873,7 @@ export function SketchForgeParametricEditor() {
                 feature.planeNormal = { x: localNormal.x, y: localNormal.y, z: localNormal.z };
               });
               setEditingMirrorPlaneId(null);
-              setNotice({ type: "ok", text: locale === "es" ? "Plano de espejo definido" : "Mirror plane set" });
+              setNotice({ type: "ok", text: t("notice.mirrorPlaneSet") });
             } else {
               mutate((draft) => { Object.assign(draft.workplane, parametricWorkplaneFromFace(origin, normal)); });
               setPlacingWorkplane(false);

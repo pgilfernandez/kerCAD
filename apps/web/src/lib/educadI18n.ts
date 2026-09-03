@@ -35,6 +35,7 @@ const es = {
   "model.selected": "elementos seleccionados", "model.objects": "objetos", "model.operations": "operaciones", "model.multiSelectionHint": "Usa Ctrl/Cmd para alternar elementos o Shift para seleccionar un rango.",
   "model.operation": "Operación", "model.shapeParameters": "Parámetros de la forma",
   "model.transform": "Transformación", "model.mode": "Modo", "model.add": "Añadir", "model.hole": "Hueco", "model.common": "Común",
+  "mirror.selectedFace": "Cara seleccionada", "mirror.choosePlane": "Elegir plano o cara",
   "dialog.newTitle": "Nuevo diseño", "dialog.newWarning": "El proyecto actual se cerrará. Guarda antes si quieres conservar los últimos cambios.",
   "dialog.save": "Guardar", "dialog.createNew": "Nuevo", "dialog.exportTitle": "Exportar diseño",
   "dialog.importProject": "Importar proyecto eduCAD", "dialog.addToCurrent": "Añadir al actual",
@@ -126,6 +127,7 @@ const es = {
   "notice.invalidArcAngle": "El ángulo del arco debe estar entre 0° y 360°.", "notice.invalidAngle": "El ángulo debe ser un número válido.",
   "notice.positiveDimension": "La cota debe ser un número mayor que cero.", "notice.sketchExtruded": "Extrusión creada desde el boceto",
   "notice.sketchRevolved": "Revolución creada desde el boceto",
+  "notice.selectMirrorPlane": "Selecciona una cara o uno de los planos principales", "notice.mirrorPlaneSet": "Plano de espejo definido",
 } as const;
 
 export type EducadTranslationKey = keyof typeof es;
@@ -165,6 +167,7 @@ const en: Record<EducadTranslationKey, string> = {
   "model.selected": "items selected", "model.objects": "objects", "model.operations": "operations", "model.multiSelectionHint": "Use Ctrl/Cmd to toggle items or Shift to select a range.",
   "model.operation": "Operation", "model.shapeParameters": "Shape parameters",
   "model.transform": "Transform", "model.mode": "Mode", "model.add": "Add", "model.hole": "Hole", "model.common": "Common",
+  "mirror.selectedFace": "Selected face", "mirror.choosePlane": "Choose plane or face",
   "dialog.newTitle": "New design", "dialog.newWarning": "The current project will be closed. Save first if you want to keep the latest changes.",
   "dialog.save": "Save", "dialog.createNew": "New", "dialog.exportTitle": "Export design",
   "dialog.importProject": "Import eduCAD project", "dialog.addToCurrent": "Add to current project",
@@ -256,6 +259,7 @@ const en: Record<EducadTranslationKey, string> = {
   "notice.invalidArcAngle": "The arc angle must be between 0° and 360°.", "notice.invalidAngle": "The angle must be a valid number.",
   "notice.positiveDimension": "The dimension must be greater than zero.", "notice.sketchExtruded": "Extrusion created from sketch",
   "notice.sketchRevolved": "Revolution created from sketch",
+  "notice.selectMirrorPlane": "Select a face or one of the principal planes", "notice.mirrorPlaneSet": "Mirror plane set",
 };
 
 const translations: Record<EducadLocale, Record<EducadTranslationKey, string>> = { es, en };
