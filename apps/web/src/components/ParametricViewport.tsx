@@ -784,6 +784,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     let previousRenderedAt: number | null = null;
     let sampledRenderTime = 0;
     let sampledRenderFrames = 0;
+    let pendingHoverEvent: PointerEvent | null = null;
+    let processPendingHover: () => void = () => undefined;
     const performanceStats: ParametricViewportPerformance = { fps: 0, frameMs: 0, drawCalls: 0, triangles: 0 };
     window.educadParametricPerf = { get: () => ({ ...performanceStats }) };
     const updateDimensionLabels = () => {
@@ -990,6 +992,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     };
     const originWorldPosition = new THREE.Vector3();
     const render = (now: number) => {
+      processPendingHover();
       frame = 0;
       if (previousRenderedAt !== null) {
         const elapsed = now - previousRenderedAt;
@@ -1609,6 +1612,18 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       }
       return [];
     };
+    processPendingHover = () => {
+      const event = pendingHoverEvent;
+      pendingHoverEvent = null;
+      if (!event || interaction || event.buttons !== 0) return;
+      if (workplaneFaceSelectionRef.current || topologyFaceSelectionRef.current || topologyEdgeSelectionRef.current) {
+        setPointer(event);
+        const edge = topologyEdgeSelectionRef.current ? updateTopologyEdgeHighlight() : null;
+        if (!edge && (workplaneFaceSelectionRef.current || topologyFaceSelectionRef.current)) updateWorkplaneFaceHighlight();
+        return;
+      }
+      replaceHoverDimensions(hoveredManipulatorDimensions(event));
+    };
     const snapTargetAtPointer = (event: PointerEvent): THREE.Vector3 | null => {
       const bounds = renderer.domElement.getBoundingClientRect();
       const pointerX = event.clientX - bounds.left;
@@ -2062,10 +2077,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     };
     const onPointerMove = (event: PointerEvent) => {
       if (!interaction) {
-        if ((workplaneFaceSelectionRef.current || topologyFaceSelectionRef.current || topologyEdgeSelectionRef.current) && event.buttons === 0) {
-          setPointer(event);
-          const edge = topologyEdgeSelectionRef.current ? updateTopologyEdgeHighlight() : null;
-          if (!edge && (workplaneFaceSelectionRef.current || topologyFaceSelectionRef.current)) updateWorkplaneFaceHighlight();
+        if (event.buttons === 0 && (workplaneFaceSelectionRef.current || topologyFaceSelectionRef.current || topologyEdgeSelectionRef.current)) {
+          pendingHoverEvent = event;
+          requestRender();
           return;
         }
         if (pickCandidate && pickCandidate.pointerId === event.pointerId) {
@@ -2076,7 +2090,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           if (pickCandidate.dragIntent === "marquee") updateSelectionBox(pickCandidate, event.clientX, event.clientY);
           else hideSelectionBox();
         } else if (event.buttons === 0) {
-          replaceHoverDimensions(hoveredManipulatorDimensions(event));
+          pendingHoverEvent = event;
+          requestRender();
         }
         return;
       }
@@ -2473,6 +2488,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       requestRender();
     };
     const leaveManipulatorArea = () => {
+      pendingHoverEvent = null;
       setOriginHandleHover(null);
       setShapeParameterHandleHover(null);
       setFaceExtrudeHandleHover(false);
