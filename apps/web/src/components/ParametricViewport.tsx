@@ -616,6 +616,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const groundOpacityDirtyRef = useRef(true);
   const hasFittedRef = useRef(false);
   const objectRenderCacheRef = useRef(new Map<string, CachedObjectRender>());
+  const batchedSolidEdgesRef = useRef<THREE.LineSegments | null>(null);
 
   useEffect(() => {
     selectionRef.current = selection;
@@ -2928,7 +2929,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       if (cached && item.geometryFingerprint !== null && cached.geometryFingerprint === item.geometryFingerprint) {
         cached.referenceDisplayMode = item.reference?.displayMode;
         cached.body.visible = displayMode === "solid" && item.objectId !== isolatedHistoryObjectIdRef.current && item.reference?.displayMode !== "wireframe";
-        cached.edges.visible = displayMode === "solid" && item.reference?.displayMode !== "solid";
+        cached.edges.visible = displayMode === "solid" && Boolean(item.objectId && selectedObjectIds.includes(item.objectId)) && item.reference?.displayMode !== "solid";
         cached.wireframeEdges.visible = displayMode === "wireframe";
         cached.body.userData.editorPickable = item.reference?.pickable ?? true;
         const materials = Array.isArray(cached.body.material) ? cached.body.material : [cached.body.material];
@@ -2972,7 +2973,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       edges.userData.renderId = item.renderId;
       edges.userData.finalReferenceWireframe = true;
       edges.renderOrder = 17;
-      edges.visible = displayMode === "solid";
+      edges.visible = displayMode === "solid" && Boolean(item.objectId && selectedObjectIds.includes(item.objectId));
       const wireframeGeometry = new LineSegmentsGeometry();
       wireframeGeometry.setPositions(item.mesh.edges);
       const wireframeMaterial = new LineMaterial({ color: item.color, linewidth: 2, depthTest: true });
@@ -2982,7 +2983,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       wireframeEdges.renderOrder = 17;
       if (item.reference) {
         body.visible = displayMode === "solid" && item.reference.displayMode !== "wireframe" && item.objectId !== isolatedHistoryObjectIdRef.current;
-        edges.visible = displayMode === "solid" && item.reference.displayMode !== "solid";
+        edges.visible = displayMode === "solid" && Boolean(item.objectId && selectedObjectIds.includes(item.objectId)) && item.reference.displayMode !== "solid";
       }
       group.add(edges, wireframeEdges);
       objectRenderCacheRef.current.set(key, { geometryFingerprint: item.geometryFingerprint, body, edges, wireframeEdges, referenceDisplayMode: item.reference?.displayMode });
@@ -3010,7 +3011,56 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       hasFittedRef.current = true;
     }
     invalidateRef.current();
-  }, [mesh, objectRecords, color, displayMode, projection, renderQuality, shadingMode]);
+  }, [mesh, objectRecords, color, displayMode, projection, renderQuality, selectedObjectIds, shadingMode]);
+
+  useEffect(() => {
+    const group = modelRef.current;
+    if (!group) return;
+    const previous = batchedSolidEdgesRef.current;
+    if (previous) {
+      group.remove(previous);
+      previous.geometry.dispose();
+      const materials = Array.isArray(previous.material) ? previous.material : [previous.material];
+      materials.forEach((material) => material.dispose());
+      batchedSolidEdgesRef.current = null;
+    }
+    if (displayMode !== "solid") {
+      invalidateRef.current();
+      return;
+    }
+    const selectedIds = new Set(selectedObjectIds);
+    const renderItems = objectRecords.length > 0
+      ? objectRecords
+          .filter((item) => item.objectId !== isolatedHistoryObjectId && !selectedIds.has(item.objectId) && item.reference?.displayMode !== "solid")
+          .map((item) => item.mesh.edges)
+      : mesh ? [mesh.edges] : [];
+    const coordinateCount = renderItems.reduce((total, positions) => total + positions.length, 0);
+    if (coordinateCount === 0) {
+      invalidateRef.current();
+      return;
+    }
+    const positions = new Float32Array(coordinateCount);
+    let offset = 0;
+    for (const item of renderItems) {
+      positions.set(item, offset);
+      offset += item.length;
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    const batchedEdges = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color: "#000000", linewidth: 1, depthTest: true }));
+    batchedEdges.renderOrder = 17;
+    group.add(batchedEdges);
+    batchedSolidEdgesRef.current = batchedEdges;
+    invalidateRef.current();
+    return () => {
+      if (batchedSolidEdgesRef.current !== batchedEdges) return;
+      group.remove(batchedEdges);
+      geometry.dispose();
+      const materials = Array.isArray(batchedEdges.material) ? batchedEdges.material : [batchedEdges.material];
+      materials.forEach((material) => material.dispose());
+      batchedSolidEdgesRef.current = null;
+    };
+  }, [displayMode, isolatedHistoryObjectId, mesh, objectRecords, selectedObjectIds]);
 
   useEffect(() => {
     const layer = topologyFaceLayerRef.current;
@@ -3074,11 +3124,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   useEffect(() => {
     const group = modelRef.current;
     if (!group) return;
-    for (const child of group.children) {
-      if (!(child instanceof THREE.LineSegments) || !child.userData.finalReferenceWireframe) continue;
-      const objectId = typeof child.userData.objectId === "string" ? child.userData.objectId : null;
-      child.visible = displayMode === "solid";
-      const materials = Array.isArray(child.material) ? child.material : [child.material];
+    const selectedIds = new Set(selectedObjectIds);
+    for (const [objectId, cached] of objectRenderCacheRef.current) {
+      cached.edges.visible = displayMode === "solid" && selectedIds.has(objectId) && cached.referenceDisplayMode !== "solid";
+      const materials = Array.isArray(cached.edges.material) ? cached.edges.material : [cached.edges.material];
       for (const material of materials) {
         material.depthTest = finalReferenceWireframeDepthTest(objectId, selectedObjectIds);
         material.needsUpdate = true;
@@ -3090,11 +3139,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   useEffect(() => {
     for (const [objectId, cached] of objectRenderCacheRef.current) {
       cached.body.visible = displayMode === "solid" && objectId !== isolatedHistoryObjectId && cached.referenceDisplayMode !== "wireframe";
-      cached.edges.visible = displayMode === "solid" && cached.referenceDisplayMode !== "solid";
+      cached.edges.visible = displayMode === "solid" && selectedObjectIds.includes(objectId) && cached.referenceDisplayMode !== "solid";
       cached.wireframeEdges.visible = displayMode === "wireframe";
     }
     invalidateRef.current();
-  }, [displayMode, isolatedHistoryObjectId, projection, renderQuality, shadingMode]);
+  }, [displayMode, isolatedHistoryObjectId, projection, renderQuality, selectedObjectIds, shadingMode]);
 
   useEffect(() => {
     if (!objectColors) return;
