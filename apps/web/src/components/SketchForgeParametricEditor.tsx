@@ -2586,6 +2586,7 @@ export function SketchForgeParametricEditor() {
                 </div>
               )}
             </ToolbarSection>
+          </div>
             <ToolbarSection label={t("toolbar.modify")} className="toolbar-modify-section">
               <Tool label={t("toolbar.chamfer")} active={pendingEdgeTreatment === "chamfer"} onClick={() => beginEdgeTreatment("chamfer")}><ToolbarChamferIcon /></Tool>
               <Tool label={t("toolbar.fillet")} active={pendingEdgeTreatment === "fillet"} onClick={() => beginEdgeTreatment("fillet")}><ToolbarFilletIcon /></Tool>
@@ -2608,7 +2609,6 @@ export function SketchForgeParametricEditor() {
               <Tool label={t("toolbar.snapGrid")} enabled={Boolean(selectedShape && document.workplane.snapToGrid)} onClick={() => selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: Math.round((selectedShape?.x ?? 0) / snapAmount) * snapAmount, z: Math.round((selectedShape?.z ?? 0) / snapAmount) * snapAmount }))}><ToolbarSnapGridIcon /></Tool>
               <Tool label={t("toolbar.dropToWorkplane")} enabled={Boolean(selectedShape)} onClick={() => updateSelected({ elevation: 0 })}><ToolbarDropToWorkplaneIcon /></Tool>
             </ToolbarSection>
-          </div>
           <div className="toolbar-spacer" />
           <ToolbarSection label={t("toolbar.manage")} className="toolbar-actions-section">
             <div className="action-buttons">
