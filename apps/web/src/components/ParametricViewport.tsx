@@ -16,6 +16,19 @@ import { ToolbarBooleanModeIcon, ToolbarChamferIcon, ToolbarFilletIcon } from "@
 import { displayLengthToMillimeters, displayUnitLabel, formatDisplayLength, millimetersToDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
 import type { ParametricDocument, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, RenderMesh, SketchFeature } from "@/types/parametric";
 
+export type ParametricViewportPerformance = {
+  fps: number;
+  frameMs: number;
+  drawCalls: number;
+  triangles: number;
+};
+
+declare global {
+  interface Window {
+    educadParametricPerf?: { get: () => ParametricViewportPerformance };
+  }
+}
+
 export type CameraView = { name: "iso" | "top" | "front" | "right" | "zoom-in" | "zoom-out" | "home" | "fit" | "selection" | "custom"; token: number; direction?: [number, number, number]; smooth?: boolean };
 export type CameraProjection = "perspective" | "orthographic";
 export type ViewportDisplayMode = "solid" | "wireframe";
@@ -767,6 +780,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     controls.maxDistance = 420;
     let frame = 0;
     let disposed = false;
+    let previousRenderedAt: number | null = null;
+    let sampledRenderTime = 0;
+    let sampledRenderFrames = 0;
+    const performanceStats: ParametricViewportPerformance = { fps: 0, frameMs: 0, drawCalls: 0, triangles: 0 };
+    window.educadParametricPerf = { get: () => ({ ...performanceStats }) };
     const updateDimensionLabels = () => {
       const root = selectionRootRef.current;
       const visualRoot = selectionVisualRootRef.current;
@@ -972,6 +990,23 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const originWorldPosition = new THREE.Vector3();
     const render = (now: number) => {
       frame = 0;
+      if (previousRenderedAt !== null) {
+        const elapsed = now - previousRenderedAt;
+        if (elapsed > 0 && elapsed <= 150) {
+          sampledRenderTime += elapsed;
+          sampledRenderFrames += 1;
+          if (sampledRenderTime >= 500) {
+            performanceStats.fps = sampledRenderFrames * 1000 / sampledRenderTime;
+            performanceStats.frameMs = sampledRenderTime / sampledRenderFrames;
+            sampledRenderTime = 0;
+            sampledRenderFrames = 0;
+          }
+        } else {
+          sampledRenderTime = 0;
+          sampledRenderFrames = 0;
+        }
+      }
+      previousRenderedAt = now;
       const controlsChanged = controls.update();
       const nextPixelRatio = resolution.recordFrame(now);
       if (nextPixelRatio !== null) renderer.setPixelRatio(nextPixelRatio);
@@ -985,6 +1020,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       updateYellowManipulatorScreenSizes();
       updateGroundOpacity();
       renderer.render(scene, camera);
+      performanceStats.drawCalls = renderer.info.render.calls;
+      performanceStats.triangles = renderer.info.render.triangles;
       updateDimensionLabels();
       updateOperationModeSelector();
       updateEdgeTreatmentSelector();
@@ -2507,6 +2544,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       renderer.domElement.removeEventListener("pointercancel", cancelDragging);
       for (const cached of objectRenderCacheRef.current.values()) disposeCachedObjectRender(modelGroup, cached);
       objectRenderCacheRef.current.clear();
+      delete window.educadParametricPerf;
       renderer.dispose();
       renderer.domElement.remove();
       if (dimensionHoverTimerRef.current !== null) window.clearTimeout(dimensionHoverTimerRef.current);

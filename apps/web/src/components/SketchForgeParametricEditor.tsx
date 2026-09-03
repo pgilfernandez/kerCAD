@@ -3108,21 +3108,10 @@ export function SketchForgeParametricEditor() {
 function FpsCounter() {
   const [fps, setFps] = useState(0);
   useEffect(() => {
-    let frame = 0;
-    let frames = 0;
-    let sampleStarted = performance.now();
-    const measure = (now: number) => {
-      frames += 1;
-      const elapsed = now - sampleStarted;
-      if (elapsed >= 500) {
-        setFps(Math.round(frames * 1000 / elapsed));
-        frames = 0;
-        sampleStarted = now;
-      }
-      frame = window.requestAnimationFrame(measure);
-    };
-    frame = window.requestAnimationFrame(measure);
-    return () => window.cancelAnimationFrame(frame);
+    const update = () => setFps(Math.round(window.educadParametricPerf?.get().fps ?? 0));
+    update();
+    const timer = window.setInterval(update, 500);
+    return () => window.clearInterval(timer);
   }, []);
   const tone = fps > 0 && fps < 20 ? "low" : fps < 40 ? "medium" : "high";
   return <output className={`educad-fps-counter ${tone}`} aria-label={`${fps} frames per second`}>{fps} FPS</output>;
