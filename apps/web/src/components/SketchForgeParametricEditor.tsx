@@ -2579,10 +2579,10 @@ export function SketchForgeParametricEditor() {
               <Tool label={t("toolbar.redo")} enabled={history.index < history.entries.length - 1} onClick={redo}><ToolbarRedoIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label={t("toolbar.shapes")} className="toolbar-shapes-section">
-              <button data-educad-popup="shapes" className={`shape-menu-trigger ${shapesOpen ? "active" : ""}`} aria-label={t("toolbar.addShape")} onClick={() => setShapesOpen((value) => !value)}><ToolbarShapeAddIcon /></button>
+              <button data-educad-popup="shapes" className={`shape-menu-trigger ${shapesOpen ? "active" : ""}`} aria-label={t("toolbar.addShape")} aria-expanded={shapesOpen} aria-controls="educad-shape-menu" onClick={() => setShapesOpen((value) => !value)}><ToolbarShapeAddIcon /></button>
               <Tool label={t("toolbar.createSketch")} onClick={() => { setShapesOpen(false); beginSketch(null); }}><ToolbarSketchIcon /></Tool>
               {shapesOpen && (
-                <div data-educad-popup="shapes" className="shape-menu-dropdown">
+                <div id="educad-shape-menu" data-educad-popup="shapes" className="shape-menu-dropdown">
                   <div className="shape-menu-title">{t("toolbar.shapes")}</div>
                   <div className="shape-menu-list">
                     {parametricOperationCatalog.map((asset) => { const localized = localizedParametricOperationDefinition(asset.kind, locale); return <button className="shape-menu-item" key={asset.kind} onClick={() => addShape(asset.kind)}><img src={asset.menuIcon} alt="" /><span>{localized.name}<small>{selectedObjectId ? t("notice.newOperationInObject") : localized.description}</small></span></button>; })}

@@ -244,7 +244,7 @@ export function ParametricModelSidebar({
                     >
                       {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                     </button>
-                    <button className="educad-object-select" title={object.name} onClick={(event) => selectNode({ id: object.id, kind: "object" }, event)}>
+                    <button className="educad-object-select" title={object.name} aria-pressed={objectSelected} onClick={(event) => selectNode({ id: object.id, kind: "object" }, event)}>
                       {object.object.referenceMesh ? <FileBox size={17} /> : <Box size={17} />}
                       <span><strong>{object.name}</strong></span>
                     </button>
@@ -257,7 +257,7 @@ export function ParametricModelSidebar({
                     <div className="educad-operation-list" role="group" aria-label={`${t("model.operationsFor")} ${object.name}`}>
                       {object.operations.map((feature) => (
                         <div key={feature.id} aria-invalid={feature.id === failedFeatureId || undefined} className={`educad-operation-row ${selection.some((candidate) => candidate.kind === "feature" && candidate.id === feature.id) ? "selected" : ""} ${feature.id === failedFeatureId ? "rebuild-failed" : ""} ${feature.suppressed ? "suppressed" : ""} ${feature.kind === "sketch" && !feature.visible ? "hidden" : ""} ${operationClass(feature)}`}>
-                          <button className="educad-operation-select" title={feature.name} onClick={(event) => selectNode({ id: feature.id, kind: "feature" }, event)}>
+                          <button className="educad-operation-select" title={feature.name} aria-pressed={selection.some((candidate) => candidate.kind === "feature" && candidate.id === feature.id)} onClick={(event) => selectNode({ id: feature.id, kind: "feature" }, event)}>
                             <span className="educad-tree-branch" aria-hidden="true" />
                             <FeatureIcon document={document} feature={feature} />
                             <span className="educad-operation-name"><strong>{feature.name}</strong></span>
@@ -387,7 +387,6 @@ function ParametricObjectInspector({
   onUpdate: (update: (object: ParametricObject) => void) => void;
 }) {
   const t = useSidebarTranslation();
-  const locale = useContext(LocaleContext);
   const [colorOpen, setColorOpen] = useState(false);
   const colorPanelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -402,12 +401,12 @@ function ParametricObjectInspector({
     <div className="educad-feature-inspector educad-object-inspector">
       {object.referenceMesh ? <div className="educad-feature-card"><h3>{t("property.reference")}</h3><ReadOnlyField label={t("property.file")} value={object.referenceMesh.sourceName} /><ReadOnlyField label={t("property.format")} value={object.referenceMesh.format.toUpperCase()} /><label><span>{t("property.opacity")}</span><input type="range" min={0.05} max={1} step={0.05} value={object.referenceMesh.opacity} onChange={(event) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.opacity = Number(event.target.value); })} /></label><label><span>{t("property.display")}</span><select value={object.referenceMesh.displayMode} onChange={(event) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.displayMode = event.target.value as typeof draft.referenceMesh.displayMode; })}><option value="solidEdges">{t("display.solidEdges")}</option><option value="solid">{t("display.solid")}</option><option value="wireframe">{t("display.wireframe")}</option></select></label><label><span>{t("property.pickable")}</span><input type="checkbox" checked={object.referenceMesh.pickable} onChange={(event) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.pickable = event.target.checked; })} /></label></div> : null}
       <div ref={colorPanelRef} className="educad-feature-card educad-object-appearance">
-        <button className="educad-color-trigger" aria-expanded={colorOpen} onClick={() => setColorOpen((value) => !value)}>
+        <button className="educad-color-trigger" aria-label={t("property.objectColor")} aria-expanded={colorOpen} onClick={() => setColorOpen((value) => !value)}>
           <span>{t("property.color")}</span><span className="educad-color-preview" style={{ "--object-color": object.color } as CSSProperties} /><strong>{object.color.toUpperCase()}</strong><ChevronDown size={15} />
         </button>
-        {colorOpen ? <div className="educad-color-palette" role="group" aria-label={`${t("property.color")} ${locale === "en" ? "of object" : "del objeto"}`}>
+        {colorOpen ? <div className="educad-color-palette" role="group" aria-label={t("property.objectColor")}>
           {OBJECT_COLOR_PALETTE.map((color) => <button key={color} className={object.color.toLowerCase() === color ? "selected" : ""} aria-label={`${t("property.color")} ${color}`} title={color.toUpperCase()} style={{ "--object-color": color } as CSSProperties} onClick={() => { onUpdate((draft) => { draft.color = color; }); setColorOpen(false); }} />)}
-          <label className="educad-custom-color" title="Color personalizado"><input type="color" value={object.color} onChange={(event) => onUpdate((draft) => { draft.color = event.target.value; })} /><span>+</span></label>
+          <label className="educad-custom-color" title={t("property.customColor")}><input type="color" aria-label={t("property.customColor")} value={object.color} onChange={(event) => onUpdate((draft) => { draft.color = event.target.value; })} /><span aria-hidden="true">+</span></label>
         </div> : null}
       </div>
       <TransformSection>
