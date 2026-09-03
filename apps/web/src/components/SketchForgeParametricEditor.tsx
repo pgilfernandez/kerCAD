@@ -3048,7 +3048,7 @@ export function SketchForgeParametricEditor() {
 
       {exportOpen && (
         <aside data-educad-popup="export" className="top-action-panel export-action-panel educad-export-panel">
-          <header><div className="top-action-heading"><strong>{t("dialog.exportTitle")}</strong><span>{t("dialog.exportSubtitle")}</span></div><button aria-label={t("common.close")} onClick={() => setExportOpen(false)}><X /></button></header>
+          <header><div className="top-action-heading"><strong>{t("dialog.exportTitle")}</strong></div><button aria-label={t("common.close")} onClick={() => setExportOpen(false)}><X /></button></header>
           <label className="educad-export-name"><span>{t("dialog.fileName")}</span><input type="text" value={exportFileName} maxLength={120} placeholder="model" onChange={(event) => setExportFileName(event.target.value)} /></label>
           <div className="educad-export-options">
             <button onClick={() => void exportProject()} disabled={projectExporting}><span className="export-format-icon">edu</span><strong>{projectExporting ? t("dialog.saving") : t("dialog.projectFormat")}</strong><small>{t("dialog.projectFormatHint")}</small></button>
