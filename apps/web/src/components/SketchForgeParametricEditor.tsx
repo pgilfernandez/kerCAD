@@ -2413,7 +2413,12 @@ export function SketchForgeParametricEditor() {
 
   const exportStl = () => {
     try {
-      const buffer = binaryStlFromRenderMeshes(build.objectRecords.map((item) => item.mesh), exportFileName);
+      const meshes = build.objectRecords.map((item) => item.mesh);
+      if (meshes.length === 0) {
+        setNotice({ type: "error", text: t("notice.noObjectsToExport") });
+        return;
+      }
+      const buffer = binaryStlFromRenderMeshes(meshes, exportFileName);
       downloadBlob(new Blob([buffer], { type: "model/stl" }), `${fileName(exportFileName)}.stl`);
       setNotice({ type: "ok", text: `${t("notice.binaryStlExported")} · ${build.objectRecords.length} ${t(build.objectRecords.length === 1 ? "dialog.object" : "dialog.objects")}` });
       setExportOpen(false);

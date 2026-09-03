@@ -17,7 +17,7 @@ function writeNormal(view: DataView, offset: number, ax: number, ay: number, az:
 }
 
 export function binaryStlFromRenderMeshes(meshes: RenderMesh[], name = "eduCAD model") {
-  if (meshes.length === 0) throw new Error("No hay objetos visibles que exportar.");
+  if (meshes.length === 0) throw new Error("There are no objects to export.");
   let triangleCount = 0;
   for (const mesh of meshes) {
     if (mesh.indices.length % 3 !== 0) throw new Error("The mesh contains incomplete indices.");
