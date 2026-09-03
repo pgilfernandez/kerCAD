@@ -30,6 +30,6 @@ describe("binary STL export", () => {
   });
 
   it("rejects an empty export", () => {
-    expect(() => binaryStlFromRenderMeshes([])).toThrow("No hay objetos visibles");
+    expect(() => binaryStlFromRenderMeshes([])).toThrow("There are no objects to export.");
   });
 });
