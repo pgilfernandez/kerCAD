@@ -33,7 +33,7 @@ declare global {
 export type CameraView = { name: "iso" | "top" | "front" | "right" | "zoom-in" | "zoom-out" | "home" | "fit" | "selection" | "custom"; token: number; direction?: [number, number, number]; smooth?: boolean };
 export type CameraProjection = "perspective" | "orthographic";
 export type ViewportDisplayMode = "solid" | "wireframe";
-export type ViewportShadingMode = "shadows" | "basic" | "unlit";
+export type ViewportShadingMode = "shadows" | "basic" | "noShadows";
 export type CameraOrientation = { azimuth: number; polar: number };
 type ViewportMoveDimension = { originX: number; originY: number; currentX: number; currentY: number; startX: number; startY: number; endX: number; endY: number; labelX: number; labelY: number; value: string };
 export type TopologyFacePick = {
@@ -243,14 +243,12 @@ function setMaterialColor(material: THREE.Material, color: THREE.ColorRepresenta
 }
 
 function workplaneMaterial(quality: ViewportRenderQuality, shading: ViewportShadingMode, color = "#ddf8ff", opacity = 0.68) {
-  if (shading === "unlit") return new THREE.MeshBasicMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide });
   return quality === "normal"
     ? new THREE.MeshStandardMaterial({ color, transparent: true, opacity, roughness: 1, metalness: 0, side: THREE.DoubleSide })
     : new THREE.MeshLambertMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide });
 }
 
 function objectMaterial(quality: ViewportRenderQuality, shading: ViewportShadingMode, color: THREE.ColorRepresentation) {
-  if (shading === "unlit") return new THREE.MeshBasicMaterial({ color, polygonOffset: true, polygonOffsetFactor: 1 });
   return quality === "normal"
     ? new THREE.MeshStandardMaterial({ color, roughness: 0.68, metalness: 0.03, polygonOffset: true, polygonOffsetFactor: 1 })
     : new THREE.MeshLambertMaterial({ color, polygonOffset: true, polygonOffsetFactor: 1 });
@@ -266,7 +264,6 @@ function referenceMaterial(quality: ViewportRenderQuality, shading: ViewportShad
 
 function previewMaterial(quality: ViewportRenderQuality, shading: ViewportShadingMode, color: THREE.ColorRepresentation, opacity: number) {
   const shared = { color, transparent: opacity < 1, opacity, depthTest: false, depthWrite: false };
-  if (shading === "unlit") return new THREE.MeshBasicMaterial(shared);
   return quality === "normal"
     ? new THREE.MeshStandardMaterial({ ...shared, roughness: 0.7 })
     : new THREE.MeshLambertMaterial(shared);
@@ -760,12 +757,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const resolution = new AdaptiveViewportResolution(window.devicePixelRatio, viewportPerformanceOptions(renderQuality));
     const renderer = new THREE.WebGLRenderer({ antialias: renderProfile.antialias, alpha: false, powerPreference: "high-performance" });
     renderer.setPixelRatio(resolution.pixelRatio);
-    renderer.shadowMap.enabled = shadingMode !== "unlit";
+    renderer.shadowMap.enabled = shadingMode !== "noShadows";
     renderer.shadowMap.type = shadingMode === "basic" || renderQuality === "optimized" ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
     // The light and shadow camera are fixed. Camera orbit/pan does not change
     // the shadow texture, so only rebuild it when scene resources change.
     renderer.shadowMap.autoUpdate = renderProfile.shadowMapAutoUpdate;
-    renderer.shadowMap.needsUpdate = shadingMode !== "unlit";
+    renderer.shadowMap.needsUpdate = shadingMode !== "noShadows";
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     host.appendChild(renderer.domElement);
 
@@ -2820,7 +2817,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       surface.rotation.x = -Math.PI / 2;
       surface.position.y = yellow ? 0.015 : -0.08;
       surface.renderOrder = yellow ? -1 : -2;
-      surface.receiveShadow = !yellow && shadingMode !== "unlit";
+      surface.receiveShadow = !yellow && shadingMode !== "noShadows";
       surface.userData.globalWorkplaneElement = !yellow;
       target.add(surface);
       const minor: number[] = [];
@@ -3023,8 +3020,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         item.reference ? referenceMaterial(renderQuality, shadingMode, item.color, item.reference.opacity) : objectMaterial(renderQuality, shadingMode, item.color),
       );
       body.raycast = acceleratedRaycast;
-      body.castShadow = shadingMode !== "unlit";
-      body.receiveShadow = shadingMode !== "unlit";
+      body.castShadow = shadingMode !== "noShadows";
+      // Full shadows include object-to-object and self-shadowing. Basic shadows
+      // remain a lightweight grounding cue rendered only on the workplane.
+      body.receiveShadow = shadingMode === "shadows";
       if (item.objectId) body.userData.objectId = item.objectId;
       body.userData.editorPickable = item.reference?.pickable ?? true;
       body.userData.renderId = item.renderId;

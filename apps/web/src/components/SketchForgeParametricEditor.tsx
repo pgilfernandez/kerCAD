@@ -379,6 +379,7 @@ export function SketchForgeParametricEditor() {
   const newDocumentDialogRef = useAccessibleDialog(newDocumentOpen, () => setNewDocumentOpen(false));
   const importProjectDialogRef = useAccessibleDialog(Boolean(pendingProjectImport), () => setPendingProjectImport(null));
   const [hydrated, setHydrated] = useState(false);
+  const [buildWorkersReady, setBuildWorkersReady] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
   const sketchSvgImportRef = useRef<HTMLInputElement>(null);
   const buildCounter = useRef(0);
@@ -434,7 +435,8 @@ export function SketchForgeParametricEditor() {
       const storedDisplayMode = localStorage.getItem(DISPLAY_MODE_STORAGE_KEY);
       if (storedDisplayMode === "solid" || storedDisplayMode === "wireframe") setDisplayMode(storedDisplayMode);
       const storedShadingMode = localStorage.getItem(SHADING_MODE_STORAGE_KEY);
-      if (storedShadingMode === "shadows" || storedShadingMode === "basic" || storedShadingMode === "unlit") setShadingMode(storedShadingMode);
+      if (storedShadingMode === "shadows" || storedShadingMode === "basic" || storedShadingMode === "noShadows") setShadingMode(storedShadingMode);
+      else if (storedShadingMode === "unlit") setShadingMode("noShadows");
       if (localStorage.getItem(DISPLAY_UNIT_STORAGE_KEY) === "in") setDisplayUnit("in");
       setLocale(normalizeEducadLocale(localStorage.getItem(LOCALE_STORAGE_KEY)));
       setShowFps(localStorage.getItem(FPS_VISIBLE_STORAGE_KEY) === "true");
@@ -538,7 +540,9 @@ export function SketchForgeParametricEditor() {
     contextWorkerRef.current = contextWorker;
     topologySelectionWorkerRef.current = topologySelectionWorker;
     topologyPreviewWorkerRef.current = topologyPreviewWorker;
+    setBuildWorkersReady(true);
     return () => {
+      setBuildWorkersReady(false);
       buildWorker.dispose();
       contextWorker.dispose();
       topologySelectionWorker.dispose();
@@ -671,11 +675,12 @@ export function SketchForgeParametricEditor() {
   }, [build.objectRecords, document, editingEdgeTreatmentId, editingFaceExtrudeId, editingRevolveId, editingShellId, geometryFingerprint]);
 
   useEffect(() => {
+    if (!hydrated || !buildWorkersReady || !buildWorkerRef.current) return;
     const counter = ++buildCounter.current;
     setKernelBusy(true);
     const buildDocument = buildDocumentRef.current;
     const timeout = window.setTimeout(() => {
-      buildWorkerRef.current?.buildModel(buildDocument).then((result) => {
+      buildWorkerRef.current!.buildModel(buildDocument).then((result) => {
         if (counter !== buildCounter.current) return;
         setBuild(result);
         if (result.failedFeatureId && buildDocument.features.some((feature) => feature.id === result.failedFeatureId)) {
@@ -693,7 +698,7 @@ export function SketchForgeParametricEditor() {
       window.clearTimeout(timeout);
       buildWorkerRef.current?.cancel();
     };
-  }, [geometryFingerprint]);
+  }, [buildWorkersReady, geometryFingerprint, hydrated]);
 
   useEffect(() => {
     const counter = ++contextBuildCounter.current;
@@ -3110,7 +3115,7 @@ export function SketchForgeParametricEditor() {
           <label><span>{t("settings.name")}</span><input value={document.name} onFocus={beginTransaction} onBlur={finishTransaction} onChange={(event) => mutate((draft) => { draft.name = event.target.value; })} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); if (event.key === "Escape") { cancelTransaction(); event.currentTarget.blur(); } }} /></label>
           <label><span>{t("settings.language")}</span><select value={locale} onChange={(event) => setLocale(event.target.value as EducadLocale)}><option value="es">{t("settings.spanish")}</option><option value="en">{t("settings.english")}</option></select></label>
           <label><span>{t("settings.rendering")}</span><select value={renderQuality} onChange={(event) => setRenderQuality(event.target.value as ViewportRenderQuality)}><option value="normal">{t("settings.renderNormal")}</option><option value="optimized">{t("settings.renderOptimized")}</option></select></label>
-          <label><span>{t("settings.shading")}</span><select value={shadingMode} onChange={(event) => setShadingMode(event.target.value as ViewportShadingMode)}><option value="shadows">{t("settings.shadows")}</option><option value="basic">{t("settings.basicShadows")}</option><option value="unlit">{t("settings.unlit")}</option></select></label>
+          <label><span>{t("settings.shading")}</span><select value={shadingMode} onChange={(event) => setShadingMode(event.target.value as ViewportShadingMode)}><option value="shadows">{t("settings.shadows")}</option><option value="basic">{t("settings.basicShadows")}</option><option value="noShadows">{t("settings.noShadows")}</option></select></label>
           <label><span>{t("settings.units")}</span><select value={displayUnit} onChange={(event) => setDisplayUnit(event.target.value as ParametricDisplayUnit)}><option value="mm">{t("settings.millimeters")}</option><option value="in">{t("settings.inches")}</option></select></label>
           <label className="educad-settings-toggle"><span>{t("settings.showFps")}</span><input type="checkbox" checked={showFps} onChange={(event) => setShowFps(event.target.checked)} /></label>
           <section className="educad-local-snapshots">
