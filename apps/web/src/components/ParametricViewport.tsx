@@ -14,6 +14,7 @@ import { orthographicTouchTargetWorldSize, perspectiveTouchTargetWorldSize, view
 import { parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
 import { ToolbarBooleanModeIcon, ToolbarChamferIcon, ToolbarFilletIcon } from "@/components/icons";
 import { displayLengthToMillimeters, displayUnitLabel, formatDisplayLength, millimetersToDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
+import { viewportSelectionBounds } from "@/lib/viewportBounds";
 import type { ParametricDocument, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, RenderMesh, SketchFeature } from "@/types/parametric";
 
 export type ParametricViewportPerformance = {
@@ -84,7 +85,6 @@ function ViewportEdgeRadiusInput({ radius, displayUnit, snap, locale, onCommit }
   const label = locale === "es" ? "Radio" : "Radius";
 
   return <label className="educad-viewport-edge-treatment-radius">
-    <span>{label}</span>
     <div>
       <input
         type="text"
@@ -551,7 +551,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 5, snapToGrid: true, gridVisible: true, activeSizePercent: 10, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
@@ -564,11 +564,13 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const dimensionHoverTimerRef = useRef<number | null>(null);
   const dimensionSelectionIdRef = useRef<string | null>(selection?.id ?? null);
   const [moveDimension, setMoveDimension] = useState<ViewportMoveDimension | null>(null);
+  const [edgeTreatmentRadiusPreview, setEdgeTreatmentRadiusPreview] = useState<number | null>(null);
   const shapeParameterPreviewRef = useRef<{ parameter: ShapeParameter; value: number } | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | THREE.OrthographicCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
+  const projectionChangeRef = useRef<((projection: CameraProjection) => void) | null>(null);
   const cameraTransitionRef = useRef<number | null>(null);
   const modelRef = useRef<THREE.Group | null>(null);
   const originLayerRef = useRef<THREE.Group | null>(null);
@@ -750,9 +752,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const scene = new THREE.Scene();
     scene.background = new THREE.Color("#edf4f7");
     hasFittedRef.current = false;
-    const camera = projection === "orthographic"
+    let camera: THREE.PerspectiveCamera | THREE.OrthographicCamera = projection === "orthographic"
       ? new THREE.OrthographicCamera(-90, 90, 90, -90, 0, 2000)
-      : new THREE.PerspectiveCamera(38, 1, 0.001, 1000);
+      : new THREE.PerspectiveCamera(38, 1, 0.1, 2000);
     camera.position.set(118, 96, -118);
     const renderProfile = viewportRenderProfile(renderQuality);
     const resolution = new AdaptiveViewportResolution(window.devicePixelRatio, viewportPerformanceOptions(renderQuality));
@@ -779,6 +781,36 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     controls.target.set(0, 0, 0);
     controls.minDistance = 18;
     controls.maxDistance = 420;
+    projectionChangeRef.current = (nextProjection) => {
+      const wantsOrthographic = nextProjection === "orthographic";
+      if (wantsOrthographic === (camera instanceof THREE.OrthographicCamera)) return;
+      const width = Math.max(1, renderer.domElement.clientWidth);
+      const height = Math.max(1, renderer.domElement.clientHeight);
+      const aspect = width / height;
+      const direction = camera.position.clone().sub(controls.target).normalize();
+      const currentHeight = camera instanceof THREE.OrthographicCamera
+        ? (camera.top - camera.bottom) / Math.max(0.0001, camera.zoom)
+        : 2 * camera.position.distanceTo(controls.target) * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
+      const nextCamera: THREE.PerspectiveCamera | THREE.OrthographicCamera = wantsOrthographic
+        ? new THREE.OrthographicCamera(-90 * aspect, 90 * aspect, 90, -90, 0, 2000)
+        : new THREE.PerspectiveCamera(38, aspect, 0.1, 2000);
+      nextCamera.up.copy(camera.up);
+      if (nextCamera instanceof THREE.OrthographicCamera) {
+        nextCamera.position.copy(camera.position);
+        nextCamera.zoom = Math.max(0.01, 180 / Math.max(0.01, currentHeight));
+      } else {
+        const distance = currentHeight / (2 * Math.tan(THREE.MathUtils.degToRad(nextCamera.fov) / 2));
+        nextCamera.position.copy(controls.target).add(direction.multiplyScalar(distance));
+      }
+      nextCamera.lookAt(controls.target);
+      nextCamera.updateProjectionMatrix();
+      controls.object = nextCamera;
+      camera = nextCamera;
+      cameraRef.current = nextCamera;
+      controls.update();
+      groundOpacityDirtyRef.current = true;
+      requestRender();
+    };
     let frame = 0;
     let disposed = false;
     let previousRenderedAt: number | null = null;
@@ -838,9 +870,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
             new THREE.Vector3(selected.width / 2, selected.depth / 2, 0),
           ];
       const values = [
-        dimensionValue("x") * Math.abs(visualRoot.scale.x),
-        dimensionValue("y") * Math.abs(visualRoot.scale.y),
-        dimensionValue("z") * Math.abs(visualRoot.scale.z),
+        dimensionValue("x"),
+        dimensionValue("y"),
+        dimensionValue("z"),
       ];
       const axes: ViewportDimensionAxis[] = ["x", "y", "z"];
       const names = locale === "es"
@@ -1012,6 +1044,16 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       }
       previousRenderedAt = now;
       const controlsChanged = controls.update();
+      if (camera instanceof THREE.PerspectiveCamera) {
+        const distance = camera.position.distanceTo(controls.target);
+        const near = Math.min(2, Math.max(0.05, distance / 1000));
+        const far = Math.max(2000, distance * 20);
+        if (Math.abs(camera.near - near) > 0.0001 || Math.abs(camera.far - far) > 0.1) {
+          camera.near = near;
+          camera.far = far;
+          camera.updateProjectionMatrix();
+        }
+      }
       const nextPixelRatio = resolution.recordFrame(now);
       if (nextPixelRatio !== null) renderer.setPixelRatio(nextPixelRatio);
       for (const marker of originLayer.children) {
@@ -2101,6 +2143,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         const grid = Math.max(0.01, snapRef.current);
         const coordinate = dragPoint.clone().sub(edgeTreatmentOriginWorld).dot(edgeTreatmentAxisWorld) - edgeTreatmentPointerOffset;
         pendingEdgeTreatmentRadius = Math.max(0.01, Math.round(coordinate / grid) * grid);
+        setEdgeTreatmentRadiusPreview(pendingEdgeTreatmentRadius);
         const layer = edgeTreatmentHandleRef.current;
         if (layer) {
           const start = new THREE.Vector3();
@@ -2385,6 +2428,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       if (renderer.domElement.hasPointerCapture(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
       if (cancelled) {
         if (completedInteraction === "edgeTreatmentRadius") {
+          setEdgeTreatmentRadiusPreview(null);
           const layer = edgeTreatmentHandleRef.current;
           if (layer) {
             const radius = Number(layer.userData.radius) || 0.01;
@@ -2442,7 +2486,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         }
         if (pendingShapeParameter) shapeParameterRef.current?.(pendingShapeParameter.parameter, pendingShapeParameter.value);
         if (completedInteraction === "faceExtrude" && pendingFaceExtrudeDistance !== null && pendingFaceExtrudeOperation) faceExtrudeDistanceChangeRef.current?.(pendingFaceExtrudeDistance, pendingFaceExtrudeOperation);
-        if (completedInteraction === "edgeTreatmentRadius" && pendingEdgeTreatmentRadius !== null) edgeTreatmentRadiusChangeRef.current?.(pendingEdgeTreatmentRadius);
+        if (completedInteraction === "edgeTreatmentRadius" && pendingEdgeTreatmentRadius !== null) {
+          edgeTreatmentRadiusChangeRef.current?.(pendingEdgeTreatmentRadius);
+          setEdgeTreatmentRadiusPreview(null);
+        }
       }
       pendingShapeParameter = null;
       pendingFaceExtrudeDistance = null;
@@ -2578,6 +2625,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       cameraRef.current = null;
       rendererRef.current = null;
       controlsRef.current = null;
+      projectionChangeRef.current = null;
       modelRef.current = null;
       originLayerRef.current = null;
       workplaneRef.current = null;
@@ -2591,7 +2639,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       [dimensionXRef.current, dimensionYRef.current, dimensionZRef.current].forEach((label) => { if (label) label.style.display = "none"; });
       invalidateRef.current = () => undefined;
     };
-  }, [displayUnit, locale, projection, renderQuality, shadingMode]);
+  }, [displayUnit, locale, renderQuality, shadingMode]);
+
+  useEffect(() => {
+    projectionChangeRef.current?.(projection);
+  }, [projection]);
 
   useEffect(() => {
     const layer = workplaneSelectionPlanesRef.current;
@@ -2767,6 +2819,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       );
       surface.rotation.x = -Math.PI / 2;
       surface.position.y = yellow ? 0.015 : -0.08;
+      surface.renderOrder = yellow ? -1 : -2;
       surface.receiveShadow = !yellow && shadingMode !== "unlit";
       surface.userData.globalWorkplaneElement = !yellow;
       target.add(surface);
@@ -2794,8 +2847,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         if (values.length === 0) return;
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute("position", new THREE.Float32BufferAttribute(values, 3));
-        const lines = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color: palette[index], transparent: true, opacity: [0.55, 0.7, 0.88, 0.9][index] }));
+        const lines = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color: palette[index], transparent: true, opacity: [0.55, 0.7, 0.88, 0.9][index], depthWrite: false }));
         lines.position.y = 0.025;
+        lines.renderOrder = yellow ? 0 : -1;
         lines.userData.globalWorkplaneElement = !yellow;
         target.add(lines);
       });
@@ -3484,9 +3538,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       return;
     }
     if (view.name === "fit" || view.name === "selection") {
-      const source = view.name === "selection" ? selectionRootRef.current : modelRef.current;
-      if (!source) return;
-      const box = new THREE.Box3().setFromObject(source);
+      const selected = selectionRef.current;
+      const source = modelRef.current;
+      if ((view.name === "selection" && !selected) || (view.name === "fit" && !source)) return;
+      const box = view.name === "selection" ? viewportSelectionBounds(selected!) : new THREE.Box3().setFromObject(source!);
       if (box.isEmpty()) return;
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3());
@@ -3500,6 +3555,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       }
       camera.lookAt(center);
       controls.update();
+      invalidateRef.current();
       return;
     }
     if (view.name === "custom") {
@@ -3571,7 +3627,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         <button type="button" className={edgeTreatmentHandle?.treatment === "fillet" ? "active" : ""} aria-label={locale === "es" ? "Redondeo" : "Fillet"} title={locale === "es" ? "Redondeo" : "Fillet"} aria-pressed={edgeTreatmentHandle?.treatment === "fillet"} onClick={() => onEdgeTreatmentTypeChange?.("fillet")}><ToolbarFilletIcon /></button>
         <button type="button" className={edgeTreatmentHandle?.treatment === "chamfer" ? "active" : ""} aria-label={locale === "es" ? "Chaflán" : "Chamfer"} title={locale === "es" ? "Chaflán" : "Chamfer"} aria-pressed={edgeTreatmentHandle?.treatment === "chamfer"} onClick={() => onEdgeTreatmentTypeChange?.("chamfer")}><ToolbarChamferIcon /></button>
       </div>
-      {edgeTreatmentHandle && onEdgeTreatmentRadiusChange ? <ViewportEdgeRadiusInput radius={edgeTreatmentHandle.radius} displayUnit={displayUnit} snap={snap} locale={locale} onCommit={onEdgeTreatmentRadiusChange} /> : null}
+      {edgeTreatmentHandle && onEdgeTreatmentRadiusChange ? <ViewportEdgeRadiusInput radius={edgeTreatmentRadiusPreview ?? edgeTreatmentHandle.radius} displayUnit={displayUnit} snap={snap} locale={locale} onCommit={onEdgeTreatmentRadiusChange} /> : null}
       {onEdgeTreatmentCancel && onEdgeTreatmentAccept ? <div className="educad-viewport-edge-treatment-actions">
         <button type="button" className="cancel" aria-label={locale === "es" ? "Cancelar" : "Cancel"} title={locale === "es" ? "Cancelar" : "Cancel"} onClick={onEdgeTreatmentCancel}><X /></button>
         <button type="button" className="accept" disabled={!edgeTreatmentCanAccept} aria-label={locale === "es" ? "Aceptar" : "Accept"} title={locale === "es" ? "Aceptar" : "Accept"} onClick={onEdgeTreatmentAccept}><Check /></button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Anchor, Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, CircleDot, CornerDownRight, Diameter, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Move3d, MoveHorizontal, MoveVertical, MousePointer2, PenLine, PenTool, Plus, Rotate3d, RotateCcw, Ruler, Scissors, Spline, Split, Trash2, Type, Waves, X } from "lucide-react";
+import { Anchor, Box, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, CircleDot, CornerDownRight, Diameter, DraftingCompass, Eraser, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, MoveHorizontal, MoveVertical, MousePointer2, PenLine, PenTool, Plus, RotateCcw, Ruler, Scissors, Spline, Split, Trash2, Type, Waves, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent as ReactFocusEvent } from "react";
 import * as THREE from "three";
 import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
@@ -21,8 +21,11 @@ import {
   ToolbarLinearPatternIcon,
   ToolbarPolarPatternIcon,
   ToolbarObjectBooleanIcon,
+  ToolbarParameterManipulatorIcon,
   ToolbarPasteIcon,
+  ToolbarPositionManipulatorIcon,
   ToolbarRedoIcon,
+  ToolbarRotationManipulatorIcon,
   ToolbarRevolveIcon,
   ToolbarSettingsIcon,
   ToolbarShellIcon,
@@ -83,6 +86,7 @@ import {
   deleteParametricFeature,
   deleteParametricSelection,
   duplicateParametricObject,
+  duplicateParametricSelection,
   lastOperationForObject,
   moveParametricObjectOrigin,
   objectIdForFeature,
@@ -1864,15 +1868,24 @@ export function SketchForgeParametricEditor() {
     setModelSelection(nextId ? [{ id: nextId, kind: "object" }] : []);
   }, [document, mutate, selectedObjectId]);
 
-  const duplicateSelected = useCallback((sourceId = selectedObjectId) => {
-    if (!sourceId) return;
-    let nextId: string | null = null;
-    mutate((draft) => { nextId = duplicateParametricObject(draft, sourceId); });
-    if (nextId) {
-      setModelSelection([{ id: nextId, kind: "object" }]);
+  const duplicateSelected = useCallback((sourceId?: string | null) => {
+    if (sourceId) {
+      let nextId: string | null = null;
+      const changed = mutate((draft) => { nextId = duplicateParametricObject(draft, sourceId); });
+      if (changed && nextId) {
+        setModelSelection([{ id: nextId, kind: "object" }]);
+        setNotice({ type: "ok", text: t("notice.shapeDuplicated") });
+      }
+      return;
     }
-    setNotice({ type: "ok", text: t("notice.shapeDuplicated") });
-  }, [mutate, selectedObjectId]);
+    if (modelSelection.length === 0) return;
+    let duplicated: ModelTreeSelection[] = [];
+    const changed = mutate((draft) => { duplicated = duplicateParametricSelection(draft, modelSelection); });
+    if (changed && duplicated.length > 0) {
+      setModelSelection(duplicated);
+      setNotice({ type: "ok", text: t("notice.shapeDuplicated") });
+    }
+  }, [modelSelection, mutate]);
 
   const deleteFeature = useCallback((id: string) => {
     let result: ReturnType<typeof deleteParametricFeature> = { objectId: null, nextId: null };
@@ -2530,7 +2543,7 @@ export function SketchForgeParametricEditor() {
   }
 
   return (
-    <main className="educad-reference-shell">
+    <main className={`educad-reference-shell sidebar-${modelSidebarMode}`}>
       <div className="secondary-toolbar">
         <div className="toolbar-workspace-tabs educad-toolbar-titlebar">
           <strong className="educad-toolbar-brand">eduCAD</strong>
@@ -2585,8 +2598,13 @@ export function SketchForgeParametricEditor() {
               <Tool label={t("toolbar.undo")} enabled={history.index > 0} onClick={undo}><ToolbarUndoIcon /></Tool>
               <Tool label={t("toolbar.redo")} enabled={history.index < history.entries.length - 1} onClick={redo}><ToolbarRedoIcon /></Tool>
             </ToolbarSection>
+            <ToolbarSection label={t("toolbar.manipulators")}>
+              <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
+              <Tool label={t("camera.rotationTriad")} active={showRotationTriad} onClick={() => setShowRotationTriad((visible) => !visible)}><ToolbarRotationManipulatorIcon /></Tool>
+              <Tool className="educad-parameter-handles-toggle" label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>
+            </ToolbarSection>
             <ToolbarSection label={t("toolbar.shapes")} className="toolbar-shapes-section">
-              <button data-educad-popup="shapes" className={`shape-menu-trigger ${shapesOpen ? "active" : ""}`} aria-label={t("toolbar.addShape")} aria-expanded={shapesOpen} aria-controls="educad-shape-menu" onClick={() => setShapesOpen((value) => !value)}><ToolbarShapeAddIcon /></button>
+              <button data-educad-popup="shapes" className={`shape-menu-trigger ${shapesOpen ? "active" : ""}`} aria-label={t("toolbar.addShape")} title={t("toolbar.addShape")} aria-expanded={shapesOpen} aria-controls="educad-shape-menu" onClick={() => setShapesOpen((value) => !value)}><ToolbarShapeAddIcon /></button>
               <Tool label={t("toolbar.createSketch")} onClick={() => { setShapesOpen(false); beginSketch(null); }}><ToolbarSketchIcon /></Tool>
               {shapesOpen && (
                 <div id="educad-shape-menu" data-educad-popup="shapes" className="shape-menu-dropdown">
@@ -2982,21 +3000,19 @@ export function SketchForgeParametricEditor() {
         >
           {modelSidebarMode === "normal" ? <ChevronLeft size={23} /> : modelSidebarMode === "simplified" ? <ChevronDown size={23} /> : <ChevronRight size={23} />}
         </button>
-        <div className="viewport-display-controls" aria-label={t("camera.controls")}>
+        <div className="camera-controls" aria-label={t("camera.controls")}>
+          <button aria-label={t("camera.home")} title={t("camera.home")} onClick={() => setCamera("home")}><Home size={24} /></button>
+          <span className="camera-control-separator" aria-hidden="true" />
           <button className={displayMode === "wireframe" ? "active" : ""} aria-label={t("camera.wireframe")} aria-pressed={displayMode === "wireframe"} title={t("camera.wireframe")} onClick={() => setDisplayMode((current) => current === "solid" ? "wireframe" : "solid")}>
             <svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path d="m12 2 8 4.5v11L12 22l-8-4.5v-11L12 2Zm0 0v9m8-4.5-8 4.5-8-4.5M12 11v11m-8-4.5 8-4.5 8 4.5" fill="none" stroke="currentColor" strokeWidth="1.55" strokeLinejoin="round" /></svg>
           </button>
-          <button aria-label={projection === "perspective" ? t("camera.orthographic") : t("camera.perspective")} title={projection === "perspective" ? t("camera.perspective") : t("camera.orthographic")} aria-pressed={projection === "orthographic"} onClick={() => setProjection((current) => current === "perspective" ? "orthographic" : "perspective")}><Box size={22} /></button>
-          <button className={showPositionTriad ? "active" : ""} aria-label={t("camera.positionTriad")} aria-pressed={showPositionTriad} title={t("camera.positionTriad")} onClick={() => setShowPositionTriad((visible) => !visible)}><Move3d size={22} /></button>
-          <button className={showRotationTriad ? "active" : ""} aria-label={t("camera.rotationTriad")} aria-pressed={showRotationTriad} title={t("camera.rotationTriad")} onClick={() => setShowRotationTriad((visible) => !visible)}><Rotate3d size={22} /></button>
-          <button className={showParameterHandles ? "active educad-parameter-handles-toggle" : "educad-parameter-handles-toggle"} aria-label={t("camera.parameterHandles")} aria-pressed={showParameterHandles} title={t("camera.parameterHandles")} onClick={() => setShowParameterHandles((visible) => !visible)}><CircleDot size={22} /></button>
-        </div>
-        <div className="camera-controls" aria-label={t("camera.controls")}>
-          <button aria-label={t("camera.home")} title={t("camera.home")} onClick={() => setCamera("home")}><Home size={24} /></button>
+          <button aria-label={projection === "orthographic" ? t("camera.perspective") : t("camera.orthographic")} title={projection === "orthographic" ? t("camera.perspective") : t("camera.orthographic")} onClick={() => setProjection((current) => current === "orthographic" ? "perspective" : "orthographic")}><Box size={22} /></button>
+          <span className="camera-control-separator" aria-hidden="true" />
           <button aria-label={t("camera.fit")} title={t("camera.fit")} onClick={() => setCamera("fit")}><Maximize2 size={21} /></button>
           <button aria-label={t("camera.selection")} title={t("camera.selection")} disabled={!selectedBox} onClick={() => setCamera("selection")}><Focus size={21} /></button>
           <button aria-label={t("camera.zoomIn")} title={t("camera.zoomIn")} onClick={() => setCamera("zoom-in")}><Plus size={28} /></button>
           <button aria-label={t("camera.zoomOut")} title={t("camera.zoomOut")} onClick={() => setCamera("zoom-out")}><Minus size={28} /></button>
+          <span className="camera-control-separator" aria-hidden="true" />
           <button className={placingWorkplane || hasActiveWorkplane ? "active" : ""} aria-label={hasActiveWorkplane ? t("toolbar.resetWorkplane") : placingWorkplane ? t("toolbar.cancelWorkplane") : t("toolbar.placeWorkplane")} aria-pressed={placingWorkplane || hasActiveWorkplane} title={hasActiveWorkplane ? t("toolbar.resetWorkplane") : placingWorkplane ? t("toolbar.cancelWorkplane") : t("toolbar.placeWorkplane")} onClick={toggleWorkplanePlacement}>{hasActiveWorkplane ? <ToolbarResetWorkplaneIcon /> : <ToolbarWorkplaneIcon />}</button>
         </div>
         {build.warning && <div className="educad-rebuild-error" role="alert" aria-live="assertive" aria-atomic="true"><strong>{t("history.stopped")}</strong><span>{build.warning}</span>{rebuildSuggestion ? <small><b>{t("rebuild.suggestionLabel")}:</b> {rebuildSuggestion}</small> : null}</div>}
@@ -3135,8 +3151,8 @@ function ToolbarSection({ label, className = "", children }: { label: string; cl
   return <div className={`toolbar-section ${className}`}><div className="toolbar-section-label">{label}</div><div className="toolbar-section-tools">{children}</div></div>;
 }
 
-function Tool({ label, enabled = true, active, onClick, children }: { label: string; enabled?: boolean; active?: boolean; onClick?: () => void; children: React.ReactNode }) {
-  return <button className={`toolbar-icon ${enabled ? "" : "disabled"} ${active ? "active" : ""}`} aria-label={label} aria-pressed={active === undefined ? undefined : active} title={label} disabled={!enabled} onClick={onClick}>{children}</button>;
+function Tool({ label, className = "", enabled = true, active, onClick, children }: { label: string; className?: string; enabled?: boolean; active?: boolean; onClick?: () => void; children: React.ReactNode }) {
+  return <button className={`toolbar-icon ${className} ${enabled ? "" : "disabled"} ${active ? "active" : ""}`} aria-label={label} aria-pressed={active === undefined ? undefined : active} title={label} disabled={!enabled} onClick={onClick}>{children}</button>;
 }
 
 function SketchSideTool({ label, enabled = true, active, onClick, children }: { label: string; enabled?: boolean; active?: boolean; onClick?: () => void; children: React.ReactNode }) {

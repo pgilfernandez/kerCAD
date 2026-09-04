@@ -496,6 +496,126 @@ export function duplicateParametricObject(document: ParametricDocument, id: stri
   return objectClone.id;
 }
 
+function uniqueDuplicateId(document: ParametricDocument, base: string) {
+  const used = new Set([
+    ...document.objects.map((object) => object.id),
+    ...document.features.map((feature) => feature.id),
+    ...document.topologyReferences.map((reference) => reference.id),
+  ]);
+  let suffix = 1;
+  let id = `${base}-copy`;
+  while (used.has(id)) id = `${base}-copy-${suffix += 1}`;
+  return id;
+}
+
+function topologyIdsForFeature(feature: ParametricFeature) {
+  if (feature.kind === "fillet") return feature.selectionReferenceIds ?? feature.edgeReferenceIds ?? [];
+  if (feature.kind === "faceExtrude") return [feature.faceReferenceId];
+  if (feature.kind === "shell") return feature.faceReferenceIds;
+  if (feature.kind === "revolve") return [feature.faceReferenceId, feature.axisReferenceId].filter((id): id is string => Boolean(id));
+  return [];
+}
+
+/** Copies one editable history operation, including private sketch/topology inputs. */
+export function duplicateParametricFeature(document: ParametricDocument, featureId: string, targetObjectId?: string) {
+  const source = document.features.find((feature) => feature.id === featureId);
+  if (!source?.objectId) return null;
+  const targetId = targetObjectId ?? source.objectId;
+  if (!document.objects.some((object) => object.id === targetId)) return null;
+
+  const clone = structuredClone(source);
+  clone.id = uniqueDuplicateId(document, source.id);
+  clone.objectId = targetId;
+  clone.name = `${source.name} copy`;
+
+  const featureIdMap = new Map<string, string>([[source.id, clone.id]]);
+  const supportingFeatures: ParametricFeature[] = [];
+  const sourceSketchId = source.kind === "extrude" ? source.sketchId : source.kind === "revolve" ? source.sketchId : undefined;
+  if (sourceSketchId) {
+    const sourceSketch = document.features.find((feature): feature is SketchFeature => feature.id === sourceSketchId && feature.kind === "sketch");
+    if (sourceSketch) {
+      const sketchClone = structuredClone(sourceSketch);
+      sketchClone.id = uniqueDuplicateId(document, sourceSketch.id);
+      sketchClone.objectId = targetId;
+      sketchClone.name = `${sourceSketch.name} copy`;
+      featureIdMap.set(sourceSketch.id, sketchClone.id);
+      supportingFeatures.push(sketchClone);
+      if (clone.kind === "extrude") clone.sketchId = sketchClone.id;
+      if (clone.kind === "revolve") clone.sketchId = sketchClone.id;
+    }
+  }
+
+  const previousTargetOperation = [...document.features].reverse().find((feature) => feature.objectId === targetId && feature.kind !== "sketch");
+  if ((clone.kind === "linearPattern" || clone.kind === "polarPattern") && targetId !== source.objectId && previousTargetOperation) {
+    clone.sourceFeatureId = previousTargetOperation.id;
+  }
+
+  clone.dependencies = clone.dependencies?.map((dependency) => dependency.type === "feature"
+    ? { ...dependency, id: featureIdMap.get(dependency.id) ?? dependency.id }
+    : { ...dependency });
+
+  const topologyIdMap = new Map<string, string>();
+  const referencedTopologyIds = new Set(topologyIdsForFeature(source));
+  const topologyClones = document.topologyReferences
+    .filter((reference) => referencedTopologyIds.has(reference.id))
+    .map((reference) => {
+      const topologyClone = structuredClone(reference);
+      topologyClone.id = uniqueDuplicateId(document, reference.id);
+      topologyIdMap.set(reference.id, topologyClone.id);
+      if (targetId !== source.objectId) {
+        topologyClone.objectId = targetId;
+        if (previousTargetOperation) {
+          const previousSourceId = topologyClone.sourceFeatureId;
+          topologyClone.sourceFeatureId = previousTargetOperation.id;
+          if (topologyClone.reference.origin === previousSourceId) topologyClone.reference.origin = previousTargetOperation.id;
+          else if (topologyClone.reference.origin.startsWith(`${previousSourceId}:`)) topologyClone.reference.origin = `${previousTargetOperation.id}${topologyClone.reference.origin.slice(previousSourceId.length)}`;
+        }
+      }
+      return topologyClone;
+    });
+
+  if (clone.kind === "fillet") {
+    clone.edgeReferenceIds = clone.edgeReferenceIds?.map((id) => topologyIdMap.get(id) ?? id);
+    clone.selectionReferenceIds = clone.selectionReferenceIds?.map((id) => topologyIdMap.get(id) ?? id);
+  }
+  if (clone.kind === "faceExtrude") clone.faceReferenceId = topologyIdMap.get(clone.faceReferenceId) ?? clone.faceReferenceId;
+  if (clone.kind === "shell") clone.faceReferenceIds = clone.faceReferenceIds.map((id) => topologyIdMap.get(id) ?? id);
+  if (clone.kind === "revolve") {
+    if (clone.faceReferenceId) clone.faceReferenceId = topologyIdMap.get(clone.faceReferenceId) ?? clone.faceReferenceId;
+    if (clone.axisReferenceId) clone.axisReferenceId = topologyIdMap.get(clone.axisReferenceId) ?? clone.axisReferenceId;
+  }
+
+  document.features.push(...supportingFeatures, clone);
+  document.topologyReferences.push(...topologyClones);
+  return clone.id;
+}
+
+export function duplicateParametricSelection(document: ParametricDocument, selection: Array<{ id: string; kind: "object" | "feature" }>) {
+  const selectedFeatures = selection.filter((item) => item.kind === "feature" && document.features.some((feature) => feature.id === item.id));
+  const selectedObjects = selection.filter((item) => item.kind === "object" && document.objects.some((object) => object.id === item.id));
+  const duplicated: Array<{ id: string; kind: "object" | "feature" }> = [];
+
+  if (selectedFeatures.length > 0) {
+    for (const item of selectedFeatures) {
+      const source = document.features.find((feature) => feature.id === item.id);
+      if (!source?.objectId) continue;
+      const otherTargets = selectedObjects.map((target) => target.id).filter((id) => id !== source.objectId);
+      const targets = otherTargets.length > 0 ? otherTargets : [source.objectId];
+      for (const targetId of targets) {
+        const id = duplicateParametricFeature(document, source.id, targetId);
+        if (id) duplicated.push({ id, kind: "feature" });
+      }
+    }
+    return duplicated;
+  }
+
+  for (const item of selectedObjects) {
+    const id = duplicateParametricObject(document, item.id);
+    if (id) duplicated.push({ id, kind: "object" });
+  }
+  return duplicated;
+}
+
 export function workplaneShapeForObject(document: ParametricDocument, id: string | null): WorkplaneShape | null {
   const object = document.objects.find((candidate) => candidate.id === id);
   if (!object) return null;

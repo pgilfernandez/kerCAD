@@ -16,6 +16,8 @@ import {
   deleteParametricFeature,
   deleteParametricSelection,
   duplicateParametricObject,
+  duplicateParametricFeature,
+  duplicateParametricSelection,
   lastOperationForObject,
   moveParametricObjectOrigin,
   objectIdForFeature,
@@ -556,6 +558,43 @@ describe("parametric object workflow", () => {
     expect(document.objects.some((object) => object.id === copyId)).toBe(false);
     expect(document.features.some((feature) => feature.objectId === copyId)).toBe(false);
     vi.restoreAllMocks();
+  });
+
+  it("duplicates a selected operation inside its object with an independent sketch", () => {
+    const document = createStarterDocument(123);
+    const source = document.features.find((feature) => feature.kind === "extrude");
+    if (!source || source.kind !== "extrude") throw new Error("expected extrusion");
+
+    const copyId = duplicateParametricFeature(document, source.id);
+    const copy = document.features.find((feature) => feature.id === copyId);
+    expect(copy).toMatchObject({ kind: "extrude", objectId: source.objectId, name: `${source.name} copy` });
+    expect(copy?.kind === "extrude" && copy.sketchId).not.toBe(source.sketchId);
+    expect(document.features.find((feature) => feature.id === (copy?.kind === "extrude" ? copy.sketchId : ""))).toMatchObject({ kind: "sketch", objectId: source.objectId });
+  });
+
+  it("copies a selected operation into the other selected object", () => {
+    const document = createStarterDocument(123);
+    const source = document.features.find((feature) => feature.kind === "extrude");
+    if (!source || source.kind !== "extrude") throw new Error("expected extrusion");
+    const targetObjectId = addParametricObject(document, { x: 40, y: 0, z: 0 }, () => 0.5);
+    addPrimitive(document, targetObjectId, "sphere");
+
+    const duplicated = duplicateParametricSelection(document, [
+      { id: source.id, kind: "feature" },
+      { id: targetObjectId, kind: "object" },
+    ]);
+
+    expect(duplicated).toHaveLength(1);
+    expect(document.features.find((feature) => feature.id === duplicated[0]?.id)).toMatchObject({ kind: "extrude", objectId: targetObjectId });
+    expect(document.objects).toHaveLength(2);
+  });
+
+  it("duplicates selected objects when no operation is selected", () => {
+    const document = createStarterDocument(123);
+    const duplicated = duplicateParametricSelection(document, [{ id: document.objects[0].id, kind: "object" }]);
+    expect(duplicated).toHaveLength(1);
+    expect(duplicated[0]?.kind).toBe("object");
+    expect(document.objects).toHaveLength(2);
   });
 
   it("deletes an operation without deleting its object container", () => {

@@ -124,6 +124,18 @@ export function ToolbarSketchIcon() {
   return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/sketch.svg" alt="" draggable={false} />;
 }
 
+export function ToolbarPositionManipulatorIcon() {
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/manipulator-position.svg" alt="" draggable={false} />;
+}
+
+export function ToolbarRotationManipulatorIcon() {
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/manipulator-rotation.svg" alt="" draggable={false} />;
+}
+
+export function ToolbarParameterManipulatorIcon() {
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/manipulator-parameters.svg" alt="" draggable={false} />;
+}
+
 export function ToolbarBooleanModeIcon({ mode }: { mode: "add" | "hole" | "common" }) {
   return <EducadOperationImage file={`boolean-${mode}.svg`} />;
 }
@@ -222,7 +234,8 @@ export function ToolbarWorkplaneIcon() {
 }
 
 export function ToolbarResetWorkplaneIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/workplane-reset.svg" alt="" draggable={false} />;
+  // use al alternative icon for reset workplane if desired, for now using the same as workplane icon
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/workplane.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarDropToWorkplaneIcon() {
