@@ -424,8 +424,9 @@ button {
 .educad-operation-mode-buttons .mode-intersect.active { color: #7f46a5; background: #efe3f6; border-color: #b58acb; }
 .educad-viewport-edge-treatment-modes button.active,
 .educad-edge-treatment-mode-buttons button.active { color: #216d94; background: #def2fb; border-color: #70bad7; }
+.educad-mirror-result-buttons button.active { color: #216d94; background: #def2fb; border-color: #70bad7; }
 .educad-viewport-edge-treatment-modes { flex-direction: column; gap: 4px; }
-.educad-viewport-edge-treatment-types,
+.educad-viewport-edge-treatment-types { display: grid; grid-template-columns: repeat(3, 47px); gap: 3px; }
 .educad-viewport-edge-treatment-actions { display: grid; grid-template-columns: repeat(2, 47px); gap: 3px; }
 .educad-viewport-edge-treatment-radius { display: block; padding: 4px 2px; color: #536875; font-size: 11px; border-top: 1px solid #d7e1e7; }
 .educad-viewport-edge-treatment-radius > div { display: flex; align-items: center; min-width: 0; overflow: hidden; background: #fff; border: 1px solid #cbd7df; border-radius: 4px; }
@@ -438,6 +439,14 @@ button {
 .educad-viewport-edge-treatment-actions .cancel { color: #a3444a; }
 .educad-viewport-edge-treatment-actions .accept { color: #23714e; }
 .educad-viewport-edge-treatment-actions button:disabled { color: #a9b5bd; background: #f2f5f7; cursor: not-allowed; opacity: 0.62; }
+.educad-viewport-feature-editor { flex-direction: column; gap: 4px; }
+.educad-viewport-feature-actions { display: grid; grid-template-columns: repeat(2, 47px); gap: 3px; }
+.educad-viewport-feature-actions.single { grid-template-columns: 47px; }
+.educad-viewport-feature-actions.three { grid-template-columns: repeat(3, 47px); }
+.educad-viewport-feature-actions button { position: relative; }
+.educad-viewport-feature-actions button.active { color: #216d94; background: #def2fb; border-color: #70bad7; }
+.educad-viewport-feature-actions button small { position: absolute; right: 3px; bottom: 2px; color: #486779; font-size: 9px; font-weight: 900; }
+.educad-viewport-feature-actions button strong { font-size: 17px; }
 .parametric-selection-box {
   position: absolute;
   z-index: 5;
@@ -4753,6 +4762,7 @@ button {
 .educad-sketch-action.primary { color: #ffffff; background: #079bc9; border-color: #0783a9; }
 .educad-sketch-action.primary:hover { background: #078db7; }
 .educad-sketch-action:focus-visible { outline: 3px solid rgba(0, 166, 219, 0.25); outline-offset: 2px; }
+.educad-sketch-action .educad-sketch-toolbar-icon { width: 18px; height: 18px; }
 
 .educad-workplane-stage.sketch-active > :not(.sketch-workspace-stage):not(.educad-sketch-constraints-panel):not(.educad-reference-toast):not(.educad-workplane-settings-button):not(.educad-workplane-snap-button):not(.educad-workplane-popover) {
   display: none !important;
@@ -4772,7 +4782,7 @@ button {
   bottom: auto;
   z-index: 14;
   display: flex;
-  width: 56px;
+  width: 102px;
   max-height: calc(100% - 20px);
   padding: 5px;
   overflow-x: hidden;
@@ -4817,7 +4827,7 @@ button {
 
 .educad-sketch-side-tool-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, 44px);
   gap: 2px;
 }
 
@@ -4856,10 +4866,11 @@ button {
 }
 
 .educad-sketch-side-tool-icon svg { width: 20px; height: 20px; stroke-width: 1.8; }
+.educad-sketch-constraint-icon { display: block; width: 20px; height: 20px; object-fit: contain; }
 
 @media (max-width: 720px) {
   .educad-workplane-stage.sketch-active .sketch-workspace-stage { right: 0; }
-  .educad-sketch-constraints-panel { width: 56px; }
+  .educad-sketch-constraints-panel { width: 102px; }
 }
 
 .sketch-mode-badge {

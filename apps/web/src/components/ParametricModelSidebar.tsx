@@ -704,8 +704,10 @@ function ParametricFeatureInspector({
         <>
           <div className="educad-feature-card">
             <h3>{t("model.operation")}</h3>
-            <label><span>{t("property.plane")}</span><select value={feature.planeNormal ? "custom" : feature.axis} onChange={(event) => onUpdate((draft) => { if (draft.kind === "mirror" && event.target.value !== "custom") { draft.axis = event.target.value as typeof draft.axis; draft.planeOrigin = undefined; draft.planeNormal = undefined; } })}><option value="x">YZ (X)</option><option value="y">XZ (Y)</option><option value="z">XY (Z)</option>{feature.planeNormal ? <option value="custom">{t("mirror.selectedFace")}</option> : null}</select></label>
-            <label><span>{t("property.result")}</span><select value={feature.duplicate ? "duplicate" : "transform"} onChange={(event) => onUpdate((draft) => { if (draft.kind === "mirror") draft.duplicate = event.target.value === "duplicate"; })}><option value="duplicate">{t("value.duplicate")}</option><option value="transform">{t("value.transformOnly")}</option></select></label>
+            <div className="educad-operation-mode-buttons educad-mirror-result-buttons">
+              <button type="button" className={feature.duplicate ? "active" : ""} aria-pressed={feature.duplicate} onClick={() => onUpdate((draft) => { if (draft.kind === "mirror") draft.duplicate = true; })}>{t("value.duplicate")}</button>
+              <button type="button" className={!feature.duplicate ? "active" : ""} aria-pressed={!feature.duplicate} onClick={() => onUpdate((draft) => { if (draft.kind === "mirror") draft.duplicate = false; })}>{t("value.transformOnly")}</button>
+            </div>
           </div>
           <button className="educad-edit-topology-selection" type="button" onClick={() => onEditMirrorPlane(feature.id)}>{t("mirror.choosePlane")}</button>
           <TransformSection description="Plano local del objeto"><p className="educad-transform-empty">{t("help.mirror")}</p></TransformSection>

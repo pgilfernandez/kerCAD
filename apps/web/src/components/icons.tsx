@@ -72,6 +72,14 @@ function EducadOperationImage({ file, className }: EducadOperationImageProps) {
   return <img aria-hidden="true" className={["toolbar-command-icon", "educad-toolbar-operation-icon", className].filter(Boolean).join(" ")} src={`/assets/educad/operations/${file}`} alt="" draggable={false} />;
 }
 
+export function SketchToolbarIcon({ file }: { file: string }) {
+  return <img aria-hidden="true" className="toolbar-command-icon educad-sketch-toolbar-icon" src={`/assets/educad/sketch-toolbar/${file}.svg`} alt="" draggable={false} />;
+}
+
+export function SketchConstraintIcon({ file }: { file: string }) {
+  return <img aria-hidden="true" className="educad-sketch-constraint-icon" src={`/assets/educad/sketch-constraints/${file}.svg`} alt="" draggable={false} />;
+}
+
 export function ToolbarHomeIcon() {
   // return <ToolbarCommandImage file="toolbar-home.png" className="toolbar-user-art-icon" />;
   return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/document_new.svg" alt="" draggable={false} />;
@@ -198,6 +206,10 @@ export function ToolbarFilletIcon() {
   return <EducadOperationImage file="fillet.svg" />;
 }
 
+export function ToolbarEditOperationIcon() {
+  return <EducadOperationImage file="edit.svg" />;
+}
+
 export function ToolbarPreserveEdgeIcon(props: IconProps) {
   return (
     <svg viewBox="0 0 48 48" aria-hidden="true" {...props}>
@@ -230,14 +242,21 @@ export function ToolbarExportIcon() {
 }
 
 export function ToolbarWorkplaneIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/workplane.svg" alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/view-toolbar/workplane.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarResetWorkplaneIcon() {
-  // use al alternative icon for reset workplane if desired, for now using the same as workplane icon
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/workplane.svg" alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/view-toolbar/workplane-reset.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarDropToWorkplaneIcon() {
   return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/drop-to-workplane.svg" alt="" draggable={false} />;
+}
+
+export function ToolbarPerspectiveIcon() {
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/view-toolbar/perspective.svg" alt="" draggable={false} />;
+}
+
+export function ToolbarOrthographicIcon() {
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/view-toolbar/orthographic.svg" alt="" draggable={false} />;
 }
