@@ -402,24 +402,35 @@ function objectRenderMetadata(document: ParametricDocument, objectId: string, ob
   };
 }
 
-function objectRenderRecords(brep: Brep, document: ParametricDocument, worldSolids: Map<string, AnySolid>, objects: Map<string, ParametricObject>, omittedObjectIds: Set<string>): ParametricObjectRenderRecord[] {
+type MeshShapeOptions = { tolerance: number; angularTolerance: number };
+
+export type StlTessellationQuality = "low" | "medium" | "high" | "veryHigh";
+
+const STL_TESSELLATION: Record<StlTessellationQuality, MeshShapeOptions> = {
+  low: { tolerance: 0.4, angularTolerance: 0.5 },
+  medium: { tolerance: 0.15, angularTolerance: 0.25 },
+  high: { tolerance: 0.06, angularTolerance: 0.12 },
+  veryHigh: { tolerance: 0.02, angularTolerance: 0.05 },
+};
+
+function objectRenderRecords(brep: Brep, document: ParametricDocument, worldSolids: Map<string, AnySolid>, objects: Map<string, ParametricObject>, omittedObjectIds: Set<string>, meshOptions?: MeshShapeOptions): ParametricObjectRenderRecord[] {
   return [...worldSolids]
     .filter(([objectId]) => !omittedObjectIds.has(objectId))
     .map(([objectId, solid]) => {
       const object = objects.get(objectId);
       return {
         ...objectRenderMetadata(document, objectId, objects),
-        mesh: meshShape(brep, solid, textExtrusionDirections(document, objectId, object)),
+        mesh: meshShape(brep, solid, textExtrusionDirections(document, objectId, object), meshOptions),
       };
     });
 }
 
-function buildRenderOutput(brep: Brep, document: ParametricDocument, solids: Map<string, AnySolid>, objects: Map<string, ParametricObject>, reusedObjectIds: Set<string>, incrementalRender: boolean) {
+function buildRenderOutput(brep: Brep, document: ParametricDocument, solids: Map<string, AnySolid>, objects: Map<string, ParametricObject>, reusedObjectIds: Set<string>, incrementalRender: boolean, meshOptions?: MeshShapeOptions, includeCombinedMesh = true) {
   const worldSolids = worldObjectSolids(brep, solids, objects);
-  const combined = incrementalRender ? null : combinedObjectShape(brep, worldSolids);
+  const combined = incrementalRender || !includeCombinedMesh ? null : combinedObjectShape(brep, worldSolids);
   return {
-    mesh: combined ? meshShape(brep, combined) : null,
-    objectRecords: objectRenderRecords(brep, document, worldSolids, objects, incrementalRender ? reusedObjectIds : new Set()),
+    mesh: combined ? meshShape(brep, combined, [], meshOptions) : null,
+    objectRecords: objectRenderRecords(brep, document, worldSolids, objects, incrementalRender ? reusedObjectIds : new Set(), meshOptions),
     renderDelta: incrementalRender ? {
       reusedObjectIds: [...reusedObjectIds].filter((objectId) => worldSolids.has(objectId)),
       activeObjects: [...worldSolids.keys()].map((objectId) => objectRenderMetadata(document, objectId, objects)),
@@ -678,7 +689,7 @@ function applyObjectBooleanFeature(brep: Brep, current: AnySolid, source: AnySol
   return refinedBooleanSolid(brep, brep.intersect(current, source));
 }
 
-async function buildParametricModelInternal(document: ParametricDocument, contextFeatureId: string | null, stopAtContext: boolean, incrementalRender = false): Promise<BuildResult> {
+async function buildParametricModelInternal(document: ParametricDocument, contextFeatureId: string | null, stopAtContext: boolean, incrementalRender = false, meshOptions?: MeshShapeOptions, includeCombinedMesh = true): Promise<BuildResult> {
   const brep = await loadBrepWithOcct();
   const sketches = new Map(document.features.filter((feature): feature is SketchFeature => feature.kind === "sketch" && !feature.suppressed).map((feature) => [feature.id, feature]));
   const objects = new Map(document.objects.map((object) => [object.id, object]));
@@ -892,7 +903,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
       }
     }
   } catch (error) {
-    return { ...buildRenderOutput(brep, document, solids, objects, reusableObjectIds, incrementalRender), operationContext, completedFeatureIds, failedFeatureId: activeFeatureId, warning: errorMessage(error) };
+    return { ...buildRenderOutput(brep, document, solids, objects, reusableObjectIds, incrementalRender, meshOptions, includeCombinedMesh), operationContext, completedFeatureIds, failedFeatureId: activeFeatureId, warning: errorMessage(error) };
   }
 
   if (reuseObjectCache) {
@@ -917,11 +928,17 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
     }
   }
 
-  return { ...buildRenderOutput(brep, document, solids, objects, reusableObjectIds, incrementalRender), operationContext, completedFeatureIds, failedFeatureId: null, warning: null };
+  return { ...buildRenderOutput(brep, document, solids, objects, reusableObjectIds, incrementalRender, meshOptions, includeCombinedMesh), operationContext, completedFeatureIds, failedFeatureId: null, warning: null };
 }
 
 export function buildParametricModel(document: ParametricDocument, incrementalRender = false): Promise<BuildResult> {
   return buildParametricModelInternal(document, null, false, incrementalRender);
+}
+
+export async function buildParametricStlMeshes(document: ParametricDocument, quality: StlTessellationQuality): Promise<RenderMesh[]> {
+  const result = await buildParametricModelInternal(document, null, false, false, STL_TESSELLATION[quality], false);
+  if (result.failedFeatureId || result.warning) throw new Error(result.warning ?? "The model could not be tessellated for STL export.");
+  return result.objectRecords.map((record) => record.mesh);
 }
 
 export async function buildParametricOperationContext(document: ParametricDocument, featureId: string): Promise<BuildResult["operationContext"]> {
@@ -960,9 +977,9 @@ export function omitParallelRenderEdges(
   return { edges: new Float32Array(retained), edgeGroups };
 }
 
-function meshShape(brep: Brep, shape: RenderableShape, omittedEdgeDirections: Direction3[] = []): RenderMesh {
-  const triangles = brep.mesh(shape, { tolerance: 0.15, angularTolerance: 0.25 });
-  const edgeMesh = brep.meshEdges(shape, { tolerance: 0.12, angularTolerance: 0.2 });
+function meshShape(brep: Brep, shape: RenderableShape, omittedEdgeDirections: Direction3[] = [], options: MeshShapeOptions = { tolerance: 0.15, angularTolerance: 0.25 }): RenderMesh {
+  const triangles = brep.mesh(shape, options);
+  const edgeMesh = brep.meshEdges(shape, { tolerance: Math.min(0.12, options.tolerance), angularTolerance: Math.min(0.2, options.angularTolerance) });
   const displayEdges = omitParallelRenderEdges(edgeMesh.lines, edgeMesh.edgeGroups, omittedEdgeDirections);
   const bounds = brep.getBounds(shape);
   const volumeResult = brep.measureVolume(shape);

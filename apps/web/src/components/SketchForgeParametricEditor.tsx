@@ -39,7 +39,7 @@ import { cloneDocument, createDrawnSketchFeature, createEmptyDocument, createExt
 import { assertValidParametricDependencies } from "@/lib/parametricDependencyGraph";
 import { assertValidParametricTopology, parametricTopologyEditingSourceFeature, parametricTopologySelectionsMatch, recoverParametricTopologyReferenceInRecords, transformParametricObjectTopologyHints } from "@/lib/parametricTopology";
 import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint } from "@/lib/parametricBuildState";
-import { exportParametricStep } from "@/lib/parametricKernel";
+import { buildParametricStlMeshes, exportParametricStep, type StlTessellationQuality } from "@/lib/parametricKernel";
 import { ParametricBuildWorkerClient } from "@/lib/parametricBuildWorker";
 import { binaryStlFromRenderMeshes } from "@/lib/stlExport";
 import { sketchProfileFromSvg } from "@/lib/svgImport";
@@ -267,6 +267,8 @@ export function SketchForgeParametricEditor() {
   const [modelSidebarMode, setModelSidebarMode] = useState<ModelSidebarMode | "hidden">("normal");
   const [exportOpen, setExportOpen] = useState(false);
   const [exportFileName, setExportFileName] = useState(document.name);
+  const [stlQuality, setStlQuality] = useState<StlTessellationQuality>("medium");
+  const [stlExporting, setStlExporting] = useState(false);
   const [newDocumentOpen, setNewDocumentOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [localSnapshots, setLocalSnapshots] = useState<LocalProjectSnapshot[]>([]);
@@ -868,7 +870,9 @@ export function SketchForgeParametricEditor() {
   }, [build.mesh, document.features, document.objects, document.workplane, sketchSession?.featureId, sketchSession?.objectId]);
   const snapAmount = document.workplane.snapToGrid ? document.workplane.snapSpacing : 0.01;
   const viewportOverlayRightOffset = sketchSession ? 12 : modelSidebarMode === "normal" ? 302 : modelSidebarMode === "simplified" ? 80 : 12;
-  const backgroundProcessLabel = exporting
+  const backgroundProcessLabel = stlExporting
+    ? `${t("dialog.exporting")} STL…`
+    : exporting
     ? t("status.exportingStep")
     : kernelBusy
       ? t("status.regenerating")
@@ -2411,9 +2415,10 @@ export function SketchForgeParametricEditor() {
     }
   };
 
-  const exportStl = () => {
+  const exportStl = async () => {
+    setStlExporting(true);
     try {
-      const meshes = build.objectRecords.map((item) => item.mesh);
+      const meshes = await buildParametricStlMeshes(document, stlQuality);
       if (meshes.length === 0) {
         setNotice({ type: "error", text: t("notice.noObjectsToExport") });
         return;
@@ -2424,6 +2429,8 @@ export function SketchForgeParametricEditor() {
       setExportOpen(false);
     } catch (error) {
       setNotice({ type: "error", text: error instanceof Error ? error.message : t("notice.stlExportFailed") });
+    } finally {
+      setStlExporting(false);
     }
   };
 
@@ -2627,7 +2634,7 @@ export function SketchForgeParametricEditor() {
 
       <section className={`educad-workplane-stage ${sketchSession ? "sketch-active" : ""}`}>
         {showFps ? <FpsCounter /> : null}
-        {backgroundProcessLabel ? <BackgroundProcessIndicator label={backgroundProcessLabel} rightOffset={viewportOverlayRightOffset} /> : null}
+        {backgroundProcessLabel ? <BackgroundProcessIndicator label={backgroundProcessLabel} rightOffset={viewportOverlayRightOffset} regenerating={!stlExporting && !exporting && kernelBusy} /> : null}
         {sketchSession ? <SketchWorkspace
           locale={locale}
           profile={sketchSession.profile}
@@ -3053,7 +3060,10 @@ export function SketchForgeParametricEditor() {
           <div className="educad-export-options">
             <button onClick={() => void exportProject()} disabled={projectExporting}><span className="export-format-icon">edu</span><strong>{projectExporting ? t("dialog.saving") : t("dialog.projectFormat")}</strong><small>{t("dialog.projectFormatHint")}</small></button>
             <button onClick={() => void exportStep()} disabled={exporting || kernelBusy || !build.mesh}><span className="export-format-icon step">STEP</span><strong>{exporting ? t("dialog.exporting") : t("dialog.stepFormat")}</strong><small>{t("dialog.stepFormatHint")}</small></button>
-            <button onClick={exportStl} disabled={kernelBusy || build.objectRecords.length === 0}><span className="export-format-icon">STL</span><strong>{t("dialog.stlFormat")}</strong><small>{t("dialog.stlFormatHint")}</small></button>
+            <div className="educad-stl-export-option">
+              <button onClick={() => void exportStl()} disabled={stlExporting || kernelBusy || build.objectRecords.length === 0}><span className="export-format-icon">STL</span><strong>{stlExporting ? t("dialog.exporting") : t("dialog.stlFormat")}</strong><small>{t("dialog.stlFormatHint")}</small></button>
+              <label className="educad-stl-quality"><span>{t("dialog.stlQuality")}: <strong>{t(stlQuality === "low" ? "dialog.qualityLow" : stlQuality === "medium" ? "dialog.qualityMedium" : stlQuality === "high" ? "dialog.qualityHigh" : "dialog.qualityVeryHigh")}</strong></span><input type="range" min={0} max={3} step={1} value={(["low", "medium", "high", "veryHigh"] as const).indexOf(stlQuality)} aria-valuetext={t(stlQuality === "low" ? "dialog.qualityLow" : stlQuality === "medium" ? "dialog.qualityMedium" : stlQuality === "high" ? "dialog.qualityHigh" : "dialog.qualityVeryHigh")} onChange={(event) => setStlQuality((["low", "medium", "high", "veryHigh"] as const)[Number(event.target.value)])} /><span className="educad-stl-quality-labels" aria-hidden="true"><small>{t("dialog.qualityLow")}</small><small>{t("dialog.qualityMedium")}</small><small>{t("dialog.qualityHigh")}</small><small>{t("dialog.qualityVeryHigh")}</small></span></label>
+            </div>
           </div>
         </aside>
       )}
@@ -3117,8 +3127,8 @@ function FpsCounter() {
   return <output className={`educad-fps-counter ${tone}`} aria-label={`${fps} frames per second`}>{fps} FPS</output>;
 }
 
-function BackgroundProcessIndicator({ label, rightOffset }: { label: string; rightOffset: number }) {
-  return <output className="educad-background-process" role="status" aria-live="polite" aria-atomic="true" aria-busy="true" aria-label={label} style={{ right: rightOffset }}><span aria-hidden="true" />{label}</output>;
+function BackgroundProcessIndicator({ label, rightOffset, regenerating = false }: { label: string; rightOffset: number; regenerating?: boolean }) {
+  return <output className={`educad-background-process ${regenerating ? "regenerating" : ""}`} role="status" aria-live="polite" aria-atomic="true" aria-busy="true" aria-label={label} style={{ right: rightOffset }}><span aria-hidden="true" />{label}</output>;
 }
 
 function ToolbarSection({ label, className = "", children }: { label: string; className?: string; children: React.ReactNode }) {
