@@ -12,7 +12,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" style={{ colorScheme: "light" }}>
+    <html lang="en" style={{ colorScheme: "light" }}>
       <body suppressHydrationWarning>{children}</body>
     </html>
   );

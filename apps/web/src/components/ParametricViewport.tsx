@@ -255,6 +255,7 @@ type Props = {
   onEditRevolveAxis?: (featureId: string) => void;
   onEditMirrorPlane?: (featureId: string) => void;
   onFloatingFeatureChange?: (featureId: string, update: Partial<{ distance: number; angle: number; thickness: number; duplicate: boolean }>) => void;
+  onThumbnail?: (dataUrl: string) => void;
 };
 
 type CachedObjectRender = {
@@ -575,7 +576,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, floatingFeature = null, floatingFeatureAnchor = null, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, floatingFeature = null, floatingFeatureAnchor = null, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, onThumbnail }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
@@ -594,6 +595,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | THREE.OrthographicCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const thumbnailCallbackRef = useRef(onThumbnail);
+  const thumbnailRequestedRef = useRef(true);
   const controlsRef = useRef<OrbitControls | null>(null);
   const projectionChangeRef = useRef<((projection: CameraProjection) => void) | null>(null);
   const cameraTransitionRef = useRef<number | null>(null);
@@ -704,6 +707,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     invalidateRef.current();
   }, [topologyEdgeSelection, topologyFaceSelection]);
   useEffect(() => { snapRef.current = snap; }, [snap]);
+  useEffect(() => { thumbnailCallbackRef.current = onThumbnail; }, [onThumbnail]);
+  useEffect(() => {
+    thumbnailRequestedRef.current = true;
+    invalidateRef.current();
+  }, [objectRecords]);
   useEffect(() => { activeWorkplaneRef.current = workplane; }, [workplane]);
   useEffect(() => { isolatedHistoryObjectIdRef.current = isolatedHistoryObjectId; }, [isolatedHistoryObjectId]);
 
@@ -1112,6 +1120,17 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       updateYellowManipulatorScreenSizes();
       updateGroundOpacity();
       renderer.render(scene, camera);
+      if (thumbnailRequestedRef.current && thumbnailCallbackRef.current) {
+        thumbnailRequestedRef.current = false;
+        const source = renderer.domElement;
+        const width = Math.min(480, Math.max(1, source.width));
+        const height = Math.max(1, Math.round(width * source.height / Math.max(1, source.width)));
+        const thumbnail = document.createElement("canvas");
+        thumbnail.width = width;
+        thumbnail.height = height;
+        thumbnail.getContext("2d")?.drawImage(source, 0, 0, width, height);
+        thumbnailCallbackRef.current(thumbnail.toDataURL("image/jpeg", 0.78));
+      }
       performanceStats.drawCalls = renderer.info.render.calls;
       performanceStats.triangles = renderer.info.render.triangles;
       updateDimensionLabels();

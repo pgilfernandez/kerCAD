@@ -122,13 +122,13 @@ describe("parametric object workflow", () => {
       operationPreview: { shape: "tube", innerRadius: 6, mode: "add", historical: false },
     });
 
-    updateParametricShapeParameter(document, result.featureId!, "innerRadius", 8);
+    updateParametricShapeParameter(document, result.featureId!, "outerRadius", 12);
     updateParametricShapeParameter(document, result.featureId!, "thickness", 7);
     updateParametricShapeParameter(document, result.featureId!, "height", 35);
-    expect(feature).toMatchObject({ width: 30, depth: 30, innerRadius: 8, height: 35 });
+    expect(feature).toMatchObject({ width: 24, depth: 24, innerRadius: 5, height: 35 });
 
-    updateParametricShapeParameter(document, result.featureId!, "innerRadius", 20);
-    expect(feature).toMatchObject({ width: 54, depth: 54, innerRadius: 20 });
+    updateParametricShapeParameter(document, result.featureId!, "outerRadius", 20);
+    expect(feature).toMatchObject({ width: 40, depth: 40, innerRadius: 13 });
   });
 
   it("adds and edits an exact half sphere from its flat base", () => {

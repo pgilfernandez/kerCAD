@@ -259,10 +259,19 @@ function withSmoothSketchHandles(profile: SketchProfile) {
   return next;
 }
 
-export function SketchForgeParametricEditor() {
-  const initialDocument = useMemo(() => createEmptyDocument(), []);
+type SketchForgeParametricEditorProps = {
+  initialProject?: ParametricDocument;
+  onProjectChange?: (document: ParametricDocument) => void;
+  onProjectThumbnail?: (dataUrl: string) => void;
+  onExitToProjects?: (document: ParametricDocument) => void;
+};
+
+export function SketchForgeParametricEditor({ initialProject, onProjectChange, onProjectThumbnail, onExitToProjects }: SketchForgeParametricEditorProps = {}) {
+  const initialDocument = useMemo(() => initialProject ? normalizeParametricDocument(structuredClone(initialProject)) : createEmptyDocument(), [initialProject]);
   const [history, setHistory] = useState<ParametricHistoryState>(() => createParametricHistory(initialDocument));
   const document = currentHistoryDocument(history);
+  const latestDocumentRef = useRef(document);
+  latestDocumentRef.current = document;
   const [modelSelection, setModelSelection] = useState<ModelTreeSelection[]>(initialDocument.objects[0] ? [{ id: initialDocument.objects[0].id, kind: "object" }] : []);
   const [build, setBuild] = useState<BuildResult>({ mesh: null, objectRecords: [], operationContext: null, completedFeatureIds: [], failedFeatureId: null, warning: null });
   const [operationContext, setOperationContext] = useState<BuildResult["operationContext"]>(null);
@@ -455,9 +464,9 @@ export function SketchForgeParametricEditor() {
           return null;
         }
       };
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = initialProject ? null : localStorage.getItem(STORAGE_KEY);
       const primary = restoreDocument(stored);
-      const recovered = primary ?? restoreDocument(localStorage.getItem(RECOVERY_STORAGE_KEY));
+      const recovered = initialProject ? null : primary ?? restoreDocument(localStorage.getItem(RECOVERY_STORAGE_KEY));
       if (recovered) {
         setHistory(createParametricHistory(recovered));
         setModelSelection(recovered.objects[0] ? [{ id: recovered.objects[0].id, kind: "object" }] : []);
@@ -478,7 +487,7 @@ export function SketchForgeParametricEditor() {
       }
     } catch {}
     setHydrated(true);
-  }, []);
+  }, [initialProject]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -494,6 +503,10 @@ export function SketchForgeParametricEditor() {
       localStorage.setItem(STORAGE_KEY, serialized);
     } catch {}
   }, [document, hydrated]);
+
+  useEffect(() => {
+    if (hydrated) onProjectChange?.(document);
+  }, [document, hydrated, onProjectChange]);
 
   useEffect(() => {
     if (hydrated) localStorage.setItem(RENDER_QUALITY_STORAGE_KEY, renderQuality);
@@ -748,6 +761,10 @@ export function SketchForgeParametricEditor() {
 
   const commit = useCallback((next: ParametricDocument) => {
     next.updatedAt = Date.now();
+    // Keep the newest committed document available synchronously. A numeric
+    // field commits on blur immediately before the brand button's click, so a
+    // render-based closure can otherwise still contain the preceding value.
+    latestDocumentRef.current = next;
     setHistory((current) => commitHistoryDocument(current, next));
   }, []);
 
@@ -2576,7 +2593,7 @@ export function SketchForgeParametricEditor() {
     <main className={`educad-reference-shell sidebar-${modelSidebarMode}`}>
       <div className="secondary-toolbar">
         <div className="toolbar-workspace-tabs educad-toolbar-titlebar">
-          <strong className="educad-toolbar-brand">eduCAD</strong>
+          {onExitToProjects ? <button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={() => onExitToProjects(latestDocumentRef.current)} title={t("toolbar.newGroup")}>eduCAD</button> : <strong className="educad-toolbar-brand">eduCAD</strong>}
           <span className="educad-project-name">{document.name}</span>
         </div>
         {sketchSession ? <div className="sketch-toolbar-ribbon educad-parametric-sketch-toolbar" aria-label={t("sketch.tools")}>
@@ -2842,6 +2859,7 @@ export function SketchForgeParametricEditor() {
           showPointActions={false}
           showGridControls={false}
         /> : <ParametricViewport
+          onThumbnail={onProjectThumbnail}
           mesh={viewportObjectRecords.length > 0 ? ((editingEdgeTreatmentId || editingFaceExtrudeId || editingShellId || editingRevolveId) && topologySelectionBuild ? topologySelectionBuild : build).mesh : null}
           objectRecords={viewportObjectRecords}
           objectColors={objectColors}

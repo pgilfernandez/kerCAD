@@ -37,10 +37,10 @@ describe("parametric operation catalog", () => {
     expect(definition.parameters.find((parameter) => parameter.key === "topRadius")).toMatchObject({ min: 0, defaultValue: 0 });
   });
 
-  it("defines an exact tube by its inner radius, thickness and height", () => {
+  it("defines an exact tube by its outer radius, inward thickness and height", () => {
     const definition = parametricOperationDefinition("tube");
 
-    expect(definition.parameters.map((parameter) => parameter.key)).toEqual(["innerRadius", "thickness", "height"]);
+    expect(definition.parameters.map((parameter) => parameter.key)).toEqual(["outerRadius", "thickness", "height"]);
     expect(definition.parameters.find((parameter) => parameter.key === "thickness")?.defaultValue).toBeGreaterThan(0);
   });
 
