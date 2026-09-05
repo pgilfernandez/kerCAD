@@ -879,7 +879,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         : parameters?.shape === "tube"
           ? [
               new THREE.Vector3(dimensionValue("x") * selected.width / Math.max(0.01, parameters.outerRadius * 2), 0, -selected.height / 2),
-              new THREE.Vector3((parameters.innerRadius + dimensionValue("y")) * selected.width / Math.max(0.01, parameters.outerRadius * 2), 0, dimensionValue("z") * selected.height / Math.max(0.01, parameters.height) / 2),
+              new THREE.Vector3(Math.max(0, parameters.outerRadius - dimensionValue("y") - 5) * selected.width / Math.max(0.01, parameters.outerRadius * 2), 0, dimensionValue("z") * selected.height / Math.max(0.01, parameters.height) / 2),
               new THREE.Vector3(selected.width / 2, 0, 0),
             ]
         : parameters?.shape === "torus"
@@ -961,7 +961,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         label.style.left = `${(projected.x + 1) * host.clientWidth / 2}px`;
         label.style.top = `${(1 - projected.y) * host.clientHeight / 2}px`;
         label.style.transform = `translate(-50%, -50%) translate(${offsets[index][0]}px, ${offsets[index][1]}px)`;
-        if (document.activeElement !== label) label.value = `${names[index]} ${units[index] ? formatDisplayLength(values[index], displayUnit) : formatViewportDimension(values[index])} ${units[index]}`;
+        if (document.activeElement !== label) {
+          const text = `${names[index]} ${units[index] ? formatDisplayLength(values[index], displayUnit) : formatViewportDimension(values[index])} ${units[index]}`;
+          label.value = text;
+          label.style.width = `${Math.max(76, Math.min(172, text.length * 7.2 + 18))}px`;
+        }
       });
     };
     const updateOperationModeSelector = () => {
@@ -1822,13 +1826,13 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         const end = parameter === "outerRadius"
           ? new THREE.Vector3(worldOuterRadius + 3, 0, -worldHeight / 2)
           : parameter === "thickness"
-            ? new THREE.Vector3(worldOuterRadius + 3, 0, worldHeight / 2)
+            ? new THREE.Vector3(worldInnerRadius, 0, worldHeight / 2)
             : new THREE.Vector3(0, 0, worldHeight / 2 + 3);
         if (role === "guide" && child instanceof LineSegments2) {
           const start = parameter === "height"
             ? new THREE.Vector3(0, 0, -worldHeight / 2)
             : parameter === "thickness"
-              ? new THREE.Vector3(worldInnerRadius, 0, worldHeight / 2)
+              ? new THREE.Vector3(worldOuterRadius, 0, worldHeight / 2)
               : new THREE.Vector3(0, 0, -worldHeight / 2);
           updateYellowManipulatorLine(child, start, end);
         } else if (role === "handle" || role === "target") child.position.copy(end);
@@ -2127,7 +2131,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
                 : parameter === "innerRadius" && values?.shape === "tube"
                   ? values.innerRadius * shapeParameterWorldScale
                   : parameter === "thickness" && values?.shape === "tube"
-                    ? values.outerRadius * shapeParameterWorldScale
+                    ? (values.outerRadius - values.innerRadius) * shapeParameterWorldScale
                   : parameter === "outerRadius" && (values?.shape === "tube" || values?.shape === "gear")
                     ? values.outerRadius * shapeParameterWorldScale
                   : parameter === "majorRadius" && values?.shape === "torus"
@@ -2373,9 +2377,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         const parameterStep = grid;
         const pointerCoordinate = (shapeParameterDragAxis === "y" ? localPointer.y : shapeParameterDragAxis === "z" ? localPointer.z : localPointer.x) * shapeParameterDragSign;
         const adjusted = pointerCoordinate - parameterPointerOffset;
-        const parameterAdjusted = parameter === "thickness" && selected.shapeParameters?.shape === "tube"
-          ? Math.max(0, Math.abs(adjusted) - selected.shapeParameters.innerRadius * shapeParameterWorldScale)
-          : adjusted;
+        const parameterAdjusted = adjusted;
         let visualExtent = parameter === "sides" || parameter === "teeth"
           ? parameter === "sides" ? Math.min(32, Math.max(3, Math.round(Math.abs(parameterAdjusted)))) : Math.min(64, Math.max(6, Math.round(Math.abs(parameterAdjusted))))
           : parameter === "height"
@@ -3568,8 +3570,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     } else if (parameters?.shape === "tube") {
       const radialScale = selection.width / Math.max(0.01, parameters.outerRadius * 2);
       const innerRadius = parameters.innerRadius * radialScale;
+      const outerRadius = parameters.outerRadius * radialScale;
       addParameterHandle("outerRadius", "x", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(selection.width / 2 + 3, 0, -selection.height / 2));
-      addParameterHandle("thickness", "y", new THREE.Vector3(innerRadius, 0, selection.height / 2), new THREE.Vector3(selection.width / 2 + 3, 0, selection.height / 2));
+      addParameterHandle("thickness", "y", new THREE.Vector3(outerRadius, 0, selection.height / 2), new THREE.Vector3(innerRadius, 0, selection.height / 2), "x", -1);
       addParameterHandle("height", "z", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(0, 0, selection.height / 2 + 3));
     } else if (parameters?.shape === "gear") {
       const radialScale = selection.width / Math.max(0.01, parameters.outerRadius * 2);

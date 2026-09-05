@@ -15,7 +15,6 @@ import {
   ToolbarDuplicateIcon,
   ToolbarExtrudeIcon,
   ToolbarFilletIcon,
-  ToolbarHomeIcon,
   ToolbarImportIcon,
   ToolbarMirrorIcon,
   ToolbarLinearPatternIcon,
@@ -112,10 +111,6 @@ import type { ViewportRenderQuality } from "@/lib/viewportPerformance";
 import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricFeature, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, PrimitiveFeature, SketchFeature } from "@/types/parametric";
 import type { GridSize, SketchConstraint, SketchPoint, SketchProfile, WorkplaneShape } from "@/types/sketchforge";
 
-const STORAGE_KEY = "educad.parametric.document.v1";
-const RECOVERY_STORAGE_KEY = "educad.parametric.document.recovery.v1";
-const SNAPSHOTS_STORAGE_KEY = "educad.parametric.snapshots.v1";
-const MAX_LOCAL_SNAPSHOTS = 5;
 const RENDER_QUALITY_STORAGE_KEY = "educad.viewport.render-mode";
 const FPS_VISIBLE_STORAGE_KEY = "educad.viewport.show-fps";
 const POSITION_TRIAD_VISIBLE_STORAGE_KEY = "educad.viewport.position-triad";
@@ -123,7 +118,6 @@ const ROTATION_TRIAD_VISIBLE_STORAGE_KEY = "educad.viewport.rotation-triad";
 const PARAMETER_HANDLES_VISIBLE_STORAGE_KEY = "educad.viewport.parameter-handles";
 const DISPLAY_MODE_STORAGE_KEY = "educad.viewport.display-mode";
 const SHADING_MODE_STORAGE_KEY = "educad.viewport.shading-mode";
-type LocalProjectSnapshot = { id: string; createdAt: number; document: ParametricDocument };
 
 function localizeNewDocumentEntries(previous: ParametricDocument, next: ParametricDocument, locale: EducadLocale) {
   const previousObjectIds = new Set(previous.objects.map((object) => object.id));
@@ -287,7 +281,6 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
   const [stlExporting, setStlExporting] = useState(false);
   const [newDocumentOpen, setNewDocumentOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [localSnapshots, setLocalSnapshots] = useState<LocalProjectSnapshot[]>([]);
   const [notice, setNotice] = useState<Notice>(null);
   const [workplaneOpen, setWorkplaneOpen] = useState(false);
   const [workplaneDraft, setWorkplaneDraft] = useState(document.workplane);
@@ -455,54 +448,9 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
       setShowPositionTriad(localStorage.getItem(POSITION_TRIAD_VISIBLE_STORAGE_KEY) !== "false");
       setShowRotationTriad(localStorage.getItem(ROTATION_TRIAD_VISIBLE_STORAGE_KEY) !== "false");
       setShowParameterHandles(localStorage.getItem(PARAMETER_HANDLES_VISIBLE_STORAGE_KEY) !== "false");
-      const restoreDocument = (serialized: string | null) => {
-        if (!serialized) return null;
-        try {
-          const parsed = JSON.parse(serialized) as unknown;
-          return validateDocument(parsed) ? normalizeParametricDocument(parsed) : null;
-        } catch {
-          return null;
-        }
-      };
-      const stored = initialProject ? null : localStorage.getItem(STORAGE_KEY);
-      const primary = restoreDocument(stored);
-      const recovered = initialProject ? null : primary ?? restoreDocument(localStorage.getItem(RECOVERY_STORAGE_KEY));
-      if (recovered) {
-        setHistory(createParametricHistory(recovered));
-        setModelSelection(recovered.objects[0] ? [{ id: recovered.objects[0].id, kind: "object" }] : []);
-        if (!primary) {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(recovered));
-          setNotice({ type: "info", text: educadTranslate(normalizeEducadLocale(localStorage.getItem(LOCALE_STORAGE_KEY)), "notice.autosaveRecovered") });
-        }
-      } else if (stored) localStorage.removeItem(STORAGE_KEY);
-      try {
-        const candidates = JSON.parse(localStorage.getItem(SNAPSHOTS_STORAGE_KEY) ?? "[]") as unknown;
-        if (Array.isArray(candidates)) setLocalSnapshots(candidates.filter((entry): entry is LocalProjectSnapshot => {
-          if (!entry || typeof entry !== "object") return false;
-          const candidate = entry as Partial<LocalProjectSnapshot>;
-          return typeof candidate.id === "string" && typeof candidate.createdAt === "number" && validateDocument(candidate.document);
-        }).slice(0, MAX_LOCAL_SNAPSHOTS));
-      } catch {
-        localStorage.removeItem(SNAPSHOTS_STORAGE_KEY);
-      }
     } catch {}
     setHydrated(true);
   }, [initialProject]);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    const serialized = JSON.stringify(document);
-    try {
-      const previous = localStorage.getItem(STORAGE_KEY);
-      if (previous && previous !== serialized) {
-        try {
-          const parsed = JSON.parse(previous) as unknown;
-          if (validateDocument(parsed)) localStorage.setItem(RECOVERY_STORAGE_KEY, previous);
-        } catch {}
-      }
-      localStorage.setItem(STORAGE_KEY, serialized);
-    } catch {}
-  }, [document, hydrated]);
 
   useEffect(() => {
     if (hydrated) onProjectChange?.(document);
@@ -2087,28 +2035,6 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
     setNewDocumentOpen(false);
   };
 
-  const storeLocalSnapshots = (snapshots: LocalProjectSnapshot[]) => {
-    const limited = snapshots.slice(0, MAX_LOCAL_SNAPSHOTS);
-    setLocalSnapshots(limited);
-    try { localStorage.setItem(SNAPSHOTS_STORAGE_KEY, JSON.stringify(limited)); } catch {}
-  };
-
-  const createLocalSnapshot = () => {
-    const now = Date.now();
-    storeLocalSnapshots([{ id: `snapshot-${now}`, createdAt: now, document: cloneDocument(document) }, ...localSnapshots]);
-    setNotice({ type: "ok", text: t("notice.snapshotCreated") });
-  };
-
-  const restoreLocalSnapshot = (snapshot: LocalProjectSnapshot) => {
-    const restored = normalizeParametricDocument(cloneDocument(snapshot.document));
-    setHistory(createParametricHistory(restored));
-    setModelSelection(restored.objects[0] ? [{ id: restored.objects[0].id, kind: "object" }] : []);
-    setSettingsOpen(false);
-    setNotice({ type: "ok", text: t("notice.snapshotRestored") });
-  };
-
-  const deleteLocalSnapshot = (snapshotId: string) => storeLocalSnapshots(localSnapshots.filter((snapshot) => snapshot.id !== snapshotId));
-
   const openExportFromNewDocumentWarning = () => {
     setNewDocumentOpen(false);
     setExportFileName(document.name);
@@ -2593,8 +2519,8 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
     <main className={`educad-reference-shell sidebar-${modelSidebarMode}`}>
       <div className="secondary-toolbar">
         <div className="toolbar-workspace-tabs educad-toolbar-titlebar">
-          {onExitToProjects ? <button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={() => onExitToProjects(latestDocumentRef.current)} title={t("toolbar.newGroup")}>eduCAD</button> : <strong className="educad-toolbar-brand">eduCAD</strong>}
-          <span className="educad-project-name">{document.name}</span>
+          {onExitToProjects ? <button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={() => onExitToProjects(latestDocumentRef.current)} title="Back to projects">{'<'} back</button> : null}
+          <span className="educad-project-name"><strong>eduCAD</strong><span> - {document.name}</span></span>
         </div>
         {sketchSession ? <div className="sketch-toolbar-ribbon educad-parametric-sketch-toolbar" aria-label={t("sketch.tools")}>
           <ToolbarSection label={t("sketch.draw")}>
@@ -2632,17 +2558,16 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
           <div className="educad-sketch-finish-actions"><button className="educad-sketch-action primary" type="button" onClick={acceptSketch}><SketchToolbarIcon file="accept" /><span>{t("sketch.accept")}</span></button><button className="educad-sketch-action" type="button" onClick={cancelSketch}><SketchToolbarIcon file="cancel" /><span>{t("common.cancel")}</span></button></div>
         </div> :
         <div className="toolbar-mode-content geometry">
-          <ToolbarSection label={t("toolbar.newGroup")} className="toolbar-home-section"><Tool label={t("toolbar.new")} onClick={() => setNewDocumentOpen(true)}><ToolbarHomeIcon /></Tool></ToolbarSection>
           <div className="tool-group left">
+            <ToolbarSection label={t("toolbar.history")}>
+              <Tool label={t("toolbar.undo")} enabled={history.index > 0} onClick={undo}><ToolbarUndoIcon /></Tool>
+              <Tool label={t("toolbar.redo")} enabled={history.index < history.entries.length - 1} onClick={redo}><ToolbarRedoIcon /></Tool>
+            </ToolbarSection>
             <ToolbarSection label={t("toolbar.clipboard")}>
               <Tool label={t("toolbar.copy")} enabled={Boolean(selectedObjectId)} onClick={() => { setClipboardId(selectedObjectId); setNotice({ type: "info", text: t("notice.objectCopied") }); }}><ToolbarCopyIcon /></Tool>
               <Tool label={t("toolbar.paste")} enabled={Boolean(clipboardId)} onClick={() => duplicateSelected(clipboardId)}><ToolbarPasteIcon /></Tool>
               <Tool label={t("toolbar.duplicate")} enabled={Boolean(selectedObjectId)} onClick={() => duplicateSelected()}><ToolbarDuplicateIcon /></Tool>
               <Tool label={modelSelection.length > 1 ? t("toolbar.deleteSelection") : selectionKind === "feature" ? t("toolbar.deleteOperation") : t("toolbar.deleteObject")} enabled={modelSelection.length > 0} onClick={deleteCurrentSelection}><ToolbarTrashIcon /></Tool>
-            </ToolbarSection>
-            <ToolbarSection label={t("toolbar.history")}>
-              <Tool label={t("toolbar.undo")} enabled={history.index > 0} onClick={undo}><ToolbarUndoIcon /></Tool>
-              <Tool label={t("toolbar.redo")} enabled={history.index < history.entries.length - 1} onClick={redo}><ToolbarRedoIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label={t("toolbar.manipulators")}>
               <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
@@ -3170,14 +3095,6 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
           <label><span>{t("settings.shading")}</span><select value={shadingMode} onChange={(event) => setShadingMode(event.target.value as ViewportShadingMode)}><option value="shadows">{t("settings.shadows")}</option><option value="basic">{t("settings.basicShadows")}</option><option value="noShadows">{t("settings.noShadows")}</option></select></label>
           <label><span>{t("settings.units")}</span><select value={displayUnit} onChange={(event) => setDisplayUnit(event.target.value as ParametricDisplayUnit)}><option value="mm">{t("settings.millimeters")}</option><option value="in">{t("settings.inches")}</option></select></label>
           <label className="educad-settings-toggle"><span>{t("settings.showFps")}</span><input type="checkbox" checked={showFps} onChange={(event) => setShowFps(event.target.checked)} /></label>
-          <section className="educad-local-snapshots">
-            <header><strong>{t("settings.snapshots")}</strong><button type="button" onClick={createLocalSnapshot}>{t("settings.createSnapshot")}</button></header>
-            {localSnapshots.length > 0 ? <div>{localSnapshots.map((snapshot) => <article key={snapshot.id}>
-              <span><strong>{snapshot.document.name}</strong><small>{new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" }).format(snapshot.createdAt)}</small></span>
-              <button type="button" onClick={() => restoreLocalSnapshot(snapshot)}>{t("settings.restoreSnapshot")}</button>
-              <button type="button" className="delete" aria-label={t("common.delete")} title={t("common.delete")} onClick={() => deleteLocalSnapshot(snapshot.id)}><Trash2 size={14} /></button>
-            </article>)}</div> : <p>{t("settings.noSnapshots")}</p>}
-          </section>
           <p>{t("settings.autosave")}</p>
         </aside>
       )}

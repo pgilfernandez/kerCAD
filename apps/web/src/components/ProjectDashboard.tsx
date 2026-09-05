@@ -38,9 +38,6 @@ export function ProjectDashboard({ projects, busy = false, onCreate, onOpen, onI
         <button className="settings" type="button" disabled><Settings size={23} /><span>Settings</span></button>
       </aside>
       <section className="educad-dashboard-main">
-        <div className="educad-dashboard-actions">
-          <button type="button" onClick={() => inputRef.current?.click()}><span><FileUp size={27} /></span><strong>Open eduCAD project</strong></button>
-        </div>
         <header className="educad-dashboard-project-heading">
           <div><h1>Projects</h1><span>{visible.length} visible</span></div>
           <div className="educad-dashboard-view-toggle"><button className={view === "grid" ? "active" : ""} onClick={() => setView("grid")} aria-label="Grid view"><Grid3X3 size={20} /></button><button className={view === "list" ? "active" : ""} onClick={() => setView("list")} aria-label="List view"><List size={21} /></button></div>
@@ -50,6 +47,12 @@ export function ProjectDashboard({ projects, busy = false, onCreate, onOpen, onI
             <button className="card-open" type="button" onClick={onCreate}>
               <span className="card-preview"><span className="new-project-plus"><Plus size={48} /></span></span>
               <span className="card-copy"><strong>Create new 3D design</strong><small>Start with an empty workplane</small></span>
+            </button>
+          </article> : null}
+          {!query.trim() ? <article className="educad-dashboard-card educad-dashboard-open-card">
+            <button className="card-open" type="button" onClick={() => inputRef.current?.click()}>
+              <span className="card-preview"><span className="new-project-plus"><FileUp size={43} /></span></span>
+              <span className="card-copy"><strong>Open eduCAD project</strong><small>Open a saved .educad design</small></span>
             </button>
           </article> : null}
           {visible.map((project, index) => <article className="educad-dashboard-card" key={project.id}>

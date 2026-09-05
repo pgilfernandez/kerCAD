@@ -1456,19 +1456,6 @@ button {
 .educad-settings-panel select { width: 190px; padding: 7px; color: #304b61; background: #fff; border: 1px solid #cbd9e2; border-radius: 5px; }
 .educad-settings-panel .educad-settings-toggle input { width: 18px; height: 18px; accent-color: #079bc9; }
 .educad-settings-panel p { margin: 11px 14px 0; color: #7b8f9e; font-size: 9px; }
-.educad-local-snapshots { margin: 8px 14px 0; padding-top: 9px; border-top: 1px solid #dbe5ea; }
-.educad-local-snapshots > header { display: flex; align-items: center; justify-content: space-between; min-height: 32px; padding: 0; border: 0; }
-.educad-local-snapshots > header strong { color: #50677a; font-size: 11px; }
-.educad-local-snapshots button { min-height: 28px; padding: 0 9px; color: #37647c; background: #fff; border: 1px solid #c8d6de; border-radius: 5px; font-size: 9px; font-weight: 800; }
-.educad-local-snapshots > div { display: grid; gap: 4px; margin-top: 5px; }
-.educad-local-snapshots article { display: grid; grid-template-columns: minmax(0, 1fr) auto 29px; align-items: center; gap: 5px; padding: 5px; background: #f5f8fa; border: 1px solid #e0e8ed; border-radius: 5px; }
-.educad-local-snapshots article span { min-width: 0; }
-.educad-local-snapshots article span strong,
-.educad-local-snapshots article span small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.educad-local-snapshots article span strong { color: #3f596b; font-size: 9px; }
-.educad-local-snapshots article span small { margin-top: 2px; color: #8495a1; font-size: 8px; }
-.educad-local-snapshots article button.delete { display: grid; width: 29px; padding: 0; place-items: center; color: #a64b50; }
-.educad-local-snapshots > p { margin: 5px 0 0; }
 
 .educad-fps-counter { position: absolute; bottom: 18px; left: 72px; z-index: 35; display: flex; box-sizing: border-box; min-width: 66px; height: 42px; padding: 6px 9px; align-items: center; justify-content: center; color: #16794c; background: rgba(255, 255, 255, 0.86); border: 1px solid rgba(22, 121, 76, 0.33); border-radius: 6px; box-shadow: 0 2px 8px rgba(28, 62, 78, 0.12); font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; pointer-events: none; }
 .educad-fps-counter.medium { color: #9a6700; border-color: rgba(154, 103, 0, 0.33); }
@@ -2874,9 +2861,10 @@ button {
   z-index: 19;
   height: var(--editor-toolbar-height);
   overflow: visible;
-  background: #f4f7f9;
-  border-bottom: 1px solid #d2dce5;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92), 0 1px 2px rgba(32, 54, 72, 0.06);
+  color: #ffffff;
+  background: #1269eb;
+  border-bottom: 1px solid #0d55bd;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 1px 2px rgba(12, 62, 139, 0.22);
 }
 
 .edge-modifier-panel {
@@ -3210,7 +3198,7 @@ button {
   width: 100%;
   height: 100%;
   align-items: stretch;
-  background: #f4f7f9;
+  background: #1269eb;
 }
 
 .sketch-create-section {
@@ -3458,7 +3446,7 @@ button {
 
 .educad-toolbar-brand {
   margin-left: 17px;
-  color: #264d68;
+  color: #ffffff;
   font-size: 15px;
   font-weight: 950;
   letter-spacing: -0.02em;
@@ -3467,16 +3455,19 @@ button {
 .educad-toolbar-titlebar .educad-project-name {
   position: absolute;
   left: 50%;
-  display: block;
+  display: flex;
+  align-items: baseline;
   max-width: min(50vw, 520px);
   padding: 0;
-  color: #587185;
+  color: #ffffff;
   border: 0;
   transform: translateX(-50%);
   font-size: 11px;
-  font-weight: 850;
   text-align: center;
 }
+
+.educad-toolbar-titlebar .educad-project-name strong { font-weight: 900; }
+.educad-toolbar-titlebar .educad-project-name span { font-weight: 400; }
 
 .toolbar-workspace-tabs button {
   flex: 0 0 auto;
@@ -9466,7 +9457,7 @@ html[data-theme="dark"] .grid-settings {
   height: 86px;
   padding: 0 28px;
   display: grid;
-  grid-template-columns: 280px minmax(260px, 840px);
+  grid-template-columns: 280px minmax(260px, 420px);
   justify-content: space-between;
   align-items: center;
   gap: 26px;
@@ -9486,14 +9477,6 @@ html[data-theme="dark"] .grid-settings {
 .educad-dashboard-sidebar button:disabled { opacity: .72; }
 .educad-dashboard-sidebar .settings { margin-top: auto; }
 .educad-dashboard-main { min-width: 0; padding: 30px; }
-.educad-dashboard-actions { display: grid; grid-template-columns: minmax(260px, 580px); gap: 18px; }
-.educad-dashboard-actions > button { min-height: 118px; padding: 22px; display: flex; align-items: center; gap: 20px; border: 1px solid #d3e0e9; border-radius: 12px; background: white; color: #1d3d56; box-shadow: 0 1px 3px #2442; text-align: left; }
-.educad-dashboard-actions > button:not(:disabled):hover { border-color: #75adff; box-shadow: 0 5px 16px #2462; transform: translateY(-1px); }
-.educad-dashboard-actions > button:disabled { opacity: .58; }
-.educad-dashboard-actions > button > span { width: 62px; height: 62px; flex: none; display: grid; place-items: center; border-radius: 12px; background: #edf3f6; }
-.educad-dashboard-actions > button.primary { border-color: #78afff; background: #f2f7ff; }
-.educad-dashboard-actions > button.primary > span { background: #1269eb; color: white; }
-.educad-dashboard-actions strong { font-size: 19px; }
 .educad-dashboard-project-heading { margin: 32px 0 18px; display: flex; align-items: end; justify-content: space-between; }
 .educad-dashboard-project-heading h1 { margin: 0 0 3px; font-size: 30px; font-weight: 500; }
 .educad-dashboard-project-heading span { color: #748ba0; }
@@ -9512,6 +9495,8 @@ html[data-theme="dark"] .grid-settings {
 .educad-dashboard-card .accent-1 { background: #fff8df; }.educad-dashboard-card .accent-2 { background: #e8f7f0; }.educad-dashboard-card .accent-3 { background: #fff0ef; }
 .educad-dashboard-new-card .card-preview { background: #eef5ff; }
 .educad-dashboard-new-card .new-project-plus { width: 82px; height: 82px; display: grid; place-items: center; border-radius: 17px; background: #1269eb; color: white; }
+.educad-dashboard-open-card .card-preview { background: #f2f8fb; }
+.educad-dashboard-open-card .new-project-plus { background: #e8f0f4; color: #254c68; }
 .educad-dashboard-card .card-copy { padding: 13px 1px 3px; display: flex; flex-direction: column; gap: 7px; }
 .educad-dashboard-card .card-copy > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 18px; }
 .educad-dashboard-card .card-copy small { color: #748ba0; font-size: 14px; }
@@ -9522,7 +9507,31 @@ html[data-theme="dark"] .grid-settings {
 .educad-dashboard-projects.list .card-preview { width: 130px; height: 76px; flex: none; }
 .educad-dashboard-projects.list .card-copy { flex: 1; }
 .educad-dashboard-empty { min-height: 240px; display: grid; place-content: center; gap: 7px; text-align: center; color: #71889b; }
-.educad-toolbar-brand-button { border: 0; padding: 0; background: transparent; cursor: pointer; font: inherit; }
+.toolbar-workspace-tabs .educad-toolbar-brand-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 10px;
+  padding: 2px 10px;
+  color: #ffffff;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: 0;
+  text-transform: none;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.toolbar-workspace-tabs .educad-toolbar-brand-button:hover,
+.toolbar-workspace-tabs .educad-toolbar-brand-button:focus-visible {
+  color: #1269eb;
+  background: rgba(255, 255, 255, 0.8);
+  outline: none;
+}
+
+.educad-toolbar-brand-button > span:first-child { margin-top: -1px; font-size: 22px; font-weight: 500; line-height: 1; }
 
 @media (max-width: 760px) {
   .educad-dashboard-topbar { height: auto; min-height: 76px; padding: 12px 14px; grid-template-columns: 1fr auto; gap: 10px; }
@@ -9531,9 +9540,6 @@ html[data-theme="dark"] .grid-settings {
   .educad-dashboard-layout { display: block; }
   .educad-dashboard-sidebar { display: none; }
   .educad-dashboard-main { padding: 16px; }
-  .educad-dashboard-actions { grid-template-columns: 1fr; }
-  .educad-dashboard-actions > button { min-height: 76px; padding: 12px; }
-  .educad-dashboard-actions > button > span { width: 48px; height: 48px; }
   .educad-dashboard-projects.grid { grid-template-columns: 1fr; }
   .educad-dashboard-card .card-delete { opacity: 1; }
 }
