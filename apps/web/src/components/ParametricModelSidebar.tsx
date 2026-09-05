@@ -605,17 +605,19 @@ function ParametricFeatureInspector({
                   } else if (parameter.key === "outerRadius") {
                     const radius = draft.primitive === "gear"
                       ? Math.max((draft.toothDepth ?? 2.5) + (draft.boreRadius ?? 3) + 0.1, value)
-                      : Math.max((draft.innerRadius ?? 0) + 0.1, value);
+                      : Math.max(0.2, value);
+                    const thickness = draft.primitive === "tube" ? Math.max(0.1, draft.width / 2 - (draft.innerRadius ?? 6)) : 0;
                     draft.width = radius * 2;
                     draft.depth = radius * 2;
+                    if (draft.primitive === "tube") draft.innerRadius = Math.max(0.1, radius - Math.min(thickness, radius - 0.1));
                   } else if (parameter.key === "innerRadius") {
                     const thickness = Math.max(0.1, draft.width / 2 - (draft.innerRadius ?? 6));
                     draft.innerRadius = Math.max(0.1, value);
                     draft.width = (draft.innerRadius + thickness) * 2;
                     draft.depth = draft.width;
                   } else if (parameter.key === "thickness") {
-                    draft.width = ((draft.innerRadius ?? 6) + Math.max(0.1, value)) * 2;
-                    draft.depth = draft.width;
+                    const outerRadius = draft.width / 2;
+                    draft.innerRadius = Math.max(0.1, outerRadius - Math.min(Math.max(0.1, value), outerRadius - 0.1));
                   } else if (parameter.key === "majorRadius") {
                     draft.majorRadius = Math.max((draft.tubeRadius ?? 4) + 0.1, value);
                     draft.width = (draft.majorRadius + (draft.tubeRadius ?? 4)) * 2;

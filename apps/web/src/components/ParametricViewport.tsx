@@ -721,7 +721,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     if (!selected) return 0;
     const parameters = selected.shapeParameters;
     const boxLike = parameters && (parameters.shape === "box" || parameters.shape === "roundedBox" || parameters.shape === "pyramid" || parameters.shape === "wedge" || parameters.shape === "roof" || parameters.shape === "roundRoof");
-    const parameter = axis === "x" ? parameters?.shape === "text" ? null : boxLike ? "width" : parameters?.shape === "cone" ? "baseRadius" : parameters?.shape === "tube" ? "innerRadius" : parameters?.shape === "gear" ? "outerRadius" : parameters?.shape === "torus" ? "majorRadius" : parameters ? "radius" : null
+    const parameter = axis === "x" ? parameters?.shape === "text" ? null : boxLike ? "width" : parameters?.shape === "cone" ? "baseRadius" : parameters?.shape === "tube" ? "outerRadius" : parameters?.shape === "gear" ? "outerRadius" : parameters?.shape === "torus" ? "majorRadius" : parameters ? "radius" : null
       : axis === "y" ? parameters?.shape === "text" ? "size" : parameters?.shape === "cone" ? "topRadius" : parameters?.shape === "tube" ? "thickness" : parameters?.shape === "polygon" ? "sides" : boxLike ? "depth" : null
         : axis === "z" && parameters ? parameters.shape === "torus" ? "tubeRadius" : parameters.shape !== "sphere" ? "height" : null : null;
     const preview = shapeParameterPreviewRef.current;
@@ -733,7 +733,6 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     if (parameter === "baseRadius" && parameters?.shape === "cone") return parameters.baseRadius;
     if (parameter === "topRadius" && parameters?.shape === "cone") return parameters.topRadius;
     if (parameter === "outerRadius" && (parameters?.shape === "tube" || parameters?.shape === "gear")) return parameters.outerRadius;
-    if (parameter === "innerRadius" && parameters?.shape === "tube") return parameters.innerRadius;
     if (parameter === "thickness" && parameters?.shape === "tube") return parameters.outerRadius - parameters.innerRadius;
     if (parameter === "sides" && parameters?.shape === "polygon") return parameters.sides;
     if (parameter === "majorRadius" && parameters?.shape === "torus") return parameters.majorRadius;
@@ -766,7 +765,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const parameters = selected.shapeParameters;
     if (parameters) {
       const boxLike = parameters.shape === "box" || parameters.shape === "roundedBox" || parameters.shape === "pyramid" || parameters.shape === "wedge" || parameters.shape === "roof" || parameters.shape === "roundRoof";
-      const parameter = axis === "x" ? parameters.shape === "text" ? null : boxLike ? "width" : parameters.shape === "cone" ? "baseRadius" : parameters.shape === "tube" ? "innerRadius" : parameters.shape === "gear" ? "outerRadius" : parameters.shape === "torus" ? "majorRadius" : "radius" : axis === "y" ? parameters.shape === "text" ? "size" : parameters.shape === "cone" ? "topRadius" : parameters.shape === "tube" ? "thickness" : parameters.shape === "polygon" ? "sides" : boxLike ? "depth" : null : axis === "z" ? parameters.shape === "torus" ? "tubeRadius" : parameters.shape !== "sphere" ? "height" : null : null;
+      const parameter = axis === "x" ? parameters.shape === "text" ? null : boxLike ? "width" : parameters.shape === "cone" ? "baseRadius" : parameters.shape === "tube" ? "outerRadius" : parameters.shape === "gear" ? "outerRadius" : parameters.shape === "torus" ? "majorRadius" : "radius" : axis === "y" ? parameters.shape === "text" ? "size" : parameters.shape === "cone" ? "topRadius" : parameters.shape === "tube" ? "thickness" : parameters.shape === "polygon" ? "sides" : boxLike ? "depth" : null : axis === "z" ? parameters.shape === "torus" ? "tubeRadius" : parameters.shape !== "sphere" ? "height" : null : null;
       if (parameter && (parameter === "topRadius" ? value >= 0 : value > 0)) shapeParameterRef.current?.(parameter, value);
     }
     input.value = scalar ? formatViewportDimension(dimensionValue(axis)) : formatDisplayLength(dimensionValue(axis), displayUnit);
@@ -782,7 +781,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     scene.background = new THREE.Color("#edf4f7");
     hasFittedRef.current = false;
     let camera: THREE.PerspectiveCamera | THREE.OrthographicCamera = projection === "orthographic"
-      ? new THREE.OrthographicCamera(-90, 90, 90, -90, 0, 2000)
+      ? new THREE.OrthographicCamera(-90, 90, 90, -90, -2000, 2000)
       : new THREE.PerspectiveCamera(38, 1, 0.1, 2000);
     camera.position.set(118, 96, -118);
     const renderProfile = viewportRenderProfile(renderQuality);
@@ -821,7 +820,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         ? (camera.top - camera.bottom) / Math.max(0.0001, camera.zoom)
         : 2 * camera.position.distanceTo(controls.target) * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
       const nextCamera: THREE.PerspectiveCamera | THREE.OrthographicCamera = wantsOrthographic
-        ? new THREE.OrthographicCamera(-90 * aspect, 90 * aspect, 90, -90, 0, 2000)
+        ? new THREE.OrthographicCamera(-90 * aspect, 90 * aspect, 90, -90, -2000, 2000)
         : new THREE.PerspectiveCamera(38, aspect, 0.1, 2000);
       nextCamera.up.copy(camera.up);
       if (nextCamera instanceof THREE.OrthographicCamera) {
@@ -871,7 +870,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           ]
         : parameters?.shape === "tube"
           ? [
-              new THREE.Vector3(dimensionValue("x") * selected.width / Math.max(0.01, parameters.outerRadius * 2), 0, 0),
+              new THREE.Vector3(dimensionValue("x") * selected.width / Math.max(0.01, parameters.outerRadius * 2), 0, -selected.height / 2),
               new THREE.Vector3((parameters.innerRadius + dimensionValue("y")) * selected.width / Math.max(0.01, parameters.outerRadius * 2), 0, dimensionValue("z") * selected.height / Math.max(0.01, parameters.height) / 2),
               new THREE.Vector3(selected.width / 2, 0, 0),
             ]
@@ -1090,15 +1089,16 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       }
       previousRenderedAt = now;
       const controlsChanged = controls.update();
-      if (camera instanceof THREE.PerspectiveCamera) {
-        const distance = camera.position.distanceTo(controls.target);
-        const near = Math.min(2, Math.max(0.05, distance / 1000));
-        const far = Math.max(2000, distance * 20);
-        if (Math.abs(camera.near - near) > 0.0001 || Math.abs(camera.far - far) > 0.1) {
-          camera.near = near;
-          camera.far = far;
-          camera.updateProjectionMatrix();
-        }
+      const distance = camera.position.distanceTo(controls.target);
+      // Keep a generous range on every frame. This is especially important
+      // when returning from the sketch editor, where the 3D viewport is
+      // recreated while retaining the previous camera position.
+      const near = camera instanceof THREE.OrthographicCamera ? -Math.max(2000, distance * 50) : 0.001;
+      const far = Math.max(2000, distance * 50);
+      if (Math.abs(camera.near - near) > 0.0001 || Math.abs(camera.far - far) > 0.1) {
+        camera.near = near;
+        camera.far = far;
+        camera.updateProjectionMatrix();
       }
       const nextPixelRatio = resolution.recordFrame(now);
       if (nextPixelRatio !== null) renderer.setPixelRatio(nextPixelRatio);
@@ -1800,8 +1800,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         const parameter = child.userData.shapeParameterVisual as ShapeParameter | undefined;
         const role = child.userData.shapeParameterVisualRole as "guide" | "handle" | "target" | undefined;
         if (!parameter || !role) return;
-        const end = parameter === "innerRadius"
-          ? new THREE.Vector3(worldInnerRadius + 3, 0, 0)
+        const end = parameter === "outerRadius"
+          ? new THREE.Vector3(worldOuterRadius + 3, 0, -worldHeight / 2)
           : parameter === "thickness"
             ? new THREE.Vector3(worldOuterRadius + 3, 0, worldHeight / 2)
             : new THREE.Vector3(0, 0, worldHeight / 2 + 3);
@@ -1810,7 +1810,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
             ? new THREE.Vector3(0, 0, -worldHeight / 2)
             : parameter === "thickness"
               ? new THREE.Vector3(worldInnerRadius, 0, worldHeight / 2)
-              : new THREE.Vector3(0, 0, 0);
+              : new THREE.Vector3(0, 0, -worldHeight / 2);
           updateYellowManipulatorLine(child, start, end);
         } else if (role === "handle" || role === "target") child.position.copy(end);
       });
@@ -2398,11 +2398,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           updateConePreview(selected, baseRadius, topRadius, height);
         } else if (selected.shapeParameters?.shape === "tube") {
           const originalThickness = selected.shapeParameters.outerRadius - selected.shapeParameters.innerRadius;
-          const innerRadius = parameter === "innerRadius" ? Math.max(0.1, pendingShapeParameter.value) : selected.shapeParameters.innerRadius;
+          const outerRadius = parameter === "outerRadius" ? Math.max(originalThickness + 0.1, pendingShapeParameter.value) : selected.shapeParameters.outerRadius;
           const thickness = parameter === "thickness" ? Math.max(0.1, pendingShapeParameter.value) : originalThickness;
-          const outerRadius = innerRadius + thickness;
+          const innerRadius = Math.max(0.1, outerRadius - Math.min(thickness, outerRadius - 0.1));
           const height = parameter === "height" ? pendingShapeParameter.value : selected.shapeParameters.height;
-          pendingShapeParameter.value = parameter === "innerRadius" ? innerRadius : parameter === "thickness" ? thickness : pendingShapeParameter.value;
+          pendingShapeParameter.value = parameter === "outerRadius" ? outerRadius : parameter === "thickness" ? outerRadius - innerRadius : pendingShapeParameter.value;
           shapeParameterPreviewRef.current = pendingShapeParameter;
           if (parameter === "height") visualRoot.position.z = (visualExtent - resizeStart.height) / 2;
           updateTubePreview(selected, outerRadius, innerRadius, height);
@@ -3163,7 +3163,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       // requires a positive value, but 0.001 mm keeps the cut effectively
       // invisible even when navigating inside a small part. Do not scale this
       // with model size: that made clipping return after fitting large models.
-      camera.near = camera instanceof THREE.OrthographicCamera ? 0 : 0.001;
+      camera.near = camera instanceof THREE.OrthographicCamera ? -distance * 12 : 0.001;
       camera.far = distance * 12;
       if (camera instanceof THREE.OrthographicCamera) camera.zoom = Math.min(8, Math.max(0.1, 110 / Math.max(size.x, size.y, size.z, 1)));
       camera.updateProjectionMatrix();
@@ -3549,7 +3549,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     } else if (parameters?.shape === "tube") {
       const radialScale = selection.width / Math.max(0.01, parameters.outerRadius * 2);
       const innerRadius = parameters.innerRadius * radialScale;
-      addParameterHandle("innerRadius", "x", new THREE.Vector3(0, 0, 0), new THREE.Vector3(innerRadius + 3, 0, 0));
+      addParameterHandle("outerRadius", "x", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(selection.width / 2 + 3, 0, -selection.height / 2));
       addParameterHandle("thickness", "y", new THREE.Vector3(innerRadius, 0, selection.height / 2), new THREE.Vector3(selection.width / 2 + 3, 0, selection.height / 2));
       addParameterHandle("height", "z", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(0, 0, selection.height / 2 + 3));
     } else if (parameters?.shape === "gear") {

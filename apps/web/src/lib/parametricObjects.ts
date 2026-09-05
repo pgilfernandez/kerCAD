@@ -204,12 +204,11 @@ export function addPrimitive(
       primitive.topRadius = definition.parameters.find((parameter) => parameter.key === "topRadius")?.defaultValue ?? 0;
     }
     if (kind === "tube") {
-      const innerRadius = definition.parameters.find((parameter) => parameter.key === "innerRadius")?.defaultValue ?? 6;
+      const outerRadius = definition.parameters.find((parameter) => parameter.key === "outerRadius")?.defaultValue ?? 10;
       const thickness = definition.parameters.find((parameter) => parameter.key === "thickness")?.defaultValue ?? 4;
-      const outerRadius = innerRadius + thickness;
       primitive.width = outerRadius * 2;
       primitive.depth = outerRadius * 2;
-      primitive.innerRadius = innerRadius;
+      primitive.innerRadius = Math.max(0.1, outerRadius - thickness);
     }
     if (kind === "halfSphere") {
       const radius = definition.parameters.find((parameter) => parameter.key === "radius")?.defaultValue ?? 10;
@@ -1137,14 +1136,15 @@ export function updateParametricShapeParameter(
       feature.topRadius = Math.max(0, value);
     } else if (feature.primitive === "cone" && parameter === "height") {
       feature.height = next;
-    } else if (feature.primitive === "tube" && parameter === "innerRadius") {
+    } else if (feature.primitive === "tube" && parameter === "outerRadius") {
       const thickness = Math.max(0.1, feature.width / 2 - (feature.innerRadius ?? 6));
-      feature.innerRadius = next;
-      feature.width = (next + thickness) * 2;
+      const outerRadius = Math.max(thickness + 0.1, next);
+      feature.width = outerRadius * 2;
       feature.depth = feature.width;
+      feature.innerRadius = outerRadius - thickness;
     } else if (feature.primitive === "tube" && parameter === "thickness") {
-      feature.width = ((feature.innerRadius ?? 6) + next) * 2;
-      feature.depth = feature.width;
+      const outerRadius = feature.width / 2;
+      feature.innerRadius = Math.max(0.1, outerRadius - Math.min(next, outerRadius - 0.1));
     } else if (feature.primitive === "tube" && parameter === "height") {
       feature.height = next;
     } else if (feature.primitive === "torus" && parameter === "majorRadius") {

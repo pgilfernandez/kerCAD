@@ -91,7 +91,7 @@ export const parametricOperationCatalog: ParametricOperationDefinition[] = [
     description: "Tubo paramétrico exacto con pared editable",
     menuIcon: "assets/sketchforge/shape-icons-gray/tube.png",
     roles: roles("tube"),
-    parameters: [dimension("innerRadius", "Radio", 6), dimension("thickness", "Espesor", 4), dimension("height", "Altura")],
+    parameters: [dimension("outerRadius", "Radio", 10), dimension("thickness", "Espesor", 4), dimension("height", "Altura")],
   },
   {
     kind: "halfSphere",
