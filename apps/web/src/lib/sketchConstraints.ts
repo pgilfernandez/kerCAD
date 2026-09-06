@@ -26,6 +26,10 @@ export function sketchReferenceAxis(id: string) {
   return SKETCH_REFERENCE_AXES.find((axis) => axis.id === id) ?? null;
 }
 
+function sketchLine(profile: SketchProfile, id: string) {
+  return profile.segments.find((segment) => segment.id === id && segment.kind === "line") ?? sketchReferenceAxis(id);
+}
+
 export function circleSketchPointId(circleId: string, point: "center" | "radius") {
   return `circle:${circleId}:${point}`;
 }
@@ -99,14 +103,14 @@ function coincidentSketchPoints(profile: SketchProfile, firstId: string, secondI
 export function sketchConstraintConflict(profile: SketchProfile, candidate: SketchConstraint) {
   const constraints = profile.constraints ?? [];
   if (candidate.kind === "tangentLineCircle") {
-    const segment = profile.segments.find((item) => item.id === candidate.segmentId && item.kind === "line");
+    const segment = sketchLine(profile, candidate.segmentId);
     const circle = profile.circles?.find((item) => item.id === candidate.circleId);
     if (!segment || !circle) return "Tangency requires a valid straight line and circle.";
     const centerId = circleSketchPointId(circle.id, "center");
     if (constraints.some((constraint) => constraint.kind === "fixed" && coincidentSketchPoints(profile, centerId, constraint.pointId))) return "The circle center is fixed; release it before applying tangency.";
   }
   if (candidate.kind === "tangentLineArc") {
-    const line = profile.segments.find((item) => item.id === candidate.lineId && item.kind === "line");
+    const line = sketchLine(profile, candidate.lineId);
     const arc = profile.segments.find((item) => item.id === candidate.arcId && item.kind === "arc" && item.center);
     if (!line || !arc?.center) return "Tangency requires a valid straight line and arc.";
     const centerId = arcSketchPointId(arc.id);
@@ -125,7 +129,7 @@ export function sketchConstraintConflict(profile: SketchProfile, candidate: Sket
     const [firstId, secondId] = candidate.pointIds;
     const first = sketchConstraintPoint(profile, firstId);
     const second = sketchConstraintPoint(profile, secondId);
-    const axis = profile.segments.find((segment) => segment.id === candidate.segmentId && segment.kind === "line");
+    const axis = sketchLine(profile, candidate.segmentId);
     if (firstId === secondId || !first || !second || !axis) return "Symmetry requires two different points and a straight line as its axis.";
     if ([axis.startId, axis.endId].includes(firstId) || [axis.startId, axis.endId].includes(secondId)) return "Axis points cannot also be used as symmetric points.";
     const fixed = candidate.pointIds.map((pointId) => constraints.some((constraint) => constraint.kind === "fixed" && coincidentSketchPoints(profile, pointId, constraint.pointId)));
@@ -133,7 +137,7 @@ export function sketchConstraintConflict(profile: SketchProfile, candidate: Sket
   }
   if (candidate.kind === "midpoint" || candidate.kind === "pointOnObject") {
     const point = sketchConstraintPoint(profile, candidate.pointId);
-    const segment = profile.segments.find((item) => item.id === candidate.segmentId && item.kind === "line");
+    const segment = sketchLine(profile, candidate.segmentId);
     if (!point || !segment) return "The relation requires a valid point and straight line.";
     if (segment.startId === candidate.pointId || segment.endId === candidate.pointId) return candidate.kind === "midpoint" ? "A line endpoint cannot also be its midpoint." : "The endpoint already belongs to the line.";
     if (constraints.some((constraint) => constraint.kind === "fixed" && coincidentSketchPoints(profile, candidate.pointId, constraint.pointId))) return "The point is fixed; release it before applying this relation.";
@@ -153,7 +157,7 @@ export function sketchConstraintConflict(profile: SketchProfile, candidate: Sket
     if (constraints.some((constraint) => constraint.kind === "fixed" && coincidentSketchPoints(profile, candidate.pointId, constraint.pointId))) return "The point is fixed; release it before applying this relation.";
   }
   if (candidate.kind === "equalLength") {
-    const segments = candidate.segmentIds.map((id) => profile.segments.find((segment) => segment.id === id && segment.kind === "line"));
+    const segments = candidate.segmentIds.map((id) => sketchLine(profile, id));
     if (candidate.segmentIds[0] === candidate.segmentIds[1] || segments.some((segment) => !segment)) return "Equality requires two different straight lines.";
     const lengths = candidate.segmentIds.map((segmentId) => constraints.find((constraint) => constraint.kind === "distance" && constraint.segmentId === segmentId && constraint.axis === "aligned"));
     if (lengths[0]?.kind === "distance" && lengths[1]?.kind === "distance" && Math.abs(lengths[0].value - lengths[1].value) > 0.000001) return "The lines have different length dimensions.";
@@ -173,7 +177,7 @@ export function sketchConstraintConflict(profile: SketchProfile, candidate: Sket
   if (candidate.kind === "parallel" || candidate.kind === "perpendicular") {
     const [firstId, secondId] = candidate.segmentIds;
     if (firstId === secondId) return "Select two different lines.";
-    const segments = candidate.segmentIds.map((id) => profile.segments.find((segment) => segment.id === id && segment.kind === "line"));
+    const segments = candidate.segmentIds.map((id) => sketchLine(profile, id));
     if (segments.some((segment) => !segment)) return "The relation requires two valid straight lines.";
     const samePair = (constraint: Extract<SketchConstraint, { kind: "parallel" | "perpendicular" }>) => constraint.segmentIds.every((id) => candidate.segmentIds.includes(id));
     const opposite = candidate.kind === "parallel" ? "perpendicular" : "parallel";
@@ -183,8 +187,9 @@ export function sketchConstraintConflict(profile: SketchProfile, candidate: Sket
     if (fullyFixed.every(Boolean)) return "Both lines are fully fixed and cannot be reoriented.";
   }
   if (candidate.kind === "horizontal" || candidate.kind === "vertical" || candidate.kind === "distance") {
-    const segment = profile.segments.find((item) => item.id === candidate.segmentId);
+    const segment = sketchLine(profile, candidate.segmentId);
     if (!segment) return "The selected geometry no longer exists.";
+    if (sketchReferenceAxis(segment.id)) return "Reference axes already have a fixed direction and cannot receive this constraint.";
     if (coincidentSketchPoints(profile, segment.startId, segment.endId)) return "A line with coincident endpoints cannot be dimensioned or oriented.";
     const fixed = constraints.filter((constraint) => constraint.kind === "fixed" && (constraint.pointId === segment.startId || constraint.pointId === segment.endId));
     if (fixed.length === 2) return "Both endpoints are already fixed; this constraint would be redundant.";

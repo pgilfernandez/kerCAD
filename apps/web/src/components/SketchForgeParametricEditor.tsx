@@ -61,7 +61,7 @@ import { displayLengthToMillimeters, displayUnitLabel, millimetersToDisplayLengt
 import { educadTranslate, normalizeEducadLocale, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
 import { parametricRebuildSuggestion } from "@/lib/parametricRebuildDiagnostics";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
-import { arcSketchPointId, circleSketchPointId, SKETCH_REFERENCE_AXES, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, solveSketchConstraints } from "@/lib/sketchConstraints";
+import { arcSketchPointId, circleSketchPointId, SKETCH_REFERENCE_AXES, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, sketchReferenceAxis, solveSketchConstraints } from "@/lib/sketchConstraints";
 import { analyzeSketchConstraints } from "@/lib/sketchConstraintAnalysis";
 import { validateDrawnSketchProfile } from "@/lib/sketchProfileValidation";
 import { trimSketchGeometry } from "@/lib/sketchTrim";
@@ -1395,7 +1395,7 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
     return { kind: "under", label: `${analysis.degreesOfFreedom} ${locale === "es" ? "GDL" : "DOF"}` };
   }, [locale, sketchSession]);
 
-  const selectedDimensionSegment = selectedConstraintSegments.length === 1 ? selectedConstraintSegments[0] : null;
+  const selectedDimensionSegment = selectedConstraintSegments.length === 1 && !sketchReferenceAxis(selectedConstraintSegments[0].id) ? selectedConstraintSegments[0] : null;
   const selectedDimensionCircle = sketchSession && sketchSelection?.kind === "circle"
     ? sketchSession.profile.circles?.find((circle) => circle.id === sketchSelection.id) ?? null
     : null;
@@ -1503,10 +1503,9 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
 
   const toggleSketchAngle = () => {
     if (!sketchSession || !selectedAngleSegments.length) return;
-    const pointById = new Map(sketchSession.profile.points.map((point) => [point.id, point]));
     const segmentAngle = (segment: typeof selectedAngleSegments[number]) => {
-      const start = pointById.get(segment.startId);
-      const end = pointById.get(segment.endId);
+      const start = sketchConstraintPoint(sketchSession.profile, segment.startId);
+      const end = sketchConstraintPoint(sketchSession.profile, segment.endId);
       return start && end ? Math.atan2(end.z - start.z, end.x - start.x) * 180 / Math.PI : 0;
     };
     let value = segmentAngle(selectedAngleSegments[selectedAngleSegments.length - 1]) - (selectedAngleSegments.length === 2 ? segmentAngle(selectedAngleSegments[0]) : 0);
