@@ -3368,35 +3368,138 @@ function SketchSideTool({ label, enabled = true, active, onClick, children }: { 
 function ViewCube({ orientation, onDirection }: { orientation: CameraOrientation; onDirection: (direction: [number, number, number], smooth?: boolean) => void }) {
   const dragRef = useRef<{ pointerId: number; x: number; y: number; azimuth: number; polar: number } | null>(null);
   const draggedRef = useRef(false);
-  const cubeTransform = `rotateX(${orientation.polar * 180 / Math.PI - 90}deg) rotateY(${-orientation.azimuth * 180 / Math.PI}deg)`;
+  const [hoveredSurfaceId, setHoveredSurfaceId] = useState<string | null>(null);
   const chooseDirection = (direction: [number, number, number]) => {
     if (!draggedRef.current) onDirection(direction, true);
     draggedRef.current = false;
   };
-  const edgeViews: Array<{ className: string; direction: [number, number, number] }> = [
-    { className: "front-top", direction: [0, 1, 1] }, { className: "front-bottom", direction: [0, -1, 1] },
-    { className: "back-top", direction: [0, 1, -1] }, { className: "back-bottom", direction: [0, -1, -1] },
-    { className: "front-right", direction: [1, 0, 1] }, { className: "front-left", direction: [-1, 0, 1] },
-    { className: "back-right", direction: [1, 0, -1] }, { className: "back-left", direction: [-1, 0, -1] },
-    { className: "top-right", direction: [1, 1, 0] }, { className: "top-left", direction: [-1, 1, 0] },
-    { className: "bottom-right", direction: [1, -1, 0] }, { className: "bottom-left", direction: [-1, -1, 0] },
-  ];
-  const cornerViews = ([-1, 1] as const).flatMap((x) => ([-1, 1] as const).flatMap((y) => ([-1, 1] as const).map((z) => [x, y, z] as [number, number, number])));
+  type CubePoint = [number, number, number];
+  type CubeSurface = { id: string; kind: "face" | "edge" | "corner"; points: CubePoint[]; direction: CubePoint; label?: string; textRight?: CubePoint; textDown?: CubePoint };
+  const half = 29;
+  const faceHalf = 20;
+  const axes = [0, 1, 2] as const;
+  const point = (values: Partial<Record<(typeof axes)[number], number>>): CubePoint => [values[0] ?? 0, values[1] ?? 0, values[2] ?? 0];
+  const faceLabels = new Map<string, string>([
+    ["0:1", "LEFT"], ["0:-1", "RIGHT"], ["1:1", "TOP"], ["1:-1", "BOTTOM"], ["2:1", "FRONT"], ["2:-1", "BACK"],
+  ]);
+  const faceTextBasis = (axis: number, sign: number): { textRight: CubePoint; textDown: CubePoint } => {
+    if (axis === 0) return { textRight: [0, 0, -sign], textDown: [0, -1, 0] };
+    if (axis === 1) return { textRight: [1, 0, 0], textDown: [0, 0, sign] };
+    return { textRight: [sign, 0, 0], textDown: [0, -1, 0] };
+  };
+  const surfaces: CubeSurface[] = [];
+  for (const axis of axes) for (const sign of [-1, 1] as const) {
+    const [first, second] = axes.filter((candidate) => candidate !== axis);
+    surfaces.push({
+      id: `face-${axis}-${sign}`,
+      kind: "face",
+      direction: point({ [axis]: sign }),
+      label: faceLabels.get(`${axis}:${sign}`),
+      ...faceTextBasis(axis, sign),
+      points: [
+        point({ [axis]: sign * half, [first]: -faceHalf, [second]: -faceHalf }),
+        point({ [axis]: sign * half, [first]: faceHalf, [second]: -faceHalf }),
+        point({ [axis]: sign * half, [first]: faceHalf, [second]: faceHalf }),
+        point({ [axis]: sign * half, [first]: -faceHalf, [second]: faceHalf }),
+      ],
+    });
+  }
+  for (let firstAxis = 0; firstAxis < 3; firstAxis += 1) for (let secondAxis = firstAxis + 1; secondAxis < 3; secondAxis += 1) {
+    const lengthAxis = axes.find((axis) => axis !== firstAxis && axis !== secondAxis)!;
+    for (const firstSign of [-1, 1] as const) for (const secondSign of [-1, 1] as const) surfaces.push({
+      id: `edge-${firstAxis}-${firstSign}-${secondAxis}-${secondSign}`,
+      kind: "edge",
+      direction: point({ [firstAxis]: firstSign, [secondAxis]: secondSign }),
+      points: [
+        point({ [firstAxis]: firstSign * half, [secondAxis]: secondSign * faceHalf, [lengthAxis]: -faceHalf }),
+        point({ [firstAxis]: firstSign * half, [secondAxis]: secondSign * faceHalf, [lengthAxis]: faceHalf }),
+        point({ [firstAxis]: firstSign * faceHalf, [secondAxis]: secondSign * half, [lengthAxis]: faceHalf }),
+        point({ [firstAxis]: firstSign * faceHalf, [secondAxis]: secondSign * half, [lengthAxis]: -faceHalf }),
+      ],
+    });
+  }
+  for (const x of [-1, 1] as const) for (const y of [-1, 1] as const) for (const z of [-1, 1] as const) surfaces.push({
+    id: `corner-${x}-${y}-${z}`,
+    kind: "corner",
+    direction: [x, y, z],
+    points: [[x * half, y * faceHalf, z * faceHalf], [x * faceHalf, y * half, z * faceHalf], [x * faceHalf, y * faceHalf, z * half]],
+  });
+  const rotate = ([x, logicalY, z]: CubePoint): CubePoint => {
+    const y = -logicalY;
+    const yaw = -orientation.azimuth;
+    const pitch = orientation.polar - Math.PI / 2;
+    const yawX = x * Math.cos(yaw) + z * Math.sin(yaw);
+    const yawZ = -x * Math.sin(yaw) + z * Math.cos(yaw);
+    return [yawX, y * Math.cos(pitch) - yawZ * Math.sin(pitch), y * Math.sin(pitch) + yawZ * Math.cos(pitch)];
+  };
+  const projectPoint = (source: CubePoint) => {
+    const [x, y, z] = rotate(source);
+    const perspective = 420 / (420 - z);
+    return [41 + x * perspective, 41 + y * perspective] as const;
+  };
+  const projected = surfaces.filter((surface) => rotate(surface.direction)[2] > 0.001).map((surface) => {
+    const transformed = surface.points.map(rotate);
+    const points = surface.points.map(projectPoint);
+    const center = points.reduce((sum, current) => [sum[0] + current[0] / points.length, sum[1] + current[1] / points.length], [0, 0]);
+    const center3d = surface.points.reduce<CubePoint>((sum, current) => [sum[0] + current[0] / surface.points.length, sum[1] + current[1] / surface.points.length, sum[2] + current[2] / surface.points.length], [0, 0, 0]);
+    const textTransform = surface.textRight && surface.textDown ? (() => {
+      const origin = projectPoint(center3d);
+      const right = projectPoint([center3d[0] + surface.textRight![0], center3d[1] + surface.textRight![1], center3d[2] + surface.textRight![2]]);
+      const down = projectPoint([center3d[0] + surface.textDown![0], center3d[1] + surface.textDown![1], center3d[2] + surface.textDown![2]]);
+      return `matrix(${(right[0] - origin[0]).toFixed(5)} ${(right[1] - origin[1]).toFixed(5)} ${(down[0] - origin[0]).toFixed(5)} ${(down[1] - origin[1]).toFixed(5)} ${origin[0].toFixed(3)} ${origin[1].toFixed(3)})`;
+    })() : undefined;
+    return { ...surface, points, center, textTransform, depth: transformed.reduce((sum, current) => sum + current[2], 0) / transformed.length };
+  }).sort((first, second) => first.depth - second.depth);
+  const pointInPolygon = (x: number, y: number, polygon: ReadonlyArray<readonly [number, number]>) => {
+    let inside = false;
+    for (let index = 0, previous = polygon.length - 1; index < polygon.length; previous = index++) {
+      const [currentX, currentY] = polygon[index];
+      const [previousX, previousY] = polygon[previous];
+      if ((currentY > y) !== (previousY > y) && x < (previousX - currentX) * (y - currentY) / (previousY - currentY) + currentX) inside = !inside;
+    }
+    return inside;
+  };
+  const distanceToPolygon = (x: number, y: number, polygon: ReadonlyArray<readonly [number, number]>) => {
+    let minimum = Number.POSITIVE_INFINITY;
+    for (let index = 0; index < polygon.length; index += 1) {
+      const [startX, startY] = polygon[index];
+      const [endX, endY] = polygon[(index + 1) % polygon.length];
+      const dx = endX - startX;
+      const dy = endY - startY;
+      const lengthSquared = dx * dx + dy * dy;
+      const amount = lengthSquared > 0 ? Math.max(0, Math.min(1, ((x - startX) * dx + (y - startY) * dy) / lengthSquared)) : 0;
+      minimum = Math.min(minimum, Math.hypot(x - (startX + dx * amount), y - (startY + dy * amount)));
+    }
+    return minimum;
+  };
+  const surfaceAt = (clientX: number, clientY: number, element: HTMLDivElement) => {
+    const bounds = element.getBoundingClientRect();
+    const x = (clientX - bounds.left) * 82 / Math.max(1, bounds.width);
+    const y = (clientY - bounds.top) * 82 / Math.max(1, bounds.height);
+    const priority = { face: 0, edge: 1, corner: 2 } as const;
+    return projected.filter((surface) => pointInPolygon(x, y, surface.points) || (surface.kind !== "face" && distanceToPolygon(x, y, surface.points) <= 1.25))
+      .sort((first, second) => priority[second.kind] - priority[first.kind] || second.depth - first.depth)[0] ?? null;
+  };
   return <div
     className="view-cube"
     aria-label="Cubo de vistas interactivo"
     onPointerDown={(event) => {
       if (event.button !== 0) return;
+      setHoveredSurfaceId(surfaceAt(event.clientX, event.clientY, event.currentTarget)?.id ?? null);
       dragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, azimuth: orientation.azimuth, polar: orientation.polar };
       draggedRef.current = false;
     }}
     onPointerMove={(event) => {
       const drag = dragRef.current;
-      if (!drag || drag.pointerId !== event.pointerId) return;
+      if (!drag || drag.pointerId !== event.pointerId) {
+        setHoveredSurfaceId(surfaceAt(event.clientX, event.clientY, event.currentTarget)?.id ?? null);
+        return;
+      }
       const dx = event.clientX - drag.x;
       const dy = event.clientY - drag.y;
       if (Math.abs(dx) + Math.abs(dy) < 3) return;
       draggedRef.current = true;
+      setHoveredSurfaceId(null);
       if (!event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.setPointerCapture(event.pointerId);
       const azimuth = drag.azimuth - dx * 0.012;
       const polar = Math.min(Math.PI - 0.03, Math.max(0.03, drag.polar - dy * 0.012));
@@ -3407,21 +3510,16 @@ function ViewCube({ orientation, onDirection }: { orientation: CameraOrientation
       dragRef.current = null;
       window.setTimeout(() => { draggedRef.current = false; }, 0);
     }}
-    onPointerCancel={() => { dragRef.current = null; draggedRef.current = false; }}
-  ><div className="view-cube-inner" style={{ transform: cubeTransform }}>
-    <button type="button" className="cube-face cube-top" aria-label="Bottom view" onClick={() => chooseDirection([0, -1, 0.001])}>BOTTOM</button>
-    <button type="button" className="cube-face cube-bottom" aria-label="Top view" onClick={() => chooseDirection([0, 1, 0.001])}>TOP</button>
-    <button type="button" className="cube-face cube-front" aria-label="Front view" onClick={() => chooseDirection([0, 0.001, 1])}>FRONT</button>
-    <button type="button" className="cube-face cube-back" aria-label="Back view" onClick={() => chooseDirection([0, 0.001, -1])}>BACK</button>
-    <button type="button" className="cube-face cube-right" aria-label="Left view" onClick={() => chooseDirection([1, 0.001, 0])}>LEFT</button>
-    <button type="button" className="cube-face cube-left" aria-label="Right view" onClick={() => chooseDirection([-1, 0.001, 0])}>RIGHT</button>
-    {edgeViews.map((view) => <button key={view.className} type="button" className={`cube-bevel cube-bevel-${view.className}`} aria-label={`Edge view ${view.direction.join(", ")}`} onClick={() => chooseDirection(view.direction)} />)}
-    {cornerViews.map((direction) => {
-      const yaw = Math.atan2(direction[0], direction[2]) * 180 / Math.PI;
-      const pitch = -Math.asin(direction[1] / Math.sqrt(3)) * 180 / Math.PI;
-      const roll = direction[1] > 0 ? 180 : 0;
-      const cameraDirection: [number, number, number] = [direction[0], -direction[1], direction[2]];
-      return <button key={direction.join(":")} type="button" className="cube-corner" style={{ transform: `rotateY(${yaw}deg) rotateX(${pitch}deg) rotateZ(${roll}deg) translateZ(39.84px)` }} aria-label={`Corner view ${cameraDirection.join(", ")}`} onClick={() => chooseDirection(cameraDirection)} />;
-    })}
-  </div></div>;
+    onPointerCancel={() => { dragRef.current = null; draggedRef.current = false; setHoveredSurfaceId(null); }}
+    onPointerLeave={() => { if (!dragRef.current) setHoveredSurfaceId(null); }}
+    onClick={() => {
+      const surface = projected.find((candidate) => candidate.id === hoveredSurfaceId);
+      if (surface) chooseDirection(surface.direction);
+    }}
+  ><svg className="educad-navicube" viewBox="0 0 82 82" role="group" aria-label="View directions">
+    {projected.map((surface) => <g key={surface.id} className={`educad-navicube-surface ${surface.kind} ${hoveredSurfaceId === surface.id ? "hovered" : ""}`} pointerEvents="none" role="button" tabIndex={0} aria-label={surface.label ? `${surface.label} view` : `${surface.kind} view ${surface.direction.join(", ")}`} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); chooseDirection(surface.direction); } }}>
+      <polygon points={surface.points.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(" ")} />
+      {surface.label && surface.textTransform ? <text x={0} y={0} transform={surface.textTransform}>{surface.label}</text> : null}
+    </g>)}
+  </svg></div>;
 }
