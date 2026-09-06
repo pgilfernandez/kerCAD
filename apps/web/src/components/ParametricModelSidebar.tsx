@@ -511,9 +511,9 @@ function ParametricFeatureInspector({
 
       {feature.kind === "sketch" ? (
         <>
-          <div className="educad-feature-card"><h3>{t("model.operation")}</h3><ReadOnlyField label={t("property.type")} value={t("operation.sketch")} /></div>
+          <div className="educad-feature-card"><button className="educad-edit-topology-selection" type="button" onClick={() => onEditSketch(feature.id)}>{t("operation.editSketch")}</button></div>
           {feature.profile.shape === "drawn" ? <>
-            <button className="educad-edit-topology-selection" type="button" onClick={() => onEditSketch(feature.id)}>{t("operation.editSketch")}</button>
+            
           </> : <ShapeParametersSection>
             <ReadOnlyField label={t("property.profile")} value={feature.profile.shape === "rectangle" ? t("value.rectangle") : t("value.circle")} />
             {feature.profile.shape === "rectangle" ? <><NumberField label={t("property.width")} value={feature.profile.width} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} /><NumberField label={t("property.depth")} value={feature.profile.depth} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} /></> : <NumberField label={t("property.diameter")} value={feature.profile.diameter} min={0.01} onChange={(value) => onUpdate((draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value); })} />}

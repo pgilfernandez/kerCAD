@@ -5,6 +5,10 @@ export function circleSketchPointId(circleId: string, point: "center" | "radius"
   return `circle:${circleId}:${point}`;
 }
 
+export function arcSketchPointId(segmentId: string) {
+  return `${segmentId}:center`;
+}
+
 function circleSketchPointReference(id: string) {
   const match = /^circle:(.+):(center|radius)$/.exec(id);
   return match ? { circleId: match[1], point: match[2] as "center" | "radius" } : null;
@@ -13,6 +17,8 @@ function circleSketchPointReference(id: string) {
 export function sketchConstraintPoint(profile: SketchProfile, id: string): SketchPoint | null {
   const point = profile.points.find((candidate) => candidate.id === id);
   if (point) return point;
+  const arc = profile.segments.find((segment) => segment.kind === "arc" && segment.center && arcSketchPointId(segment.id) === id);
+  if (arc?.center) return { id, x: arc.center.x, z: arc.center.z };
   const reference = circleSketchPointReference(id);
   const circle = reference ? profile.circles?.find((candidate) => candidate.id === reference.circleId) : null;
   if (!reference || !circle) return null;
@@ -248,7 +254,10 @@ export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: 
     if (targetDriven || (targetDimensioned && !referenceDriven && !referenceDimensioned)) [reference, target] = [target, reference];
     target.radius = reference.radius;
   }
-  const virtualPoints = (profile.circles ?? []).flatMap((circle) => [circleSketchPointId(circle.id, "center"), circleSketchPointId(circle.id, "radius")].map((id) => sketchConstraintPoint(profile, id)).filter(Boolean) as SketchPoint[]);
+  const virtualPoints = [
+    ...(profile.circles ?? []).flatMap((circle) => [circleSketchPointId(circle.id, "center"), circleSketchPointId(circle.id, "radius")].map((id) => sketchConstraintPoint(profile, id)).filter(Boolean) as SketchPoint[]),
+    ...profile.segments.filter((segment) => segment.kind === "arc" && segment.center).map((segment) => ({ id: arcSketchPointId(segment.id), x: segment.center!.x, z: segment.center!.z })),
+  ];
   const allPoints = [...profile.points, ...virtualPoints];
   const pointById = new Map(allPoints.map((point) => [point.id, point]));
   const segmentById = new Map(profile.segments.map((segment) => [segment.id, segment]));
@@ -550,6 +559,12 @@ export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: 
       circle.radius = Math.max(0.001, Math.hypot(radiusPoint.x - center.x, radiusPoint.z - center.z));
       circle.radiusAngle = Math.atan2(radiusPoint.z - center.z, radiusPoint.x - center.x);
     }
+  }
+  for (const arc of profile.segments.filter((segment) => segment.kind === "arc" && segment.center)) {
+    const centerId = arcSketchPointId(arc.id);
+    const center = pointById.get(centerId);
+    if (!center || (drivingPointId !== centerId && !constraints.some((constraint) => sketchConstraintUsesPoint(constraint, centerId)))) continue;
+    arc.center = { x: center.x, z: center.z };
   }
   return refineSketchConstraintsNumerically(profile, drivingPointId);
 }

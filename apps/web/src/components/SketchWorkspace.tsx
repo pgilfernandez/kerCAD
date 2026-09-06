@@ -19,6 +19,7 @@ export type SketchSelection =
   | { kind: "segment"; id: string }
   | { kind: "circle"; id: string }
   | { kind: "circlePoint"; circleId: string; point: "center" | "radius" }
+  | { kind: "arcPoint"; segmentId: string }
   | { kind: "image"; id: string }
   | { kind: "multiple"; pointIds: string[]; segmentIds: string[]; circleIds?: string[]; imageIds?: string[] }
   | null;
@@ -55,6 +56,7 @@ type SketchWorkspaceProps = {
   onMoveArcCenter?: (id: string, center: { x: number; z: number }) => void;
   onSelectCircle?: (id: string, additive?: boolean) => void;
   onSelectCirclePoint?: (id: string, point: "center" | "radius", additive: boolean) => void;
+  onSelectArcPoint?: (id: string, additive: boolean) => void;
   onDeleteCircle?: (id: string) => void;
   onTrimCircle?: (id: string, point: { x: number; z: number }) => void;
   onMoveCircle?: (id: string, center: { x: number; z: number }) => void;
@@ -573,6 +575,7 @@ export function SketchWorkspace({
   onMoveArcCenter,
   onSelectCircle,
   onSelectCirclePoint,
+  onSelectArcPoint,
   onDeleteCircle,
   onTrimCircle,
   onMoveCircle,
@@ -691,10 +694,40 @@ export function SketchWorkspace({
     }
     return circles;
   }, [pointerAction, profile.circles]);
-  const pointById = useMemo(() => new Map(displayProfile.points.map((point) => [point.id, point])), [displayProfile.points]);
+  const pointById = useMemo(() => new Map<string, SketchPoint>(([
+    ...displayProfile.points,
+    ...displayCircles.flatMap((circle) => {
+      const angle = circle.radiusAngle ?? 0;
+      return [
+        { id: `circle:${circle.id}:center`, x: circle.x, z: circle.z },
+        { id: `circle:${circle.id}:radius`, x: circle.x + Math.cos(angle) * circle.radius, z: circle.z + Math.sin(angle) * circle.radius },
+      ];
+    }),
+    ...displayProfile.segments.filter((segment) => segment.kind === "arc" && segment.center).map((segment) => ({ id: `${segment.id}:center`, x: segment.center!.x, z: segment.center!.z })),
+  ] as SketchPoint[]).map((point) => [point.id, point])), [displayCircles, displayProfile.points, displayProfile.segments]);
   const paths = useMemo(() => orderedPaths({ ...displayProfile, segments: displayProfile.segments.filter((segment) => !segment.construction && !segment.generatedTextId) }), [displayProfile]);
   const activePoint = activePointId ? pointById.get(activePointId) ?? null : null;
   const selectedPoint = selected?.kind === "point" ? pointById.get(selected.id) ?? null : null;
+  const selectedPointHandles = useMemo(() => {
+    if (!selectedPoint) return null;
+    const incoming = displayProfile.segments.find((segment) => segment.endId === selectedPoint.id && segment.kind !== "line" && segment.kind !== "arc");
+    const outgoing = displayProfile.segments.find((segment) => segment.startId === selectedPoint.id && segment.kind !== "line" && segment.kind !== "arc");
+    const previous = incoming ? pointById.get(incoming.startId) : null;
+    const following = outgoing ? pointById.get(outgoing.endId) : null;
+    const tangent = previous && following
+      ? { x: (following.x - previous.x) / 6, z: (following.z - previous.z) / 6 }
+      : previous
+        ? { x: (selectedPoint.x - previous.x) / 3, z: (selectedPoint.z - previous.z) / 3 }
+        : following
+          ? { x: (following.x - selectedPoint.x) / 3, z: (following.z - selectedPoint.z) / 3 }
+          : null;
+    if (!tangent) return null;
+    const usable = (handle: { x: number; z: number } | undefined) => handle && Math.hypot(handle.x - selectedPoint.x, handle.z - selectedPoint.z) > screenUnit;
+    return {
+      in: incoming ? usable(selectedPoint.handleIn) ? selectedPoint.handleIn! : { x: selectedPoint.x - tangent.x, z: selectedPoint.z - tangent.z } : null,
+      out: outgoing ? usable(selectedPoint.handleOut) ? selectedPoint.handleOut! : { x: selectedPoint.x + tangent.x, z: selectedPoint.z + tangent.z } : null,
+    };
+  }, [displayProfile.segments, pointById, screenUnit, selectedPoint]);
   const smoothPreviewData = useMemo(() => {
     if (tool !== "smooth" || !activePoint || !hover) return null;
     const incoming = displayProfile.segments.find((segment) => segment.endId === activePoint.id);
@@ -714,13 +747,15 @@ export function SketchWorkspace({
     : selected?.kind === "circlePoint" ? selected.circleId
     : selectedVirtualCircleId;
   const selectedCircle = selectedCircleId ? displayCircles.find((circle) => circle.id === selectedCircleId) ?? null : null;
-  const selectedArc = selected?.kind === "segment" ? displayProfile.segments.find((segment) => segment.id === selected.id && segment.kind === "arc" && segment.center) ?? null : null;
   const isPointSelected = (id: string) => selected?.kind === "point" ? selected.id === id : selected?.kind === "multiple" ? selected.pointIds.includes(id) : false;
   const isSegmentSelected = (id: string) => selected?.kind === "segment" ? selected.id === id : selected?.kind === "multiple" ? selected.segmentIds.includes(id) : false;
   const isCircleSelected = (id: string) => selected?.kind === "circle" ? selected.id === id : selected?.kind === "circlePoint" ? selected.circleId === id : selected?.kind === "multiple" ? (selected.circleIds?.includes(id) ?? false) || selected.pointIds.some((pointId) => pointId.startsWith(`circle:${id}:`)) : false;
   const isCirclePointSelected = (circleId: string, point: "center" | "radius") => selected?.kind === "circlePoint"
     ? selected.circleId === circleId && selected.point === point
     : selected?.kind === "multiple" ? selected.pointIds.includes(`circle:${circleId}:${point}`) : false;
+  const isArcPointSelected = (segmentId: string) => selected?.kind === "arcPoint"
+    ? selected.segmentId === segmentId
+    : selected?.kind === "multiple" ? selected.pointIds.includes(`${segmentId}:center`) : false;
   const gridStep = clamp(workspace.gridBlockSize, 0.1, 200);
   const verticalLines = useMemo(() => {
     const lines: number[] = [];
@@ -907,7 +942,17 @@ export function SketchWorkspace({
 
   const handleWheel = (event: ReactWheelEvent<SVGSVGElement>) => {
     event.preventDefault();
-    setZoom((current) => clamp(current * (event.deltaY > 0 ? 0.88 : 1.14), 0.75, 6));
+    if (event.ctrlKey || event.metaKey) {
+      setZoom((current) => clamp(current * Math.exp(-event.deltaY * 0.012), 0.75, 6));
+      return;
+    }
+    const matrix = svgRef.current?.getScreenCTM();
+    const scaleX = matrix ? Math.max(0.0001, Math.hypot(matrix.a, matrix.b)) : 1;
+    const scaleY = matrix ? Math.max(0.0001, Math.hypot(matrix.c, matrix.d)) : 1;
+    setPan((current) => ({
+      x: clamp(current.x + event.deltaX / scaleX, -workspace.width / 2, workspace.width / 2),
+      z: clamp(current.z - event.deltaY / scaleY, -workspace.depth / 2, workspace.depth / 2),
+    }));
   };
 
   const beginEntityDrag = (event: ReactPointerEvent<SVGElement>, action: PointerAction) => {
@@ -1117,7 +1162,7 @@ export function SketchWorkspace({
                   else if (tool === "erase") onDeleteSegment(segment.id);
                   else if (event.button === 0 && tool === "trim" && point) onTrimSegment?.(segment.id, point);
                   else if (event.button === 0 && tool === "refine" && point) onInsertPoint(segment.id, point);
-                  else if (event.button === 0) onSelectSegment(segment.id, event.ctrlKey || event.metaKey || event.shiftKey);
+                  else if (event.button === 0) onSelectSegment(segment.id, true);
                 }}
               />
             ))}
@@ -1136,12 +1181,39 @@ export function SketchWorkspace({
                 else if (tool === "erase") onDeleteCircle?.(circle.id);
                 else if (event.button === 0 && tool === "trim" && point) onTrimCircle?.(circle.id, point);
                 else if (event.button === 0 && tool === "select" && point) {
-                  onSelectCircle?.(circle.id, event.ctrlKey || event.metaKey || event.shiftKey);
+                  onSelectCircle?.(circle.id, true);
                   beginEntityDrag(event, { kind: "move-circle", pointerId: event.pointerId, circleId: circle.id, origin: point, current: point, start: { ...circle } });
-                } else if (event.button === 0) onSelectCircle?.(circle.id, event.ctrlKey || event.metaKey || event.shiftKey);
+                } else if (event.button === 0) onSelectCircle?.(circle.id, true);
               }}
             />)}
           </g>
+          {tool === "select" ? <g className="sketch-geometry-points">
+            {displayCircles.map((circle) => {
+              const angle = circle.radiusAngle ?? 0;
+              const radiusPoint = { x: circle.x + Math.cos(angle) * circle.radius, z: circle.z + Math.sin(angle) * circle.radius };
+              return <g className="sketch-circle-handles" key={`points-${circle.id}`}>
+                {isCircleSelected(circle.id) ? <line x1={circle.x} y1={circle.z} x2={radiusPoint.x} y2={radiusPoint.z} pointerEvents="none" /> : null}
+                <circle data-sketch-entity="circle-center" className={`sketch-circle-center ${isCirclePointSelected(circle.id, "center") ? "selected" : ""}`} cx={circle.x} cy={circle.z} r={pointRadius} onPointerDown={(event) => {
+                  if (event.button === 1) { beginPan(event); return; }
+                  if (event.button !== 0) return;
+                  onSelectCirclePoint?.(circle.id, "center", true);
+                  beginEntityDrag(event, { kind: "move-circle", pointerId: event.pointerId, circleId: circle.id, origin: { x: circle.x, z: circle.z }, current: { x: circle.x, z: circle.z }, start: { ...circle } });
+                }} />
+                <circle data-sketch-entity="circle-handle" className={`sketch-circle-radius-handle ${isCirclePointSelected(circle.id, "radius") ? "selected" : ""}`} cx={radiusPoint.x} cy={radiusPoint.z} r={controlPointRadius} onPointerDown={(event) => {
+                  if (event.button === 1) { beginPan(event); return; }
+                  if (event.button !== 0) return;
+                  onSelectCirclePoint?.(circle.id, "radius", true);
+                  beginEntityDrag(event, { kind: "resize-circle", pointerId: event.pointerId, circleId: circle.id, current: radiusPoint, start: { ...circle } });
+                }} />
+              </g>;
+            })}
+            {displayProfile.segments.filter((segment) => segment.kind === "arc" && segment.center).map((arc) => <circle key={`center-${arc.id}`} data-sketch-entity="arc-center" className={`sketch-circle-center sketch-arc-center ${isArcPointSelected(arc.id) ? "selected" : ""}`} cx={arc.center!.x} cy={arc.center!.z} r={pointRadius} onPointerDown={(event) => {
+              if (event.button === 1) { beginPan(event); return; }
+              if (event.button !== 0) return;
+              onSelectArcPoint?.(arc.id, true);
+              beginEntityDrag(event, { kind: "move-arc-center", pointerId: event.pointerId, segmentId: arc.id, origin: { ...arc.center! }, current: { ...arc.center! }, startCenter: { ...arc.center! } });
+            }} />)}
+          </g> : null}
           <g className="sketch-constraints">
             {(displayProfile.constraints ?? []).map((constraint) => {
               if (constraint.kind !== "horizontal" && constraint.kind !== "vertical") return null;
@@ -1317,35 +1389,10 @@ export function SketchWorkspace({
           ) : null}
           {selectedPoint && tool === "select" ? (
             <g className="sketch-curve-handles">
-              {selectedPoint.handleIn ? <><line x1={selectedPoint.x} y1={selectedPoint.z} x2={selectedPoint.handleIn.x} y2={selectedPoint.handleIn.z} /><circle data-sketch-entity="handle" cx={selectedPoint.handleIn.x} cy={selectedPoint.handleIn.z} r={controlPointRadius} onPointerDown={(event) => event.button === 1 ? beginPan(event) : beginEntityDrag(event, { kind: "move-handle", pointerId: event.pointerId, pointId: selectedPoint.id, handle: "in", current: selectedPoint.handleIn! })} /></> : null}
-              {selectedPoint.handleOut ? <><line x1={selectedPoint.x} y1={selectedPoint.z} x2={selectedPoint.handleOut.x} y2={selectedPoint.handleOut.z} /><circle data-sketch-entity="handle" cx={selectedPoint.handleOut.x} cy={selectedPoint.handleOut.z} r={controlPointRadius} onPointerDown={(event) => event.button === 1 ? beginPan(event) : beginEntityDrag(event, { kind: "move-handle", pointerId: event.pointerId, pointId: selectedPoint.id, handle: "out", current: selectedPoint.handleOut! })} /></> : null}
+              {selectedPointHandles?.in ? <><line x1={selectedPoint.x} y1={selectedPoint.z} x2={selectedPointHandles.in.x} y2={selectedPointHandles.in.z} /><circle data-sketch-entity="handle" cx={selectedPointHandles.in.x} cy={selectedPointHandles.in.z} r={controlPointRadius} onPointerDown={(event) => event.button === 1 ? beginPan(event) : beginEntityDrag(event, { kind: "move-handle", pointerId: event.pointerId, pointId: selectedPoint.id, handle: "in", current: selectedPointHandles.in! })} /></> : null}
+              {selectedPointHandles?.out ? <><line x1={selectedPoint.x} y1={selectedPoint.z} x2={selectedPointHandles.out.x} y2={selectedPointHandles.out.z} /><circle data-sketch-entity="handle" cx={selectedPointHandles.out.x} cy={selectedPointHandles.out.z} r={controlPointRadius} onPointerDown={(event) => event.button === 1 ? beginPan(event) : beginEntityDrag(event, { kind: "move-handle", pointerId: event.pointerId, pointId: selectedPoint.id, handle: "out", current: selectedPointHandles.out! })} /></> : null}
             </g>
           ) : null}
-          {selectedCircle && tool === "select" ? <g className="sketch-circle-handles">
-            <circle data-sketch-entity="circle-center" className={`sketch-circle-center ${isCirclePointSelected(selectedCircle.id, "center") ? "selected" : ""}`} cx={selectedCircle.x} cy={selectedCircle.z} r={pointRadius} onPointerDown={(event) => {
-              if (event.button === 1) { beginPan(event); return; }
-              if (event.button !== 0) return;
-              onSelectCirclePoint?.(selectedCircle.id, "center", event.ctrlKey || event.metaKey);
-              beginEntityDrag(event, { kind: "move-circle", pointerId: event.pointerId, circleId: selectedCircle.id, origin: { x: selectedCircle.x, z: selectedCircle.z }, current: { x: selectedCircle.x, z: selectedCircle.z }, start: { ...selectedCircle } });
-            }} />
-            {(() => {
-              const angle = selectedCircle.radiusAngle ?? 0;
-              const radiusPoint = { x: selectedCircle.x + Math.cos(angle) * selectedCircle.radius, z: selectedCircle.z + Math.sin(angle) * selectedCircle.radius };
-              return <><line x1={selectedCircle.x} y1={selectedCircle.z} x2={radiusPoint.x} y2={radiusPoint.z} pointerEvents="none" />
-                <circle data-sketch-entity="circle-handle" className={`sketch-circle-radius-handle ${isCirclePointSelected(selectedCircle.id, "radius") ? "selected" : ""}`} cx={radiusPoint.x} cy={radiusPoint.z} r={controlPointRadius} onPointerDown={(event) => {
-                  if (event.button === 1) { beginPan(event); return; }
-                  onSelectCirclePoint?.(selectedCircle.id, "radius", event.ctrlKey || event.metaKey);
-                  beginEntityDrag(event, { kind: "resize-circle", pointerId: event.pointerId, circleId: selectedCircle.id, current: radiusPoint, start: { ...selectedCircle } });
-                }} /></>;
-            })()}
-          </g> : null}
-          {selectedArc?.center && tool === "select" ? <g className="sketch-arc-handles">
-            <circle data-sketch-entity="arc-center" className="sketch-circle-center" cx={selectedArc.center.x} cy={selectedArc.center.z} r={pointRadius} onPointerDown={(event) => {
-              if (event.button === 1) { beginPan(event); return; }
-              if (event.button !== 0) return;
-              beginEntityDrag(event, { kind: "move-arc-center", pointerId: event.pointerId, segmentId: selectedArc.id, origin: { ...selectedArc.center! }, current: { ...selectedArc.center! }, startCenter: { ...selectedArc.center! } });
-            }} />
-          </g> : null}
           <g className="sketch-circle-dimensions">
             {displayCircles.map((circle) => {
               const constraint = (displayProfile.constraints ?? []).find((candidate) => (candidate.kind === "radius" || candidate.kind === "diameter") && candidate.circleId === circle.id);
@@ -1408,7 +1455,7 @@ export function SketchWorkspace({
                   } else if (tool === "trim") {
                     return;
                   } else if (event.button === 0 && tool === "select") {
-                    onPointPress(point.id, event.ctrlKey || event.metaKey);
+                    onPointPress(point.id, true);
                     beginEntityDrag(event, { kind: "move-point", pointerId: event.pointerId, pointId: point.id, current: { x: point.x, z: point.z } });
                   } else if (event.button === 0) {
                     onPointPress(point.id, event.ctrlKey || event.metaKey);

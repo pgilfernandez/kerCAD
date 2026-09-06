@@ -13,6 +13,8 @@ function circlePointReference(id: string) {
 function pointFor(profile: SketchProfile, id: string): SketchPoint | null {
   const point = profile.points.find((candidate) => candidate.id === id);
   if (point) return point;
+  const arc = profile.segments.find((segment) => segment.kind === "arc" && segment.center && `${segment.id}:center` === id);
+  if (arc?.center) return { id, x: arc.center.x, z: arc.center.z };
   const reference = circlePointReference(id);
   const circle = reference ? profile.circles?.find((candidate) => candidate.id === reference.circleId) : null;
   if (!reference || !circle) return null;

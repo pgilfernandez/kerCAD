@@ -61,7 +61,7 @@ import { displayLengthToMillimeters, displayUnitLabel, millimetersToDisplayLengt
 import { educadTranslate, normalizeEducadLocale, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
 import { parametricRebuildSuggestion } from "@/lib/parametricRebuildDiagnostics";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
-import { circleSketchPointId, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, solveSketchConstraints } from "@/lib/sketchConstraints";
+import { arcSketchPointId, circleSketchPointId, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, solveSketchConstraints } from "@/lib/sketchConstraints";
 import { analyzeSketchConstraints } from "@/lib/sketchConstraintAnalysis";
 import { validateDrawnSketchProfile } from "@/lib/sketchProfileValidation";
 import { trimSketchGeometry } from "@/lib/sketchTrim";
@@ -1114,8 +1114,12 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
   }, [sketchSelection, sketchSession]);
   const selectedCirclePair = selectedConstraintCircles.length === 2 ? selectedConstraintCircles as [typeof selectedConstraintCircles[number], typeof selectedConstraintCircles[number]] : null;
   const selectedConcentricActive = Boolean(selectedCirclePair && sketchSession?.profile.constraints?.some((constraint) => constraint.kind === "concentric" && constraint.circleIds.every((id) => selectedCirclePair.some((circle) => circle.id === id))));
+  const selectedEqualLinePairs = selectedConstraintSegments.length >= 2
+    ? selectedConstraintSegments.slice(1).map((segment) => [selectedConstraintSegments[0].id, segment.id] as [string, string])
+    : [];
+  const selectedLinesEqual = selectedEqualLinePairs.length > 0 && selectedEqualLinePairs.every((pair) => sketchSession?.profile.constraints?.some((constraint) => constraint.kind === "equalLength" && constraint.segmentIds.every((id) => pair.includes(id))));
   const selectedEqualActive = Boolean(
-    (selectedLinePair && sketchSession?.profile.constraints?.some((constraint) => constraint.kind === "equalLength" && constraint.segmentIds.every((id) => selectedLinePair.some((segment) => segment.id === id))))
+    selectedLinesEqual
     || (selectedCirclePair && sketchSession?.profile.constraints?.some((constraint) => constraint.kind === "equalRadius" && constraint.circleIds.every((id) => selectedCirclePair.some((circle) => circle.id === id)))),
   );
 
@@ -1133,21 +1137,34 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
   };
 
   const toggleSketchEqual = () => {
-    if (!sketchSession || (!selectedLinePair && !selectedCirclePair)) return;
-    const candidate: SketchConstraint = selectedLinePair
-      ? { id: "constraint-preview", kind: "equalLength", segmentIds: [selectedLinePair[0].id, selectedLinePair[1].id] }
-      : { id: "constraint-preview", kind: "equalRadius", circleIds: [selectedCirclePair![0].id, selectedCirclePair![1].id] };
+    if (!sketchSession || (!selectedEqualLinePairs.length && !selectedCirclePair)) return;
+    const candidates: SketchConstraint[] = selectedEqualLinePairs.length
+      ? selectedEqualLinePairs.map((segmentIds, index) => ({ id: `constraint-preview-${index}`, kind: "equalLength", segmentIds }))
+      : [{ id: "constraint-preview", kind: "equalRadius", circleIds: [selectedCirclePair![0].id, selectedCirclePair![1].id] }];
     if (!selectedEqualActive) {
-      const conflict = sketchConstraintConflict(sketchSession.profile, candidate);
-      if (conflict) { setNotice({ type: "error", text: conflict }); return; }
-    }
-    setSketchProfile((profile) => {
-      const retained = (profile.constraints ?? []).filter((constraint) => {
-        if (candidate.kind === "equalLength" && constraint.kind === "equalLength") return !constraint.segmentIds.every((id) => candidate.segmentIds.includes(id));
-        if (candidate.kind === "equalRadius" && constraint.kind === "equalRadius") return !constraint.circleIds.every((id) => candidate.circleIds.includes(id));
+      const preview = cloneSketchProfile(sketchSession.profile);
+      const selectedLineIds = new Set(selectedConstraintSegments.map((segment) => segment.id));
+      const selectedCircleIds = new Set(selectedConstraintCircles.map((circle) => circle.id));
+      preview.constraints = (preview.constraints ?? []).filter((constraint) => {
+        if (constraint.kind === "equalLength") return !constraint.segmentIds.every((id) => selectedLineIds.has(id));
+        if (constraint.kind === "equalRadius") return !constraint.circleIds.every((id) => selectedCircleIds.has(id));
         return true;
       });
-      return solveSketchConstraints({ ...profile, constraints: selectedEqualActive ? retained : [...retained, { ...candidate, id: sketchEntityId("constraint") }] });
+      for (const candidate of candidates) {
+        const conflict = sketchConstraintConflict(preview, candidate);
+        if (conflict) { setNotice({ type: "error", text: conflict }); return; }
+        preview.constraints = [...(preview.constraints ?? []), candidate];
+      }
+    }
+    setSketchProfile((profile) => {
+      const selectedLineIds = new Set(selectedConstraintSegments.map((segment) => segment.id));
+      const selectedCircleIds = new Set(selectedConstraintCircles.map((circle) => circle.id));
+      const retained = (profile.constraints ?? []).filter((constraint) => {
+        if (constraint.kind === "equalLength") return !constraint.segmentIds.every((id) => selectedLineIds.has(id));
+        if (constraint.kind === "equalRadius") return !constraint.circleIds.every((id) => selectedCircleIds.has(id));
+        return true;
+      });
+      return solveSketchConstraints({ ...profile, constraints: selectedEqualActive ? retained : [...retained, ...candidates.map((candidate) => ({ ...candidate, id: sketchEntityId("constraint") }))] });
     });
   };
 
@@ -1155,6 +1172,7 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
     if (!sketchSession || !sketchSelection) return [];
     const ids = sketchSelection.kind === "point" ? [sketchSelection.id]
       : sketchSelection.kind === "circlePoint" ? [circleSketchPointId(sketchSelection.circleId, sketchSelection.point)]
+      : sketchSelection.kind === "arcPoint" ? [arcSketchPointId(sketchSelection.segmentId)]
       : sketchSelection.kind === "multiple" ? sketchSelection.pointIds
       : [];
     return ids.map((id) => sketchConstraintPoint(sketchSession.profile, id)).filter((point): point is SketchPoint => Boolean(point));
@@ -1225,15 +1243,45 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
 
   const selectSketchCirclePoint = (circleId: string, point: "center" | "radius", additive: boolean) => {
     const id = circleSketchPointId(circleId, point);
-    if (!additive) {
+    if (!additive || !sketchSelection) {
       setSketchSelection({ kind: "circlePoint", circleId, point });
+      setSketchActivePointId(null);
+      return;
+    }
+    if (sketchSelection.kind === "circlePoint" && sketchSelection.circleId === circleId && sketchSelection.point === point) {
+      setSketchSelection(null);
       setSketchActivePointId(null);
       return;
     }
     const pointIds = sketchSelection?.kind === "point" ? [sketchSelection.id]
       : sketchSelection?.kind === "circlePoint" ? [circleSketchPointId(sketchSelection.circleId, sketchSelection.point)]
+      : sketchSelection?.kind === "arcPoint" ? [arcSketchPointId(sketchSelection.segmentId)]
       : sketchSelection?.kind === "multiple" ? sketchSelection.pointIds
       : [];
+    const segmentIds = sketchSelection?.kind === "segment" ? [sketchSelection.id] : sketchSelection?.kind === "multiple" ? sketchSelection.segmentIds : [];
+    const circleIds = sketchSelection?.kind === "circle" ? [sketchSelection.id] : sketchSelection?.kind === "multiple" ? sketchSelection.circleIds ?? [] : [];
+    const imageIds = sketchSelection?.kind === "image" ? [sketchSelection.id] : sketchSelection?.kind === "multiple" ? sketchSelection.imageIds ?? [] : [];
+    const nextPointIds = pointIds.includes(id) ? pointIds.filter((candidate) => candidate !== id) : [...pointIds, id];
+    setSketchSelection(nextPointIds.length || segmentIds.length || circleIds.length || imageIds.length ? { kind: "multiple", pointIds: nextPointIds, segmentIds, circleIds, imageIds } : null);
+    setSketchActivePointId(null);
+  };
+
+  const selectSketchArcPoint = (segmentId: string, additive: boolean) => {
+    const id = arcSketchPointId(segmentId);
+    if (!additive || !sketchSelection) {
+      setSketchSelection({ kind: "arcPoint", segmentId });
+      setSketchActivePointId(null);
+      return;
+    }
+    if (sketchSelection.kind === "arcPoint" && sketchSelection.segmentId === segmentId) {
+      setSketchSelection(null);
+      setSketchActivePointId(null);
+      return;
+    }
+    const pointIds = sketchSelection?.kind === "point" ? [sketchSelection.id]
+      : sketchSelection?.kind === "circlePoint" ? [circleSketchPointId(sketchSelection.circleId, sketchSelection.point)]
+      : sketchSelection?.kind === "arcPoint" ? [arcSketchPointId(sketchSelection.segmentId)]
+      : sketchSelection?.kind === "multiple" ? sketchSelection.pointIds : [];
     const segmentIds = sketchSelection?.kind === "segment" ? [sketchSelection.id] : sketchSelection?.kind === "multiple" ? sketchSelection.segmentIds : [];
     const circleIds = sketchSelection?.kind === "circle" ? [sketchSelection.id] : sketchSelection?.kind === "multiple" ? sketchSelection.circleIds ?? [] : [];
     const imageIds = sketchSelection?.kind === "image" ? [sketchSelection.id] : sketchSelection?.kind === "multiple" ? sketchSelection.imageIds ?? [] : [];
@@ -1502,10 +1550,12 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
       if (sketchMeasureStart) { setSketchMeasurement({ start: sketchMeasureStart, end: point }); setSketchMeasureStart(null); }
       else { setSketchMeasureStart(point); setSketchMeasurement(null); }
     } else if (sketchTool === "select") {
-      if (!additive) setSketchSelection({ kind: "point", id });
+      if (!additive || !sketchSelection) setSketchSelection({ kind: "point", id });
+      else if (sketchSelection.kind === "point" && sketchSelection.id === id) setSketchSelection(null);
       else {
         const pointIds = sketchSelection?.kind === "point" ? [sketchSelection.id]
           : sketchSelection?.kind === "circlePoint" ? [circleSketchPointId(sketchSelection.circleId, sketchSelection.point)]
+          : sketchSelection?.kind === "arcPoint" ? [arcSketchPointId(sketchSelection.segmentId)]
           : sketchSelection?.kind === "multiple" ? sketchSelection.pointIds
           : [];
         const segmentIds = sketchSelection?.kind === "segment" ? [sketchSelection.id] : sketchSelection?.kind === "multiple" ? sketchSelection.segmentIds : [];
@@ -1606,20 +1656,33 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
     if (mode === "corner") {
       point.handleIn = undefined;
       point.handleOut = undefined;
-      next.segments = next.segments.map((segment) => segment.startId === id || segment.endId === id ? { ...segment, kind: "line" as const } : segment);
+      next.segments = next.segments.map((segment) => (segment.startId === id || segment.endId === id) && segment.kind !== "arc" ? { ...segment, kind: "line" as const } : segment);
     } else {
-      const convertedIds = new Set(next.segments.filter((segment) => segment.startId === id || segment.endId === id).map((segment) => segment.id));
+      const convertedIds = new Set(next.segments.filter((segment) => (segment.startId === id || segment.endId === id) && segment.kind !== "arc").map((segment) => segment.id));
       next.segments = next.segments.map((segment) => convertedIds.has(segment.id) ? { ...segment, kind: "bezier" as const } : segment);
       next.constraints = (next.constraints ?? []).filter((constraint) => ![...convertedIds].some((segmentId) => sketchConstraintUsesSegment(constraint, segmentId)));
-      if (mode === "smooth" && point.handleOut) {
-        point.handleIn = { x: point.x * 2 - point.handleOut.x, z: point.z * 2 - point.handleOut.z };
-      } else if (mode === "smooth" && point.handleIn) {
-        point.handleOut = { x: point.x * 2 - point.handleIn.x, z: point.z * 2 - point.handleIn.z };
-      } else if (!point.handleIn || !point.handleOut) {
-        next = withSmoothSketchHandles(next);
+      const points = new Map(next.points.map((candidate) => [candidate.id, candidate]));
+      const incoming = next.segments.find((segment) => segment.endId === id);
+      const outgoing = next.segments.find((segment) => segment.startId === id);
+      const previous = incoming ? points.get(incoming.startId) : null;
+      const following = outgoing ? points.get(outgoing.endId) : null;
+      const tangent = previous && following
+        ? { x: (following.x - previous.x) / 6, z: (following.z - previous.z) / 6 }
+        : previous
+          ? { x: (point.x - previous.x) / 6, z: (point.z - previous.z) / 6 }
+          : following
+            ? { x: (following.x - point.x) / 6, z: (following.z - point.z) / 6 }
+            : { x: 0, z: 0 };
+      point.handleIn = { x: point.x - tangent.x, z: point.z - tangent.z };
+      point.handleOut = { x: point.x + tangent.x, z: point.z + tangent.z };
+      for (const segment of next.segments.filter((candidate) => convertedIds.has(candidate.id))) {
+        const other = points.get(segment.startId === id ? segment.endId : segment.startId);
+        if (!other) continue;
+        const control = { x: other.x + (point.x - other.x) / 3, z: other.z + (point.z - other.z) / 3 };
+        if (segment.startId === id) other.handleIn = control;
+        else other.handleOut = control;
       }
-      const updated = next.points.find((candidate) => candidate.id === id);
-      if (updated) updated.mode = mode;
+      point.mode = mode;
     }
     return next;
   });
@@ -1627,6 +1690,76 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
   const selectedSketchPoint = sketchSession && sketchSelection?.kind === "point"
     ? sketchSession.profile.points.find((point) => point.id === sketchSelection.id) ?? null
     : null;
+
+  const mergeableSketchPointIds = useMemo(() => {
+    if (!sketchSession || !sketchSelection) return [];
+    const ids = sketchSelection.kind === "point" ? [sketchSelection.id] : sketchSelection.kind === "multiple" ? sketchSelection.pointIds : [];
+    return ids.filter((id) => sketchSession.profile.points.some((point) => point.id === id)
+      && sketchSession.profile.segments.filter((segment) => segment.startId === id || segment.endId === id).length === 1);
+  }, [sketchSelection, sketchSession]);
+
+  const mergeSelectedSketchPoints = () => {
+    if (!sketchSession || mergeableSketchPointIds.length !== 2) return;
+    const incidentSegments = mergeableSketchPointIds.map((id) => sketchSession.profile.segments.find((segment) => segment.startId === id || segment.endId === id));
+    if (!incidentSegments[0] || !incidentSegments[1] || incidentSegments[0].id === incidentSegments[1].id) {
+      setNotice({ type: "error", text: t("notice.mergeDistinctEdges") });
+      return;
+    }
+    const anchorId = mergeableSketchPointIds[0];
+    setSketchProfile((profile) => {
+      const next = cloneSketchProfile(profile);
+      const selectedPoints = next.points.filter((point) => mergeableSketchPointIds.includes(point.id));
+      if (selectedPoints.length < 2) return profile;
+      const removedIds = new Set(selectedPoints.slice(1).map((point) => point.id));
+      const anchor = next.points.find((point) => point.id === anchorId);
+      if (!anchor) return profile;
+      anchor.x = selectedPoints.reduce((sum, point) => sum + point.x, 0) / selectedPoints.length;
+      anchor.z = selectedPoints.reduce((sum, point) => sum + point.z, 0) / selectedPoints.length;
+      const remap = (id: string) => removedIds.has(id) ? anchorId : id;
+      next.points = next.points.filter((point) => !removedIds.has(point.id));
+      next.segments = next.segments
+        .map((segment) => ({ ...segment, startId: remap(segment.startId), endId: remap(segment.endId) }))
+        .filter((segment) => segment.startId !== segment.endId);
+      let joinedSegments = next.segments.filter((segment) => segment.startId === anchorId || segment.endId === anchorId);
+      if (joinedSegments.length === 2 && (joinedSegments[0].startId === anchorId) === (joinedSegments[1].startId === anchorId)) {
+        const reverseId = joinedSegments[1].id;
+        next.segments = next.segments.map((segment) => segment.id !== reverseId ? segment : {
+          ...segment,
+          startId: segment.endId,
+          endId: segment.startId,
+          ...(segment.kind === "arc" ? { clockwise: segment.clockwise === false } : {}),
+        });
+        joinedSegments = next.segments.filter((segment) => segment.startId === anchorId || segment.endId === anchorId);
+      }
+      if (joinedSegments.length === 2 && joinedSegments.some((segment) => segment.kind !== "line" && segment.kind !== "arc")) {
+        anchor.handleIn = undefined;
+        anchor.handleOut = undefined;
+        anchor.mode = "smooth";
+        const smoothed = withSmoothSketchHandles(next);
+        Object.assign(next, smoothed);
+      } else {
+        anchor.handleIn = undefined;
+        anchor.handleOut = undefined;
+        anchor.mode = "corner";
+      }
+      const validSegments = new Set(next.segments.map((segment) => segment.id));
+      next.constraints = (next.constraints ?? []).flatMap((constraint): SketchConstraint[] => {
+        let updated = constraint;
+        if (constraint.kind === "coincident") {
+          const pointIds = constraint.pointIds.map(remap) as [string, string];
+          if (pointIds[0] === pointIds[1]) return [];
+          updated = { ...constraint, pointIds };
+        } else if (constraint.kind === "symmetric") updated = { ...constraint, pointIds: constraint.pointIds.map(remap) as [string, string] };
+        else if (constraint.kind === "fixed" || constraint.kind === "midpoint" || constraint.kind === "pointOnObject") updated = { ...constraint, pointId: remap(constraint.pointId) };
+        if ("segmentId" in updated && !validSegments.has(updated.segmentId)) return [];
+        if ("segmentIds" in updated && !updated.segmentIds.every((id) => validSegments.has(id))) return [];
+        return [updated];
+      });
+      return solveSketchConstraints(next, anchorId);
+    });
+    setSketchSelection({ kind: "point", id: anchorId });
+    setSketchActivePointId(null);
+  };
 
   const deleteCurrentSketchSelection = () => {
     if (!sketchSelection) return false;
@@ -2579,6 +2712,10 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
           <span className="educad-project-name"><img src="/assets/educad/logo.svg" alt="" /><strong>eduCAD</strong><span> - {document.name}</span></span>
         </div>
         {sketchSession ? <div className="sketch-toolbar-ribbon educad-parametric-sketch-toolbar" aria-label={t("sketch.tools")}>
+          <ToolbarSection label={t("sketch.history")}>
+            <Tool label={t("sketch.undo")} enabled={sketchHistoryIndex > 0} onClick={sketchUndo}><SketchToolbarIcon file="undo" /></Tool>
+            <Tool label={t("sketch.redo")} enabled={sketchHistoryIndex >= 0 && sketchHistoryIndex < sketchHistoryRef.current.length - 1} onClick={sketchRedo}><SketchToolbarIcon file="redo" /></Tool>
+          </ToolbarSection>
           <ToolbarSection label={t("sketch.draw")}>
             <Tool label={t("sketch.line")} active={sketchTool === "line"} onClick={() => chooseSketchTool("line")}><SketchToolbarIcon file="line" /></Tool>
             <Tool label={t("sketch.bezier")} active={sketchTool === "bezier"} onClick={() => chooseSketchTool("bezier")}><SketchToolbarIcon file="bezier" /></Tool>
@@ -2594,15 +2731,12 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
             <Tool label={t("sketch.trim")} active={sketchTool === "trim"} onClick={() => chooseSketchTool("trim")}><SketchToolbarIcon file="trim" /></Tool>
             <Tool label={sketchSelection ? t("sketch.eraseSelection") : t("sketch.erase")} active={!sketchSelection && sketchTool === "erase"} onClick={() => { if (!deleteCurrentSketchSelection()) chooseSketchTool("erase"); }}><SketchToolbarIcon file="erase" /></Tool>
             <Tool label={t("sketch.construction")} enabled={selectedConstructionIds.segmentIds.length + selectedConstructionIds.circleIds.length > 0} active={selectedConstructionIds.allConstruction} onClick={toggleSketchConstruction}><SketchToolbarIcon file="construction" /></Tool>
+            <Tool label={t("sketch.mergePoints")} enabled={mergeableSketchPointIds.length === 2} onClick={mergeSelectedSketchPoints}><SketchToolbarIcon file="merge-points" /></Tool>
           </ToolbarSection>
           <ToolbarSection label={t("sketch.point")}>
             <Tool label={t("sketch.corner")} enabled={Boolean(selectedSketchPoint)} active={selectedSketchPoint?.mode === "corner" || Boolean(selectedSketchPoint && !selectedSketchPoint.mode)} onClick={() => selectedSketchPoint && setSketchPointMode(selectedSketchPoint.id, "corner")}><SketchToolbarIcon file="corner" /></Tool>
             <Tool label={t("sketch.smooth")} enabled={Boolean(selectedSketchPoint)} active={selectedSketchPoint?.mode === "smooth"} onClick={() => selectedSketchPoint && setSketchPointMode(selectedSketchPoint.id, "smooth")}><SketchToolbarIcon file="smooth-point" /></Tool>
             <Tool label={t("sketch.splitHandles")} enabled={Boolean(selectedSketchPoint)} active={selectedSketchPoint?.mode === "split"} onClick={() => selectedSketchPoint && setSketchPointMode(selectedSketchPoint.id, "split")}><SketchToolbarIcon file="split-handles" /></Tool>
-          </ToolbarSection>
-          <ToolbarSection label={t("sketch.history")}>
-            <Tool label={t("sketch.undo")} enabled={sketchHistoryIndex > 0} onClick={sketchUndo}><SketchToolbarIcon file="undo" /></Tool>
-            <Tool label={t("sketch.redo")} enabled={sketchHistoryIndex >= 0 && sketchHistoryIndex < sketchHistoryRef.current.length - 1} onClick={sketchRedo}><SketchToolbarIcon file="redo" /></Tool>
           </ToolbarSection>
           <ToolbarSection label={t("sketch.inspect")}>
             <Tool label={t("sketch.measure")} active={sketchTool === "measure"} onClick={() => chooseSketchTool("measure")}><SketchToolbarIcon file="measure" /></Tool>
@@ -2706,10 +2840,12 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
           }}
           onPointPress={pressSketchPoint}
           onSelectSegment={(id, additive = false) => {
-            if (!additive) setSketchSelection({ kind: "segment", id });
+            if (!additive || !sketchSelection) setSketchSelection({ kind: "segment", id });
+            else if (sketchSelection.kind === "segment" && sketchSelection.id === id) setSketchSelection(null);
             else {
               const pointIds = sketchSelection?.kind === "point" ? [sketchSelection.id]
                 : sketchSelection?.kind === "circlePoint" ? [circleSketchPointId(sketchSelection.circleId, sketchSelection.point)]
+                : sketchSelection?.kind === "arcPoint" ? [arcSketchPointId(sketchSelection.segmentId)]
                 : sketchSelection?.kind === "multiple" ? sketchSelection.pointIds : [];
               const segmentIds = sketchSelection?.kind === "segment" ? [sketchSelection.id] : sketchSelection?.kind === "multiple" ? sketchSelection.segmentIds : [];
               const circleIds = sketchSelection?.kind === "circle" ? [sketchSelection.id] : sketchSelection?.kind === "multiple" ? sketchSelection.circleIds ?? [] : [];
@@ -2755,13 +2891,16 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
               point.x += dx;
               point.z += dz;
             }
-            return next;
+            return solveSketchConstraints(next, arcSketchPointId(segmentId));
           })}
+          onSelectArcPoint={selectSketchArcPoint}
           onSelectCircle={(id, additive = false) => {
-            if (!additive) setSketchSelection({ kind: "circle", id });
+            if (!additive || !sketchSelection) setSketchSelection({ kind: "circle", id });
+            else if (sketchSelection.kind === "circle" && sketchSelection.id === id) setSketchSelection(null);
             else {
               const pointIds = sketchSelection?.kind === "point" ? [sketchSelection.id]
                 : sketchSelection?.kind === "circlePoint" ? [circleSketchPointId(sketchSelection.circleId, sketchSelection.point)]
+                : sketchSelection?.kind === "arcPoint" ? [arcSketchPointId(sketchSelection.segmentId)]
                 : sketchSelection?.kind === "multiple" ? sketchSelection.pointIds : [];
               const segmentIds = sketchSelection?.kind === "segment" ? [sketchSelection.id] : sketchSelection?.kind === "multiple" ? sketchSelection.segmentIds : [];
               const circleIds = sketchSelection?.kind === "circle" ? [sketchSelection.id] : sketchSelection?.kind === "multiple" ? sketchSelection.circleIds ?? [] : [];
@@ -2985,7 +3124,7 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
               <SketchSideTool label={t("sketch.parallel")} enabled={Boolean(selectedLinePair)} active={selectedPairConstraintKind("parallel")} onClick={() => toggleSketchPairConstraint("parallel")}><SketchConstraintIcon file="parallel" /></SketchSideTool>
               <SketchSideTool label={t("sketch.perpendicular")} enabled={Boolean(selectedLinePair)} active={selectedPairConstraintKind("perpendicular")} onClick={() => toggleSketchPairConstraint("perpendicular")}><SketchConstraintIcon file="perpendicular" /></SketchSideTool>
               <SketchSideTool label={t("sketch.concentric")} enabled={Boolean(selectedCirclePair)} active={selectedConcentricActive} onClick={toggleSketchConcentric}><SketchConstraintIcon file="concentric" /></SketchSideTool>
-              <SketchSideTool label={t("sketch.equal")} enabled={Boolean(selectedLinePair || selectedCirclePair)} active={selectedEqualActive} onClick={toggleSketchEqual}><SketchConstraintIcon file="equal" /></SketchSideTool>
+              <SketchSideTool label={t("sketch.equal")} enabled={selectedEqualLinePairs.length > 0 || Boolean(selectedCirclePair)} active={selectedEqualActive} onClick={toggleSketchEqual}><SketchConstraintIcon file="equal" /></SketchSideTool>
               <SketchSideTool label={t("sketch.midpoint")} enabled={Boolean(selectedPointLinePair)} active={selectedPointLineActive("midpoint")} onClick={() => toggleSketchPointLineConstraint("midpoint")}><SketchConstraintIcon file="midpoint" /></SketchSideTool>
               <SketchSideTool label={t("sketch.pointOnGeometry")} enabled={Boolean(selectedPointLinePair)} active={selectedPointLineActive("pointOnObject")} onClick={() => toggleSketchPointLineConstraint("pointOnObject")}><SketchConstraintIcon file="point-on-geometry" /></SketchSideTool>
               <SketchSideTool label={t("sketch.tangent")} enabled={Boolean(selectedTangentConstraint)} active={selectedTangentActive} onClick={toggleSketchTangent}><SketchConstraintIcon file="tangent" /></SketchSideTool>

@@ -8,6 +8,7 @@ import type { ProjectLibraryEntry } from "@/lib/projectLibrary";
 type Props = {
   projects: ProjectLibraryEntry[];
   busy?: boolean;
+  onShowLanding: () => void;
   onCreate: () => void;
   onOpen: (project: ProjectLibraryEntry) => void;
   onImport: (file: File) => void;
@@ -23,7 +24,7 @@ function updatedLabel(timestamp: number) {
   return new Intl.DateTimeFormat("en", { day: "numeric", month: "short" }).format(timestamp);
 }
 
-export function ProjectDashboard({ projects, busy = false, onCreate, onOpen, onImport, onDelete, onRename }: Props) {
+export function ProjectDashboard({ projects, busy = false, onShowLanding, onCreate, onOpen, onImport, onDelete, onRename }: Props) {
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [sort, setSort] = useState<"recent" | "name">("recent");
@@ -56,6 +57,7 @@ export function ProjectDashboard({ projects, busy = false, onCreate, onOpen, onI
   return <main className="educad-dashboard-shell" aria-busy={busy}>
     <header className="educad-dashboard-topbar">
       <strong className="educad-dashboard-brand"><img className="educad-dashboard-logo" src="/assets/educad/logo.svg" alt="" /><span>eduCAD</span></strong>
+      <button className="educad-dashboard-about" type="button" onClick={onShowLanding}>About eduCAD</button>
     </header>
     <div className="educad-dashboard-layout">
       <aside className="educad-dashboard-sidebar">

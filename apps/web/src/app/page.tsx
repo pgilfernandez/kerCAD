@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ProjectDashboard } from "@/components/ProjectDashboard";
+import { EducadLandingPage } from "@/components/EducadLandingPage";
 import { SketchForgeParametricEditor } from "@/components/SketchForgeParametricEditor";
 import { importEducadProject } from "@/lib/educadProject";
 import { createEmptyDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
@@ -13,6 +14,7 @@ export default function Home() {
   const [active, setActive] = useState<ProjectLibraryEntry | null>(null);
   const [editorSession, setEditorSession] = useState(0);
   const [busy, setBusy] = useState(true);
+  const [showLanding, setShowLanding] = useState(false);
   const saveTimer = useRef<number | null>(null);
   const writeQueueRef = useRef<Promise<void>>(Promise.resolve());
   const activeRef = useRef<ProjectLibraryEntry | null>(null);
@@ -147,5 +149,6 @@ export default function Home() {
   };
 
   if (active) return <SketchForgeParametricEditor key={`${active.id}:${editorSession}`} initialProject={active.document} onProjectChange={persistActive} onProjectThumbnail={persistThumbnail} onExitToProjects={(document) => void leaveEditor(document)} />;
-  return <ProjectDashboard projects={projects} busy={busy} onCreate={() => void createProject()} onOpen={(project) => void openStoredProject(project)} onImport={(file) => void importProject(file)} onRename={(project, name) => void renameProject(project, name)} onDelete={(project) => void (async () => { if (!window.confirm(`Delete “${project.name}”?`)) return; await deleteLibraryProject(project.id); await refresh(); })()} />;
+  if (showLanding) return <EducadLandingPage projectCount={projects.length} preview={projects.find((project) => project.thumbnail)?.thumbnail} onStart={() => setShowLanding(false)} />;
+  return <ProjectDashboard projects={projects} busy={busy} onShowLanding={() => setShowLanding(true)} onCreate={() => void createProject()} onOpen={(project) => void openStoredProject(project)} onImport={(file) => void importProject(file)} onRename={(project, name) => void renameProject(project, name)} onDelete={(project) => void (async () => { await deleteLibraryProject(project.id); await refresh(); })()} />;
 }
