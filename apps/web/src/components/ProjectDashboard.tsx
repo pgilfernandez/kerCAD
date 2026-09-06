@@ -28,6 +28,7 @@ export function ProjectDashboard({ projects, busy = false, onCreate, onOpen, onI
   const [view, setView] = useState<"grid" | "list">("grid");
   const [sort, setSort] = useState<"recent" | "name">("recent");
   const [renaming, setRenaming] = useState<ProjectLibraryEntry | null>(null);
+  const [deleting, setDeleting] = useState<ProjectLibraryEntry | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
@@ -90,7 +91,7 @@ export function ProjectDashboard({ projects, busy = false, onCreate, onOpen, onI
               <span className="card-copy"><strong>{project.name}</strong><small>{updatedLabel(project.updatedAt)} · {project.document.features.length} operations</small></span>
             </button>
             <button className="card-rename" type="button" aria-label={`Rename ${project.name}`} title="Rename project" onClick={() => beginRename(project)}><ToolbarEditOperationIcon /></button>
-            <button className="card-delete" type="button" aria-label={`Delete ${project.name}`} title="Delete project" onClick={() => onDelete(project)}><Trash2 size={17} /></button>
+            <button className="card-delete" type="button" aria-label={`Delete ${project.name}`} title="Delete project" onClick={() => setDeleting(project)}><Trash2 size={17} /></button>
           </article>)}
           {query.trim() && !visible.length ? <div className="educad-dashboard-empty"><strong>No projects found</strong><span>Try another project name.</span></div> : null}
         </div>
@@ -102,6 +103,13 @@ export function ProjectDashboard({ projects, busy = false, onCreate, onOpen, onI
         <label><span>Name</span><input ref={renameInputRef} value={renameDraft} maxLength={80} onChange={(event) => setRenameDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") setRenaming(null); }} /></label>
         <footer><button type="button" onClick={() => setRenaming(null)}>Cancel</button><button className="primary" type="submit" disabled={!renameDraft.trim()}>OK</button></footer>
       </form>
+    </div> : null}
+    {deleting ? <div className="educad-dialog-backdrop" role="presentation" onPointerDown={() => setDeleting(null)}>
+      <section className="educad-rename-dialog educad-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-project-delete-title" onPointerDown={(event) => event.stopPropagation()}>
+        <header><strong id="educad-project-delete-title">Delete project?</strong><button type="button" aria-label="Cancel" onClick={() => setDeleting(null)}><X size={18} /></button></header>
+        <p>Delete <strong>{deleting.name}</strong>? This cannot be undone.</p>
+        <footer><button type="button" onClick={() => setDeleting(null)}>Cancel</button><button className="danger" type="button" onClick={() => { onDelete(deleting); setDeleting(null); }}>Delete</button></footer>
+      </section>
     </div> : null}
     <input ref={inputRef} hidden type="file" accept=".educad,.educad.json,.json,application/vnd.educad.project+zip,application/json" onChange={(event) => { const file = event.target.files?.[0]; if (file) onImport(file); event.target.value = ""; }} />
   </main>;

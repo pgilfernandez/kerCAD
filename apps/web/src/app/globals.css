@@ -1302,7 +1302,10 @@ button {
 .educad-rename-dialog > footer { display: flex; justify-content: flex-end; gap: 8px; padding: 11px 16px; background: #f6f9fa; border-top: 1px solid #e1e8ed; }
 .educad-rename-dialog > footer button { min-width: 78px; min-height: 34px; padding: 0 13px; color: #536b7b; background: #fff; border: 1px solid #c7d5de; border-radius: 6px; font-size: 10px; font-weight: 800; }
 .educad-rename-dialog > footer button.primary { color: #fff; background: #079bc9; border-color: #079bc9; }
+.educad-rename-dialog > footer button.danger { color: #fff; background: #c84a50; border-color: #b83d44; }
 .educad-rename-dialog > footer button:disabled { opacity: 0.45; }
+.educad-delete-dialog > p { margin: 0; padding: 19px 16px; color: #607585; font-size: 12px; line-height: 1.5; }
+.educad-delete-dialog > p strong { color: #314a5f; }
 
 .educad-feature-card h3 {
   margin: 1px 0 8px;
