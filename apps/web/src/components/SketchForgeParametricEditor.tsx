@@ -1952,6 +1952,41 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
       featureId: selectedFeature?.kind === "faceExtrude" ? selectedFeature.id : null,
     };
   }, [document, modelSelection, pendingFaceExtrude, selectedTopologyFaces]);
+  const revolveHandle = useMemo(() => {
+    if (selectedFeature?.kind !== "revolve" || !selectedFeature.objectId) return null;
+    const object = document.objects.find((candidate) => candidate.id === selectedFeature.objectId);
+    if (!object || object.visible === false) return null;
+    const objectMatrix = parametricTransformMatrix(object.transform);
+    let origin = new THREE.Vector3().applyMatrix4(objectMatrix);
+    let axis = new THREE.Vector3(selectedFeature.axis === "x" ? 1 : 0, selectedFeature.axis === "y" ? 1 : 0, selectedFeature.axis === "z" ? 1 : 0);
+    if (selectedFeature.axis === "edge") {
+      if (selectedFeature.source === "sketch" && selectedFeature.sketchId && selectedFeature.sketchAxisSegmentId) {
+        const sketch = document.features.find((candidate): candidate is SketchFeature => candidate.kind === "sketch" && candidate.id === selectedFeature.sketchId);
+        if (sketch?.profile.shape === "drawn") {
+          const segment = sketch.profile.geometry.segments.find((candidate) => candidate.id === selectedFeature.sketchAxisSegmentId);
+          const start = segment ? sketch.profile.geometry.points.find((point) => point.id === segment.startId) : null;
+          const end = segment ? sketch.profile.geometry.points.find((point) => point.id === segment.endId) : null;
+          if (start && end) {
+            const sketchMatrix = objectMatrix.clone().multiply(parametricTransformMatrix({ position: { x: sketch.x, y: sketch.y, z: sketch.offset }, rotation: sketch.rotation }));
+            origin = new THREE.Vector3(start.x, start.z, 0).applyMatrix4(sketchMatrix);
+            axis = new THREE.Vector3(end.x - start.x, end.z - start.z, 0).transformDirection(sketchMatrix);
+          }
+        }
+      } else if (selectedFeature.axisReferenceId) {
+        const reference = document.topologyReferences.find((candidate) => candidate.id === selectedFeature.axisReferenceId);
+        const hint = reference?.reference.hint;
+        if (hint?.entityType === "edge" && hint.midpoint && hint.direction) {
+          origin = new THREE.Vector3(...hint.midpoint);
+          axis = new THREE.Vector3(...hint.direction);
+        }
+      }
+    } else {
+      axis.transformDirection(objectMatrix);
+    }
+    if (axis.lengthSq() < 1e-8) return null;
+    const radius = Math.max(8, Math.min(40, Math.max(selectedBox?.width ?? 0, selectedBox?.depth ?? 0, selectedBox?.height ?? 0) * 0.6));
+    return { origin: { x: origin.x, y: origin.y, z: origin.z }, axis: { x: axis.x, y: axis.y, z: axis.z }, angle: selectedFeature.angle, radius };
+  }, [document.features, document.objects, document.topologyReferences, selectedBox, selectedFeature]);
   const viewportFloatingFeature = !sketchSession && !pendingEdgeTreatment && !pendingFaceExtrude && !pendingShell && !pendingRevolve && !editingMirrorPlaneId && modelSelection.length === 1 && selectedFeature && selectedObjectVisible && (
     (selectedFeature.kind === "sketch" && selectedFeature.purpose === "user" && selectedFeature.profile.shape === "drawn")
     || selectedFeature.kind === "fillet"
@@ -3126,6 +3161,13 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
           onEdgeTreatmentAccept={pendingEdgeTreatment ? acceptEdgeTreatment : undefined}
           onEdgeTreatmentCancel={pendingEdgeTreatment ? cancelEdgeTreatment : undefined}
           edgeTreatmentCanAccept={selectedTopologyFaces.length + selectedTopologyEdges.length > 0}
+          revolveHandle={revolveHandle}
+          onRevolveAngleChange={(angle) => {
+            if (selectedFeature?.kind !== "revolve") return;
+            updateFeature(selectedFeature.id, (feature) => {
+              if (feature.kind === "revolve") feature.angle = Math.min(360, Math.max(-360, Math.abs(angle) < 1 ? (angle < 0 ? -1 : 1) : angle));
+            });
+          }}
           floatingFeature={viewportFloatingFeature}
           floatingFeatureAnchor={viewportFloatingFeatureAnchor}
           onEditSketch={beginSketch}

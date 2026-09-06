@@ -245,6 +245,8 @@ type Props = {
   onEdgeTreatmentAccept?: () => void;
   onEdgeTreatmentCancel?: () => void;
   edgeTreatmentCanAccept?: boolean;
+  revolveHandle?: { origin: { x: number; y: number; z: number }; axis: { x: number; y: number; z: number }; angle: number; radius: number } | null;
+  onRevolveAngleChange?: (angle: number) => void;
   floatingFeature?: ParametricFeature | null;
   floatingFeatureAnchor?: { x: number; y: number; z: number } | null;
   onEditSketch?: (featureId: string) => void;
@@ -429,6 +431,20 @@ function updateYellowManipulatorLine(line: LineSegments2, start: THREE.Vector3, 
   line.geometry.setPositions([start.x, start.y, start.z, end.x, end.y, end.z]);
 }
 
+function updateRevolveAngleArc(line: LineSegments2, radius: number, angleDegrees: number) {
+  const segments = Math.max(2, Math.ceil(Math.abs(angleDegrees) / 4));
+  const positions: number[] = [];
+  for (let index = 0; index < segments; index += 1) {
+    const first = THREE.MathUtils.degToRad(angleDegrees * index / segments);
+    const second = THREE.MathUtils.degToRad(angleDegrees * (index + 1) / segments);
+    positions.push(
+      Math.cos(first) * radius, Math.sin(first) * radius, 0,
+      Math.cos(second) * radius, Math.sin(second) * radius, 0,
+    );
+  }
+  line.geometry.setPositions(positions);
+}
+
 function addYellowManipulatorOutline(handle: THREE.Mesh, radius: number) {
   const outline = new THREE.Mesh(
     new THREE.SphereGeometry(radius * 1.12, 18, 12),
@@ -576,7 +592,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, floatingFeature = null, floatingFeatureAnchor = null, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, onThumbnail }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleChange, floatingFeature = null, floatingFeatureAnchor = null, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, onThumbnail }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
@@ -591,6 +607,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const dimensionSelectionIdRef = useRef<string | null>(selection?.id ?? null);
   const [moveDimension, setMoveDimension] = useState<ViewportMoveDimension | null>(null);
   const [edgeTreatmentRadiusPreview, setEdgeTreatmentRadiusPreview] = useState<number | null>(null);
+  const [revolveAnglePreview, setRevolveAnglePreview] = useState<number | null>(null);
   const shapeParameterPreviewRef = useRef<{ parameter: ShapeParameter; value: number } | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | THREE.OrthographicCamera | null>(null);
@@ -613,11 +630,13 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const topologyFaceLayerRef = useRef<THREE.Group | null>(null);
   const faceExtrudeHandleRef = useRef<THREE.Group | null>(null);
   const edgeTreatmentHandleRef = useRef<THREE.Group | null>(null);
+  const revolveHandleRef = useRef<THREE.Group | null>(null);
   const edgeTreatmentHandleDataRef = useRef(edgeTreatmentHandle);
   const floatingFeatureRef = useRef(floatingFeature);
   const floatingFeatureAnchorRef = useRef(floatingFeatureAnchor);
   const faceExtrudeDistanceChangeRef = useRef(onFaceExtrudeDistanceChange);
   const edgeTreatmentRadiusChangeRef = useRef(onEdgeTreatmentRadiusChange);
+  const revolveAngleChangeRef = useRef(onRevolveAngleChange);
   const resizeHitboxesRef = useRef<THREE.Mesh[]>([]);
   const selectionRef = useRef(selection);
   const shapeParameterRef = useRef(onShapeParameterChange);
@@ -680,6 +699,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   useEffect(() => { topologyMultiSelectionRef.current = topologyMultiSelection; }, [topologyMultiSelection]);
   useEffect(() => { faceExtrudeDistanceChangeRef.current = onFaceExtrudeDistanceChange; }, [onFaceExtrudeDistanceChange]);
   useEffect(() => { edgeTreatmentRadiusChangeRef.current = onEdgeTreatmentRadiusChange; }, [onEdgeTreatmentRadiusChange]);
+  useEffect(() => { revolveAngleChangeRef.current = onRevolveAngleChange; }, [onRevolveAngleChange]);
   useEffect(() => { edgeTreatmentHandleDataRef.current = edgeTreatmentHandle; }, [edgeTreatmentHandle]);
   useEffect(() => { floatingFeatureRef.current = floatingFeature; invalidateRef.current(); }, [floatingFeature]);
   useEffect(() => { floatingFeatureAnchorRef.current = floatingFeatureAnchor; invalidateRef.current(); }, [floatingFeatureAnchor]);
@@ -1078,6 +1098,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       updateRoot(selectionVisualRootRef.current);
       updateRoot(faceExtrudeHandleRef.current);
       updateRoot(edgeTreatmentHandleRef.current);
+      updateRoot(revolveHandleRef.current);
     };
     const originWorldPosition = new THREE.Vector3();
     const render = (now: number) => {
@@ -1237,13 +1258,17 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     edgeTreatmentHandleLayer.name = "Fillet or chamfer radius";
     modelGroup.add(edgeTreatmentHandleLayer);
     edgeTreatmentHandleRef.current = edgeTreatmentHandleLayer;
+    const revolveHandleLayer = new THREE.Group();
+    revolveHandleLayer.name = "Revolution angle";
+    modelGroup.add(revolveHandleLayer);
+    revolveHandleRef.current = revolveHandleLayer;
 
     const raycaster = new THREE.Raycaster();
     raycaster.firstHitOnly = true;
     const pointer = new THREE.Vector2();
     const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     const dragPoint = new THREE.Vector3();
-    let interaction: "parameter" | "origin" | "axisMove" | "snapMove" | "axisRotate" | "faceExtrude" | "edgeTreatmentRadius" | null = null;
+    let interaction: "parameter" | "origin" | "axisMove" | "snapMove" | "axisRotate" | "faceExtrude" | "edgeTreatmentRadius" | "revolveAngle" | null = null;
     let faceExtrudeAxis: THREE.Vector3 | null = null;
     let faceExtrudeOriginWorld: THREE.Vector3 | null = null;
     let faceExtrudeStartDistance = 0;
@@ -1254,6 +1279,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     let edgeTreatmentPointerOffset = 0;
     let edgeTreatmentOriginWorld: THREE.Vector3 | null = null;
     let edgeTreatmentAxisWorld: THREE.Vector3 | null = null;
+    let revolveOriginWorld: THREE.Vector3 | null = null;
+    let revolveAxisWorld: THREE.Vector3 | null = null;
+    let revolveReferenceWorld: THREE.Vector3 | null = null;
+    let revolveStartAngle = 0;
+    let pendingRevolveAngle: number | null = null;
     let pendingShapeParameter: { parameter: ShapeParameter; value: number } | null = null;
     let shapeParameterStartValue = 0;
     let shapeParameterWorldScale = 1;
@@ -1689,6 +1719,17 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       });
       requestRender();
     };
+    let revolveHandleHovered = false;
+    const setRevolveHandleHover = (hovered: boolean) => {
+      if (revolveHandleHovered === hovered) return;
+      revolveHandleHovered = hovered;
+      revolveHandleRef.current?.traverse((child) => {
+        if (!(child instanceof THREE.Mesh) || !child.userData.revolveAngleHandle) return;
+        const material = child.material;
+        if (material instanceof THREE.MeshBasicMaterial) material.color.set(hovered ? 0xffe000 : 0xf0b83f);
+      });
+      requestRender();
+    };
     const sketchTransformRootForFeature = (featureId: string): THREE.Object3D | null => {
       let found: THREE.Object3D | null = null;
       sketchLayer.traverse((child) => {
@@ -1705,17 +1746,31 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         setShapeParameterHandleHover(null);
         setFaceExtrudeHandleHover(false);
         setEdgeTreatmentHandleHover(false);
+        setRevolveHandleHover(false);
         renderer.domElement.style.cursor = "crosshair";
         return [];
       }
       setOriginHandleHover(null);
       renderer.domElement.style.cursor = "default";
+      const revolveLayer = revolveHandleRef.current;
+      const revolveHit = revolveLayer
+        ? raycaster.intersectObject(revolveLayer, true).some((hit) => hit.object.userData.revolveAngleTarget)
+        : false;
+      setRevolveHandleHover(revolveHit);
+      if (revolveHit) {
+        setShapeParameterHandleHover(null);
+        setFaceExtrudeHandleHover(false);
+        setEdgeTreatmentHandleHover(false);
+        renderer.domElement.style.cursor = "crosshair";
+        return [];
+      }
       const edgeTreatmentLayer = edgeTreatmentHandleRef.current;
       const edgeTreatmentHit = edgeTreatmentLayer
         ? raycaster.intersectObject(edgeTreatmentLayer, true).some((hit) => hit.object.userData.edgeTreatmentRadiusTarget)
         : false;
       setEdgeTreatmentHandleHover(edgeTreatmentHit);
       if (edgeTreatmentHit) {
+        setRevolveHandleHover(false);
         setShapeParameterHandleHover(null);
         setFaceExtrudeHandleHover(false);
         renderer.domElement.style.cursor = "crosshair";
@@ -1987,8 +2042,20 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       if (event.button !== 0) return;
       setMoveDimension(null);
       setPointer(event);
+      const revolveLayer = revolveHandleRef.current;
+      const revolveHit = revolveLayer ? raycaster.intersectObject(revolveLayer, true).find((hit) => hit.object.userData.revolveAngleTarget) : null;
+      if (revolveLayer && revolveHit) {
+        revolveOriginWorld = revolveLayer.getWorldPosition(new THREE.Vector3());
+        const worldQuaternion = revolveLayer.getWorldQuaternion(new THREE.Quaternion());
+        revolveAxisWorld = new THREE.Vector3(0, 0, 1).applyQuaternion(worldQuaternion).normalize();
+        revolveReferenceWorld = new THREE.Vector3(1, 0, 0).applyQuaternion(worldQuaternion).normalize();
+        revolveStartAngle = Number(revolveLayer.userData.angle) || 0;
+        pendingRevolveAngle = revolveStartAngle;
+        dragPlane.setFromNormalAndCoplanarPoint(revolveAxisWorld, revolveOriginWorld);
+        if (raycaster.ray.intersectPlane(dragPlane, dragPoint)) interaction = "revolveAngle";
+      }
       const edgeTreatmentLayer = edgeTreatmentHandleRef.current;
-      const edgeTreatmentHit = edgeTreatmentLayer ? raycaster.intersectObject(edgeTreatmentLayer, true).find((hit) => hit.object.userData.edgeTreatmentRadiusTarget) : null;
+      const edgeTreatmentHit = !interaction && edgeTreatmentLayer ? raycaster.intersectObject(edgeTreatmentLayer, true).find((hit) => hit.object.userData.edgeTreatmentRadiusTarget) : null;
       if (edgeTreatmentLayer && edgeTreatmentHit) {
         edgeTreatmentOriginWorld = edgeTreatmentLayer.getWorldPosition(new THREE.Vector3());
         edgeTreatmentAxisWorld = new THREE.Vector3(1, 0, 0).applyQuaternion(edgeTreatmentLayer.getWorldQuaternion(new THREE.Quaternion())).normalize();
@@ -2229,6 +2296,30 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       }
       setPointer(event);
       if (!raycaster.ray.intersectPlane(dragPlane, dragPoint)) return;
+      if (interaction === "revolveAngle" && revolveOriginWorld && revolveAxisWorld && revolveReferenceWorld) {
+        const current = dragPoint.clone().sub(revolveOriginWorld).normalize();
+        const tangent = revolveAxisWorld.clone().cross(revolveReferenceWorld).normalize();
+        const raw = THREE.MathUtils.radToDeg(Math.atan2(current.dot(tangent), current.dot(revolveReferenceWorld)));
+        const candidates = [raw - 360, raw, raw + 360];
+        const nearest = candidates.reduce((best, candidate) => Math.abs(candidate - revolveStartAngle) < Math.abs(best - revolveStartAngle) ? candidate : best);
+        pendingRevolveAngle = Math.min(360, Math.max(-360, Math.round(nearest)));
+        if (Math.abs(pendingRevolveAngle) < 1) pendingRevolveAngle = pendingRevolveAngle < 0 ? -1 : 1;
+        setRevolveAnglePreview(pendingRevolveAngle);
+        const layer = revolveHandleRef.current;
+        if (layer) {
+          const radius = Number(layer.userData.radius) || 10;
+          const arc = layer.children.find((child) => child.userData.revolveAngleArc);
+          const handle = layer.children.find((child) => child.userData.revolveAngleHandle);
+          const target = layer.children.find((child) => child.userData.revolveAngleTarget);
+          if (arc instanceof LineSegments2) updateRevolveAngleArc(arc, radius, pendingRevolveAngle);
+          const radians = THREE.MathUtils.degToRad(pendingRevolveAngle);
+          const end = new THREE.Vector3(Math.cos(radians) * radius, Math.sin(radians) * radius, 0);
+          handle?.position.copy(end);
+          target?.position.copy(end);
+        }
+        requestRender();
+        return;
+      }
       if (interaction === "edgeTreatmentRadius" && edgeTreatmentOriginWorld && edgeTreatmentAxisWorld) {
         const grid = Math.max(0.01, snapRef.current);
         const coordinate = dragPoint.clone().sub(edgeTreatmentOriginWorld).dot(edgeTreatmentAxisWorld) - edgeTreatmentPointerOffset;
@@ -2515,6 +2606,22 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       setOriginHandleHover(null);
       if (renderer.domElement.hasPointerCapture(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
       if (cancelled) {
+        if (completedInteraction === "revolveAngle") {
+          setRevolveAnglePreview(null);
+          const layer = revolveHandleRef.current;
+          if (layer) {
+            const radius = Number(layer.userData.radius) || 10;
+            const angle = Number(layer.userData.angle) || 0;
+            const arc = layer.children.find((child) => child.userData.revolveAngleArc);
+            const handle = layer.children.find((child) => child.userData.revolveAngleHandle);
+            const target = layer.children.find((child) => child.userData.revolveAngleTarget);
+            if (arc instanceof LineSegments2) updateRevolveAngleArc(arc, radius, angle);
+            const radians = THREE.MathUtils.degToRad(angle);
+            const end = new THREE.Vector3(Math.cos(radians) * radius, Math.sin(radians) * radius, 0);
+            handle?.position.copy(end);
+            target?.position.copy(end);
+          }
+        }
         if (completedInteraction === "edgeTreatmentRadius") {
           setEdgeTreatmentRadiusPreview(null);
           const layer = edgeTreatmentHandleRef.current;
@@ -2578,6 +2685,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           edgeTreatmentRadiusChangeRef.current?.(pendingEdgeTreatmentRadius);
           setEdgeTreatmentRadiusPreview(null);
         }
+        if (completedInteraction === "revolveAngle" && pendingRevolveAngle !== null) {
+          revolveAngleChangeRef.current?.(pendingRevolveAngle);
+          setRevolveAnglePreview(null);
+        }
       }
       pendingShapeParameter = null;
       pendingFaceExtrudeDistance = null;
@@ -2590,6 +2701,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       edgeTreatmentOriginWorld = null;
       edgeTreatmentAxisWorld = null;
       edgeTreatmentPointerOffset = 0;
+      pendingRevolveAngle = null;
+      revolveOriginWorld = null;
+      revolveAxisWorld = null;
+      revolveReferenceWorld = null;
+      revolveStartAngle = 0;
       shapeParameterPreviewRef.current = null;
       shapeParameterStartValue = 0;
       shapeParameterWorldScale = 1;
@@ -2765,6 +2881,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       topologyFaceLayerRef.current = null;
       faceExtrudeHandleRef.current = null;
       edgeTreatmentHandleRef.current = null;
+      revolveHandleRef.current = null;
       [dimensionXRef.current, dimensionYRef.current, dimensionZRef.current].forEach((label) => { if (label) label.style.display = "none"; });
       invalidateRef.current = () => undefined;
     };
@@ -2891,6 +3008,50 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     layer.add(guide, handle, target);
     invalidateRef.current();
   }, [edgeTreatmentHandle, parameterHandlesVisible]);
+
+  useEffect(() => {
+    const layer = revolveHandleRef.current;
+    if (!layer) return;
+    for (const child of [...layer.children]) {
+      layer.remove(child);
+      child.traverse((item) => {
+        if (!(item instanceof THREE.Mesh || item instanceof THREE.Line)) return;
+        item.geometry.dispose();
+        const materials = Array.isArray(item.material) ? item.material : [item.material];
+        materials.forEach((material) => material.dispose());
+      });
+    }
+    if (!revolveHandle || !parameterHandlesVisible) {
+      invalidateRef.current();
+      return;
+    }
+    const axis = new THREE.Vector3(revolveHandle.axis.x, revolveHandle.axis.y, revolveHandle.axis.z).normalize();
+    layer.position.set(revolveHandle.origin.x, revolveHandle.origin.y, revolveHandle.origin.z);
+    layer.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axis);
+    const radius = Math.max(6, revolveHandle.radius);
+    const arc = new LineSegments2(new LineSegmentsGeometry(), new LineMaterial({ color: 0xd6a600, linewidth: 2, depthTest: false, depthWrite: false, transparent: true, opacity: 0.92 }));
+    updateRevolveAngleArc(arc, radius, revolveHandle.angle);
+    arc.userData.revolveAngleArc = true;
+    arc.renderOrder = 31;
+    const radians = THREE.MathUtils.degToRad(revolveHandle.angle);
+    const end = new THREE.Vector3(Math.cos(radians) * radius, Math.sin(radians) * radius, 0);
+    const handle = new THREE.Mesh(new THREE.SphereGeometry(1.0625, 18, 12), new THREE.MeshBasicMaterial({ color: 0xf0b83f, depthTest: false, depthWrite: false, transparent: true, opacity: 0.92 }));
+    handle.position.copy(end);
+    handle.userData.revolveAngleHandle = true;
+    handle.userData.yellowManipulatorBaseRadius = 1.0625;
+    handle.userData.yellowManipulatorDiameterPixels = 28;
+    handle.renderOrder = 32;
+    addYellowManipulatorOutline(handle, 1.0625);
+    const target = new THREE.Mesh(new THREE.SphereGeometry(4, 12, 8), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthTest: false, depthWrite: false }));
+    target.position.copy(end);
+    target.userData.revolveAngleTarget = true;
+    target.userData.yellowManipulatorBaseRadius = 4;
+    target.userData.yellowManipulatorDiameterPixels = 56;
+    layer.userData.angle = revolveHandle.angle;
+    layer.userData.radius = radius;
+    layer.add(arc, handle, target);
+    invalidateRef.current();
+  }, [parameterHandlesVisible, revolveHandle]);
 
   useEffect(() => {
     const layer = originLayerRef.current;
@@ -3769,7 +3930,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     <div ref={floatingFeatureSelectorRef} className="educad-viewport-operation-modes educad-viewport-feature-editor" onPointerDown={(event) => event.stopPropagation()}>
       {floatingFeature?.kind === "sketch" ? <div className="educad-viewport-feature-actions single"><button type="button" aria-label={locale === "es" ? "Editar boceto" : "Edit sketch"} title={locale === "es" ? "Editar boceto" : "Edit sketch"} onClick={() => onEditSketch?.(floatingFeature.id)}><ToolbarEditOperationIcon /></button></div> : null}
       {floatingFeature?.kind === "faceExtrude" ? <><div className="educad-viewport-feature-actions single"><button type="button" aria-label={locale === "es" ? "Editar cara" : "Edit face"} title={locale === "es" ? "Editar cara" : "Edit face"} onClick={() => onEditFaceExtrudeSelection?.(floatingFeature.id)}><ToolbarEditOperationIcon /></button></div><ViewportFloatingNumberInput value={floatingFeature.distance} unit="length" displayUnit={displayUnit} snap={snap} label={locale === "es" ? "Profundidad" : "Depth"} min={0.01} max={200} onCommit={(distance) => onFloatingFeatureChange?.(floatingFeature.id, { distance })} /></> : null}
-      {floatingFeature?.kind === "revolve" ? <><div className="educad-viewport-feature-actions"><button type="button" aria-label={locale === "es" ? "Editar cara" : "Edit face"} title={locale === "es" ? "Editar cara" : "Edit face"} onClick={() => onEditRevolveFace?.(floatingFeature.id)}><ToolbarEditOperationIcon /><small>F</small></button><button type="button" aria-label={locale === "es" ? "Editar eje" : "Edit axis"} title={locale === "es" ? "Editar eje" : "Edit axis"} onClick={() => onEditRevolveAxis?.(floatingFeature.id)}><ToolbarEditOperationIcon /><small>A</small></button></div><ViewportFloatingNumberInput value={floatingFeature.angle} unit="angle" displayUnit={displayUnit} snap={snap} label={locale === "es" ? "Ángulo" : "Angle"} min={-360} max={360} onCommit={(angle) => onFloatingFeatureChange?.(floatingFeature.id, { angle: Math.abs(angle) < 1 ? (angle < 0 ? -1 : 1) : angle })} /></> : null}
+      {floatingFeature?.kind === "revolve" ? <><div className="educad-viewport-feature-actions"><button type="button" aria-label={locale === "es" ? "Editar cara" : "Edit face"} title={locale === "es" ? "Editar cara" : "Edit face"} onClick={() => onEditRevolveFace?.(floatingFeature.id)}><ToolbarEditOperationIcon /><small>F</small></button><button type="button" aria-label={locale === "es" ? "Editar eje" : "Edit axis"} title={locale === "es" ? "Editar eje" : "Edit axis"} onClick={() => onEditRevolveAxis?.(floatingFeature.id)}><ToolbarEditOperationIcon /><small>A</small></button></div><ViewportFloatingNumberInput value={revolveAnglePreview ?? floatingFeature.angle} unit="angle" displayUnit={displayUnit} snap={snap} label={locale === "es" ? "Ángulo" : "Angle"} min={-360} max={360} onCommit={(angle) => onFloatingFeatureChange?.(floatingFeature.id, { angle: Math.abs(angle) < 1 ? (angle < 0 ? -1 : 1) : angle })} /></> : null}
       {floatingFeature?.kind === "shell" ? <><div className="educad-viewport-feature-actions single"><button type="button" aria-label={locale === "es" ? "Editar caras" : "Edit faces"} title={locale === "es" ? "Editar caras" : "Edit faces"} onClick={() => onEditShellSelection?.(floatingFeature.id)}><ToolbarEditOperationIcon /></button></div><ViewportFloatingNumberInput value={floatingFeature.thickness} unit="length" displayUnit={displayUnit} snap={snap} label={locale === "es" ? "Profundidad" : "Depth"} min={0.01} max={50} onCommit={(thickness) => onFloatingFeatureChange?.(floatingFeature.id, { thickness })} /></> : null}
       {floatingFeature?.kind === "mirror" ? <><div className="educad-viewport-feature-actions three"><button type="button" className={floatingFeature.duplicate ? "active" : ""} aria-label={locale === "es" ? "Duplicar" : "Duplicate"} title={locale === "es" ? "Duplicar" : "Duplicate"} onClick={() => onFloatingFeatureChange?.(floatingFeature.id, { duplicate: true })}><strong>D</strong></button><button type="button" className={!floatingFeature.duplicate ? "active" : ""} aria-label={locale === "es" ? "Transformar" : "Transform"} title={locale === "es" ? "Transformar" : "Transform"} onClick={() => onFloatingFeatureChange?.(floatingFeature.id, { duplicate: false })}><strong>T</strong></button><button type="button" aria-label={locale === "es" ? "Editar plano" : "Edit plane"} title={locale === "es" ? "Editar plano" : "Edit plane"} onClick={() => onEditMirrorPlane?.(floatingFeature.id)}><ToolbarEditOperationIcon /></button></div></> : null}
     </div>
