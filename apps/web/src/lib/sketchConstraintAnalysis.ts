@@ -1,5 +1,19 @@
 import type { SketchConstraint, SketchPoint, SketchProfile, SketchSegment } from "@/types/sketchforge";
 
+const SKETCH_REFERENCE_POINTS: SketchPoint[] = [
+  { id: "reference:origin", x: 0, z: 0 },
+  { id: "reference:axis-x:start", x: -1, z: 0 },
+  { id: "reference:axis-x:end", x: 1, z: 0 },
+  { id: "reference:axis-y:start", x: 0, z: -1 },
+  { id: "reference:axis-y:end", x: 0, z: 1 },
+];
+
+function sketchReferenceAxis(id: string): SketchSegment | null {
+  if (id === "reference:axis-x") return { id, startId: "reference:axis-x:start", endId: "reference:axis-x:end", kind: "line", construction: true };
+  if (id === "reference:axis-y") return { id, startId: "reference:axis-y:start", endId: "reference:axis-y:end", kind: "line", construction: true };
+  return null;
+}
+
 type Variable = { key: string; get: () => number; set: (value: number) => void; locked: boolean };
 type ResidualGroup = { id: string | null; values: number[] };
 
@@ -11,21 +25,23 @@ function circlePointReference(id: string) {
 }
 
 function pointFor(profile: SketchProfile, id: string): SketchPoint | null {
+  const reference = SKETCH_REFERENCE_POINTS.find((candidate) => candidate.id === id);
+  if (reference) return reference;
   const point = profile.points.find((candidate) => candidate.id === id);
   if (point) return point;
   const arc = profile.segments.find((segment) => segment.kind === "arc" && segment.center && `${segment.id}:center` === id);
   if (arc?.center) return { id, x: arc.center.x, z: arc.center.z };
-  const reference = circlePointReference(id);
-  const circle = reference ? profile.circles?.find((candidate) => candidate.id === reference.circleId) : null;
-  if (!reference || !circle) return null;
+  const circleReference = circlePointReference(id);
+  const circle = circleReference ? profile.circles?.find((candidate) => candidate.id === circleReference.circleId) : null;
+  if (!circleReference || !circle) return null;
   const angle = circle.radiusAngle ?? 0;
-  return reference.point === "center"
+  return circleReference.point === "center"
     ? { id, x: circle.x, z: circle.z }
     : { id, x: circle.x + Math.cos(angle) * circle.radius, z: circle.z + Math.sin(angle) * circle.radius };
 }
 
 function linePoints(profile: SketchProfile, segmentId: string) {
-  const segment = profile.segments.find((candidate) => candidate.id === segmentId && candidate.kind === "line");
+  const segment = profile.segments.find((candidate) => candidate.id === segmentId && candidate.kind === "line") ?? sketchReferenceAxis(segmentId);
   const start = segment ? pointFor(profile, segment.startId) : null;
   const end = segment ? pointFor(profile, segment.endId) : null;
   return segment && start && end ? { segment, start, end } : null;
@@ -76,6 +92,17 @@ function constraintResiduals(profile: SketchProfile, constraint: SketchConstrain
     const length = Math.hypot(dx, dz);
     return length > EPSILON ? [((point.x - line.start.x) * dz - (point.z - line.start.z) * dx) / length] : [];
   }
+  if (constraint.kind === "pointOnCircle") {
+    const point = pointFor(profile, constraint.pointId);
+    const circle = profile.circles?.find((candidate) => candidate.id === constraint.circleId);
+    return point && circle ? [Math.hypot(point.x - circle.x, point.z - circle.z) - circle.radius] : [];
+  }
+  if (constraint.kind === "pointOnArc") {
+    const point = pointFor(profile, constraint.pointId);
+    const arc = profile.segments.find((candidate) => candidate.id === constraint.arcId && candidate.kind === "arc" && candidate.center);
+    const start = arc ? pointFor(profile, arc.startId) : null;
+    return point && arc?.center && start ? [Math.hypot(point.x - arc.center.x, point.z - arc.center.z) - Math.hypot(start.x - arc.center.x, start.z - arc.center.z)] : [];
+  }
   if (constraint.kind === "tangentLineCircle") {
     const line = linePoints(profile, constraint.segmentId);
     const circle = profile.circles?.find((candidate) => candidate.id === constraint.circleId);
@@ -84,6 +111,17 @@ function constraintResiduals(profile: SketchProfile, constraint: SketchConstrain
     const dz = line.end.z - line.start.z;
     const length = Math.hypot(dx, dz);
     return length > EPSILON ? [Math.abs((circle.x - line.start.x) * dz - (circle.z - line.start.z) * dx) / length - circle.radius] : [];
+  }
+  if (constraint.kind === "tangentLineArc") {
+    const line = linePoints(profile, constraint.lineId);
+    const arc = profile.segments.find((candidate) => candidate.id === constraint.arcId && candidate.kind === "arc" && candidate.center);
+    const start = arc ? pointFor(profile, arc.startId) : null;
+    if (!line || !arc?.center || !start) return [];
+    const dx = line.end.x - line.start.x;
+    const dz = line.end.z - line.start.z;
+    const length = Math.hypot(dx, dz);
+    const radius = Math.hypot(start.x - arc.center.x, start.z - arc.center.z);
+    return length > EPSILON ? [Math.abs((arc.center.x - line.start.x) * dz - (arc.center.z - line.start.z) * dx) / length - radius] : [];
   }
   if (constraint.kind === "tangentCircles") {
     const circles = constraint.circleIds.map((id) => profile.circles?.find((circle) => circle.id === id));

@@ -1,14 +1,15 @@
 "use client";
 
 import { ChevronUp, CornerDownRight, Home, Link, Link2Off, Minus, Plus, Split, Trash2, Waves } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { SketchToolbarIcon } from "@/components/icons";
 import { SnapGridControl } from "@/components/workplane/ShapeInspector";
 import { SketchRevolvePreview } from "@/components/SketchRevolvePreview";
 import { parseMeasurementInput } from "@/lib/measurementUnits";
 import { WORKPLANE_MAJOR_GRID_INTERVAL } from "@/lib/workplaneGrid";
 import { mirrorSign, resizedImportedMeshPositions } from "@/lib/workplaneShapes";
 import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE, normalizeSnapGrid, normalizeWorkspaceSettings } from "@/lib/workplaneSettings";
-import { solveSketchConstraints } from "@/lib/sketchConstraints";
+import { SKETCH_ORIGIN_POINT_ID, SKETCH_X_AXIS_ID, SKETCH_Y_AXIS_ID, solveSketchConstraints } from "@/lib/sketchConstraints";
 import type { SketchProfileValidation } from "@/lib/sketchProfileValidation";
 import type { EducadLocale } from "@/lib/educadI18n";
 import type { GridSize, SketchCircle, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchSegment, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
@@ -74,6 +75,7 @@ type SketchWorkspaceProps = {
   onUpdateConstraintValue?: (id: string, value: number) => void;
   onDeleteConstraint?: (id: string) => void;
   onClearMeasurement: () => void;
+  onCancelActiveTool?: () => void;
   showPointActions?: boolean;
   showGridControls?: boolean;
 };
@@ -593,6 +595,7 @@ export function SketchWorkspace({
   onUpdateConstraintValue,
   onDeleteConstraint,
   onClearMeasurement,
+  onCancelActiveTool,
   showPointActions = true,
   showGridControls = true,
 }: SketchWorkspaceProps) {
@@ -601,6 +604,8 @@ export function SketchWorkspace({
   const [snapOpen, setSnapOpen] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, z: 0 });
+  const [showDimensionLabels, setShowDimensionLabels] = useState(true);
+  const [showConstraintLabels, setShowConstraintLabels] = useState(true);
   const [hover, setHover] = useState<{ x: number; z: number } | null>(null);
   const [pendingCircleCenter, setPendingCircleCenter] = useState<{ x: number; z: number } | null>(null);
   const [pendingArc, setPendingArc] = useState<{ center: { x: number; z: number }; start?: { x: number; z: number } } | null>(null);
@@ -756,6 +761,8 @@ export function SketchWorkspace({
   const isArcPointSelected = (segmentId: string) => selected?.kind === "arcPoint"
     ? selected.segmentId === segmentId
     : selected?.kind === "multiple" ? selected.pointIds.includes(`${segmentId}:center`) : false;
+  const isReferencePointSelected = selected?.kind === "point" ? selected.id === SKETCH_ORIGIN_POINT_ID : selected?.kind === "multiple" ? selected.pointIds.includes(SKETCH_ORIGIN_POINT_ID) : false;
+  const isReferenceAxisSelected = (axisId: string) => selected?.kind === "segment" ? selected.id === axisId : selected?.kind === "multiple" ? selected.segmentIds.includes(axisId) : false;
   const gridStep = clamp(workspace.gridBlockSize, 0.1, 200);
   const verticalLines = useMemo(() => {
     const lines: number[] = [];
@@ -940,7 +947,7 @@ export function SketchWorkspace({
     setPointerAction(null);
   };
 
-  const handleWheel = (event: ReactWheelEvent<SVGSVGElement>) => {
+  const handleWheel = (event: WheelEvent) => {
     event.preventDefault();
     if (event.ctrlKey || event.metaKey) {
       setZoom((current) => clamp(current * Math.exp(-event.deltaY * 0.012), 0.75, 6));
@@ -954,6 +961,20 @@ export function SketchWorkspace({
       z: clamp(current.z - event.deltaY / scaleY, -workspace.depth / 2, workspace.depth / 2),
     }));
   };
+
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const preventBrowserPinch = (event: Event) => event.preventDefault();
+    svg.addEventListener("wheel", handleWheel, { passive: false });
+    svg.addEventListener("gesturestart", preventBrowserPinch, { passive: false });
+    svg.addEventListener("gesturechange", preventBrowserPinch, { passive: false });
+    return () => {
+      svg.removeEventListener("wheel", handleWheel);
+      svg.removeEventListener("gesturestart", preventBrowserPinch);
+      svg.removeEventListener("gesturechange", preventBrowserPinch);
+    };
+  });
 
   const beginEntityDrag = (event: ReactPointerEvent<SVGElement>, action: PointerAction) => {
     if (event.button !== 0) return;
@@ -1029,6 +1050,9 @@ export function SketchWorkspace({
         <button aria-label="Reset sketch view" onClick={() => { setZoom(1); setPan({ x: 0, z: 0 }); }}><Home size={28} /></button>
         <button aria-label="Zoom in" onClick={() => setZoom((value) => clamp(value * 1.25, 0.75, 6))}><Plus size={33} /></button>
         <button aria-label="Zoom out" onClick={() => setZoom((value) => clamp(value / 1.25, 0.75, 6))}><Minus size={33} /></button>
+        <span className="camera-control-separator" />
+        <button className={showDimensionLabels ? "active" : ""} type="button" aria-label={locale === "es" ? "Mostrar u ocultar cotas" : "Show or hide dimensions"} title={locale === "es" ? "Mostrar u ocultar cotas" : "Show or hide dimensions"} aria-pressed={showDimensionLabels} onClick={() => setShowDimensionLabels((visible) => !visible)}><SketchToolbarIcon file="toggle-dimensions" /></button>
+        <button className={showConstraintLabels ? "active" : ""} type="button" aria-label={locale === "es" ? "Mostrar u ocultar etiquetas de restricciones" : "Show or hide constraint labels"} title={locale === "es" ? "Mostrar u ocultar etiquetas de restricciones" : "Show or hide constraint labels"} aria-pressed={showConstraintLabels} onClick={() => setShowConstraintLabels((visible) => !visible)}><SketchToolbarIcon file="toggle-constraints" /></button>
       </div>
       <section className="sketch-plate-wrap" aria-label="2D sketch plate">
         <svg
@@ -1041,7 +1065,13 @@ export function SketchWorkspace({
           onPointerUp={finishPointerAction}
           onPointerCancel={() => setPointerAction(null)}
           onPointerLeave={() => !pointerAction && setHover(null)}
-          onWheel={handleWheel}
+          onContextMenu={(event) => {
+            if (tool !== "line") return;
+            event.preventDefault();
+            setPointerAction(null);
+            setHover(null);
+            onCancelActiveTool?.();
+          }}
         >
           <g className="sketch-plate-world" transform="scale(1 -1)">
           <rect className="sketch-plate-background" x={-workspace.width / 2} y={-workspace.depth / 2} width={workspace.width} height={workspace.depth} />
@@ -1066,6 +1096,26 @@ export function SketchWorkspace({
               })()}
             </g>
           ) : null}
+          <g className="sketch-reference-axes" pointerEvents={tool === "select" ? "auto" : "none"}>
+            <line data-sketch-entity="reference-axis" className={`reference-axis axis-x ${isReferenceAxisSelected(SKETCH_X_AXIS_ID) ? "selected" : ""}`} x1={-viewWidth} y1={0} x2={viewWidth} y2={0} onPointerDown={(event) => {
+              if (event.button !== 0) return;
+              event.preventDefault();
+              event.stopPropagation();
+              onSelectSegment(SKETCH_X_AXIS_ID, true);
+            }} />
+            <line data-sketch-entity="reference-axis" className={`reference-axis axis-y ${isReferenceAxisSelected(SKETCH_Y_AXIS_ID) ? "selected" : ""}`} x1={0} y1={-viewDepth} x2={0} y2={viewDepth} onPointerDown={(event) => {
+              if (event.button !== 0) return;
+              event.preventDefault();
+              event.stopPropagation();
+              onSelectSegment(SKETCH_Y_AXIS_ID, true);
+            }} />
+            <circle data-sketch-entity="reference-origin" className={`reference-origin ${isReferencePointSelected ? "selected" : ""}`} cx={0} cy={0} r={6 * screenUnit} onPointerDown={(event) => {
+              if (event.button !== 0) return;
+              event.preventDefault();
+              event.stopPropagation();
+              onPointPress(SKETCH_ORIGIN_POINT_ID, true);
+            }} />
+          </g>
           {operation === "revolve" ? (
             <g className="sketch-revolve-guide" pointerEvents="none">
               <rect x={0} y={-workspace.depth / 2} width={workspace.width / 2} height={workspace.depth} />
@@ -1214,7 +1264,7 @@ export function SketchWorkspace({
               beginEntityDrag(event, { kind: "move-arc-center", pointerId: event.pointerId, segmentId: arc.id, origin: { ...arc.center! }, current: { ...arc.center! }, startCenter: { ...arc.center! } });
             }} />)}
           </g> : null}
-          <g className="sketch-constraints">
+          {showConstraintLabels ? <g className="sketch-constraints">
             {(displayProfile.constraints ?? []).map((constraint) => {
               if (constraint.kind !== "horizontal" && constraint.kind !== "vertical") return null;
               const segment = displayProfile.segments.find((candidate) => candidate.id === constraint.segmentId);
@@ -1254,7 +1304,7 @@ export function SketchWorkspace({
               return <SketchConstraintBadge key={constraint.id} id={constraint.id} label={constraint.kind === "concentric" ? "◎" : "="} x={x} z={z} screenUnit={screenUnit} locale={locale} onDelete={onDeleteConstraint} />;
             })}
             {(displayProfile.constraints ?? []).map((constraint) => {
-              if (constraint.kind !== "midpoint" && constraint.kind !== "pointOnObject") return null;
+              if (constraint.kind !== "midpoint" && constraint.kind !== "pointOnObject" && constraint.kind !== "pointOnCircle" && constraint.kind !== "pointOnArc") return null;
               const point = pointById.get(constraint.pointId);
               if (!point) return null;
               return <SketchConstraintBadge key={constraint.id} id={constraint.id} label={constraint.kind === "midpoint" ? "M" : "∈"} x={point.x + 18 * screenUnit} z={point.z + 13 * screenUnit} screenUnit={screenUnit} locale={locale} onDelete={onDeleteConstraint} />;
@@ -1266,6 +1316,13 @@ export function SketchWorkspace({
                 const circle = displayProfile.circles?.find((candidate) => candidate.id === constraint.circleId);
                 if (!dimension || !circle) return null;
                 return <SketchConstraintBadge key={constraint.id} id={constraint.id} label="T" x={(dimension.midpoint.x + circle.x) / 2} z={(dimension.midpoint.z + circle.z) / 2 - 14 * screenUnit} screenUnit={screenUnit} locale={locale} onDelete={onDeleteConstraint} />;
+              }
+              if (constraint.kind === "tangentLineArc") {
+                const line = displayProfile.segments.find((candidate) => candidate.id === constraint.lineId);
+                const arc = displayProfile.segments.find((candidate) => candidate.id === constraint.arcId && candidate.kind === "arc" && candidate.center);
+                const dimension = line ? segmentDimension(line, pointById) : null;
+                if (!dimension || !arc?.center) return null;
+                return <SketchConstraintBadge key={constraint.id} id={constraint.id} label="T" x={(dimension.midpoint.x + arc.center.x) / 2} z={(dimension.midpoint.z + arc.center.z) / 2 - 14 * screenUnit} screenUnit={screenUnit} locale={locale} onDelete={onDeleteConstraint} />;
               }
               if (constraint.kind === "tangentCircles") {
                 const circles = constraint.circleIds.map((id) => displayProfile.circles?.find((circle) => circle.id === id)).filter(Boolean) as SketchCircle[];
@@ -1287,8 +1344,8 @@ export function SketchWorkspace({
               const point = pointById.get(constraint.pointIds[0]);
               return point ? <SketchConstraintBadge key={constraint.id} id={constraint.id} label="C" x={point.x - 18 * screenUnit} z={point.z + 13 * screenUnit} screenUnit={screenUnit} locale={locale} onDelete={onDeleteConstraint} /> : null;
             })}
-          </g>
-          <g className="sketch-segment-dimensions">
+          </g> : null}
+          {showDimensionLabels ? <g className="sketch-segment-dimensions">
             {displayProfile.segments.filter((segment) => !segment.generatedTextId).map((segment) => {
               const dimension = segmentDimension(segment, pointById);
               if (!dimension) return null;
@@ -1307,8 +1364,8 @@ export function SketchWorkspace({
                 </g>
               );
             })}
-          </g>
-          <g className="sketch-angle-dimensions">
+          </g> : null}
+          {showDimensionLabels ? <g className="sketch-angle-dimensions">
             {(displayProfile.constraints ?? []).map((constraint) => {
               if (constraint.kind !== "angle") return null;
               const dimensions = constraint.segmentIds.map((id) => {
@@ -1322,7 +1379,7 @@ export function SketchWorkspace({
                 <SketchDimensionInput id={constraint.id} label={locale === "es" ? "Ángulo" : "Angle"} indicator="A" value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} allowSigned onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
               </g>;
             })}
-          </g>
+          </g> : null}
           {smoothPreviewData ? <path className="sketch-preview-line" d={smoothPreviewData} pointerEvents="none" /> : activePoint && hover && ["line", "bezier"].includes(tool) ? <line className="sketch-preview-line" x1={activePoint.x} y1={activePoint.z} x2={hover.x} y2={hover.z} pointerEvents="none" /> : null}
           {activePoint && hover && ["line", "bezier", "smooth"].includes(tool) ? (
             <g className="sketch-segment-dimensions preview" pointerEvents="none" transform={`translate(${(activePoint.x + hover.x) / 2} ${(activePoint.z + hover.z) / 2 + labelOffset})`}>
@@ -1407,7 +1464,7 @@ export function SketchWorkspace({
               </g>;
             })}
           </g>
-          <g className="sketch-circle-dimensions sketch-arc-dimensions">
+          {showDimensionLabels ? <g className="sketch-circle-dimensions sketch-arc-dimensions">
             {displayProfile.segments.filter((segment) => segment.kind === "arc" && segment.center).map((segment) => {
               const arc = arcDimensionGeometry(segment, pointById);
               if (!arc) return null;
@@ -1435,7 +1492,7 @@ export function SketchWorkspace({
                 </g> : null}
               </g>;
             })}
-          </g>
+          </g> : null}
           <g className="sketch-points">
             {displayProfile.points.filter((point) => !point.generatedTextId).map((point) => (
               <circle

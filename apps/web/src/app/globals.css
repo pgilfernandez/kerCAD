@@ -4987,6 +4987,42 @@ button {
   cursor: grabbing;
 }
 
+.sketch-reference-axes .reference-axis {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 12px;
+  vector-effect: non-scaling-stroke;
+  cursor: pointer;
+}
+
+.sketch-reference-axes .reference-axis:hover,
+.sketch-reference-axes .reference-axis.selected {
+  stroke: #f2bf25;
+  stroke-width: 3px;
+}
+
+.sketch-reference-axes .reference-axis.selected {
+  stroke: #168fba;
+}
+
+.sketch-reference-axes .reference-origin {
+  fill: #fff;
+  stroke: #415d70;
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+  cursor: pointer;
+}
+
+.sketch-reference-axes .reference-origin:hover {
+  fill: #ffe58b;
+  stroke: #f2bf25;
+}
+
+.sketch-reference-axes .reference-origin.selected {
+  fill: #d9f3ff;
+  stroke: #168fba;
+}
+
 .sketch-plate.tool-select:not(.panning) {
   cursor: default;
 }

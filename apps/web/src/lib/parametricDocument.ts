@@ -399,9 +399,9 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
           geometry.generator.align = geometry.generator.align === "left" || geometry.generator.align === "right" ? geometry.generator.align : "center";
           geometry.generator.verticalAlign = geometry.generator.verticalAlign === "bottom" || geometry.generator.verticalAlign === "top" ? geometry.generator.verticalAlign : "center";
         }
-        const lineIds = new Set(geometry.segments.filter((segment) => segment.kind === "line").map((segment) => segment.id));
+        const lineIds = new Set([...geometry.segments.filter((segment) => segment.kind === "line").map((segment) => segment.id), "reference:axis-x", "reference:axis-y"]);
         const segmentIds = new Set(geometry.segments.map((segment) => segment.id));
-        const pointIds = new Set(geometry.points.map((point) => point.id));
+        const pointIds = new Set([...geometry.points.map((point) => point.id), "reference:origin", "reference:axis-x:start", "reference:axis-x:end", "reference:axis-y:start", "reference:axis-y:end"]);
         const circleIds = new Set(geometry.circles.map((circle) => circle.id));
         for (const circle of geometry.circles) {
           if (!Number.isFinite(circle.radiusAngle)) circle.radiusAngle = 0;
@@ -414,7 +414,10 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
           if (constraint.kind === "equalLength") return constraint.segmentIds[0] !== constraint.segmentIds[1] && constraint.segmentIds.every((id) => lineIds.has(id));
           if (constraint.kind === "concentric" || constraint.kind === "equalRadius") return constraint.circleIds[0] !== constraint.circleIds[1] && constraint.circleIds.every((id) => circleIds.has(id));
           if (constraint.kind === "midpoint" || constraint.kind === "pointOnObject") return pointIds.has(constraint.pointId) && lineIds.has(constraint.segmentId);
+          if (constraint.kind === "pointOnCircle") return pointIds.has(constraint.pointId) && circleIds.has(constraint.circleId);
+          if (constraint.kind === "pointOnArc") return pointIds.has(constraint.pointId) && segmentIds.has(constraint.arcId);
           if (constraint.kind === "tangentLineCircle") return lineIds.has(constraint.segmentId) && circleIds.has(constraint.circleId);
+          if (constraint.kind === "tangentLineArc") return lineIds.has(constraint.lineId) && segmentIds.has(constraint.arcId);
           if (constraint.kind === "tangentCircles") return constraint.circleIds[0] !== constraint.circleIds[1] && constraint.circleIds.every((id) => circleIds.has(id));
           if (constraint.kind === "symmetric") return constraint.pointIds[0] !== constraint.pointIds[1] && constraint.pointIds.every((id) => pointIds.has(id)) && lineIds.has(constraint.segmentId);
           if (constraint.kind === "fixed") return pointIds.has(constraint.pointId) && Number.isFinite(constraint.x) && Number.isFinite(constraint.z);

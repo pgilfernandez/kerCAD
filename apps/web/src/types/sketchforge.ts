@@ -119,7 +119,10 @@ export type SketchConstraint =
   | { id: string; kind: "equalLength"; segmentIds: [string, string] }
   | { id: string; kind: "concentric" | "equalRadius"; circleIds: [string, string] }
   | { id: string; kind: "midpoint" | "pointOnObject"; pointId: string; segmentId: string }
+  | { id: string; kind: "pointOnCircle"; pointId: string; circleId: string }
+  | { id: string; kind: "pointOnArc"; pointId: string; arcId: string }
   | { id: string; kind: "tangentLineCircle"; segmentId: string; circleId: string }
+  | { id: string; kind: "tangentLineArc"; lineId: string; arcId: string }
   | { id: string; kind: "tangentCircles"; circleIds: [string, string] }
   | { id: string; kind: "symmetric"; pointIds: [string, string]; segmentId: string }
   | { id: string; kind: "coincident"; pointIds: [string, string] }

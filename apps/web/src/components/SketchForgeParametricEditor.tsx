@@ -61,7 +61,7 @@ import { displayLengthToMillimeters, displayUnitLabel, millimetersToDisplayLengt
 import { educadTranslate, normalizeEducadLocale, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
 import { parametricRebuildSuggestion } from "@/lib/parametricRebuildDiagnostics";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
-import { arcSketchPointId, circleSketchPointId, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, solveSketchConstraints } from "@/lib/sketchConstraints";
+import { arcSketchPointId, circleSketchPointId, SKETCH_REFERENCE_AXES, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, solveSketchConstraints } from "@/lib/sketchConstraints";
 import { analyzeSketchConstraints } from "@/lib/sketchConstraintAnalysis";
 import { validateDrawnSketchProfile } from "@/lib/sketchProfileValidation";
 import { trimSketchGeometry } from "@/lib/sketchTrim";
@@ -1059,7 +1059,7 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
     const ids = sketchSelection.kind === "segment" ? [sketchSelection.id]
       : sketchSelection.kind === "multiple" ? sketchSelection.segmentIds
       : [];
-    return sketchSession.profile.segments.filter((segment) => ids.includes(segment.id) && segment.kind === "line");
+    return [...sketchSession.profile.segments, ...SKETCH_REFERENCE_AXES].filter((segment) => ids.includes(segment.id) && segment.kind === "line");
   }, [sketchSelection, sketchSession]);
 
   const selectedConstraintKind = (kind: "horizontal" | "vertical") => selectedConstraintSegments.length > 0
@@ -1111,6 +1111,13 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
       : sketchSelection.kind === "multiple" ? sketchSelection.circleIds ?? []
       : [];
     return (sketchSession.profile.circles ?? []).filter((circle) => ids.includes(circle.id));
+  }, [sketchSelection, sketchSession]);
+  const selectedConstraintArcs = useMemo(() => {
+    if (!sketchSession || !sketchSelection) return [];
+    const ids = sketchSelection.kind === "segment" ? [sketchSelection.id]
+      : sketchSelection.kind === "multiple" ? sketchSelection.segmentIds
+      : [];
+    return sketchSession.profile.segments.filter((segment) => ids.includes(segment.id) && segment.kind === "arc" && segment.center);
   }, [sketchSelection, sketchSession]);
   const selectedCirclePair = selectedConstraintCircles.length === 2 ? selectedConstraintCircles as [typeof selectedConstraintCircles[number], typeof selectedConstraintCircles[number]] : null;
   const selectedConcentricActive = Boolean(selectedCirclePair && sketchSession?.profile.constraints?.some((constraint) => constraint.kind === "concentric" && constraint.circleIds.every((id) => selectedCirclePair.some((circle) => circle.id === id))));
@@ -1198,13 +1205,42 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
     });
   };
 
+  const selectedPointGeometryConstraint: Extract<SketchConstraint, { kind: "pointOnCircle" | "pointOnArc" }> | null = selectedConstraintPoints.length === 1 && selectedConstraintCircles.length === 1 && selectedConstraintArcs.length === 0
+    ? { id: "constraint-preview", kind: "pointOnCircle", pointId: selectedConstraintPoints[0].id, circleId: selectedConstraintCircles[0].id }
+    : selectedConstraintPoints.length === 1 && selectedConstraintArcs.length === 1 && selectedConstraintCircles.length === 0
+      ? { id: "constraint-preview", kind: "pointOnArc", pointId: selectedConstraintPoints[0].id, arcId: selectedConstraintArcs[0].id }
+      : null;
+  const selectedPointGeometryActive = Boolean(selectedPointGeometryConstraint && sketchSession?.profile.constraints?.some((constraint) =>
+    selectedPointGeometryConstraint.kind === "pointOnCircle"
+      ? constraint.kind === "pointOnCircle" && constraint.pointId === selectedPointGeometryConstraint.pointId && constraint.circleId === selectedPointGeometryConstraint.circleId
+      : constraint.kind === "pointOnArc" && constraint.pointId === selectedPointGeometryConstraint.pointId && constraint.arcId === selectedPointGeometryConstraint.arcId));
+  const toggleSketchPointOnGeometry = () => {
+    if (selectedPointLinePair) { toggleSketchPointLineConstraint("pointOnObject"); return; }
+    if (!selectedPointGeometryConstraint || !sketchSession) return;
+    if (!selectedPointGeometryActive) {
+      const conflict = sketchConstraintConflict(sketchSession.profile, selectedPointGeometryConstraint);
+      if (conflict) { setNotice({ type: "error", text: conflict }); return; }
+    }
+    setSketchProfile((profile) => {
+      const retained = (profile.constraints ?? []).filter((constraint) => constraint.id !== selectedPointGeometryConstraint.id && !(
+        selectedPointGeometryConstraint.kind === "pointOnCircle"
+          ? constraint.kind === "pointOnCircle" && constraint.pointId === selectedPointGeometryConstraint.pointId && constraint.circleId === selectedPointGeometryConstraint.circleId
+          : constraint.kind === "pointOnArc" && constraint.pointId === selectedPointGeometryConstraint.pointId && constraint.arcId === selectedPointGeometryConstraint.arcId
+      ));
+      return solveSketchConstraints({ ...profile, constraints: selectedPointGeometryActive ? retained : [...retained, { ...selectedPointGeometryConstraint, id: sketchEntityId("constraint") }] });
+    });
+  };
+
   const selectedTangentConstraint = selectedConstraintSegments.length === 1 && selectedConstraintCircles.length === 1
     ? { kind: "tangentLineCircle" as const, segmentId: selectedConstraintSegments[0].id, circleId: selectedConstraintCircles[0].id }
+    : selectedConstraintSegments.length === 1 && selectedConstraintArcs.length === 1 && selectedConstraintCircles.length === 0
+      ? { kind: "tangentLineArc" as const, lineId: selectedConstraintSegments[0].id, arcId: selectedConstraintArcs[0].id }
     : selectedConstraintSegments.length === 0 && selectedConstraintCircles.length === 2
       ? { kind: "tangentCircles" as const, circleIds: [selectedConstraintCircles[0].id, selectedConstraintCircles[1].id] as [string, string] }
       : null;
   const selectedTangentActive = Boolean(selectedTangentConstraint && sketchSession?.profile.constraints?.some((constraint) => {
     if (selectedTangentConstraint.kind === "tangentLineCircle" && constraint.kind === "tangentLineCircle") return constraint.segmentId === selectedTangentConstraint.segmentId && constraint.circleId === selectedTangentConstraint.circleId;
+    if (selectedTangentConstraint.kind === "tangentLineArc" && constraint.kind === "tangentLineArc") return constraint.lineId === selectedTangentConstraint.lineId && constraint.arcId === selectedTangentConstraint.arcId;
     return selectedTangentConstraint.kind === "tangentCircles" && constraint.kind === "tangentCircles" && constraint.circleIds.every((id) => selectedTangentConstraint.circleIds.includes(id));
   }));
   const toggleSketchTangent = () => {
@@ -1217,6 +1253,7 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
     setSketchProfile((profile) => {
       const retained = (profile.constraints ?? []).filter((constraint) => {
         if (candidate.kind === "tangentLineCircle" && constraint.kind === "tangentLineCircle") return constraint.segmentId !== candidate.segmentId || constraint.circleId !== candidate.circleId;
+        if (candidate.kind === "tangentLineArc" && constraint.kind === "tangentLineArc") return constraint.lineId !== candidate.lineId || constraint.arcId !== candidate.arcId;
         if (candidate.kind === "tangentCircles" && constraint.kind === "tangentCircles") return !constraint.circleIds.every((id) => candidate.circleIds.includes(id));
         return true;
       });
@@ -1544,7 +1581,7 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
   };
 
   const pressSketchPoint = (id: string, additive = false) => {
-    const point = sketchSession?.profile.points.find((candidate) => candidate.id === id);
+    const point = sketchSession ? sketchConstraintPoint(sketchSession.profile, id) : null;
     if (!point) return;
     if (sketchTool === "measure") {
       if (sketchMeasureStart) { setSketchMeasurement({ start: sketchMeasureStart, end: point }); setSketchMeasureStart(null); }
@@ -1750,7 +1787,7 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
           if (pointIds[0] === pointIds[1]) return [];
           updated = { ...constraint, pointIds };
         } else if (constraint.kind === "symmetric") updated = { ...constraint, pointIds: constraint.pointIds.map(remap) as [string, string] };
-        else if (constraint.kind === "fixed" || constraint.kind === "midpoint" || constraint.kind === "pointOnObject") updated = { ...constraint, pointId: remap(constraint.pointId) };
+        else if (constraint.kind === "fixed" || constraint.kind === "midpoint" || constraint.kind === "pointOnObject" || constraint.kind === "pointOnCircle" || constraint.kind === "pointOnArc") updated = { ...constraint, pointId: remap(constraint.pointId) };
         if ("segmentId" in updated && !validSegments.has(updated.segmentId)) return [];
         if ("segmentIds" in updated && !updated.segmentIds.every((id) => validSegments.has(id))) return [];
         return [updated];
@@ -2826,6 +2863,7 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
           selected={sketchSelection}
           measurement={sketchMeasurement}
           pendingMeasurementStart={sketchMeasureStart}
+          onCancelActiveTool={() => chooseSketchTool("select")}
           initialSnap={closestSketchGrid(document.workplane.snapSpacing, document.workplane.snapToGrid)}
           exactSnapStep={document.workplane.snapToGrid ? document.workplane.snapSpacing : 0}
           initialWorkspace={{ ...DEFAULT_WORKPLANE_WORKSPACE, units: displayUnit === "in" ? "Imperial" : "Metric (Default)", scale: displayUnit === "in" ? "1:1 (inches)" : "1:1 (millimeters)", width: document.workplane.width, depth: document.workplane.depth, sizePreset: `${document.workplane.width} x ${document.workplane.depth} mm`, gridBlockSize: document.workplane.gridStep, gridBlockPreset: `${document.workplane.gridStep} mm`, showGrid: document.workplane.gridVisible }}
@@ -3126,7 +3164,7 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
               <SketchSideTool label={t("sketch.concentric")} enabled={Boolean(selectedCirclePair)} active={selectedConcentricActive} onClick={toggleSketchConcentric}><SketchConstraintIcon file="concentric" /></SketchSideTool>
               <SketchSideTool label={t("sketch.equal")} enabled={selectedEqualLinePairs.length > 0 || Boolean(selectedCirclePair)} active={selectedEqualActive} onClick={toggleSketchEqual}><SketchConstraintIcon file="equal" /></SketchSideTool>
               <SketchSideTool label={t("sketch.midpoint")} enabled={Boolean(selectedPointLinePair)} active={selectedPointLineActive("midpoint")} onClick={() => toggleSketchPointLineConstraint("midpoint")}><SketchConstraintIcon file="midpoint" /></SketchSideTool>
-              <SketchSideTool label={t("sketch.pointOnGeometry")} enabled={Boolean(selectedPointLinePair)} active={selectedPointLineActive("pointOnObject")} onClick={() => toggleSketchPointLineConstraint("pointOnObject")}><SketchConstraintIcon file="point-on-geometry" /></SketchSideTool>
+              <SketchSideTool label={t("sketch.pointOnGeometry")} enabled={Boolean(selectedPointLinePair || selectedPointGeometryConstraint)} active={selectedPointLinePair ? selectedPointLineActive("pointOnObject") : selectedPointGeometryActive} onClick={toggleSketchPointOnGeometry}><SketchConstraintIcon file="point-on-geometry" /></SketchSideTool>
               <SketchSideTool label={t("sketch.tangent")} enabled={Boolean(selectedTangentConstraint)} active={selectedTangentActive} onClick={toggleSketchTangent}><SketchConstraintIcon file="tangent" /></SketchSideTool>
               <SketchSideTool label={t("sketch.symmetry")} enabled={Boolean(selectedSymmetrySet)} active={selectedSymmetryActive} onClick={toggleSketchSymmetry}><SketchConstraintIcon file="symmetry" /></SketchSideTool>
               <SketchSideTool label={t("sketch.coincident")} enabled={selectedConstraintPoints.length >= 2} active={selectedPointsCoincident} onClick={toggleCoincidentSketchPoints}><SketchConstraintIcon file="coincident" /></SketchSideTool>

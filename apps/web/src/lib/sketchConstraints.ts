@@ -1,6 +1,31 @@
 import type { SketchConstraint, SketchPoint, SketchProfile } from "@/types/sketchforge";
 import { refineSketchConstraintsNumerically, sketchConstraintRankGain } from "@/lib/sketchConstraintAnalysis";
 
+export const SKETCH_ORIGIN_POINT_ID = "reference:origin";
+export const SKETCH_X_AXIS_ID = "reference:axis-x";
+export const SKETCH_Y_AXIS_ID = "reference:axis-y";
+const SKETCH_X_AXIS_START_ID = "reference:axis-x:start";
+const SKETCH_X_AXIS_END_ID = "reference:axis-x:end";
+const SKETCH_Y_AXIS_START_ID = "reference:axis-y:start";
+const SKETCH_Y_AXIS_END_ID = "reference:axis-y:end";
+
+export const SKETCH_REFERENCE_POINTS: SketchPoint[] = [
+  { id: SKETCH_ORIGIN_POINT_ID, x: 0, z: 0 },
+  { id: SKETCH_X_AXIS_START_ID, x: -1, z: 0 },
+  { id: SKETCH_X_AXIS_END_ID, x: 1, z: 0 },
+  { id: SKETCH_Y_AXIS_START_ID, x: 0, z: -1 },
+  { id: SKETCH_Y_AXIS_END_ID, x: 0, z: 1 },
+];
+
+export const SKETCH_REFERENCE_AXES = [
+  { id: SKETCH_X_AXIS_ID, startId: SKETCH_X_AXIS_START_ID, endId: SKETCH_X_AXIS_END_ID, kind: "line" as const, construction: true },
+  { id: SKETCH_Y_AXIS_ID, startId: SKETCH_Y_AXIS_START_ID, endId: SKETCH_Y_AXIS_END_ID, kind: "line" as const, construction: true },
+];
+
+export function sketchReferenceAxis(id: string) {
+  return SKETCH_REFERENCE_AXES.find((axis) => axis.id === id) ?? null;
+}
+
 export function circleSketchPointId(circleId: string, point: "center" | "radius") {
   return `circle:${circleId}:${point}`;
 }
@@ -15,15 +40,17 @@ function circleSketchPointReference(id: string) {
 }
 
 export function sketchConstraintPoint(profile: SketchProfile, id: string): SketchPoint | null {
+  const reference = SKETCH_REFERENCE_POINTS.find((candidate) => candidate.id === id);
+  if (reference) return { ...reference };
   const point = profile.points.find((candidate) => candidate.id === id);
   if (point) return point;
   const arc = profile.segments.find((segment) => segment.kind === "arc" && segment.center && arcSketchPointId(segment.id) === id);
   if (arc?.center) return { id, x: arc.center.x, z: arc.center.z };
-  const reference = circleSketchPointReference(id);
-  const circle = reference ? profile.circles?.find((candidate) => candidate.id === reference.circleId) : null;
-  if (!reference || !circle) return null;
+  const circleReference = circleSketchPointReference(id);
+  const circle = circleReference ? profile.circles?.find((candidate) => candidate.id === circleReference.circleId) : null;
+  if (!circleReference || !circle) return null;
   const angle = circle.radiusAngle ?? 0;
-  return reference.point === "center"
+  return circleReference.point === "center"
     ? { id, x: circle.x, z: circle.z }
     : { id, x: circle.x + Math.cos(angle) * circle.radius, z: circle.z + Math.sin(angle) * circle.radius };
 }
@@ -32,7 +59,9 @@ export function sketchConstraintUsesSegment(constraint: SketchConstraint, segmen
   if (constraint.kind === "angle" || constraint.kind === "parallel" || constraint.kind === "perpendicular" || constraint.kind === "equalLength") return constraint.segmentIds.includes(segmentId);
   if (constraint.kind === "arcRadius" || constraint.kind === "arcDiameter" || constraint.kind === "arcAngle") return constraint.segmentId === segmentId;
   if (constraint.kind === "midpoint" || constraint.kind === "pointOnObject") return constraint.segmentId === segmentId;
+  if (constraint.kind === "pointOnArc") return constraint.arcId === segmentId;
   if (constraint.kind === "tangentLineCircle" || constraint.kind === "symmetric") return constraint.segmentId === segmentId;
+  if (constraint.kind === "tangentLineArc") return constraint.lineId === segmentId || constraint.arcId === segmentId;
   return (constraint.kind === "horizontal" || constraint.kind === "vertical" || constraint.kind === "distance") && constraint.segmentId === segmentId;
 }
 
@@ -41,8 +70,10 @@ export function sketchConstraintUsesPoint(constraint: SketchConstraint, pointId:
   if (constraint.kind === "coincident") return constraint.pointIds.includes(pointId);
   if (constraint.kind === "concentric") return constraint.circleIds.some((circleId) => circleSketchPointId(circleId, "center") === pointId);
   if (constraint.kind === "midpoint" || constraint.kind === "pointOnObject") return constraint.pointId === pointId;
+  if (constraint.kind === "pointOnCircle" || constraint.kind === "pointOnArc") return constraint.pointId === pointId;
   if (constraint.kind === "symmetric") return constraint.pointIds.includes(pointId);
   if (constraint.kind === "tangentLineCircle") return circleSketchPointId(constraint.circleId, "center") === pointId;
+  if (constraint.kind === "tangentLineArc") return arcSketchPointId(constraint.arcId) === pointId;
   if (constraint.kind === "tangentCircles") return constraint.circleIds.some((circleId) => circleSketchPointId(circleId, "center") === pointId);
   return false;
 }
@@ -74,6 +105,13 @@ export function sketchConstraintConflict(profile: SketchProfile, candidate: Sket
     const centerId = circleSketchPointId(circle.id, "center");
     if (constraints.some((constraint) => constraint.kind === "fixed" && coincidentSketchPoints(profile, centerId, constraint.pointId))) return "The circle center is fixed; release it before applying tangency.";
   }
+  if (candidate.kind === "tangentLineArc") {
+    const line = profile.segments.find((item) => item.id === candidate.lineId && item.kind === "line");
+    const arc = profile.segments.find((item) => item.id === candidate.arcId && item.kind === "arc" && item.center);
+    if (!line || !arc?.center) return "Tangency requires a valid straight line and arc.";
+    const centerId = arcSketchPointId(arc.id);
+    if (constraints.some((constraint) => constraint.kind === "fixed" && coincidentSketchPoints(profile, centerId, constraint.pointId))) return "The arc center is fixed; release it before applying tangency.";
+  }
   if (candidate.kind === "tangentCircles") {
     const circles = candidate.circleIds.map((id) => profile.circles?.find((circle) => circle.id === id));
     if (candidate.circleIds[0] === candidate.circleIds[1] || circles.some((circle) => !circle)) return "Tangency requires two different circles.";
@@ -98,6 +136,20 @@ export function sketchConstraintConflict(profile: SketchProfile, candidate: Sket
     const segment = profile.segments.find((item) => item.id === candidate.segmentId && item.kind === "line");
     if (!point || !segment) return "The relation requires a valid point and straight line.";
     if (segment.startId === candidate.pointId || segment.endId === candidate.pointId) return candidate.kind === "midpoint" ? "A line endpoint cannot also be its midpoint." : "The endpoint already belongs to the line.";
+    if (constraints.some((constraint) => constraint.kind === "fixed" && coincidentSketchPoints(profile, candidate.pointId, constraint.pointId))) return "The point is fixed; release it before applying this relation.";
+  }
+  if (candidate.kind === "pointOnCircle") {
+    const point = sketchConstraintPoint(profile, candidate.pointId);
+    const circle = profile.circles?.find((item) => item.id === candidate.circleId);
+    if (!point || !circle) return "The relation requires a valid point and circle.";
+    if ([circleSketchPointId(circle.id, "center"), circleSketchPointId(circle.id, "radius")].includes(candidate.pointId)) return "A circle control point already belongs to that circle.";
+    if (constraints.some((constraint) => constraint.kind === "fixed" && coincidentSketchPoints(profile, candidate.pointId, constraint.pointId))) return "The point is fixed; release it before applying this relation.";
+  }
+  if (candidate.kind === "pointOnArc") {
+    const point = sketchConstraintPoint(profile, candidate.pointId);
+    const arc = profile.segments.find((item) => item.id === candidate.arcId && item.kind === "arc" && item.center);
+    if (!point || !arc?.center) return "The relation requires a valid point and arc.";
+    if ([arc.startId, arc.endId, arcSketchPointId(arc.id)].includes(candidate.pointId)) return "This point already belongs to that arc.";
     if (constraints.some((constraint) => constraint.kind === "fixed" && coincidentSketchPoints(profile, candidate.pointId, constraint.pointId))) return "The point is fixed; release it before applying this relation.";
   }
   if (candidate.kind === "equalLength") {
@@ -255,12 +307,13 @@ export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: 
     target.radius = reference.radius;
   }
   const virtualPoints = [
+    ...SKETCH_REFERENCE_POINTS.map((point) => ({ ...point })),
     ...(profile.circles ?? []).flatMap((circle) => [circleSketchPointId(circle.id, "center"), circleSketchPointId(circle.id, "radius")].map((id) => sketchConstraintPoint(profile, id)).filter(Boolean) as SketchPoint[]),
     ...profile.segments.filter((segment) => segment.kind === "arc" && segment.center).map((segment) => ({ id: arcSketchPointId(segment.id), x: segment.center!.x, z: segment.center!.z })),
   ];
   const allPoints = [...profile.points, ...virtualPoints];
   const pointById = new Map(allPoints.map((point) => [point.id, point]));
-  const segmentById = new Map(profile.segments.map((segment) => [segment.id, segment]));
+  const segmentById = new Map([...profile.segments, ...SKETCH_REFERENCE_AXES].map((segment) => [segment.id, segment]));
   const neighbors = new Map(allPoints.map((point) => [point.id, [] as string[]]));
   for (const constraint of constraints) {
     const ids = constraint.kind === "coincident" ? constraint.pointIds
@@ -286,6 +339,7 @@ export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: 
   }
 
   const fixedByPoint = new Map(constraints.filter((constraint): constraint is Extract<SketchConstraint, { kind: "fixed" }> => constraint.kind === "fixed").map((constraint) => [constraint.pointId, constraint]));
+  for (const point of SKETCH_REFERENCE_POINTS) fixedByPoint.set(point.id, { id: `fixed:${point.id}`, kind: "fixed", pointId: point.id, x: point.x, z: point.z });
   const driven = new Set(drivingPointId ? componentByPoint.get(drivingPointId) ?? [drivingPointId] : []);
   const assignComponent = (pointId: string, axis: "x" | "z", value: number) => {
     const component = componentByPoint.get(pointId) ?? [pointId];
@@ -388,10 +442,46 @@ export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: 
     }
   }
 
-  const pointRelations = constraints.filter((constraint): constraint is Extract<SketchConstraint, { kind: "midpoint" | "pointOnObject" }> => constraint.kind === "midpoint" || constraint.kind === "pointOnObject");
+  const pointRelations = constraints.filter((constraint): constraint is Extract<SketchConstraint, { kind: "midpoint" | "pointOnObject" | "pointOnCircle" | "pointOnArc" }> => constraint.kind === "midpoint" || constraint.kind === "pointOnObject" || constraint.kind === "pointOnCircle" || constraint.kind === "pointOnArc");
   const applyPointRelations = () => {
     for (const constraint of pointRelations) {
       const point = pointById.get(constraint.pointId);
+      if (!point) continue;
+      if (constraint.kind === "pointOnCircle") {
+        const circle = profile.circles?.find((candidate) => candidate.id === constraint.circleId);
+        if (!circle) continue;
+        const dx = point.x - circle.x;
+        const dz = point.z - circle.z;
+        const length = Math.hypot(dx, dz);
+        assignComponent(point.id, "x", circle.x + (length > 0.000001 ? dx / length : 1) * circle.radius);
+        assignComponent(point.id, "z", circle.z + (length > 0.000001 ? dz / length : 0) * circle.radius);
+        continue;
+      }
+      if (constraint.kind === "pointOnArc") {
+        const arc = segmentById.get(constraint.arcId);
+        const start = arc ? pointById.get(arc.startId) : null;
+        const end = arc ? pointById.get(arc.endId) : null;
+        if (!arc || arc.kind !== "arc" || !arc.center || !start || !end) continue;
+        const dx = point.x - arc.center.x;
+        const dz = point.z - arc.center.z;
+        const length = Math.hypot(dx, dz);
+        const radius = Math.hypot(start.x - arc.center.x, start.z - arc.center.z);
+        const fullTurn = Math.PI * 2;
+        const startAngle = Math.atan2(start.z - arc.center.z, start.x - arc.center.x);
+        const endAngle = Math.atan2(end.z - arc.center.z, end.x - arc.center.x);
+        const candidateAngle = length > 0.000001 ? Math.atan2(dz, dx) : startAngle;
+        const directedDistance = (from: number, to: number) => arc.clockwise !== false
+          ? ((to - from) % fullTurn + fullTurn) % fullTurn
+          : ((from - to) % fullTurn + fullTurn) % fullTurn;
+        const sweep = directedDistance(startAngle, endAngle);
+        const withinArc = directedDistance(startAngle, candidateAngle) <= sweep + 0.000001;
+        const angle = withinArc ? candidateAngle
+          : Math.abs(Math.atan2(Math.sin(candidateAngle - startAngle), Math.cos(candidateAngle - startAngle)))
+            <= Math.abs(Math.atan2(Math.sin(candidateAngle - endAngle), Math.cos(candidateAngle - endAngle))) ? startAngle : endAngle;
+        assignComponent(point.id, "x", arc.center.x + Math.cos(angle) * radius);
+        assignComponent(point.id, "z", arc.center.z + Math.sin(angle) * radius);
+        continue;
+      }
       const segment = segmentById.get(constraint.segmentId);
       const start = segment ? pointById.get(segment.startId) : null;
       const end = segment ? pointById.get(segment.endId) : null;
@@ -495,6 +585,30 @@ export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: 
       const side = Math.sign((center.x - baseX) * normalX + (center.z - baseZ) * normalZ) || 1;
       assignComponent(center.id, "x", baseX + normalX * circle.radius * side);
       assignComponent(center.id, "z", baseZ + normalZ * circle.radius * side);
+    }
+    if (constraint.kind === "tangentLineArc") {
+      const line = segmentById.get(constraint.lineId);
+      const arc = segmentById.get(constraint.arcId);
+      const start = line ? pointById.get(line.startId) : null;
+      const end = line ? pointById.get(line.endId) : null;
+      const arcStart = arc ? pointById.get(arc.startId) : null;
+      const center = arc ? pointById.get(arcSketchPointId(arc.id)) : null;
+      if (!line || line.kind !== "line" || !arc || arc.kind !== "arc" || !arc.center || !start || !end || !arcStart || !center) continue;
+      const dx = end.x - start.x;
+      const dz = end.z - start.z;
+      const length = Math.hypot(dx, dz);
+      const radius = Math.hypot(arcStart.x - center.x, arcStart.z - center.z);
+      if (length < 0.000001 || radius < 0.000001) continue;
+      const unitX = dx / length;
+      const unitZ = dz / length;
+      const projection = (center.x - start.x) * unitX + (center.z - start.z) * unitZ;
+      const baseX = start.x + projection * unitX;
+      const baseZ = start.z + projection * unitZ;
+      const normalX = -unitZ;
+      const normalZ = unitX;
+      const side = Math.sign((center.x - baseX) * normalX + (center.z - baseZ) * normalZ) || 1;
+      assignComponent(center.id, "x", baseX + normalX * radius * side);
+      assignComponent(center.id, "z", baseZ + normalZ * radius * side);
     }
     if (constraint.kind === "tangentCircles") {
       let reference = profile.circles?.find((circle) => circle.id === constraint.circleIds[0]);
