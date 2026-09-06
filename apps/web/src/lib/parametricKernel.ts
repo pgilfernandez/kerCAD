@@ -581,13 +581,34 @@ function applyShellFeature(brep: Brep, document: ParametricDocument, current: An
   return resultValue<AnySolid>(brep, brep.shell(current, faces as Parameters<Brep["shell"]>[1], feature.thickness));
 }
 
-function applyRevolveFeature(brep: Brep, document: ParametricDocument, current: AnySolid, feature: Extract<ParametricDocument["features"][number], { kind: "revolve" }>) {
+function sketchRevolveAxis(sketch: SketchFeature, segmentId: string, featureName: string) {
+  if (sketch.profile.shape !== "drawn") throw new Error(`${featureName}: the selected sketch does not contain editable edges.`);
+  const segment = sketch.profile.geometry.segments.find((candidate) => candidate.id === segmentId);
+  const start = segment ? sketch.profile.geometry.points.find((point) => point.id === segment.startId) : null;
+  const end = segment ? sketch.profile.geometry.points.find((point) => point.id === segment.endId) : null;
+  const straight = segment && (segment.kind === "line" || (!segment.kind && !start?.handleOut && !end?.handleIn));
+  if (!straight || !start || !end) throw new Error(`${featureName}: the sketch axis must be a straight edge.`);
+  const localDirection: Direction3 = [end.x - start.x, end.z - start.z, 0];
+  if (Math.hypot(...localDirection) < 1e-8) throw new Error(`${featureName}: the sketch axis has zero length.`);
+  const rotatedPoint = rotateDirection([start.x, start.z, 0], sketch.rotation);
+  const direction = rotateDirection(localDirection, sketch.rotation);
+  const length = Math.hypot(...direction) || 1;
+  return {
+    at: [rotatedPoint[0] + sketch.x, rotatedPoint[1] + sketch.y, rotatedPoint[2] + sketch.offset] as [number, number, number],
+    axis: [direction[0] / length, direction[1] / length, direction[2] / length] as [number, number, number],
+  };
+}
+
+function applyRevolveFeature(brep: Brep, document: ParametricDocument, current: AnySolid | null, feature: Extract<ParametricDocument["features"][number], { kind: "revolve" }>) {
+  let sourceSketch: SketchFeature | null = null;
   let faces: Face[];
   if (feature.source === "sketch") {
     const sketch = document.features.find((candidate): candidate is SketchFeature => candidate.kind === "sketch" && candidate.id === feature.sketchId);
     if (!sketch) throw new Error(`${feature.name}: selected sketch no longer exists.`);
+    sourceSketch = sketch;
     faces = facesFromSketch(brep, sketch);
   } else {
+    if (!current) throw new Error(`${feature.name}: a face-based revolve requires an existing solid.`);
     const stored = document.topologyReferences.find((reference) => reference.id === feature.faceReferenceId);
     if (!stored || stored.reference.hint.entityType !== "face") throw new Error(`${feature.name}: selected face no longer exists.`);
     faces = [resolveStoredFace(brep, document, current, stored, feature.name)];
@@ -595,12 +616,17 @@ function applyRevolveFeature(brep: Brep, document: ParametricDocument, current: 
   let axis: [number, number, number] = feature.axis === "x" ? [1, 0, 0] : feature.axis === "y" ? [0, 1, 0] : [0, 0, 1];
   let at: [number, number, number] = [0, 0, 0];
   if (feature.axis === "edge") {
-    const axisReference = document.topologyReferences.find((reference) => reference.id === feature.axisReferenceId);
-    if (!axisReference || axisReference.reference.hint.entityType !== "edge" || !axisReference.reference.hint.midpoint || !axisReference.reference.hint.direction) throw new Error(`${feature.name}: selected axis no longer exists.`);
-    resolveStoredEdge(brep, document, current, axisReference, feature.name);
-    const space = topologyReferenceSpace(document, axisReference.objectId);
-    at = space.point(axisReference.reference.hint.midpoint);
-    axis = space.direction(axisReference.reference.hint.direction);
+    if (sourceSketch && feature.sketchAxisSegmentId) {
+      ({ axis, at } = sketchRevolveAxis(sourceSketch, feature.sketchAxisSegmentId, feature.name));
+    } else {
+      if (!current) throw new Error(`${feature.name}: selected axis no longer exists.`);
+      const axisReference = document.topologyReferences.find((reference) => reference.id === feature.axisReferenceId);
+      if (!axisReference || axisReference.reference.hint.entityType !== "edge" || !axisReference.reference.hint.midpoint || !axisReference.reference.hint.direction) throw new Error(`${feature.name}: selected axis no longer exists.`);
+      resolveStoredEdge(brep, document, current, axisReference, feature.name);
+      const space = topologyReferenceSpace(document, axisReference.objectId);
+      at = space.point(axisReference.reference.hint.midpoint);
+      axis = space.direction(axisReference.reference.hint.direction);
+    }
   }
   const tool = combineProfileSolids(brep, faces.map((face) => brep.unwrap(brep.revolve(face as Parameters<Brep["revolve"]>[0], { axis, at, angle: feature.angle * Math.PI / 180 })) as AnySolid));
   return applyBooleanOperation(brep, current, tool, feature);
@@ -805,6 +831,24 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
       }
       const objectId = feature.objectId ?? lastObjectId;
       let current = solids.get(objectId) ?? null;
+      if (!current && feature.kind === "revolve") {
+        if (Math.abs(feature.angle) < 1 || Math.abs(feature.angle) > 360) throw new Error(`${feature.name}: angle must be between -360 and 360 degrees and cannot be zero.`);
+        current = applyRevolveFeature(brep, document, null, feature);
+        solids.set(objectId, current);
+        operationStates.set(feature.id, { before: null, after: current });
+        featureSolidSnapshots.set(feature.id, { objectId, solid: current });
+        completedFeatureIds.push(feature.id);
+        if (feature.id === contextFeatureId) {
+          operationContext = {
+            featureId: feature.id,
+            objectId,
+            color: objects.get(objectId)?.color ?? "#d41721",
+            mesh: meshShape(brep, applyObjectTransform(brep, current, objects.get(objectId))),
+          };
+          if (stopAtContext) return { mesh: null, objectRecords: [], operationContext, completedFeatureIds, failedFeatureId: null, warning: null };
+        }
+        continue;
+      }
       if (!current) throw new Error(`${feature.name}: create a solid first.`);
       const previousSolid = current;
       const selectionMesh = feature.id === contextFeatureId ? meshShape(brep, applyObjectTransform(brep, current, objects.get(objectId))) : undefined;

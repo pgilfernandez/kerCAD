@@ -440,6 +440,7 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
     if (feature.kind === "revolve") {
       const legacy = feature as RevolveFeature & { source?: RevolveFeature["source"] };
       legacy.source ??= legacy.sketchId ? "sketch" : "face";
+      if (legacy.source !== "sketch") legacy.sketchAxisSegmentId = undefined;
     }
     if (feature.kind === "mirror") {
       feature.axis = feature.axis === "y" || feature.axis === "z" ? feature.axis : "x";

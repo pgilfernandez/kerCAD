@@ -140,7 +140,12 @@ export default function Home() {
       window.alert(error instanceof Error ? error.message : "Could not open the project.");
     } finally { setBusy(false); }
   };
+  const renameProject = async (project: ProjectLibraryEntry, name: string) => {
+    const updated = { ...project, name, updatedAt: Date.now(), document: { ...project.document, name } };
+    await saveLibraryProject(updated);
+    setProjects((current) => current.map((entry) => entry.id === updated.id ? updated : entry));
+  };
 
   if (active) return <SketchForgeParametricEditor key={`${active.id}:${editorSession}`} initialProject={active.document} onProjectChange={persistActive} onProjectThumbnail={persistThumbnail} onExitToProjects={(document) => void leaveEditor(document)} />;
-  return <ProjectDashboard projects={projects} busy={busy} onCreate={() => void createProject()} onOpen={(project) => void openStoredProject(project)} onImport={(file) => void importProject(file)} onDelete={(project) => void (async () => { if (!window.confirm(`Delete “${project.name}”?`)) return; await deleteLibraryProject(project.id); await refresh(); })()} />;
+  return <ProjectDashboard projects={projects} busy={busy} onCreate={() => void createProject()} onOpen={(project) => void openStoredProject(project)} onImport={(file) => void importProject(file)} onRename={(project, name) => void renameProject(project, name)} onDelete={(project) => void (async () => { if (!window.confirm(`Delete “${project.name}”?`)) return; await deleteLibraryProject(project.id); await refresh(); })()} />;
 }

@@ -1126,6 +1126,24 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       renderer.render(scene, camera);
       if (thumbnailRequestedRef.current && thumbnailCallbackRef.current) {
         thumbnailRequestedRef.current = false;
+        // Project cards represent the model itself, rather than the currently
+        // selected editing state. Hide every interactive overlay for the
+        // capture only, then immediately restore the live viewport.
+        const thumbnailOverlayCandidates: Array<THREE.Object3D | null> = [
+          originLayerRef.current,
+          selectionRootRef.current,
+          faceExtrudeHandleRef.current,
+          edgeTreatmentHandleRef.current,
+          operationContextRef.current,
+          workplaneSelectionPlanesRef.current,
+          topologyFaceLayerRef.current,
+          faceHighlightRef.current,
+          edgeHighlightRef.current,
+        ];
+        const thumbnailOverlays = thumbnailOverlayCandidates.filter((item): item is THREE.Object3D => item !== null);
+        const overlayVisibility = thumbnailOverlays.map((item) => item.visible);
+        thumbnailOverlays.forEach((item) => { item.visible = false; });
+        renderer.render(scene, camera);
         const source = renderer.domElement;
         const width = Math.min(480, Math.max(1, source.width));
         const height = Math.max(1, Math.round(width * source.height / Math.max(1, source.width)));
@@ -1133,6 +1151,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         thumbnail.width = width;
         thumbnail.height = height;
         thumbnail.getContext("2d")?.drawImage(source, 0, 0, width, height);
+        thumbnailOverlays.forEach((item, index) => { item.visible = overlayVisibility[index]; });
+        renderer.render(scene, camera);
         thumbnailCallbackRef.current(thumbnail.toDataURL("image/jpeg", 0.78));
       }
       performanceStats.drawCalls = renderer.info.render.calls;

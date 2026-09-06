@@ -164,6 +164,8 @@ export type RevolveFeature = BaseFeature & {
   angle: number;
   axis: "x" | "y" | "z" | "edge";
   axisReferenceId?: string;
+  /** Stable source-sketch segment used as the revolution axis. */
+  sketchAxisSegmentId?: string;
   faceReferenceId?: string;
   sketchId?: string;
 };

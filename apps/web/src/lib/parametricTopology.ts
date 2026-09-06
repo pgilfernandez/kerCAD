@@ -176,9 +176,10 @@ export function assertValidParametricTopology(document: ParametricDocument) {
       if (!sketch || sketch.kind !== "sketch") throw new ParametricTopologyError(`${feature.name}: referenced sketch no longer exists.`);
       if (feature.objectId && sketch.objectId !== feature.objectId) throw new ParametricTopologyError(`${feature.name}: sketch belongs to another object.`);
       if (feature.axis === "edge") {
-        const axisReference = feature.axisReferenceId ? references.get(feature.axisReferenceId) : null;
-        if (!axisReference || axisReference.reference.hint.entityType !== "edge") throw new ParametricTopologyError(`${feature.name}: the edge used as the axis is missing.`);
-        if (feature.objectId && axisReference.objectId !== feature.objectId) throw new ParametricTopologyError(`${feature.name}: axis belongs to another object.`);
+        const sketchSegment = sketch.profile.shape === "drawn" && feature.sketchAxisSegmentId
+          ? sketch.profile.geometry.segments.find((segment) => segment.id === feature.sketchAxisSegmentId)
+          : null;
+        if (!sketchSegment) throw new ParametricTopologyError(`${feature.name}: the sketch edge used as the axis is missing.`);
       }
       continue;
     }

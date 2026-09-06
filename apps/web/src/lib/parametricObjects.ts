@@ -97,6 +97,7 @@ export function resetParametricFeature(document: ParametricDocument, featureId: 
     feature.angle = 360;
     feature.axis = "z";
     delete feature.axisReferenceId;
+    delete feature.sketchAxisSegmentId;
   } else if (feature.kind === "mirror") {
     feature.axis = "x";
     feature.duplicate = true;

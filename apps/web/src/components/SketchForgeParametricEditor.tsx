@@ -108,7 +108,7 @@ import {
 import { globalParametricWorkplanePlacement, objectPlacementForWorkplane, parametricTransformMatrix, parametricWorkplaneFromFace, parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
 import { localizedParametricOperationDefinition, parametricOperationCatalog, parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import type { ViewportRenderQuality } from "@/lib/viewportPerformance";
-import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricFeature, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, PrimitiveFeature, SketchFeature } from "@/types/parametric";
+import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricFeature, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, PrimitiveFeature, RevolveFeature, SketchFeature } from "@/types/parametric";
 import type { GridSize, SketchConstraint, SketchPoint, SketchProfile, WorkplaneShape } from "@/types/sketchforge";
 
 const RENDER_QUALITY_STORAGE_KEY = "educad.viewport.render-mode";
@@ -316,7 +316,7 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
   const [alignOpen, setAlignOpen] = useState(false);
   const [cameraOrientation, setCameraOrientation] = useState<CameraOrientation>({ azimuth: -Math.PI / 4, polar: 1.02 });
   const [clipboardId, setClipboardId] = useState<string | null>(null);
-  const [sketchSession, setSketchSession] = useState<{ featureId: string | null; objectId: string | null; profile: SketchProfile; mode: "sketch" | "scribble" } | null>(null);
+  const [sketchSession, setSketchSession] = useState<{ featureId: string | null; objectId: string | null; profile: SketchProfile; mode: "sketch" | "scribble"; revolveAxisFeatureId?: string } | null>(null);
   const [sketchTool, setSketchTool] = useState<SketchTool>("line");
   const [sketchActivePointId, setSketchActivePointId] = useState<string | null>(null);
   const [sketchSelection, setSketchSelection] = useState<SketchSelection>(null);
@@ -916,6 +916,35 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
     const validation = sketchSession ? validateDrawnSketchProfile(sketchSession.profile) : null;
     if (!sketchSession || !validation?.valid) {
       setNotice({ type: "error", text: validation?.diagnostics[0]?.message ?? t("notice.closeContours") });
+      return;
+    }
+    if (sketchSession.revolveAxisFeatureId) {
+      const segmentIds = sketchSelection?.kind === "segment" ? [sketchSelection.id] : sketchSelection?.kind === "multiple" ? sketchSelection.segmentIds : [];
+      const axisSegment = segmentIds.length === 1 ? sketchSession.profile.segments.find((segment) => segment.id === segmentIds[0]) : null;
+      if (!axisSegment || (axisSegment.kind !== "line" && axisSegment.kind !== undefined)) {
+        setNotice({ type: "error", text: locale === "es" ? "Selecciona una única arista recta del boceto como eje." : "Select one straight sketch edge as the axis." });
+        return;
+      }
+      const revolveFeatureId = sketchSession.revolveAxisFeatureId;
+      const changed = mutate((draft) => {
+        const sketch = draft.features.find((candidate): candidate is SketchFeature => candidate.id === sketchSession.featureId && candidate.kind === "sketch");
+        const revolve = draft.features.find((candidate): candidate is RevolveFeature => candidate.id === revolveFeatureId && candidate.kind === "revolve");
+        if (!sketch || sketch.profile.shape !== "drawn" || !revolve || revolve.source !== "sketch") return;
+        sketch.profile.geometry = structuredClone(sketchSession.profile);
+        revolve.axis = "edge";
+        revolve.sketchAxisSegmentId = axisSegment.id;
+        revolve.axisReferenceId = undefined;
+      });
+      if (!changed) return;
+      setSketchSession(null);
+      setSketchSelection(null);
+      setSketchActivePointId(null);
+      sketchHistoryRef.current = [];
+      sketchHistoryIndexRef.current = -1;
+      setSketchHistoryIndex(-1);
+      setModelSidebarMode("normal");
+      setModelSelection([{ id: revolveFeatureId, kind: "feature" }]);
+      setNotice({ type: "ok", text: locale === "es" ? "Eje de revolución actualizado." : "Revolve axis updated." });
       return;
     }
     let featureId = sketchSession.featureId ?? "";
@@ -1663,7 +1692,11 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
       feature.source = "sketch";
       feature.sketchId = sketch.id;
       feature.faceReferenceId = undefined;
-      feature.axis = "y";
+      const constructionAxes = sketch.profile.shape === "drawn"
+        ? sketch.profile.geometry.segments.filter((segment) => segment.construction && (segment.kind === "line" || segment.kind === undefined))
+        : [];
+      feature.axis = constructionAxes.length === 1 ? "edge" : "y";
+      feature.sketchAxisSegmentId = constructionAxes.length === 1 ? constructionAxes[0].id : undefined;
       feature.dependencies = [{ type: "feature", id: sketch.id }];
       featureId = feature.id;
       draft.features.push(feature);
@@ -2247,6 +2280,29 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
     setNotice({ type: "info", text: t("notice.selectPlanarFaceRevolve") });
   };
 
+  const beginRevolveAxisEdit = (featureId: string) => {
+    const revolve = document.features.find((candidate): candidate is RevolveFeature => candidate.id === featureId && candidate.kind === "revolve");
+    const sketch = revolve?.kind === "revolve" && revolve.source === "sketch"
+      ? document.features.find((candidate): candidate is SketchFeature => candidate.kind === "sketch" && candidate.id === revolve.sketchId && candidate.profile.shape === "drawn")
+      : null;
+    if (!revolve || revolve.source !== "sketch" || !sketch || sketch.profile.shape !== "drawn") {
+      beginRevolve(featureId, "axis");
+      return;
+    }
+    const profile = cloneSketchProfile(sketch.profile.geometry);
+    setSketchSession({ featureId: sketch.id, objectId: sketch.objectId ?? null, profile, mode: "sketch", revolveAxisFeatureId: revolve.id });
+    sketchHistoryRef.current = [cloneSketchProfile(profile)];
+    sketchHistoryIndexRef.current = 0;
+    setSketchHistoryIndex(0);
+    setSketchTool("select");
+    setSketchActivePointId(null);
+    setSketchSelection(revolve.sketchAxisSegmentId ? { kind: "segment", id: revolve.sketchAxisSegmentId } : null);
+    setSketchMeasurement(null);
+    setSketchMeasureStart(null);
+    setModelSidebarMode("hidden");
+    setNotice({ type: "info", text: locale === "es" ? "Selecciona una arista recta del boceto y acepta." : "Select a straight sketch edge and accept." });
+  };
+
   const cancelRevolve = () => {
     setPendingRevolve(null);
     setEditingRevolveId(null);
@@ -2520,7 +2576,7 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
       <div className="secondary-toolbar">
         <div className="toolbar-workspace-tabs educad-toolbar-titlebar">
           {onExitToProjects ? <button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={() => onExitToProjects(latestDocumentRef.current)} title="Back to projects">{'<'} back</button> : null}
-          <span className="educad-project-name"><strong>eduCAD</strong><span> - {document.name}</span></span>
+          <span className="educad-project-name"><img src="/assets/educad/logo.svg" alt="" /><strong>eduCAD</strong><span> - {document.name}</span></span>
         </div>
         {sketchSession ? <div className="sketch-toolbar-ribbon educad-parametric-sketch-toolbar" aria-label={t("sketch.tools")}>
           <ToolbarSection label={t("sketch.draw")}>
@@ -2907,7 +2963,7 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
           }}
           onEditShellSelection={(featureId) => beginShell(featureId)}
           onEditRevolveFace={(featureId) => beginRevolve(featureId, "face")}
-          onEditRevolveAxis={(featureId) => beginRevolve(featureId, "axis")}
+          onEditRevolveAxis={beginRevolveAxisEdit}
           onEditMirrorPlane={beginMirrorPlaneSelection}
           onFloatingFeatureChange={(featureId, update) => updateFeature(featureId, (feature) => {
             if (feature.kind === "faceExtrude" && update.distance !== undefined) feature.distance = Math.max(0.01, update.distance);
@@ -3025,7 +3081,7 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
           }}
           onEditShellSelection={(featureId) => beginShell(featureId)}
           onEditRevolveFace={(featureId) => beginRevolve(featureId, "face")}
-          onEditRevolveAxis={(featureId) => beginRevolve(featureId, "axis")}
+          onEditRevolveAxis={beginRevolveAxisEdit}
           onEditMirrorPlane={beginMirrorPlaneSelection}
           edgeTreatmentDraft={pendingEdgeTreatment ? { treatment: pendingEdgeTreatment, radius: edgeTreatmentRadius, faceCount: selectedTopologyFaces.length, edgeCount: selectedTopologyEdges.length, editing: Boolean(editingEdgeTreatmentId) } : null}
           onEdgeTreatmentDraftChange={(update) => {
