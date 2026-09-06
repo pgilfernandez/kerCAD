@@ -4989,11 +4989,13 @@ button {
 
 .sketch-reference-axes .reference-axis {
   fill: none;
-  stroke: transparent;
-  stroke-width: 12px;
+  stroke-width: 2px;
   vector-effect: non-scaling-stroke;
   cursor: pointer;
 }
+
+.sketch-reference-axes .reference-axis.axis-x { stroke: #e5484d; }
+.sketch-reference-axes .reference-axis.axis-y { stroke: #2e9b4f; }
 
 .sketch-reference-axes .reference-axis:hover,
 .sketch-reference-axes .reference-axis.selected {
