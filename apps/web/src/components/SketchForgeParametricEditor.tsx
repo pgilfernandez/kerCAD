@@ -3413,14 +3413,15 @@ function ViewCube({ orientation, onDirection }: { orientation: CameraOrientation
     <button type="button" className="cube-face cube-bottom" aria-label="Top view" onClick={() => chooseDirection([0, 1, 0.001])}>TOP</button>
     <button type="button" className="cube-face cube-front" aria-label="Front view" onClick={() => chooseDirection([0, 0.001, 1])}>FRONT</button>
     <button type="button" className="cube-face cube-back" aria-label="Back view" onClick={() => chooseDirection([0, 0.001, -1])}>BACK</button>
-    <button type="button" className="cube-face cube-right" aria-label="Left view" onClick={() => chooseDirection([-1, 0.001, 0])}>LEFT</button>
-    <button type="button" className="cube-face cube-left" aria-label="Right view" onClick={() => chooseDirection([1, 0.001, 0])}>RIGHT</button>
+    <button type="button" className="cube-face cube-right" aria-label="Left view" onClick={() => chooseDirection([1, 0.001, 0])}>LEFT</button>
+    <button type="button" className="cube-face cube-left" aria-label="Right view" onClick={() => chooseDirection([-1, 0.001, 0])}>RIGHT</button>
     {edgeViews.map((view) => <button key={view.className} type="button" className={`cube-bevel cube-bevel-${view.className}`} aria-label={`Edge view ${view.direction.join(", ")}`} onClick={() => chooseDirection(view.direction)} />)}
     {cornerViews.map((direction) => {
       const yaw = Math.atan2(direction[0], direction[2]) * 180 / Math.PI;
       const pitch = -Math.asin(direction[1] / Math.sqrt(3)) * 180 / Math.PI;
+      const roll = direction[1] > 0 ? 180 : 0;
       const cameraDirection: [number, number, number] = [direction[0], -direction[1], direction[2]];
-      return <button key={direction.join(":")} type="button" className="cube-corner" style={{ transform: `rotateY(${yaw}deg) rotateX(${pitch}deg) translateZ(46.8px)` }} aria-label={`Corner view ${cameraDirection.join(", ")}`} onClick={() => chooseDirection(cameraDirection)} />;
+      return <button key={direction.join(":")} type="button" className="cube-corner" style={{ transform: `rotateY(${yaw}deg) rotateX(${pitch}deg) rotateZ(${roll}deg) translateZ(36.37px)` }} aria-label={`Corner view ${cameraDirection.join(", ")}`} onClick={() => chooseDirection(cameraDirection)} />;
     })}
   </div></div>;
 }
