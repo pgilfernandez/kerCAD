@@ -5873,12 +5873,12 @@ circle.sketch-preview-line {
 
 .cube-face {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: 9px;
+  left: 9px;
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   background: rgba(255, 255, 255, 0.9);
   border: 2px solid #cfd7df;
   padding: 0;
@@ -5942,29 +5942,29 @@ circle.sketch-preview-line {
   transform-origin: center;
 }
 
-.cube-bevel { top: 21px; left: 12px; width: 34px; height: 16px; }
-.cube-bevel-front-top { transform: rotateX(45deg) translateZ(32.53px); }
-.cube-bevel-front-bottom { transform: rotateX(-45deg) translateZ(32.53px); }
-.cube-bevel-back-top { transform: rotateX(135deg) translateZ(32.53px); }
-.cube-bevel-back-bottom { transform: rotateX(-135deg) translateZ(32.53px); }
+.cube-bevel { top: 23px; left: 9px; width: 40px; height: 12px; }
+.cube-bevel-front-top { transform: rotateX(45deg) translateZ(34.65px); }
+.cube-bevel-front-bottom { transform: rotateX(-45deg) translateZ(34.65px); }
+.cube-bevel-back-top { transform: rotateX(135deg) translateZ(34.65px); }
+.cube-bevel-back-bottom { transform: rotateX(-135deg) translateZ(34.65px); }
 .cube-bevel-front-right,
 .cube-bevel-front-left,
 .cube-bevel-back-right,
-.cube-bevel-back-left { top: 12px; left: 21px; width: 16px; height: 34px; }
-.cube-bevel-front-right { transform: rotateY(45deg) translateZ(32.53px); }
-.cube-bevel-front-left { transform: rotateY(-45deg) translateZ(32.53px); }
-.cube-bevel-back-right { transform: rotateY(135deg) translateZ(32.53px); }
-.cube-bevel-back-left { transform: rotateY(-135deg) translateZ(32.53px); }
-.cube-bevel-top-right { transform: rotateZ(-45deg) rotateY(90deg) translateZ(32.53px); }
-.cube-bevel-top-left { transform: rotateZ(45deg) rotateY(-90deg) translateZ(32.53px); }
-.cube-bevel-bottom-right { transform: rotateZ(45deg) rotateY(90deg) translateZ(32.53px); }
-.cube-bevel-bottom-left { transform: rotateZ(-45deg) rotateY(-90deg) translateZ(32.53px); }
+.cube-bevel-back-left { top: 9px; left: 23px; width: 12px; height: 40px; }
+.cube-bevel-front-right { transform: rotateY(45deg) translateZ(34.65px); }
+.cube-bevel-front-left { transform: rotateY(-45deg) translateZ(34.65px); }
+.cube-bevel-back-right { transform: rotateY(135deg) translateZ(34.65px); }
+.cube-bevel-back-left { transform: rotateY(-135deg) translateZ(34.65px); }
+.cube-bevel-top-right { transform: rotateZ(-45deg) rotateY(90deg) translateZ(34.65px); }
+.cube-bevel-top-left { transform: rotateZ(45deg) rotateY(-90deg) translateZ(34.65px); }
+.cube-bevel-bottom-right { transform: rotateZ(45deg) rotateY(90deg) translateZ(34.65px); }
+.cube-bevel-bottom-left { transform: rotateZ(-45deg) rotateY(-90deg) translateZ(34.65px); }
 
 .cube-corner {
-  top: 19.19px;
-  left: 20.5px;
-  width: 17px;
-  height: 14.72px;
+  top: 21.65px;
+  left: 22.64px;
+  width: 12.73px;
+  height: 11.02px;
   clip-path: polygon(50% 0, 100% 100%, 0 100%);
   transform-origin: 50% 66.6667%;
 }

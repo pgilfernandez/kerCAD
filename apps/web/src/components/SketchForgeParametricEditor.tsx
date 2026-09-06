@@ -3421,7 +3421,7 @@ function ViewCube({ orientation, onDirection }: { orientation: CameraOrientation
       const pitch = -Math.asin(direction[1] / Math.sqrt(3)) * 180 / Math.PI;
       const roll = direction[1] > 0 ? 180 : 0;
       const cameraDirection: [number, number, number] = [direction[0], -direction[1], direction[2]];
-      return <button key={direction.join(":")} type="button" className="cube-corner" style={{ transform: `rotateY(${yaw}deg) rotateX(${pitch}deg) rotateZ(${roll}deg) translateZ(36.37px)` }} aria-label={`Corner view ${cameraDirection.join(", ")}`} onClick={() => chooseDirection(cameraDirection)} />;
+      return <button key={direction.join(":")} type="button" className="cube-corner" style={{ transform: `rotateY(${yaw}deg) rotateX(${pitch}deg) rotateZ(${roll}deg) translateZ(39.84px)` }} aria-label={`Corner view ${cameraDirection.join(", ")}`} onClick={() => chooseDirection(cameraDirection)} />;
     })}
   </div></div>;
 }
