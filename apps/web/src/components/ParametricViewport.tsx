@@ -1398,7 +1398,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       const pointAt = (degrees: number, radius: number) => radial.clone().multiplyScalar(Math.cos(THREE.MathUtils.degToRad(degrees)) * radius).addScaledVector(tangent, Math.sin(THREE.MathUtils.degToRad(degrees)) * radius);
       const ringRadius = markerScale * 0.576;
       const maximumRadius = ringRadius * 2;
-      const circleRadius = maximumRadius - markerScale * 0.12;
+      const circleRadius = maximumRadius + markerScale * 0.03;
       const backgroundRadius = circleRadius + markerScale * 0.12;
       const background = new THREE.Mesh(
         new THREE.CircleGeometry(backgroundRadius, 96),
@@ -1428,7 +1428,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       const addLines = (positions: number[], linewidth: number, renderOrder: number) => {
         const geometry = new LineSegmentsGeometry();
         geometry.setPositions(positions);
-        const material = new LineMaterial({ color: 0xffffff, linewidth, depthTest: false, depthWrite: false, transparent: true, opacity: 0.96 });
+        const material = new LineMaterial({ color: "#174f78", linewidth, depthTest: false, depthWrite: false, transparent: true, opacity: 0.96 });
         material.resolution.set(Math.max(1, renderer.domElement.clientWidth), Math.max(1, renderer.domElement.clientHeight));
         const lines = new LineSegments2(geometry, material);
         lines.renderOrder = renderOrder;
@@ -1438,7 +1438,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       addLines(tickPositions, 3, 41);
       const highlightGeometry = new LineSegmentsGeometry();
       highlightGeometry.setPositions([0, 0, 0, 0, 0, 0]);
-      const highlightMaterial = new LineMaterial({ color: "#43b9e8", linewidth: 3, depthTest: false, depthWrite: false, transparent: true, opacity: 1 });
+      const highlightMaterial = new LineMaterial({ color: "#f0b83f", linewidth: 3, depthTest: false, depthWrite: false, transparent: true, opacity: 1 });
       highlightMaterial.resolution.set(Math.max(1, renderer.domElement.clientWidth), Math.max(1, renderer.domElement.clientHeight));
       const highlight = new LineSegments2(highlightGeometry, highlightMaterial);
       highlight.renderOrder = 42;
@@ -2441,7 +2441,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           return Math.hypot(perpendicular, radialGap);
         };
         const ringRadius = revolveGuideScale * 0.576;
-        const circleRadius = ringRadius * 2 - revolveGuideScale * 0.12;
+        const circleRadius = ringRadius * 2 + revolveGuideScale * 0.03;
         const outerDegrees = Math.round(raw / 5) * 5;
         const outerLength = revolveGuideScale * (Math.abs(outerDegrees) % 10 === 0 ? 0.12 : 0.08);
         const outerDistance = radialLineDistance(outerDegrees, circleRadius, circleRadius + outerLength);
@@ -2547,7 +2547,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         };
         const ringRadius = rotationGuideScale * 0.576;
         const maximumRadius = ringRadius * 2;
-        const circleRadius = maximumRadius - rotationGuideScale * 0.12;
+        const circleRadius = maximumRadius + rotationGuideScale * 0.03;
         const outerDegrees = Math.round(pointerGuideDegrees / 5) * 5;
         const outerLength = rotationGuideScale * (Math.abs(outerDegrees) % 10 === 0 ? 0.12 : 0.08);
         const outerDistance = radialLineDistance(outerDegrees, circleRadius, circleRadius + outerLength);
