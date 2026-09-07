@@ -1295,6 +1295,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     let revolvePointerAngle = 0;
     let revolveAccumulatedAngle = 0;
     let pendingRevolveAngle: number | null = null;
+    let revolveGuide: THREE.Group | null = null;
+    let revolveGuideHighlight: LineSegments2 | null = null;
+    let revolveGuideScale = 1;
     let pendingShapeParameter: { parameter: ShapeParameter; value: number } | null = null;
     let shapeParameterStartValue = 0;
     let shapeParameterWorldScale = 1;
@@ -1404,12 +1407,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       highlightGeometry.setPositions([0, 0, 0, 0, 0, 0]);
       const highlightMaterial = new LineMaterial({ color: "#43b9e8", linewidth: 3, depthTest: false, depthWrite: false, transparent: true, opacity: 1 });
       highlightMaterial.resolution.set(Math.max(1, renderer.domElement.clientWidth), Math.max(1, renderer.domElement.clientHeight));
-      rotationGuideHighlight = new LineSegments2(highlightGeometry, highlightMaterial);
-      rotationGuideHighlight.renderOrder = 42;
-      rotationGuideHighlight.visible = false;
-      group.add(rotationGuideHighlight);
+      const highlight = new LineSegments2(highlightGeometry, highlightMaterial);
+      highlight.renderOrder = 42;
+      highlight.visible = false;
+      group.add(highlight);
       scene.add(group);
-      return group;
+      return { group, highlight };
     };
     const rotationWireframePreviewAt = (targetId: string, targetKind: "object" | "feature", center: THREE.Vector3) => {
       const objectId = targetKind === "object" ? targetId : selectedObjectIdsRef.current[0];
@@ -2069,6 +2072,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           revolvePointerAngle = THREE.MathUtils.radToDeg(Math.atan2(pointer.dot(tangent), pointer.dot(revolveReferenceWorld)));
           revolveAccumulatedAngle = 0;
           interaction = "revolveAngle";
+          revolveGuideScale = (Number(revolveLayer.userData.radius) || 10) / 0.576;
+          const guide = rotationGuideAt(revolveOriginWorld, revolveAxisWorld, revolveReferenceWorld, revolveGuideScale);
+          revolveGuide = guide.group;
+          revolveGuideHighlight = guide.highlight;
           revolveAngleDragStartRef.current?.();
         }
       }
@@ -2170,7 +2177,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
             pendingRotation = { targetId: originHandle.targetId, targetKind: originHandle.targetKind, localAxis: originHandle.rotationAxis!, axis: { x: parentAxis.x, y: parentAxis.y, z: parentAxis.z }, deltaDegrees: 0 };
             const markerWorldScale = originHandle.marker.getWorldScale(new THREE.Vector3());
             rotationGuideScale = Math.max(markerWorldScale.x, markerWorldScale.y, markerWorldScale.z, 0.001);
-            rotationGuide = rotationGuideAt(worldOrigin, worldRotationAxis, rotationGuideReferenceVector, rotationGuideScale);
+            const guide = rotationGuideAt(worldOrigin, worldRotationAxis, rotationGuideReferenceVector, rotationGuideScale);
+            rotationGuide = guide.group;
+            rotationGuideHighlight = guide.highlight;
             rotationPreview = rotationWireframePreviewAt(originHandle.targetId, originHandle.targetKind, worldOrigin);
           } else {
             interaction = originHandle.editable ? "origin" : originHandle.snap ? "snapMove" : "axisMove";
@@ -2324,8 +2333,42 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         revolveAccumulatedAngle += pointerDelta;
         revolvePointerAngle = raw;
         const signedStart = Math.abs(revolveStartAngle) >= 359.999 ? 0 : revolveStartAngle;
+        const pointerRadius = dragPoint.distanceTo(revolveOriginWorld);
+        const radialLineDistance = (degrees: number, minimumRadius: number, maximumRadius: number) => {
+          const difference = THREE.MathUtils.degToRad(raw - degrees);
+          const perpendicular = Math.abs(Math.sin(difference)) * pointerRadius;
+          const radialGap = pointerRadius < minimumRadius ? minimumRadius - pointerRadius : pointerRadius > maximumRadius ? pointerRadius - maximumRadius : 0;
+          return Math.hypot(perpendicular, radialGap);
+        };
+        const ringRadius = revolveGuideScale * 0.576;
+        const circleRadius = ringRadius * 2 - revolveGuideScale * 0.12;
+        const outerDegrees = Math.round(raw / 5) * 5;
+        const outerLength = revolveGuideScale * (Math.abs(outerDegrees) % 10 === 0 ? 0.12 : 0.08);
+        const outerDistance = radialLineDistance(outerDegrees, circleRadius, circleRadius + outerLength);
+        const innerDegrees = Math.round(raw / 45) * 45;
+        const innerDistance = radialLineDistance(innerDegrees, ringRadius * 0.25, ringRadius * 0.75);
+        const sensitiveDistance = revolveGuideScale * 0.055;
+        const activeGuide = outerDistance <= sensitiveDistance || innerDistance <= sensitiveDistance
+          ? outerDistance <= innerDistance
+            ? { degrees: outerDegrees, minimumRadius: circleRadius, maximumRadius: circleRadius + outerLength }
+            : { degrees: innerDegrees, minimumRadius: ringRadius * 0.25, maximumRadius: ringRadius * 0.75 }
+          : null;
+        if (revolveGuideHighlight) {
+          revolveGuideHighlight.visible = activeGuide !== null;
+          if (activeGuide) {
+            const radians = THREE.MathUtils.degToRad(activeGuide.degrees);
+            const tangent = revolveAxisWorld.clone().cross(revolveReferenceWorld).normalize();
+            const direction = revolveReferenceWorld.clone().multiplyScalar(Math.cos(radians)).addScaledVector(tangent, Math.sin(radians));
+            const first = direction.clone().multiplyScalar(activeGuide.minimumRadius);
+            const second = direction.multiplyScalar(activeGuide.maximumRadius);
+            revolveGuideHighlight.geometry.setPositions([first.x, first.y, first.z, second.x, second.y, second.z]);
+          }
+        }
+        const freeAngle = signedStart + revolveAccumulatedAngle;
+        const snappedCandidates = activeGuide ? [activeGuide.degrees - 360, activeGuide.degrees, activeGuide.degrees + 360] : [];
+        const guidedAngle = snappedCandidates.reduce<number | null>((best, candidate) => best === null || Math.abs(candidate - freeAngle) < Math.abs(best - freeAngle) ? candidate : best, null);
         const previousAngle = pendingRevolveAngle;
-        pendingRevolveAngle = Math.min(360, Math.max(-360, Math.round(signedStart + revolveAccumulatedAngle)));
+        pendingRevolveAngle = Math.min(360, Math.max(-360, Math.round(guidedAngle ?? freeAngle)));
         if (Math.abs(pendingRevolveAngle) < 1) pendingRevolveAngle = pendingRevolveAngle < 0 ? -1 : 1;
         setRevolveAnglePreview(pendingRevolveAngle);
         if (pendingRevolveAngle !== previousAngle) revolveAnglePreviewRef.current?.(pendingRevolveAngle);
@@ -2733,6 +2776,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       revolveStartAngle = 0;
       revolvePointerAngle = 0;
       revolveAccumulatedAngle = 0;
+      disposeTemporaryLineGroup(revolveGuide);
+      revolveGuide = null;
+      revolveGuideHighlight = null;
+      revolveGuideScale = 1;
       shapeParameterPreviewRef.current = null;
       shapeParameterStartValue = 0;
       shapeParameterWorldScale = 1;
@@ -2886,6 +2933,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       if (dimensionHoverTimerRef.current !== null) window.clearTimeout(dimensionHoverTimerRef.current);
       disposeTemporaryLineGroup(rotationGuide);
       disposeTemporaryLineGroup(rotationPreview);
+      disposeTemporaryLineGroup(revolveGuide);
       clearObjectOriginLayer(originLayer);
       clearTopologyFaceHighlights();
       faceHighlight.geometry.dispose();
