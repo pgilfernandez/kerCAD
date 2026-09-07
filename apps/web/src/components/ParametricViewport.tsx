@@ -1283,6 +1283,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     let revolveAxisWorld: THREE.Vector3 | null = null;
     let revolveReferenceWorld: THREE.Vector3 | null = null;
     let revolveStartAngle = 0;
+    let revolvePointerAngle = 0;
+    let revolveAccumulatedAngle = 0;
     let pendingRevolveAngle: number | null = null;
     let pendingShapeParameter: { parameter: ShapeParameter; value: number } | null = null;
     let shapeParameterStartValue = 0;
@@ -2052,7 +2054,13 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         revolveStartAngle = Number(revolveLayer.userData.angle) || 0;
         pendingRevolveAngle = revolveStartAngle;
         dragPlane.setFromNormalAndCoplanarPoint(revolveAxisWorld, revolveOriginWorld);
-        if (raycaster.ray.intersectPlane(dragPlane, dragPoint)) interaction = "revolveAngle";
+        if (raycaster.ray.intersectPlane(dragPlane, dragPoint)) {
+          const pointer = dragPoint.clone().sub(revolveOriginWorld).normalize();
+          const tangent = revolveAxisWorld.clone().cross(revolveReferenceWorld).normalize();
+          revolvePointerAngle = THREE.MathUtils.radToDeg(Math.atan2(pointer.dot(tangent), pointer.dot(revolveReferenceWorld)));
+          revolveAccumulatedAngle = 0;
+          interaction = "revolveAngle";
+        }
       }
       const edgeTreatmentLayer = edgeTreatmentHandleRef.current;
       const edgeTreatmentHit = !interaction && edgeTreatmentLayer ? raycaster.intersectObject(edgeTreatmentLayer, true).find((hit) => hit.object.userData.edgeTreatmentRadiusTarget) : null;
@@ -2300,9 +2308,13 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         const current = dragPoint.clone().sub(revolveOriginWorld).normalize();
         const tangent = revolveAxisWorld.clone().cross(revolveReferenceWorld).normalize();
         const raw = THREE.MathUtils.radToDeg(Math.atan2(current.dot(tangent), current.dot(revolveReferenceWorld)));
-        const candidates = [raw - 360, raw, raw + 360];
-        const nearest = candidates.reduce((best, candidate) => Math.abs(candidate - revolveStartAngle) < Math.abs(best - revolveStartAngle) ? candidate : best);
-        pendingRevolveAngle = Math.min(360, Math.max(-360, Math.round(nearest)));
+        let pointerDelta = raw - revolvePointerAngle;
+        if (pointerDelta > 180) pointerDelta -= 360;
+        if (pointerDelta < -180) pointerDelta += 360;
+        revolveAccumulatedAngle += pointerDelta;
+        revolvePointerAngle = raw;
+        const signedStart = Math.abs(revolveStartAngle) >= 359.999 ? 0 : revolveStartAngle;
+        pendingRevolveAngle = Math.min(360, Math.max(-360, Math.round(signedStart + revolveAccumulatedAngle)));
         if (Math.abs(pendingRevolveAngle) < 1) pendingRevolveAngle = pendingRevolveAngle < 0 ? -1 : 1;
         setRevolveAnglePreview(pendingRevolveAngle);
         const layer = revolveHandleRef.current;
@@ -2706,6 +2718,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       revolveAxisWorld = null;
       revolveReferenceWorld = null;
       revolveStartAngle = 0;
+      revolvePointerAngle = 0;
+      revolveAccumulatedAngle = 0;
       shapeParameterPreviewRef.current = null;
       shapeParameterStartValue = 0;
       shapeParameterWorldScale = 1;
