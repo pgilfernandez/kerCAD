@@ -1987,6 +1987,21 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
     const radius = Math.max(8, Math.min(40, Math.max(selectedBox?.width ?? 0, selectedBox?.depth ?? 0, selectedBox?.height ?? 0) * 0.6));
     return { origin: { x: origin.x, y: origin.y, z: origin.z }, axis: { x: axis.x, y: axis.y, z: axis.z }, angle: selectedFeature.angle, radius };
   }, [document.features, document.objects, document.topologyReferences, selectedBox, selectedFeature]);
+  const shellHandle = useMemo(() => {
+    if (selectedFeature?.kind !== "shell" || !selectedFeature.objectId) return null;
+    const object = document.objects.find((candidate) => candidate.id === selectedFeature.objectId);
+    if (!object || object.visible === false) return null;
+    const reference = selectedFeature.faceReferenceIds
+      .map((id) => document.topologyReferences.find((candidate) => candidate.id === id))
+      .find((candidate) => candidate?.reference.hint.entityType === "face" && candidate.reference.hint.centroid && candidate.reference.hint.normal);
+    const hint = reference?.reference.hint;
+    if (!hint || hint.entityType !== "face" || !hint.centroid || !hint.normal) return null;
+    return {
+      origin: { x: hint.centroid[0], y: hint.centroid[1], z: hint.centroid[2] },
+      direction: { x: -hint.normal[0], y: -hint.normal[1], z: -hint.normal[2] },
+      thickness: selectedFeature.thickness,
+    };
+  }, [document.objects, document.topologyReferences, selectedFeature]);
   const viewportFloatingFeature = !sketchSession && !pendingEdgeTreatment && !pendingFaceExtrude && !pendingShell && !pendingRevolve && !editingMirrorPlaneId && modelSelection.length === 1 && selectedFeature && selectedObjectVisible && (
     (selectedFeature.kind === "sketch" && selectedFeature.purpose === "user" && selectedFeature.profile.shape === "drawn")
     || selectedFeature.kind === "fillet"
@@ -3178,6 +3193,23 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
             finishTransaction();
           }}
           onRevolveAngleCancel={cancelTransaction}
+          shellHandle={shellHandle}
+          onShellThicknessDragStart={beginTransaction}
+          onShellThicknessPreview={(thickness) => {
+            if (selectedFeature?.kind !== "shell") return;
+            mutate((draft) => {
+              const feature = draft.features.find((candidate) => candidate.id === selectedFeature.id);
+              if (feature?.kind === "shell") feature.thickness = Math.max(0.01, thickness);
+            });
+          }}
+          onShellThicknessChange={(thickness) => {
+            if (selectedFeature?.kind === "shell") mutate((draft) => {
+              const feature = draft.features.find((candidate) => candidate.id === selectedFeature.id);
+              if (feature?.kind === "shell") feature.thickness = Math.max(0.01, thickness);
+            });
+            finishTransaction();
+          }}
+          onShellThicknessCancel={cancelTransaction}
           floatingFeature={viewportFloatingFeature}
           floatingFeatureAnchor={viewportFloatingFeatureAnchor}
           onEditSketch={beginSketch}
