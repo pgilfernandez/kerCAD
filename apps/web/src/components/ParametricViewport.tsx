@@ -246,7 +246,10 @@ type Props = {
   onEdgeTreatmentCancel?: () => void;
   edgeTreatmentCanAccept?: boolean;
   revolveHandle?: { origin: { x: number; y: number; z: number }; axis: { x: number; y: number; z: number }; angle: number; radius: number } | null;
+  onRevolveAngleDragStart?: () => void;
+  onRevolveAnglePreview?: (angle: number) => void;
   onRevolveAngleChange?: (angle: number) => void;
+  onRevolveAngleCancel?: () => void;
   floatingFeature?: ParametricFeature | null;
   floatingFeatureAnchor?: { x: number; y: number; z: number } | null;
   onEditSketch?: (featureId: string) => void;
@@ -592,7 +595,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleChange, floatingFeature = null, floatingFeatureAnchor = null, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, onThumbnail }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, floatingFeature = null, floatingFeatureAnchor = null, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, onThumbnail }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
@@ -637,6 +640,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const faceExtrudeDistanceChangeRef = useRef(onFaceExtrudeDistanceChange);
   const edgeTreatmentRadiusChangeRef = useRef(onEdgeTreatmentRadiusChange);
   const revolveAngleChangeRef = useRef(onRevolveAngleChange);
+  const revolveAngleDragStartRef = useRef(onRevolveAngleDragStart);
+  const revolveAnglePreviewRef = useRef(onRevolveAnglePreview);
+  const revolveAngleCancelRef = useRef(onRevolveAngleCancel);
   const resizeHitboxesRef = useRef<THREE.Mesh[]>([]);
   const selectionRef = useRef(selection);
   const shapeParameterRef = useRef(onShapeParameterChange);
@@ -700,6 +706,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   useEffect(() => { faceExtrudeDistanceChangeRef.current = onFaceExtrudeDistanceChange; }, [onFaceExtrudeDistanceChange]);
   useEffect(() => { edgeTreatmentRadiusChangeRef.current = onEdgeTreatmentRadiusChange; }, [onEdgeTreatmentRadiusChange]);
   useEffect(() => { revolveAngleChangeRef.current = onRevolveAngleChange; }, [onRevolveAngleChange]);
+  useEffect(() => { revolveAngleDragStartRef.current = onRevolveAngleDragStart; }, [onRevolveAngleDragStart]);
+  useEffect(() => { revolveAnglePreviewRef.current = onRevolveAnglePreview; }, [onRevolveAnglePreview]);
+  useEffect(() => { revolveAngleCancelRef.current = onRevolveAngleCancel; }, [onRevolveAngleCancel]);
   useEffect(() => { edgeTreatmentHandleDataRef.current = edgeTreatmentHandle; }, [edgeTreatmentHandle]);
   useEffect(() => { floatingFeatureRef.current = floatingFeature; invalidateRef.current(); }, [floatingFeature]);
   useEffect(() => { floatingFeatureAnchorRef.current = floatingFeatureAnchor; invalidateRef.current(); }, [floatingFeatureAnchor]);
@@ -2060,6 +2069,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           revolvePointerAngle = THREE.MathUtils.radToDeg(Math.atan2(pointer.dot(tangent), pointer.dot(revolveReferenceWorld)));
           revolveAccumulatedAngle = 0;
           interaction = "revolveAngle";
+          revolveAngleDragStartRef.current?.();
         }
       }
       const edgeTreatmentLayer = edgeTreatmentHandleRef.current;
@@ -2314,9 +2324,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         revolveAccumulatedAngle += pointerDelta;
         revolvePointerAngle = raw;
         const signedStart = Math.abs(revolveStartAngle) >= 359.999 ? 0 : revolveStartAngle;
+        const previousAngle = pendingRevolveAngle;
         pendingRevolveAngle = Math.min(360, Math.max(-360, Math.round(signedStart + revolveAccumulatedAngle)));
         if (Math.abs(pendingRevolveAngle) < 1) pendingRevolveAngle = pendingRevolveAngle < 0 ? -1 : 1;
         setRevolveAnglePreview(pendingRevolveAngle);
+        if (pendingRevolveAngle !== previousAngle) revolveAnglePreviewRef.current?.(pendingRevolveAngle);
         const layer = revolveHandleRef.current;
         if (layer) {
           const radius = Number(layer.userData.radius) || 10;
@@ -2620,6 +2632,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       if (cancelled) {
         if (completedInteraction === "revolveAngle") {
           setRevolveAnglePreview(null);
+          revolveAngleCancelRef.current?.();
           const layer = revolveHandleRef.current;
           if (layer) {
             const radius = Number(layer.userData.radius) || 10;

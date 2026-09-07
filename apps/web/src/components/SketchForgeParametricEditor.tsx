@@ -3162,12 +3162,22 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
           onEdgeTreatmentCancel={pendingEdgeTreatment ? cancelEdgeTreatment : undefined}
           edgeTreatmentCanAccept={selectedTopologyFaces.length + selectedTopologyEdges.length > 0}
           revolveHandle={revolveHandle}
-          onRevolveAngleChange={(angle) => {
+          onRevolveAngleDragStart={beginTransaction}
+          onRevolveAnglePreview={(angle) => {
             if (selectedFeature?.kind !== "revolve") return;
-            updateFeature(selectedFeature.id, (feature) => {
-              if (feature.kind === "revolve") feature.angle = Math.min(360, Math.max(-360, Math.abs(angle) < 1 ? (angle < 0 ? -1 : 1) : angle));
+            mutate((draft) => {
+              const feature = draft.features.find((candidate) => candidate.id === selectedFeature.id);
+              if (feature?.kind === "revolve") feature.angle = angle;
             });
           }}
+          onRevolveAngleChange={(angle) => {
+            if (selectedFeature?.kind === "revolve") mutate((draft) => {
+              const feature = draft.features.find((candidate) => candidate.id === selectedFeature.id);
+              if (feature?.kind === "revolve") feature.angle = Math.min(360, Math.max(-360, Math.abs(angle) < 1 ? (angle < 0 ? -1 : 1) : angle));
+            });
+            finishTransaction();
+          }}
+          onRevolveAngleCancel={cancelTransaction}
           floatingFeature={viewportFloatingFeature}
           floatingFeatureAnchor={viewportFloatingFeatureAnchor}
           onEditSketch={beginSketch}
