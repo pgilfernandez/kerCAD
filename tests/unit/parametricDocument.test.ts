@@ -5,6 +5,7 @@ import {
   createLinearPatternFeature,
   createPolarPatternFeature,
   createObjectBooleanFeature,
+  createRevolveFeature,
   createSketchFeature,
   createStarterDocument,
   documentHasSolid,
@@ -89,6 +90,23 @@ describe("parametric document", () => {
       equalSpacing: true,
       suppressed: false,
     });
+  });
+
+  it("preserves valid negative revolve angles and repairs unsafe stored values", () => {
+    const stored = createStarterDocument(123);
+    const reverse = createRevolveFeature(1);
+    reverse.objectId = stored.objects[0].id;
+    reverse.source = "sketch";
+    reverse.sketchId = stored.features[0].id;
+    reverse.faceReferenceId = undefined;
+    reverse.angle = -135;
+    stored.features.push(reverse);
+    expect(normalizeParametricDocument(stored).features.at(-1)).toMatchObject({ kind: "revolve", angle: -135 });
+
+    reverse.angle = Number.NaN;
+    (reverse as typeof reverse & { axis: string; operation: string }).axis = "invalid";
+    (reverse as typeof reverse & { axis: string; operation: string }).operation = "invalid";
+    expect(normalizeParametricDocument(stored).features.at(-1)).toMatchObject({ kind: "revolve", angle: 360, axis: "z", operation: "add" });
   });
 
   it("creates a cross-object Boolean dependency", () => {

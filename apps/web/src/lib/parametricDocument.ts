@@ -444,6 +444,11 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
       const legacy = feature as RevolveFeature & { source?: RevolveFeature["source"] };
       legacy.source ??= legacy.sketchId ? "sketch" : "face";
       if (legacy.source !== "sketch") legacy.sketchAxisSegmentId = undefined;
+      feature.operation = feature.operation === "cut" || feature.operation === "intersect" ? feature.operation : "add";
+      feature.axis = feature.axis === "x" || feature.axis === "y" || feature.axis === "edge" ? feature.axis : "z";
+      feature.angle = Number.isFinite(feature.angle) && Math.abs(feature.angle) >= 1
+        ? Math.min(360, Math.max(-360, feature.angle))
+        : 360;
     }
     if (feature.kind === "mirror") {
       feature.axis = feature.axis === "y" || feature.axis === "z" ? feature.axis : "x";
