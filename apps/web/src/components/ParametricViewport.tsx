@@ -1384,9 +1384,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       if (!group) return;
       group.parent?.remove(group);
       group.traverse((child) => {
-        if (!(child instanceof LineSegments2)) return;
+        if (!(child instanceof LineSegments2 || child instanceof THREE.Mesh)) return;
         child.geometry.dispose();
-        child.material.dispose();
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        materials.forEach((material) => material.dispose());
       });
     };
     const rotationGuideAt = (center: THREE.Vector3, axis: THREE.Vector3, reference: THREE.Vector3, markerScale: number) => {
@@ -1398,6 +1399,14 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       const ringRadius = markerScale * 0.576;
       const maximumRadius = ringRadius * 2;
       const circleRadius = maximumRadius - markerScale * 0.12;
+      const backgroundRadius = circleRadius + markerScale * 0.12;
+      const background = new THREE.Mesh(
+        new THREE.CircleGeometry(backgroundRadius, 96),
+        new THREE.MeshBasicMaterial({ color: "#43b9e8", side: THREE.DoubleSide, depthTest: false, depthWrite: false, transparent: true, opacity: 0.3 }),
+      );
+      background.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axis.clone().normalize());
+      background.renderOrder = 39;
+      group.add(background);
       const circlePositions: number[] = [];
       for (let index = 0; index < 144; index += 1) {
         const first = pointAt(index * 2.5, circleRadius);
@@ -2946,20 +2955,17 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         replaceHoverDimensions([]);
       }, 350);
     };
-    let trackpadGestureUntil = 0;
     const onTrackpadWheel = (event: WheelEvent) => {
       // Pinch gestures arrive as Ctrl+wheel in Chromium/WebKit. Leave those,
       // as well as stepped physical mouse wheels, to OrbitControls' zoom.
       if (event.ctrlKey || event.metaKey) return;
-      const now = performance.now();
       const verticalStep = Math.abs(event.deltaY);
-      const looksLikeSteppedWheel = Math.abs(event.deltaX) < 0.01
-        && Number.isInteger(event.deltaY)
-        && (Math.abs(verticalStep - 100) < 0.01 || Math.abs(verticalStep - 120) < 0.01);
+      const looksLikeSteppedWheel = event.deltaMode !== WheelEvent.DOM_DELTA_PIXEL
+        || Math.abs(event.deltaX) < 0.5
+        || (Number.isInteger(event.deltaY) && verticalStep >= 40);
       const continuousDelta = event.deltaMode === WheelEvent.DOM_DELTA_PIXEL
-        && (!looksLikeSteppedWheel || now < trackpadGestureUntil);
+        && !looksLikeSteppedWheel;
       if (!continuousDelta) return;
-      trackpadGestureUntil = now + 180;
       event.preventDefault();
       event.stopImmediatePropagation();
       if (event.shiftKey) {

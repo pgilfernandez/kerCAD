@@ -949,8 +949,12 @@ export function SketchWorkspace({
 
   const handleWheel = (event: WheelEvent) => {
     event.preventDefault();
-    if (event.ctrlKey || event.metaKey) {
-      setZoom((current) => clamp(current * Math.exp(-event.deltaY * 0.012), 0.75, 6));
+    const physicalWheel = event.deltaMode !== WheelEvent.DOM_DELTA_PIXEL
+      || Math.abs(event.deltaX) < 0.5
+      || (Number.isInteger(event.deltaY) && Math.abs(event.deltaY) >= 40);
+    if (event.ctrlKey || event.metaKey || physicalWheel) {
+      const normalizedDelta = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? event.deltaY * 16 : event.deltaY;
+      setZoom((current) => clamp(current * Math.exp(-normalizedDelta * 0.012), 0.75, 6));
       return;
     }
     const matrix = svgRef.current?.getScreenCTM();
