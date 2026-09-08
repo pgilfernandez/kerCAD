@@ -2010,25 +2010,6 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
     || selectedFeature.kind === "shell"
     || selectedFeature.kind === "mirror"
   ) ? selectedFeature : null;
-  const viewportFloatingFeatureAnchor = useMemo(() => {
-    if (!viewportFloatingFeature) return null;
-    if (viewportFloatingFeature.kind === "sketch" && selectedSketchPlacement) return selectedSketchPlacement.position;
-    if (viewportFloatingFeature.kind === "faceExtrude" && faceExtrudeHandle) return faceExtrudeHandle.origin;
-    if (viewportFloatingFeature.kind === "fillet" && edgeTreatmentHandle) return edgeTreatmentHandle.origin;
-    const record = viewportObjectRecords.find((candidate) => candidate.objectId === viewportFloatingFeature.objectId);
-    const positions = record?.mesh.positions;
-    if (!positions?.length) {
-      const object = document.objects.find((candidate) => candidate.id === viewportFloatingFeature.objectId);
-      return object?.transform.position ?? null;
-    }
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
-    for (let index = 0; index + 2 < positions.length; index += 3) {
-      minX = Math.min(minX, positions[index]); maxX = Math.max(maxX, positions[index]);
-      minY = Math.min(minY, positions[index + 1]); maxY = Math.max(maxY, positions[index + 1]);
-      minZ = Math.min(minZ, positions[index + 2]); maxZ = Math.max(maxZ, positions[index + 2]);
-    }
-    return { x: (minX + maxX) / 2, y: maxY, z: (minZ + maxZ) / 2 };
-  }, [document.objects, edgeTreatmentHandle, faceExtrudeHandle, selectedSketchPlacement, viewportFloatingFeature, viewportObjectRecords]);
   const hasActiveWorkplane = !parametricWorkplaneIsGlobal(document.workplane);
   const beginMirrorPlaneSelection = (featureId: string) => {
     setEditingMirrorPlaneId(featureId);
@@ -3211,7 +3192,6 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
           }}
           onShellThicknessCancel={cancelTransaction}
           floatingFeature={viewportFloatingFeature}
-          floatingFeatureAnchor={viewportFloatingFeatureAnchor}
           onEditSketch={beginSketch}
           onEditEdgeTreatmentSelection={(featureId) => {
             const feature = document.features.find((candidate) => candidate.id === featureId);

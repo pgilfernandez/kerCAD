@@ -447,6 +447,84 @@ button {
 .educad-viewport-feature-actions button.active { color: #216d94; background: #def2fb; border-color: #70bad7; }
 .educad-viewport-feature-actions button small { position: absolute; right: 3px; bottom: 2px; color: #486779; font-size: 9px; font-weight: 900; }
 .educad-viewport-feature-actions button strong { font-size: 17px; }
+.educad-viewport-context-toolbar {
+  position: absolute;
+  z-index: 9;
+  top: 10px;
+  left: 50%;
+  display: flex;
+  max-width: calc(100% - 150px);
+  align-items: center;
+  gap: 5px;
+  padding: 5px;
+  overflow-x: auto;
+  background: #f4f7f9;
+  border: 1px solid rgba(194, 209, 219, 0.9);
+  border-radius: 17px;
+  box-shadow: 0 10px 30px rgba(32, 64, 84, 0.14), 0 2px 6px rgba(32, 64, 84, 0.08);
+  transform: translateX(-50%);
+  backdrop-filter: blur(14px) saturate(1.15);
+  scrollbar-width: none;
+}
+.educad-viewport-context-toolbar::-webkit-scrollbar { display: none; }
+.educad-context-toolbar-group { display: flex; flex: 0 0 auto; align-items: center; gap: 2px; }
+.educad-context-toolbar-group + .educad-context-toolbar-group { padding-left: 5px; border-left: 1px solid rgba(151, 174, 188, 0.72); }
+.educad-viewport-context-toolbar button {
+  position: relative;
+  display: grid;
+  width: 44px;
+  height: 43px;
+  flex: 0 0 44px;
+  padding: 3px;
+  place-items: center;
+  color: #173b5a;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  box-shadow: none;
+  cursor: pointer;
+  transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+.educad-viewport-context-toolbar button:hover { color: #071f32; background: rgba(223, 239, 247, 0.82); border-color: rgba(155, 190, 207, 0.7); transform: translateY(1px); }
+.educad-viewport-context-toolbar button:focus-visible { outline: 2px solid #28a9d2; outline-offset: 1px; }
+.educad-viewport-context-toolbar button:disabled { opacity: 0.35; cursor: default; transform: none; }
+.educad-viewport-context-toolbar button img,
+.educad-viewport-context-toolbar button svg { width: 34px; height: 34px; object-fit: contain; }
+.educad-viewport-context-toolbar button small { position: absolute; right: 3px; bottom: 2px; color: #486779; font-size: 9px; font-weight: 900; }
+.educad-viewport-context-toolbar button strong { font-size: 17px; }
+.educad-viewport-context-toolbar .mode-add.active { color: #167d54; background: #ddf4e8; border-color: #66b994; }
+.educad-viewport-context-toolbar .mode-cut.active { color: #ba434c; background: #fbe4e6; border-color: #d98990; }
+.educad-viewport-context-toolbar .mode-intersect.active { color: #7f46a5; background: #efe3f6; border-color: #b58acb; }
+.educad-viewport-context-toolbar button.active { color: #006b94; background: #def5fb; border-color: #6fc8df; box-shadow: inset 0 3px 0 #079bc6; }
+.educad-viewport-context-toolbar .cancel { color: #a3444a; }
+.educad-viewport-context-toolbar .accept { color: #23714e; }
+.educad-viewport-context-toolbar .educad-viewport-edge-treatment-radius { min-width: 84px; padding: 0 4px; border-top: 0; }
+.educad-viewport-context-toolbar .educad-viewport-edge-treatment-radius > div { height: 33px; }
+.educad-viewport-context-toolbar .educad-viewport-edge-treatment-radius input { width: 58px; }
+@media (max-width: 980px) {
+  .educad-viewport-context-toolbar {
+    left: 58px;
+    max-width: calc(100% - 126px);
+    transform: none;
+  }
+}
+@media (max-width: 490px) {
+  .educad-viewport-context-toolbar {
+    top: 6px;
+    left: 48px;
+    max-width: calc(100% - 104px);
+    padding: 4px;
+    border-radius: 15px;
+  }
+  .educad-viewport-context-toolbar button {
+    width: 38px;
+    height: 37px;
+    flex-basis: 38px;
+    border-radius: 10px;
+  }
+  .educad-viewport-context-toolbar button img,
+  .educad-viewport-context-toolbar button svg { width: 29px; height: 29px; }
+}
 .parametric-selection-box {
   position: absolute;
   z-index: 5;
@@ -9006,6 +9084,7 @@ html[data-theme="dark"] .top-action-panel,
 html[data-theme="dark"] .edge-modifier-panel,
 html[data-theme="dark"] .camera-controls,
 html[data-theme="dark"] .viewport-display-controls,
+html[data-theme="dark"] .educad-viewport-context-toolbar,
 html[data-theme="dark"] .ruler-tool-popover,
 html[data-theme="dark"] .editor-toast,
 html[data-theme="dark"] .snap-menu {
@@ -9013,6 +9092,29 @@ html[data-theme="dark"] .snap-menu {
   background: rgba(20, 31, 40, 0.97);
   border-color: #3a4d5b;
   box-shadow: 0 14px 38px rgba(0, 0, 0, 0.34);
+}
+
+html[data-theme="dark"] .educad-context-toolbar-group + .educad-context-toolbar-group {
+  border-color: #435867;
+}
+
+html[data-theme="dark"] .educad-viewport-context-toolbar button {
+  color: #c7d8e4;
+}
+
+html[data-theme="dark"] .educad-viewport-context-toolbar button:hover {
+  color: #ecf9ff;
+  background: #294653;
+  border-color: #4b7385;
+}
+
+html[data-theme="dark"] .educad-viewport-context-toolbar .educad-viewport-edge-treatment-radius > div {
+  background: #182832;
+  border-color: #415763;
+}
+
+html[data-theme="dark"] .educad-viewport-context-toolbar .educad-viewport-edge-treatment-radius input {
+  color: #dceaf2;
 }
 
 html[data-theme="dark"] .visibility-dropdown-action {
