@@ -835,7 +835,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     let camera: THREE.PerspectiveCamera | THREE.OrthographicCamera = projection === "orthographic"
       ? new THREE.OrthographicCamera(-90, 90, 90, -90, -2000, 2000)
       : new THREE.PerspectiveCamera(38, 1, 0.1, 2000);
-    camera.position.set(118, 96, -118);
+    // Start in the same quadrant as Home so the provisional frame shown while
+    // the CAD worker loads does not flash a mirrored camera orientation.
+    camera.position.set(-118, 96, 118);
     const renderProfile = viewportRenderProfile(renderQuality);
     const resolution = new AdaptiveViewportResolution(window.devicePixelRatio, viewportPerformanceOptions(renderQuality));
     const renderer = new THREE.WebGLRenderer({ antialias: renderProfile.antialias, alpha: false, powerPreference: "high-performance" });

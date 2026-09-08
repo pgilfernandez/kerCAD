@@ -301,7 +301,7 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
   const [editingRevolveId, setEditingRevolveId] = useState<string | null>(null);
   const [topologySelectionBuild, setTopologySelectionBuild] = useState<BuildResult | null>(null);
   const [topologyPreviewContext, setTopologyPreviewContext] = useState<BuildResult["operationContext"]>(null);
-  const [view, setView] = useState<CameraView>({ name: "iso", token: 0 });
+  const [view, setView] = useState<CameraView>({ name: "home", token: 0 });
   const [projection, setProjection] = useState<CameraProjection>("orthographic");
   const [renderQuality, setRenderQuality] = useState<ViewportRenderQuality>("normal");
   const [displayMode, setDisplayMode] = useState<ViewportDisplayMode>("solid");

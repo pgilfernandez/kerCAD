@@ -112,7 +112,7 @@ export function ParametricCadEditor() {
   const [selectedId, setSelectedId] = useState<string | null>(starter.features[0]?.id ?? null);
   const [build, setBuild] = useState<BuildResult>({ mesh: null, objectRecords: [], operationContext: null, completedFeatureIds: [], failedFeatureId: null, warning: null });
   const [kernelState, setKernelState] = useState<"loading" | "ready" | "error">("loading");
-  const [view, setView] = useState<CameraView>({ name: "iso", token: 0 });
+  const [view, setView] = useState<CameraView>({ name: "home", token: 0 });
   const [notice, setNotice] = useState<Notice>(null);
   const [exporting, setExporting] = useState(false);
   const [hydrated, setHydrated] = useState(false);
