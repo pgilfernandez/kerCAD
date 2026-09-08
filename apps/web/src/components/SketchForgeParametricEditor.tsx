@@ -274,6 +274,8 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
   const [topologyPreviewBusy, setTopologyPreviewBusy] = useState(false);
   const [topologySelectionBusy, setTopologySelectionBusy] = useState(false);
   const [shapesOpen, setShapesOpen] = useState(false);
+  const [shapeMenuPosition, setShapeMenuPosition] = useState({ top: 0, left: 10 });
+  const shapeMenuTriggerRef = useRef<HTMLButtonElement>(null);
   const [modelSidebarMode, setModelSidebarMode] = useState<ModelSidebarMode | "hidden">("normal");
   const [exportOpen, setExportOpen] = useState(false);
   const [exportFileName, setExportFileName] = useState(document.name);
@@ -354,6 +356,27 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
     window.document.addEventListener("pointerdown", closePopoversOutside);
     return () => window.document.removeEventListener("pointerdown", closePopoversOutside);
   }, []);
+
+  useEffect(() => {
+    if (!shapesOpen) return;
+    const positionMenu = () => {
+      const trigger = shapeMenuTriggerRef.current;
+      if (!trigger) return;
+      const bounds = trigger.getBoundingClientRect();
+      const menuWidth = Math.min(264, window.innerWidth - 20);
+      setShapeMenuPosition({
+        top: bounds.bottom,
+        left: Math.max(10, Math.min(bounds.left, window.innerWidth - menuWidth - 10)),
+      });
+    };
+    positionMenu();
+    window.addEventListener("resize", positionMenu);
+    window.addEventListener("scroll", positionMenu, true);
+    return () => {
+      window.removeEventListener("resize", positionMenu);
+      window.removeEventListener("scroll", positionMenu, true);
+    };
+  }, [shapesOpen]);
 
   useEffect(() => {
     if (!placingWorkplane && !editingMirrorPlaneId && !selectingTopologyFaces && !selectingTopologyEdges) return;
@@ -2063,6 +2086,20 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
     if (modelSelection.length < 2) setAlignOpen(false);
   }, [modelSelection.length]);
 
+  const toggleShapeMenu = () => {
+    if (!shapesOpen) {
+      const bounds = shapeMenuTriggerRef.current?.getBoundingClientRect();
+      if (bounds) {
+        const menuWidth = Math.min(264, window.innerWidth - 20);
+        setShapeMenuPosition({
+          top: bounds.bottom,
+          left: Math.max(10, Math.min(bounds.left, window.innerWidth - menuWidth - 10)),
+        });
+      }
+    }
+    setShapesOpen((value) => !value);
+  };
+
   const addShape = (kind: SupportedPrimitive) => {
     let result: ReturnType<typeof addPrimitiveToSelection> = { objectId: "", featureId: null, createdObject: false };
     mutate((draft) => {
@@ -2832,17 +2869,8 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
               <Tool className="educad-parameter-handles-toggle" label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label={t("toolbar.shapes")} className="toolbar-shapes-section">
-              <button data-educad-popup="shapes" className={`shape-menu-trigger ${shapesOpen ? "active" : ""}`} aria-label={t("toolbar.addShape")} title={t("toolbar.addShape")} aria-expanded={shapesOpen} aria-controls="educad-shape-menu" onClick={() => setShapesOpen((value) => !value)}><ToolbarShapeAddIcon /></button>
+              <button ref={shapeMenuTriggerRef} data-educad-popup="shapes" className={`shape-menu-trigger ${shapesOpen ? "active" : ""}`} aria-label={t("toolbar.addShape")} title={t("toolbar.addShape")} aria-expanded={shapesOpen} aria-controls="educad-shape-menu" onClick={toggleShapeMenu}><ToolbarShapeAddIcon /></button>
               <Tool label={t("toolbar.createSketch")} onClick={() => { setShapesOpen(false); beginSketch(null); }}><ToolbarSketchIcon /></Tool>
-              {shapesOpen && (
-                <div id="educad-shape-menu" data-educad-popup="shapes" className="shape-menu-dropdown">
-                  <div className="shape-menu-title">{t("toolbar.shapes")}</div>
-                  <div className="shape-menu-list">
-                    {parametricOperationCatalog.map((asset) => { const localized = localizedParametricOperationDefinition(asset.kind, locale); return <button className="shape-menu-item" key={asset.kind} onClick={() => addShape(asset.kind)}><img src={asset.menuIcon} alt="" /><span>{localized.name}<small>{selectedObjectId ? t("notice.newOperationInObject") : localized.description}</small></span></button>; })}
-                    <button className="shape-menu-item" onClick={addText}><img src="/assets/sketchforge/shape-icons-gray/raw/text.png" alt="" /><span>{t("toolbar.text")}<small>{selectedObjectId ? t("toolbar.textInObject") : t("toolbar.extrudedText")}</small></span></button>
-                  </div>
-                </div>
-              )}
             </ToolbarSection>
           </div>
             <ToolbarSection label={t("toolbar.modify")} className="toolbar-modify-section">
@@ -2877,6 +2905,14 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
           </ToolbarSection>
         </div>}
       </div>
+
+      {shapesOpen ? <div id="educad-shape-menu" data-educad-popup="shapes" className="shape-menu-dropdown detached" style={{ top: shapeMenuPosition.top, left: shapeMenuPosition.left }}>
+        <div className="shape-menu-title">{t("toolbar.shapes")}</div>
+        <div className="shape-menu-list">
+          {parametricOperationCatalog.map((asset) => { const localized = localizedParametricOperationDefinition(asset.kind, locale); return <button className="shape-menu-item" key={asset.kind} onClick={() => addShape(asset.kind)}><img src={asset.menuIcon} alt="" /><span>{localized.name}<small>{selectedObjectId ? t("notice.newOperationInObject") : localized.description}</small></span></button>; })}
+          <button className="shape-menu-item" onClick={addText}><img src="/assets/sketchforge/shape-icons-gray/raw/text.png" alt="" /><span>{t("toolbar.text")}<small>{selectedObjectId ? t("toolbar.textInObject") : t("toolbar.extrudedText")}</small></span></button>
+        </div>
+      </div> : null}
 
       <section className={`educad-workplane-stage ${sketchSession ? "sketch-active" : ""}`}>
         {showFps ? <FpsCounter /> : null}

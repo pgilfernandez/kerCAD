@@ -3961,6 +3961,10 @@ button {
   box-shadow: 0 14px 34px rgba(26, 47, 66, 0.22);
 }
 
+.shape-menu-dropdown.detached {
+  position: fixed;
+}
+
 .shape-menu-title {
   height: 42px;
   padding: 0 15px;
