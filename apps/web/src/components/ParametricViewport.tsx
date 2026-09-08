@@ -861,6 +861,18 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     controls.target.set(0, 0, 0);
     controls.minDistance = 18;
     controls.maxDistance = 420;
+    const updateCameraClipping = () => {
+      const distance = Math.max(1, camera.position.distanceTo(controls.target));
+      const near = camera instanceof THREE.OrthographicCamera
+        ? -Math.max(2000, distance * 50)
+        : Math.max(0.05, distance / 2000);
+      const far = Math.max(2000, distance * 50);
+      if (Math.abs(camera.near - near) > 0.0001 || Math.abs(camera.far - far) > 0.1) {
+        camera.near = near;
+        camera.far = far;
+        camera.updateProjectionMatrix();
+      }
+    };
     projectionChangeRef.current = (nextProjection) => {
       const wantsOrthographic = nextProjection === "orthographic";
       if (wantsOrthographic === (camera instanceof THREE.OrthographicCamera)) return;
@@ -888,6 +900,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       camera = nextCamera;
       cameraRef.current = nextCamera;
       controls.update();
+      updateCameraClipping();
       groundOpacityDirtyRef.current = true;
       requestRender();
     };
@@ -1147,17 +1160,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       }
       previousRenderedAt = now;
       const controlsChanged = controls.update();
-      const distance = camera.position.distanceTo(controls.target);
       // Keep a generous range on every frame. This is especially important
       // when returning from the sketch editor, where the 3D viewport is
       // recreated while retaining the previous camera position.
-      const near = camera instanceof THREE.OrthographicCamera ? -Math.max(2000, distance * 50) : 0.001;
-      const far = Math.max(2000, distance * 50);
-      if (Math.abs(camera.near - near) > 0.0001 || Math.abs(camera.far - far) > 0.1) {
-        camera.near = near;
-        camera.far = far;
-        camera.updateProjectionMatrix();
-      }
+      updateCameraClipping();
       const nextPixelRatio = resolution.recordFrame(now);
       if (nextPixelRatio !== null) renderer.setPixelRatio(nextPixelRatio);
       for (const marker of originLayer.children) {
@@ -3600,12 +3606,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       controls.target.copy(center);
       const distance = Math.max(55, Math.max(size.x, size.y, size.z) * 2.35);
       camera.position.copy(center).add(new THREE.Vector3(-distance, distance * 0.72, distance));
-      // The orthographic view can start at the camera plane itself. Perspective
-      // requires a positive value, but 0.001 mm keeps the cut effectively
-      // invisible even when navigating inside a small part. Do not scale this
-      // with model size: that made clipping return after fitting large models.
-      camera.near = camera instanceof THREE.OrthographicCamera ? -distance * 12 : 0.001;
-      camera.far = distance * 12;
+      // Perspective needs enough separation between near and far to retain
+      // depth precision; an almost-zero near plane causes z-fighting.
+      camera.near = camera instanceof THREE.OrthographicCamera ? -Math.max(2000, distance * 50) : Math.max(0.05, distance / 2000);
+      camera.far = Math.max(2000, distance * 50);
       if (camera instanceof THREE.OrthographicCamera) camera.zoom = Math.min(8, Math.max(0.1, 110 / Math.max(size.x, size.y, size.z, 1)));
       camera.updateProjectionMatrix();
       controls.update();
