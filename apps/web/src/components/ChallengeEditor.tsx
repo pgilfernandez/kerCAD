@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, GripHorizontal, ImageUp, PanelLeft, PanelRight, PanelsTopLeft, Plus, Trash2, X } from "lucide-react";
+import { Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, GripHorizontal, ImageUp, PanelLeft, PanelRight, PanelsTopLeft, Plus, Star, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { EducadChallenge } from "@/lib/challengeLibrary";
 
@@ -118,7 +118,7 @@ export function ChallengeEditor({ challenge, dock, capture, onDockChange, onCapt
       </section>
       <section className="educad-challenge-capture">
         {step.image ? <img src={step.image} alt="Current step capture" /> : <div className="educad-challenge-capture-placeholder"><Camera size={35} /><span>3D view capture</span></div>}
-        <div className="educad-challenge-capture-actions"><button type="button" title="Capture 3D view" aria-label="Capture 3D view" onClick={() => onCapture(step.id)}><Camera size={19} /></button><button type="button" title="Upload image" aria-label="Upload image" onClick={() => imageInputRef.current?.click()}><ImageUp size={19} /></button></div>
+        <div className="educad-challenge-capture-actions"><button type="button" title="Capture 3D view" aria-label="Capture 3D view" onClick={() => onCapture(step.id)}><Camera size={19} /></button><button type="button" title="Upload image" aria-label="Upload image" onClick={() => imageInputRef.current?.click()}><ImageUp size={19} /></button><button type="button" title="Use this image as the challenge cover" aria-label="Use this image as the challenge cover" disabled={!step.image} onClick={() => setDraft((current) => ({ ...current, cover: step.image }))}><Star size={19} /></button></div>
         <small>Recommended image size: 1200 × 750 px</small>
         <input ref={imageInputRef} hidden type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" onChange={(event) => { loadImage(event.target.files?.[0], "step"); event.target.value = ""; }} />
       </section>
