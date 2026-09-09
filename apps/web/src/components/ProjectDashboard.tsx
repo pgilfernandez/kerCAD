@@ -84,7 +84,7 @@ export function ProjectDashboard({ projects, busy = false, section, onSectionCha
     </header>
     <div className="educad-dashboard-layout">
       <aside className="educad-dashboard-sidebar">
-        <button className={section === "home" ? "active" : ""} type="button" onClick={() => onSectionChange("home")}><Home size={23} /><span>Home</span></button>
+        <button className={section === "home" ? "active" : ""} type="button" onClick={() => onSectionChange("home")}><Home size={23} /><span>Projects</span></button>
         <button className={section === "challenges" ? "active" : ""} type="button" onClick={() => onSectionChange("challenges")}><Grid3X3 size={23} /><span>Challenges</span></button>
         <button className="settings" type="button" disabled><Settings size={23} /><span>Settings</span></button>
       </aside>
@@ -92,13 +92,13 @@ export function ProjectDashboard({ projects, busy = false, section, onSectionCha
         {section === "challenges" ? <>
           <header className="educad-dashboard-project-heading educad-challenges-heading">
             <div><h1>Challenges</h1><span>{visibleChallenges.length} visible · {challenges.length} installed</span></div>
+            <div className="educad-dashboard-project-controls">
+              <button className="educad-install-challenge" type="button" onClick={() => challengeInputRef.current?.click()}><Upload size={19} /> Import challenge</button>
+              <label className="educad-dashboard-search"><Search size={20} /><input value={challengeQuery} onChange={(event) => setChallengeQuery(event.target.value)} placeholder="Search challenges" /></label>
+              <div className="educad-dashboard-sort-toggle" role="group" aria-label="Sort challenges"><button type="button" className={challengeSort === "recent" ? "active" : ""} onClick={() => setChallengeSort("recent")} aria-label="Sort by recent" title="Sort by recent"><img src="/assets/educad/toolbar/project-sort-recent.svg" alt="" /></button><button type="button" className={challengeSort === "name" ? "active" : ""} onClick={() => setChallengeSort("name")} aria-label="Sort by name" title="Sort by name"><img src="/assets/educad/toolbar/project-sort-name.svg" alt="" /></button></div>
+              <div className="educad-dashboard-view-toggle"><button className={challengeView === "grid" ? "active" : ""} onClick={() => setChallengeView("grid")} aria-label="Grid view"><Grid3X3 size={20} /></button><button className={challengeView === "list" ? "active" : ""} onClick={() => setChallengeView("list")} aria-label="List view"><List size={21} /></button></div>
+            </div>
           </header>
-          <div className="educad-dashboard-project-controls educad-challenge-library-controls">
-            <button className="educad-install-challenge" type="button" onClick={() => challengeInputRef.current?.click()}><Upload size={19} /> Import challenge</button>
-            <label className="educad-dashboard-search"><Search size={20} /><input value={challengeQuery} onChange={(event) => setChallengeQuery(event.target.value)} placeholder="Search challenges" /></label>
-            <div className="educad-dashboard-sort-toggle" role="group" aria-label="Sort challenges"><button type="button" className={challengeSort === "recent" ? "active" : ""} onClick={() => setChallengeSort("recent")} aria-label="Sort by recent" title="Sort by recent"><img src="/assets/educad/toolbar/project-sort-recent.svg" alt="" /></button><button type="button" className={challengeSort === "name" ? "active" : ""} onClick={() => setChallengeSort("name")} aria-label="Sort by name" title="Sort by name"><img src="/assets/educad/toolbar/project-sort-name.svg" alt="" /></button></div>
-            <div className="educad-dashboard-view-toggle"><button className={challengeView === "grid" ? "active" : ""} onClick={() => setChallengeView("grid")} aria-label="Grid view"><Grid3X3 size={20} /></button><button className={challengeView === "list" ? "active" : ""} onClick={() => setChallengeView("list")} aria-label="List view"><List size={21} /></button></div>
-          </div>
           <div className={`educad-challenge-library ${challengeView}`}>
             {!challengeQuery.trim() ? <article className="educad-challenge-card educad-challenge-new-card">
               <button className="challenge-open" type="button" onClick={onCreateChallenge}>

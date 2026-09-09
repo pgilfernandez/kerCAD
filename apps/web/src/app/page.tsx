@@ -90,7 +90,26 @@ export default function Home() {
       localStorage.removeItem("educad.parametric.snapshots.v1");
       setProjects(entries);
       await deleteInstalledChallenge("educad-demo-key-tag@1");
-      const installedChallenges = await listInstalledChallenges();
+      let installedChallenges = await listInstalledChallenges();
+      try {
+        const response = await fetch("/api/bundled-challenges", { cache: "no-store" });
+        const payload = await response.json() as { files?: unknown };
+        if (response.ok && Array.isArray(payload.files)) {
+          for (const name of payload.files) {
+            if (typeof name !== "string") continue;
+            const packageResponse = await fetch(`/api/bundled-challenges?file=${encodeURIComponent(name)}`, { cache: "no-store" });
+            if (!packageResponse.ok) continue;
+            const packageFile = new File([await packageResponse.blob()], name, { type: "application/zip" });
+            const bundledChallenge = await importChallengePackage(packageFile);
+            if (!installedChallenges.some((challenge) => challenge.id === bundledChallenge.id)) {
+              await saveInstalledChallenge(bundledChallenge);
+              installedChallenges = [...installedChallenges, bundledChallenge];
+            }
+          }
+        }
+      } catch {
+        // Bundled challenges are optional: a missing or invalid package must not prevent the dashboard from loading.
+      }
       setChallenges(installedChallenges);
       setBusy(false);
     })();
