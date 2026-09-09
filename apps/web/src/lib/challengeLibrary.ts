@@ -16,6 +16,7 @@ export type EducadChallenge = {
   title: string;
   description?: string;
   author?: string;
+  categories?: string[];
   version: number;
   installedAt: number;
   cover?: string;
@@ -28,6 +29,7 @@ export function createEmptyChallenge(): EducadChallenge {
     id: `challenge-${typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`}@1`,
     title: "New challenge",
     description: "",
+    categories: [],
     version: 1,
     installedAt: Date.now(),
     workspaceDocument: createEmptyDocument(),
@@ -49,6 +51,7 @@ export function createDemoChallenge(): EducadChallenge {
     title: "Build a Key Tag",
     description: "A short guided introduction to shapes, duplication and holes.",
     author: "eduCAD",
+    categories: ["Beginner", "3D design"],
     version: 1,
     installedAt: Date.now(),
     cover: demoImage("done"),
@@ -69,6 +72,7 @@ type ChallengeManifest = {
   title: string;
   description?: string;
   author?: string;
+  categories?: string[];
   cover?: string;
   steps: Array<{
     id?: string;
@@ -167,6 +171,7 @@ export async function importChallengePackage(file: File): Promise<EducadChalleng
     title: manifest.title.trim(),
     description: manifest.description?.trim(),
     author: manifest.author?.trim(),
+    categories: Array.isArray(manifest.categories) ? [...new Set(manifest.categories.map((category) => String(category).trim()).filter(Boolean))].slice(0, 12) : undefined,
     version: manifest.version,
     installedAt: Date.now(),
     cover: safeAsset(files, manifest.cover) ?? steps.find((step) => step.image)?.image,
@@ -213,6 +218,7 @@ export function exportChallengePackage(challenge: EducadChallenge) {
     title: challenge.title,
     description: challenge.description,
     author: challenge.author,
+    categories: challenge.categories?.length ? challenge.categories : undefined,
     cover: imagePath(challenge.cover ?? challenge.steps.find((step) => step.image)?.image, "cover"),
     steps,
     workspace,

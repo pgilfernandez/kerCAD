@@ -38,6 +38,9 @@ export function ProjectDashboard({ projects, busy = false, section, onSectionCha
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [sort, setSort] = useState<"recent" | "name">("recent");
+  const [challengeQuery, setChallengeQuery] = useState("");
+  const [challengeView, setChallengeView] = useState<"grid" | "list">("grid");
+  const [challengeSort, setChallengeSort] = useState<"recent" | "name">("recent");
   const [renaming, setRenaming] = useState<ProjectLibraryEntry | null>(null);
   const [deleting, setDeleting] = useState<ProjectLibraryEntry | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
@@ -49,6 +52,14 @@ export function ProjectDashboard({ projects, busy = false, section, onSectionCha
     .sort((left, right) => sort === "recent"
       ? right.updatedAt - left.updatedAt
       : left.name.localeCompare(right.name, undefined, { sensitivity: "base" })), [projects, query, sort]);
+  const visibleChallenges = useMemo(() => {
+    const needle = challengeQuery.trim().toLocaleLowerCase();
+    return challenges
+      .filter((challenge) => !needle || [challenge.title, challenge.description, challenge.author, ...(challenge.categories ?? [])].some((value) => value?.toLocaleLowerCase().includes(needle)))
+      .sort((left, right) => challengeSort === "recent"
+        ? right.installedAt - left.installedAt
+        : left.title.localeCompare(right.title, undefined, { sensitivity: "base" }));
+  }, [challenges, challengeQuery, challengeSort]);
   useEffect(() => {
     if (!renaming) return;
     window.requestAnimationFrame(() => {
@@ -80,14 +91,19 @@ export function ProjectDashboard({ projects, busy = false, section, onSectionCha
       <section className="educad-dashboard-main">
         {section === "challenges" ? <>
           <header className="educad-dashboard-project-heading educad-challenges-heading">
-            <div><h1>Challenges</h1><span>{challenges.length} installed</span></div>
+            <div><h1>Challenges</h1><span>{visibleChallenges.length} visible · {challenges.length} installed</span></div>
             <div className="educad-challenge-heading-actions"><button className="educad-create-challenge" type="button" onClick={onCreateChallenge}><Plus size={19} /> Create new challenge</button><button className="educad-install-challenge" type="button" onClick={() => challengeInputRef.current?.click()}><Upload size={19} /> Install challenge</button></div>
           </header>
-          <div className="educad-challenge-library">
-            {challenges.map((challenge) => <article className="educad-challenge-card" key={challenge.id}>
+          <div className="educad-dashboard-project-controls educad-challenge-library-controls">
+            <label className="educad-dashboard-search"><Search size={20} /><input value={challengeQuery} onChange={(event) => setChallengeQuery(event.target.value)} placeholder="Search challenges" /></label>
+            <div className="educad-dashboard-sort-toggle" role="group" aria-label="Sort challenges"><button type="button" className={challengeSort === "recent" ? "active" : ""} onClick={() => setChallengeSort("recent")} aria-label="Sort by recent" title="Sort by recent"><img src="/assets/educad/toolbar/project-sort-recent.svg" alt="" /></button><button type="button" className={challengeSort === "name" ? "active" : ""} onClick={() => setChallengeSort("name")} aria-label="Sort by name" title="Sort by name"><img src="/assets/educad/toolbar/project-sort-name.svg" alt="" /></button></div>
+            <div className="educad-dashboard-view-toggle"><button className={challengeView === "grid" ? "active" : ""} onClick={() => setChallengeView("grid")} aria-label="Grid view"><Grid3X3 size={20} /></button><button className={challengeView === "list" ? "active" : ""} onClick={() => setChallengeView("list")} aria-label="List view"><List size={21} /></button></div>
+          </div>
+          <div className={`educad-challenge-library ${challengeView}`}>
+            {visibleChallenges.map((challenge) => <article className="educad-challenge-card" key={challenge.id}>
               <button className="challenge-open" type="button" onClick={() => onStartChallenge(challenge)}>
                 <span className="challenge-cover">{challenge.cover ? <img src={challenge.cover} alt="" /> : <FileArchive size={52} />}</span>
-                <span className="challenge-copy"><small>{challenge.steps.length} STEPS</small><strong>{challenge.title}</strong><span>{challenge.description || "Guided eduCAD activity"}</span>{challenge.author ? <em>By {challenge.author}</em> : null}</span>
+                <span className="challenge-copy"><small>{challenge.steps.length} STEPS</small><strong>{challenge.title}</strong><span>{challenge.description || "Guided eduCAD activity"}</span>{challenge.categories?.length ? <span className="challenge-categories">{challenge.categories.map((category) => <i key={category}>{category}</i>)}</span> : null}{challenge.author ? <em>By {challenge.author}</em> : null}</span>
                 <span className="challenge-play"><Play size={19} fill="currentColor" /> Start</span>
               </button>
               <nav className="challenge-actions" aria-label={`${challenge.title} actions`}>
@@ -97,6 +113,7 @@ export function ProjectDashboard({ projects, busy = false, section, onSectionCha
               </nav>
             </article>)}
             {!challenges.length ? <button className="educad-challenge-empty" type="button" onClick={() => challengeInputRef.current?.click()}><Upload size={34} /><strong>Install your first challenge</strong><span>Choose an eduCAD challenge ZIP from your computer.</span></button> : null}
+            {challenges.length > 0 && !visibleChallenges.length ? <div className="educad-dashboard-empty"><strong>No matching challenges</strong><span>Try another search.</span></div> : null}
           </div>
         </> : <>
         <header className="educad-dashboard-project-heading">

@@ -24,6 +24,7 @@ export function ChallengeEditor({ challenge, dock, capture, onDockChange, onCapt
   const [draft, setDraft] = useState(() => structuredClone(challenge));
   const [stepIndex, setStepIndex] = useState(0);
   const [editingMetadata, setEditingMetadata] = useState(true);
+  const [categoryDraft, setCategoryDraft] = useState("");
   const [position, setPosition] = useState({ x: 28, y: 96 });
   const dragRef = useRef<{ pointerId: number; x: number; y: number; left: number; top: number } | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -65,6 +66,12 @@ export function ChallengeEditor({ challenge, dock, capture, onDockChange, onCapt
   };
   const endDrag = (event: React.PointerEvent<HTMLElement>) => { if (dragRef.current?.pointerId === event.pointerId) dragRef.current = null; };
   const valid = Boolean(draft.title.trim() && draft.steps.every((candidate) => candidate.title.trim() && candidate.body.trim()));
+  const addCategory = () => {
+    const category = categoryDraft.trim();
+    if (!category || draft.categories?.some((candidate) => candidate.toLocaleLowerCase() === category.toLocaleLowerCase())) return;
+    setDraft((current) => ({ ...current, categories: [...(current.categories ?? []), category] }));
+    setCategoryDraft("");
+  };
   const loadImage = (file: File | undefined, target: "cover" | "step") => {
     if (!file || !file.type.startsWith("image/") || file.size > 15 * 1024 * 1024) return;
     const reader = new FileReader();
@@ -97,6 +104,11 @@ export function ChallengeEditor({ challenge, dock, capture, onDockChange, onCapt
     {editingMetadata ? <div className="educad-challenge-step educad-challenge-form educad-challenge-metadata">
       <label><span>Challenge title</span><input value={draft.title} maxLength={100} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} /></label>
       <label><span>Author</span><input value={draft.author ?? ""} maxLength={100} placeholder="Teacher or organisation" onChange={(event) => setDraft((current) => ({ ...current, author: event.target.value }))} /></label>
+      <section className="educad-challenge-category-editor">
+        <strong>Categories</strong>
+        <div className="educad-challenge-category-input"><input value={categoryDraft} maxLength={32} placeholder="Add a category" onChange={(event) => setCategoryDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === ",") { event.preventDefault(); addCategory(); } }} /><button type="button" disabled={!categoryDraft.trim()} onClick={addCategory}><Plus size={16} /> Add</button></div>
+        {(draft.categories?.length ?? 0) > 0 ? <div className="educad-challenge-categories">{draft.categories?.map((category) => <span key={category}>{category}<button type="button" title={`Remove ${category}`} aria-label={`Remove ${category}`} onClick={() => setDraft((current) => ({ ...current, categories: current.categories?.filter((candidate) => candidate !== category) }))}><X size={12} /></button></span>)}</div> : null}
+      </section>
       <label><span>Challenge description</span><textarea rows={5} value={draft.description ?? ""} onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))} /></label>
       <section className="educad-challenge-capture">
         {draft.cover ? <img src={draft.cover} alt="Challenge thumbnail" /> : <div className="educad-challenge-capture-placeholder"><ImageUp size={35} /><span>Challenge thumbnail</span></div>}
