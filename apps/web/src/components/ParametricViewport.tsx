@@ -659,7 +659,6 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const editableOriginIdRef = useRef(editableOriginId);
   const selectedObjectOriginIdRef = useRef(selectedObjectOriginId);
   const selectedOperationOriginIdRef = useRef(selectedOperationOriginId);
-  const selectedObjectIdsRef = useRef(selectedObjectIds);
   const orientationRef = useRef(onCameraOrientation);
   const objectSelectRef = useRef(onObjectSelect);
   const objectsSelectRef = useRef(onObjectsSelect);
@@ -697,7 +696,6 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   useEffect(() => { editableOriginIdRef.current = editableOriginId; }, [editableOriginId]);
   useEffect(() => { selectedObjectOriginIdRef.current = selectedObjectOriginId; }, [selectedObjectOriginId]);
   useEffect(() => { selectedOperationOriginIdRef.current = selectedOperationOriginId; }, [selectedOperationOriginId]);
-  useEffect(() => { selectedObjectIdsRef.current = selectedObjectIds; }, [selectedObjectIds]);
   useEffect(() => { orientationRef.current = onCameraOrientation; }, [onCameraOrientation]);
   useEffect(() => { objectSelectRef.current = onObjectSelect; }, [onObjectSelect]);
   useEffect(() => { objectsSelectRef.current = onObjectsSelect; }, [onObjectsSelect]);
@@ -1379,16 +1377,31 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       return { group, highlight };
     };
     const rotationWireframePreviewAt = (targetId: string, targetKind: "object" | "feature", center: THREE.Vector3) => {
-      const objectId = targetKind === "object" ? targetId : selectedObjectIdsRef.current[0];
-      const cached = objectId ? objectRenderCacheRef.current.get(objectId) : null;
-      const attribute = cached?.edges.geometry.getAttribute("position");
-      if (!attribute) return null;
       const inverseCenter = center.clone().negate();
       const positions: number[] = [];
-      for (let index = 0; index < attribute.count; index += 1) {
-        const point = new THREE.Vector3(attribute.getX(index), attribute.getY(index), attribute.getZ(index)).applyMatrix4(modelGroup.matrixWorld).add(inverseCenter);
-        positions.push(point.x, point.y, point.z);
+      if (targetKind === "feature") {
+        const visualRoot = selectionVisualRootRef.current;
+        visualRoot?.updateWorldMatrix(true, true);
+        visualRoot?.traverse((child) => {
+          if (!(child instanceof LineSegments2) || !child.userData.operationPreviewWireframe) return;
+          const starts = child.geometry.getAttribute("instanceStart");
+          const ends = child.geometry.getAttribute("instanceEnd");
+          if (!starts || !ends) return;
+          for (let index = 0; index < Math.min(starts.count, ends.count); index += 1) {
+            const start = new THREE.Vector3(starts.getX(index), starts.getY(index), starts.getZ(index)).applyMatrix4(child.matrixWorld).add(inverseCenter);
+            const end = new THREE.Vector3(ends.getX(index), ends.getY(index), ends.getZ(index)).applyMatrix4(child.matrixWorld).add(inverseCenter);
+            positions.push(start.x, start.y, start.z, end.x, end.y, end.z);
+          }
+        });
+      } else {
+        const cached = objectRenderCacheRef.current.get(targetId);
+        const attribute = cached?.edges.geometry.getAttribute("position");
+        if (attribute) for (let index = 0; index < attribute.count; index += 1) {
+          const point = new THREE.Vector3(attribute.getX(index), attribute.getY(index), attribute.getZ(index)).applyMatrix4(modelGroup.matrixWorld).add(inverseCenter);
+          positions.push(point.x, point.y, point.z);
+        }
       }
+      if (positions.length === 0) return null;
       const geometry = new LineSegmentsGeometry();
       geometry.setPositions(positions);
       const material = new LineMaterial({ color: 0x263746, linewidth: 2, depthTest: false, depthWrite: false, transparent: true, opacity: 0.92 });
