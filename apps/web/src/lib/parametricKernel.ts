@@ -1029,10 +1029,14 @@ function meshShape(brep: Brep, shape: RenderableShape, omittedEdgeDirections: Di
   const bounds = brep.getBounds(shape);
   const volumeResult = brep.measureVolume(shape);
   return {
-    positions: triangles.vertices,
-    normals: triangles.normals,
-    indices: triangles.triangles,
-    edges: displayEdges.edges,
+    // The kernel may expose views backed by reusable WASM memory. Build results
+    // are transferred out of the CAD worker, which detaches their ArrayBuffers;
+    // keeping those views here would therefore poison a later incremental mesh
+    // of the same solid (a sketch-only history change is a common trigger).
+    positions: new Float32Array(triangles.vertices),
+    normals: new Float32Array(triangles.normals),
+    indices: new Uint32Array(triangles.triangles),
+    edges: new Float32Array(displayEdges.edges),
     faceGroups: triangles.faceGroups.map((group) => ({ ...group })),
     edgeGroups: displayEdges.edgeGroups,
     metrics: {
