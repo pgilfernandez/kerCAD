@@ -92,14 +92,20 @@ export function ProjectDashboard({ projects, busy = false, section, onSectionCha
         {section === "challenges" ? <>
           <header className="educad-dashboard-project-heading educad-challenges-heading">
             <div><h1>Challenges</h1><span>{visibleChallenges.length} visible · {challenges.length} installed</span></div>
-            <div className="educad-challenge-heading-actions"><button className="educad-create-challenge" type="button" onClick={onCreateChallenge}><Plus size={19} /> Create new challenge</button><button className="educad-install-challenge" type="button" onClick={() => challengeInputRef.current?.click()}><Upload size={19} /> Install challenge</button></div>
           </header>
           <div className="educad-dashboard-project-controls educad-challenge-library-controls">
+            <button className="educad-install-challenge" type="button" onClick={() => challengeInputRef.current?.click()}><Upload size={19} /> Import challenge</button>
             <label className="educad-dashboard-search"><Search size={20} /><input value={challengeQuery} onChange={(event) => setChallengeQuery(event.target.value)} placeholder="Search challenges" /></label>
             <div className="educad-dashboard-sort-toggle" role="group" aria-label="Sort challenges"><button type="button" className={challengeSort === "recent" ? "active" : ""} onClick={() => setChallengeSort("recent")} aria-label="Sort by recent" title="Sort by recent"><img src="/assets/educad/toolbar/project-sort-recent.svg" alt="" /></button><button type="button" className={challengeSort === "name" ? "active" : ""} onClick={() => setChallengeSort("name")} aria-label="Sort by name" title="Sort by name"><img src="/assets/educad/toolbar/project-sort-name.svg" alt="" /></button></div>
             <div className="educad-dashboard-view-toggle"><button className={challengeView === "grid" ? "active" : ""} onClick={() => setChallengeView("grid")} aria-label="Grid view"><Grid3X3 size={20} /></button><button className={challengeView === "list" ? "active" : ""} onClick={() => setChallengeView("list")} aria-label="List view"><List size={21} /></button></div>
           </div>
           <div className={`educad-challenge-library ${challengeView}`}>
+            {!challengeQuery.trim() ? <article className="educad-challenge-card educad-challenge-new-card">
+              <button className="challenge-open" type="button" onClick={onCreateChallenge}>
+                <span className="challenge-cover"><span className="new-challenge-plus"><Plus size={48} /></span></span>
+                <span className="challenge-copy"><strong>Create new challenge</strong><span>Build a guided eduCAD activity</span></span>
+              </button>
+            </article> : null}
             {visibleChallenges.map((challenge) => <article className="educad-challenge-card" key={challenge.id}>
               <button className="challenge-open" type="button" onClick={() => onStartChallenge(challenge)}>
                 <span className="challenge-cover">{challenge.cover ? <img src={challenge.cover} alt="" /> : <FileArchive size={52} />}</span>

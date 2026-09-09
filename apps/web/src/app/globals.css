@@ -9762,6 +9762,9 @@ html[data-theme="dark"] .grid-settings {
 .educad-challenge-card .challenge-open { width: 100%; height: 100%; padding: 13px; display: flex; flex-direction: column; border: 0; background: transparent; text-align: left; }
 .educad-challenge-card .challenge-cover { height: 180px; display: grid; place-items: center; overflow: hidden; color: #1269eb; background: linear-gradient(145deg, #eef6ff, #e6f7fb); border-radius: 8px; }
 .educad-challenge-card .challenge-cover img { width: 100%; height: 100%; object-fit: cover; }
+.educad-challenge-new-card .challenge-cover { background: #eef5ff; }
+.educad-challenge-new-card .new-challenge-plus { width: 82px; height: 82px; display: grid; place-items: center; color: #fff; background: #1269eb; border-radius: 17px; }
+.educad-challenge-new-card .challenge-copy > span { min-height: 0; }
 .educad-challenge-card .challenge-copy { padding: 13px 1px 4px; display: flex; flex-direction: column; gap: 5px; }
 .educad-challenge-card .challenge-copy small { color: #1269eb; font-size: 11px; font-weight: 900; letter-spacing: .08em; }
 .educad-challenge-card .challenge-copy strong { padding-right: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 19px; }

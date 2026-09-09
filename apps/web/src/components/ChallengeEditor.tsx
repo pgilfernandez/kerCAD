@@ -117,9 +117,9 @@ export function ChallengeEditor({ challenge, dock, capture, onDockChange, onCapt
         <input ref={coverInputRef} hidden type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" onChange={(event) => { loadImage(event.target.files?.[0], "cover"); event.target.value = ""; }} />
       </section>
     </div> : <div className="educad-challenge-step educad-challenge-form">
-      <label><span>Step subtitle</span><input value={step.label ?? ""} maxLength={80} placeholder={stepIndex === 0 ? "BEFORE YOU START" : `STEP ${stepIndex}`} onChange={(event) => updateStep({ label: event.target.value })} /></label>
       <label><span>Step title</span><input value={step.title} maxLength={120} onChange={(event) => updateStep({ title: event.target.value })} /></label>
       <label><span>Description</span><textarea rows={4} value={step.body} onChange={(event) => updateStep({ body: event.target.value })} /></label>
+      <label><span>Step subtitle</span><input value={step.label ?? ""} maxLength={80} placeholder={stepIndex === 0 ? "BEFORE YOU START" : `STEP ${stepIndex}`} onChange={(event) => updateStep({ label: event.target.value })} /></label>
       <section className="educad-challenge-parameter-editor">
         <header><strong>Parameters</strong><button type="button" onClick={() => updateStep({ values: [...(step.values ?? []), { label: "Parameter", value: "1 mm" }] })}><Plus size={16} /> Add</button></header>
         {(step.values ?? []).map((value, index) => <div className="educad-challenge-parameter-row" key={`${step.id}:value:${index}`}>
