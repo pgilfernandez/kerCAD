@@ -37,34 +37,6 @@ export function createEmptyChallenge(): EducadChallenge {
   };
 }
 
-function demoImage(stage: "base" | "ends" | "hole" | "done") {
-  const circles = stage === "base" ? "" : `<circle cx="116" cy="108" r="32" fill="#ffc75f"/><circle cx="304" cy="108" r="32" fill="#ffc75f"/>`;
-  const hole = stage === "hole" || stage === "done" ? `<circle cx="116" cy="108" r="10" fill="#f7fcff" stroke="#176d91" stroke-width="5"/>` : "";
-  const finished = stage === "done" ? `<path d="M187 75h76" stroke="#ff5463" stroke-width="10" stroke-linecap="round"/>` : "";
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="420" height="235" viewBox="0 0 420 235"><rect width="420" height="235" fill="#f8fcfd"/><g stroke="#a9e0ed" stroke-width="1"><path d="M0 25h420M0 65h420M0 105h420M0 145h420M0 185h420M0 225h420M25 0v235M65 0v235M105 0v235M145 0v235M185 0v235M225 0v235M265 0v235M305 0v235M345 0v235M385 0v235"/></g><rect x="114" y="76" width="192" height="64" rx="3" fill="#ff5463" stroke="#d9364c" stroke-width="4"/>${circles}${hole}${finished}</svg>`;
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
-}
-
-export function createDemoChallenge(): EducadChallenge {
-  return {
-    id: "educad-demo-key-tag@1",
-    title: "Build a Key Tag",
-    description: "A short guided introduction to shapes, duplication and holes.",
-    author: "eduCAD",
-    categories: ["Beginner", "3D design"],
-    version: 1,
-    installedAt: Date.now(),
-    cover: demoImage("done"),
-    steps: [
-      { id: "welcome", label: "BEFORE YOU START", title: "Build a Key Tag", body: "Use simple shapes to make a small key tag. Keep Snap to grid enabled while you work.", image: demoImage("done"), values: [{ label: "Snap spacing", value: "1 mm" }] },
-      { id: "base", label: "STEP 1", title: "Make the middle", body: "Add a box and make it thin and long. This is the centre of the key tag.", image: demoImage("base"), values: [{ label: "Width", value: "24 mm" }, { label: "Depth", value: "10 mm" }, { label: "Height", value: "2 mm" }] },
-      { id: "ends", label: "STEP 2", title: "Add the round ends", body: "Add a cylinder, resize it to the width of the box, then duplicate it for the other end.", image: demoImage("ends") },
-      { id: "hole", label: "STEP 3", title: "Create the hole", body: "Add a smaller cylinder at the left end and change its mode to Hole.", image: demoImage("hole") },
-      { id: "finish", label: "STEP 4", title: "Finish your key tag", body: "Check that the shapes form one clean key tag. You can now personalise it with your own dimensions.", image: demoImage("done") },
-    ],
-  };
-}
-
 type ChallengeManifest = {
   format: "educad-challenge";
   version: number;

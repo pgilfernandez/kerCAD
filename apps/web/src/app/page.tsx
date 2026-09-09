@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ProjectDashboard } from "@/components/ProjectDashboard";
 import { EducadLandingPage } from "@/components/EducadLandingPage";
 import { SketchForgeParametricEditor } from "@/components/SketchForgeParametricEditor";
-import { createDemoChallenge, createEmptyChallenge, deleteInstalledChallenge, exportChallengePackage, importChallengePackage, listInstalledChallenges, saveInstalledChallenge, type EducadChallenge } from "@/lib/challengeLibrary";
+import { createEmptyChallenge, deleteInstalledChallenge, exportChallengePackage, importChallengePackage, listInstalledChallenges, saveInstalledChallenge, type EducadChallenge } from "@/lib/challengeLibrary";
 import { importEducadProject } from "@/lib/educadProject";
 import { createEmptyDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { deleteLibraryProject, getLibraryProject, listLibraryProjects, newProjectLibraryId, saveLibraryProject, updateLibraryProjectThumbnail, type ProjectLibraryEntry } from "@/lib/projectLibrary";
@@ -89,11 +89,8 @@ export default function Home() {
       localStorage.removeItem("educad.parametric.document.recovery.v1");
       localStorage.removeItem("educad.parametric.snapshots.v1");
       setProjects(entries);
-      let installedChallenges = await listInstalledChallenges();
-      if (!installedChallenges.some((challenge) => challenge.id === "educad-demo-key-tag@1")) {
-        await saveInstalledChallenge(createDemoChallenge());
-        installedChallenges = await listInstalledChallenges();
-      }
+      await deleteInstalledChallenge("educad-demo-key-tag@1");
+      const installedChallenges = await listInstalledChallenges();
       setChallenges(installedChallenges);
       setBusy(false);
     })();
