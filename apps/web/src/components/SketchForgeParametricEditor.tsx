@@ -105,7 +105,7 @@ import {
   type ParametricAlignmentAxis,
   type SupportedPrimitive,
 } from "@/lib/parametricObjects";
-import { globalParametricWorkplanePlacement, objectPlacementForWorkplane, parametricTransformMatrix, parametricWorkplaneFromFace, parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
+import { globalParametricWorkplanePlacement, objectPlacementForWorkplane, operationPlacementForWorkplane, parametricTransformMatrix, parametricWorkplaneFromFace, parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
 import { localizedParametricOperationDefinition, parametricOperationCatalog, parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import type { ViewportRenderQuality } from "@/lib/viewportPerformance";
 import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricFeature, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, PrimitiveFeature, RevolveFeature, SketchFeature } from "@/types/parametric";
@@ -844,13 +844,13 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
       : null;
     const objectId = feature?.objectId ?? sketchSession.objectId;
     const object = objectId ? document.objects.find((candidate) => candidate.id === objectId) ?? null : null;
-    const basePlacement = object
-      ? parametricTransformMatrix(object.transform)
+    const sketchWorldPlacement = feature
+      ? (object ? parametricTransformMatrix(object.transform) : new THREE.Matrix4()).multiply(parametricTransformMatrix({
+          position: { x: feature.x, y: feature.y, z: feature.offset },
+          rotation: feature.rotation,
+        }))
       : parametricTransformMatrix(objectPlacementForWorkplane(document.workplane));
-    const sketchPlacement = feature
-      ? parametricTransformMatrix({ position: { x: feature.x, y: feature.y, z: feature.offset }, rotation: feature.rotation })
-      : new THREE.Matrix4();
-    const worldToSketch = basePlacement.multiply(sketchPlacement).invert();
+    const worldToSketch = sketchWorldPlacement.invert();
     const transformPositions = (source: Float32Array) => {
       const transformed = new Float32Array(source.length);
       const point = new THREE.Vector3();
@@ -979,7 +979,8 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
         if (feature?.kind === "sketch" && feature.profile.shape === "drawn") feature.profile.geometry = structuredClone(sketchSession.profile);
         return;
       }
-      if (!objectId || !draft.objects.some((object) => object.id === objectId)) {
+      const usesExistingObject = Boolean(objectId && draft.objects.some((object) => object.id === objectId));
+      if (!usesExistingObject) {
         objectId = addParametricObject(draft, draft.workplane.origin);
         const object = draft.objects.find((candidate) => candidate.id === objectId);
         if (object) {
@@ -991,6 +992,16 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
       const feature = createDrawnSketchFeature(draft.features.filter((candidate) => candidate.kind === "sketch" && candidate.purpose === "user").length + 1, sketchSession.profile);
       feature.name = `${locale === "es" ? "Boceto" : "Sketch"} ${draft.features.filter((candidate) => candidate.kind === "sketch" && candidate.purpose === "user").length + 1}`;
       feature.objectId = objectId ?? undefined;
+      if (usesExistingObject && objectId) {
+        const object = draft.objects.find((candidate) => candidate.id === objectId);
+        if (object) {
+          const placement = operationPlacementForWorkplane(draft.workplane, object);
+          feature.x = placement.position.x;
+          feature.y = placement.position.y;
+          feature.offset = placement.position.z;
+          feature.rotation = placement.rotation;
+        }
+      }
       if (sketchSession.mode === "scribble") {
         feature.name = locale === "es" ? "Perfil Scribble" : "Scribble profile";
         feature.purpose = "primitive";

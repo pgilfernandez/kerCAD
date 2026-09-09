@@ -15,10 +15,12 @@ export function facesFromPlanarProfile(brep: Brep, loops: readonly PlanarBrepLoo
 }
 
 export function extrudePlanarProfile(brep: Brep, faces: readonly Face[], distance: number, symmetric: boolean): BrepSolid {
-  if (!Number.isFinite(distance) || distance <= 0) throw new Error("Extrusion distance must be positive.");
+  if (!Number.isFinite(distance) || Math.abs(distance) <= 1e-8) throw new Error("Extrusion distance must not be zero.");
+  const length = Math.abs(distance);
   const solids = faces.map((sourceFace) => {
-    const face = symmetric ? brep.translate(sourceFace, [0, 0, -distance / 2]) as Face : sourceFace;
-    return brep.unwrap(brep.extrude(face as Parameters<Brep["extrude"]>[0], distance)) as BrepSolid;
+    const offset = symmetric ? -length / 2 : distance < 0 ? -length : 0;
+    const face = offset ? brep.translate(sourceFace, [0, 0, offset]) as Face : sourceFace;
+    return brep.unwrap(brep.extrude(face as Parameters<Brep["extrude"]>[0], length)) as BrepSolid;
   });
   return combineProfileSolids(brep, solids);
 }

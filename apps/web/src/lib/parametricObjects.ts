@@ -652,10 +652,10 @@ export function workplaneShapeForObject(document: ParametricDocument, id: string
   const sketchSize = sketch ? sketchDimensions(sketch) : null;
   const baseWidth = feature.kind === "primitive" ? feature.width : sketchSize!.width;
   const baseDepth = feature.kind === "primitive" ? feature.depth : sketchSize!.depth;
-  const baseHeight = feature.kind === "primitive" ? feature.height : feature.distance;
+  const baseHeight = feature.kind === "primitive" ? feature.height : Math.abs(feature.distance);
   const width = baseWidth * object.transform.scale.x;
   const depth = baseDepth * object.transform.scale.y;
-  const world = operationWorldTransform(object, feature, baseHeight);
+  const world = operationWorldTransform(object, feature, baseHeight, sketchSize ? { x: sketchSize.centerX, y: sketchSize.centerY } : undefined, sketch);
   return {
     id: object.id,
     name: object.name,
@@ -697,13 +697,18 @@ export function viewportSelectionForObject(document: ParametricDocument, id: str
   };
 }
 
-function operationWorldTransform(object: ParametricObject, feature: TransformableOperation, height: number, planarCenter = { x: 0, y: 0 }) {
-  const matrix = parametricTransformMatrix(object.transform).multiply(parametricTransformMatrix({ ...feature.transform, scale: { x: 1, y: 1, z: 1 } }));
+function operationWorldTransform(object: ParametricObject, feature: TransformableOperation, height: number, planarCenter = { x: 0, y: 0 }, sourceSketch: SketchFeature | null = null) {
+  const operationMatrix = parametricTransformMatrix({ ...feature.transform, scale: { x: 1, y: 1, z: 1 } });
+  if (feature.kind === "extrude" && sourceSketch) operationMatrix.multiply(parametricTransformMatrix({
+    position: { x: sourceSketch.x, y: sourceSketch.y, z: sourceSketch.offset },
+    rotation: sourceSketch.rotation,
+  }));
+  const matrix = parametricTransformMatrix(object.transform).multiply(operationMatrix);
   const origin = new THREE.Vector3().applyMatrix4(matrix);
-  const centerOffset = feature.kind === "primitive" && (feature.primitive === "sphere" || feature.primitive === "torus") ? 0 : height / 2;
+  const extrusionDirection = feature.kind === "extrude" && feature.distance < 0 ? -1 : 1;
+  const centerOffset = feature.kind === "primitive" && (feature.primitive === "sphere" || feature.primitive === "torus") ? 0 : height / 2 * extrusionDirection;
   const center = new THREE.Vector3(planarCenter.x, planarCenter.y, centerOffset).applyMatrix4(matrix);
-  const rotationMatrix = parametricTransformMatrix({ ...object.transform, scale: { x: 1, y: 1, z: 1 } })
-    .multiply(parametricTransformMatrix({ ...feature.transform, scale: { x: 1, y: 1, z: 1 } }));
+  const rotationMatrix = parametricTransformMatrix({ ...object.transform, scale: { x: 1, y: 1, z: 1 } }).multiply(operationMatrix);
   const quaternion = new THREE.Quaternion();
   rotationMatrix.decompose(new THREE.Vector3(), quaternion, new THREE.Vector3());
   const rotation = new THREE.Euler().setFromQuaternion(quaternion, "ZYX");
@@ -732,8 +737,8 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
   const textGenerator = sketch?.profile.shape === "drawn" && sketch.profile.geometry.generator?.kind === "text" ? sketch.profile.geometry.generator : null;
   const baseWidth = feature.kind === "primitive" ? feature.width : sketchSize!.width;
   const baseDepth = feature.kind === "primitive" ? feature.depth : sketchSize!.depth;
-  const baseHeight = feature.kind === "primitive" ? feature.height : feature.distance;
-  const world = operationWorldTransform(object, feature, baseHeight, sketchSize ? { x: sketchSize.centerX, y: sketchSize.centerY } : undefined);
+  const baseHeight = feature.kind === "primitive" ? feature.height : Math.abs(feature.distance);
+  const world = operationWorldTransform(object, feature, baseHeight, sketchSize ? { x: sketchSize.centerX, y: sketchSize.centerY } : undefined, sketch);
   const width = baseWidth * object.transform.scale.x;
   const depth = baseDepth * object.transform.scale.y;
   const operations = document.features.filter((candidate) => candidate.objectId === object.id && candidate.kind !== "sketch");
@@ -758,6 +763,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
         ? { parameterHandles: ["height" as const] }
         : {}),
     ...(feature.kind === "extrude" && sketch!.profile.shape === "circle" ? { resizeAspectRatio: 1 } : {}),
+    ...(feature.kind === "extrude" ? { allowNegativeHeight: true } : {}),
     shapeParameters: feature.kind === "primitive"
       ? feature.primitive === "cone"
         ? { shape: "cone", baseRadius: feature.width / 2, topRadius: feature.topRadius ?? 0, height: feature.height }
@@ -1085,7 +1091,7 @@ export function resizeParametricSelection(
 }
 
 export function resizeParametricHeight(document: ParametricDocument, id: string, selectionKind: "object" | "feature", height: number) {
-  if (!Number.isFinite(height) || height <= 0) return;
+  if (!Number.isFinite(height)) return;
   if (selectionKind === "object") {
     const object = document.objects.find((candidate) => candidate.id === id);
     const current = viewportSelectionForObject(document, id);
@@ -1096,8 +1102,13 @@ export function resizeParametricHeight(document: ParametricDocument, id: string,
   const feature = document.features.find((candidate): candidate is TransformableOperation => candidate.id === id && isTransformableOperation(candidate));
   const object = feature ? document.objects.find((candidate) => candidate.id === feature.objectId) : null;
   if (!feature || !object) return;
-  if (feature.kind === "primitive") feature.height = Math.max(0.1, height / Math.max(0.01, Math.abs(object.transform.scale.z)));
-  else feature.distance = Math.max(0.1, height / Math.max(0.01, Math.abs(object.transform.scale.z)));
+  if (feature.kind === "primitive") {
+    if (height <= 0) return;
+    feature.height = Math.max(0.1, height / Math.max(0.01, Math.abs(object.transform.scale.z)));
+  } else {
+    if (Math.abs(height) < 0.1) return;
+    feature.distance = height / Math.max(0.01, Math.abs(object.transform.scale.z));
+  }
 }
 
 export function updateParametricShapeParameter(
@@ -1106,9 +1117,15 @@ export function updateParametricShapeParameter(
   parameter: "width" | "depth" | "height" | "size" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "thickness" | "majorRadius" | "tubeRadius" | "cornerRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius",
   value: number,
 ) {
-  if (!Number.isFinite(value) || (parameter === "topRadius" || parameter === "boreRadius" ? value < 0 : value <= 0)) return;
+  if (!Number.isFinite(value)) return;
   const feature = document.features.find((candidate): candidate is TransformableOperation => candidate.id === id && isTransformableOperation(candidate));
   if (!feature) return;
+  const signedExtrusionHeight = feature.kind === "extrude" && parameter === "height";
+  if (signedExtrusionHeight ? Math.abs(value) < 0.1 : (parameter === "topRadius" || parameter === "boreRadius" ? value < 0 : value <= 0)) return;
+  if (signedExtrusionHeight) {
+    feature.distance = value;
+    return;
+  }
   const next = Math.max(0.1, value);
   if (feature.kind === "primitive") {
     if (feature.primitive === "roundedBox" && parameter === "cornerRadius") {

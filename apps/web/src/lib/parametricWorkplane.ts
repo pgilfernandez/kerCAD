@@ -78,6 +78,12 @@ export function parametricWorkplaneIsGlobal(workplane: Pick<ParametricWorkplane,
 
 export function parametricWorkplaneFromFace(origin: ParametricVector3, normal: ParametricVector3) {
   const normalVector = vector(normal).normalize();
+  const globalZInPlane = new THREE.Vector3(0, 0, 1).projectOnPlane(normalVector);
+  if (globalZInPlane.lengthSq() > EPSILON) {
+    const yAxis = globalZInPlane.normalize();
+    const xAxis = yAxis.clone().cross(normalVector).normalize();
+    return normalizeParametricWorkplanePlacement({ origin, normal: point(normalVector), xAxis: point(xAxis) });
+  }
   const tangentCandidates = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)];
   const xAxis = tangentCandidates
     .map((axis) => axis.projectOnPlane(normalVector))

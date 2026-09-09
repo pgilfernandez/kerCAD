@@ -148,6 +148,7 @@ export type ViewportSelection = {
   origin?: { x: number; y: number; z: number };
   rotation3d?: { x: number; y: number; z: number };
   resizeAspectRatio?: number;
+  allowNegativeHeight?: boolean;
   shapeParameters?:
     | { shape: "box"; width: number; depth: number; height: number }
     | { shape: "roundedBox"; width: number; depth: number; height: number; cornerRadius: number }
@@ -1254,6 +1255,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     let pendingShapeParameter: { parameter: ShapeParameter; value: number } | null = null;
     let shapeParameterStartValue = 0;
     let shapeParameterWorldScale = 1;
+    let signedHeightBaseCoordinate = 0;
     let shapeParameterDragAxis: "x" | "y" | "z" = "x";
     let shapeParameterDragSign: 1 | -1 = 1;
     let parameterPointerOffset = 0;
@@ -2241,7 +2243,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
               : values?.shape === "cone" || values?.shape === "tube" || values?.shape === "gear" || values?.shape === "torus"
               ? selected.width / Math.max(0.01, (values.shape === "cone" ? values.baseRadius : values.shape === "tube" || values.shape === "gear" ? values.outerRadius : values.majorRadius + values.tubeRadius) * 2)
               : parameter === "height" && values && values.shape !== "sphere"
-                ? selected.height / Math.max(0.01, values.height)
+                ? selected.height / Math.max(0.01, Math.abs(values.height))
                 : parameter === "radius" && (values?.shape === "cylinder" || values?.shape === "sphere" || values?.shape === "halfSphere" || values?.shape === "polygon")
                   ? selected.width / Math.max(0.01, values.radius * 2)
                   : 1;
@@ -2269,9 +2271,10 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
                     ? values.toothDepth * shapeParameterWorldScale
                   : parameter === "boreRadius" && values?.shape === "gear"
                     ? values.boreRadius * shapeParameterWorldScale
-                : parameter === "depth" || (parameter === "size" && values?.shape === "text") ? selected.depth / 2 : parameter === "height" ? selected.height / 2 : selected.width / 2;
+                : parameter === "depth" || (parameter === "size" && values?.shape === "text") ? selected.depth / 2 : parameter === "height" ? selected.height / 2 * (selected.allowNegativeHeight && values && "height" in values && values.height < 0 ? -1 : 1) : selected.width / 2;
             const pointerCoordinate = (shapeParameterDragAxis === "y" ? localPointer.y : shapeParameterDragAxis === "z" ? localPointer.z : localPointer.x) * shapeParameterDragSign;
             parameterPointerOffset = pointerCoordinate - visualHalfExtent;
+            signedHeightBaseCoordinate = parameter === "height" && selected.allowNegativeHeight ? -visualHalfExtent : 0;
             const boxLikeValues = values && (values.shape === "box" || values.shape === "roundedBox" || values.shape === "pyramid" || values.shape === "wedge" || values.shape === "roof" || values.shape === "roundRoof");
             const value = parameter === "width" && boxLikeValues ? values.width
               : parameter === "depth" && boxLikeValues ? values.depth
@@ -2585,10 +2588,14 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         const pointerCoordinate = (shapeParameterDragAxis === "y" ? localPointer.y : shapeParameterDragAxis === "z" ? localPointer.z : localPointer.x) * shapeParameterDragSign;
         const adjusted = pointerCoordinate - parameterPointerOffset;
         const parameterAdjusted = adjusted;
+        const signedHeightDrag = parameter === "height" && selected.allowNegativeHeight;
+        let signedVisualExtent = 0;
         let visualExtent = parameter === "sides" || parameter === "teeth"
           ? parameter === "sides" ? Math.min(32, Math.max(3, Math.round(Math.abs(parameterAdjusted)))) : Math.min(64, Math.max(6, Math.round(Math.abs(parameterAdjusted))))
-          : parameter === "height"
+          : parameter === "height" && !signedHeightDrag
           ? Math.max(parameterStep, Math.round((parameterAdjusted + resizeStart.height / 2) / parameterStep) * parameterStep)
+          : signedHeightDrag
+            ? Math.abs(parameterAdjusted - signedHeightBaseCoordinate)
           : parameter === "topRadius" || parameter === "innerRadius" || parameter === "thickness" || parameter === "majorRadius" || parameter === "tubeRadius" || parameter === "cornerRadius" || parameter === "toothDepth" || parameter === "boreRadius"
             ? Math.max(0, Math.round(Math.abs(parameterAdjusted) / parameterStep) * parameterStep)
             : Math.max(parameterStep, Math.round(Math.abs(parameterAdjusted) * 2 / parameterStep) * parameterStep);
@@ -2596,10 +2603,20 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         let ratio = visualExtent / Math.max(0.01, startExtent);
         pendingShapeParameter.value = parameter === "sides" || parameter === "teeth"
           ? visualExtent
+          : signedHeightDrag
+            ? (() => {
+                const rawValue = (parameterAdjusted - signedHeightBaseCoordinate) / Math.max(0.0001, shapeParameterWorldScale);
+                const snapped = Math.round(rawValue / parameterStep) * parameterStep;
+                return Math.abs(snapped) < parameterStep ? (rawValue < 0 ? -parameterStep : parameterStep) : snapped;
+              })()
           : parameter === "topRadius" || parameter === "innerRadius" || parameter === "thickness" || parameter === "majorRadius" || parameter === "tubeRadius" || parameter === "cornerRadius" || parameter === "toothDepth" || parameter === "boreRadius"
           ? visualExtent / Math.max(0.0001, shapeParameterWorldScale)
           : Math.max(0.1, shapeParameterStartValue * ratio);
-        if (parameter !== "sides" && parameter !== "teeth") {
+        if (signedHeightDrag) {
+          signedVisualExtent = pendingShapeParameter.value * shapeParameterWorldScale;
+          visualExtent = Math.abs(signedVisualExtent);
+          ratio = visualExtent / Math.max(0.01, startExtent);
+        } else if (parameter !== "sides" && parameter !== "teeth") {
           const minimum = parameter === "topRadius" || parameter === "boreRadius" ? 0 : parameterStep;
           pendingShapeParameter.value = Math.max(minimum, Math.round(pendingShapeParameter.value / parameterStep) * parameterStep);
           ratio = pendingShapeParameter.value / Math.max(0.0001, shapeParameterStartValue);
@@ -2657,8 +2674,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         } else if (parameter === "width") visualRoot.scale.x = ratio;
         else if (parameter === "depth") visualRoot.scale.y = ratio;
         else if (parameter === "height") {
-          visualRoot.scale.z = ratio;
-          visualRoot.position.z = (visualExtent - resizeStart.height) / 2;
+          const startDirection = shapeParameterStartValue < 0 ? -1 : 1;
+          visualRoot.scale.z = signedHeightDrag ? signedVisualExtent / Math.max(0.01, resizeStart.height) * startDirection : ratio;
+          visualRoot.position.z = signedHeightDrag ? signedHeightBaseCoordinate + signedVisualExtent / 2 : (visualExtent - resizeStart.height) / 2;
         } else if (selected.shapeParameters?.shape === "sphere") {
           visualRoot.scale.setScalar(ratio);
         } else {
@@ -2837,6 +2855,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       shapeParameterPreviewRef.current = null;
       shapeParameterStartValue = 0;
       shapeParameterWorldScale = 1;
+      signedHeightBaseCoordinate = 0;
       parameterPointerOffset = 0;
       parameterWorldToLocal = null;
       pendingOrigin = null;
@@ -3879,11 +3898,14 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       visualRoot.add(target);
       resizeHitboxesRef.current.push(target);
     };
+    const heightDirection = selection.allowNegativeHeight && parameters && "height" in parameters && parameters.height < 0 ? -1 : 1;
+    const heightBase = -selection.height / 2 * heightDirection;
+    const heightEnd = selection.height / 2 * heightDirection + 3 * heightDirection;
     if (parameters?.shape === "box" || parameters?.shape === "roundedBox") {
-      const baseZ = -selection.height / 2;
+      const baseZ = heightBase;
       addParameterHandle("width", "x", new THREE.Vector3(0, 0, baseZ), new THREE.Vector3(selection.width / 2 + 3, 0, baseZ));
       addParameterHandle("depth", "y", new THREE.Vector3(0, 0, baseZ), new THREE.Vector3(0, selection.depth / 2 + 3, baseZ));
-      addParameterHandle("height", "z", new THREE.Vector3(0, 0, baseZ), new THREE.Vector3(0, 0, selection.height / 2 + 3));
+      addParameterHandle("height", "z", new THREE.Vector3(0, 0, baseZ), new THREE.Vector3(0, 0, heightEnd));
       if (parameters.shape === "roundedBox") {
         const radiusScale = Math.min(selection.width / Math.max(0.01, parameters.width), selection.depth / Math.max(0.01, parameters.depth));
         const worldRadius = parameters.cornerRadius * radiusScale;
@@ -3891,17 +3913,17 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         addParameterHandle("cornerRadius", "x", radiusHandle.start, radiusHandle.end, "x");
       }
     } else if (parameters?.shape === "text") {
-      addParameterHandle("size", "y", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(0, selection.depth / 2 + 3, -selection.height / 2), "y");
-      addParameterHandle("height", "z", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(0, 0, selection.height / 2 + 3));
+      addParameterHandle("size", "y", new THREE.Vector3(0, 0, heightBase), new THREE.Vector3(0, selection.depth / 2 + 3, heightBase), "y");
+      addParameterHandle("height", "z", new THREE.Vector3(0, 0, heightBase), new THREE.Vector3(0, 0, heightEnd));
     } else if (parameters?.shape === "pyramid" || parameters?.shape === "wedge" || parameters?.shape === "roof" || parameters?.shape === "roundRoof") {
       const base = -selection.height / 2;
       addParameterHandle("width", "x", new THREE.Vector3(0, 0, base), new THREE.Vector3(selection.width / 2 + 3, 0, base));
       addParameterHandle("depth", "y", new THREE.Vector3(0, 0, base), new THREE.Vector3(0, selection.depth / 2 + 3, base));
       addParameterHandle("height", "z", new THREE.Vector3(0, 0, base), new THREE.Vector3(0, 0, selection.height / 2 + 3));
     } else if (parameters?.shape === "cylinder") {
-      const baseZ = -selection.height / 2;
+      const baseZ = heightBase;
       addParameterHandle("radius", "x", new THREE.Vector3(0, 0, baseZ), new THREE.Vector3(selection.width / 2 + 3, 0, baseZ));
-      addParameterHandle("height", "z", new THREE.Vector3(0, 0, baseZ), new THREE.Vector3(0, 0, selection.height / 2 + 3));
+      addParameterHandle("height", "z", new THREE.Vector3(0, 0, baseZ), new THREE.Vector3(0, 0, heightEnd));
     } else if (parameters?.shape === "sphere") {
       addParameterHandle("radius", "x", new THREE.Vector3(0, 0, 0), new THREE.Vector3(selection.width / 2 + 3, 0, 0));
     } else if (parameters?.shape === "polygon") {

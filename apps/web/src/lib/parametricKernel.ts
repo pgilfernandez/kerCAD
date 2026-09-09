@@ -105,15 +105,16 @@ function solidFromSketch(brep: Brep, sketch: SketchFeature, feature: ExtrudeFeat
     const solid = applySketchTransform(brep, extrudePlanarProfile(brep, drawnSketchFaces(brep, sketch), feature.distance, feature.symmetric), sketch);
     return applyOperationTransform(brep, solid, feature.transform);
   }
-  const centerZ = feature.symmetric ? 0 : feature.distance / 2;
+  const extrusionLength = Math.abs(feature.distance);
+  const centerZ = feature.symmetric ? 0 : Math.sign(feature.distance) * extrusionLength / 2;
   let solid: AnySolid;
   if (profile.shape === "rectangle") {
-    solid = brep.box(profile.width, profile.depth, feature.distance, {
+    solid = brep.box(profile.width, profile.depth, extrusionLength, {
       centered: true,
       at: [0, 0, centerZ],
     });
   } else {
-    solid = brep.cylinder(profile.diameter / 2, feature.distance, {
+    solid = brep.cylinder(profile.diameter / 2, extrusionLength, {
       centered: true,
       at: [0, 0, centerZ],
     });
@@ -803,7 +804,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
       if (feature.kind === "extrude" || feature.kind === "primitive") {
         const sketch = feature.kind === "extrude" ? sketches.get(feature.sketchId) : null;
         if (feature.kind === "extrude" && !sketch) throw new Error(`${feature.name}: source sketch could not be found.`);
-        if (feature.kind === "extrude" && feature.distance <= 0) throw new Error(`${feature.name}: distance must be greater than zero.`);
+        if (feature.kind === "extrude" && Math.abs(feature.distance) <= 1e-8) throw new Error(`${feature.name}: distance must not be zero.`);
         const objectId = feature.objectId ?? "legacy";
         lastObjectId = objectId;
         const current = solids.get(objectId) ?? null;

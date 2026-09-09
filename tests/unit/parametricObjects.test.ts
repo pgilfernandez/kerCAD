@@ -644,6 +644,35 @@ describe("parametric object workflow", () => {
     expect(viewportSelectionForObject(document, second.objectId)?.x).toBe(50);
   });
 
+  it("uses the source sketch placement for extrusion viewport controls", () => {
+    const document = createStarterDocument(123);
+    const sketch = document.features.find((candidate) => candidate.kind === "sketch");
+    const extrusion = document.features.find((candidate) => candidate.kind === "extrude");
+    if (!sketch || sketch.kind !== "sketch" || !extrusion || extrusion.kind !== "extrude") throw new Error("expected sketch extrusion");
+    sketch.x = 7;
+    sketch.y = -3;
+    sketch.offset = 5;
+    sketch.rotation = { x: 90, y: 0, z: 0 };
+
+    expect(viewportSelectionForFeature(document, extrusion.id)).toMatchObject({
+      origin: { x: 7, y: -3, z: 5 },
+      rotation3d: { x: 90, y: 0, z: 0 },
+    });
+    expect(workplaneShapeForObject(document, document.objects[0].id)).toMatchObject({
+      x: 7,
+      z: -3,
+      elevation: 5,
+    });
+
+    updateParametricShapeParameter(document, extrusion.id, "height", -12);
+    expect(extrusion.distance).toBe(-12);
+    expect(viewportSelectionForFeature(document, extrusion.id)).toMatchObject({
+      height: 12,
+      shapeParameters: { height: -12 },
+      allowNegativeHeight: true,
+    });
+  });
+
   it("aligns operations independently inside the same object", () => {
     const document = createStarterDocument(123);
     const first = document.features.find((feature) => feature.kind === "extrude");

@@ -62,8 +62,20 @@ describe("parametric workplanes", () => {
     expect(placement.normal.y).toBeCloseTo(Math.SQRT1_2);
     const dot = placement.xAxis.x * placement.normal.x + placement.xAxis.y * placement.normal.y + placement.xAxis.z * placement.normal.z;
     expect(dot).toBeCloseTo(0);
+    expect(placement.yAxis.z).toBeCloseTo(1);
     expect(parametricWorkplaneIsGlobal(standardParametricWorkplane("XY"))).toBe(true);
     expect(parametricWorkplaneIsGlobal(placement)).toBe(false);
+  });
+
+  it.each([
+    { normal: { x: 1, y: 0, z: 0 }, expectedX: { x: 0, y: 1, z: 0 } },
+    { normal: { x: -1, y: 0, z: 0 }, expectedX: { x: 0, y: -1, z: 0 } },
+    { normal: { x: 0, y: 1, z: 0 }, expectedX: { x: -1, y: 0, z: 0 } },
+    { normal: { x: 0, y: -1, z: 0 }, expectedX: { x: 1, y: 0, z: 0 } },
+  ])("keeps local sketch Z pointing toward global Z for face normal $normal", ({ normal, expectedX }) => {
+    const placement = parametricWorkplaneFromFace({ x: 0, y: 0, z: 0 }, normal);
+    expect(placement.yAxis).toMatchObject({ x: 0, y: 0, z: 1 });
+    expect(placement.xAxis).toMatchObject(expectedX);
   });
 
   it("places a new object at the active plane origin and orientation", () => {
