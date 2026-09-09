@@ -266,6 +266,7 @@ type Props = {
   onEditMirrorPlane?: (featureId: string) => void;
   onFloatingFeatureChange?: (featureId: string, update: Partial<{ distance: number; angle: number; thickness: number; duplicate: boolean }>) => void;
   onThumbnail?: (dataUrl: string) => void;
+  thumbnailRequestToken?: number;
 };
 
 type CachedObjectRender = {
@@ -600,7 +601,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, shellHandle = null, onShellThicknessDragStart, onShellThicknessPreview, onShellThicknessChange, onShellThicknessCancel, floatingFeature = null, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, onThumbnail }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, shellHandle = null, onShellThicknessDragStart, onShellThicknessPreview, onShellThicknessChange, onShellThicknessCancel, floatingFeature = null, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, onThumbnail, thumbnailRequestToken = 0 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
@@ -745,6 +746,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     thumbnailRequestedRef.current = true;
     invalidateRef.current();
   }, [objectRecords]);
+  useEffect(() => {
+    if (thumbnailRequestToken <= 0) return;
+    thumbnailRequestedRef.current = true;
+    invalidateRef.current();
+  }, [thumbnailRequestToken]);
   useEffect(() => { activeWorkplaneRef.current = workplane; }, [workplane]);
   useEffect(() => { isolatedHistoryObjectIdRef.current = isolatedHistoryObjectId; }, [isolatedHistoryObjectId]);
 

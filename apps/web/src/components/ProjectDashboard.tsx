@@ -1,6 +1,6 @@
 "use client";
 
-import { FileArchive, FileUp, Grid3X3, Home, List, Play, Plus, Search, Settings, Trash2, Upload, X } from "lucide-react";
+import { Download, FileArchive, Grid3X3, Home, List, Play, Plus, Search, Settings, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ToolbarEditOperationIcon } from "@/components/icons";
 import type { EducadChallenge } from "@/lib/challengeLibrary";
@@ -9,6 +9,8 @@ import type { ProjectLibraryEntry } from "@/lib/projectLibrary";
 type Props = {
   projects: ProjectLibraryEntry[];
   busy?: boolean;
+  section: "home" | "challenges";
+  onSectionChange: (section: "home" | "challenges") => void;
   onShowLanding: () => void;
   onCreate: () => void;
   onOpen: (project: ProjectLibraryEntry) => void;
@@ -17,7 +19,10 @@ type Props = {
   onRename: (project: ProjectLibraryEntry, name: string) => void;
   challenges: EducadChallenge[];
   onImportChallenge: (file: File) => void;
+  onCreateChallenge: () => void;
   onStartChallenge: (challenge: EducadChallenge) => void;
+  onEditChallenge: (challenge: EducadChallenge) => void;
+  onExportChallenge: (challenge: EducadChallenge) => void;
   onDeleteChallenge: (challenge: EducadChallenge) => void;
 };
 
@@ -29,8 +34,7 @@ function updatedLabel(timestamp: number) {
   return new Intl.DateTimeFormat("en", { day: "numeric", month: "short" }).format(timestamp);
 }
 
-export function ProjectDashboard({ projects, busy = false, onShowLanding, onCreate, onOpen, onImport, onDelete, onRename, challenges, onImportChallenge, onStartChallenge, onDeleteChallenge }: Props) {
-  const [section, setSection] = useState<"home" | "challenges">("home");
+export function ProjectDashboard({ projects, busy = false, section, onSectionChange, onShowLanding, onCreate, onOpen, onImport, onDelete, onRename, challenges, onImportChallenge, onCreateChallenge, onStartChallenge, onEditChallenge, onExportChallenge, onDeleteChallenge }: Props) {
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [sort, setSort] = useState<"recent" | "name">("recent");
@@ -64,20 +68,20 @@ export function ProjectDashboard({ projects, busy = false, onShowLanding, onCrea
   return <main className="educad-dashboard-shell" aria-busy={busy}>
     <header className="educad-dashboard-topbar">
       <strong className="educad-dashboard-brand"><img className="educad-dashboard-logo" src="/assets/educad/logo.svg" alt="" /><span>eduCAD</span></strong>
-      <nav className="educad-dashboard-mobile-nav" aria-label="Dashboard sections"><button className={section === "home" ? "active" : ""} type="button" onClick={() => setSection("home")}><Home size={18} /> Projects</button><button className={section === "challenges" ? "active" : ""} type="button" onClick={() => setSection("challenges")}><Grid3X3 size={18} /> Challenges</button></nav>
+      <nav className="educad-dashboard-mobile-nav" aria-label="Dashboard sections"><button className={section === "home" ? "active" : ""} type="button" onClick={() => onSectionChange("home")}><Home size={18} /> Projects</button><button className={section === "challenges" ? "active" : ""} type="button" onClick={() => onSectionChange("challenges")}><Grid3X3 size={18} /> Challenges</button></nav>
       <button className="educad-dashboard-about" type="button" onClick={onShowLanding}>About eduCAD</button>
     </header>
     <div className="educad-dashboard-layout">
       <aside className="educad-dashboard-sidebar">
-        <button className={section === "home" ? "active" : ""} type="button" onClick={() => setSection("home")}><Home size={23} /><span>Home</span></button>
-        <button className={section === "challenges" ? "active" : ""} type="button" onClick={() => setSection("challenges")}><Grid3X3 size={23} /><span>Challenges</span></button>
+        <button className={section === "home" ? "active" : ""} type="button" onClick={() => onSectionChange("home")}><Home size={23} /><span>Home</span></button>
+        <button className={section === "challenges" ? "active" : ""} type="button" onClick={() => onSectionChange("challenges")}><Grid3X3 size={23} /><span>Challenges</span></button>
         <button className="settings" type="button" disabled><Settings size={23} /><span>Settings</span></button>
       </aside>
       <section className="educad-dashboard-main">
         {section === "challenges" ? <>
           <header className="educad-dashboard-project-heading educad-challenges-heading">
             <div><h1>Challenges</h1><span>{challenges.length} installed</span></div>
-            <button className="educad-install-challenge" type="button" onClick={() => challengeInputRef.current?.click()}><Upload size={19} /> Install challenge</button>
+            <div className="educad-challenge-heading-actions"><button className="educad-create-challenge" type="button" onClick={onCreateChallenge}><Plus size={19} /> Create new challenge</button><button className="educad-install-challenge" type="button" onClick={() => challengeInputRef.current?.click()}><Upload size={19} /> Install challenge</button></div>
           </header>
           <div className="educad-challenge-library">
             {challenges.map((challenge) => <article className="educad-challenge-card" key={challenge.id}>
@@ -86,7 +90,11 @@ export function ProjectDashboard({ projects, busy = false, onShowLanding, onCrea
                 <span className="challenge-copy"><small>{challenge.steps.length} STEPS</small><strong>{challenge.title}</strong><span>{challenge.description || "Guided eduCAD activity"}</span>{challenge.author ? <em>By {challenge.author}</em> : null}</span>
                 <span className="challenge-play"><Play size={19} fill="currentColor" /> Start</span>
               </button>
-              <button className="challenge-delete" type="button" title="Remove challenge" aria-label={`Remove ${challenge.title}`} onClick={() => onDeleteChallenge(challenge)}><Trash2 size={17} /></button>
+              <nav className="challenge-actions" aria-label={`${challenge.title} actions`}>
+                <button type="button" title="Edit challenge" aria-label={`Edit ${challenge.title}`} onClick={() => onEditChallenge(challenge)}><ToolbarEditOperationIcon /></button>
+                <button type="button" title="Export challenge" aria-label={`Export ${challenge.title}`} onClick={() => onExportChallenge(challenge)}><Download size={17} /></button>
+                <button type="button" title="Remove challenge" aria-label={`Remove ${challenge.title}`} onClick={() => onDeleteChallenge(challenge)}><Trash2 size={17} /></button>
+              </nav>
             </article>)}
             {!challenges.length ? <button className="educad-challenge-empty" type="button" onClick={() => challengeInputRef.current?.click()}><Upload size={34} /><strong>Install your first challenge</strong><span>Choose an eduCAD challenge ZIP from your computer.</span></button> : null}
           </div>
@@ -94,6 +102,7 @@ export function ProjectDashboard({ projects, busy = false, onShowLanding, onCrea
         <header className="educad-dashboard-project-heading">
           <div><h1>Projects</h1><span>{visible.length} visible</span></div>
           <div className="educad-dashboard-project-controls">
+            <button className="educad-import-project" type="button" onClick={() => inputRef.current?.click()}><Upload size={19} /> Import project</button>
             <label className="educad-dashboard-search"><Search size={20} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search projects" /></label>
             <div className="educad-dashboard-sort-toggle" role="group" aria-label="Sort projects"><button type="button" className={sort === "recent" ? "active" : ""} onClick={() => setSort("recent")} aria-label="Sort by recent" title="Sort by recent"><img src="/assets/educad/toolbar/project-sort-recent.svg" alt="" /></button><button type="button" className={sort === "name" ? "active" : ""} onClick={() => setSort("name")} aria-label="Sort by name" title="Sort by name"><img src="/assets/educad/toolbar/project-sort-name.svg" alt="" /></button></div>
             <div className="educad-dashboard-view-toggle"><button className={view === "grid" ? "active" : ""} onClick={() => setView("grid")} aria-label="Grid view"><Grid3X3 size={20} /></button><button className={view === "list" ? "active" : ""} onClick={() => setView("list")} aria-label="List view"><List size={21} /></button></div>
@@ -104,12 +113,6 @@ export function ProjectDashboard({ projects, busy = false, onShowLanding, onCrea
             <button className="card-open" type="button" onClick={onCreate}>
               <span className="card-preview"><span className="new-project-plus"><Plus size={48} /></span></span>
               <span className="card-copy"><strong>Create new 3D design</strong><small>Start with an empty workplane</small></span>
-            </button>
-          </article> : null}
-          {!query.trim() ? <article className="educad-dashboard-card educad-dashboard-open-card">
-            <button className="card-open" type="button" onClick={() => inputRef.current?.click()}>
-              <span className="card-preview"><span className="new-project-plus"><FileUp size={43} /></span></span>
-              <span className="card-copy"><strong>Open eduCAD project</strong><small>Open a saved .educad design</small></span>
             </button>
           </article> : null}
           {visible.map((project, index) => <article className="educad-dashboard-card" key={project.id}>

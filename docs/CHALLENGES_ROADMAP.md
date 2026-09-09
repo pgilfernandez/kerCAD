@@ -13,6 +13,7 @@ A challenge is one portable ZIP file. Its root contains `challenge.json`; refere
   "description": "Build a key tag from simple shapes.",
   "author": "Example School",
   "cover": "images/cover.png",
+  "workspace": "workspace.json",
   "steps": [
     {
       "id": "intro",
@@ -29,10 +30,11 @@ A challenge is one portable ZIP file. Its root contains `challenge.json`; refere
 ## Delivery stages
 
 1. **Player and local library (current MVP)** — ZIP installation, package validation, local persistence, installed challenge list, empty project launch, step navigation, images and floating/left/right docking.
-2. **Progress and starter projects** — persist current step and completion, optionally bundle an `.educad` starter document, resume challenges, and expose reset/restart.
-3. **Automatic checks** — declarative checks for object/operation count, feature kind and mode, dimensions, transforms, visibility, locking, constraints, and final shape properties. Checks must provide helpful hints without blocking free exploration.
-4. **Classroom workflow** — export/import learner results, teacher-issued challenge collections, completion summaries, and privacy-safe local-first reporting.
-5. **Challenge authoring** — visual editor for metadata, steps, screenshots, starter state and validation rules; live preview; package export; schema migration and compatibility checks.
+2. **Authoring MVP (current)** — create and edit challenges inside the 3D workspace, insert steps, edit arbitrary name/value parameters, capture clean viewport images, retain the teacher workspace, and export a round-trip-safe ZIP.
+3. **Progress and starter projects** — persist current step and completion, choose whether learners begin empty or from a bundled starter document, resume challenges, and expose reset/restart.
+4. **Automatic checks** — declarative checks for object/operation count, feature kind and mode, dimensions, transforms, visibility, locking, constraints, and final shape properties. Checks must provide helpful hints without blocking free exploration.
+5. **Classroom workflow** — export/import learner results, teacher-issued challenge collections, completion summaries, and privacy-safe local-first reporting.
+6. **Advanced authoring** — validation-rule editing, live learner preview, reusable step templates, schema migration and compatibility checks.
 
 ## Format evolution rules
 

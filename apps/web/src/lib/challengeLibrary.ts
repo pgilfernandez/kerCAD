@@ -1,4 +1,6 @@
-import { strFromU8, unzipSync } from "fflate";
+import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
+import { createEmptyDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
+import type { ParametricDocument } from "@/types/parametric";
 
 export type EducadChallengeStep = {
   id: string;
@@ -18,7 +20,20 @@ export type EducadChallenge = {
   installedAt: number;
   cover?: string;
   steps: EducadChallengeStep[];
+  workspaceDocument?: ParametricDocument;
 };
+
+export function createEmptyChallenge(): EducadChallenge {
+  return {
+    id: `challenge-${typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`}@1`,
+    title: "New challenge",
+    description: "",
+    version: 1,
+    installedAt: Date.now(),
+    workspaceDocument: createEmptyDocument(),
+    steps: [{ id: "step-1", label: "BEFORE YOU START", title: "First step", body: "Describe what the learner should do in this step.", values: [] }],
+  };
+}
 
 function demoImage(stage: "base" | "ends" | "hole" | "done") {
   const circles = stage === "base" ? "" : `<circle cx="116" cy="108" r="32" fill="#ffc75f"/><circle cx="304" cy="108" r="32" fill="#ffc75f"/>`;
@@ -63,6 +78,7 @@ type ChallengeManifest = {
     image?: string;
     values?: Array<{ label: string; value: string }>;
   }>;
+  workspace?: string;
 };
 
 const DATABASE_NAME = "educad.challenge-library";
@@ -138,6 +154,14 @@ export async function importChallengePackage(file: File): Promise<EducadChalleng
       values: Array.isArray(step.values) ? step.values.filter((value) => value?.label && value?.value).map((value) => ({ label: String(value.label), value: String(value.value) })) : undefined,
     };
   });
+  let workspaceDocument: ParametricDocument | undefined;
+  if (manifest.workspace) {
+    const normalizedPath = manifest.workspace.replace(/^\.\//, "");
+    if (normalizedPath.includes("..") || normalizedPath.startsWith("/") || !files[normalizedPath]) throw new Error("The challenge workspace could not be found.");
+    const parsed = JSON.parse(strFromU8(files[normalizedPath])) as unknown;
+    if (!validateDocument(parsed)) throw new Error("The challenge workspace is not a valid eduCAD document.");
+    workspaceDocument = normalizeParametricDocument(parsed);
+  }
   return {
     id: challengeId(manifest),
     title: manifest.title.trim(),
@@ -147,7 +171,54 @@ export async function importChallengePackage(file: File): Promise<EducadChalleng
     installedAt: Date.now(),
     cover: safeAsset(files, manifest.cover) ?? steps.find((step) => step.image)?.image,
     steps,
+    workspaceDocument,
   };
+}
+
+function bytesFromDataUrl(source: string) {
+  const match = /^data:([^;,]+)(;base64)?,([\s\S]*)$/.exec(source);
+  if (!match) return null;
+  const mime = match[1];
+  const binary = match[2] ? atob(match[3]) : decodeURIComponent(match[3]);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  const extension = mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : mime === "image/gif" ? "gif" : mime === "image/svg+xml" ? "svg" : "jpg";
+  return { bytes, extension };
+}
+
+export function exportChallengePackage(challenge: EducadChallenge) {
+  const files: Record<string, Uint8Array> = {};
+  const imagePath = (source: string | undefined, stem: string) => {
+    if (!source) return undefined;
+    const asset = bytesFromDataUrl(source);
+    if (!asset) return undefined;
+    const path = `images/${stem}.${asset.extension}`;
+    files[path] = asset.bytes;
+    return path;
+  };
+  const steps = challenge.steps.map((step, index) => ({
+    id: step.id,
+    label: step.label,
+    title: step.title,
+    body: step.body,
+    image: imagePath(step.image, `step-${index + 1}`),
+    values: step.values?.length ? step.values : undefined,
+  }));
+  const workspace = challenge.workspaceDocument ? "workspace.json" : undefined;
+  if (workspace && challenge.workspaceDocument) files[workspace] = strToU8(JSON.stringify(challenge.workspaceDocument));
+  const manifest: ChallengeManifest = {
+    format: "educad-challenge",
+    version: 1,
+    id: challenge.id.replace(/@\d+$/, ""),
+    title: challenge.title,
+    description: challenge.description,
+    author: challenge.author,
+    cover: imagePath(challenge.cover ?? challenge.steps.find((step) => step.image)?.image, "cover"),
+    steps,
+    workspace,
+  };
+  files["challenge.json"] = strToU8(JSON.stringify(manifest, null, 2));
+  return new Blob([zipSync(files, { level: 6 }) as Uint8Array<ArrayBuffer>], { type: "application/zip" });
 }
 
 export async function listInstalledChallenges() {

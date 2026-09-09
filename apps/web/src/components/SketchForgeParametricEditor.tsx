@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Plus, Trash2, X } from "lucide-react";
+import { ChallengeEditor, type ChallengeDock } from "@/components/ChallengeEditor";
 import { ChallengePlayer } from "@/components/ChallengePlayer";
 import type { EducadChallenge } from "@/lib/challengeLibrary";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent as ReactFocusEvent } from "react";
@@ -261,9 +262,12 @@ type SketchForgeParametricEditorProps = {
   onProjectThumbnail?: (dataUrl: string) => void;
   onExitToProjects?: (document: ParametricDocument) => void;
   challenge?: EducadChallenge | null;
+  challengeEditor?: EducadChallenge | null;
+  onSaveChallenge?: (challenge: EducadChallenge, document: ParametricDocument) => void;
+  onCancelChallengeEdit?: () => void;
 };
 
-export function SketchForgeParametricEditor({ initialProject, onProjectChange, onProjectThumbnail, onExitToProjects, challenge }: SketchForgeParametricEditorProps = {}) {
+export function SketchForgeParametricEditor({ initialProject, onProjectChange, onProjectThumbnail, onExitToProjects, challenge, challengeEditor, onSaveChallenge, onCancelChallengeEdit }: SketchForgeParametricEditorProps = {}) {
   const initialDocument = useMemo(() => initialProject ? normalizeParametricDocument(structuredClone(initialProject)) : createEmptyDocument(), [initialProject]);
   const [history, setHistory] = useState<ParametricHistoryState>(() => createParametricHistory(initialDocument));
   const document = currentHistoryDocument(history);
@@ -317,8 +321,11 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
   const [showPositionTriad, setShowPositionTriad] = useState(true);
   const [showRotationTriad, setShowRotationTriad] = useState(true);
   const [showParameterHandles, setShowParameterHandles] = useState(true);
-  const [challengeOpen, setChallengeOpen] = useState(Boolean(challenge));
-  const [challengeDock, setChallengeDock] = useState<"floating" | "left" | "right">("floating");
+  const [challengeOpen, setChallengeOpen] = useState(Boolean(challenge || challengeEditor));
+  const [challengeDock, setChallengeDock] = useState<ChallengeDock>("floating");
+  const [challengeCaptureToken, setChallengeCaptureToken] = useState(0);
+  const [challengeCapture, setChallengeCapture] = useState<{ stepId: string; dataUrl: string; token: number } | null>(null);
+  const challengeCaptureStepRef = useRef<string | null>(null);
   const [originEditObjectId, setOriginEditObjectId] = useState<string | null>(null);
   const [alignOpen, setAlignOpen] = useState(false);
   const [cameraOrientation, setCameraOrientation] = useState<CameraOrientation>({ azimuth: -Math.PI / 4, polar: 1.02 });
@@ -2930,7 +2937,7 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
         </div>
       </div> : null}
 
-      <section className={`educad-workplane-stage ${sketchSession ? "sketch-active" : ""} ${challenge && challengeOpen && !sketchSession ? `challenge-docked-${challengeDock}` : ""}`}>
+      <section className={`educad-workplane-stage ${sketchSession ? "sketch-active" : ""} ${challengeEditor ? "challenge-authoring" : ""} ${(challenge || challengeEditor) && challengeOpen && !sketchSession ? `challenge-docked-${challengeDock}` : ""}`}>
         {showFps ? <FpsCounter /> : null}
         {backgroundProcessLabel ? <BackgroundProcessIndicator label={backgroundProcessLabel} rightOffset={viewportOverlayRightOffset} regenerating={!stlExporting && !exporting && kernelBusy} /> : null}
         {sketchSession ? <SketchWorkspace
@@ -3099,7 +3106,14 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
           showPointActions={false}
           showGridControls={false}
         /> : <ParametricViewport
-          onThumbnail={onProjectThumbnail}
+          onThumbnail={(dataUrl) => {
+            const stepId = challengeCaptureStepRef.current;
+            if (stepId) {
+              challengeCaptureStepRef.current = null;
+              setChallengeCapture({ stepId, dataUrl, token: challengeCaptureToken });
+            } else onProjectThumbnail?.(dataUrl);
+          }}
+          thumbnailRequestToken={challengeCaptureToken}
           mesh={viewportObjectRecords.length > 0 ? ((editingEdgeTreatmentId || editingFaceExtrudeId || editingShellId || editingRevolveId) && topologySelectionBuild ? topologySelectionBuild : build).mesh : null}
           objectRecords={viewportObjectRecords}
           objectColors={objectColors}
@@ -3299,6 +3313,18 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
           </section>
         </aside> : null}
         <ViewCube orientation={cameraOrientation} onDirection={(direction, smooth = true) => setView((current) => ({ name: "custom", direction, smooth, token: current.token + 1 }))} />
+        {challengeEditor && challengeOpen && !sketchSession ? <ChallengeEditor
+          challenge={challengeEditor}
+          dock={challengeDock}
+          capture={challengeCapture}
+          onDockChange={setChallengeDock}
+          onCapture={(stepId) => {
+            challengeCaptureStepRef.current = stepId;
+            setChallengeCaptureToken((current) => current + 1);
+          }}
+          onCancel={() => onCancelChallengeEdit?.()}
+          onSave={(edited) => onSaveChallenge?.(edited, structuredClone(latestDocumentRef.current))}
+        /> : null}
         {challenge && challengeOpen && !sketchSession ? <ChallengePlayer challenge={challenge} dock={challengeDock} onDockChange={setChallengeDock} onClose={() => { setChallengeOpen(false); setChallengeDock("floating"); }} /> : null}
         {challenge && !challengeOpen && !sketchSession ? <button className="educad-challenge-reopen" type="button" onClick={() => { setChallengeDock("floating"); setChallengeOpen(true); }}><Grid3X3 size={19} /> Challenge</button> : null}
         <button data-educad-popup="grid" className={`educad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label={t("grid.settings")} title={t("grid.title")} onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><Grid3X3 size={22} /></button>
