@@ -1,6 +1,8 @@
 "use client";
 
 import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Plus, Trash2, X } from "lucide-react";
+import { ChallengePlayer } from "@/components/ChallengePlayer";
+import type { EducadChallenge } from "@/lib/challengeLibrary";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent as ReactFocusEvent } from "react";
 import * as THREE from "three";
 import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
@@ -258,9 +260,10 @@ type SketchForgeParametricEditorProps = {
   onProjectChange?: (document: ParametricDocument) => void;
   onProjectThumbnail?: (dataUrl: string) => void;
   onExitToProjects?: (document: ParametricDocument) => void;
+  challenge?: EducadChallenge | null;
 };
 
-export function SketchForgeParametricEditor({ initialProject, onProjectChange, onProjectThumbnail, onExitToProjects }: SketchForgeParametricEditorProps = {}) {
+export function SketchForgeParametricEditor({ initialProject, onProjectChange, onProjectThumbnail, onExitToProjects, challenge }: SketchForgeParametricEditorProps = {}) {
   const initialDocument = useMemo(() => initialProject ? normalizeParametricDocument(structuredClone(initialProject)) : createEmptyDocument(), [initialProject]);
   const [history, setHistory] = useState<ParametricHistoryState>(() => createParametricHistory(initialDocument));
   const document = currentHistoryDocument(history);
@@ -314,6 +317,8 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
   const [showPositionTriad, setShowPositionTriad] = useState(true);
   const [showRotationTriad, setShowRotationTriad] = useState(true);
   const [showParameterHandles, setShowParameterHandles] = useState(true);
+  const [challengeOpen, setChallengeOpen] = useState(Boolean(challenge));
+  const [challengeDock, setChallengeDock] = useState<"floating" | "left" | "right">("floating");
   const [originEditObjectId, setOriginEditObjectId] = useState<string | null>(null);
   const [alignOpen, setAlignOpen] = useState(false);
   const [cameraOrientation, setCameraOrientation] = useState<CameraOrientation>({ azimuth: -Math.PI / 4, polar: 1.02 });
@@ -2925,7 +2930,7 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
         </div>
       </div> : null}
 
-      <section className={`educad-workplane-stage ${sketchSession ? "sketch-active" : ""}`}>
+      <section className={`educad-workplane-stage ${sketchSession ? "sketch-active" : ""} ${challenge && challengeOpen && !sketchSession ? `challenge-docked-${challengeDock}` : ""}`}>
         {showFps ? <FpsCounter /> : null}
         {backgroundProcessLabel ? <BackgroundProcessIndicator label={backgroundProcessLabel} rightOffset={viewportOverlayRightOffset} regenerating={!stlExporting && !exporting && kernelBusy} /> : null}
         {sketchSession ? <SketchWorkspace
@@ -3294,6 +3299,8 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
           </section>
         </aside> : null}
         <ViewCube orientation={cameraOrientation} onDirection={(direction, smooth = true) => setView((current) => ({ name: "custom", direction, smooth, token: current.token + 1 }))} />
+        {challenge && challengeOpen && !sketchSession ? <ChallengePlayer challenge={challenge} dock={challengeDock} onDockChange={setChallengeDock} onClose={() => { setChallengeOpen(false); setChallengeDock("floating"); }} /> : null}
+        {challenge && !challengeOpen && !sketchSession ? <button className="educad-challenge-reopen" type="button" onClick={() => { setChallengeDock("floating"); setChallengeOpen(true); }}><Grid3X3 size={19} /> Challenge</button> : null}
         <button data-educad-popup="grid" className={`educad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label={t("grid.settings")} title={t("grid.title")} onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><Grid3X3 size={22} /></button>
         <button
           className={`educad-workplane-snap-button ${document.workplane.snapToGrid ? "active" : ""}`}

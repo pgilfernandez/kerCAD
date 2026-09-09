@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ProjectDashboard } from "@/components/ProjectDashboard";
 import { EducadLandingPage } from "@/components/EducadLandingPage";
 import { SketchForgeParametricEditor } from "@/components/SketchForgeParametricEditor";
+import { createDemoChallenge, deleteInstalledChallenge, importChallengePackage, listInstalledChallenges, saveInstalledChallenge, type EducadChallenge } from "@/lib/challengeLibrary";
 import { importEducadProject } from "@/lib/educadProject";
 import { createEmptyDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { deleteLibraryProject, getLibraryProject, listLibraryProjects, newProjectLibraryId, saveLibraryProject, updateLibraryProjectThumbnail, type ProjectLibraryEntry } from "@/lib/projectLibrary";
@@ -15,6 +16,8 @@ export default function Home() {
   const [editorSession, setEditorSession] = useState(0);
   const [busy, setBusy] = useState(true);
   const [showLanding, setShowLanding] = useState(false);
+  const [challenges, setChallenges] = useState<EducadChallenge[]>([]);
+  const [activeChallenge, setActiveChallenge] = useState<EducadChallenge | null>(null);
   const saveTimer = useRef<number | null>(null);
   const writeQueueRef = useRef<Promise<void>>(Promise.resolve());
   const activeRef = useRef<ProjectLibraryEntry | null>(null);
@@ -82,6 +85,12 @@ export default function Home() {
       localStorage.removeItem("educad.parametric.document.recovery.v1");
       localStorage.removeItem("educad.parametric.snapshots.v1");
       setProjects(entries);
+      let installedChallenges = await listInstalledChallenges();
+      if (!installedChallenges.some((challenge) => challenge.id === "educad-demo-key-tag@1")) {
+        await saveInstalledChallenge(createDemoChallenge());
+        installedChallenges = await listInstalledChallenges();
+      }
+      setChallenges(installedChallenges);
       setBusy(false);
     })();
   }, []);
@@ -93,6 +102,26 @@ export default function Home() {
     await saveLibraryProject(entry);
     setProjects((current) => [entry, ...current]);
     openProject(entry);
+  };
+  const startChallenge = async (challenge: EducadChallenge) => {
+    const document = createEmptyDocument();
+    document.name = challenge.title;
+    const now = Date.now();
+    const entry = { id: newProjectLibraryId(), name: document.name, createdAt: now, updatedAt: now, document };
+    await saveLibraryProject(entry);
+    setProjects((current) => [entry, ...current]);
+    setActiveChallenge(challenge);
+    openProject(entry);
+  };
+  const installChallenge = async (file: File) => {
+    setBusy(true);
+    try {
+      const challenge = await importChallengePackage(file);
+      await saveInstalledChallenge(challenge);
+      setChallenges(await listInstalledChallenges());
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Could not install the challenge.");
+    } finally { setBusy(false); }
   };
   const persistActive = useCallback((document: ParametricDocument) => {
     const current = activeRef.current;
@@ -125,6 +154,7 @@ export default function Home() {
     pendingDocumentRef.current = null;
     setProjects(updatedProjects);
     setActive(null);
+    setActiveChallenge(null);
   };
   const importProject = async (file: File) => {
     setBusy(true);
@@ -148,7 +178,7 @@ export default function Home() {
     setProjects((current) => current.map((entry) => entry.id === updated.id ? updated : entry));
   };
 
-  if (active) return <SketchForgeParametricEditor key={`${active.id}:${editorSession}`} initialProject={active.document} onProjectChange={persistActive} onProjectThumbnail={persistThumbnail} onExitToProjects={(document) => void leaveEditor(document)} />;
+  if (active) return <SketchForgeParametricEditor key={`${active.id}:${editorSession}`} initialProject={active.document} challenge={activeChallenge} onProjectChange={persistActive} onProjectThumbnail={persistThumbnail} onExitToProjects={(document) => void leaveEditor(document)} />;
   if (showLanding) return <EducadLandingPage projectCount={projects.length} preview={projects.find((project) => project.thumbnail)?.thumbnail} onStart={() => setShowLanding(false)} />;
-  return <ProjectDashboard projects={projects} busy={busy} onShowLanding={() => setShowLanding(true)} onCreate={() => void createProject()} onOpen={(project) => void openStoredProject(project)} onImport={(file) => void importProject(file)} onRename={(project, name) => void renameProject(project, name)} onDelete={(project) => void (async () => { await deleteLibraryProject(project.id); await refresh(); })()} />;
+  return <ProjectDashboard projects={projects} challenges={challenges} busy={busy} onShowLanding={() => setShowLanding(true)} onCreate={() => void createProject()} onOpen={(project) => { setActiveChallenge(null); void openStoredProject(project); }} onImport={(file) => void importProject(file)} onImportChallenge={(file) => void installChallenge(file)} onStartChallenge={(challenge) => void startChallenge(challenge)} onDeleteChallenge={(challenge) => void (async () => { await deleteInstalledChallenge(challenge.id); setChallenges(await listInstalledChallenges()); })()} onRename={(project, name) => void renameProject(project, name)} onDelete={(project) => void (async () => { await deleteLibraryProject(project.id); await refresh(); })()} />;
 }

@@ -743,6 +743,8 @@ button {
   overflow: hidden;
   background: #f8fbfc;
 }
+.educad-workplane-stage.challenge-docked-left { left: 380px; }
+.educad-workplane-stage.challenge-docked-right { right: 380px; }
 
 .educad-initial-loading {
   position: absolute;
@@ -9679,6 +9681,7 @@ html[data-theme="dark"] .grid-settings {
 }
 .educad-dashboard-about { margin-left: auto; min-height: 42px; padding: 0 18px; color: #fff; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.55); border-radius: 9px; font-size: 14px; font-weight: 750; }
 .educad-dashboard-about:hover { color: #1269eb; background: #fff; }
+.educad-dashboard-mobile-nav { display: none; }
 
 .educad-dashboard-brand { display: flex; align-items: center; gap: 15px; font-size: 27px; letter-spacing: -.5px; }
 .educad-dashboard-logo { width: 50px; height: 50px; display: block; object-fit: contain; }
@@ -9735,6 +9738,53 @@ html[data-theme="dark"] .grid-settings {
 .educad-dashboard-projects.list .card-copy { flex: 1; }
 .educad-dashboard-projects.list .card-rename { top: 31px; right: 57px; bottom: auto; }
 .educad-dashboard-empty { min-height: 240px; display: grid; place-content: center; gap: 7px; text-align: center; color: #71889b; }
+.educad-challenges-heading { align-items: center; }
+.educad-install-challenge { min-height: 46px; padding: 0 18px; display: inline-flex; align-items: center; gap: 9px; color: #fff; background: #1269eb; border: 1px solid #075acb; border-radius: 9px; font: inherit; font-weight: 750; box-shadow: 0 3px 10px rgba(18,105,235,.18); }
+.educad-install-challenge:hover { background: #075dcc; }
+.educad-challenge-library { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 20px; }
+.educad-challenge-card { position: relative; min-width: 0; overflow: hidden; border: 1px solid #cfdae3; border-radius: 11px; background: #fff; box-shadow: 0 1px 3px #2442; }
+.educad-challenge-card:hover { border-color: #82b5ef; box-shadow: 0 5px 18px #2442; }
+.educad-challenge-card .challenge-open { width: 100%; height: 100%; padding: 13px; display: flex; flex-direction: column; border: 0; background: transparent; text-align: left; }
+.educad-challenge-card .challenge-cover { height: 180px; display: grid; place-items: center; overflow: hidden; color: #1269eb; background: linear-gradient(145deg, #eef6ff, #e6f7fb); border-radius: 8px; }
+.educad-challenge-card .challenge-cover img { width: 100%; height: 100%; object-fit: cover; }
+.educad-challenge-card .challenge-copy { padding: 13px 1px 4px; display: flex; flex-direction: column; gap: 5px; }
+.educad-challenge-card .challenge-copy small { color: #1269eb; font-size: 11px; font-weight: 900; letter-spacing: .08em; }
+.educad-challenge-card .challenge-copy strong { padding-right: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 19px; }
+.educad-challenge-card .challenge-copy span { min-height: 38px; color: #6d8497; font-size: 14px; line-height: 1.35; }
+.educad-challenge-card .challenge-copy em { color: #8094a4; font-size: 12px; font-style: normal; }
+.educad-challenge-card .challenge-play { position: absolute; right: 14px; bottom: 14px; display: inline-flex; align-items: center; gap: 5px; color: #1269eb; font-size: 13px; font-weight: 850; }
+.educad-challenge-card .challenge-delete { position: absolute; top: 22px; right: 22px; width: 38px; height: 38px; display: grid; place-items: center; color: #668096; background: rgba(255,255,255,.94); border: 1px solid #d3dfe7; border-radius: 9px; opacity: 0; }
+.educad-challenge-card:hover .challenge-delete, .educad-challenge-card:focus-within .challenge-delete { opacity: 1; }
+.educad-challenge-empty { min-height: 310px; display: grid; place-content: center; justify-items: center; gap: 9px; color: #668196; background: rgba(255,255,255,.7); border: 2px dashed #bfd0dc; border-radius: 12px; font: inherit; text-align: center; }
+.educad-challenge-empty:hover { color: #1269eb; border-color: #78abeb; background: #f8fbff; }
+.educad-challenge-empty strong { margin-top: 8px; font-size: 18px; }.educad-challenge-empty span { font-size: 13px; }
+
+/* Guided challenges --------------------------------------------------- */
+.educad-challenge-player { position: fixed; z-index: 40; width: min(390px, calc(100vw - 16px)); max-height: calc(100dvh - 112px); display: flex; flex-direction: column; overflow: hidden; color: #213e56; background: rgba(248,251,253,.98); border: 1px solid #cbdbe6; border-radius: 14px; box-shadow: 0 20px 55px rgba(25,54,75,.24); font-family: Inter, ui-sans-serif, system-ui, sans-serif; backdrop-filter: blur(16px); }
+.educad-challenge-player.left, .educad-challenge-player.right { top: var(--editor-toolbar-height); bottom: 0; width: 380px; max-height: none; border-radius: 0; }
+.educad-challenge-player.left { left: 0; border-width: 0 1px 0 0; }.educad-challenge-player.right { right: 0; border-width: 0 0 0 1px; }
+.educad-challenge-player > header { position: relative; min-height: 100px; padding: 47px 14px 12px 18px; display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 7px 12px; background: #fff; border-bottom: 1px solid #d7e2e9; touch-action: none; }
+.educad-challenge-player.floating > header { cursor: move; }
+.educad-challenge-player > header > div { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.educad-challenge-player > header small, .educad-challenge-step > small { color: #1269eb; font-size: 11px; font-weight: 900; letter-spacing: .08em; }
+.educad-challenge-player > header strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 21px; }
+.educad-challenge-progress { align-self: start; color: #1269eb; font-size: 13px; font-weight: 850; }
+.educad-challenge-player > header nav { position: absolute; top: 9px; right: 12px; left: 12px; display: flex; gap: 4px; }
+.educad-challenge-player > header nav button:last-child { margin-left: auto; }
+.educad-challenge-player > header nav button { width: 32px; height: 29px; display: grid; place-items: center; color: #587287; background: #f4f8fa; border: 1px solid #d2dee6; border-radius: 6px; }
+.educad-challenge-player > header nav button:hover, .educad-challenge-player > header nav button.active { color: #1269eb; background: #eaf3ff; border-color: #91bdf3; }
+.educad-challenge-drag-hint { position: absolute; right: 17px; bottom: 15px; color: #9bafbd; pointer-events: none; }
+.educad-challenge-step { min-height: 0; padding: 22px 19px; flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+.educad-challenge-step h2 { margin: 8px 0 10px; font-size: 29px; font-weight: 500; line-height: 1.1; }
+.educad-challenge-step p { margin: 0 0 17px; color: #61798e; font-size: 16px; line-height: 1.55; white-space: pre-line; }
+.educad-challenge-step img { width: 100%; display: block; margin-top: 15px; border: 1px solid #ccdae3; border-radius: 12px; }
+.educad-challenge-step dl { margin: 8px 0 16px; display: grid; gap: 8px; }
+.educad-challenge-step dl > div { min-height: 48px; padding: 7px 10px 7px 13px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fff; border: 1px solid #cbdbe6; border-radius: 8px; }
+.educad-challenge-step dt { font-size: 14px; font-weight: 750; }.educad-challenge-step dd { margin: 0; padding: 7px 10px; color: #29465d; background: #f7fafc; border: 1px solid #cbdbe6; border-radius: 6px; font-weight: 800; }
+.educad-challenge-player > footer { padding: 12px 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #fff; border-top: 1px solid #d7e2e9; }
+.educad-challenge-player > footer button { min-height: 47px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; color: #405e75; background: #fff; border: 1px solid #c8d7e1; border-radius: 9px; font: inherit; font-weight: 800; }
+.educad-challenge-player > footer button.primary { color: #fff; background: #1269eb; border-color: #075acb; }.educad-challenge-player > footer button:disabled { opacity: .42; }
+.educad-challenge-reopen { position: absolute; left: 76px; bottom: 18px; z-index: 12; min-height: 42px; padding: 0 13px; display: inline-flex; align-items: center; gap: 7px; color: #1269eb; background: rgba(255,255,255,.95); border: 1px solid #a8c9ef; border-radius: 8px; box-shadow: 0 3px 14px rgba(38,62,79,.14); font-weight: 800; }
 .toolbar-workspace-tabs .educad-toolbar-brand-button {
   display: inline-flex;
   align-items: center;
@@ -9765,6 +9815,12 @@ html[data-theme="dark"] .grid-settings {
 @media (max-width: 760px) {
   .educad-dashboard-topbar { height: 76px; padding: 12px 14px; }
   .educad-dashboard-brand { font-size: 22px; }.educad-dashboard-logo { width: 42px; height: 42px; }
+  .educad-dashboard-mobile-nav { display: flex; align-self: stretch; gap: 2px; }
+  .educad-dashboard-mobile-nav button { padding: 0 9px; display: inline-flex; align-items: center; gap: 5px; color: rgba(255,255,255,.76); background: transparent; border: 0; border-radius: 7px; font-size: 12px; font-weight: 750; }
+  .educad-dashboard-mobile-nav button.active { color: #1269eb; background: #fff; }
+  .educad-dashboard-about { width: 38px; padding: 0; overflow: hidden; color: transparent; }
+  .educad-dashboard-about::after { content: "i"; color: #fff; font-weight: 900; }
+  .educad-dashboard-about:hover::after { color: #1269eb; }
   .educad-dashboard-layout { display: block; overflow: hidden; }
   .educad-dashboard-sidebar { display: none; }
   .educad-dashboard-main { height: 100%; padding: 16px 16px 40px; }
@@ -9774,6 +9830,9 @@ html[data-theme="dark"] .grid-settings {
   .educad-dashboard-projects.grid { grid-template-columns: 1fr; }
   .educad-dashboard-card .card-delete { opacity: 1; }
   .educad-dashboard-card .card-rename { opacity: 1; }
+  .educad-challenge-library { grid-template-columns: 1fr; }
+  .educad-challenge-card .challenge-delete { opacity: 1; }
+  .educad-challenge-player, .educad-challenge-player.left, .educad-challenge-player.right { top: auto; right: 8px; bottom: 8px; left: 8px !important; width: auto; max-height: calc(100dvh - 70px); border: 1px solid #cbdbe6; border-radius: 13px; }
 }
 
 /* Public landing ------------------------------------------------------- */
