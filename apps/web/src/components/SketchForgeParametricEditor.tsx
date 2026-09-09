@@ -322,7 +322,11 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
   const [showRotationTriad, setShowRotationTriad] = useState(true);
   const [showParameterHandles, setShowParameterHandles] = useState(true);
   const [challengeOpen, setChallengeOpen] = useState(Boolean(challenge || challengeEditor));
-  const [challengeDock, setChallengeDock] = useState<ChallengeDock>("floating");
+  const [challengeDock, setChallengeDock] = useState<ChallengeDock>(() => {
+    if (typeof window === "undefined") return "left";
+    const saved = window.localStorage.getItem("educad.challenge-dock");
+    return saved === "floating" || saved === "left" || saved === "right" ? saved : "left";
+  });
   const [challengeCaptureToken, setChallengeCaptureToken] = useState(0);
   const [challengeCapture, setChallengeCapture] = useState<{ stepId: string; dataUrl: string; token: number } | null>(null);
   const challengeCaptureStepRef = useRef<string | null>(null);
@@ -350,6 +354,11 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
     return hasGeometry ? validateDrawnSketchProfile(profile) : null;
   }, [sketchSession]);
   const t = useCallback((key: EducadTranslationKey) => educadTranslate(locale, key), [locale]);
+
+  useEffect(() => {
+    const preferredDock = challengeDock.startsWith("compact-") ? challengeDock.replace("compact-", "") : challengeDock;
+    if (preferredDock === "floating" || preferredDock === "left" || preferredDock === "right") window.localStorage.setItem("educad.challenge-dock", preferredDock);
+  }, [challengeDock]);
 
   useEffect(() => {
     const closePopoversOutside = (event: PointerEvent) => {
@@ -3326,8 +3335,8 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
           onCancel={() => onCancelChallengeEdit?.()}
           onSave={(edited) => onSaveChallenge?.(edited, structuredClone(latestDocumentRef.current))}
         /> : null}
-        {challenge && challengeOpen && !sketchSession ? <ChallengePlayer challenge={challenge} dock={challengeDock} onDockChange={setChallengeDock} onClose={() => { setChallengeOpen(false); setChallengeDock("floating"); }} /> : null}
-        {challenge && !challengeOpen && !sketchSession ? <button className="educad-challenge-reopen" type="button" onClick={() => { setChallengeDock("floating"); setChallengeOpen(true); }}><Grid3X3 size={19} /> Challenge</button> : null}
+        {challenge && challengeOpen && !sketchSession ? <ChallengePlayer challenge={challenge} dock={challengeDock} onDockChange={setChallengeDock} onClose={() => { setChallengeOpen(false); setChallengeDock("left"); }} /> : null}
+        {challenge && !challengeOpen && !sketchSession ? <button className="educad-challenge-reopen" type="button" onClick={() => { setChallengeDock("left"); setChallengeOpen(true); }}><Grid3X3 size={19} /> Challenge</button> : null}
         <button data-educad-popup="grid" className={`educad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label={t("grid.settings")} title={t("grid.title")} onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><Grid3X3 size={22} /></button>
         <button
           className={`educad-workplane-snap-button ${document.workplane.snapToGrid ? "active" : ""}`}
