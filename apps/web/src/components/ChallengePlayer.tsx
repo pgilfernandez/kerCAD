@@ -1,10 +1,10 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, GripHorizontal, PanelLeft, PanelRight, PanelsTopLeft, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, GripHorizontal, PanelLeft, PanelRight, PanelsTopLeft, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { EducadChallenge } from "@/lib/challengeLibrary";
 
-type Dock = "floating" | "left" | "right";
+type Dock = "floating" | "left" | "right" | "compact-floating" | "compact-left" | "compact-right";
 
 export function ChallengePlayer({ challenge, dock, onDockChange, onClose }: { challenge: EducadChallenge; dock: Dock; onDockChange: (dock: Dock) => void; onClose: () => void }) {
   const [stepIndex, setStepIndex] = useState(0);
@@ -30,6 +30,11 @@ export function ChallengePlayer({ challenge, dock, onDockChange, onClose }: { ch
     if (dragRef.current?.pointerId === event.pointerId) dragRef.current = null;
   };
 
+  if (dock.startsWith("compact-")) {
+    const compactFrom = dock.replace("compact-", "") as "floating" | "left" | "right";
+    return <aside className={`educad-challenge-compact ${compactFrom}`} style={compactFrom === "floating" ? { left: position.x, top: position.y } : undefined} aria-label={`Collapsed challenge: ${challenge.title}`}><button type="button" title="Expand challenge" aria-label="Expand challenge" onClick={() => onDockChange(compactFrom)}><ChevronsRight size={19} /></button></aside>;
+  }
+
   return <aside
     className={`educad-challenge-player ${dock}`}
     style={dock === "floating" ? { left: position.x, top: position.y } : undefined}
@@ -40,6 +45,7 @@ export function ChallengePlayer({ challenge, dock, onDockChange, onClose }: { ch
         <button type="button" className={dock === "floating" ? "active" : ""} title="Float panel" aria-label="Float panel" onClick={() => onDockChange("floating")}><PanelsTopLeft size={17} /></button>
         <button type="button" className={dock === "left" ? "active" : ""} title="Dock left" aria-label="Dock left" onClick={() => onDockChange("left")}><PanelLeft size={17} /></button>
         <button type="button" className={dock === "right" ? "active" : ""} title="Dock right" aria-label="Dock right" onClick={() => onDockChange("right")}><PanelRight size={17} /></button>
+        <button type="button" title="Collapse panel" aria-label="Collapse panel" onClick={() => onDockChange(`compact-${dock}` as Dock)}><ChevronsLeft size={17} /></button>
         <button type="button" title="Close challenge" aria-label="Close challenge" onClick={onClose}><X size={18} /></button>
       </nav>
       <div><small>CHALLENGE</small><strong>{challenge.title}</strong></div>

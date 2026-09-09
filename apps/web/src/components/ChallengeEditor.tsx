@@ -1,10 +1,10 @@
 "use client";
 
-import { Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, GripHorizontal, PanelLeft, PanelRight, PanelsTopLeft, Plus, Trash2, X } from "lucide-react";
+import { Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, GripHorizontal, ImageUp, PanelLeft, PanelRight, PanelsTopLeft, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { EducadChallenge } from "@/lib/challengeLibrary";
 
-export type ChallengeDock = "floating" | "left" | "right";
+export type ChallengeDock = "floating" | "left" | "right" | "compact-floating" | "compact-left" | "compact-right";
 
 type Props = {
   challenge: EducadChallenge;
@@ -23,15 +23,18 @@ function nextStepId() {
 export function ChallengeEditor({ challenge, dock, capture, onDockChange, onCapture, onCancel, onSave }: Props) {
   const [draft, setDraft] = useState(() => structuredClone(challenge));
   const [stepIndex, setStepIndex] = useState(0);
+  const [editingMetadata, setEditingMetadata] = useState(true);
   const [position, setPosition] = useState({ x: 28, y: 96 });
   const dragRef = useRef<{ pointerId: number; x: number; y: number; left: number; top: number } | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const step = draft.steps[stepIndex];
 
   useEffect(() => {
     if (!capture) return;
     setDraft((current) => ({
       ...current,
-      cover: current.cover ?? capture.dataUrl,
+      cover: capture.stepId === "__cover__" ? capture.dataUrl : current.cover,
       steps: current.steps.map((candidate) => candidate.id === capture.stepId ? { ...candidate, image: capture.dataUrl } : candidate),
     }));
   }, [capture]);
@@ -62,6 +65,21 @@ export function ChallengeEditor({ challenge, dock, capture, onDockChange, onCapt
   };
   const endDrag = (event: React.PointerEvent<HTMLElement>) => { if (dragRef.current?.pointerId === event.pointerId) dragRef.current = null; };
   const valid = Boolean(draft.title.trim() && draft.steps.every((candidate) => candidate.title.trim() && candidate.body.trim()));
+  const loadImage = (file: File | undefined, target: "cover" | "step") => {
+    if (!file || !file.type.startsWith("image/") || file.size > 15 * 1024 * 1024) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== "string") return;
+      if (target === "cover") setDraft((current) => ({ ...current, cover: reader.result as string }));
+      else updateStep({ image: reader.result });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  if (dock.startsWith("compact-")) {
+    const compactFrom = dock.replace("compact-", "") as "floating" | "left" | "right";
+    return <aside className={`educad-challenge-compact ${compactFrom}`} style={compactFrom === "floating" ? { left: position.x, top: position.y } : undefined} aria-label="Collapsed challenge editor"><button type="button" title="Expand challenge editor" aria-label="Expand challenge editor" onClick={() => onDockChange(compactFrom)}><ChevronsRight size={19} /></button></aside>;
+  }
 
   return <aside className={`educad-challenge-player educad-challenge-author ${dock}`} style={dock === "floating" ? { left: position.x, top: position.y } : undefined} aria-label="Challenge editor">
     <header onPointerDown={beginDrag} onPointerMove={drag} onPointerUp={endDrag} onPointerCancel={endDrag}>
@@ -69,14 +87,24 @@ export function ChallengeEditor({ challenge, dock, capture, onDockChange, onCapt
         <button type="button" className={dock === "floating" ? "active" : ""} title="Float panel" aria-label="Float panel" onClick={() => onDockChange("floating")}><PanelsTopLeft size={17} /></button>
         <button type="button" className={dock === "left" ? "active" : ""} title="Dock left" aria-label="Dock left" onClick={() => onDockChange("left")}><PanelLeft size={17} /></button>
         <button type="button" className={dock === "right" ? "active" : ""} title="Dock right" aria-label="Dock right" onClick={() => onDockChange("right")}><PanelRight size={17} /></button>
+        <button type="button" title="Collapse panel" aria-label="Collapse panel" onClick={() => onDockChange(`compact-${dock}` as ChallengeDock)}><ChevronsLeft size={17} /></button>
         <button type="button" title="Cancel editing" aria-label="Cancel editing" onClick={onCancel}><X size={18} /></button>
       </nav>
       <div><small>CHALLENGE EDITOR</small><strong>{draft.title || "Untitled challenge"}</strong></div>
-      <span className="educad-challenge-progress">{stepIndex + 1} / {draft.steps.length}</span>
+      <span className="educad-challenge-progress">{editingMetadata ? "Details" : `${stepIndex + 1} / ${draft.steps.length}`}</span>
       {dock === "floating" ? <GripHorizontal className="educad-challenge-drag-hint" size={22} aria-hidden="true" /> : null}
     </header>
-    <div className="educad-challenge-step educad-challenge-form">
+    {editingMetadata ? <div className="educad-challenge-step educad-challenge-form educad-challenge-metadata">
       <label><span>Challenge title</span><input value={draft.title} maxLength={100} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} /></label>
+      <label><span>Author</span><input value={draft.author ?? ""} maxLength={100} placeholder="Teacher or organisation" onChange={(event) => setDraft((current) => ({ ...current, author: event.target.value }))} /></label>
+      <label><span>Challenge description</span><textarea rows={5} value={draft.description ?? ""} onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))} /></label>
+      <section className="educad-challenge-capture">
+        {draft.cover ? <img src={draft.cover} alt="Challenge thumbnail" /> : <div className="educad-challenge-capture-placeholder"><ImageUp size={35} /><span>Challenge thumbnail</span></div>}
+        <div className="educad-challenge-capture-actions"><button type="button" title="Capture 3D view" aria-label="Capture 3D view for thumbnail" onClick={() => onCapture("__cover__")}><Camera size={19} /></button><button type="button" title="Upload thumbnail" aria-label="Upload thumbnail" onClick={() => coverInputRef.current?.click()}><ImageUp size={19} /></button></div>
+        <small>Recommended image size: 1200 × 750 px</small>
+        <input ref={coverInputRef} hidden type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" onChange={(event) => { loadImage(event.target.files?.[0], "cover"); event.target.value = ""; }} />
+      </section>
+    </div> : <div className="educad-challenge-step educad-challenge-form">
       <label><span>Step subtitle</span><input value={step.label ?? ""} maxLength={80} placeholder={stepIndex === 0 ? "BEFORE YOU START" : `STEP ${stepIndex}`} onChange={(event) => updateStep({ label: event.target.value })} /></label>
       <label><span>Step title</span><input value={step.title} maxLength={120} onChange={(event) => updateStep({ title: event.target.value })} /></label>
       <label><span>Description</span><textarea rows={4} value={step.body} onChange={(event) => updateStep({ body: event.target.value })} /></label>
@@ -89,16 +117,18 @@ export function ChallengeEditor({ challenge, dock, capture, onDockChange, onCapt
         </div>)}
       </section>
       <section className="educad-challenge-capture">
-        {step.image ? <img src={step.image} alt="Current step capture" /> : <div><Camera size={35} /><span>3D view capture</span></div>}
-        <button type="button" title="Capture 3D view" aria-label="Capture 3D view" onClick={() => onCapture(step.id)}><Camera size={19} /></button>
+        {step.image ? <img src={step.image} alt="Current step capture" /> : <div className="educad-challenge-capture-placeholder"><Camera size={35} /><span>3D view capture</span></div>}
+        <div className="educad-challenge-capture-actions"><button type="button" title="Capture 3D view" aria-label="Capture 3D view" onClick={() => onCapture(step.id)}><Camera size={19} /></button><button type="button" title="Upload image" aria-label="Upload image" onClick={() => imageInputRef.current?.click()}><ImageUp size={19} /></button></div>
+        <small>Recommended image size: 1200 × 750 px</small>
+        <input ref={imageInputRef} hidden type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" onChange={(event) => { loadImage(event.target.files?.[0], "step"); event.target.value = ""; }} />
       </section>
-    </div>
-    <footer className="educad-challenge-author-footer">
-      <button type="button" disabled={stepIndex === 0} onClick={() => setStepIndex((current) => Math.max(0, current - 1))}><ChevronLeft size={20} /> Previous</button>
+    </div>}
+    {editingMetadata ? <footer className="educad-challenge-metadata-footer"><button className="primary" type="button" disabled={!draft.title.trim()} onClick={() => setEditingMetadata(false)}>Next <ChevronRight size={20} /></button></footer> : <footer className="educad-challenge-author-footer">
+      <button type="button" onClick={() => { if (stepIndex === 0) setEditingMetadata(true); else setStepIndex((current) => current - 1); }}><ChevronLeft size={20} /> Previous</button>
       <button className="insert" type="button" title="Insert step after this one" aria-label="Insert step after this one" onClick={insertStep}><Plus size={22} /></button>
       {stepIndex < draft.steps.length - 1
         ? <button className="primary" type="button" onClick={() => setStepIndex((current) => Math.min(draft.steps.length - 1, current + 1))}>Next <ChevronRight size={20} /></button>
-        : <button className="primary" type="button" disabled={!valid} onClick={() => onSave({ ...draft, cover: draft.cover ?? draft.steps.find((candidate) => candidate.image)?.image, installedAt: Date.now() })}>Finish</button>}
-    </footer>
+        : <button className="primary" type="button" disabled={!valid} onClick={() => onSave({ ...draft, installedAt: Date.now() })}>Finish</button>}
+    </footer>}
   </aside>;
 }

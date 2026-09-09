@@ -747,6 +747,8 @@ button {
 .educad-workplane-stage.challenge-docked-right { right: 380px; }
 .educad-workplane-stage.challenge-authoring.challenge-docked-left { left: 430px; }
 .educad-workplane-stage.challenge-authoring.challenge-docked-right { right: 430px; }
+.educad-workplane-stage.challenge-docked-compact-left { left: 30px; }
+.educad-workplane-stage.challenge-docked-compact-right { right: 30px; }
 
 .educad-initial-loading {
   position: absolute;
@@ -9793,6 +9795,12 @@ html[data-theme="dark"] .grid-settings {
 .educad-challenge-player > footer button { min-height: 47px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; color: #405e75; background: #fff; border: 1px solid #c8d7e1; border-radius: 9px; font: inherit; font-weight: 800; }
 .educad-challenge-player > footer button.primary { color: #fff; background: #1269eb; border-color: #075acb; }.educad-challenge-player > footer button:disabled { opacity: .42; }
 .educad-challenge-reopen { position: absolute; left: 76px; bottom: 18px; z-index: 12; min-height: 42px; padding: 0 13px; display: inline-flex; align-items: center; gap: 7px; color: #1269eb; background: rgba(255,255,255,.95); border: 1px solid #a8c9ef; border-radius: 8px; box-shadow: 0 3px 14px rgba(38,62,79,.14); font-weight: 800; }
+.educad-challenge-compact { position: fixed; z-index: 40; overflow: hidden; color: #1269eb; background: rgba(255,255,255,.97); border: 1px solid #a9c8e9; box-shadow: 0 8px 24px rgba(25,54,75,.2); }
+.educad-challenge-compact.floating { width: 50px; height: 50px; border-radius: 9px; }
+.educad-challenge-compact.left, .educad-challenge-compact.right { top: var(--editor-toolbar-height); bottom: 0; width: 30px; height: auto; border-radius: 0; }
+.educad-challenge-compact.left { left: 0; border-width: 0 1px 0 0; }.educad-challenge-compact.right { right: 0; border-width: 0 0 0 1px; }
+.educad-challenge-compact button { width: 100%; height: 100%; padding: 0; display: grid; place-items: center; color: inherit; background: transparent; border: 0; }
+.educad-challenge-compact button:hover { color: #fff; background: #1269eb; }
 .educad-challenge-author { width: min(430px, calc(100vw - 16px)); }
 .educad-challenge-author.left, .educad-challenge-author.right { width: 430px; }
 .educad-challenge-form { display: flex; flex-direction: column; gap: 13px; }
@@ -9811,10 +9819,15 @@ html[data-theme="dark"] .grid-settings {
 .educad-challenge-parameter-row button:hover { color: #1269eb; background: #eef5ff; }.educad-challenge-parameter-row button:disabled { opacity: .3; }
 .educad-challenge-capture { position: relative; min-height: 185px; display: grid; place-items: center; overflow: hidden; color: #7590a3; background: repeating-linear-gradient(0deg, transparent 0 24px, rgba(91,196,222,.18) 25px), repeating-linear-gradient(90deg, #f8fcfd 0 24px, rgba(91,196,222,.18) 25px); border: 1px solid #cbdbe5; border-radius: 10px; }
 .educad-challenge-capture > img { width: 100%; height: 100%; min-height: 185px; max-height: 260px; display: block; object-fit: cover; }
-.educad-challenge-capture > div { display: flex; flex-direction: column; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; }
-.educad-challenge-capture > button { position: absolute; top: 9px; right: 9px; width: 38px; height: 38px; display: grid; place-items: center; color: #1269eb; background: rgba(255,255,255,.94); border: 1px solid #a9c8e9; border-radius: 8px; box-shadow: 0 2px 8px rgba(31,64,88,.14); }
+.educad-challenge-capture-placeholder { display: flex; flex-direction: column; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; }
+.educad-challenge-capture-actions { position: absolute; top: 9px; right: 9px; display: flex; gap: 5px; }
+.educad-challenge-capture-actions button { width: 38px; height: 38px; display: grid; place-items: center; color: #1269eb; background: rgba(255,255,255,.94); border: 1px solid #a9c8e9; border-radius: 8px; box-shadow: 0 2px 8px rgba(31,64,88,.14); }
+.educad-challenge-capture-actions button:hover { color: #fff; background: #1269eb; }
+.educad-challenge-capture > small { position: absolute; right: 9px; bottom: 8px; padding: 4px 7px; color: #4f6d82; background: rgba(255,255,255,.9); border-radius: 5px; font-size: 10px; }
 .educad-challenge-author > footer.educad-challenge-author-footer { grid-template-columns: 1fr 45px 1fr; }
 .educad-challenge-author-footer button.insert { padding: 0; color: #1269eb; background: #eef5ff; border-color: #9fc3ed; }
+.educad-challenge-author > footer.educad-challenge-metadata-footer { display: flex; justify-content: flex-end; }
+.educad-challenge-metadata-footer button { width: 50%; }
 .toolbar-workspace-tabs .educad-toolbar-brand-button {
   display: inline-flex;
   align-items: center;

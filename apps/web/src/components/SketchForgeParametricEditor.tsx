@@ -3114,6 +3114,7 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
             } else onProjectThumbnail?.(dataUrl);
           }}
           thumbnailRequestToken={challengeCaptureToken}
+          thumbnailRequestOptions={challengeEditor ? { includeOverlays: true, width: 1200, height: 750, quality: 0.92 } : undefined}
           mesh={viewportObjectRecords.length > 0 ? ((editingEdgeTreatmentId || editingFaceExtrudeId || editingShellId || editingRevolveId) && topologySelectionBuild ? topologySelectionBuild : build).mesh : null}
           objectRecords={viewportObjectRecords}
           objectColors={objectColors}

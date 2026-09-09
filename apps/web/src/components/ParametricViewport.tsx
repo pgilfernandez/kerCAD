@@ -267,6 +267,7 @@ type Props = {
   onFloatingFeatureChange?: (featureId: string, update: Partial<{ distance: number; angle: number; thickness: number; duplicate: boolean }>) => void;
   onThumbnail?: (dataUrl: string) => void;
   thumbnailRequestToken?: number;
+  thumbnailRequestOptions?: { includeOverlays?: boolean; width?: number; height?: number; quality?: number };
 };
 
 type CachedObjectRender = {
@@ -601,7 +602,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, shellHandle = null, onShellThicknessDragStart, onShellThicknessPreview, onShellThicknessChange, onShellThicknessCancel, floatingFeature = null, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, onThumbnail, thumbnailRequestToken = 0 }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, shellHandle = null, onShellThicknessDragStart, onShellThicknessPreview, onShellThicknessChange, onShellThicknessCancel, floatingFeature = null, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
@@ -621,6 +622,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const thumbnailCallbackRef = useRef(onThumbnail);
   const thumbnailRequestedRef = useRef(true);
+  const thumbnailRequestOptionsRef = useRef<Props["thumbnailRequestOptions"]>(undefined);
+  const manualThumbnailRequestRef = useRef(false);
   const controlsRef = useRef<OrbitControls | null>(null);
   const projectionChangeRef = useRef<((projection: CameraProjection) => void) | null>(null);
   const cameraTransitionRef = useRef<number | null>(null);
@@ -742,12 +745,14 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   }, [topologyEdgeSelection, topologyFaceSelection]);
   useEffect(() => { snapRef.current = snap; }, [snap]);
   useEffect(() => { thumbnailCallbackRef.current = onThumbnail; }, [onThumbnail]);
+  useEffect(() => { thumbnailRequestOptionsRef.current = thumbnailRequestOptions; }, [thumbnailRequestOptions]);
   useEffect(() => {
     thumbnailRequestedRef.current = true;
     invalidateRef.current();
   }, [objectRecords]);
   useEffect(() => {
     if (thumbnailRequestToken <= 0) return;
+    manualThumbnailRequestRef.current = true;
     thumbnailRequestedRef.current = true;
     invalidateRef.current();
   }, [thumbnailRequestToken]);
@@ -1109,6 +1114,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       renderer.render(scene, camera);
       if (thumbnailRequestedRef.current && thumbnailCallbackRef.current) {
         thumbnailRequestedRef.current = false;
+        const captureOptions = manualThumbnailRequestRef.current ? thumbnailRequestOptionsRef.current : undefined;
+        manualThumbnailRequestRef.current = false;
         // Project cards represent the model itself, rather than the currently
         // selected editing state. Hide every interactive overlay for the
         // capture only, then immediately restore the live viewport.
@@ -1123,20 +1130,27 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           faceHighlightRef.current,
           edgeHighlightRef.current,
         ];
-        const thumbnailOverlays = thumbnailOverlayCandidates.filter((item): item is THREE.Object3D => item !== null);
+        const thumbnailOverlays = captureOptions?.includeOverlays ? [] : thumbnailOverlayCandidates.filter((item): item is THREE.Object3D => item !== null);
         const overlayVisibility = thumbnailOverlays.map((item) => item.visible);
         thumbnailOverlays.forEach((item) => { item.visible = false; });
         renderer.render(scene, camera);
         const source = renderer.domElement;
-        const width = Math.min(480, Math.max(1, source.width));
-        const height = Math.max(1, Math.round(width * source.height / Math.max(1, source.width)));
+        const width = captureOptions?.width ? Math.max(1, Math.round(captureOptions.width)) : Math.min(480, Math.max(1, source.width));
+        const height = captureOptions?.height ? Math.max(1, Math.round(captureOptions.height)) : Math.max(1, Math.round(width * source.height / Math.max(1, source.width)));
         const thumbnail = document.createElement("canvas");
         thumbnail.width = width;
         thumbnail.height = height;
-        thumbnail.getContext("2d")?.drawImage(source, 0, 0, width, height);
+        const context = thumbnail.getContext("2d");
+        if (context && captureOptions?.height) {
+          const sourceAspect = source.width / Math.max(1, source.height);
+          const targetAspect = width / height;
+          const sourceWidth = sourceAspect > targetAspect ? source.height * targetAspect : source.width;
+          const sourceHeight = sourceAspect > targetAspect ? source.height : source.width / targetAspect;
+          context.drawImage(source, (source.width - sourceWidth) / 2, (source.height - sourceHeight) / 2, sourceWidth, sourceHeight, 0, 0, width, height);
+        } else context?.drawImage(source, 0, 0, width, height);
         thumbnailOverlays.forEach((item, index) => { item.visible = overlayVisibility[index]; });
         renderer.render(scene, camera);
-        thumbnailCallbackRef.current(thumbnail.toDataURL("image/jpeg", 0.78));
+        thumbnailCallbackRef.current(thumbnail.toDataURL("image/jpeg", captureOptions?.quality ?? 0.78));
       }
       performanceStats.drawCalls = renderer.info.render.calls;
       performanceStats.triangles = renderer.info.render.triangles;
