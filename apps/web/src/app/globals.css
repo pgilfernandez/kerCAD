@@ -9742,7 +9742,7 @@ html[data-theme="dark"] .grid-settings {
 .educad-dashboard-projects.list .card-copy { flex: 1; }
 .educad-dashboard-projects.list .card-rename { top: 31px; right: 57px; bottom: auto; }
 .educad-dashboard-empty { min-height: 240px; display: grid; place-content: center; gap: 7px; text-align: center; color: #71889b; }
-.educad-challenges-heading { align-items: center; }
+.educad-challenges-heading { align-items: end; }
 .educad-challenge-heading-actions { display: flex; align-items: center; gap: 9px; }
 .educad-challenge-library-controls { margin: -4px 0 18px; }
 .educad-install-challenge, .educad-import-project, .educad-create-challenge { min-height: 46px; padding: 0 18px; display: inline-flex; align-items: center; gap: 9px; color: #fff; background: #1269eb; border: 1px solid #075acb; border-radius: 9px; font: inherit; font-weight: 750; white-space: nowrap; box-shadow: 0 3px 10px rgba(18,105,235,.18); }
