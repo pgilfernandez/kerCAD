@@ -3137,6 +3137,7 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
           operationContext={pendingEdgeTreatment || pendingFaceExtrude || pendingShell || pendingRevolve ? viewportTopologyPreviewContext : viewportOperationContext}
           isolatedHistoryObjectId={!editingEdgeTreatmentId && !editingFaceExtrudeId && !editingShellId && !editingRevolveId && selectedOperationTimeline && selectedOperationTimeline.index < selectedOperationTimeline.count - 1 ? selectedOperationTimeline.objectId : null}
           color={document.color}
+          projectName={document.name}
           workplane={document.workplane}
           view={view}
           projection={projection}

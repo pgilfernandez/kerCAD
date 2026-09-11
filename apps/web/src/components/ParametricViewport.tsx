@@ -265,6 +265,7 @@ type Props = {
   onEditRevolveAxis?: (featureId: string) => void;
   onEditMirrorPlane?: (featureId: string) => void;
   onFloatingFeatureChange?: (featureId: string, update: Partial<{ distance: number; angle: number; thickness: number; duplicate: boolean }>) => void;
+  projectName?: string;
   onThumbnail?: (dataUrl: string) => void;
   thumbnailRequestToken?: number;
   thumbnailRequestOptions?: { includeOverlays?: boolean; width?: number; height?: number; quality?: number };
@@ -602,7 +603,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, shellHandle = null, onShellThicknessDragStart, onShellThicknessPreview, onShellThicknessChange, onShellThicknessCancel, floatingFeature = null, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, shellHandle = null, onShellThicknessDragStart, onShellThicknessPreview, onShellThicknessChange, onShellThicknessCancel, floatingFeature = null, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = "Untitled design", onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
@@ -3311,7 +3312,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     group.traverse((child) => {
       if (child instanceof THREE.Mesh || child instanceof THREE.LineSegments) {
         child.geometry.dispose();
-        if (Array.isArray(child.material)) child.material.forEach((material) => material.dispose()); else child.material.dispose();
+        const disposeMaterial = (material: THREE.Material) => {
+          if ("map" in material && material.map instanceof THREE.Texture) material.map.dispose();
+          material.dispose();
+        };
+        if (Array.isArray(child.material)) child.material.forEach(disposeMaterial); else disposeMaterial(child.material);
       }
     });
     group.clear();
@@ -3335,41 +3340,51 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       target.add(surface);
       const minor: number[] = [];
       const major: number[] = [];
-      const axes: number[] = [];
+      const xAxis: number[] = [];
+      const yAxis: number[] = [];
       const border: number[] = [];
       const pushLine = (values: number[], x1: number, z1: number, x2: number, z2: number) => values.push(x1, 0, z1, x2, 0, z2);
       const halfWidth = gridWidth / 2;
       const halfDepth = gridDepth / 2;
       for (let index = -Math.floor(halfWidth / step); index <= Math.floor(halfWidth / step); index += 1) {
         const x = index * step;
-        if (index === 0) pushLine(axes, x, -halfDepth, x, halfDepth); else pushLine(index % 5 === 0 ? major : minor, x, -halfDepth, x, halfDepth);
+        if (index === 0) pushLine(yAxis, x, -halfDepth, x, halfDepth); else pushLine(index % 5 === 0 ? major : minor, x, -halfDepth, x, halfDepth);
       }
       for (let index = -Math.floor(halfDepth / step); index <= Math.floor(halfDepth / step); index += 1) {
         const z = index * step;
-        if (index === 0) pushLine(axes, -halfWidth, z, halfWidth, z); else pushLine(index % 5 === 0 ? major : minor, -halfWidth, z, halfWidth, z);
+        if (index === 0) pushLine(xAxis, -halfWidth, z, halfWidth, z); else pushLine(index % 5 === 0 ? major : minor, -halfWidth, z, halfWidth, z);
       }
       pushLine(border, -halfWidth, -halfDepth, halfWidth, -halfDepth);
       pushLine(border, halfWidth, -halfDepth, halfWidth, halfDepth);
       pushLine(border, halfWidth, halfDepth, -halfWidth, halfDepth);
       pushLine(border, -halfWidth, halfDepth, -halfWidth, -halfDepth);
-      const palette = yellow ? ["#ffeaa0", "#efc83e", "#d9a900", "#c38c00"] : ["#91dff0", "#4bbddf", "#34aad2", "#58c5e6"];
-      [minor, major, axes, border].forEach((values, index) => {
+      const palette = yellow ? ["#ffeaa0", "#efc83e", "#c38c00"] : ["#91dff0", "#4bbddf", "#58c5e6"];
+      [minor, major, border].forEach((values, index) => {
         if (values.length === 0) return;
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute("position", new THREE.Float32BufferAttribute(values, 3));
-        const lines = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color: palette[index], transparent: true, opacity: [0.55, 0.7, 0.88, 0.9][index], depthWrite: false }));
+        const lines = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color: palette[index], transparent: true, opacity: [0.55, 0.7, 0.9][index], depthWrite: false }));
         lines.position.y = 0.025;
         lines.renderOrder = yellow ? 0 : -1;
         lines.userData.globalWorkplaneElement = !yellow;
         target.add(lines);
       });
+      [[xAxis, yellow ? "#d9a900" : "#c67676"], [yAxis, yellow ? "#d9a900" : "#62946e"]].forEach(([values, color]) => {
+        if (!Array.isArray(values) || values.length === 0) return;
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute("position", new THREE.Float32BufferAttribute(values, 3));
+        const lines = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color: color as string, transparent: true, opacity: 0.95, depthWrite: false }));
+        lines.position.y = 0.03;
+        lines.renderOrder = yellow ? 0 : 1;
+        lines.userData.globalWorkplaneElement = !yellow;
+        target.add(lines);
+      });
       if (!yellow) {
         const length = Math.min(gridWidth, gridDepth) * 0.09;
-        const inset = Math.min(gridWidth, gridDepth) * 0.025;
         const head = length * 0.18;
         const headOffset = head * 0.12;
-        const originX = -halfWidth + inset;
-        const originZ = halfDepth - inset;
+        const originX = -halfWidth;
+        const originZ = halfDepth;
         const addAxisArrow = (color: string, shaft: number[], headPositions: number[]) => {
           const lineGeometry = new LineSegmentsGeometry();
           lineGeometry.setPositions(shaft);
@@ -3405,6 +3420,31 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           originX, length + headOffset, originZ, originX - head * 0.44, length - head + headOffset, originZ,
           originX + head * 0.44, length - head + headOffset, originZ,
         ]);
+        const bandDepth = Math.min(15, gridDepth);
+        const labelCanvas = document.createElement("canvas");
+        labelCanvas.width = 2048;
+        labelCanvas.height = Math.max(128, Math.round(2048 * bandDepth / gridWidth));
+        const context = labelCanvas.getContext("2d");
+        if (context) {
+          context.fillStyle = "#dfebee";
+          context.fillRect(0, 0, labelCanvas.width, labelCanvas.height);
+          context.fillStyle = "#afbfc3";
+          context.font = `700 ${Math.round(labelCanvas.height * 0.42)}px Inter, Arial, sans-serif`;
+          context.textAlign = "center";
+          context.textBaseline = "middle";
+          context.fillText(projectName, labelCanvas.width / 2, labelCanvas.height / 2, labelCanvas.width * 0.9);
+          const texture = new THREE.CanvasTexture(labelCanvas);
+          texture.colorSpace = THREE.SRGBColorSpace;
+          texture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+          const label = new THREE.Mesh(new THREE.PlaneGeometry(gridWidth, bandDepth), new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide }));
+          label.rotation.x = -Math.PI / 2;
+          // Scene Z is the inverse of CAD Y: place the band beyond Y minimum,
+          // so it does not consume any of the editable ground plane.
+          label.position.set(0, 0.04, halfDepth + bandDepth / 2);
+          label.renderOrder = 1;
+          label.userData.globalWorkplaneElement = true;
+          target.add(label);
+        }
       }
     };
     if (workplane.gridVisible) addGrid(group, width, depth);
@@ -3419,7 +3459,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     }
     groundOpacityDirtyRef.current = true;
     invalidateRef.current();
-  }, [projection, renderQuality, shadingMode, workplane.activeSizePercent, workplane.depth, workplane.gridStep, workplane.gridVisible, workplane.normal.x, workplane.normal.y, workplane.normal.z, workplane.origin.x, workplane.origin.y, workplane.origin.z, workplane.width, workplane.xAxis.x, workplane.xAxis.y, workplane.xAxis.z, workplane.yAxis.x, workplane.yAxis.y, workplane.yAxis.z]);
+  }, [projectName, projection, renderQuality, shadingMode, workplane.activeSizePercent, workplane.depth, workplane.gridStep, workplane.gridVisible, workplane.normal.x, workplane.normal.y, workplane.normal.z, workplane.origin.x, workplane.origin.y, workplane.origin.z, workplane.width, workplane.xAxis.x, workplane.xAxis.y, workplane.xAxis.z, workplane.yAxis.x, workplane.yAxis.y, workplane.yAxis.z]);
 
   useEffect(() => {
     const layer = sketchLayerRef.current;
