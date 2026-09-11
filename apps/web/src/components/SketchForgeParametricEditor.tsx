@@ -258,6 +258,8 @@ function withSmoothSketchHandles(profile: SketchProfile) {
 
 type SketchForgeParametricEditorProps = {
   initialProject?: ParametricDocument;
+  sharedFileName?: string;
+  onSaveShared?: (document: ParametricDocument, fileName: string, author: string) => Promise<void>;
   onProjectChange?: (document: ParametricDocument) => void;
   onProjectThumbnail?: (dataUrl: string) => void;
   onExitToProjects?: (document: ParametricDocument) => void;
@@ -267,7 +269,7 @@ type SketchForgeParametricEditorProps = {
   onCancelChallengeEdit?: () => void;
 };
 
-export function SketchForgeParametricEditor({ initialProject, onProjectChange, onProjectThumbnail, onExitToProjects, challenge, challengeEditor, onSaveChallenge, onCancelChallengeEdit }: SketchForgeParametricEditorProps = {}) {
+export function SketchForgeParametricEditor({ initialProject, sharedFileName, onSaveShared, onProjectChange, onProjectThumbnail, onExitToProjects, challenge, challengeEditor, onSaveChallenge, onCancelChallengeEdit }: SketchForgeParametricEditorProps = {}) {
   const initialDocument = useMemo(() => initialProject ? normalizeParametricDocument(structuredClone(initialProject)) : createEmptyDocument(), [initialProject]);
   const [history, setHistory] = useState<ParametricHistoryState>(() => createParametricHistory(initialDocument));
   const document = currentHistoryDocument(history);
@@ -424,6 +426,24 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
   }, [editingMirrorPlaneId, placingWorkplane, selectingTopologyEdges, selectingTopologyFaces, t]);
   const [exporting, setExporting] = useState(false);
   const [projectExporting, setProjectExporting] = useState(false);
+  const [sharedSaveOpen, setSharedSaveOpen] = useState(false);
+  const [sharedSaving, setSharedSaving] = useState(false);
+  const [sharedName, setSharedName] = useState(sharedFileName?.replace(/\.educad$/i, "") ?? initialDocument.name);
+  const [sharedAuthor, setSharedAuthor] = useState("");
+  const [sharedSaveMessage, setSharedSaveMessage] = useState("");
+  useEffect(() => {
+    try { setSharedAuthor(localStorage.getItem("educad.shared-author") ?? ""); } catch {}
+  }, []);
+  const publishShared = async () => {
+    if (!onSaveShared || sharedSaving || !sharedName.trim() || !sharedAuthor.trim()) return;
+    setSharedSaving(true); setSharedSaveMessage("");
+    try {
+      await onSaveShared(structuredClone(latestDocumentRef.current), `${sharedName.trim().replace(/\.educad$/i, "")}.educad`, sharedAuthor.trim());
+      try { localStorage.setItem("educad.shared-author", sharedAuthor.trim()); } catch {}
+      setSharedSaveMessage(locale === "es" ? "Proyecto guardado en compartidos." : "Project saved to shared.");
+    } catch (error) { setSharedSaveMessage(error instanceof Error ? error.message : "Could not save shared project."); }
+    finally { setSharedSaving(false); }
+  };
   const [pendingProjectImport, setPendingProjectImport] = useState<{ document: ParametricDocument; assetCount: number; fileName: string } | null>(null);
   const newDocumentDialogRef = useAccessibleDialog(newDocumentOpen, () => setNewDocumentOpen(false));
   const importProjectDialogRef = useAccessibleDialog(Boolean(pendingProjectImport), () => setPendingProjectImport(null));
@@ -3442,6 +3462,16 @@ export function SketchForgeParametricEditor({ initialProject, onProjectChange, o
         <aside data-educad-popup="export" className="top-action-panel export-action-panel educad-export-panel">
           <header><div className="top-action-heading"><strong>{t("dialog.exportTitle")}</strong></div><button aria-label={t("common.close")} onClick={() => setExportOpen(false)}><X /></button></header>
           <label className="educad-export-name"><span>{t("dialog.fileName")}</span><input type="text" value={exportFileName} maxLength={120} placeholder="model" onChange={(event) => setExportFileName(event.target.value)} /></label>
+          {onSaveShared ? <>
+            <button type="button" onClick={() => setSharedSaveOpen(current => !current)} aria-expanded={sharedSaveOpen}>{locale === "es" ? "Guardar en compartidos" : "Save to shared"}</button>
+            {sharedSaveOpen ? <form className="educad-editor-share-form" onSubmit={event => { event.preventDefault(); void publishShared(); }}>
+              <p>{locale === "es" ? "Guarda una copia en el servidor accesible para todos. Tus cambios locales no se publican automáticamente." : "Save a copy on the server for everyone. Local changes are not published automatically."}</p>
+              <label>{locale === "es" ? "Nombre compartido" : "Shared file name"}<input autoFocus value={sharedName} required maxLength={100} pattern={'[^<>:"/\\\\|?*]+'} disabled={sharedSaving} onChange={event => setSharedName(event.target.value)} /></label>
+              <label>{locale === "es" ? "Tu nombre" : "Your name"}<input value={sharedAuthor} required maxLength={80} disabled={sharedSaving} onChange={event => setSharedAuthor(event.target.value)} /></label>
+              <button type="submit" disabled={sharedSaving || !sharedName.trim() || !sharedAuthor.trim()}>{sharedSaving ? (locale === "es" ? "Guardando…" : "Saving…") : (locale === "es" ? "Publicar proyecto" : "Publish project")}</button>
+              {sharedSaveMessage ? <p role="status">{sharedSaveMessage}</p> : null}
+            </form> : null}
+          </> : null}
           <div className="educad-export-options">
             <button onClick={() => void exportProject()} disabled={projectExporting}><span className="export-format-icon">edu</span><strong>{projectExporting ? t("dialog.saving") : t("dialog.projectFormat")}</strong><small>{t("dialog.projectFormatHint")}</small></button>
             <button onClick={() => void exportStep()} disabled={exporting || kernelBusy || !build.mesh}><span className="export-format-icon step">STEP</span><strong>{exporting ? t("dialog.exporting") : t("dialog.stepFormat")}</strong><small>{t("dialog.stepFormatHint")}</small></button>

@@ -5,7 +5,7 @@ import { ProjectDashboard } from "@/components/ProjectDashboard";
 import { EducadLandingPage } from "@/components/EducadLandingPage";
 import { SketchForgeParametricEditor } from "@/components/SketchForgeParametricEditor";
 import { createEmptyChallenge, deleteInstalledChallenge, exportChallengePackage, importChallengePackage, listInstalledChallenges, saveInstalledChallenge, type EducadChallenge } from "@/lib/challengeLibrary";
-import { importEducadProject } from "@/lib/educadProject";
+import { exportEducadProject, importEducadProject, EDUCAD_PACKAGE_MEDIA_TYPE } from "@/lib/educadProject";
 import { createEmptyDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { deleteLibraryProject, getLibraryProject, listLibraryProjects, newProjectLibraryId, saveLibraryProject, updateLibraryProjectThumbnail, type ProjectLibraryEntry } from "@/lib/projectLibrary";
 import type { ParametricDocument } from "@/types/parametric";
@@ -238,13 +238,36 @@ export default function Home() {
       window.alert(error instanceof Error ? error.message : "Could not open the project.");
     } finally { setBusy(false); }
   };
+  const saveActiveShared = async (document: ParametricDocument, fileName: string, author: string) => {
+    const current = activeRef.current;
+    if (!current || transientEditorRef.current) throw new Error("No local project is open.");
+    // Keep the editable local copy even if publishing fails or conflicts.
+    persistActive(document);
+    await saveLatestActive();
+    const bytes = await exportEducadProject(document, current.assets);
+    const revision = current.sharedSource?.fileName === fileName ? current.sharedSource.revision : undefined;
+    const response = await fetch(`/api/educad-shared-projects?fileName=${encodeURIComponent(fileName)}`, {
+      method: "POST", body: new Uint8Array(bytes),
+      headers: { "Content-Type": EDUCAD_PACKAGE_MEDIA_TYPE, "X-Educad-Author": encodeURIComponent(author), ...(revision ? { "If-Match": revision } : { "If-None-Match": "*" }) },
+    });
+    const payload = await response.json();
+    if (response.status === 409) throw new Error("The shared file has changed or this name is already in use. Your local work is safe. Save with another name, or open a fresh copy from Shared.");
+    if (!response.ok) throw new Error(payload.error || "Could not save the shared project.");
+    if (activeRef.current?.id === current.id) {
+      activeRef.current = { ...activeRef.current, sharedSource: { fileName: payload.project.fileName, revision: payload.project.revision } };
+      await enqueueLibraryWrite(async () => {
+        // Preserve any edits made while the request was in flight.
+        if (activeRef.current?.id === current.id) await saveLibraryProject(structuredClone(activeRef.current));
+      });
+    }
+  };
   const renameProject = async (project: ProjectLibraryEntry, name: string) => {
     const updated = { ...project, name, updatedAt: Date.now(), document: { ...project.document, name } };
     await saveLibraryProject(updated);
     setProjects((current) => current.map((entry) => entry.id === updated.id ? updated : entry));
   };
 
-  if (active) return <SketchForgeParametricEditor key={`${active.id}:${editorSession}`} initialProject={active.document} challenge={activeChallenge} challengeEditor={editingChallenge} onSaveChallenge={(challenge, document) => void finishChallengeEdit(challenge, document)} onCancelChallengeEdit={cancelChallengeEdit} onProjectChange={persistActive} onProjectThumbnail={persistThumbnail} onExitToProjects={(document) => void leaveEditor(document)} />;
+  if (active) return <SketchForgeParametricEditor key={`${active.id}:${editorSession}`} initialProject={active.document} sharedFileName={active.sharedSource?.fileName} onSaveShared={sharedEnabled && !editingChallenge ? saveActiveShared : undefined} challenge={activeChallenge} challengeEditor={editingChallenge} onSaveChallenge={(challenge, document) => void finishChallengeEdit(challenge, document)} onCancelChallengeEdit={cancelChallengeEdit} onProjectChange={persistActive} onProjectThumbnail={persistThumbnail} onExitToProjects={(document) => void leaveEditor(document)} />;
   if (showLanding) return <EducadLandingPage projectCount={projects.length} preview={projects.find((project) => project.thumbnail)?.thumbnail} onStart={() => { setDashboardSection("home"); setShowLanding(false); }} onOpenChallenges={() => { setDashboardSection("challenges"); setShowLanding(false); }} />;
   return <ProjectDashboard sharedEnabled={sharedEnabled} onSharedSaved={() => void refresh()} projects={projects} challenges={challenges} busy={busy} section={dashboardSection} onSectionChange={setDashboardSection} onShowLanding={() => setShowLanding(true)} onCreate={() => void createProject()} onOpen={(project) => { setActiveChallenge(null); setEditingChallenge(null); void openStoredProject(project); }} onImport={(file) => void importProject(file)} onImportChallenge={(file) => void installChallenge(file)} onCreateChallenge={() => editChallenge()} onEditChallenge={editChallenge} onExportChallenge={downloadChallenge} onStartChallenge={(challenge) => void startChallenge(challenge)} onDeleteChallenge={(challenge) => void (async () => { await deleteInstalledChallenge(challenge.id); setChallenges(await listInstalledChallenges()); })()} onRename={(project, name) => void renameProject(project, name)} onDelete={(project) => void (async () => { await deleteLibraryProject(project.id); await refresh(); })()} />;
 }

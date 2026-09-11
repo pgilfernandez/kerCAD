@@ -21,7 +21,7 @@ The server validates packages, bounds incoming data, uses atomic replacement and
 
 `npm test -- tests/unit/educadSharedProjects.test.ts` checks round trips, stale revisions, concurrent writes, lock ownership and invalid inputs.
 
-This first implementation shares from the dashboard, without shared preview images or an editor-side save action. The directory is suitable for a single application server. An abnormal termination during a save can leave a `.educad.lock` file: stop all application writers and remove only that abandoned lock before restarting. Automatic lock recovery and metadata/listing performance for large libraries remain follow-up work. Back up `.educad` files before administering the directory.
+Projects can be shared from the dashboard or directly from the editor. Shared preview images are not implemented yet. The directory is suitable for a single application server. An abnormal termination during a save can leave a `.educad.lock` file: stop all application writers and remove only that abandoned lock before restarting. Automatic lock recovery and metadata/listing performance for large libraries remain follow-up work. Back up `.educad` files before administering the directory.
 
 Docker's Node version now matches the application's Node 24 requirement. A successful Docker build has not yet been verified; the prebuilt Compose still points to upstream SketchForge and must not be used to deploy eduCAD.
 
@@ -34,3 +34,8 @@ Old project versions are **not** retained. Content revisions prevent stale overw
 ## Delete a shared project
 
 Choose **Delete shared** on its card and confirm. This permanently removes the server file for all users and cleans up its attribution metadata; local browser copies are not changed. Deletion requires the card's current revision and uses the same lock as saving. If someone updated the project or is saving it, deletion is rejected: refresh the library and review the project before confirming again. There are no account-based deletion permissions in this common server library.
+
+
+## Save from the editor
+
+Open **Export → Save to shared**, enter the shared file name and your name, then choose **Publish project**. The editor saves its current editable document locally before publishing. For projects opened from Shared, the original file name and revision are reused; conflicts keep the form open so you can choose another name. Your name is remembered after a successful save. This action is hidden when shared storage is unavailable or while authoring a challenge.

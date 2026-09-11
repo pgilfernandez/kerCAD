@@ -10013,3 +10013,8 @@ html[data-theme="dark"] .grid-settings {
 .educad-shared-file-details small { color: #536d80; font-size: 13px; line-height: 1.5; }
 .educad-shared-file-actions { display: flex; flex-wrap: wrap; gap: 8px; flex-shrink: 0; }
 .educad-shared-file-actions .delete-shared { color: #b42318; background: #fff; border-color: #e0a7a1; }
+.educad-editor-share-form { display: grid; gap: 12px; padding: 14px; margin-block: 12px; border: 1px solid #c9d8e3; border-radius: 9px; background: #f3f7fb; }
+.educad-editor-share-form label { display: grid; gap: 5px; }
+.educad-editor-share-form input { min-width: 0; width: 100%; min-height: 38px; padding: 8px; border: 1px solid #9fb7c9; border-radius: 6px; }
+.educad-editor-share-form p { margin: 0; line-height: 1.5; font-size: 13px; }
+.top-action-panel.educad-export-panel { max-height: calc(100dvh - 120px); overflow-y: auto; }
