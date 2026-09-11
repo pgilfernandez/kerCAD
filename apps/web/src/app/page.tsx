@@ -16,7 +16,14 @@ export default function Home() {
   const [editorSession, setEditorSession] = useState(0);
   const [busy, setBusy] = useState(true);
   const [showLanding, setShowLanding] = useState(false);
-  const [dashboardSection, setDashboardSection] = useState<"home" | "challenges">("home");
+  const [dashboardSection, setDashboardSection] = useState<"home" | "challenges" | "shared">("home");
+  const [sharedEnabled, setSharedEnabled] = useState(false);
+  useEffect(() => {
+    void fetch("/api/educad-shared-projects", { cache: "no-store" })
+      .then(response => response.ok ? response.json() : null)
+      .then(payload => setSharedEnabled(payload?.enabled === true))
+      .catch(() => setSharedEnabled(false));
+  }, []);
   const [challenges, setChallenges] = useState<EducadChallenge[]>([]);
   const [activeChallenge, setActiveChallenge] = useState<EducadChallenge | null>(null);
   const [editingChallenge, setEditingChallenge] = useState<EducadChallenge | null>(null);
@@ -218,11 +225,12 @@ export default function Home() {
     setBusy(true);
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
-      const document = file.name.toLowerCase().endsWith(".educad")
-        ? (await importEducadProject(bytes)).document
+      const packaged = file.name.toLowerCase().endsWith(".educad") ? await importEducadProject(bytes) : null;
+      const document = packaged
+        ? packaged.document
         : (() => { const parsed = JSON.parse(new TextDecoder().decode(bytes)) as unknown; if (!validateDocument(parsed)) throw new Error("This is not a valid eduCAD project."); return normalizeParametricDocument(parsed); })();
       const now = Date.now();
-      const entry = { id: newProjectLibraryId(), name: document.name, createdAt: now, updatedAt: now, document };
+      const entry = { id: newProjectLibraryId(), name: document.name, createdAt: now, updatedAt: now, document, assets: packaged?.assets };
       await saveLibraryProject(entry);
       setProjects((current) => [entry, ...current]);
       openProject(entry);
@@ -237,6 +245,6 @@ export default function Home() {
   };
 
   if (active) return <SketchForgeParametricEditor key={`${active.id}:${editorSession}`} initialProject={active.document} challenge={activeChallenge} challengeEditor={editingChallenge} onSaveChallenge={(challenge, document) => void finishChallengeEdit(challenge, document)} onCancelChallengeEdit={cancelChallengeEdit} onProjectChange={persistActive} onProjectThumbnail={persistThumbnail} onExitToProjects={(document) => void leaveEditor(document)} />;
-  if (showLanding) return <EducadLandingPage projectCount={projects.length} preview={projects.find((project) => project.thumbnail)?.thumbnail} onStart={() => setShowLanding(false)} />;
-  return <ProjectDashboard projects={projects} challenges={challenges} busy={busy} section={dashboardSection} onSectionChange={setDashboardSection} onShowLanding={() => setShowLanding(true)} onCreate={() => void createProject()} onOpen={(project) => { setActiveChallenge(null); setEditingChallenge(null); void openStoredProject(project); }} onImport={(file) => void importProject(file)} onImportChallenge={(file) => void installChallenge(file)} onCreateChallenge={() => editChallenge()} onEditChallenge={editChallenge} onExportChallenge={downloadChallenge} onStartChallenge={(challenge) => void startChallenge(challenge)} onDeleteChallenge={(challenge) => void (async () => { await deleteInstalledChallenge(challenge.id); setChallenges(await listInstalledChallenges()); })()} onRename={(project, name) => void renameProject(project, name)} onDelete={(project) => void (async () => { await deleteLibraryProject(project.id); await refresh(); })()} />;
+  if (showLanding) return <EducadLandingPage projectCount={projects.length} preview={projects.find((project) => project.thumbnail)?.thumbnail} onStart={() => { setDashboardSection("home"); setShowLanding(false); }} onOpenChallenges={() => { setDashboardSection("challenges"); setShowLanding(false); }} />;
+  return <ProjectDashboard sharedEnabled={sharedEnabled} onSharedSaved={() => void refresh()} projects={projects} challenges={challenges} busy={busy} section={dashboardSection} onSectionChange={setDashboardSection} onShowLanding={() => setShowLanding(true)} onCreate={() => void createProject()} onOpen={(project) => { setActiveChallenge(null); setEditingChallenge(null); void openStoredProject(project); }} onImport={(file) => void importProject(file)} onImportChallenge={(file) => void installChallenge(file)} onCreateChallenge={() => editChallenge()} onEditChallenge={editChallenge} onExportChallenge={downloadChallenge} onStartChallenge={(challenge) => void startChallenge(challenge)} onDeleteChallenge={(challenge) => void (async () => { await deleteInstalledChallenge(challenge.id); setChallenges(await listInstalledChallenges()); })()} onRename={(project, name) => void renameProject(project, name)} onDelete={(project) => void (async () => { await deleteLibraryProject(project.id); await refresh(); })()} />;
 }

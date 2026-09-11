@@ -3,14 +3,17 @@
 import { Download, FileArchive, Grid3X3, Home, List, Play, Plus, Search, Settings, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ToolbarEditOperationIcon } from "@/components/icons";
+import { SharedProjects } from "@/components/SharedProjects";
 import type { EducadChallenge } from "@/lib/challengeLibrary";
 import type { ProjectLibraryEntry } from "@/lib/projectLibrary";
 
 type Props = {
   projects: ProjectLibraryEntry[];
+  sharedEnabled?: boolean;
+  onSharedSaved: () => void;
   busy?: boolean;
-  section: "home" | "challenges";
-  onSectionChange: (section: "home" | "challenges") => void;
+  section: "home" | "challenges" | "shared";
+  onSectionChange: (section: "home" | "challenges" | "shared") => void;
   onShowLanding: () => void;
   onCreate: () => void;
   onOpen: (project: ProjectLibraryEntry) => void;
@@ -34,7 +37,7 @@ function updatedLabel(timestamp: number) {
   return new Intl.DateTimeFormat("en", { day: "numeric", month: "short" }).format(timestamp);
 }
 
-export function ProjectDashboard({ projects, busy = false, section, onSectionChange, onShowLanding, onCreate, onOpen, onImport, onDelete, onRename, challenges, onImportChallenge, onCreateChallenge, onStartChallenge, onEditChallenge, onExportChallenge, onDeleteChallenge }: Props) {
+export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSaved, busy = false, section, onSectionChange, onShowLanding, onCreate, onOpen, onImport, onDelete, onRename, challenges, onImportChallenge, onCreateChallenge, onStartChallenge, onEditChallenge, onExportChallenge, onDeleteChallenge }: Props) {
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [sort, setSort] = useState<"recent" | "name">("recent");
@@ -79,17 +82,18 @@ export function ProjectDashboard({ projects, busy = false, section, onSectionCha
   return <main className="educad-dashboard-shell" aria-busy={busy}>
     <header className="educad-dashboard-topbar">
       <strong className="educad-dashboard-brand"><img className="educad-dashboard-logo" src="/assets/educad/logo.svg" alt="" /><span>eduCAD</span></strong>
-      <nav className="educad-dashboard-mobile-nav" aria-label="Dashboard sections"><button className={section === "home" ? "active" : ""} type="button" onClick={() => onSectionChange("home")}><Home size={18} /> Projects</button><button className={section === "challenges" ? "active" : ""} type="button" onClick={() => onSectionChange("challenges")}><Grid3X3 size={18} /> Challenges</button></nav>
+      <nav className="educad-dashboard-mobile-nav" aria-label="Dashboard sections"><button className={section === "home" ? "active" : ""} type="button" onClick={() => onSectionChange("home")}><Home size={18} /> Projects</button><button className={section === "challenges" ? "active" : ""} type="button" onClick={() => onSectionChange("challenges")}><Grid3X3 size={18} /> Challenges</button>{sharedEnabled ? <button type="button" onClick={() => onSectionChange("shared")}>Shared</button> : null}</nav>
       <button className="educad-dashboard-about" type="button" onClick={onShowLanding}>About eduCAD</button>
     </header>
     <div className="educad-dashboard-layout">
       <aside className="educad-dashboard-sidebar">
         <button className={section === "home" ? "active" : ""} type="button" onClick={() => onSectionChange("home")}><Home size={23} /><span>Projects</span></button>
         <button className={section === "challenges" ? "active" : ""} type="button" onClick={() => onSectionChange("challenges")}><Grid3X3 size={23} /><span>Challenges</span></button>
+        {sharedEnabled ? <button className={section === "shared" ? "active" : ""} type="button" onClick={() => onSectionChange("shared")}><Upload size={23} /><span>Shared</span></button> : null}
         <button className="settings" type="button" disabled><Settings size={23} /><span>Settings</span></button>
       </aside>
       <section className="educad-dashboard-main">
-        {section === "challenges" ? <>
+        {section === "shared" ? <SharedProjects projects={projects} onOpen={onOpen} onSaved={onSharedSaved} /> : section === "challenges" ? <>
           <header className="educad-dashboard-project-heading educad-challenges-heading">
             <div><h1>Challenges</h1><span>{visibleChallenges.length} visible · {challenges.length} installed</span></div>
             <div className="educad-dashboard-project-controls">

@@ -7,6 +7,8 @@ export type ProjectLibraryEntry = {
   updatedAt: number;
   document: ParametricDocument;
   thumbnail?: string;
+  assets?: import("@/types/sketchforge").ProjectAsset[];
+  sharedSource?: { fileName: string; revision: string };
 };
 
 const DATABASE_NAME = "educad.project-library";
