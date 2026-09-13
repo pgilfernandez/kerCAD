@@ -1,3 +1,4 @@
+import { acquireSharedProjectLock } from "@/lib/sharedProjectLock";
 import { createHash, randomUUID } from "crypto";
 import { promises as fs } from "fs";
 import path from "path";
@@ -164,7 +165,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: ".educad file exceeds the shared storage size limit" }, { status: 413 });
   }
 
-  let lockHandle: Awaited<ReturnType<typeof fs.open>> | null = null;
+  let lockHandle: Awaited<ReturnType<typeof acquireSharedProjectLock>> | null = null;
   let lockPath = "";
   let temporaryPath = "";
   try {
@@ -205,7 +206,7 @@ export async function POST(request: Request) {
     temporaryPath = path.join(root, `.${fileName}.${randomUUID()}.tmp`);
 
     try {
-      lockHandle = await fs.open(lockPath, "wx");
+      lockHandle = await acquireSharedProjectLock(lockPath);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "EEXIST") {
         return NextResponse.json({ error: "This shared project is currently being saved by someone else" }, { status: 409 });
@@ -249,9 +250,8 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Could not save shared project" }, { status: 400 });
   } finally {
-    if (lockHandle) await lockHandle.close().catch(() => undefined);
     if (temporaryPath) await fs.unlink(temporaryPath).catch(() => undefined);
-    if (lockHandle && lockPath) await fs.unlink(lockPath).catch(() => undefined);
+    await lockHandle?.release();
   }
 }
 
@@ -265,10 +265,10 @@ export async function DELETE(request: Request) {
   if (!expectedRevision) return NextResponse.json({ error: "A project revision is required to delete" }, { status: 428 });
   const filePath = path.join(root, fileName);
   const lockPath = `${filePath}.lock`;
-  let lockHandle: Awaited<ReturnType<typeof fs.open>> | null = null;
+  let lockHandle: Awaited<ReturnType<typeof acquireSharedProjectLock>> | null = null;
   try {
     try {
-      lockHandle = await fs.open(lockPath, "wx");
+      lockHandle = await acquireSharedProjectLock(lockPath);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "EEXIST") return NextResponse.json({ error: "The project is being changed. Refresh the library and try again." }, { status: 409 });
       throw error;
@@ -292,10 +292,7 @@ export async function DELETE(request: Request) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return NextResponse.json({ error: "Shared project was not found" }, { status: 404 });
     return NextResponse.json({ error: "Could not delete the shared project. Try again." }, { status: 500 });
   } finally {
-    if (lockHandle) {
-      await lockHandle.close().catch(() => undefined);
-      await fs.unlink(lockPath).catch(() => undefined);
-    }
+    await lockHandle?.release();
   }
 }
 
@@ -311,7 +308,7 @@ export async function PUT(request: Request) {
   if (request.headers.get("content-type") !== "image/jpeg") return new Response(null, { status: 415 });
   const maximum = 1024 * 1024;
   if (Number(request.headers.get("content-length")) > maximum) return new Response(null, { status: 413 });
-  let lock: Awaited<ReturnType<typeof fs.open>> | null = null;
+  let lock: Awaited<ReturnType<typeof acquireSharedProjectLock>> | null = null;
   const lockPath = path.join(root, `${fileName}.lock`);
   let temporary = "";
   try {
@@ -330,7 +327,7 @@ export async function PUT(request: Request) {
     } finally { reader.releaseLock(); }
     const bytes = Buffer.concat(chunks);
     if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[bytes.length - 2] !== 0xff || bytes[bytes.length - 1] !== 0xd9) return new Response(null, { status: 400 });
-    try { lock = await fs.open(lockPath, "wx"); }
+    try { lock = await acquireSharedProjectLock(lockPath); }
     catch (error) { if ((error as NodeJS.ErrnoException).code === "EEXIST") return new Response(null, { status: 409 }); throw error; }
     const projectPath = path.join(root, fileName);
     if (!await regularFileStat(projectPath)) return new Response(null, { status: 404 });
@@ -346,6 +343,6 @@ export async function PUT(request: Request) {
     return new Response(null, { status: (error as NodeJS.ErrnoException).code === "ENOENT" ? 404 : 500 });
   } finally {
     if (temporary) await fs.unlink(temporary).catch(() => undefined);
-    if (lock) { await lock.close().catch(() => undefined); await fs.unlink(lockPath).catch(() => undefined); }
+    await lock?.release();
   }
 }

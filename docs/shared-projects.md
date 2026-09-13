@@ -21,7 +21,7 @@ The server validates packages, bounds incoming data, uses atomic replacement and
 
 `npm test -- tests/unit/educadSharedProjects.test.ts` checks round trips, stale revisions, concurrent writes, lock ownership and invalid inputs.
 
-Projects can be shared from the dashboard or directly from the editor. Shared cards display optional revision-matched previews. The directory is suitable for a single application server. An abnormal termination during a save can leave a `.educad.lock` file: stop all application writers and remove only that abandoned lock before restarting. Automatic lock recovery and metadata/listing performance for large libraries remain follow-up work. Back up `.educad` files before administering the directory.
+Projects can be shared from the dashboard or directly from the editor. Shared cards display optional revision-matched previews. The directory is suitable for a single application server. New locks record their process ID and hostname. On a later attempt, the server can recover a lock if its owner is on the same host and the operating system reports that the process no longer exists. Live processes, permission errors, reused process IDs, legacy empty locks and different hosts never trigger automatic recovery. In those cases, stop all application writers and remove only a confirmed abandoned `.educad.lock` file. A recreated Docker container may have a different hostname and therefore still require this manual procedure. Multiple replicas sharing the same directory are not supported. Metadata/listing performance for large libraries remains follow-up work. Back up `.educad` files before administering the directory.
 
 Docker's Node version now matches the application's Node 24 requirement. A successful Docker build has not yet been verified; the prebuilt Compose still points to upstream SketchForge and must not be used to deploy eduCAD.
 
@@ -46,3 +46,6 @@ Open **Export → Save to shared**, enter the shared file name and your name, th
 The editor associates its generated JPEG preview with the captured document. Shared saves upload it only when it matches the document being published. Preview storage is optional: an image upload failure does not undo a successful project save. Older local thumbnails without a document association are not uploaded; reopen the project to generate a new one.
 
 The server bounds preview uploads to 1 MiB, checks the saved project revision under the same lock as writes/deletes, and stores images in `.thumbnails`. A later project revision without an image shows a placeholder instead of its predecessor's preview. Deleting a shared project removes its previews. Include `.thumbnails` in backups if you want to retain them.
+
+
+Lock recovery implementation was added without running tests or a build, as requested. This does not constitute verification of recovery after an actual crash.
