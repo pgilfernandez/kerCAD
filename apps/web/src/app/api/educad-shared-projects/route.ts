@@ -1,3 +1,4 @@
+import { forgetSharedRevision, rememberSharedRevision, sharedProjectRevision } from "@/lib/sharedProjectRevision";
 import { acquireSharedProjectLock } from "@/lib/sharedProjectLock";
 import { createHash, randomUUID } from "crypto";
 import { promises as fs } from "fs";
@@ -117,14 +118,15 @@ export async function GET(request: Request) {
       const filePath = path.join(root, fileName);
       const stat = await regularFileStat(filePath);
       if (!stat) return NextResponse.json({ error: "Shared project was not found" }, { status: 404 });
-      const bytes = await fs.readFile(filePath);
       const thumbnailRevision = requestUrl.searchParams.get("thumbnail");
       if (thumbnailRevision !== null) {
-        if (thumbnailRevision !== revisionForBytes(bytes)) return new Response(null, { status: 404 });
+        const current = await sharedProjectRevision(filePath);
+        if (!current || thumbnailRevision !== current.revision) return new Response(null, { status: 404 });
         const imagePath = thumbnailPath(root, fileName, thumbnailRevision);
         if (!await regularFileStat(imagePath)) return new Response(null, { status: 404 });
         return new Response(await fs.readFile(imagePath), { headers: { "Content-Type": "image/jpeg", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
       }
+      const bytes = await fs.readFile(filePath);
       return new Response(bytes, {
         headers: {
           "Cache-Control": "no-store",
@@ -137,17 +139,21 @@ export async function GET(request: Request) {
     }
 
     const entries = await fs.readdir(root, { withFileTypes: true });
-    const projects = await Promise.all(entries
-      .filter((entry) => entry.isFile() && /\.educad$/i.test(entry.name))
-      .map(async (entry): Promise<SharedProjectFile | null> => {
-        const stat = await regularFileStat(path.join(root, entry.name));
-        if (!stat) return null;
-        const revision = revisionForBytes(await fs.readFile(path.join(root, entry.name)));
-        return { ...projectRecord(entry.name, stat, revision), updatedBy: await readAuthor(root, entry.name, revision),
-          thumbnailUrl: await regularFileStat(thumbnailPath(root, entry.name, revision)) ? `/api/educad-shared-projects?fileName=${encodeURIComponent(entry.name)}&thumbnail=${revision}` : undefined };
+    const names = entries.filter(entry => entry.isFile() && /\.educad$/i.test(entry.name)).map(entry => entry.name);
+    const projects: SharedProjectFile[] = [];
+    // Bound cold-cache disk reads instead of hashing the whole library at once.
+    for (let offset = 0; offset < names.length; offset += 4) {
+      const batch = await Promise.all(names.slice(offset, offset + 4).map(async (fileName): Promise<SharedProjectFile | null> => {
+        const current = await sharedProjectRevision(path.join(root, fileName));
+        if (!current) return null;
+        const { stat, revision } = current;
+        return { ...projectRecord(fileName, stat, revision), updatedBy: await readAuthor(root, fileName, revision),
+          thumbnailUrl: await regularFileStat(thumbnailPath(root, fileName, revision)) ? `/api/educad-shared-projects?fileName=${encodeURIComponent(fileName)}&thumbnail=${revision}` : undefined };
       }));
+      projects.push(...batch.filter((entry): entry is SharedProjectFile => entry !== null));
+    }
     return NextResponse.json(
-      { enabled: true, projects: projects.filter((entry): entry is SharedProjectFile => Boolean(entry)).sort((a, b) => b.updatedAt - a.updatedAt) },
+      { enabled: true, projects: projects.sort((a, b) => b.updatedAt - a.updatedAt) },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
@@ -243,6 +249,7 @@ export async function POST(request: Request) {
     temporaryPath = "";
     const savedStat = await fs.stat(filePath);
     const project = projectRecord(fileName, savedStat, revisionForBytes(bytes));
+    rememberSharedRevision(filePath, savedStat, project.revision);
     return NextResponse.json(
       { project: { ...project, name: summary.document.name, updatedBy: updatedBy || undefined } },
       { status: currentStat ? 200 : 201, headers: { "Cache-Control": "no-store", ETag: `"${project.revision}"` } },
@@ -277,6 +284,7 @@ export async function DELETE(request: Request) {
     const currentRevision = revisionForBytes(await fs.readFile(filePath));
     if (expectedRevision !== currentRevision) return NextResponse.json({ error: "The project changed since you loaded the library. Refresh and review it before deleting.", currentRevision }, { status: 409 });
     await fs.unlink(filePath);
+    forgetSharedRevision(filePath);
     // Attribution cleanup is best effort: a successful deletion must not be
     // reported as failed merely because its optional metadata could not be removed.
     const key = createHash("sha256").update(fileName).digest("hex");
