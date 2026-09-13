@@ -2917,16 +2917,12 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               <Tool label={t("toolbar.duplicate")} enabled={Boolean(selectedObjectId)} onClick={() => duplicateSelected()}><ToolbarDuplicateIcon /></Tool>
               <Tool label={modelSelection.length > 1 ? t("toolbar.deleteSelection") : selectionKind === "feature" ? t("toolbar.deleteOperation") : t("toolbar.deleteObject")} enabled={modelSelection.length > 0} onClick={deleteCurrentSelection}><ToolbarTrashIcon /></Tool>
             </ToolbarSection>
-            <ToolbarSection label={t("toolbar.manipulators")}>
-              <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
-              <Tool label={t("camera.rotationTriad")} active={showRotationTriad} onClick={() => setShowRotationTriad((visible) => !visible)}><ToolbarRotationManipulatorIcon /></Tool>
-              <Tool className="educad-parameter-handles-toggle" label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>
-            </ToolbarSection>
             <ToolbarSection label={t("toolbar.shapes")} className="toolbar-shapes-section">
               <button ref={shapeMenuTriggerRef} data-educad-popup="shapes" className={`shape-menu-trigger ${shapesOpen ? "active" : ""}`} aria-label={t("toolbar.addShape")} title={t("toolbar.addShape")} aria-expanded={shapesOpen} aria-controls="educad-shape-menu" onClick={toggleShapeMenu}><ToolbarShapeAddIcon /></button>
               <Tool label={t("toolbar.createSketch")} onClick={() => { setShapesOpen(false); beginSketch(null); }}><ToolbarSketchIcon /></Tool>
             </ToolbarSection>
           </div>
+          <div className="toolbar-modeling-groups">
             <ToolbarSection label={t("toolbar.modify")} className="toolbar-modify-section">
               <Tool label={t("toolbar.chamfer")} active={pendingEdgeTreatment === "chamfer"} onClick={() => beginEdgeTreatment("chamfer")}><ToolbarChamferIcon /></Tool>
               <Tool label={t("toolbar.fillet")} active={pendingEdgeTreatment === "fillet"} onClick={() => beginEdgeTreatment("fillet")}><ToolbarFilletIcon /></Tool>
@@ -2937,6 +2933,11 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               <Tool label={t("toolbar.linearPattern")} enabled={Boolean(selectedObjectId)} onClick={addLinearPatternOperation}><ToolbarLinearPatternIcon /></Tool>
               <Tool label={t("toolbar.polarPattern")} enabled={Boolean(selectedObjectId)} onClick={addPolarPatternOperation}><ToolbarPolarPatternIcon /></Tool>
               <Tool label={t("toolbar.objectBoolean")} enabled={Boolean(selectedObjectId && document.objects.some((object) => object.id !== selectedObjectId))} onClick={addObjectBooleanOperation}><ToolbarObjectBooleanIcon /></Tool>
+            </ToolbarSection>
+            <ToolbarSection label={t("toolbar.helpers")} className="toolbar-helpers-section">
+              <Tool label={hasActiveWorkplane ? t("toolbar.resetWorkplane") : placingWorkplane ? t("toolbar.cancelWorkplane") : t("toolbar.placeWorkplane")} active={placingWorkplane || hasActiveWorkplane} onClick={toggleWorkplanePlacement}>{hasActiveWorkplane ? <ToolbarResetWorkplaneIcon /> : <ToolbarWorkplaneIcon />}</Tool>
+              <Tool label={t("toolbar.snapGrid")} enabled={Boolean(selectedShape && document.workplane.snapToGrid)} onClick={() => selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: Math.round((selectedShape?.x ?? 0) / snapAmount) * snapAmount, z: Math.round((selectedShape?.z ?? 0) / snapAmount) * snapAmount }))}><ToolbarSnapGridIcon /></Tool>
+              <Tool label={t("toolbar.dropToWorkplane")} enabled={Boolean(selectedShape)} onClick={() => updateSelected({ elevation: 0 })}><ToolbarDropToWorkplaneIcon /></Tool>
               <div data-educad-popup="align" className="educad-align-tool">
                 <Tool label={t("toolbar.align")} enabled={modelSelection.length > 1} active={alignOpen} onClick={() => setAlignOpen((value) => !value)}><ToolbarAlignIcon /></Tool>
                 {alignOpen ? <div className="educad-align-popover" role="dialog" aria-label={t("align.title")}>
@@ -2946,9 +2947,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
                   </div>
                 </div> : null}
               </div>
-              <Tool label={t("toolbar.snapGrid")} enabled={Boolean(selectedShape && document.workplane.snapToGrid)} onClick={() => selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: Math.round((selectedShape?.x ?? 0) / snapAmount) * snapAmount, z: Math.round((selectedShape?.z ?? 0) / snapAmount) * snapAmount }))}><ToolbarSnapGridIcon /></Tool>
-              <Tool label={t("toolbar.dropToWorkplane")} enabled={Boolean(selectedShape)} onClick={() => updateSelected({ elevation: 0 })}><ToolbarDropToWorkplaneIcon /></Tool>
             </ToolbarSection>
+          </div>
           <div className="toolbar-spacer" />
           <ToolbarSection label={t("toolbar.manage")} className="toolbar-actions-section">
             <div className="action-buttons">
@@ -3169,6 +3169,12 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           displayUnit={displayUnit}
           locale={locale}
           parameterHandlesVisible={showParameterHandles}
+          contextToolbarVisible={modelSelection.length > 0}
+          manipulatorControls={<>
+            <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
+            <Tool label={t("camera.rotationTriad")} active={showRotationTriad} onClick={() => setShowRotationTriad((visible) => !visible)}><ToolbarRotationManipulatorIcon /></Tool>
+            <Tool className="educad-parameter-handles-toggle" label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>
+          </>}
           selection={originEditObjectId || placingWorkplane || editingMirrorPlaneId || selectingTopologyFaces || selectingTopologyEdges ? null : selectedBox}
           snap={snapAmount}
           onOperationModeChange={setSelectedOperationMode}
@@ -3403,8 +3409,6 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           <button aria-label={t("camera.selection")} title={t("camera.selection")} disabled={!selectedBox} onClick={() => setCamera("selection")}><Focus size={21} /></button>
           <button aria-label={t("camera.zoomIn")} title={t("camera.zoomIn")} onClick={() => setCamera("zoom-in")}><Plus size={28} /></button>
           <button aria-label={t("camera.zoomOut")} title={t("camera.zoomOut")} onClick={() => setCamera("zoom-out")}><Minus size={28} /></button>
-          <span className="camera-control-separator" aria-hidden="true" />
-          <button className={placingWorkplane || hasActiveWorkplane ? "active" : ""} aria-label={hasActiveWorkplane ? t("toolbar.resetWorkplane") : placingWorkplane ? t("toolbar.cancelWorkplane") : t("toolbar.placeWorkplane")} aria-pressed={placingWorkplane || hasActiveWorkplane} title={hasActiveWorkplane ? t("toolbar.resetWorkplane") : placingWorkplane ? t("toolbar.cancelWorkplane") : t("toolbar.placeWorkplane")} onClick={toggleWorkplanePlacement}>{hasActiveWorkplane ? <ToolbarResetWorkplaneIcon /> : <ToolbarWorkplaneIcon />}</button>
         </div>
         {build.warning && <div className="educad-rebuild-error" role="alert" aria-live="assertive" aria-atomic="true"><strong>{t("history.stopped")}</strong><span>{build.warning}</span>{rebuildSuggestion ? <small><b>{t("rebuild.suggestionLabel")}:</b> {rebuildSuggestion}</small> : null}</div>}
         {notice && <div className={`educad-reference-toast ${notice.type}`} role={notice.type === "error" ? "alert" : "status"} aria-live={notice.type === "error" ? "assertive" : "polite"} aria-atomic="true">{notice.text}</div>}

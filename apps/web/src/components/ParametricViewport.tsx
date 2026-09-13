@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
@@ -257,6 +257,8 @@ type Props = {
   onShellThicknessChange?: (thickness: number) => void;
   onShellThicknessCancel?: () => void;
   floatingFeature?: ParametricFeature | null;
+  contextToolbarVisible?: boolean;
+  manipulatorControls?: ReactNode;
   onEditSketch?: (featureId: string) => void;
   onEditEdgeTreatmentSelection?: (featureId: string) => void;
   onEditFaceExtrudeSelection?: (featureId: string) => void;
@@ -603,7 +605,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, shellHandle = null, onShellThicknessDragStart, onShellThicknessPreview, onShellThicknessChange, onShellThicknessCancel, floatingFeature = null, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = "Untitled design", onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, shellHandle = null, onShellThicknessDragStart, onShellThicknessPreview, onShellThicknessChange, onShellThicknessCancel, floatingFeature = null, contextToolbarVisible, manipulatorControls, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = "Untitled design", onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
@@ -4159,11 +4161,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const showOperationModes = Boolean(selection?.operationPreview);
   const showEdgeTreatmentControls = Boolean(edgeTreatmentHandle);
   const showFeatureControls = Boolean(floatingFeature && floatingFeature.kind !== "fillet");
-  const showContextToolbar = showOperationModes || showEdgeTreatmentControls || showFeatureControls;
+  const showContextToolbar = contextToolbarVisible ?? (showOperationModes || showEdgeTreatmentControls || showFeatureControls);
 
   return <div className="parametric-viewport" ref={hostRef} aria-label={locale === "es" ? "Vista 3D de la pieza" : "3D model view"}>
     <div ref={selectionBoxRef} className="parametric-selection-box" aria-hidden="true" />
-    {showContextToolbar ? <div className="educad-viewport-context-toolbar" aria-label={locale === "es" ? "Herramientas de la operación" : "Operation tools"} onPointerDown={(event) => event.stopPropagation()}>
+    {showContextToolbar ? <div className="educad-viewport-context-toolbar" aria-label={locale === "es" ? "Herramientas de la selección" : "Selection tools"} onPointerDown={(event) => event.stopPropagation()}>
+      {manipulatorControls ? <div className="educad-context-toolbar-group" aria-label={locale === "es" ? "Manipuladores" : "Manipulators"}>{manipulatorControls}</div> : null}
       {showOperationModes ? <div className="educad-context-toolbar-group" aria-label={locale === "es" ? "Modo de la operación" : "Operation mode"}>
         {(["add", "cut", "intersect"] as const).map((mode) => {
           const activeMode = selection?.operationPreview?.mode === (mode === "cut" ? "hole" : mode === "intersect" ? "common" : "add");

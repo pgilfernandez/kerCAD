@@ -8606,7 +8606,7 @@ circle.sketch-preview-line {
     grid-column: 4;
   }
 
-  .toolbar-mode-content.geometry > .toolbar-modify-section {
+  .toolbar-mode-content.geometry > .toolbar-modeling-groups {
     grid-row: 2;
     grid-column: 1 / -1;
     width: max-content;
@@ -8780,7 +8780,7 @@ circle.sketch-preview-line {
     flex: 1 0 0;
   }
 
-  .toolbar-mode-content.geometry > .toolbar-modify-section {
+  .toolbar-mode-content.geometry > .toolbar-modeling-groups {
     width: max-content;
     flex: 0 0 auto;
     border-top: 0;
@@ -8816,7 +8816,7 @@ circle.sketch-preview-line {
 
 .educad-reference-shell:is(.sidebar-simplified, .sidebar-hidden) .toolbar-mode-content.geometry > .toolbar-home-section,
 .educad-reference-shell:is(.sidebar-simplified, .sidebar-hidden) .toolbar-mode-content.geometry > .tool-group.left,
-.educad-reference-shell:is(.sidebar-simplified, .sidebar-hidden) .toolbar-mode-content.geometry > .toolbar-modify-section,
+.educad-reference-shell:is(.sidebar-simplified, .sidebar-hidden) .toolbar-mode-content.geometry > .toolbar-modeling-groups,
 .educad-reference-shell:is(.sidebar-simplified, .sidebar-hidden) .toolbar-mode-content.geometry > .toolbar-actions-section {
   height: 50px;
   flex: 0 0 auto;
@@ -10022,3 +10022,5 @@ html[data-theme="dark"] .grid-settings {
 .educad-shared-thumbnail.placeholder { display: grid; place-items: center; color: #657d91; font-weight: 700; }
 .educad-shared-file-details { flex: 1; }
 @media (max-width: 620px) { .educad-shared-thumbnail { width: 100%; height: 160px; } }
+
+.toolbar-modeling-groups { display: flex; align-items: stretch; flex: 0 0 auto; }
