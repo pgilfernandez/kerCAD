@@ -7,6 +7,7 @@ export type ProjectLibraryEntry = {
   updatedAt: number;
   document: ParametricDocument;
   thumbnail?: string;
+  thumbnailDocumentKey?: string;
   assets?: import("@/types/sketchforge").ProjectAsset[];
   sharedSource?: { fileName: string; revision: string };
 };
@@ -67,7 +68,7 @@ export async function saveLibraryProject(entry: ProjectLibraryEntry) {
   }
 }
 
-export async function updateLibraryProjectThumbnail(id: string, thumbnail: string) {
+export async function updateLibraryProjectThumbnail(id: string, thumbnail: string, thumbnailDocumentKey?: string) {
   const database = await openProjectLibrary();
   try {
     await new Promise<void>((resolve, reject) => {
@@ -76,7 +77,7 @@ export async function updateLibraryProjectThumbnail(id: string, thumbnail: strin
       const request = store.get(id);
       request.onsuccess = () => {
         const current = request.result as ProjectLibraryEntry | undefined;
-        if (current) store.put({ ...current, thumbnail });
+        if (current) store.put({ ...current, thumbnail, thumbnailDocumentKey });
       };
       request.onerror = () => reject(request.error ?? new Error("Could not update the project thumbnail."));
       transaction.oncomplete = () => resolve();

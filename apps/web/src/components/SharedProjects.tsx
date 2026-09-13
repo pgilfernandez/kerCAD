@@ -1,10 +1,11 @@
 "use client";
 
+import { uploadSharedThumbnail } from "@/lib/sharedProjectThumbnail";
 import { useEffect, useState } from "react";
 import { exportEducadProject, importEducadProject, EDUCAD_PACKAGE_MEDIA_TYPE } from "@/lib/educadProject";
 import { getLibraryProject, newProjectLibraryId, saveLibraryProject, type ProjectLibraryEntry } from "@/lib/projectLibrary";
 
-type SharedFile = { fileName: string; name: string; revision: string; updatedAt: number; updatedBy?: string };
+type SharedFile = { fileName: string; name: string; revision: string; updatedAt: number; updatedBy?: string; thumbnailUrl?: string };
 const endpoint = "/api/educad-shared-projects";
 
 export function SharedProjects({ projects, onOpen, onSaved }: {
@@ -82,6 +83,7 @@ export function SharedProjects({ projects, onOpen, onSaved }: {
       if (!response.ok) throw new Error(payload.error || "Could not share the project.");
       await saveLibraryProject({ ...entry, sharedSource: { fileName: payload.project.fileName, revision: payload.project.revision } });
       try { localStorage.setItem("educad.shared-author", author.trim()); } catch {}
+      await uploadSharedThumbnail(payload.project.fileName, payload.project.revision, entry.document, entry.thumbnail, entry.thumbnailDocumentKey);
       onSaved();
       setMessage("Project saved to the shared library.");
       await refresh();
@@ -102,7 +104,7 @@ export function SharedProjects({ projects, onOpen, onSaved }: {
       <button type="submit" disabled={busy || !selected || !name.trim() || !author.trim()}>Save to shared</button>
     </form>
     {message ? <p role={conflict ? "alert" : "status"}>{message}</p> : null}
-    <div className="educad-shared-files">{files.map(file => <article key={file.fileName}><div className="educad-shared-file-details"><strong>{file.name}</strong><small>Last modified: <time dateTime={new Date(file.updatedAt).toISOString()}>{new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(file.updatedAt)}</time> · {file.updatedBy || "Author not provided"}</small></div><div className="educad-shared-file-actions"><button type="button" disabled={busy} onClick={() => void open(file)}>Open local copy</button><button className="delete-shared" type="button" disabled={busy} aria-label={`Delete shared project ${file.name}`} onClick={() => void remove(file)}>Delete shared</button></div></article>)}</div>
+    <div className="educad-shared-files">{files.map(file => <article key={file.fileName}>{file.thumbnailUrl ? <img className="educad-shared-thumbnail" src={file.thumbnailUrl} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = "none"; }} /> : <span className="educad-shared-thumbnail placeholder" aria-hidden="true">3D</span>}<div className="educad-shared-file-details"><strong>{file.name}</strong><small>Last modified: <time dateTime={new Date(file.updatedAt).toISOString()}>{new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(file.updatedAt)}</time> · {file.updatedBy || "Author not provided"}</small></div><div className="educad-shared-file-actions"><button type="button" disabled={busy} onClick={() => void open(file)}>Open local copy</button><button className="delete-shared" type="button" disabled={busy} aria-label={`Delete shared project ${file.name}`} onClick={() => void remove(file)}>Delete shared</button></div></article>)}</div>
     {!files.length ? <p>No shared projects yet. Choose a local project above to share the first one.</p> : null}
   </div>;
 }

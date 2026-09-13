@@ -21,7 +21,7 @@ The server validates packages, bounds incoming data, uses atomic replacement and
 
 `npm test -- tests/unit/educadSharedProjects.test.ts` checks round trips, stale revisions, concurrent writes, lock ownership and invalid inputs.
 
-Projects can be shared from the dashboard or directly from the editor. Shared preview images are not implemented yet. The directory is suitable for a single application server. An abnormal termination during a save can leave a `.educad.lock` file: stop all application writers and remove only that abandoned lock before restarting. Automatic lock recovery and metadata/listing performance for large libraries remain follow-up work. Back up `.educad` files before administering the directory.
+Projects can be shared from the dashboard or directly from the editor. Shared cards display optional revision-matched previews. The directory is suitable for a single application server. An abnormal termination during a save can leave a `.educad.lock` file: stop all application writers and remove only that abandoned lock before restarting. Automatic lock recovery and metadata/listing performance for large libraries remain follow-up work. Back up `.educad` files before administering the directory.
 
 Docker's Node version now matches the application's Node 24 requirement. A successful Docker build has not yet been verified; the prebuilt Compose still points to upstream SketchForge and must not be used to deploy eduCAD.
 
@@ -39,3 +39,10 @@ Choose **Delete shared** on its card and confirm. This permanently removes the s
 ## Save from the editor
 
 Open **Export → Save to shared**, enter the shared file name and your name, then choose **Publish project**. The editor saves its current editable document locally before publishing. For projects opened from Shared, the original file name and revision are reused; conflicts keep the form open so you can choose another name. Your name is remembered after a successful save. This action is hidden when shared storage is unavailable or while authoring a challenge.
+
+
+## Shared previews
+
+The editor associates its generated JPEG preview with the captured document. Shared saves upload it only when it matches the document being published. Preview storage is optional: an image upload failure does not undo a successful project save. Older local thumbnails without a document association are not uploaded; reopen the project to generate a new one.
+
+The server bounds preview uploads to 1 MiB, checks the saved project revision under the same lock as writes/deletes, and stores images in `.thumbnails`. A later project revision without an image shows a placeholder instead of its predecessor's preview. Deleting a shared project removes its previews. Include `.thumbnails` in backups if you want to retain them.

@@ -261,7 +261,7 @@ type SketchForgeParametricEditorProps = {
   sharedFileName?: string;
   onSaveShared?: (document: ParametricDocument, fileName: string, author: string) => Promise<void>;
   onProjectChange?: (document: ParametricDocument) => void;
-  onProjectThumbnail?: (dataUrl: string) => void;
+  onProjectThumbnail?: (dataUrl: string, document?: ParametricDocument) => void;
   onExitToProjects?: (document: ParametricDocument) => void;
   challenge?: EducadChallenge | null;
   challengeEditor?: EducadChallenge | null;
@@ -278,6 +278,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [modelSelection, setModelSelection] = useState<ModelTreeSelection[]>(initialDocument.objects[0] ? [{ id: initialDocument.objects[0].id, kind: "object" }] : []);
   const [build, setBuild] = useState<BuildResult>({ mesh: null, objectRecords: [], operationContext: null, completedFeatureIds: [], failedFeatureId: null, warning: null });
   const [operationContext, setOperationContext] = useState<BuildResult["operationContext"]>(null);
+  const renderedGeometryFingerprintRef = useRef<string | null>(null);
   const [kernelBusy, setKernelBusy] = useState(true);
   const [contextBusy, setContextBusy] = useState(false);
   const [topologyPreviewBusy, setTopologyPreviewBusy] = useState(false);
@@ -710,6 +711,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     const timeout = window.setTimeout(() => {
       buildWorkerRef.current!.buildModel(buildDocument).then((result) => {
         if (counter !== buildCounter.current) return;
+        renderedGeometryFingerprintRef.current = geometryFingerprint;
         setBuild(result);
         if (result.failedFeatureId && buildDocument.features.some((feature) => feature.id === result.failedFeatureId)) {
           setModelSelection([{ id: result.failedFeatureId, kind: "feature" }]);
@@ -3140,7 +3142,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             if (stepId) {
               challengeCaptureStepRef.current = null;
               setChallengeCapture({ stepId, dataUrl, token: challengeCaptureToken });
-            } else onProjectThumbnail?.(dataUrl);
+            } else if (!kernelBusy && renderedGeometryFingerprintRef.current === geometryFingerprint && !build.failedFeatureId && !pendingEdgeTreatment && !pendingFaceExtrude && !pendingShell && !pendingRevolve && !(selectedOperationTimeline && selectedOperationTimeline.index < selectedOperationTimeline.count - 1)) onProjectThumbnail?.(dataUrl, document);
           }}
           thumbnailRequestToken={challengeCaptureToken}
           thumbnailRequestOptions={challengeEditor ? { includeOverlays: true, width: 1200, height: 750, quality: 0.92 } : undefined}

@@ -16,6 +16,7 @@ type SharedProjectFile = {
   size: number;
   revision: string;
   updatedBy?: string;
+  thumbnailUrl?: string;
 };
 
 function sharedProjectsDirectory() {
@@ -45,6 +46,11 @@ function projectRecord(fileName: string, stat: { size: number; mtimeMs: number }
     size: stat.size,
     revision,
   };
+}
+
+function thumbnailPath(root: string, fileName: string, revision: string) {
+  const key = createHash("sha256").update(fileName).digest("hex");
+  return path.join(root, ".thumbnails", `${key}-${revision}.jpg`);
 }
 
 function authorPath(root: string, fileName: string, revision: string) {
@@ -111,6 +117,13 @@ export async function GET(request: Request) {
       const stat = await regularFileStat(filePath);
       if (!stat) return NextResponse.json({ error: "Shared project was not found" }, { status: 404 });
       const bytes = await fs.readFile(filePath);
+      const thumbnailRevision = requestUrl.searchParams.get("thumbnail");
+      if (thumbnailRevision !== null) {
+        if (thumbnailRevision !== revisionForBytes(bytes)) return new Response(null, { status: 404 });
+        const imagePath = thumbnailPath(root, fileName, thumbnailRevision);
+        if (!await regularFileStat(imagePath)) return new Response(null, { status: 404 });
+        return new Response(await fs.readFile(imagePath), { headers: { "Content-Type": "image/jpeg", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
+      }
       return new Response(bytes, {
         headers: {
           "Cache-Control": "no-store",
@@ -129,7 +142,8 @@ export async function GET(request: Request) {
         const stat = await regularFileStat(path.join(root, entry.name));
         if (!stat) return null;
         const revision = revisionForBytes(await fs.readFile(path.join(root, entry.name)));
-        return { ...projectRecord(entry.name, stat, revision), updatedBy: await readAuthor(root, entry.name, revision) };
+        return { ...projectRecord(entry.name, stat, revision), updatedBy: await readAuthor(root, entry.name, revision),
+          thumbnailUrl: await regularFileStat(thumbnailPath(root, entry.name, revision)) ? `/api/educad-shared-projects?fileName=${encodeURIComponent(entry.name)}&thumbnail=${revision}` : undefined };
       }));
     return NextResponse.json(
       { enabled: true, projects: projects.filter((entry): entry is SharedProjectFile => Boolean(entry)).sort((a, b) => b.updatedAt - a.updatedAt) },
@@ -270,6 +284,9 @@ export async function DELETE(request: Request) {
     const entries = await fs.readdir(metadataDirectory).catch(() => [] as string[]);
     await Promise.all(entries.filter(name => name.startsWith(`${key}-`) && name.endsWith(".json"))
       .map(name => fs.unlink(path.join(metadataDirectory, name)).catch(() => undefined)));
+    const previews = await fs.readdir(path.join(root, ".thumbnails")).catch(() => [] as string[]);
+    await Promise.all(previews.filter(name => name.startsWith(`${key}-`) && name.endsWith(".jpg"))
+      .map(name => fs.unlink(path.join(root, ".thumbnails", name)).catch(() => undefined)));
     return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return NextResponse.json({ error: "Shared project was not found" }, { status: 404 });
@@ -279,5 +296,56 @@ export async function DELETE(request: Request) {
       await lockHandle.close().catch(() => undefined);
       await fs.unlink(lockPath).catch(() => undefined);
     }
+  }
+}
+
+
+export async function PUT(request: Request) {
+  const root = sharedProjectsDirectory();
+  if (!root) return new Response(null, { status: 404 });
+  if (!sameOriginRequest(request)) return new Response(null, { status: 403 });
+  const fileName = new URL(request.url).searchParams.get("fileName");
+  if (!fileName || safeProjectFileName(fileName) !== fileName) return new Response(null, { status: 400 });
+  const revision = unquoteEtag(request.headers.get("if-match"));
+  if (!revision) return new Response(null, { status: 428 });
+  if (request.headers.get("content-type") !== "image/jpeg") return new Response(null, { status: 415 });
+  const maximum = 1024 * 1024;
+  if (Number(request.headers.get("content-length")) > maximum) return new Response(null, { status: 413 });
+  let lock: Awaited<ReturnType<typeof fs.open>> | null = null;
+  const lockPath = path.join(root, `${fileName}.lock`);
+  let temporary = "";
+  try {
+    const reader = request.body?.getReader();
+    if (!reader) return new Response(null, { status: 400 });
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        size += value.length;
+        if (size > maximum) { await reader.cancel(); return new Response(null, { status: 413 }); }
+        chunks.push(value);
+      }
+    } finally { reader.releaseLock(); }
+    const bytes = Buffer.concat(chunks);
+    if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[bytes.length - 2] !== 0xff || bytes[bytes.length - 1] !== 0xd9) return new Response(null, { status: 400 });
+    try { lock = await fs.open(lockPath, "wx"); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === "EEXIST") return new Response(null, { status: 409 }); throw error; }
+    const projectPath = path.join(root, fileName);
+    if (!await regularFileStat(projectPath)) return new Response(null, { status: 404 });
+    if (revisionForBytes(await fs.readFile(projectPath)) !== revision) return new Response(null, { status: 409 });
+    const destination = thumbnailPath(root, fileName, revision);
+    await fs.mkdir(path.dirname(destination), { recursive: true });
+    temporary = `${destination}.${randomUUID()}.tmp`;
+    await fs.writeFile(temporary, bytes, { flag: "wx" });
+    await fs.rename(temporary, destination);
+    temporary = "";
+    return new Response(null, { status: 204 });
+  } catch (error) {
+    return new Response(null, { status: (error as NodeJS.ErrnoException).code === "ENOENT" ? 404 : 500 });
+  } finally {
+    if (temporary) await fs.unlink(temporary).catch(() => undefined);
+    if (lock) { await lock.close().catch(() => undefined); await fs.unlink(lockPath).catch(() => undefined); }
   }
 }

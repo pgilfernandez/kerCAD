@@ -10018,3 +10018,7 @@ html[data-theme="dark"] .grid-settings {
 .educad-editor-share-form input { min-width: 0; width: 100%; min-height: 38px; padding: 8px; border: 1px solid #9fb7c9; border-radius: 6px; }
 .educad-editor-share-form p { margin: 0; line-height: 1.5; font-size: 13px; }
 .top-action-panel.educad-export-panel { max-height: calc(100dvh - 120px); overflow-y: auto; }
+.educad-shared-thumbnail { width: 120px; height: 80px; flex-shrink: 0; border-radius: 8px; object-fit: cover; background: #eaf0f6; }
+.educad-shared-thumbnail.placeholder { display: grid; place-items: center; color: #657d91; font-weight: 700; }
+.educad-shared-file-details { flex: 1; }
+@media (max-width: 620px) { .educad-shared-thumbnail { width: 100%; height: 160px; } }

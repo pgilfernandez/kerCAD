@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { DELETE, GET, POST } from "@/app/api/educad-shared-projects/route";
+import { DELETE, GET, POST, PUT } from "@/app/api/educad-shared-projects/route";
 import { projectAssetFromBytes } from "@/lib/projectAssets";
 import { createStarterDocument } from "@/lib/parametricDocument";
 import { createEmptyDocument } from "@/lib/parametricDocument";
@@ -124,5 +124,37 @@ describe("deleting shared projects", () => {
     const results = await Promise.all([remove(revision), save("Updated", revision)]);
     expect(results.filter(response => response.ok)).toHaveLength(1);
     expect(results.filter(response => response.status === 409)).toHaveLength(1);
+  });
+});
+
+
+describe("shared project thumbnails", () => {
+  const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
+  const upload = (revision: string, bytes = jpeg) => PUT(new Request(url, { method: "PUT", headers: { "content-type": "image/jpeg", "if-match": revision }, body: bytes }));
+  it("serves only the matching revision and removes images when the project is deleted", async () => {
+    const first = await save("Initial");
+    const revision = first.headers.get("etag")!;
+    expect((await upload(revision)).status).toBe(204);
+    const listing = await (await GET(new Request(url.split("?")[0]))).json();
+    const preview = listing.projects[0].thumbnailUrl;
+    expect(preview).toContain("thumbnail=");
+    const response = await GET(new Request(`http://localhost${preview}`));
+    expect(response.headers.get("content-type")).toBe("image/jpeg");
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(jpeg);
+    const changed = await save("Changed", revision);
+    expect((await upload(revision)).status).toBe(409);
+    expect((await GET(new Request(`http://localhost${preview}`))).status).toBe(404);
+    expect((await (await GET(new Request(url.split("?")[0]))).json()).projects[0].thumbnailUrl).toBeUndefined();
+    expect((await DELETE(new Request(url, { method: "DELETE", headers: { "if-match": changed.headers.get("etag")! } }))).status).toBe(204);
+    expect(await readdir(path.join(root, ".thumbnails"))).toEqual([]);
+  });
+  it("rejects malformed and oversized images and does not remove another writer's lock", async () => {
+    const revision = (await save("Initial")).headers.get("etag")!;
+    expect((await upload(revision, new Uint8Array([1, 2]))).status).toBe(400);
+    expect((await upload(revision, new Uint8Array(1024 * 1024 + 1))).status).toBe(413);
+    const lock = path.join(root, "Lesson.educad.lock");
+    await writeFile(lock, "owner");
+    expect((await upload(revision)).status).toBe(409);
+    expect(await readFile(lock, "utf8")).toBe("owner");
   });
 });

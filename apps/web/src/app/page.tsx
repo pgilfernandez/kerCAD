@@ -8,6 +8,7 @@ import { createEmptyChallenge, deleteInstalledChallenge, exportChallengePackage,
 import { exportEducadProject, importEducadProject, EDUCAD_PACKAGE_MEDIA_TYPE } from "@/lib/educadProject";
 import { createEmptyDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { deleteLibraryProject, getLibraryProject, listLibraryProjects, newProjectLibraryId, saveLibraryProject, updateLibraryProjectThumbnail, type ProjectLibraryEntry } from "@/lib/projectLibrary";
+import { thumbnailDocumentKey, uploadSharedThumbnail } from "@/lib/sharedProjectThumbnail";
 import type { ParametricDocument } from "@/types/parametric";
 
 export default function Home() {
@@ -170,12 +171,15 @@ export default function Home() {
     if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => { void saveLatestActive(); }, 350);
   }, [saveLatestActive]);
-  const persistThumbnail = useCallback((thumbnail: string) => {
+  const persistThumbnail = useCallback((thumbnail: string, capturedDocument?: ParametricDocument) => {
     const current = activeRef.current;
-    if (!current || transientEditorRef.current || current.thumbnail === thumbnail) return;
-    const next = { ...current, thumbnail };
-    activeRef.current = next;
-    void enqueueLibraryWrite(() => updateLibraryProjectThumbnail(current.id, thumbnail));
+    if (!current || transientEditorRef.current) return;
+    void (async () => {
+      const key = capturedDocument ? await thumbnailDocumentKey(capturedDocument) : undefined;
+      if (activeRef.current?.id !== current.id) return;
+      activeRef.current = { ...activeRef.current, thumbnail, thumbnailDocumentKey: key };
+      await enqueueLibraryWrite(() => updateLibraryProjectThumbnail(current.id, thumbnail, key));
+    })();
   }, [enqueueLibraryWrite]);
   const leaveEditor = async (document: ParametricDocument) => {
     if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
@@ -253,6 +257,7 @@ export default function Home() {
     const payload = await response.json();
     if (response.status === 409) throw new Error("The shared file has changed or this name is already in use. Your local work is safe. Save with another name, or open a fresh copy from Shared.");
     if (!response.ok) throw new Error(payload.error || "Could not save the shared project.");
+    await uploadSharedThumbnail(payload.project.fileName, payload.project.revision, document, current.thumbnail, current.thumbnailDocumentKey);
     if (activeRef.current?.id === current.id) {
       activeRef.current = { ...activeRef.current, sharedSource: { fileName: payload.project.fileName, revision: payload.project.revision } };
       await enqueueLibraryWrite(async () => {
