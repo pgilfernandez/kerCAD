@@ -105,13 +105,17 @@ export default function Home() {
         if (response.ok && Array.isArray(payload.files)) {
           for (const name of payload.files) {
             if (typeof name !== "string") continue;
-            const packageResponse = await fetch(`/api/bundled-challenges?file=${encodeURIComponent(name)}`, { cache: "no-store" });
-            if (!packageResponse.ok) continue;
-            const packageFile = new File([await packageResponse.blob()], name, { type: "application/zip" });
-            const bundledChallenge = await importChallengePackage(packageFile);
-            if (!installedChallenges.some((challenge) => challenge.id === bundledChallenge.id)) {
-              await saveInstalledChallenge(bundledChallenge);
-              installedChallenges = [...installedChallenges, bundledChallenge];
+            try {
+              const packageResponse = await fetch(`/api/bundled-challenges?file=${encodeURIComponent(name)}`, { cache: "no-store" });
+              if (!packageResponse.ok) continue;
+              const packageFile = new File([await packageResponse.blob()], name, { type: "application/zip" });
+              const bundledChallenge = await importChallengePackage(packageFile);
+              if (!installedChallenges.some((challenge) => challenge.id === bundledChallenge.id)) {
+                await saveInstalledChallenge(bundledChallenge);
+                installedChallenges = [...installedChallenges, bundledChallenge];
+              }
+            } catch {
+              // One invalid package must not hide the remaining classroom activities.
             }
           }
         }
