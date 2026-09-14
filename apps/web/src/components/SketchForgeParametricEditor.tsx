@@ -6,7 +6,7 @@ import { ChallengePlayer } from "@/components/ChallengePlayer";
 import type { EducadChallenge } from "@/lib/challengeLibrary";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent as ReactFocusEvent } from "react";
 import * as THREE from "three";
-import { sameAlignmentItem, translateAlignmentTargets, type AlignmentTarget } from "@/lib/parametricAlignment";
+import { alignmentGroupBounds, sameAlignmentItem, translateAlignmentTargets, type AlignmentTarget } from "@/lib/parametricAlignment";
 import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyEdgePick, type TopologyFacePick, type ViewportDisplayMode, type ViewportShadingMode } from "@/components/ParametricViewport";
 import { SketchWorkspace, type SketchMeasurement, type SketchSceneReference, type SketchSelection, type SketchTool } from "@/components/SketchWorkspace";
@@ -336,6 +336,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const challengeCaptureStepRef = useRef<string | null>(null);
   const [originEditObjectId, setOriginEditObjectId] = useState<string | null>(null);
   const [alignOpen, setAlignOpen] = useState(false);
+  const [alignmentMode, setAlignmentMode] = useState<"reference" | "group">("reference");
+  const [alignmentHelpHovered, setAlignmentHelpHovered] = useState(false);
   const [alignmentGeometry, setAlignmentGeometry] = useState<{ document: ParametricDocument; groupKey: string; targets: AlignmentTarget[]; complete?: boolean } | null>(null);
   const alignmentGeometryRef = useRef(alignmentGeometry);
   alignmentGeometryRef.current = alignmentGeometry;
@@ -346,6 +348,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const alignmentTargets = alignOpen && currentAlignmentGeometry?.groupKey === alignmentGroupKey ? currentAlignmentGeometry.targets : [];
   const alignmentBusy = !currentAlignmentGeometry || currentAlignmentGeometry.groupKey !== alignmentGroupKey || currentAlignmentGeometry.complete === false;
   const alignmentReference = alignOpen ? modelSelection.at(-1) ?? null : null;
+  const alignmentGroupTarget = useMemo(() => alignmentMode === "group" ? alignmentGroupBounds(alignmentTargets) : null, [alignmentMode, alignmentTargets]);
+  const alignmentDisplayTargets = useMemo(() => alignmentGroupTarget ? [...alignmentTargets, alignmentGroupTarget] : alignmentTargets, [alignmentTargets, alignmentGroupTarget]);
+  const alignmentDisplayReference = alignmentGroupTarget ?? alignmentReference;
   const alignmentPriorityRef = useRef(alignmentReference);
   alignmentPriorityRef.current = alignmentReference;
   useEffect(() => {
@@ -2434,7 +2439,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
 
   const alignSelection = (axis: ParametricAlignmentAxis, anchor: ParametricAlignmentAnchor) => {
     if (alignmentBusy) return;
-    const referenceTarget = alignmentTargets.find(item => alignmentReference && sameAlignmentItem(item, alignmentReference));
+    const referenceTarget = alignmentGroupTarget ?? alignmentTargets.find(item => alignmentReference && sameAlignmentItem(item, alignmentReference));
     if (!referenceTarget) return;
     const referenceId = referenceTarget.id;
     const value = (target: AlignmentTarget) => anchor === "center" ? (target.min[axis] + target.max[axis]) / 2 : target[anchor][axis];
@@ -2454,7 +2459,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     const reference = document.objects.find((object) => object.id === referenceId)
       ?? document.features.find((feature) => feature.id === referenceId);
     setNotice(moved > 0
-      ? { type: "ok", text: `${moved} ${t(moved === 1 ? "notice.alignedWithSingle" : "notice.alignedWith")} ${reference?.name ?? t("notice.reference")}` }
+      ? { type: "ok", text: `${moved} ${t(moved === 1 ? "notice.alignedWithSingle" : "notice.alignedWith")} ${alignmentMode === "group" ? (locale === "es" ? "el grupo" : "the group") : reference?.name ?? t("notice.reference")}` }
       : { type: "info", text: t("notice.noMovableAlignment") });
   };
 
@@ -3056,7 +3061,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
                 const object = document.objects.find(candidate => candidate.id === (item.kind === "object" ? item.id : feature?.objectId));
                 return object && !object.locked && (item.kind === "object" || feature && !feature.suppressed && (feature.kind === "primitive" || feature.kind === "extrude" || feature.kind === "sketch" && feature.purpose === "user"));
               }) && !kernelBusy && !droppingToWorkplane} onClick={() => void dropToWorkplane()}><ToolbarDropToWorkplaneIcon /></Tool>
-              <div data-educad-popup="align" className="educad-align-tool">
+              <div data-educad-popup="align" className="educad-align-tool" onPointerEnter={() => setAlignmentHelpHovered(true)} onPointerLeave={() => setAlignmentHelpHovered(false)}>
                 <Tool label={t("toolbar.align")} enabled={modelSelection.length > 1} active={alignOpen} onClick={() => {
                   if (alignOpen) { setAlignOpen(false); return; }
                   const objects = new Set(modelSelection.filter(item => item.kind === "object").map(item => item.id));
@@ -3070,11 +3075,13 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
                   setOriginEditObjectId(null);
                   setAlignOpen(true);
                 }}><ToolbarAlignIcon /></Tool>
-                <div className="educad-align-popover" role="tooltip" aria-label={t("align.title")}>
-                  <header><strong>{t("align.action")}</strong><span>{locale === "es" ? "Azul: referencia · Verde: selección a mover. Pulsa una geometría o su nombre para cambiar la referencia." : "Blue: reference · Green: moving selection. Click geometry or its name to change the reference."}</span></header>
+                {alignmentHelpHovered ? <div className="educad-align-popover" role="tooltip" aria-label={t("align.title")}>
+                  <header><strong>{t("align.action")}</strong><span>{alignmentMode === "group"
+                    ? (locale === "es" ? "El recuadro azul engloba toda la selección. Los elementos verdes se alinean con los límites o el centro del grupo." : "The blue box encloses the entire selection. Green items align to the group bounds or center.")
+                    : (locale === "es" ? "Azul: referencia · Verde: selección a mover. Pulsa una geometría o su nombre para cambiar la referencia." : "Blue: reference · Green: moving selection. Click geometry or its name to change the reference.")}</span></header>
                   {alignOpen && alignmentTargets.length === 0 ? <p role="status">{locale === "es" ? "Preparando geometría…" : "Preparing geometry…"}</p> : null}
                   <p>{locale === "es" ? "Usa los triángulos sobre el recuadro para alinear los extremos o el centro de cada eje." : "Use the triangles on the box to align the ends or center of each axis."}</p>
-                </div>
+                </div> : null}
               </div>
             </ToolbarSection>
           </div>
@@ -3282,8 +3289,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           operationOrigins={alignOpen ? [] : viewportOperationOrigins}
           alignmentActive={alignOpen}
           alignmentBusy={alignmentBusy}
-          alignmentTargets={alignmentTargets}
-          alignmentReference={alignmentReference}
+          alignmentTargets={alignmentDisplayTargets}
+          alignmentReference={alignmentDisplayReference}
           onAlignmentSelect={selectAlignmentReference}
           onAlign={alignSelection}
           sketchOverlays={viewportSketchOverlays}
@@ -3305,7 +3312,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           locale={locale}
           parameterHandlesVisible={!alignOpen && showParameterHandles}
           contextToolbarVisible={modelSelection.length > 0}
-          manipulatorControls={alignOpen ? null : <>
+          manipulatorControls={alignOpen ? <>
+            <button type="button" className={`educad-alignment-mode ${alignmentMode === "reference" ? "active" : ""}`} aria-pressed={alignmentMode === "reference"} onClick={() => setAlignmentMode("reference")}>{locale === "es" ? "Alinear a referencia" : "Align to reference"}</button>
+            <button type="button" className={`educad-alignment-mode ${alignmentMode === "group" ? "active" : ""}`} aria-pressed={alignmentMode === "group"} onClick={() => setAlignmentMode("group")}>{locale === "es" ? "Alinear al grupo" : "Align to group"}</button>
+          </> : <>
             <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
             <Tool label={t("camera.rotationTriad")} active={showRotationTriad} onClick={() => setShowRotationTriad((visible) => !visible)}><ToolbarRotationManipulatorIcon /></Tool>
             <Tool className="educad-parameter-handles-toggle" label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>
@@ -3563,7 +3573,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           editingOriginObjectId={originEditObjectId}
           failedFeatureId={build.failedFeatureId}
           onSelectionChange={setModelSelection}
-          alignmentReference={alignmentReference}
+          alignmentReference={alignmentDisplayReference}
           onAlignmentSelect={alignOpen ? selectAlignmentReference : undefined}
           onReorderSelection={reorderSelection}
           onRenameSelection={renameSelection}

@@ -10,6 +10,7 @@ export function createAlignmentOverlay(targets: AlignmentTarget[], reference: Al
   const pickMeshes: THREE.Mesh[] = [];
   const vector = (point: { x: number; y: number; z: number }) => new THREE.Vector3(point.x, point.y, point.z);
   for (const target of targets) {
+    if (target.boundsOnly) continue;
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", new THREE.BufferAttribute(target.mesh.positions, 3));
     geometry.setIndex(new THREE.BufferAttribute(target.mesh.indices, 1));
@@ -37,6 +38,7 @@ export function createAlignmentOverlay(targets: AlignmentTarget[], reference: Al
     group.add(fill, lines);
     const radius = Math.max(size.length() / 2 * 1.05, 0.1);
     for (const moving of targets) {
+      if (moving.boundsOnly) continue;
       if (sameAlignmentItem(moving, target)) continue;
       const start = vector(moving.min).add(vector(moving.max)).multiplyScalar(0.5);
       const outward = start.clone().sub(center);

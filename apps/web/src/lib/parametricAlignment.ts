@@ -4,6 +4,7 @@ export type AlignmentItem = { id: string; kind: "object" | "feature" };
 export type AlignmentTarget = AlignmentItem & {
   objectId: string;
   movable: boolean;
+  boundsOnly?: boolean;
   min: { x: number; y: number; z: number };
   max: { x: number; y: number; z: number };
   mesh: RenderMesh;
@@ -12,6 +13,17 @@ export type AlignmentTarget = AlignmentItem & {
 
 export function sameAlignmentItem(a: AlignmentItem, b: AlignmentItem) {
   return a.id === b.id && a.kind === b.kind;
+}
+
+export function alignmentGroupBounds(targets: AlignmentTarget[]): AlignmentTarget | null {
+  if (!targets.length) return null;
+  const min = { x: Infinity, y: Infinity, z: Infinity };
+  const max = { x: -Infinity, y: -Infinity, z: -Infinity };
+  for (const target of targets) for (const axis of ["x", "y", "z"] as const) {
+    min[axis] = Math.min(min[axis], target.min[axis]);
+    max[axis] = Math.max(max[axis], target.max[axis]);
+  }
+  return { id: "__alignment_group__", kind: "object", objectId: "__alignment_group__", movable: false, boundsOnly: true, min, max, mesh: targets[0].mesh };
 }
 
 // A translation preserves the operand mesh. Keep its buffers and move only its

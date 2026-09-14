@@ -29,10 +29,13 @@ export function positionAlignmentButtons(layer: HTMLDivElement, target: Alignmen
   // One strip per visible face. In an axial view use the remaining face rather
   // than placing controls on a plane that has collapsed to a line.
   const faces = ["z", "x", "y"] as const;
+  const visibleFaces = axes.map((axis, index) => Math.abs(view[faces[index]]) < 0.12
+    ? axes.filter(candidate => candidate !== axis).sort((a, b) => Math.abs(view[b]) - Math.abs(view[a]))[0]
+    : faces[index]);
   axes.forEach((axis, index) => {
     const axisFacesCamera = Math.abs(view[axis]) > 0.985;
-    let face: typeof axes[number] = faces[index];
-    if (Math.abs(view[face]) < 0.12) face = axes.filter(candidate => candidate !== axis).sort((a, b) => Math.abs(view[b]) - Math.abs(view[a]))[0];
+    const face = visibleFaces[index];
+    const sharesFace = axis !== centeredAxis && axes.some((other, otherIndex) => other !== axis && other !== centeredAxis && visibleFaces[otherIndex] === face);
     const tangent = axes.find(candidate => candidate !== axis && candidate !== face)!;
     const axisPixels = screenAxes[index].length();
     const tangentPixels = screenAxes[axes.indexOf(tangent)].length();
@@ -47,9 +50,9 @@ export function positionAlignmentButtons(layer: HTMLDivElement, target: Alignmen
       point[face] = view[face] >= 0 ? target.max[face] : target.min[face];
       point[tangent] = view[tangent] >= 0 ? target.max[tangent] - size * 0.65 : target.min[tangent] + size * 0.65;
       point[axis] = anchor === "min" ? target.min[axis] + size * 0.65 : anchor === "max" ? target.max[axis] - size * 0.65 : center[axis];
-      // In the axial layout both visible strips meet at one corner. Move each
+      // Strips sharing a visible face meet at one corner. Move each
       // corner tile one button width toward the center along its own axis.
-      if (centeredAxis && axis !== centeredAxis && anchor === (view[axis] >= 0 ? "max" : "min")) {
+      if (sharesFace && anchor === (view[axis] >= 0 ? "max" : "min")) {
         point[axis] += anchor === "min" ? size : -size;
       }
       const clipCenter = new THREE.Vector4(point.x, point.y, point.z, 1).applyMatrix4(matrix);

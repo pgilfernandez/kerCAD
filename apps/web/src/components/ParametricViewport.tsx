@@ -4243,7 +4243,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     </div> : null}
     <div ref={selectionBoxRef} className="parametric-selection-box" aria-hidden="true" />
     {showContextToolbar ? <div className="educad-viewport-context-toolbar" aria-label={locale === "es" ? "Herramientas de la selección" : "Selection tools"} onPointerDown={(event) => event.stopPropagation()}>
-      {manipulatorControls ? <div className="educad-context-toolbar-group" aria-label={locale === "es" ? "Manipuladores" : "Manipulators"}>{manipulatorControls}</div> : null}
+      {manipulatorControls ? <div className="educad-context-toolbar-group" aria-label={alignmentActive ? (locale === "es" ? "Modo de alineación" : "Alignment mode") : (locale === "es" ? "Manipuladores" : "Manipulators")}>{manipulatorControls}</div> : null}
       {showOperationModes ? <div className="educad-context-toolbar-group" aria-label={locale === "es" ? "Modo de la operación" : "Operation mode"}>
         {(["add", "cut", "intersect"] as const).map((mode) => {
           const activeMode = selection?.operationPreview?.mode === (mode === "cut" ? "hole" : mode === "intersect" ? "common" : "add");
