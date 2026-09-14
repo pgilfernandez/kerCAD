@@ -10,7 +10,7 @@ export function createAlignmentOverlay(targets: AlignmentTarget[], reference: Al
   const pickMeshes: THREE.Mesh[] = [];
   const vector = (point: { x: number; y: number; z: number }) => new THREE.Vector3(point.x, point.y, point.z);
   for (const target of targets) {
-    if (target.boundsOnly) continue;
+    if (target.boundsOnly || !target.mesh) continue;
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", new THREE.BufferAttribute(target.mesh.positions, 3));
     geometry.setIndex(new THREE.BufferAttribute(target.mesh.indices, 1));

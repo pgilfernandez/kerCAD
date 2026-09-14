@@ -1135,6 +1135,7 @@ export async function parametricAlignmentTargets(document: ParametricDocument, s
   };
   const selectedObjects = new Set(selection.filter(item => item.kind === "object").map(item => item.id));
   const targets: AlignmentTarget[] = [];
+  const pendingMeshes: Array<{ target: AlignmentTarget; world: RenderableShape }> = [];
   const referenceRecords = parametricReferenceRenderRecords(document);
   for (const item of selection) {
     const feature = item.kind === "feature" ? document.features.find(candidate => candidate.id === item.id) : undefined;
@@ -1171,8 +1172,16 @@ export async function parametricAlignmentTargets(document: ParametricDocument, s
     const min = { x: bounds.xMin, y: bounds.yMin, z: bounds.zMin };
     const max = { x: bounds.xMax, y: bounds.yMax, z: bounds.zMax };
     if (![...Object.values(min), ...Object.values(max)].every(Number.isFinite)) throw new Error("Invalid alignment bounding box.");
-    targets.push({ ...item, objectId: object.id, movable: !object.locked && (item.kind === "object" || feature?.kind === "primitive" || feature?.kind === "extrude" || feature?.kind === "sketch" && feature.purpose === "user"), min, max, mesh: meshShape(brep, world) });
-    onTarget?.(targets[targets.length - 1]);
+    const target: AlignmentTarget = { ...item, objectId: object.id, movable: !object.locked && (item.kind === "object" || feature?.kind === "primitive" || feature?.kind === "extrude" || feature?.kind === "sketch" && feature.purpose === "user"), min, max };
+    targets.push(target);
+    pendingMeshes.push({ target, world });
+    // Bounds are enough to draw the box and arrows. Publish all of them before
+    // tessellating any of the detailed picking meshes.
+    onTarget?.(target);
+  }
+  for (const { target, world } of pendingMeshes) {
+    target.mesh = meshShape(brep, world);
+    onTarget?.(target);
   }
   return targets;
 }

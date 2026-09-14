@@ -7,7 +7,7 @@ export type AlignmentTarget = AlignmentItem & {
   boundsOnly?: boolean;
   min: { x: number; y: number; z: number };
   max: { x: number; y: number; z: number };
-  mesh: RenderMesh;
+  mesh?: RenderMesh;
   meshOffset?: { x: number; y: number; z: number };
 };
 

@@ -397,7 +397,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       if (cancelled) return;
       if (event.data.error) { fail(event.data.error); return; }
       if (event.data.target) {
-        targets.push(event.data.target);
+        const index = targets.findIndex(target => sameAlignmentItem(target, event.data.target));
+        if (index < 0) targets.push(event.data.target);
+        else targets[index] = event.data.target;
         setAlignmentGeometry({ document, groupKey: alignmentGroupKey, targets: [...targets], complete: false });
         return;
       }
