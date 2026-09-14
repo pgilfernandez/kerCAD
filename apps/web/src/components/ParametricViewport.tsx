@@ -3592,7 +3592,9 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const controls = controlsRef.current;
     if (!group || !camera || !controls) return;
     const renderItems = objectRecords.length > 0
-      ? objectRecords.map((item) => ({ mesh: item.mesh, color: item.color, objectId: item.objectId as string | null, renderId: item.renderId, geometryFingerprint: item.geometryFingerprint, reference: item.reference }))
+      // Mesh records can outlive color edits because recoloring does not rebuild
+      // geometry. Always use the current document color when reusing a mesh.
+      ? objectRecords.map((item) => ({ mesh: item.mesh, color: objectColors?.[item.objectId] ?? item.color, objectId: item.objectId as string | null, renderId: item.renderId, geometryFingerprint: item.geometryFingerprint, reference: item.reference }))
       : mesh ? [{ mesh, color, objectId: null, renderId: "combined", geometryFingerprint: null, reference: undefined }] : [];
     const requestedKeys = new Set(renderItems.map((item) => item.objectId ?? "__combined"));
     let resourcesChanged = false;
@@ -3696,7 +3698,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       hasFittedRef.current = true;
     }
     invalidateRef.current();
-  }, [mesh, objectRecords, color, displayMode, projection, renderQuality, selectedObjectIds, shadingMode]);
+  }, [mesh, objectRecords, objectColors, color, displayMode, projection, renderQuality, selectedObjectIds, shadingMode]);
 
   useEffect(() => {
     const group = modelRef.current;
@@ -4225,8 +4227,12 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const showEdgeTreatmentControls = Boolean(edgeTreatmentHandle);
   const showFeatureControls = Boolean(floatingFeature && floatingFeature.kind !== "fillet");
   const showContextToolbar = contextToolbarVisible ?? (showOperationModes || showEdgeTreatmentControls || showFeatureControls);
+  const awaitingAlignmentBounds = alignmentActive && !alignmentTargets.some(target => target.id === alignmentReference?.id && target.kind === alignmentReference?.kind);
 
   return <div className="parametric-viewport" ref={hostRef} aria-label={locale === "es" ? "Vista 3D de la pieza" : "3D model view"}>
+    {awaitingAlignmentBounds ? <div className="educad-alignment-calculating" role="status" aria-live="polite">
+      {locale === "es" ? "Calculando…" : "Calculating…"}
+    </div> : null}
     {alignmentActive ? <div ref={alignmentButtonsRef} className="educad-alignment-face-buttons" role="group" aria-label={locale === "es" ? "Alinear con la referencia" : "Align with reference"}>
       {(["x", "y", "z"] as const).flatMap(axis => (["min", "center", "max"] as const).map(anchor => {
         const label = locale === "es"

@@ -48,7 +48,7 @@ import {
 import { cloneDocument, createDrawnSketchFeature, createEmptyDocument, createExtrudeFeature, createFaceExtrudeFeature, createFilletFeature, createLinearPatternFeature, createMirrorFeature, createObjectBooleanFeature, createPolarPatternFeature, createRevolveFeature, createShellFeature, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { assertValidParametricDependencies } from "@/lib/parametricDependencyGraph";
 import { assertValidParametricTopology, parametricTopologyEditingSourceFeature, parametricTopologySelectionsMatch, recoverParametricTopologyReferenceInRecords, transformParametricObjectTopologyHints } from "@/lib/parametricTopology";
-import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint } from "@/lib/parametricBuildState";
+import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint, parametricObjectGeometryFingerprint } from "@/lib/parametricBuildState";
 import { buildParametricStlMeshes, exportParametricStep, type StlTessellationQuality } from "@/lib/parametricKernel";
 import { ParametricBuildWorkerClient } from "@/lib/parametricBuildWorker";
 import { binaryStlFromRenderMeshes } from "@/lib/stlExport";
@@ -367,7 +367,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     if (group.length < 2) { setAlignOpen(false); return; }
     // The reference object is already tessellated for the viewport. Reuse it
     // immediately so its bbox and face buttons do not wait for the CAD worker.
-    const previewRecord = priority?.kind === "object" ? viewportObjectRecords.find(record => record.objectId === priority.id) : undefined;
+    // The viewport can still contain the previous build after an alignment or
+    // undo. Never promote that stale mesh into the new alignment cache.
+    const previewRecord = priority?.kind === "object" ? viewportObjectRecords.find(record => record.objectId === priority.id
+      && (record.reference || record.geometryFingerprint === parametricObjectGeometryFingerprint(document, priority.id))) : undefined;
     const previewObject = priority?.kind === "object" ? document.objects.find(object => object.id === priority.id) : undefined;
     const seededTargets: AlignmentTarget[] = previewRecord && previewObject && priority ? (() => {
       const min = { x: Infinity, y: Infinity, z: Infinity };
@@ -3313,8 +3316,14 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           parameterHandlesVisible={!alignOpen && showParameterHandles}
           contextToolbarVisible={modelSelection.length > 0}
           manipulatorControls={alignOpen ? <>
-            <button type="button" className={`educad-alignment-mode ${alignmentMode === "reference" ? "active" : ""}`} aria-pressed={alignmentMode === "reference"} onClick={() => setAlignmentMode("reference")}>{locale === "es" ? "Alinear a referencia" : "Align to reference"}</button>
-            <button type="button" className={`educad-alignment-mode ${alignmentMode === "group" ? "active" : ""}`} aria-pressed={alignmentMode === "group"} onClick={() => setAlignmentMode("group")}>{locale === "es" ? "Alinear al grupo" : "Align to group"}</button>
+            <button type="button" className={`educad-alignment-mode ${alignmentMode === "reference" ? "active" : ""}`} aria-label={locale === "es" ? "Alinear a referencia" : "Align to reference"} title={locale === "es" ? "Alinear a referencia" : "Align to reference"} aria-pressed={alignmentMode === "reference"} onClick={() => setAlignmentMode("reference")}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/assets/educad/alignment/mode-reference.svg" alt="" draggable={false} />
+            </button>
+            <button type="button" className={`educad-alignment-mode ${alignmentMode === "group" ? "active" : ""}`} aria-label={locale === "es" ? "Alinear al grupo" : "Align to group"} title={locale === "es" ? "Alinear al grupo" : "Align to group"} aria-pressed={alignmentMode === "group"} onClick={() => setAlignmentMode("group")}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/assets/educad/alignment/mode-group.svg" alt="" draggable={false} />
+            </button>
           </> : <>
             <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
             <Tool label={t("camera.rotationTriad")} active={showRotationTriad} onClick={() => setShowRotationTriad((visible) => !visible)}><ToolbarRotationManipulatorIcon /></Tool>

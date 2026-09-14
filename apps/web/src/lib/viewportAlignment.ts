@@ -36,6 +36,8 @@ export function createAlignmentOverlay(targets: AlignmentTarget[], reference: Al
     lines.position.copy(center);
     lines.renderOrder = 1001;
     group.add(fill, lines);
+    // Group alignment only needs its enclosing box and face controls.
+    if (target.boundsOnly) return { group, pickMeshes };
     const radius = Math.max(size.length() / 2 * 1.05, 0.1);
     for (const moving of targets) {
       if (moving.boundsOnly) continue;
