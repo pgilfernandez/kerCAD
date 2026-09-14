@@ -6,6 +6,7 @@ import { ChallengePlayer } from "@/components/ChallengePlayer";
 import type { EducadChallenge } from "@/lib/challengeLibrary";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent as ReactFocusEvent } from "react";
 import * as THREE from "three";
+import { sameAlignmentItem, translateAlignmentTargets, type AlignmentTarget } from "@/lib/parametricAlignment";
 import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyEdgePick, type TopologyFacePick, type ViewportDisplayMode, type ViewportShadingMode } from "@/components/ParametricViewport";
 import { SketchWorkspace, type SketchMeasurement, type SketchSceneReference, type SketchSelection, type SketchTool } from "@/components/SketchWorkspace";
@@ -83,7 +84,6 @@ import {
 import {
   addPrimitiveToSelection,
   addParametricObject,
-  alignParametricSelections,
   applyParametricSelectionWorldDelta,
   applyParametricSelectionWorkplaneRotation,
   rotateParametricObjectAroundLocalAxis,
@@ -336,6 +336,47 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const challengeCaptureStepRef = useRef<string | null>(null);
   const [originEditObjectId, setOriginEditObjectId] = useState<string | null>(null);
   const [alignOpen, setAlignOpen] = useState(false);
+  const [alignmentGeometry, setAlignmentGeometry] = useState<{ document: ParametricDocument; groupKey: string; targets: AlignmentTarget[] } | null>(null);
+  const alignmentGeometryRef = useRef(alignmentGeometry);
+  alignmentGeometryRef.current = alignmentGeometry;
+  const alignmentGroupKey = JSON.stringify(modelSelection.map(item => ({ id: item.id, kind: item.kind })).sort((a, b) => a.id.localeCompare(b.id) || a.kind.localeCompare(b.kind)));
+  const alignmentTargets = alignOpen && alignmentGeometry?.groupKey === alignmentGroupKey ? alignmentGeometry.targets : [];
+  const alignmentBusy = alignmentGeometry?.document !== document || alignmentGeometry?.groupKey !== alignmentGroupKey;
+  const alignmentReference = alignOpen ? modelSelection.at(-1) ?? null : null;
+  useEffect(() => {
+    if (!alignOpen) return;
+    if (alignmentGeometryRef.current?.document === document && alignmentGeometryRef.current.groupKey === alignmentGroupKey) return;
+    const group: ModelTreeSelection[] = JSON.parse(alignmentGroupKey);
+    if (group.length < 2) { setAlignOpen(false); return; }
+    const worker = new Worker(new URL("../workers/parametricAlignment.worker.ts", import.meta.url), { type: "module" });
+    const fail = (message: string) => {
+      setAlignOpen(false);
+      setNotice({ type: "error", text: message });
+      worker.terminate();
+    };
+    worker.onmessage = event => {
+      if (event.data.error) { fail(event.data.error); return; }
+      if (event.data.targets.length !== group.length) {
+        fail(locale === "es" ? "La alineación necesita geometría visible y activa para toda la selección." : "Alignment requires visible, active geometry for the entire selection.");
+        return;
+      }
+      setAlignmentGeometry({ document, groupKey: alignmentGroupKey, targets: event.data.targets });
+      worker.terminate();
+    };
+    worker.onerror = event => fail(event.message || "Could not prepare alignment.");
+    worker.onmessageerror = () => fail("Could not receive alignment geometry.");
+    worker.postMessage({ document, selection: group });
+    return () => worker.terminate();
+  }, [alignOpen, alignmentGroupKey, document, locale]);
+
+  const selectAlignmentReference = (node: ModelTreeSelection | null) => {
+    if (!node || !modelSelection.some(item => sameAlignmentItem(item, node))) {
+      setAlignOpen(false);
+      setModelSelection([]);
+      return;
+    }
+    setModelSelection(items => [...items.filter(item => !sameAlignmentItem(item, node)), node]);
+  };
   const [cameraOrientation, setCameraOrientation] = useState<CameraOrientation>({ azimuth: -Math.PI / 4, polar: 1.02 });
   const [clipboardId, setClipboardId] = useState<string | null>(null);
   const [sketchSession, setSketchSession] = useState<{ featureId: string | null; objectId: string | null; profile: SketchProfile; mode: "sketch" | "scribble"; revolveAxisFeatureId?: string } | null>(null);
@@ -369,7 +410,6 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       const target = event.target instanceof Element ? event.target : null;
       const popup = target?.closest<HTMLElement>("[data-educad-popup]")?.dataset.educadPopup ?? null;
       if (popup !== "shapes") setShapesOpen(false);
-      if (popup !== "align") setAlignOpen(false);
       if (popup !== "grid") {
         const activeElement = window.document.activeElement;
         if (activeElement instanceof HTMLInputElement && activeElement.closest('[data-educad-popup="grid"]')) activeElement.blur();
@@ -2249,6 +2289,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         return;
       }
       if (event.key === "Escape") {
+        setAlignOpen(false);
         setModelSelection([]);
         return;
       }
@@ -2354,14 +2395,24 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   };
 
   const alignSelection = (axis: ParametricAlignmentAxis, anchor: ParametricAlignmentAnchor) => {
-    let moved = 0;
-    let referenceId: string | null = null;
-    mutate((draft) => {
-      const result = alignParametricSelections(draft, modelSelection, axis, anchor);
-      moved = result.moved;
-      referenceId = result.referenceId;
+    if (alignmentBusy) return;
+    const referenceTarget = alignmentTargets.find(item => alignmentReference && sameAlignmentItem(item, alignmentReference));
+    if (!referenceTarget) return;
+    const referenceId = referenceTarget.id;
+    const value = (target: AlignmentTarget) => anchor === "center" ? (target.min[axis] + target.max[axis]) / 2 : target[anchor][axis];
+    const moves = alignmentTargets.flatMap(target => {
+      if (sameAlignmentItem(target, referenceTarget) || !target.movable) return [];
+      const distance = value(referenceTarget) - value(target);
+      return Math.abs(distance) < 1e-7 ? [] : [{ id: target.id, kind: target.kind, delta: { x: 0, y: 0, z: 0, [axis]: distance } }];
     });
-    setAlignOpen(false);
+    const moved = moves.length;
+    if (moved) {
+      const translated = translateAlignmentTargets(document, alignmentTargets, moves);
+      if (!mutate(draft => {
+        for (const move of moves) applyParametricSelectionWorldDelta(draft, move.id, move.kind, move.delta);
+      })) return;
+      if (translated) setAlignmentGeometry({ document: latestDocumentRef.current, groupKey: alignmentGroupKey, targets: translated });
+    }
     const reference = document.objects.find((object) => object.id === referenceId)
       ?? document.features.find((feature) => feature.id === referenceId);
     setNotice(moved > 0
@@ -2968,13 +3019,24 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
                 return object && !object.locked && (item.kind === "object" || feature && !feature.suppressed && (feature.kind === "primitive" || feature.kind === "extrude" || feature.kind === "sketch" && feature.purpose === "user"));
               }) && !kernelBusy && !droppingToWorkplane} onClick={() => void dropToWorkplane()}><ToolbarDropToWorkplaneIcon /></Tool>
               <div data-educad-popup="align" className="educad-align-tool">
-                <Tool label={t("toolbar.align")} enabled={modelSelection.length > 1} active={alignOpen} onClick={() => setAlignOpen((value) => !value)}><ToolbarAlignIcon /></Tool>
-                {alignOpen ? <div className="educad-align-popover" role="dialog" aria-label={t("align.title")}>
-                  <header><strong>{t("align.action")}</strong><span>{t("align.referenceLast")}</span></header>
-                  <div className="educad-align-grid"><div className="educad-align-head"><span /><strong>{t("align.minimum")}</strong><strong>{t("align.center")}</strong><strong>{t("align.maximum")}</strong></div>
-                    {(["x", "y", "z"] as const).map((axis) => <div className="educad-align-row" key={axis}><strong className={`axis-${axis}`}>{axis.toUpperCase()}</strong>{(["min", "center", "max"] as const).map((anchor) => <button key={anchor} onClick={() => alignSelection(axis, anchor)} aria-label={`${t("align.action")} ${axis.toUpperCase()} · ${anchor === "min" ? t("align.minimum") : anchor === "center" ? t("align.center") : t("align.maximum")}`}>{anchor === "min" ? "◧←" : anchor === "center" ? "◫" : "→◧"}</button>)}</div>)}
-                  </div>
-                </div> : null}
+                <Tool label={t("toolbar.align")} enabled={modelSelection.length > 1} active={alignOpen} onClick={() => {
+                  if (alignOpen) { setAlignOpen(false); return; }
+                  const objects = new Set(modelSelection.filter(item => item.kind === "object").map(item => item.id));
+                  const group = modelSelection.map(item => {
+                    const parent = item.kind === "feature" ? objectIdForFeature(document, item.id) : null;
+                    return parent && objects.has(parent) ? { id: parent, kind: "object" as const } : item;
+                  }).filter((item, index, all) => !all.slice(index + 1).some(other => sameAlignmentItem(item, other)));
+                  if (group.length < 2) return;
+                  setModelSelection(group);
+                  setAlignmentGeometry(null);
+                  setOriginEditObjectId(null);
+                  setAlignOpen(true);
+                }}><ToolbarAlignIcon /></Tool>
+                <div className="educad-align-popover" role="tooltip" aria-label={t("align.title")}>
+                  <header><strong>{t("align.action")}</strong><span>{locale === "es" ? "Azul: referencia · Verde: selección a mover. Pulsa una geometría o su nombre para cambiar la referencia." : "Blue: reference · Green: moving selection. Click geometry or its name to change the reference."}</span></header>
+                  {alignOpen && alignmentTargets.length === 0 ? <p role="status">{locale === "es" ? "Preparando geometría…" : "Preparing geometry…"}</p> : null}
+                  <p>{locale === "es" ? "Usa los triángulos sobre el recuadro para alinear los extremos o el centro de cada eje." : "Use the triangles on the box to align the ends or center of each axis."}</p>
+                </div>
               </div>
             </ToolbarSection>
           </div>
@@ -3178,10 +3240,16 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           mesh={viewportObjectRecords.length > 0 ? ((editingEdgeTreatmentId || editingFaceExtrudeId || editingShellId || editingRevolveId) && topologySelectionBuild ? topologySelectionBuild : build).mesh : null}
           objectRecords={viewportObjectRecords}
           objectColors={objectColors}
-          objectOrigins={viewportObjectOrigins}
-          operationOrigins={viewportOperationOrigins}
+          objectOrigins={alignOpen ? [] : viewportObjectOrigins}
+          operationOrigins={alignOpen ? [] : viewportOperationOrigins}
+          alignmentActive={alignOpen}
+          alignmentBusy={alignmentBusy}
+          alignmentTargets={alignmentTargets}
+          alignmentReference={alignmentReference}
+          onAlignmentSelect={selectAlignmentReference}
+          onAlign={alignSelection}
           sketchOverlays={viewportSketchOverlays}
-          editableOriginId={originEditObjectId}
+          editableOriginId={alignOpen ? null : originEditObjectId}
           selectedObjectOriginId={selectedOriginObjectId}
           selectedOperationOriginId={selectedOperationOriginId}
           selectedObjectIds={viewportSelectedObjectIds}
@@ -3197,14 +3265,14 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           shadingMode={shadingMode}
           displayUnit={displayUnit}
           locale={locale}
-          parameterHandlesVisible={showParameterHandles}
+          parameterHandlesVisible={!alignOpen && showParameterHandles}
           contextToolbarVisible={modelSelection.length > 0}
-          manipulatorControls={<>
+          manipulatorControls={alignOpen ? null : <>
             <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
             <Tool label={t("camera.rotationTriad")} active={showRotationTriad} onClick={() => setShowRotationTriad((visible) => !visible)}><ToolbarRotationManipulatorIcon /></Tool>
             <Tool className="educad-parameter-handles-toggle" label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>
           </>}
-          selection={originEditObjectId || placingWorkplane || editingMirrorPlaneId || selectingTopologyFaces || selectingTopologyEdges ? null : selectedBox}
+          selection={alignOpen || originEditObjectId || placingWorkplane || editingMirrorPlaneId || selectingTopologyFaces || selectingTopologyEdges ? null : selectedBox}
           snap={snapAmount}
           operationModesVisible={Boolean(selectedOperationId && hasPreviousSolidOperation(document, selectedOperationId))}
           onOperationModeChange={setSelectedOperationMode}
@@ -3226,21 +3294,26 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           onOperationRotate={(featureId, axis, deltaDegrees) => mutate((draft) => applyParametricSelectionWorkplaneRotation(draft, featureId, "feature", axis, deltaDegrees))}
           onCameraOrientation={setCameraOrientation}
           onObjectSelect={(objectId) => {
+            if (alignOpen) {
+              selectAlignmentReference(modelSelection.find(item => objectIdForFeature(document, item.id) === objectId) ?? null);
+              return;
+            }
             const object = document.objects.find((candidate) => candidate.id === objectId);
             if (!object || object.locked || !object.visible) return;
             const operation = lastOperationForObject(document, objectId);
             setModelSelection([{ id: operation?.id ?? objectId, kind: operation ? "feature" : "object" }]);
           }}
           onObjectsSelect={(objectIds) => {
+            if (alignOpen) { selectAlignmentReference(null); return; }
             const selected = objectIds.flatMap<ModelTreeSelection>((objectId) => {
               const object = document.objects.find((candidate) => candidate.id === objectId);
               if (!object || object.locked || !object.visible) return [];
-              const operation = lastOperationForObject(document, objectId);
-              return [{ id: operation?.id ?? objectId, kind: operation ? "feature" : "object" }];
+              return [{ id: objectId, kind: "object" }];
             });
             setModelSelection(selected);
           }}
           onEmptySelect={() => {
+            setAlignOpen(false);
             setModelSelection([]);
           }}
           workplaneFaceSelection={placingWorkplane || Boolean(editingMirrorPlaneId)}
@@ -3275,12 +3348,12 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           topologyMultiSelection={!pendingFaceExtrude && !pendingRevolve}
           historicalTopologySelections={editingEdgeTreatmentId || editingFaceExtrudeId || editingShellId || editingRevolveId || operationContext?.detailMesh ? [] : historicalTopologyReferences}
           historicalTopologyRecords={editingEdgeTreatmentId || editingFaceExtrudeId || editingShellId || editingRevolveId || operationContext?.detailMesh ? [] : historicalTopologyRecords}
-          faceExtrudeHandle={faceExtrudeHandle}
+          faceExtrudeHandle={alignOpen ? null : faceExtrudeHandle}
           onFaceExtrudeDistanceChange={(distance, operation) => {
             if (pendingFaceExtrude) setPendingFaceExtrude((current) => current ? { ...current, distance, operation } : current);
             else if (faceExtrudeHandle?.featureId) updateFeature(faceExtrudeHandle.featureId, (feature) => { if (feature.kind === "faceExtrude") { feature.distance = distance; feature.operation = operation; } });
           }}
-          edgeTreatmentHandle={edgeTreatmentHandle}
+          edgeTreatmentHandle={alignOpen ? null : edgeTreatmentHandle}
           onEdgeTreatmentRadiusChange={(radius) => {
             if (pendingEdgeTreatment) setEdgeTreatmentRadius(radius);
             else if (selectedEdgeTreatmentFeature) updateFeature(selectedEdgeTreatmentFeature.id, (feature) => { if (feature.kind === "fillet") feature.radius = radius; });
@@ -3292,7 +3365,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           onEdgeTreatmentAccept={pendingEdgeTreatment ? acceptEdgeTreatment : undefined}
           onEdgeTreatmentCancel={pendingEdgeTreatment ? cancelEdgeTreatment : undefined}
           edgeTreatmentCanAccept={selectedTopologyFaces.length + selectedTopologyEdges.length > 0}
-          revolveHandle={revolveHandle}
+          revolveHandle={alignOpen ? null : revolveHandle}
           onRevolveAngleDragStart={beginTransaction}
           onRevolveAnglePreview={(angle) => {
             if (selectedFeature?.kind !== "revolve") return;
@@ -3309,7 +3382,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             finishTransaction();
           }}
           onRevolveAngleCancel={cancelTransaction}
-          shellHandle={shellHandle}
+          shellHandle={alignOpen ? null : shellHandle}
           onShellThicknessDragStart={beginTransaction}
           onShellThicknessPreview={(thickness) => {
             if (selectedFeature?.kind !== "shell") return;
@@ -3326,7 +3399,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             finishTransaction();
           }}
           onShellThicknessCancel={cancelTransaction}
-          floatingFeature={viewportFloatingFeature}
+          floatingFeature={alignOpen ? null : viewportFloatingFeature}
           onEditSketch={beginSketch}
           onEditEdgeTreatmentSelection={(featureId) => {
             const feature = document.features.find((candidate) => candidate.id === featureId);
@@ -3452,6 +3525,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           editingOriginObjectId={originEditObjectId}
           failedFeatureId={build.failedFeatureId}
           onSelectionChange={setModelSelection}
+          alignmentReference={alignmentReference}
+          onAlignmentSelect={alignOpen ? selectAlignmentReference : undefined}
           onReorderSelection={reorderSelection}
           onRenameSelection={renameSelection}
           onResetFeature={resetSelectedFeature}

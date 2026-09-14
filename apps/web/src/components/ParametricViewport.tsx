@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as THREE from "three";
+import type { AlignmentItem, AlignmentTarget } from "@/lib/parametricAlignment";
+import { createAlignmentOverlay, disposeAlignmentOverlay } from "@/lib/viewportAlignment";
+import { positionAlignmentButtons } from "@/lib/viewportAlignmentButtons";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
@@ -226,6 +229,12 @@ type Props = {
   onOperationRotate?: (featureId: string, axis: { x: number; y: number; z: number }, deltaDegrees: number) => void;
   onCameraOrientation?: (orientation: CameraOrientation) => void;
   onObjectSelect?: (objectId: string) => void;
+  alignmentActive?: boolean;
+  alignmentBusy?: boolean;
+  alignmentTargets?: AlignmentTarget[];
+  alignmentReference?: AlignmentItem | null;
+  onAlignmentSelect?: (item: AlignmentItem | null) => void;
+  onAlign?: (axis: "x" | "y" | "z", anchor: "min" | "center" | "max") => void;
   onObjectsSelect?: (objectIds: string[]) => void;
   onEmptySelect?: () => void;
   workplaneFaceSelection?: boolean;
@@ -606,8 +615,15 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, shellHandle = null, onShellThicknessDragStart, onShellThicknessPreview, onShellThicknessChange, onShellThicknessCancel, floatingFeature = null, operationModesVisible = true, contextToolbarVisible, manipulatorControls, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = "Untitled design", onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions }: Props) {
+export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, shellHandle = null, onShellThicknessDragStart, onShellThicknessPreview, onShellThicknessChange, onShellThicknessCancel, floatingFeature = null, operationModesVisible = true, contextToolbarVisible, manipulatorControls, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = "Untitled design", onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions, alignmentActive = false, alignmentBusy = false, alignmentTargets = [], alignmentReference = null, onAlignmentSelect, onAlign }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const alignmentRef = useRef({ active: alignmentActive, targets: alignmentTargets, onSelect: onAlignmentSelect });
+  alignmentRef.current = { active: alignmentActive, targets: alignmentTargets, onSelect: onAlignmentSelect };
+  const alignmentOverlayRef = useRef<THREE.Group | null>(null);
+  const alignmentButtonsRef = useRef<HTMLDivElement | null>(null);
+  const alignmentReferenceRef = useRef(alignmentReference);
+  alignmentReferenceRef.current = alignmentReference;
+  const alignmentPickMeshesRef = useRef<THREE.Mesh[]>([]);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
   const dimensionXRef = useRef<HTMLInputElement>(null);
   const dimensionYRef = useRef<HTMLInputElement>(null);
@@ -1115,6 +1131,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       }
       updateYellowManipulatorScreenSizes();
       updateGroundOpacity();
+      if (alignmentButtonsRef.current) {
+        const reference = alignmentReferenceRef.current;
+        const target = alignmentRef.current.targets.find(item => reference && item.id === reference.id && item.kind === reference.kind);
+        positionAlignmentButtons(alignmentButtonsRef.current, target, modelGroup, camera, renderer.domElement.clientWidth, renderer.domElement.clientHeight);
+      }
       renderer.render(scene, camera);
       if (thumbnailRequestedRef.current && thumbnailCallbackRef.current) {
         thumbnailRequestedRef.current = false;
@@ -1124,6 +1145,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         // selected editing state. Hide every interactive overlay for the
         // capture only, then immediately restore the live viewport.
         const thumbnailOverlayCandidates: Array<THREE.Object3D | null> = [
+          alignmentOverlayRef.current,
           originLayerRef.current,
           selectionRootRef.current,
           faceExtrudeHandleRef.current,
@@ -2082,6 +2104,11 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       if (event.button !== 0) return;
       setMoveDimension(null);
       setPointer(event);
+      if (alignmentRef.current.active) {
+        pickCandidate = { pointerId: event.pointerId, pointerType: event.pointerType, x: event.clientX, y: event.clientY, dragIntent: "pending" };
+        renderer.domElement.setPointerCapture(event.pointerId);
+        return;
+      }
       const shellLayer = shellHandleRef.current;
       const shellHit = shellLayer ? raycaster.intersectObject(shellLayer, true).find((hit) => hit.object.userData.shellThicknessTarget) : null;
       if (shellLayer && shellHit) {
@@ -2740,8 +2767,25 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           return;
         }
         setPointer(event);
-        const bodies = modelGroup.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh && typeof child.userData.objectId === "string" && child.userData.editorPickable !== false);
+        const bodies = modelGroup.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh && typeof child.userData.objectId === "string" && (alignmentRef.current.active || child.userData.editorPickable !== false));
         const hit = raycaster.intersectObjects(bodies, false)[0];
+        if (alignmentRef.current.active) {
+          const alignment = alignmentRef.current;
+          // A click while geometry is loading must still cancel on empty space
+          // or an outside object, but preserve members of the current group.
+          if (!alignment.targets.length) {
+            if (typeof hit?.object.userData.objectId === "string") objectSelectRef.current?.(hit.object.userData.objectId);
+            else alignment.onSelect?.(null);
+            return;
+          }
+          modelGroup.updateMatrixWorld(true);
+          const operandHit = raycaster.intersectObjects(alignmentPickMeshesRef.current, false)[0];
+          const outsideHit = raycaster.intersectObjects(bodies.filter(body => !alignment.targets.some(target => target.objectId === body.userData.objectId)), false)[0];
+          if (outsideHit && (!operandHit || outsideHit.distance < operandHit.distance - 1e-5)) alignment.onSelect?.(null);
+          else if (operandHit) alignment.onSelect?.(operandHit.object.userData.alignmentItem as AlignmentItem);
+          else alignment.onSelect?.(null);
+          return;
+        }
         const objectId = hit?.object.userData.objectId;
         if (typeof objectId === "string") objectSelectRef.current?.(objectId);
         else emptySelectRef.current?.();
@@ -3069,6 +3113,22 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
       invalidateRef.current = () => undefined;
     };
   }, [displayUnit, locale, renderQuality, shadingMode]);
+
+  useEffect(() => {
+    const model = modelRef.current;
+    if (!model || !alignmentActive) return;
+    const { group, pickMeshes } = createAlignmentOverlay(alignmentTargets, alignmentReference);
+    model.add(group);
+    alignmentOverlayRef.current = group;
+    alignmentPickMeshesRef.current = pickMeshes;
+    invalidateRef.current();
+    return () => {
+      disposeAlignmentOverlay(group);
+      alignmentOverlayRef.current = null;
+      alignmentPickMeshesRef.current = [];
+      invalidateRef.current();
+    };
+  }, [alignmentActive, alignmentTargets, alignmentReference, displayUnit, locale, renderQuality, shadingMode]);
 
   useEffect(() => {
     projectionChangeRef.current?.(projection);
@@ -4165,6 +4225,20 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const showContextToolbar = contextToolbarVisible ?? (showOperationModes || showEdgeTreatmentControls || showFeatureControls);
 
   return <div className="parametric-viewport" ref={hostRef} aria-label={locale === "es" ? "Vista 3D de la pieza" : "3D model view"}>
+    {alignmentActive ? <div ref={alignmentButtonsRef} className="educad-alignment-face-buttons" role="group" aria-label={locale === "es" ? "Alinear con la referencia" : "Align with reference"}>
+      {(["x", "y", "z"] as const).flatMap(axis => (["min", "center", "max"] as const).map(anchor => {
+        const label = locale === "es"
+          ? `Alinear ${axis.toUpperCase()}: ${anchor === "min" ? "mínimo" : anchor === "center" ? "centro" : "máximo"}`
+          : `Align ${axis.toUpperCase()}: ${anchor === "min" ? "minimum" : anchor === "center" ? "center" : "maximum"}`;
+        return <button key={`${axis}-${anchor}`} type="button" data-alignment-axis={axis} data-alignment-anchor={anchor} title={label} aria-label={label} aria-disabled={alignmentBusy || !alignmentTargets.length}
+          onPointerDown={event => event.stopPropagation()} onDoubleClick={event => event.stopPropagation()}
+          onClick={event => { event.stopPropagation(); if (!alignmentBusy && alignmentTargets.length) onAlign?.(axis, anchor); }}>
+          {/* SVG assets remain editable outside the code. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`/assets/educad/alignment/${axis}-${anchor}.svg`} alt="" draggable={false} />
+        </button>;
+      }))}
+    </div> : null}
     <div ref={selectionBoxRef} className="parametric-selection-box" aria-hidden="true" />
     {showContextToolbar ? <div className="educad-viewport-context-toolbar" aria-label={locale === "es" ? "Herramientas de la selección" : "Selection tools"} onPointerDown={(event) => event.stopPropagation()}>
       {manipulatorControls ? <div className="educad-context-toolbar-group" aria-label={locale === "es" ? "Manipuladores" : "Manipulators"}>{manipulatorControls}</div> : null}

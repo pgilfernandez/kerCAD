@@ -1,4 +1,6 @@
 import { loadBrepWithOcct, type Brep, type BrepSolid } from "@/lib/brepKernel";
+import type { AlignmentItem, AlignmentTarget } from "@/lib/parametricAlignment";
+import { parametricReferenceRenderRecords } from "@/lib/parametricReferenceImport";
 import type { Edge, Face } from "brepjs";
 import { parametricObjectFeaturePrefixFingerprint, parametricObjectGeometryFingerprint } from "@/lib/parametricBuildState";
 import { topologicallySortedParametricFeatures } from "@/lib/parametricDependencyGraph";
@@ -1120,6 +1122,52 @@ export async function exportParametricStep(document: ParametricDocument): Promis
 }
 
 /** Support distance of the actual CAD solid, measured in the active plane frame. */
+export async function parametricAlignmentTargets(document: ParametricDocument, selection: AlignmentItem[]): Promise<AlignmentTarget[]> {
+  const brep = await loadBrepWithOcct();
+  const result = await buildParametricModel(document);
+  if (result.failedFeatureId || result.warning) throw new Error(result.warning ?? "The model could not be rebuilt.");
+  const selectedObjects = new Set(selection.filter(item => item.kind === "object").map(item => item.id));
+  const targets: AlignmentTarget[] = [];
+  const referenceRecords = parametricReferenceRenderRecords(document);
+  for (const item of selection) {
+    const feature = item.kind === "feature" ? document.features.find(candidate => candidate.id === item.id) : undefined;
+    if (feature && selectedObjects.has(feature.objectId ?? "")) continue;
+    const object = document.objects.find(candidate => candidate.id === (item.kind === "object" ? item.id : feature?.objectId));
+    if (!object || !object.visible || feature?.suppressed) continue;
+    const reference = item.kind === "object" ? referenceRecords.find(record => record.objectId === item.id) : undefined;
+    if (reference) {
+      const min = { x: Infinity, y: Infinity, z: Infinity };
+      const max = { x: -Infinity, y: -Infinity, z: -Infinity };
+      const positions = reference.mesh.positions;
+      for (let index = 0; index < positions.length; index += 3) {
+        for (const [offset, axis] of (["x", "y", "z"] as const).entries()) {
+          min[axis] = Math.min(min[axis], positions[index + offset]);
+          max[axis] = Math.max(max[axis], positions[index + offset]);
+        }
+      }
+      if (![...Object.values(min), ...Object.values(max)].every(Number.isFinite)) throw new Error("Invalid alignment bounding box.");
+      targets.push({ ...item, objectId: object.id, movable: !object.locked, min, max, mesh: reference.mesh });
+      continue;
+    }
+    let solid: RenderableShape | undefined;
+    if (item.kind === "object") solid = cachedObjectSolids.get(object.id)?.solid;
+    else if (feature?.kind === "primitive") solid = solidFromPrimitive(brep, feature);
+    else if (feature?.kind === "sketch") solid = brep.compound(facesFromSketch(brep, feature));
+    else if (feature?.kind === "extrude") {
+      const sketch = document.features.find((candidate): candidate is SketchFeature => candidate.id === feature.sketchId && candidate.kind === "sketch");
+      if (sketch) solid = solidFromSketch(brep, sketch, feature);
+    } else if (feature) solid = cachedFeatureSolids.get(feature.id)?.solid;
+    if (!solid) throw new Error(`${feature?.name ?? object.name}: no geometry is available for alignment.`);
+    const world = applyObjectTransform(brep, solid, object);
+    const bounds = brep.getBounds(world);
+    const min = { x: bounds.xMin, y: bounds.yMin, z: bounds.zMin };
+    const max = { x: bounds.xMax, y: bounds.yMax, z: bounds.zMax };
+    if (![...Object.values(min), ...Object.values(max)].every(Number.isFinite)) throw new Error("Invalid alignment bounding box.");
+    targets.push({ ...item, objectId: object.id, movable: !object.locked && (item.kind === "object" || feature?.kind === "primitive" || feature?.kind === "extrude" || feature?.kind === "sketch" && feature.purpose === "user"), min, max, mesh: meshShape(brep, world) });
+  }
+  return targets;
+}
+
 export async function parametricDropToWorkplaneDeltas(document: ParametricDocument, selection: Array<{ id: string; kind: "object" | "feature" }>) {
   const brep = await loadBrepWithOcct();
   const selectedObjects = new Set(selection.filter(item => item.kind === "object").map(item => item.id));

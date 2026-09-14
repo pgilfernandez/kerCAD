@@ -1174,6 +1174,10 @@ button {
 
 .educad-operation-row:hover { background: #eef5f8; }
 .educad-operation-row.selected { color: #234b64; background: #e3f4fa; border-color: #9bcfdf; }
+.educad-object-row.selected.alignment-reference,
+.educad-operation-row.selected.alignment-reference { color: #194784; background: #dbeafe; border-color: #60a5fa; }
+.educad-object-row.selected.alignment-moving,
+.educad-operation-row.selected.alignment-moving { color: #205c39; background: #dcfce7; border-color: #86c99c; }
 .educad-operation-row.operation-add { border-left: 3px solid #4b9d65; }
 .educad-operation-row.operation-hole { border-left: 3px solid #d35b55; }
 .educad-operation-row.operation-common { border-left: 3px solid #7b63b5; }
@@ -1554,11 +1558,23 @@ button {
 @keyframes educad-background-spin { to { transform: rotate(360deg); } }
 
 .educad-align-tool { position: relative; display: flex; }
+.educad-align-tool > .educad-align-popover { display: none; pointer-events: none; }
+.educad-align-tool > button:hover + .educad-align-popover { display: block; }
+.educad-alignment-face-buttons { position: absolute; inset: 0; z-index: 35; pointer-events: none; overflow: hidden; visibility: hidden; }
+.educad-alignment-face-buttons button { position: absolute; top: 0; left: 0; width: 32px; height: 32px; padding: 0; border: 2px solid #72a5d0; border-radius: 1px; background: #f8fcff; pointer-events: auto; transform-origin: 0 0; cursor: pointer; touch-action: none; }
+.educad-alignment-face-buttons button img { display: block; width: 100%; height: 100%; pointer-events: none; }
+.educad-alignment-face-buttons button:hover { background: #dbeafe; border-color: #2563eb; }
+.educad-alignment-face-buttons button:focus-visible { outline: 3px solid #163fa4; outline-offset: 2px; }
+.educad-alignment-face-buttons button:active { background: #bfdbfe; }
+.educad-alignment-face-buttons button:disabled { pointer-events: none; }
+.educad-alignment-face-buttons button[aria-disabled="true"] { cursor: progress; }
+.educad-align-popover p { margin: 8px 3px 2px; font-size: 11px; line-height: 1.4; }
 .educad-align-popover { position: absolute; top: calc(100% + 9px); right: 0; z-index: 90; width: 252px; padding: 9px; color: #385267; background: rgba(255, 255, 255, 0.98); border: 1px solid #c8d8e2; border-radius: 8px; box-shadow: 0 12px 30px rgba(31, 56, 72, 0.2); }
-.educad-align-popover header { display: flex; align-items: baseline; justify-content: space-between; padding: 2px 3px 8px; border-bottom: 1px solid #e3ebef; }
+.educad-align-popover header { display: flex; flex-direction: column; gap: 6px; padding: 2px 3px 8px; border-bottom: 1px solid #e3ebef; }
 .educad-align-popover header strong { font-size: 12px; }
-.educad-align-popover header span { color: #7b8f9e; font-size: 7px; font-weight: 750; }
-.educad-align-grid { padding-top: 7px; }
+.educad-align-popover header span { color: #526b7e; font-size: 11px; line-height: 1.4; }
+.educad-align-grid { min-width: 0; margin: 0; padding: 7px 0 0; border: 0; }
+.educad-align-grid:disabled { opacity: 0.5; }
 .educad-align-head,
 .educad-align-row { display: grid; grid-template-columns: 28px repeat(3, 1fr); align-items: center; gap: 5px; }
 .educad-align-head { min-height: 20px; color: #7d909d; text-align: center; font-size: 7px; }

@@ -84,6 +84,8 @@ type Props = {
   displayUnit?: ParametricDisplayUnit;
   locale?: EducadLocale;
   onSelectionChange: (selection: ModelTreeSelection[]) => void;
+  alignmentReference?: ModelTreeSelection | null;
+  onAlignmentSelect?: (node: ModelTreeSelection) => void;
   onReorderSelection: (direction: "up" | "down") => void;
   onRenameSelection: (name: string) => void;
   onResetFeature: (featureId: string) => void;
@@ -126,6 +128,8 @@ export function ParametricModelSidebar({
   displayUnit = "mm",
   locale = "es",
   onSelectionChange,
+  alignmentReference,
+  onAlignmentSelect,
   onReorderSelection,
   onRenameSelection,
   onResetFeature,
@@ -189,8 +193,14 @@ export function ParametricModelSidebar({
     ...(object.object.expanded ? object.operations.map((feature) => ({ id: feature.id, kind: "feature" as const })) : []),
   ]);
   const selectNode = (node: ModelTreeSelection, event: MouseEvent) => {
+    if (onAlignmentSelect) { onAlignmentSelect(node); return; }
     onSelectionChange(updateParametricTreeSelection(selection, node, visibleNodes, rangeAnchorRef.current ?? primarySelection, { range: event.shiftKey, toggle: event.ctrlKey || event.metaKey }));
     if (!event.shiftKey) rangeAnchorRef.current = node;
+  };
+
+  const alignmentClass = (id: string, kind: ModelTreeSelection["kind"]) => {
+    if (!alignmentReference || !selection.some(item => item.id === id && item.kind === kind)) return "";
+    return alignmentReference.id === id && alignmentReference.kind === kind ? "alignment-reference" : "alignment-moving";
   };
 
   const selectedFeature = selection.length === 1 && selectionKind === "feature"
@@ -236,7 +246,7 @@ export function ParametricModelSidebar({
               const objectSelected = selection.some((candidate) => candidate.kind === "object" && candidate.id === object.id);
               return (
                 <div className="educad-object-node" key={object.id}>
-                  <div className={`educad-object-row ${objectSelected ? "selected" : ""} ${object.object.visible ? "" : "hidden"} ${object.object.locked ? "locked" : ""}`} style={{ "--object-color": object.object.color } as CSSProperties}>
+                  <div className={`educad-object-row ${alignmentClass(object.id, "object")} ${objectSelected ? "selected" : ""} ${object.object.visible ? "" : "hidden"} ${object.object.locked ? "locked" : ""}`} style={{ "--object-color": object.object.color } as CSSProperties}>
                     <button
                       className="educad-tree-toggle"
                       aria-label={`${isExpanded ? t("model.collapse") : t("model.expand")} ${object.name}`}
@@ -257,7 +267,7 @@ export function ParametricModelSidebar({
                   {isExpanded ? (
                     <div className="educad-operation-list" role="group" aria-label={`${t("model.operationsFor")} ${object.name}`}>
                       {object.operations.map((feature) => (
-                        <div key={feature.id} aria-invalid={feature.id === failedFeatureId || undefined} className={`educad-operation-row ${selection.some((candidate) => candidate.kind === "feature" && candidate.id === feature.id) ? "selected" : ""} ${feature.id === failedFeatureId ? "rebuild-failed" : ""} ${feature.suppressed ? "suppressed" : ""} ${feature.kind === "sketch" && !feature.visible ? "hidden" : ""} ${operationClass(feature)}`}>
+                        <div key={feature.id} aria-invalid={feature.id === failedFeatureId || undefined} className={`educad-operation-row ${alignmentClass(feature.id, "feature")} ${selection.some((candidate) => candidate.kind === "feature" && candidate.id === feature.id) ? "selected" : ""} ${feature.id === failedFeatureId ? "rebuild-failed" : ""} ${feature.suppressed ? "suppressed" : ""} ${feature.kind === "sketch" && !feature.visible ? "hidden" : ""} ${operationClass(feature)}`}>
                           <button className="educad-operation-select" title={feature.name} aria-pressed={selection.some((candidate) => candidate.kind === "feature" && candidate.id === feature.id)} onClick={(event) => selectNode({ id: feature.id, kind: "feature" }, event)}>
                             <span className="educad-tree-branch" aria-hidden="true" />
                             <FeatureIcon document={document} feature={feature} />
