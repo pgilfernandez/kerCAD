@@ -620,6 +620,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const alignmentRef = useRef({ active: alignmentActive, targets: alignmentTargets, onSelect: onAlignmentSelect });
   alignmentRef.current = { active: alignmentActive, targets: alignmentTargets, onSelect: onAlignmentSelect };
   const alignmentOverlayRef = useRef<THREE.Group | null>(null);
+  const alignmentBusyRef = useRef(alignmentBusy);
+  alignmentBusyRef.current = alignmentBusy;
   const alignmentButtonsRef = useRef<HTMLDivElement | null>(null);
   const alignmentReferenceRef = useRef(alignmentReference);
   alignmentReferenceRef.current = alignmentReference;
@@ -2773,7 +2775,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           const alignment = alignmentRef.current;
           // A click while geometry is loading must still cancel on empty space
           // or an outside object, but preserve members of the current group.
-          if (!alignment.targets.length) {
+          if (!alignment.targets.length || alignmentBusyRef.current) {
             if (typeof hit?.object.userData.objectId === "string") objectSelectRef.current?.(hit.object.userData.objectId);
             else alignment.onSelect?.(null);
             return;

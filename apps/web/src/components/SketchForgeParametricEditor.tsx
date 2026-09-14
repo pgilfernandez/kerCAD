@@ -336,37 +336,59 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const challengeCaptureStepRef = useRef<string | null>(null);
   const [originEditObjectId, setOriginEditObjectId] = useState<string | null>(null);
   const [alignOpen, setAlignOpen] = useState(false);
-  const [alignmentGeometry, setAlignmentGeometry] = useState<{ document: ParametricDocument; groupKey: string; targets: AlignmentTarget[] } | null>(null);
+  const [alignmentGeometry, setAlignmentGeometry] = useState<{ document: ParametricDocument; groupKey: string; targets: AlignmentTarget[]; complete?: boolean } | null>(null);
   const alignmentGeometryRef = useRef(alignmentGeometry);
   alignmentGeometryRef.current = alignmentGeometry;
+  const alignmentHistoryCache = useRef(new WeakMap<ParametricDocument, { document: ParametricDocument; groupKey: string; targets: AlignmentTarget[]; complete?: boolean }>());
+  if (alignmentGeometry && alignmentGeometry.complete !== false) alignmentHistoryCache.current.set(alignmentGeometry.document, alignmentGeometry);
   const alignmentGroupKey = JSON.stringify(modelSelection.map(item => ({ id: item.id, kind: item.kind })).sort((a, b) => a.id.localeCompare(b.id) || a.kind.localeCompare(b.kind)));
-  const alignmentTargets = alignOpen && alignmentGeometry?.groupKey === alignmentGroupKey ? alignmentGeometry.targets : [];
-  const alignmentBusy = alignmentGeometry?.document !== document || alignmentGeometry?.groupKey !== alignmentGroupKey;
+  const currentAlignmentGeometry = alignmentGeometry?.document === document ? alignmentGeometry : alignmentHistoryCache.current.get(document);
+  const alignmentTargets = alignOpen && currentAlignmentGeometry?.groupKey === alignmentGroupKey ? currentAlignmentGeometry.targets : [];
+  const alignmentBusy = !currentAlignmentGeometry || currentAlignmentGeometry.groupKey !== alignmentGroupKey || currentAlignmentGeometry.complete === false;
   const alignmentReference = alignOpen ? modelSelection.at(-1) ?? null : null;
+  const alignmentPriorityRef = useRef(alignmentReference);
+  alignmentPriorityRef.current = alignmentReference;
   useEffect(() => {
     if (!alignOpen) return;
-    if (alignmentGeometryRef.current?.document === document && alignmentGeometryRef.current.groupKey === alignmentGroupKey) return;
+    if (alignmentGeometryRef.current?.document === document && alignmentGeometryRef.current.groupKey === alignmentGroupKey && alignmentGeometryRef.current.complete !== false) return;
+    const cached = alignmentHistoryCache.current.get(document);
+    if (cached?.groupKey === alignmentGroupKey) {
+      setAlignmentGeometry(cached);
+      return;
+    }
     const group: ModelTreeSelection[] = JSON.parse(alignmentGroupKey);
+    const priority = alignmentPriorityRef.current;
+    if (priority) group.sort((a, b) => Number(sameAlignmentItem(b, priority)) - Number(sameAlignmentItem(a, priority)));
     if (group.length < 2) { setAlignOpen(false); return; }
     const worker = new Worker(new URL("../workers/parametricAlignment.worker.ts", import.meta.url), { type: "module" });
+    let cancelled = false;
     const fail = (message: string) => {
+      if (cancelled) return;
       setAlignOpen(false);
       setNotice({ type: "error", text: message });
       worker.terminate();
     };
+    const targets: AlignmentTarget[] = [];
     worker.onmessage = event => {
+      if (cancelled) return;
       if (event.data.error) { fail(event.data.error); return; }
-      if (event.data.targets.length !== group.length) {
+      if (event.data.target) {
+        targets.push(event.data.target);
+        setAlignmentGeometry({ document, groupKey: alignmentGroupKey, targets: [...targets], complete: false });
+        return;
+      }
+      if (!event.data.complete) return;
+      if (targets.length !== group.length) {
         fail(locale === "es" ? "La alineación necesita geometría visible y activa para toda la selección." : "Alignment requires visible, active geometry for the entire selection.");
         return;
       }
-      setAlignmentGeometry({ document, groupKey: alignmentGroupKey, targets: event.data.targets });
+      setAlignmentGeometry({ document, groupKey: alignmentGroupKey, targets, complete: true });
       worker.terminate();
     };
     worker.onerror = event => fail(event.message || "Could not prepare alignment.");
     worker.onmessageerror = () => fail("Could not receive alignment geometry.");
     worker.postMessage({ document, selection: group });
-    return () => worker.terminate();
+    return () => { cancelled = true; worker.terminate(); };
   }, [alignOpen, alignmentGroupKey, document, locale]);
 
   const selectAlignmentReference = (node: ModelTreeSelection | null) => {

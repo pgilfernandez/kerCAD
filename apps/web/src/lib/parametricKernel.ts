@@ -428,7 +428,8 @@ function objectRenderRecords(brep: Brep, document: ParametricDocument, worldSoli
     });
 }
 
-function buildRenderOutput(brep: Brep, document: ParametricDocument, solids: Map<string, AnySolid>, objects: Map<string, ParametricObject>, reusedObjectIds: Set<string>, incrementalRender: boolean, meshOptions?: MeshShapeOptions, includeCombinedMesh = true) {
+function buildRenderOutput(brep: Brep, document: ParametricDocument, solids: Map<string, AnySolid>, objects: Map<string, ParametricObject>, reusedObjectIds: Set<string>, incrementalRender: boolean, meshOptions?: MeshShapeOptions, includeCombinedMesh = true, renderMeshes = true) {
+  if (!renderMeshes) return { mesh: null, objectRecords: [] };
   const worldSolids = worldObjectSolids(brep, solids, objects);
   const combined = incrementalRender || !includeCombinedMesh ? null : combinedObjectShape(brep, worldSolids);
   return {
@@ -718,7 +719,7 @@ function applyObjectBooleanFeature(brep: Brep, current: AnySolid, source: AnySol
   return refinedBooleanSolid(brep, brep.intersect(current, source));
 }
 
-async function buildParametricModelInternal(document: ParametricDocument, contextFeatureId: string | null, stopAtContext: boolean, incrementalRender = false, meshOptions?: MeshShapeOptions, includeCombinedMesh = true): Promise<BuildResult> {
+async function buildParametricModelInternal(document: ParametricDocument, contextFeatureId: string | null, stopAtContext: boolean, incrementalRender = false, meshOptions?: MeshShapeOptions, includeCombinedMesh = true, renderMeshes = true): Promise<BuildResult> {
   const brep = await loadBrepWithOcct();
   const sketches = new Map(document.features.filter((feature): feature is SketchFeature => feature.kind === "sketch" && !feature.suppressed).map((feature) => [feature.id, feature]));
   const objects = new Map(document.objects.map((object) => [object.id, object]));
@@ -950,7 +951,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
       }
     }
   } catch (error) {
-    return { ...buildRenderOutput(brep, document, solids, objects, reusableObjectIds, incrementalRender, meshOptions, includeCombinedMesh), operationContext, completedFeatureIds, failedFeatureId: activeFeatureId, warning: errorMessage(error) };
+    return { ...buildRenderOutput(brep, document, solids, objects, reusableObjectIds, incrementalRender, meshOptions, includeCombinedMesh, renderMeshes), operationContext, completedFeatureIds, failedFeatureId: activeFeatureId, warning: errorMessage(error) };
   }
 
   if (reuseObjectCache) {
@@ -975,7 +976,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
     }
   }
 
-  return { ...buildRenderOutput(brep, document, solids, objects, reusableObjectIds, incrementalRender, meshOptions, includeCombinedMesh), operationContext, completedFeatureIds, failedFeatureId: null, warning: null };
+  return { ...buildRenderOutput(brep, document, solids, objects, reusableObjectIds, incrementalRender, meshOptions, includeCombinedMesh, renderMeshes), operationContext, completedFeatureIds, failedFeatureId: null, warning: null };
 }
 
 export function buildParametricModel(document: ParametricDocument, incrementalRender = false): Promise<BuildResult> {
@@ -1122,10 +1123,16 @@ export async function exportParametricStep(document: ParametricDocument): Promis
 }
 
 /** Support distance of the actual CAD solid, measured in the active plane frame. */
-export async function parametricAlignmentTargets(document: ParametricDocument, selection: AlignmentItem[]): Promise<AlignmentTarget[]> {
+export async function parametricAlignmentTargets(document: ParametricDocument, selection: AlignmentItem[], onTarget?: (target: AlignmentTarget) => void): Promise<AlignmentTarget[]> {
   const brep = await loadBrepWithOcct();
-  const result = await buildParametricModel(document);
-  if (result.failedFeatureId || result.warning) throw new Error(result.warning ?? "The model could not be rebuilt.");
+  let modelBuilt = false;
+  const ensureModel = async () => {
+    if (modelBuilt) return;
+    // Build the solid history only; tessellate selected operands below, once.
+    const result = await buildParametricModelInternal(document, null, false, false, undefined, false, false);
+    if (result.failedFeatureId || result.warning) throw new Error(result.warning ?? "The model could not be rebuilt.");
+    modelBuilt = true;
+  };
   const selectedObjects = new Set(selection.filter(item => item.kind === "object").map(item => item.id));
   const targets: AlignmentTarget[] = [];
   const referenceRecords = parametricReferenceRenderRecords(document);
@@ -1147,16 +1154,17 @@ export async function parametricAlignmentTargets(document: ParametricDocument, s
       }
       if (![...Object.values(min), ...Object.values(max)].every(Number.isFinite)) throw new Error("Invalid alignment bounding box.");
       targets.push({ ...item, objectId: object.id, movable: !object.locked, min, max, mesh: reference.mesh });
+      onTarget?.(targets[targets.length - 1]);
       continue;
     }
     let solid: RenderableShape | undefined;
-    if (item.kind === "object") solid = cachedObjectSolids.get(object.id)?.solid;
+    if (item.kind === "object") { await ensureModel(); solid = cachedObjectSolids.get(object.id)?.solid; }
     else if (feature?.kind === "primitive") solid = solidFromPrimitive(brep, feature);
     else if (feature?.kind === "sketch") solid = brep.compound(facesFromSketch(brep, feature));
     else if (feature?.kind === "extrude") {
       const sketch = document.features.find((candidate): candidate is SketchFeature => candidate.id === feature.sketchId && candidate.kind === "sketch");
       if (sketch) solid = solidFromSketch(brep, sketch, feature);
-    } else if (feature) solid = cachedFeatureSolids.get(feature.id)?.solid;
+    } else if (feature) { await ensureModel(); solid = cachedFeatureSolids.get(feature.id)?.solid; }
     if (!solid) throw new Error(`${feature?.name ?? object.name}: no geometry is available for alignment.`);
     const world = applyObjectTransform(brep, solid, object);
     const bounds = brep.getBounds(world);
@@ -1164,6 +1172,7 @@ export async function parametricAlignmentTargets(document: ParametricDocument, s
     const max = { x: bounds.xMax, y: bounds.yMax, z: bounds.zMax };
     if (![...Object.values(min), ...Object.values(max)].every(Number.isFinite)) throw new Error("Invalid alignment bounding box.");
     targets.push({ ...item, objectId: object.id, movable: !object.locked && (item.kind === "object" || feature?.kind === "primitive" || feature?.kind === "extrude" || feature?.kind === "sketch" && feature.purpose === "user"), min, max, mesh: meshShape(brep, world) });
+    onTarget?.(targets[targets.length - 1]);
   }
   return targets;
 }
