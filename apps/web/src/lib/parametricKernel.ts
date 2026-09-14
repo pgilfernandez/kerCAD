@@ -1118,3 +1118,42 @@ export async function exportParametricStep(document: ParametricDocument): Promis
   if (!result) throw new Error("There is no solid to export.");
   return brep.unwrap(brep.exportSTEP(result));
 }
+
+/** Support distance of the actual CAD solid, measured in the active plane frame. */
+export async function parametricDropToWorkplaneDeltas(document: ParametricDocument, selection: Array<{ id: string; kind: "object" | "feature" }>) {
+  const brep = await loadBrepWithOcct();
+  const selectedObjects = new Set(selection.filter(item => item.kind === "object").map(item => item.id));
+  if (selectedObjects.size) {
+    const result = await buildParametricModel(document);
+    if (result.failedFeatureId || result.warning) throw new Error(result.warning ?? "The model could not be rebuilt.");
+  }
+  const { origin, xAxis, yAxis, normal } = document.workplane;
+  const dot = (a: typeof normal, b: typeof normal) => a.x * b.x + a.y * b.y + a.z * b.z;
+  const deltas: Array<{ id: string; kind: "object" | "feature"; delta: { x: number; y: number; z: number } }> = [];
+  for (const item of selection) {
+    const feature = item.kind === "feature" ? document.features.find(candidate => candidate.id === item.id) : undefined;
+    if (feature && selectedObjects.has(feature.objectId ?? "")) continue;
+    const object = document.objects.find(candidate => candidate.id === (item.kind === "object" ? item.id : feature?.objectId));
+    if (!object || object.locked) continue;
+    let solid: RenderableShape | undefined;
+    if (item.kind === "object") solid = cachedObjectSolids.get(object.id)?.solid;
+    else if (feature && !feature.suppressed) {
+      if (feature.kind === "primitive") solid = solidFromPrimitive(brep, feature);
+      else if (feature.kind === "sketch" && feature.purpose === "user") solid = brep.compound(facesFromSketch(brep, feature));
+      else if (feature.kind === "extrude") {
+        const sketch = document.features.find((candidate): candidate is SketchFeature => candidate.id === feature.sketchId && candidate.kind === "sketch");
+        if (sketch) solid = solidFromSketch(brep, sketch, feature);
+      }
+    }
+    if (!solid) throw new Error(`${feature?.name ?? object.name}: no independently movable solid is available.`);
+    const world = applyObjectTransform(brep, solid, object);
+    const inPlane = brep.unwrap(brep.applyMatrix(world, {
+      linear: [xAxis.x, xAxis.y, xAxis.z, yAxis.x, yAxis.y, yAxis.z, normal.x, normal.y, normal.z],
+      translation: [-dot(xAxis, origin), -dot(yAxis, origin), -dot(normal, origin)],
+    }));
+    const distance = brep.getBounds(inPlane).zMin;
+    if (!Number.isFinite(distance)) throw new Error("The selected geometry has no valid bounding box.");
+    if (Math.abs(distance) > 1e-7) deltas.push({ ...item, delta: { x: -distance * normal.x, y: -distance * normal.y, z: -distance * normal.z } });
+  }
+  return deltas;
+}

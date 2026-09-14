@@ -10024,3 +10024,4 @@ html[data-theme="dark"] .grid-settings {
 @media (max-width: 620px) { .educad-shared-thumbnail { width: 100%; height: 160px; } }
 
 .toolbar-modeling-groups { display: flex; align-items: stretch; flex: 0 0 auto; }
+.educad-operation-mode-buttons button:disabled { opacity: .35; cursor: not-allowed; }

@@ -63,6 +63,7 @@ import { assertImportByteLimit } from "@/lib/parametricImportLimits";
 import { displayLengthToMillimeters, displayUnitLabel, millimetersToDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
 import { educadTranslate, normalizeEducadLocale, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
 import { parametricRebuildSuggestion } from "@/lib/parametricRebuildDiagnostics";
+import { hasPreviousSolidOperation } from "@/lib/parametricOperationModes";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import { arcSketchPointId, circleSketchPointId, SKETCH_REFERENCE_AXES, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, sketchReferenceAxis, solveSketchConstraints } from "@/lib/sketchConstraints";
 import { analyzeSketchConstraints } from "@/lib/sketchConstraintAnalysis";
@@ -2272,6 +2273,29 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [deleteCurrentSelection, document.workplane, mutate, selectedId, selectedObjectId, selectionKind, sketchSelection, sketchSession, snapAmount]);
 
+  const [droppingToWorkplane, setDroppingToWorkplane] = useState(false);
+  const dropWorkerRef = useRef<Worker | null>(null);
+  useEffect(() => () => dropWorkerRef.current?.terminate(), []);
+  const dropToWorkplane = async () => {
+    if (droppingToWorkplane || kernelBusy || !modelSelection.length) return;
+    const source = latestDocumentRef.current;
+    setDroppingToWorkplane(true);
+    const worker = new Worker(new URL("../workers/parametricDrop.worker.ts", import.meta.url), { type: "module" });
+    dropWorkerRef.current = worker;
+    try {
+      const deltas = await new Promise<Array<{ id: string; kind: "object" | "feature"; delta: { x: number; y: number; z: number } }>>((resolve, reject) => {
+        worker.onmessage = event => event.data.error ? reject(new Error(event.data.error)) : resolve(event.data.deltas);
+        worker.onerror = event => reject(new Error(event.message || "Could not calculate the bounding box."));
+        worker.onmessageerror = () => reject(new Error("Could not receive the bounding box."));
+        worker.postMessage({ document: structuredClone(source), selection: modelSelection });
+      });
+      if (latestDocumentRef.current !== source) throw new Error(locale === "es" ? "El diseño ha cambiado. Vuelve a pulsar apoyar en el plano." : "The design changed. Run drop to workplane again.");
+      if (deltas.length && !mutate(draft => { for (const item of deltas) applyParametricSelectionWorldDelta(draft, item.id, item.kind, item.delta); })) return;
+      setNotice({ type: "ok", text: locale === "es" ? "Selección apoyada en el plano de trabajo." : "Selection placed on the workplane." });
+    } catch (error) { setNotice({ type: "error", text: error instanceof Error ? error.message : "Could not drop the selection." }); }
+    finally { worker.terminate(); dropWorkerRef.current = null; setDroppingToWorkplane(false); }
+  };
+
   const updateSelected = (patch: Partial<WorkplaneShape>) => {
     if (!selectedObjectId) return;
     mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, patch));
@@ -2286,6 +2310,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
 
   const setSelectedOperationMode = (operation: "add" | "cut" | "intersect") => {
     if (!selectedOperationId || !selectedOperation || selectedOperation.operation === operation) return;
+    if (operation !== "add" && !hasPreviousSolidOperation(document, selectedOperationId)) return;
     updateFeature(selectedOperationId, (feature) => {
       if (feature.kind === "extrude" || feature.kind === "primitive") feature.operation = operation;
     });
@@ -2937,7 +2962,11 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <ToolbarSection label={t("toolbar.helpers")} className="toolbar-helpers-section">
               <Tool label={hasActiveWorkplane ? t("toolbar.resetWorkplane") : placingWorkplane ? t("toolbar.cancelWorkplane") : t("toolbar.placeWorkplane")} active={placingWorkplane || hasActiveWorkplane} onClick={toggleWorkplanePlacement}>{hasActiveWorkplane ? <ToolbarResetWorkplaneIcon /> : <ToolbarWorkplaneIcon />}</Tool>
               <Tool label={t("toolbar.snapGrid")} enabled={Boolean(selectedShape && document.workplane.snapToGrid)} onClick={() => selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: Math.round((selectedShape?.x ?? 0) / snapAmount) * snapAmount, z: Math.round((selectedShape?.z ?? 0) / snapAmount) * snapAmount }))}><ToolbarSnapGridIcon /></Tool>
-              <Tool label={t("toolbar.dropToWorkplane")} enabled={Boolean(selectedShape)} onClick={() => updateSelected({ elevation: 0 })}><ToolbarDropToWorkplaneIcon /></Tool>
+              <Tool label={t("toolbar.dropToWorkplane")} enabled={modelSelection.some(item => {
+                const feature = item.kind === "feature" ? document.features.find(candidate => candidate.id === item.id) : undefined;
+                const object = document.objects.find(candidate => candidate.id === (item.kind === "object" ? item.id : feature?.objectId));
+                return object && !object.locked && (item.kind === "object" || feature && !feature.suppressed && (feature.kind === "primitive" || feature.kind === "extrude" || feature.kind === "sketch" && feature.purpose === "user"));
+              }) && !kernelBusy && !droppingToWorkplane} onClick={() => void dropToWorkplane()}><ToolbarDropToWorkplaneIcon /></Tool>
               <div data-educad-popup="align" className="educad-align-tool">
                 <Tool label={t("toolbar.align")} enabled={modelSelection.length > 1} active={alignOpen} onClick={() => setAlignOpen((value) => !value)}><ToolbarAlignIcon /></Tool>
                 {alignOpen ? <div className="educad-align-popover" role="dialog" aria-label={t("align.title")}>
@@ -3177,6 +3206,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           </>}
           selection={originEditObjectId || placingWorkplane || editingMirrorPlaneId || selectingTopologyFaces || selectingTopologyEdges ? null : selectedBox}
           snap={snapAmount}
+          operationModesVisible={Boolean(selectedOperationId && hasPreviousSolidOperation(document, selectedOperationId))}
           onOperationModeChange={setSelectedOperationMode}
           onShapeParameterChange={(parameter, value) => {
             if (!selectedOperationId) return;
