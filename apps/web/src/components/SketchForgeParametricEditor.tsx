@@ -360,6 +360,22 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     const priority = alignmentPriorityRef.current;
     if (priority) group.sort((a, b) => Number(sameAlignmentItem(b, priority)) - Number(sameAlignmentItem(a, priority)));
     if (group.length < 2) { setAlignOpen(false); return; }
+    // The reference object is already tessellated for the viewport. Reuse it
+    // immediately so its bbox and face buttons do not wait for the CAD worker.
+    const previewRecord = priority?.kind === "object" ? viewportObjectRecords.find(record => record.objectId === priority.id) : undefined;
+    const previewObject = priority?.kind === "object" ? document.objects.find(object => object.id === priority.id) : undefined;
+    const seededTargets: AlignmentTarget[] = previewRecord && previewObject && priority ? (() => {
+      const min = { x: Infinity, y: Infinity, z: Infinity };
+      const max = { x: -Infinity, y: -Infinity, z: -Infinity };
+      const positions = previewRecord.mesh.positions;
+      for (let index = 0; index < positions.length; index += 3) {
+        min.x = Math.min(min.x, positions[index]); min.y = Math.min(min.y, positions[index + 1]); min.z = Math.min(min.z, positions[index + 2]);
+        max.x = Math.max(max.x, positions[index]); max.y = Math.max(max.y, positions[index + 1]); max.z = Math.max(max.z, positions[index + 2]);
+      }
+      return Number.isFinite(min.x) ? [{ ...priority, objectId: previewObject.id, movable: !previewObject.locked, min, max, mesh: previewRecord.mesh }] : [];
+    })() : [];
+    const pendingGroup = seededTargets.length ? group.filter(item => !sameAlignmentItem(item, seededTargets[0])) : group;
+    if (seededTargets.length) setAlignmentGeometry({ document, groupKey: alignmentGroupKey, targets: seededTargets, complete: false });
     const worker = new Worker(new URL("../workers/parametricAlignment.worker.ts", import.meta.url), { type: "module" });
     let cancelled = false;
     const fail = (message: string) => {
@@ -368,7 +384,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       setNotice({ type: "error", text: message });
       worker.terminate();
     };
-    const targets: AlignmentTarget[] = [];
+    const targets: AlignmentTarget[] = [...seededTargets];
     worker.onmessage = event => {
       if (cancelled) return;
       if (event.data.error) { fail(event.data.error); return; }
@@ -387,7 +403,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     };
     worker.onerror = event => fail(event.message || "Could not prepare alignment.");
     worker.onmessageerror = () => fail("Could not receive alignment geometry.");
-    worker.postMessage({ document, selection: group });
+    worker.postMessage({ document, selection: pendingGroup });
     return () => { cancelled = true; worker.terminate(); };
   }, [alignOpen, alignmentGroupKey, document, locale]);
 
