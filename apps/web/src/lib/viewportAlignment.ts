@@ -38,35 +38,38 @@ export function createAlignmentOverlay(targets: AlignmentTarget[], reference: Al
     group.add(fill, lines);
     // Group alignment only needs its enclosing box and face controls.
     if (target.boundsOnly) return { group, pickMeshes };
-    const radius = Math.max(size.length() / 2 * 1.05, 0.1);
+    const shaftPositions: number[] = [];
+    const headMatrices: THREE.Matrix4[] = [];
+    const maxHead = Math.max(size.length() * 0.126, 0.8);
+    const up = new THREE.Vector3(0, 1, 0);
     for (const moving of targets) {
       if (moving.boundsOnly) continue;
       if (sameAlignmentItem(moving, target)) continue;
       const start = vector(moving.min).add(vector(moving.max)).multiplyScalar(0.5);
-      const outward = start.clone().sub(center);
-      if (outward.lengthSq() < 1e-12) outward.set(1, 0, 0);
-      const end = center.clone().addScaledVector(outward.normalize(), radius);
-      const direction = end.clone().sub(start);
+      const direction = center.clone().sub(start);
       const length = direction.length();
       if (length < 1e-7) continue;
-      const head = Math.min(length * 0.4, Math.max(radius * 0.24, 0.8));
-      const arrow = new THREE.ArrowHelper(direction.normalize(), start, length, 0x22a06b, head, head * 0.55);
-      arrow.traverse(child => {
-        if (!(child instanceof THREE.Line || child instanceof THREE.Mesh)) return;
-        // ArrowHelper shares its geometry between instances; own our copy for disposal.
-        child.geometry = child.geometry.clone();
-        const materials = Array.isArray(child.material) ? child.material : [child.material];
-        materials.forEach(material => { material.depthTest = false; material.depthWrite = false; material.transparent = true; });
-        child.renderOrder = 1002;
-      });
-      arrow.line.visible = false;
+      direction.divideScalar(length);
+      const end = start.clone().lerp(center, 0.5);
+      const head = Math.min(length * 0.5 * 0.4, maxHead);
       const shaftEnd = end.clone().addScaledVector(direction, -head);
-      const shaft = new LineSegments2(
-        new LineSegmentsGeometry().setPositions([...start.toArray(), ...shaftEnd.toArray()]),
+      shaftPositions.push(...start.toArray(), ...shaftEnd.toArray());
+      headMatrices.push(new THREE.Matrix4().compose(end, new THREE.Quaternion().setFromUnitVectors(up, direction), new THREE.Vector3(head * 0.55, head, head * 0.55)));
+    }
+    if (headMatrices.length) {
+      // Two draw calls for the entire selection: all 4px shafts together and
+      // instances of one small cone for the heads. No per-arrow helper objects.
+      const shafts = new LineSegments2(
+        new LineSegmentsGeometry().setPositions(shaftPositions),
         new LineMaterial({ color: 0x22a06b, linewidth: 4, depthTest: false, depthWrite: false, transparent: true }),
       );
-      shaft.renderOrder = 1002;
-      group.add(arrow, shaft);
+      const headGeometry = new THREE.ConeGeometry(0.5, 1, 8).translate(0, -0.5, 0);
+      const heads = new THREE.InstancedMesh(headGeometry, new THREE.MeshBasicMaterial({ color: 0x22a06b, depthTest: false, depthWrite: false, transparent: true }), headMatrices.length);
+      headMatrices.forEach((matrix, index) => heads.setMatrixAt(index, matrix));
+      heads.instanceMatrix.needsUpdate = true;
+      shafts.renderOrder = 1002;
+      heads.renderOrder = 1003;
+      group.add(shafts, heads);
     }
   }
   return { group, pickMeshes };
@@ -75,6 +78,7 @@ export function createAlignmentOverlay(targets: AlignmentTarget[], reference: Al
 export function disposeAlignmentOverlay(group: THREE.Group) {
   group.traverse(child => {
     if (!(child instanceof THREE.Mesh || child instanceof THREE.Line)) return;
+    if (child instanceof THREE.InstancedMesh) child.dispose();
     child.geometry.dispose();
     const materials = Array.isArray(child.material) ? child.material : [child.material];
     materials.forEach(material => material.dispose());

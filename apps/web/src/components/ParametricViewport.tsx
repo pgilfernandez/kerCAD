@@ -4227,12 +4227,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const showEdgeTreatmentControls = Boolean(edgeTreatmentHandle);
   const showFeatureControls = Boolean(floatingFeature && floatingFeature.kind !== "fillet");
   const showContextToolbar = contextToolbarVisible ?? (showOperationModes || showEdgeTreatmentControls || showFeatureControls);
-  const awaitingAlignmentBounds = alignmentActive && !alignmentTargets.some(target => target.id === alignmentReference?.id && target.kind === alignmentReference?.kind);
 
   return <div className="parametric-viewport" ref={hostRef} aria-label={locale === "es" ? "Vista 3D de la pieza" : "3D model view"}>
-    {alignmentActive && (alignmentBusy || awaitingAlignmentBounds) ? <div className="educad-alignment-calculating" role="status" aria-live="polite">
-      {locale === "es" ? "Calculando…" : "Calculating…"}
-    </div> : null}
     {alignmentActive ? <div ref={alignmentButtonsRef} className="educad-alignment-face-buttons" role="group" aria-label={locale === "es" ? "Alinear con la referencia" : "Align with reference"}>
       {(["x", "y", "z"] as const).flatMap(axis => (["min", "center", "max"] as const).map(anchor => {
         const label = locale === "es"

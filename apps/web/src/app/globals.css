@@ -1559,7 +1559,6 @@ button {
 @keyframes educad-background-spin { to { transform: rotate(360deg); } }
 
 .educad-align-tool { position: relative; display: flex; }
-.educad-alignment-calculating { position: absolute; top: 74px; left: 50%; transform: translateX(-50%); z-index: 36; padding: 8px 14px; border: 1px solid #b9d5ec; border-radius: 8px; background: rgba(248, 252, 255, 0.96); color: #245887; font-size: 13px; font-weight: 600; box-shadow: 0 3px 12px rgba(31, 56, 72, 0.12); pointer-events: none; }
 .educad-align-tool > .educad-align-popover { display: none; pointer-events: none; }
 .educad-align-tool > button:hover + .educad-align-popover { display: block; }
 .educad-alignment-face-buttons { position: absolute; inset: 0; z-index: 35; pointer-events: none; overflow: hidden; visibility: hidden; }

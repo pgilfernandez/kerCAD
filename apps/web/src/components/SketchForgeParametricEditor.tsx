@@ -1002,10 +1002,13 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   }, [build.mesh, document.features, document.objects, document.workplane, sketchSession?.featureId, sketchSession?.objectId]);
   const snapAmount = document.workplane.snapToGrid ? document.workplane.snapSpacing : 0.01;
   const viewportOverlayRightOffset = sketchSession ? 12 : modelSidebarMode === "normal" ? 302 : modelSidebarMode === "simplified" ? 80 : 12;
+  const alignmentCalculating = alignOpen && (alignmentBusy || !alignmentDisplayTargets.some(target => alignmentDisplayReference && sameAlignmentItem(target, alignmentDisplayReference)));
   const backgroundProcessLabel = stlExporting
     ? `${t("dialog.exporting")} STL…`
     : exporting
     ? t("status.exportingStep")
+    : alignmentCalculating
+      ? (locale === "es" ? "Calculando…" : "Calculating…")
     : kernelBusy
       ? t("status.regenerating")
       : topologyPreviewBusy || topologySelectionBusy || contextBusy
@@ -3111,7 +3114,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
 
       <section className={`educad-workplane-stage ${sketchSession ? "sketch-active" : ""} ${challengeEditor ? "challenge-authoring" : ""} ${(challenge || challengeEditor) && challengeOpen && !sketchSession ? `challenge-docked-${challengeDock}` : ""}`}>
         {showFps ? <FpsCounter /> : null}
-        {backgroundProcessLabel ? <BackgroundProcessIndicator label={backgroundProcessLabel} rightOffset={viewportOverlayRightOffset} regenerating={!stlExporting && !exporting && kernelBusy} /> : null}
+        {backgroundProcessLabel ? <BackgroundProcessIndicator label={backgroundProcessLabel} rightOffset={viewportOverlayRightOffset} regenerating={!stlExporting && !exporting && !alignmentCalculating && kernelBusy} /> : null}
         {sketchSession ? <SketchWorkspace
           locale={locale}
           profile={sketchSession.profile}
