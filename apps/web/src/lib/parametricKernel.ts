@@ -983,10 +983,11 @@ export function buildParametricModel(document: ParametricDocument, incrementalRe
   return buildParametricModelInternal(document, null, false, incrementalRender);
 }
 
-export async function buildParametricStlMeshes(document: ParametricDocument, quality: StlTessellationQuality): Promise<RenderMesh[]> {
+export async function buildParametricStlMeshes(document: ParametricDocument, quality: StlTessellationQuality, objectIds?: readonly string[]): Promise<RenderMesh[]> {
   const result = await buildParametricModelInternal(document, null, false, false, STL_TESSELLATION[quality], false);
   if (result.failedFeatureId || result.warning) throw new Error(result.warning ?? "The model could not be tessellated for STL export.");
-  return result.objectRecords.map((record) => record.mesh);
+  const selected = objectIds === undefined ? null : new Set(objectIds);
+  return result.objectRecords.filter((record) => !selected || selected.has(record.objectId)).map((record) => record.mesh);
 }
 
 export async function buildParametricOperationContext(document: ParametricDocument, featureId: string): Promise<BuildResult["operationContext"]> {
@@ -1051,7 +1052,7 @@ function meshShape(brep: Brep, shape: RenderableShape, omittedEdgeDirections: Di
   };
 }
 
-export async function exportParametricStep(document: ParametricDocument): Promise<Blob> {
+export async function exportParametricStep(document: ParametricDocument, objectIds?: readonly string[]): Promise<Blob> {
   const brep = await loadBrepWithOcct();
   const sketches = new Map<string, SketchFeature>();
   const objects = new Map(document.objects.map((object) => [object.id, object]));
@@ -1117,7 +1118,11 @@ export async function exportParametricStep(document: ParametricDocument): Promis
     solids.set(objectId, current);
     if (!operationStates.has(feature.id)) operationStates.set(feature.id, { before: previousSolid, after: current });
   }
-  const result = combinedObjectShape(brep, worldObjectSolids(brep, solids, objects));
+  // Resolve the complete history before selecting output bodies, preserving
+  // cross-object boolean dependencies and each body's world transform.
+  const selected = objectIds === undefined ? null : new Set(objectIds);
+  const outputSolids = selected ? new Map([...solids].filter(([id]) => selected.has(id))) : solids;
+  const result = combinedObjectShape(brep, worldObjectSolids(brep, outputSolids, objects));
   if (!result) throw new Error("There is no solid to export.");
   return brep.unwrap(brep.exportSTEP(result));
 }

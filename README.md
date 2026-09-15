@@ -144,7 +144,7 @@ Los identificadores completos, nombres, estados de supresión y metadatos se inc
 
 - Docker: configuración adaptada a eduCAD; pendientes construcción real, comprobación desde la LAN, restauración y validación amd64/arm64. El Compose precompilado requiere una imagen propia comprobada por el administrador.
 - macOS: existen herramientas heredadas de empaquetado, pero todavía no se ofrece una aplicación o DMG eduCAD validado y autocontenido.
-- Exportación de selección: pendiente permitir exportar una pieza elegida a STEP/STL; `.educad` conserva el proyecto completo.
+- Exportación de selección: en Exportar, elige «Proyecto completo / Selección» para STEP/STL. Las operaciones seleccionadas representan el cuerpo final de su objeto, sin duplicarlo si seleccionas varias operaciones del mismo. Se conservan las posiciones y dependencias del historial; `.educad` siempre guarda el proyecto completo. Implementación pendiente de validación funcional.
 - La exportación estática y la integración MCP heredada no son vías soportadas del editor paramétrico actual.
 
 No se incluyen cuentas, calificaciones, entregas centralizadas ni colaboración en directo. El aula virtual del centro puede seguir gestionando las entregas y la evaluación.

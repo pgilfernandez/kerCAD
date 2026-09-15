@@ -1532,6 +1532,9 @@ button {
 .educad-stl-export-option:hover { border-color: #67b8d4; box-shadow: 0 4px 14px rgba(28, 70, 91, 0.12); }
 .educad-export-options .educad-stl-export-option > button { width: 100%; border: 0; border-radius: 0; box-shadow: none; }
 .educad-stl-quality { display: grid; gap: 5px; padding: 7px 12px 10px; color: #657b8c; border-top: 1px solid #e2e9ee; font-size: 9px; font-weight: 700; }
+.educad-export-scope { display: grid; gap: 7px; padding: 12px; color: #31566d; font-size: 12px; }
+.educad-export-scope select { width: 100%; padding: 8px; border: 1px solid #cbdce6; border-radius: 6px; background: white; color: inherit; }
+.educad-export-scope small { color: #657b8c; line-height: 1.4; }
 .educad-stl-quality > span:first-child { display: flex; justify-content: space-between; gap: 8px; }
 .educad-stl-quality > span strong { color: #31566d; font-size: 9px; }
 .educad-stl-quality input { width: 100%; margin: 0; accent-color: #159bc5; cursor: pointer; }
