@@ -3064,10 +3064,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               <Tool label={selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? t("toolbar.extrudeSketch") : t("toolbar.extrudeFace")} active={Boolean(pendingFaceExtrude)} onClick={() => selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? addExtrudeFromSketch(selectedFeature) : beginFaceExtrude("add")}><ToolbarExtrudeIcon /></Tool>
               <Tool label={selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? t("toolbar.revolveSketch") : t("toolbar.revolve")} active={Boolean(pendingRevolve)} onClick={() => selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? addRevolveFromSketch(selectedFeature) : beginRevolve()}><ToolbarRevolveIcon /></Tool>
               <Tool label={t("toolbar.shell")} active={Boolean(pendingShell)} onClick={() => beginShell()}><ToolbarShellIcon /></Tool>
+              <Tool label={t("toolbar.objectBoolean")} enabled={Boolean(selectedObjectId && document.objects.some((object) => object.id !== selectedObjectId))} onClick={addObjectBooleanOperation}><ToolbarObjectBooleanIcon /></Tool>
               <Tool label={t("toolbar.mirror")} enabled={Boolean(selectedObjectId)} onClick={addMirrorOperation}><ToolbarMirrorIcon /></Tool>
               <Tool label={t("toolbar.linearPattern")} enabled={Boolean(selectedObjectId)} onClick={addLinearPatternOperation}><ToolbarLinearPatternIcon /></Tool>
               <Tool label={t("toolbar.polarPattern")} enabled={Boolean(selectedObjectId)} onClick={addPolarPatternOperation}><ToolbarPolarPatternIcon /></Tool>
-              <Tool label={t("toolbar.objectBoolean")} enabled={Boolean(selectedObjectId && document.objects.some((object) => object.id !== selectedObjectId))} onClick={addObjectBooleanOperation}><ToolbarObjectBooleanIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label={t("toolbar.helpers")} className="toolbar-helpers-section">
               <Tool label={hasActiveWorkplane ? t("toolbar.resetWorkplane") : placingWorkplane ? t("toolbar.cancelWorkplane") : t("toolbar.placeWorkplane")} active={placingWorkplane || hasActiveWorkplane} onClick={toggleWorkplanePlacement}>{hasActiveWorkplane ? <ToolbarResetWorkplaneIcon /> : <ToolbarWorkplaneIcon />}</Tool>

@@ -1163,12 +1163,16 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         thumbnailOverlays.forEach((item) => { item.visible = false; });
         renderer.render(scene, camera);
         const source = renderer.domElement;
-        const width = captureOptions?.width ? Math.max(1, Math.round(captureOptions.width)) : Math.min(480, Math.max(1, source.width));
+        const width = captureOptions?.width ? Math.max(1, Math.round(captureOptions.width)) : Math.min(1200, Math.max(1, source.width));
         const height = captureOptions?.height ? Math.max(1, Math.round(captureOptions.height)) : Math.max(1, Math.round(width * source.height / Math.max(1, source.width)));
         const thumbnail = document.createElement("canvas");
         thumbnail.width = width;
         thumbnail.height = height;
         const context = thumbnail.getContext("2d");
+        if (context) {
+          context.imageSmoothingEnabled = true;
+          context.imageSmoothingQuality = "high";
+        }
         if (context && captureOptions?.height) {
           const sourceAspect = source.width / Math.max(1, source.height);
           const targetAspect = width / height;
@@ -1178,7 +1182,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         } else context?.drawImage(source, 0, 0, width, height);
         thumbnailOverlays.forEach((item, index) => { item.visible = overlayVisibility[index]; });
         renderer.render(scene, camera);
-        thumbnailCallbackRef.current(thumbnail.toDataURL("image/jpeg", captureOptions?.quality ?? 0.78));
+        thumbnailCallbackRef.current(thumbnail.toDataURL("image/jpeg", captureOptions?.quality ?? 0.9));
       }
       performanceStats.drawCalls = renderer.info.render.calls;
       performanceStats.triangles = renderer.info.render.triangles;
