@@ -1048,7 +1048,14 @@ button {
 
 .educad-model-sidebar.simplified .educad-model-tree { max-height: none; flex: 1; border-bottom: 0; }
 .educad-model-sidebar.simplified .educad-object-list { padding: 7px 5px 12px; }
-.educad-model-sidebar.simplified .educad-object-row { grid-template-columns: 1fr; }
+.educad-model-sidebar.simplified .educad-object-node { border: 1px solid #c7cdd2; border-radius: 6px; }
+.educad-model-sidebar.simplified .educad-object-node:has(> .educad-object-row.selected) { border-color: #8ec9dc; }
+.educad-model-sidebar.simplified .educad-object-node:has(> .educad-object-row.selected.alignment-reference) { border-color: #60a5fa; }
+.educad-model-sidebar.simplified .educad-object-node:has(> .educad-object-row.selected.alignment-moving) { border-color: #86c99c; }
+.educad-model-sidebar.simplified .educad-object-row { grid-template-columns: 1fr; border-bottom: 1px solid #c7cdd2; border-radius: 5px 5px 0 0; }
+.educad-model-sidebar.simplified .educad-object-row.selected { border-color: #8ec9dc; }
+.educad-model-sidebar.simplified .educad-object-row.selected.alignment-reference { border-color: #60a5fa; }
+.educad-model-sidebar.simplified .educad-object-row.selected.alignment-moving { border-color: #86c99c; }
 .educad-model-sidebar.simplified .educad-tree-toggle,
 .educad-model-sidebar.simplified .educad-object-select span,
 .educad-model-sidebar.simplified .educad-operation-name,
