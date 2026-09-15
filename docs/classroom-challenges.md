@@ -30,4 +30,4 @@ Automatic installation preserves any already-installed challenge with the same I
 
 Automatic version migration and a teacher publishing interface are not implemented. Manual ZIP import continues to work without a server library.
 
-The prebuilt upstream GHCR Compose is not an eduCAD distribution. Use the Compose that builds this checkout. These deployment changes have not been tested or built following the request to continue without tests.
+The prebuilt Compose now requires an explicit `EDUCAD_IMAGE` referencing an eduCAD image verified by the administrator; it no longer defaults to the upstream image. Use the Compose that builds this checkout until such an image is available. See [Docker deployment](docker.md). These deployment changes have not been tested or built following the request to continue without tests.

@@ -1,13 +1,17 @@
 services:
-  sketchforge:
-    image: ghcr.io/formsmith746/sketchforge-3d:latest
+  educad:
+    image: "${EDUCAD_IMAGE:?Set EDUCAD_IMAGE to a verified eduCAD image tag or digest}"
     ports:
-      - "${SKETCHFORGE_PORT:-3000}:3000"
+      - "${EDUCAD_PORT:-${SKETCHFORGE_PORT:-3000}}:3000"
     environment:
-      SKETCHFORGE_SHARED_PROJECTS_DIR: /data/projects
+      EDUCAD_SHARED_PROJECTS_DIR: /data/projects
+      EDUCAD_CHALLENGES_DIR: /data/challenges
     volumes:
-      - "${SKETCHFORGE_SHARED_PROJECTS_VOLUME:-sketchforge-shared-projects}:/data/projects"
+      - "sketchforge-shared-projects:/data/projects"
+      - "${EDUCAD_CHALLENGES_VOLUME:-educad-challenges}:/data/challenges:ro"
     restart: unless-stopped
 
 volumes:
   sketchforge-shared-projects:
+    name: "${EDUCAD_SHARED_PROJECTS_VOLUME:-${SKETCHFORGE_SHARED_PROJECTS_VOLUME:-${COMPOSE_PROJECT_NAME:-docker}_sketchforge-shared-projects}}"
+  educad-challenges:

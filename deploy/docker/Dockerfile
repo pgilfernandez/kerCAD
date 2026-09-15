@@ -1,11 +1,11 @@
 # syntax=docker/dockerfile:1
 
-FROM --platform=$BUILDPLATFORM node:24-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV SKETCHFORGE_DOCKER_BUILD=true
+ENV EDUCAD_DOCKER_BUILD=true
 
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -21,26 +21,23 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
-ENV SKETCHFORGE_SHARED_PROJECTS_DIR=/data/projects
+ENV EDUCAD_SHARED_PROJECTS_DIR=/data/projects
 ENV EDUCAD_CHALLENGES_DIR=/data/challenges
 
-RUN apk add --no-cache libcap \
-  && setcap cap_net_bind_service=+ep /usr/local/bin/node \
-  && mkdir -p /data/projects \
+RUN mkdir -p /data/projects \
   && chown node:node /data/projects
 
 COPY --from=builder --chown=node:node /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=node:node /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder --chown=node:node /app/apps/web/public ./apps/web/public
 COPY --from=builder --chown=node:node /app/apps/web/challenges /data/challenges
-COPY --chown=node:node deploy/docker/start-server.mjs ./deploy/docker/start-server.mjs
 
 USER node
 
-EXPOSE 80 3000
+EXPOSE 3000
 VOLUME ["/data/projects"]
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD wget -q -O - http://127.0.0.1:3000/api/shared-projects | grep -q '"enabled":true' || exit 1
+  CMD node -e 'fetch(`http://127.0.0.1:${process.env.PORT || 3000}/api/health`).then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))'
 
-CMD ["node", "deploy/docker/start-server.mjs"]
+CMD ["node", "apps/web/server.js"]

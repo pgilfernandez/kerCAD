@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 import path from "node:path";
 
 const isStaticExport = process.env.STATIC_EXPORT === "true";
-const isDockerBuild = process.env.SKETCHFORGE_DOCKER_BUILD === "true";
+const isDockerBuild = (process.env.EDUCAD_DOCKER_BUILD ?? process.env.SKETCHFORGE_DOCKER_BUILD) === "true";
 const extraAllowedDevOrigins = (process.env.SKETCHFORGE_ALLOWED_DEV_ORIGINS ?? "")
   .split(",")
   .map((origin) => origin.trim())

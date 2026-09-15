@@ -58,6 +58,8 @@ La interfaz principal mantiene la baja barrera de entrada del proyecto de refere
 
 ## Desarrollo local
 
+Para distribución en el aula, consulta [Docker: configuración, persistencia y copias de seguridad](docs/docker.md), [proyectos compartidos](docs/shared-projects.md) y [distribución de Retos](docs/classroom-challenges.md). La adaptación Docker está pendiente de validación; no hay una imagen propia comprobada ni un DMG validado en esta fase.
+
 Requisitos recomendados:
 
 - Node.js 24 o posterior;
