@@ -294,6 +294,13 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [stlQuality, setStlQuality] = useState<StlTessellationQuality>("medium");
   const [stlExporting, setStlExporting] = useState(false);
   const [newDocumentOpen, setNewDocumentOpen] = useState(false);
+  const [projectRenameOpen, setProjectRenameOpen] = useState(false);
+  const [projectRenameDraft, setProjectRenameDraft] = useState("");
+  const projectRenameDialogRef = useAccessibleDialog<HTMLFormElement>(projectRenameOpen, () => setProjectRenameOpen(false));
+  const openProjectRename = () => {
+    setProjectRenameDraft(document.name);
+    setProjectRenameOpen(true);
+  };
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const [workplaneOpen, setWorkplaneOpen] = useState(false);
@@ -3002,7 +3009,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       <div className="secondary-toolbar">
         <div className="toolbar-workspace-tabs educad-toolbar-titlebar">
           {onExitToProjects ? <button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={() => onExitToProjects(latestDocumentRef.current)} title="Back to projects">{'<'} back</button> : null}
-          <span className="educad-project-name"><img src="/assets/educad/logo.svg" alt="" /><strong>eduCAD</strong><span> - {document.name}</span></span>
+          <span className="educad-project-name"><img src="/assets/educad/logo.svg" alt="" /><strong>eduCAD</strong><span aria-hidden="true">-</span><button type="button" className="educad-project-rename-trigger" onClick={openProjectRename} title={locale === "es" ? "Cambiar nombre del proyecto" : "Rename project"}>{document.name}</button></span>
         </div>
         {sketchSession ? <div className="sketch-toolbar-ribbon educad-parametric-sketch-toolbar" aria-label={t("sketch.tools")}>
           <ToolbarSection label={t("sketch.history")}>
@@ -3318,6 +3325,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           isolatedHistoryObjectId={!editingEdgeTreatmentId && !editingFaceExtrudeId && !editingShellId && !editingRevolveId && selectedOperationTimeline && selectedOperationTimeline.index < selectedOperationTimeline.count - 1 ? selectedOperationTimeline.objectId : null}
           color={document.color}
           projectName={document.name}
+          onProjectRename={openProjectRename}
           workplane={document.workplane}
           view={view}
           projection={projection}
@@ -3672,6 +3680,20 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         </aside>
       )}
 
+      {projectRenameOpen ? (
+        <div className="educad-dialog-backdrop" onPointerDown={() => setProjectRenameOpen(false)}>
+          <form ref={projectRenameDialogRef} className="educad-new-document-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-project-rename-title" tabIndex={-1} onPointerDown={(event) => event.stopPropagation()} onSubmit={(event) => {
+            event.preventDefault();
+            const name = projectRenameDraft.trim();
+            if (!name) return;
+            if (name === document.name || mutate((draft) => { draft.name = name; })) setProjectRenameOpen(false);
+          }}>
+            <header><strong id="educad-project-rename-title">{locale === "es" ? "Cambiar nombre del proyecto" : "Rename project"}</strong><button type="button" aria-label={t("common.close")} onClick={() => setProjectRenameOpen(false)}><X /></button></header>
+            <label className="educad-project-rename-field"><span>{t("settings.name")}</span><input autoFocus value={projectRenameDraft} maxLength={120} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setProjectRenameDraft(event.target.value)} /></label>
+            <footer><button type="button" onClick={() => setProjectRenameOpen(false)}>{t("common.cancel")}</button><button type="submit" className="primary" disabled={!projectRenameDraft.trim()}>OK</button></footer>
+          </form>
+        </div>
+      ) : null}
       {newDocumentOpen ? (
         <div className="educad-dialog-backdrop" role="presentation" onPointerDown={() => setNewDocumentOpen(false)}>
           <section ref={newDocumentDialogRef} className="educad-new-document-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-new-document-title" aria-describedby="educad-new-document-description" tabIndex={-1} onPointerDown={(event) => event.stopPropagation()}>
@@ -3695,7 +3717,6 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       {settingsOpen && (
         <aside data-educad-popup="settings" className="top-action-panel educad-settings-panel">
           <header><strong>{t("settings.title")}</strong><button aria-label={t("common.close")} onClick={() => setSettingsOpen(false)}><X /></button></header>
-          <label><span>{t("settings.name")}</span><input value={document.name} onFocus={beginTransaction} onBlur={finishTransaction} onChange={(event) => mutate((draft) => { draft.name = event.target.value; })} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); if (event.key === "Escape") { cancelTransaction(); event.currentTarget.blur(); } }} /></label>
           <label><span>{t("settings.language")}</span><select value={locale} onChange={(event) => setLocale(event.target.value as EducadLocale)}><option value="es">{t("settings.spanish")}</option><option value="en">{t("settings.english")}</option></select></label>
           <label><span>{t("settings.rendering")}</span><select value={renderQuality} onChange={(event) => setRenderQuality(event.target.value as ViewportRenderQuality)}><option value="normal">{t("settings.renderNormal")}</option><option value="optimized">{t("settings.renderOptimized")}</option></select></label>
           <label><span>{t("settings.shading")}</span><select value={shadingMode} onChange={(event) => setShadingMode(event.target.value as ViewportShadingMode)}><option value="shadows">{t("settings.shadows")}</option><option value="basic">{t("settings.basicShadows")}</option><option value="noShadows">{t("settings.noShadows")}</option></select></label>

@@ -278,6 +278,7 @@ type Props = {
   onEditMirrorPlane?: (featureId: string) => void;
   onFloatingFeatureChange?: (featureId: string, update: Partial<{ distance: number; angle: number; thickness: number; duplicate: boolean }>) => void;
   projectName?: string;
+  onProjectRename?: () => void;
   onThumbnail?: (dataUrl: string) => void;
   thumbnailRequestToken?: number;
   thumbnailRequestOptions?: { includeOverlays?: boolean; width?: number; height?: number; quality?: number };
@@ -615,7 +616,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, shellHandle = null, onShellThicknessDragStart, onShellThicknessPreview, onShellThicknessChange, onShellThicknessCancel, floatingFeature = null, operationModesVisible = true, contextToolbarVisible, manipulatorControls, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = "Untitled design", onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions, alignmentActive = false, alignmentBusy = false, alignmentTargets = [], alignmentReference = null, onAlignmentSelect, onAlign }: Props) {
+export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, shellHandle = null, onShellThicknessDragStart, onShellThicknessPreview, onShellThicknessChange, onShellThicknessCancel, floatingFeature = null, operationModesVisible = true, contextToolbarVisible, manipulatorControls, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = "Untitled design", onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions, alignmentActive = false, alignmentBusy = false, alignmentTargets = [], alignmentReference = null, onAlignmentSelect, onAlign }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const alignmentRef = useRef({ active: alignmentActive, targets: alignmentTargets, onSelect: onAlignmentSelect });
   alignmentRef.current = { active: alignmentActive, targets: alignmentTargets, onSelect: onAlignmentSelect };
@@ -647,6 +648,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const thumbnailRequestOptionsRef = useRef<Props["thumbnailRequestOptions"]>(undefined);
   const manualThumbnailRequestRef = useRef(false);
   const controlsRef = useRef<OrbitControls | null>(null);
+  const projectBandRef = useRef<THREE.Mesh | null>(null);
+  const projectRenameButtonRef = useRef<THREE.Mesh | null>(null);
   const projectionChangeRef = useRef<((projection: CameraProjection) => void) | null>(null);
   const cameraTransitionRef = useRef<number | null>(null);
   const modelRef = useRef<THREE.Group | null>(null);
@@ -1147,6 +1150,7 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
         // selected editing state. Hide every interactive overlay for the
         // capture only, then immediately restore the live viewport.
         const thumbnailOverlayCandidates: Array<THREE.Object3D | null> = [
+          projectRenameButtonRef.current,
           alignmentOverlayRef.current,
           originLayerRef.current,
           selectionRootRef.current,
@@ -3378,6 +3382,8 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
     const group = workplaneRef.current;
     const renderer = rendererRef.current;
     if (!group || !renderer) return;
+    projectBandRef.current = null;
+    projectRenameButtonRef.current = null;
     group.traverse((child) => {
       if (child instanceof THREE.Mesh || child instanceof THREE.LineSegments) {
         child.geometry.dispose();
@@ -3512,7 +3518,34 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
           label.position.set(0, 0.04, halfDepth + bandDepth / 2);
           label.renderOrder = 1;
           label.userData.globalWorkplaneElement = true;
+          label.userData.renameAnchorX = Math.min(context.measureText(projectName).width, labelCanvas.width * 0.9) / labelCanvas.width * gridWidth / 2;
+          projectBandRef.current = label;
           target.add(label);
+          const buttonSize = bandDepth * 0.56;
+          // Paint the background and SVG into one texture: two nearly coplanar
+          // surfaces can hide the pencil at some camera angles/depth ranges.
+          const buttonCanvas = document.createElement("canvas");
+          buttonCanvas.width = buttonCanvas.height = 256;
+          const buttonContext = buttonCanvas.getContext("2d")!;
+          buttonContext.fillStyle = "#ffffff";
+          buttonContext.beginPath();
+          buttonContext.roundRect(0, 0, 256, 256, 36);
+          buttonContext.fill();
+          const buttonTexture = new THREE.CanvasTexture(buttonCanvas);
+          buttonTexture.colorSpace = THREE.SRGBColorSpace;
+          buttonTexture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+          const button = new THREE.Mesh(new THREE.PlaneGeometry(buttonSize, buttonSize), new THREE.MeshBasicMaterial({ map: buttonTexture, alphaTest: 0.1, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+          button.rotation.x = -Math.PI / 2;
+          button.position.set(label.userData.renameAnchorX + buttonSize * 0.65, 0.06, label.position.z);
+          button.visible = false;
+          new THREE.ImageLoader().load("/assets/educad/operations/edit.svg", (image) => {
+            if (projectRenameButtonRef.current !== button) return;
+            buttonContext.drawImage(image, 26, 26, 204, 204);
+            buttonTexture.needsUpdate = true;
+            invalidateRef.current();
+          });
+          target.add(button);
+          projectRenameButtonRef.current = button;
         }
       }
     };
@@ -4232,6 +4265,72 @@ export function ParametricViewport({ mesh, objectRecords = [], objectColors, obj
   const showFeatureControls = Boolean(floatingFeature && floatingFeature.kind !== "fillet");
   const showContextToolbar = contextToolbarVisible ?? (showOperationModes || showEdgeTreatmentControls || showFeatureControls);
 
+  useEffect(() => {
+    const host = hostRef.current;
+    const controls = controlsRef.current;
+    if (!host || !onProjectRename) return;
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    let lastPointer: PointerEvent | null = null;
+    const hide = () => {
+      const button = projectRenameButtonRef.current;
+      if (button?.visible) { button.visible = false; invalidateRef.current(); }
+    };
+    const hit = (event: PointerEvent) => {
+      const camera = cameraRef.current;
+      const canvas = rendererRef.current?.domElement;
+      if (!camera || !canvas || event.target !== canvas) return false;
+      const rect = canvas.getBoundingClientRect();
+      pointer.set((event.clientX - rect.left) / rect.width * 2 - 1, -(event.clientY - rect.top) / rect.height * 2 + 1);
+      camera.updateMatrixWorld();
+      raycaster.setFromCamera(pointer, camera);
+      return true;
+    };
+    const hover = (event: PointerEvent) => {
+      lastPointer = event;
+      const button = projectRenameButtonRef.current;
+      const band = projectBandRef.current;
+      if (!button || !band || event.buttons || !hit(event)) { hide(); return; }
+      band.updateWorldMatrix(true, false);
+      button.updateWorldMatrix(true, false);
+      const visible = Boolean(raycaster.intersectObject(band, false).length || (button.visible && raycaster.intersectObject(button, false).length));
+      if (button.visible !== visible) { button.visible = visible; invalidateRef.current(); }
+    };
+    let pressed = false;
+    const down = (event: PointerEvent) => {
+      const button = projectRenameButtonRef.current;
+      if (event.button !== 0 || !button?.visible || !hit(event) || !raycaster.intersectObject(button, false).length) return;
+      pressed = true;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    const up = (event: PointerEvent) => {
+      if (!pressed) { hover(event); return; }
+      pressed = false;
+      event.preventDefault();
+      event.stopPropagation();
+      const button = projectRenameButtonRef.current;
+      if (button?.visible && hit(event) && raycaster.intersectObject(button, false).length) { hide(); onProjectRename(); }
+    };
+    const leave = () => { lastPointer = null; pressed = false; hide(); };
+    // Re-evaluate the band under the stationary cursor as the camera moves,
+    // instead of hiding the button on every damped OrbitControls update.
+    const cameraChanged = () => { if (lastPointer) hover(lastPointer); };
+    host.addEventListener("pointermove", hover);
+    host.addEventListener("pointerleave", leave);
+    host.addEventListener("pointercancel", leave);
+    host.addEventListener("pointerdown", down, true);
+    host.addEventListener("pointerup", up, true);
+    controls?.addEventListener("change", cameraChanged);
+    return () => {
+      host.removeEventListener("pointermove", hover);
+      host.removeEventListener("pointerleave", leave);
+      host.removeEventListener("pointercancel", leave);
+      host.removeEventListener("pointerdown", down, true);
+      host.removeEventListener("pointerup", up, true);
+      controls?.removeEventListener("change", cameraChanged);
+    };
+  }, [onProjectRename, projection, renderQuality, shadingMode]);
   return <div className="parametric-viewport" ref={hostRef} aria-label={locale === "es" ? "Vista 3D de la pieza" : "3D model view"}>
     {alignmentActive ? <div ref={alignmentButtonsRef} className="educad-alignment-face-buttons" role="group" aria-label={locale === "es" ? "Alinear con la referencia" : "Align with reference"}>
       {(["x", "y", "z"] as const).flatMap(axis => (["min", "center", "max"] as const).map(anchor => {

@@ -1053,6 +1053,7 @@ button {
 .educad-model-sidebar.simplified .educad-object-node:has(> .educad-object-row.selected.alignment-reference) { border-color: #60a5fa; }
 .educad-model-sidebar.simplified .educad-object-node:has(> .educad-object-row.selected.alignment-moving) { border-color: #86c99c; }
 .educad-model-sidebar.simplified .educad-object-row { grid-template-columns: 1fr; border-bottom: 1px solid #c7cdd2; border-radius: 5px 5px 0 0; }
+.educad-model-sidebar.simplified .educad-object-row:not(.selected):not(:hover) { background: #faf9f9; }
 .educad-model-sidebar.simplified .educad-object-row.selected { border-color: #8ec9dc; }
 .educad-model-sidebar.simplified .educad-object-row.selected.alignment-reference { border-color: #60a5fa; }
 .educad-model-sidebar.simplified .educad-object-row.selected.alignment-moving { border-color: #86c99c; }
@@ -3578,6 +3579,15 @@ button {
 }
 
 .educad-toolbar-titlebar .educad-project-name strong { font-weight: 700; }
+.educad-toolbar-titlebar .educad-project-name .educad-project-rename-trigger { min-width: 0; padding: 2px 9px; color: white; background: transparent; border: 0; border-radius: 5px;font-weight: 400; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; }
+.educad-toolbar-titlebar .educad-project-name .educad-project-rename-trigger:hover,
+.educad-toolbar-titlebar .educad-project-name .educad-project-rename-trigger:focus-visible { color: #0d55bd; background: white; }
+.educad-plane-rename { position: absolute; z-index: 12; width: 32px; height: 32px; padding: 5px; color: #31566d; background: white; border: 1px solid #b6cbd6; border-radius: 5px; }
+.educad-plane-rename[hidden] { display: none; }
+.educad-plane-rename:hover { background: #e3f4fa; }
+.educad-plane-rename svg { width: 100%; height: 100%; }
+.educad-project-rename-field { display: grid; gap: 8px; padding: 18px; }
+.educad-project-rename-field input { width: 100%; padding: 9px; border: 1px solid #b6cbd6; border-radius: 5px; }
 .educad-toolbar-titlebar .educad-project-name span { font-weight: 400; }
 .educad-toolbar-titlebar .educad-project-name img {
   width: 44px;
