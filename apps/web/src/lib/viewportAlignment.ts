@@ -50,8 +50,8 @@ export function createAlignmentOverlay(targets: AlignmentTarget[], reference: Al
       const length = direction.length();
       if (length < 1e-7) continue;
       direction.divideScalar(length);
-      const end = start.clone().lerp(center, 0.5);
-      const head = Math.min(length * 0.5 * 0.4, maxHead);
+      const end = start.clone().lerp(center, 2 / 3);
+      const head = Math.min(length * (2 / 3) * 0.4, maxHead);
       const shaftEnd = end.clone().addScaledVector(direction, -head);
       shaftPositions.push(...start.toArray(), ...shaftEnd.toArray());
       headMatrices.push(new THREE.Matrix4().compose(end, new THREE.Quaternion().setFromUnitVectors(up, direction), new THREE.Vector3(head * 0.55, head, head * 0.55)));
