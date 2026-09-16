@@ -110,6 +110,8 @@ El uso privado y la importación manual de Retos no requieren activar la bibliot
 
 Comandos de verificación disponibles para desarrollo (su presencia no certifica una distribución):
 
+La CI también prepara un [artefacto standalone Linux x64](docs/production-artifact.md) con el servidor y sus recursos, comprobación básica de arranque fuera del checkout y metadatos del commit. Este nuevo job está pendiente de su primera ejecución.
+
 ```bash
 npm run typecheck
 npm run test
