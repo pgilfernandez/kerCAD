@@ -61,6 +61,14 @@ Mantén esa variable en los siguientes arranques. La copia preserva los propieta
 
 ## Versiones y vuelta atrás
 
+### Validación manual en CI
+
+El workflow `Validate Docker distribution` se ejecuta explícitamente desde GitHub Actions. Construye y arranca por separado amd64 y arm64 (arm64 mediante emulación), sin publicar imágenes. Comprueba el usuario sin privilegios, arranque, página principal, bibliotecas y descarga de WASM. Recrea el contenedor sobre el mismo volumen para comprobar que conserva un archivo de control y que el servidor sigue saludable con compartidos desactivado. Guarda logs y metadatos de contenedor/imagen durante 14 días.
+
+Esta configuración todavía no se ha ejecutado. El archivo de control verifica persistencia del montaje, no un ciclo real de guardar/reabrir proyectos. Tampoco sustituye las pruebas de reconstrucción CAD en navegador, exportaciones, conflictos, restauración de copias o rendimiento en hardware arm64. La publicación existente sigue siendo un workflow independiente; este job manual no la bloquea ni la certifica automáticamente.
+
+### Imagen precompilada
+
 `compose-ghcr.yaml` exige `EDUCAD_IMAGE`: una etiqueta o digest de una imagen eduCAD previamente construida y comprobada por el administrador. No descarga SketchForge ni presupone que ya exista una publicación propia.
 
 ```sh

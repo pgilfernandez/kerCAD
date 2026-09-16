@@ -1,0 +1,115 @@
+name: Validate Docker distribution
+
+# Explicit validation only: does not log in to a registry or publish images.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Docker ${{ matrix.architecture }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        architecture: [amd64, arm64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build target image locally
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/Dockerfile
+          platforms: linux/${{ matrix.architecture }}
+          load: true
+          push: false
+          tags: educad:validation
+          cache-from: type=gha,scope=educad-validation-${{ matrix.architecture }}
+          cache-to: type=gha,mode=max,scope=educad-validation-${{ matrix.architecture }}
+
+      - name: Check startup, assets and persistent storage
+        env:
+          EDUCAD_TARGET_ARCH: ${{ matrix.architecture }}
+        run: |
+          set -euo pipefail
+          mkdir -p validation-logs
+          cleanup() {
+            docker logs educad-validation > validation-logs/server.log 2>&1 || true
+            docker inspect educad-validation > validation-logs/container.json 2>&1 || true
+            docker rm -f educad-validation >/dev/null 2>&1 || true
+            docker volume rm educad-validation-projects >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          wait_for_health() {
+            for attempt in $(seq 1 90); do
+              status=$(docker inspect --format '{{.State.Health.Status}}' educad-validation)
+              if [ "$status" = healthy ]; then return 0; fi
+              if [ "$(docker inspect --format '{{.State.Running}}' educad-validation)" != true ]; then return 1; fi
+              sleep 2
+            done
+            return 1
+          }
+          docker volume create educad-validation-projects
+          docker run -d --name educad-validation --platform "linux/$EDUCAD_TARGET_ARCH" \
+            --health-interval=2s --health-start-period=5s \
+            -p 127.0.0.1:3100:3000 \
+            -v educad-validation-projects:/data/projects educad:validation
+          wait_for_health
+          curl --fail --silent --show-error http://127.0.0.1:3100/ > validation-logs/home.html
+          docker exec -i educad-validation node --input-type=module <<'NODE'
+          import { readdir, writeFile } from 'node:fs/promises';
+          if (process.getuid() === 0) throw new Error('Server must not run as root.');
+          async function json(path) {
+            const response = await fetch(`http://127.0.0.1:3000${path}`, { signal: AbortSignal.timeout(10000) });
+            if (!response.ok) throw new Error(`${path}: ${response.status}`);
+            return response.json();
+          }
+          const health = await json('/api/health');
+          if (health.application !== 'eduCAD') throw new Error('Unexpected application.');
+          const projects = await json('/api/educad-shared-projects');
+          if (!projects.enabled) throw new Error('Shared library unavailable.');
+          const challenges = await json('/api/bundled-challenges');
+          if (!Array.isArray(challenges.files)) throw new Error('Challenge library unavailable.');
+          const assets = await readdir('/app/apps/web/public/occt');
+          const wasm = assets.find(name => name.endsWith('.wasm'));
+          if (!wasm) throw new Error('Missing OCCT WASM.');
+          const response = await fetch(`http://127.0.0.1:3000/occt/${encodeURIComponent(wasm)}`);
+          if (!response.ok || (await response.arrayBuffer()).byteLength === 0) throw new Error('OCCT asset not served.');
+          await writeFile('/data/projects/.distribution-probe', 'educad-storage-probe');
+          NODE
+          docker logs educad-validation > validation-logs/initial-server.log 2>&1
+          docker rm -f educad-validation
+          # Reuse the same volume but disable the optional shared library.
+          docker run -d --name educad-validation --platform "linux/$EDUCAD_TARGET_ARCH" \
+            --health-interval=2s --health-start-period=5s \
+            -e EDUCAD_SHARED_PROJECTS_DIR= \
+            -v educad-validation-projects:/data/projects educad:validation
+          wait_for_health
+          docker exec -i educad-validation node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          if (await readFile('/data/projects/.distribution-probe', 'utf8') !== 'educad-storage-probe') throw new Error('Volume contents lost.');
+          const response = await fetch('http://127.0.0.1:3000/api/educad-shared-projects');
+          const result = await response.json();
+          if (!response.ok || result.enabled !== false) throw new Error('Optional library was not disabled.');
+          NODE
+          docker image inspect educad:validation > validation-logs/image.json
+
+      - name: Upload validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: educad-docker-${{ matrix.architecture }}-${{ github.sha }}
+          path: validation-logs/
+          if-no-files-found: ignore
+          retention-days: 14
