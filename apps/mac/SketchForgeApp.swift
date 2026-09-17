@@ -116,7 +116,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             "NEXT_TELEMETRY_DISABLED": "1",
             "HOSTNAME": loopbackHost,
             "PORT": String(port),
-            "SKETCHFORGE_ENABLE_MCP": "true",
+            "SKETCHFORGE_ENABLE_MCP": "false",
             "SKETCHFORGE_SHARED_PROJECTS_DIR": projects.path,
         ]) { _, packagedValue in packagedValue }
         process.terminationHandler = { [weak self] process in

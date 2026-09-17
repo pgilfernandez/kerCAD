@@ -63,13 +63,20 @@ DOWNLOADED_ARCHIVE="$CACHE_DIR/node-$NODE_VERSION-darwin-$NODE_ARCH.tar.gz"
 
 mkdir -p "$CACHE_DIR" "$OUTPUT_DIR"
 if ! $SKIP_WEB_BUILD; then
-  echo "Preparing an isolated MCP-enabled web build..."
+  echo "Preparing an isolated eduCAD web build..."
   (cd "$REPO_ROOT" && npm run copy:occt)
   node "$SCRIPT_DIR/prepare-web-build.mjs" "$REPO_ROOT/apps/web" "$MAC_WEB_ROOT"
   echo "Building the standalone SketchForge web server..."
+  rm -f "$MAC_WEB_ROOT/.educad-build-ready"
   (cd "$REPO_ROOT" && SKETCHFORGE_DOCKER_BUILD=true NEXT_TELEMETRY_DISABLED=1 \
     "$REPO_ROOT/node_modules/.bin/next" build "$MAC_WEB_ROOT")
+  touch "$MAC_WEB_ROOT/.educad-build-ready"
 fi
+
+[[ -f "$MAC_WEB_ROOT/.educad-build-ready" ]] || {
+  echo "Rebuild without --skip-web-build: the cached server predates the eduCAD build without MCP." >&2
+  exit 1
+}
 
 STANDALONE="$MAC_WEB_ROOT/.next/standalone"
 STAGED_SERVER="$STANDALONE/$MAC_WEB_STANDALONE_RELATIVE"
@@ -112,13 +119,8 @@ CLANG_MODULE_CACHE_PATH="$CACHE_DIR/clang-module-cache" xcrun swiftc \
   "$SCRIPT_DIR/SketchForgeApp.swift" \
   -o "$CONTENTS/MacOS/SketchForge"
 
-cp "$SCRIPT_DIR/SketchForgeMCP" "$CONTENTS/MacOS/SketchForgeMCP"
-chmod 755 "$CONTENTS/MacOS/SketchForgeMCP"
 cp "$RUNTIME_ROOT/bin/node" "$CONTENTS/Resources/runtime/node"
 chmod 755 "$CONTENTS/Resources/runtime/node"
-mkdir -p "$CONTENTS/Resources/mcp"
-cp "$REPO_ROOT/scripts/sketchforge-mcp-server.mjs" "$CONTENTS/Resources/mcp/sketchforge-mcp-server.mjs"
-ditto "$REPO_ROOT/docs/skills/sketchforge-mcp-skill/" "$CONTENTS/Resources/mcp/sketchforge-mcp-skill/"
 ditto "$STANDALONE/" "$CONTENTS/Resources/server/"
 ditto "$STAGED_SERVER/" "$CONTENTS/Resources/server/apps/web/"
 rm -rf "$CONTENTS/Resources/server/apps/mac"

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
@@ -26,33 +26,6 @@ await cp(sourceDirectory, targetDirectory, {
   },
 });
 
-async function transform(relativePath, transform) {
-  const filePath = path.join(targetDirectory, relativePath);
-  const original = await readFile(filePath, "utf8");
-  const updated = transform(original);
-  if (updated === original) {
-    throw new Error(`Mac MCP overlay did not match ${relativePath}; update prepare-web-build.mjs for the current web source.`);
-  }
-  await writeFile(filePath, updated, "utf8");
-}
-
-await transform("src/app/api/sketchforge-mcp/route.ts", (source) => {
-  const guard = 'if (process.env.NODE_ENV === "production") {';
-  const matches = source.split(guard).length - 1;
-  if (matches !== 1) throw new Error(`Expected one MCP production route guard, found ${matches}.`);
-  return source.replace(guard, 'if (process.env.SKETCHFORGE_ENABLE_MCP !== "true") {');
-});
-
-await transform("src/components/SketchForgeEditor.tsx", (source) => {
-  const anchor = "const identity = readMcpEditorIdentity();";
-  const guard = 'if (process.env.NODE_ENV === "production" || typeof window === "undefined") {';
-  const anchorIndex = source.indexOf(anchor);
-  if (anchorIndex < 0) throw new Error("Could not find the MCP editor identity anchor.");
-  const guardIndex = source.lastIndexOf(guard, anchorIndex);
-  if (guardIndex < 0 || anchorIndex - guardIndex > 500) {
-    throw new Error("Could not find the MCP client production guard near its identity setup.");
-  }
-  return `${source.slice(0, guardIndex)}if (typeof window === "undefined") {${source.slice(guardIndex + guard.length)}`;
-});
-
-console.log(`[mac-build] prepared isolated MCP-enabled web source at ${targetDirectory}`);
+// Stage the current application unchanged. The legacy MCP editor is not part
+// of eduCAD's parametric workflow and must not be patched into a desktop build.
+console.log(`[mac-build] prepared isolated eduCAD web source at ${targetDirectory}`);
