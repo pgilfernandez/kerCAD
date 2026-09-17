@@ -1400,14 +1400,14 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
       }
       const tickPositions: number[] = [];
       for (let degrees = 0; degrees < 360; degrees += 5) {
-        const length = markerScale * (degrees % 10 === 0 ? 0.12 : 0.08);
+        const length = markerScale * (degrees % 10 === 0 ? 0.192 : 0.08);
         const first = pointAt(degrees, circleRadius);
         const second = pointAt(degrees, circleRadius + length);
         tickPositions.push(first.x, first.y, first.z, second.x, second.y, second.z);
       }
       for (let degrees = 0; degrees < 360; degrees += 45) {
-        const first = pointAt(degrees, ringRadius * 0.25);
-        const second = pointAt(degrees, ringRadius * 0.75);
+        const first = pointAt(degrees, circleRadius * 0.25);
+        const second = pointAt(degrees, circleRadius * 0.75);
         tickPositions.push(first.x, first.y, first.z, second.x, second.y, second.z);
       }
       const addLines = (positions: number[], linewidth: number, renderOrder: number) => {
@@ -2449,15 +2449,15 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
         const ringRadius = revolveGuideScale * 0.576;
         const circleRadius = ringRadius * 2 + revolveGuideScale * 0.03;
         const outerDegrees = Math.round(raw / 5) * 5;
-        const outerLength = revolveGuideScale * (Math.abs(outerDegrees) % 10 === 0 ? 0.12 : 0.08);
+        const outerLength = revolveGuideScale * (Math.abs(outerDegrees) % 10 === 0 ? 0.192 : 0.08);
         const outerDistance = radialLineDistance(outerDegrees, circleRadius, circleRadius + outerLength);
         const innerDegrees = Math.round(raw / 45) * 45;
-        const innerDistance = radialLineDistance(innerDegrees, ringRadius * 0.25, ringRadius * 0.75);
+        const innerDistance = radialLineDistance(innerDegrees, circleRadius * 0.25, circleRadius * 0.75);
         const sensitiveDistance = revolveGuideScale * 0.055;
         const activeGuide = outerDistance <= sensitiveDistance || innerDistance <= sensitiveDistance
           ? outerDistance <= innerDistance
             ? { degrees: outerDegrees, minimumRadius: circleRadius, maximumRadius: circleRadius + outerLength }
-            : { degrees: innerDegrees, minimumRadius: ringRadius * 0.25, maximumRadius: ringRadius * 0.75 }
+            : { degrees: innerDegrees, minimumRadius: circleRadius * 0.25, maximumRadius: circleRadius * 0.75 }
           : null;
         if (revolveGuideHighlight) {
           revolveGuideHighlight.visible = activeGuide !== null;
@@ -2555,15 +2555,15 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
         const maximumRadius = ringRadius * 2;
         const circleRadius = maximumRadius + rotationGuideScale * 0.03;
         const outerDegrees = Math.round(pointerGuideDegrees / 5) * 5;
-        const outerLength = rotationGuideScale * (Math.abs(outerDegrees) % 10 === 0 ? 0.12 : 0.08);
+        const outerLength = rotationGuideScale * (Math.abs(outerDegrees) % 10 === 0 ? 0.192 : 0.08);
         const outerDistance = radialLineDistance(outerDegrees, circleRadius, circleRadius + outerLength);
         const innerDegrees = Math.round(pointerGuideDegrees / 45) * 45;
-        const innerDistance = radialLineDistance(innerDegrees, ringRadius * 0.25, ringRadius * 0.75);
+        const innerDistance = radialLineDistance(innerDegrees, circleRadius * 0.25, circleRadius * 0.75);
         const sensitiveDistance = rotationGuideScale * 0.055;
         const activeGuide = outerDistance <= sensitiveDistance || innerDistance <= sensitiveDistance
           ? outerDistance <= innerDistance
             ? { degrees: outerDegrees, minimumRadius: circleRadius, maximumRadius: circleRadius + outerLength }
-            : { degrees: innerDegrees, minimumRadius: ringRadius * 0.25, maximumRadius: ringRadius * 0.75 }
+            : { degrees: innerDegrees, minimumRadius: circleRadius * 0.25, maximumRadius: circleRadius * 0.75 }
           : null;
         if (rotationGuideHighlight) {
           rotationGuideHighlight.visible = activeGuide !== null;
