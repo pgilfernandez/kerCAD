@@ -428,9 +428,12 @@ function objectRenderRecords(brep: Brep, document: ParametricDocument, worldSoli
     });
 }
 
-function buildRenderOutput(brep: Brep, document: ParametricDocument, solids: Map<string, AnySolid>, objects: Map<string, ParametricObject>, reusedObjectIds: Set<string>, incrementalRender: boolean, meshOptions?: MeshShapeOptions, includeCombinedMesh = true, renderMeshes = true) {
+function buildRenderOutput(brep: Brep, document: ParametricDocument, solids: Map<string, AnySolid>, objects: Map<string, ParametricObject>, reusedObjectIds: Set<string>, incrementalRender: boolean, meshOptions?: MeshShapeOptions, includeCombinedMesh = true, renderMeshes = true, outputObjectIds?: ReadonlySet<string>) {
   if (!renderMeshes) return { mesh: null, objectRecords: [] };
-  const worldSolids = worldObjectSolids(brep, solids, objects);
+  // Filter only the output, after reconstructing the complete dependency graph.
+  // Unselected bodies need neither world-space copies nor tessellation.
+  const outputSolids = outputObjectIds === undefined ? solids : new Map([...solids].filter(([id]) => outputObjectIds.has(id)));
+  const worldSolids = worldObjectSolids(brep, outputSolids, objects);
   const combined = incrementalRender || !includeCombinedMesh ? null : combinedObjectShape(brep, worldSolids);
   return {
     mesh: combined ? meshShape(brep, combined, [], meshOptions) : null,
@@ -719,7 +722,7 @@ function applyObjectBooleanFeature(brep: Brep, current: AnySolid, source: AnySol
   return refinedBooleanSolid(brep, brep.intersect(current, source));
 }
 
-async function buildParametricModelInternal(document: ParametricDocument, contextFeatureId: string | null, stopAtContext: boolean, incrementalRender = false, meshOptions?: MeshShapeOptions, includeCombinedMesh = true, renderMeshes = true): Promise<BuildResult> {
+async function buildParametricModelInternal(document: ParametricDocument, contextFeatureId: string | null, stopAtContext: boolean, incrementalRender = false, meshOptions?: MeshShapeOptions, includeCombinedMesh = true, renderMeshes = true, outputObjectIds?: ReadonlySet<string>): Promise<BuildResult> {
   const brep = await loadBrepWithOcct();
   const sketches = new Map(document.features.filter((feature): feature is SketchFeature => feature.kind === "sketch" && !feature.suppressed).map((feature) => [feature.id, feature]));
   const objects = new Map(document.objects.map((object) => [object.id, object]));
@@ -951,7 +954,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
       }
     }
   } catch (error) {
-    return { ...buildRenderOutput(brep, document, solids, objects, reusableObjectIds, incrementalRender, meshOptions, includeCombinedMesh, renderMeshes), operationContext, completedFeatureIds, failedFeatureId: activeFeatureId, warning: errorMessage(error) };
+    return { ...buildRenderOutput(brep, document, solids, objects, reusableObjectIds, incrementalRender, meshOptions, includeCombinedMesh, renderMeshes, outputObjectIds), operationContext, completedFeatureIds, failedFeatureId: activeFeatureId, warning: errorMessage(error) };
   }
 
   if (reuseObjectCache) {
@@ -976,7 +979,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
     }
   }
 
-  return { ...buildRenderOutput(brep, document, solids, objects, reusableObjectIds, incrementalRender, meshOptions, includeCombinedMesh, renderMeshes), operationContext, completedFeatureIds, failedFeatureId: null, warning: null };
+  return { ...buildRenderOutput(brep, document, solids, objects, reusableObjectIds, incrementalRender, meshOptions, includeCombinedMesh, renderMeshes, outputObjectIds), operationContext, completedFeatureIds, failedFeatureId: null, warning: null };
 }
 
 export function buildParametricModel(document: ParametricDocument, incrementalRender = false): Promise<BuildResult> {
@@ -984,10 +987,10 @@ export function buildParametricModel(document: ParametricDocument, incrementalRe
 }
 
 export async function buildParametricStlMeshes(document: ParametricDocument, quality: StlTessellationQuality, objectIds?: readonly string[]): Promise<RenderMesh[]> {
-  const result = await buildParametricModelInternal(document, null, false, false, STL_TESSELLATION[quality], false);
+  const selected = objectIds === undefined ? undefined : new Set(objectIds);
+  const result = await buildParametricModelInternal(document, null, false, false, STL_TESSELLATION[quality], false, true, selected);
   if (result.failedFeatureId || result.warning) throw new Error(result.warning ?? "The model could not be tessellated for STL export.");
-  const selected = objectIds === undefined ? null : new Set(objectIds);
-  return result.objectRecords.filter((record) => !selected || selected.has(record.objectId)).map((record) => record.mesh);
+  return result.objectRecords.map((record) => record.mesh);
 }
 
 export async function buildParametricOperationContext(document: ParametricDocument, featureId: string): Promise<BuildResult["operationContext"]> {
