@@ -5,17 +5,17 @@
   <key>CFBundleDevelopmentRegion</key>
   <string>en</string>
   <key>CFBundleDisplayName</key>
-  <string>SketchForge</string>
+  <string>eduCAD</string>
   <key>CFBundleExecutable</key>
-  <string>SketchForge</string>
+  <string>eduCAD</string>
   <key>CFBundleIconFile</key>
   <string>AppIcon.icns</string>
   <key>CFBundleIdentifier</key>
-  <string>com.formsmith746.sketchforge</string>
+  <string>org.educad.desktop</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundleName</key>
-  <string>SketchForge</string>
+  <string>eduCAD</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>

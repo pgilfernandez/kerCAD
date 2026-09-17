@@ -21,7 +21,7 @@ option now requires a marker written only after the new build completes.
 On macOS with Node 24+, npm and Xcode Command Line Tools, the inherited commands
 are `bash apps/mac/build-app.sh` and `bash apps/mac/build-app-dist.sh`.
 These commands build/sign artifacts; they have **not** been run for this change.
-The output still uses the inherited `SketchForge.app` / `SketchForge.dmg` names.
+The output uses `eduCAD.app` / `eduCAD.dmg` and bundle identifier `org.educad.desktop`.
 Do not treat it as a released eduCAD desktop application.
 
 The build stages the standalone server and browser assets, includes a Node
@@ -31,7 +31,7 @@ signing or notarization; public distribution needs its own verified process.
 
 ## Remaining work
 
-- Adapt application identity, icon, bundle identifier and data directories.
+- Adapt the application icon (the build still uses the inherited icon).
 - Include classroom challenges and define persistent user libraries.
 - Review Node runtime provenance and architecture compatibility.
 - Validate startup outside the repository and without external Node or network.
@@ -39,5 +39,14 @@ signing or notarization; public distribution needs its own verified process.
   inside WKWebView, plus process shutdown and port conflicts.
 - Build and validate each advertised architecture, app signature and DMG.
 
-Do not automatically migrate or remove SketchForge user data. These preparatory
-changes do not change the existing data directory or migrate stored projects.
+## Data directories
+
+The launcher now uses `~/Library/Application Support/eduCAD/SharedProjects`,
+`Challenges` and `Logs`. Teachers can place challenge ZIPs in `Challenges`.
+The server is considered ready only when `/api/health` responds with HTTP 200.
+The application remains bound to loopback.
+
+SketchForge's bundle identity and data directory are separate. No existing
+SketchForge projects or browser data are copied, moved or deleted. Export/import
+is explicit; `.skf` history is not converted to `.educad`. Private projects stay
+in the WebView's browser storage; export `.educad` backups before replacing apps.

@@ -4,23 +4,23 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 DIST_DIR="$SCRIPT_DIR/dist"
-APP_PATH="$DIST_DIR/SketchForge.app"
-OUTPUT_DMG="$DIST_DIR/SketchForge.dmg"
+APP_PATH="$DIST_DIR/eduCAD.app"
+OUTPUT_DMG="$DIST_DIR/eduCAD.dmg"
 
 usage() {
   sed -n '/^# Package the built/,/^# The disk image contains/p' "$0" | sed 's/^# \{0,1\}//'
 }
 
-# Package SketchForge.app, the Mac README, and the project license in a disk image.
+# Package eduCAD.app, the Mac README, and the project license in a disk image.
 #
 # Usage: apps/mac/build-app-dist.sh [--output FILE]
 #
 # Options:
 #   --output FILE   Write the disk image to FILE
-#                   (default: apps/mac/dist/SketchForge.dmg).
+#                   (default: apps/mac/dist/eduCAD.dmg).
 #   -h, --help      Show this help.
 #
-# The disk image contains SketchForge.app, README.md, LICENSE, and an Applications link.
+# The disk image contains eduCAD.app, README.md, LICENSE, and an Applications link.
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -44,23 +44,23 @@ done
 
 codesign --verify --deep --strict "$APP_PATH"
 
-WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/sketchforge-dmg.XXXXXX")"
+WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/educad-dmg.XXXXXX")"
 PAYLOAD_DIR="$WORK_DIR/payload"
-TEMP_DMG="$WORK_DIR/SketchForge.dmg"
+TEMP_DMG="$WORK_DIR/eduCAD.dmg"
 cleanup() {
   rm -rf "$WORK_DIR"
 }
 trap cleanup EXIT
 
 mkdir -p "$PAYLOAD_DIR"
-ditto "$APP_PATH" "$PAYLOAD_DIR/SketchForge.app"
+ditto "$APP_PATH" "$PAYLOAD_DIR/eduCAD.app"
 cp "$SCRIPT_DIR/README.md" "$PAYLOAD_DIR/README.md"
 cp "$REPO_ROOT/LICENSE" "$PAYLOAD_DIR/LICENSE"
 ln -s /Applications "$PAYLOAD_DIR/Applications"
 
 echo "Creating compressed disk image..."
 hdiutil create \
-  -volname "SketchForge" \
+  -volname "eduCAD" \
   -srcfolder "$PAYLOAD_DIR" \
   -format UDZO \
   -ov \

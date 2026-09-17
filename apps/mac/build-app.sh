@@ -12,12 +12,12 @@ usage() {
   sed -n '/^# Build a self-contained/,/^# The resulting app includes/p' "$0" | sed 's/^# \{0,1\}//'
 }
 
-# Build a self-contained SketchForge.app for the current Mac architecture.
+# Build a self-contained eduCAD.app for the current Mac architecture.
 #
 # Usage: apps/mac/build-app.sh [options]
 #
 # Options:
-#   --output DIR          Put SketchForge.app in DIR (default: apps/mac/dist).
+#   --output DIR          Put eduCAD.app in DIR (default: apps/mac/dist).
 #   --node-version VER    Bundle this official Node.js release (default: the
 #                         version of node used for the web build).
 #   --node-archive FILE   Use an already-downloaded official node-VER-darwin-ARCH
@@ -53,7 +53,7 @@ case "$(uname -m)" in
 esac
 
 APP_VERSION="$(node -p "require('$REPO_ROOT/package.json').version")"
-APP_PATH="$OUTPUT_DIR/SketchForge.app"
+APP_PATH="$OUTPUT_DIR/eduCAD.app"
 CONTENTS="$APP_PATH/Contents"
 CACHE_DIR="$SCRIPT_DIR/.cache"
 MAC_WEB_ROOT="$CACHE_DIR/web"
@@ -66,9 +66,9 @@ if ! $SKIP_WEB_BUILD; then
   echo "Preparing an isolated eduCAD web build..."
   (cd "$REPO_ROOT" && npm run copy:occt)
   node "$SCRIPT_DIR/prepare-web-build.mjs" "$REPO_ROOT/apps/web" "$MAC_WEB_ROOT"
-  echo "Building the standalone SketchForge web server..."
+  echo "Building the standalone eduCAD web server..."
   rm -f "$MAC_WEB_ROOT/.educad-build-ready"
-  (cd "$REPO_ROOT" && SKETCHFORGE_DOCKER_BUILD=true NEXT_TELEMETRY_DISABLED=1 \
+  (cd "$REPO_ROOT" && EDUCAD_DOCKER_BUILD=true NEXT_TELEMETRY_DISABLED=1 \
     "$REPO_ROOT/node_modules/.bin/next" build "$MAC_WEB_ROOT")
   touch "$MAC_WEB_ROOT/.educad-build-ready"
 fi
@@ -117,7 +117,7 @@ CLANG_MODULE_CACHE_PATH="$CACHE_DIR/clang-module-cache" xcrun swiftc \
   -framework AppKit \
   -framework WebKit \
   "$SCRIPT_DIR/SketchForgeApp.swift" \
-  -o "$CONTENTS/MacOS/SketchForge"
+  -o "$CONTENTS/MacOS/eduCAD"
 
 cp "$RUNTIME_ROOT/bin/node" "$CONTENTS/Resources/runtime/node"
 chmod 755 "$CONTENTS/Resources/runtime/node"
@@ -148,4 +148,4 @@ echo
 echo "Created: $APP_PATH"
 echo "Architecture: $NODE_ARCH"
 echo "Node.js runtime: $NODE_VERSION"
-echo "Projects will be stored in: ~/Library/Application Support/SketchForge/Projects"
+echo "Projects will be stored in: ~/Library/Application Support/eduCAD/SharedProjects"
