@@ -3335,7 +3335,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           displayUnit={displayUnit}
           locale={locale}
           parameterHandlesVisible={!alignOpen && showParameterHandles}
-          contextToolbarVisible={modelSelection.length > 0}
+          contextToolbarVisible={pendingEdgeTreatment
+            ? selectedTopologyFaces.length + selectedTopologyEdges.length > 0
+            : modelSelection.length > 0}
           manipulatorControls={alignOpen ? <>
             <button type="button" className={`educad-alignment-mode ${alignmentMode === "reference" ? "active" : ""}`} aria-label={locale === "es" ? "Alinear a referencia" : "Align to reference"} title={locale === "es" ? "Alinear a referencia" : "Align to reference"} aria-pressed={alignmentMode === "reference"} onClick={() => setAlignmentMode("reference")}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -3345,7 +3347,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/assets/educad/alignment/mode-group.svg" alt="" draggable={false} />
             </button>
-          </> : <>
+          </> : selectedEdgeTreatmentFeature || pendingEdgeTreatment ? null : <>
             <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
             <Tool label={t("camera.rotationTriad")} active={showRotationTriad} onClick={() => setShowRotationTriad((visible) => !visible)}><ToolbarRotationManipulatorIcon /></Tool>
             <Tool className="educad-parameter-handles-toggle" label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>
