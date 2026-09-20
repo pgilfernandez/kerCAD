@@ -21,16 +21,13 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      inkscape:zoom="22.342331"
-     inkscape:cx="5.9080674"
+     inkscape:cx="5.9080675"
      inkscape:cy="14.389725"
      inkscape:current-layer="svg2" />
-  <rect
+  <path
+     id="path1"
      style="fill:#ffffff;stroke:#173b5a;stroke-width:2;stroke-linejoin:round;paint-order:markers fill stroke"
-     id="rect2"
-     width="16.487633"
-     height="9.0411329"
-     x="-8.1486387"
-     y="12.44973"
+     d="M 8.3397867 12.449326 L -8.149043 12.44927 L -8.1499038 18.944539 L -5.5750839 21.490639 L 8.3393982 21.491322 L 8.3397867 12.449326 z "
      transform="rotate(-44.678661)" />
   <rect
      style="fill:#173b5a;fill-opacity:1;stroke:#173b5a;stroke-width:2;stroke-linejoin:round;paint-order:markers fill stroke"
