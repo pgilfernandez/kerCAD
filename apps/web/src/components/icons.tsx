@@ -76,6 +76,10 @@ export function SketchToolbarIcon({ file }: { file: string }) {
   return <img aria-hidden="true" className="toolbar-command-icon educad-sketch-toolbar-icon" src={`/assets/educad/sketch-toolbar/${file}.svg`} alt="" draggable={false} />;
 }
 
+export function ViewToolbarIcon({ file }: { file: string }) {
+  return <img aria-hidden="true" className="toolbar-command-icon educad-sketch-toolbar-icon" src={`/assets/educad/view-toolbar/${file}.svg`} alt="" draggable={false} />;
+}
+
 export function SketchConstraintIcon({ file }: { file: string }) {
   return <img aria-hidden="true" className="educad-sketch-constraint-icon" src={`/assets/educad/sketch-constraints/${file}.svg`} alt="" draggable={false} />;
 }

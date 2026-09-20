@@ -3045,25 +3045,25 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           </ToolbarSection>
           <ToolbarSection label={t("sketch.draw")}>
             <Tool label={t("sketch.line")} active={sketchTool === "line"} onClick={() => chooseSketchTool("line")}><SketchToolbarIcon file="line" /></Tool>
-            <Tool label={t("sketch.bezier")} active={sketchTool === "bezier"} onClick={() => chooseSketchTool("bezier")}><SketchToolbarIcon file="bezier" /></Tool>
-            <Tool label={t("sketch.smoothCurve")} active={sketchTool === "smooth"} onClick={() => chooseSketchTool("smooth")}><SketchToolbarIcon file="smooth-curve" /></Tool>
-            <Tool label={t("sketch.freehand")} active={sketchTool === "freehand"} onClick={() => chooseSketchTool("freehand")}><SketchToolbarIcon file="freehand" /></Tool>
-            <Tool label={t("sketch.smoothFreehand")} active={sketchTool === "freehandSmooth"} onClick={() => chooseSketchTool("freehandSmooth")}><SketchToolbarIcon file="smooth-freehand" /></Tool>
             <Tool label={t("sketch.circle")} active={sketchTool === "circle"} onClick={() => chooseSketchTool("circle")}><SketchToolbarIcon file="circle" /></Tool>
             <Tool label={t("sketch.centerArc")} active={sketchTool === "arc"} onClick={() => chooseSketchTool("arc")}><SketchToolbarIcon file="center-arc" /></Tool>
-          </ToolbarSection>
-          <ToolbarSection label={t("sketch.edit")}>
-            <Tool label={t("sketch.select")} active={sketchTool === "select"} onClick={() => chooseSketchTool("select")}><SketchToolbarIcon file="select" /></Tool>
-            <Tool label={t("sketch.refine")} active={sketchTool === "refine"} onClick={() => chooseSketchTool("refine")}><SketchToolbarIcon file="refine" /></Tool>
-            <Tool label={t("sketch.trim")} active={sketchTool === "trim"} onClick={() => chooseSketchTool("trim")}><SketchToolbarIcon file="trim" /></Tool>
-            <Tool label={sketchSelection ? t("sketch.eraseSelection") : t("sketch.erase")} active={!sketchSelection && sketchTool === "erase"} onClick={() => { if (!deleteCurrentSketchSelection()) chooseSketchTool("erase"); }}><SketchToolbarIcon file="erase" /></Tool>
-            <Tool label={t("sketch.construction")} enabled={selectedConstructionIds.segmentIds.length + selectedConstructionIds.circleIds.length > 0} active={selectedConstructionIds.allConstruction} onClick={toggleSketchConstruction}><SketchToolbarIcon file="construction" /></Tool>
-            <Tool label={t("sketch.mergePoints")} enabled={mergeableSketchPointIds.length === 2} onClick={mergeSelectedSketchPoints}><SketchToolbarIcon file="merge-points" /></Tool>
+            <Tool label={t("sketch.bezier")} active={sketchTool === "bezier"} onClick={() => chooseSketchTool("bezier")}><SketchToolbarIcon file="bezier" /></Tool>
+            {/* <Tool label={t("sketch.smoothCurve")} active={sketchTool === "smooth"} onClick={() => chooseSketchTool("smooth")}><SketchToolbarIcon file="smooth-curve" /></Tool> */}
+            <Tool label={t("sketch.freehand")} active={sketchTool === "freehand"} onClick={() => chooseSketchTool("freehand")}><SketchToolbarIcon file="freehand" /></Tool>
+            <Tool label={t("sketch.smoothFreehand")} active={sketchTool === "freehandSmooth"} onClick={() => chooseSketchTool("freehandSmooth")}><SketchToolbarIcon file="smooth-freehand" /></Tool>
           </ToolbarSection>
           <ToolbarSection label={t("sketch.point")}>
             <Tool label={t("sketch.corner")} enabled={Boolean(selectedSketchPoint)} active={selectedSketchPoint?.mode === "corner" || Boolean(selectedSketchPoint && !selectedSketchPoint.mode)} onClick={() => selectedSketchPoint && setSketchPointMode(selectedSketchPoint.id, "corner")}><SketchToolbarIcon file="corner" /></Tool>
             <Tool label={t("sketch.smooth")} enabled={Boolean(selectedSketchPoint)} active={selectedSketchPoint?.mode === "smooth"} onClick={() => selectedSketchPoint && setSketchPointMode(selectedSketchPoint.id, "smooth")}><SketchToolbarIcon file="smooth-point" /></Tool>
             <Tool label={t("sketch.splitHandles")} enabled={Boolean(selectedSketchPoint)} active={selectedSketchPoint?.mode === "split"} onClick={() => selectedSketchPoint && setSketchPointMode(selectedSketchPoint.id, "split")}><SketchToolbarIcon file="split-handles" /></Tool>
+          </ToolbarSection>
+          <ToolbarSection label={t("sketch.edit")}>
+            <Tool label={t("sketch.select")} active={sketchTool === "select"} onClick={() => chooseSketchTool("select")}><SketchToolbarIcon file="select" /></Tool>
+            <Tool label={t("sketch.construction")} enabled={selectedConstructionIds.segmentIds.length + selectedConstructionIds.circleIds.length > 0} active={selectedConstructionIds.allConstruction} onClick={toggleSketchConstruction}><SketchToolbarIcon file="construction" /></Tool>
+            <Tool label={t("sketch.refine")} active={sketchTool === "refine"} onClick={() => chooseSketchTool("refine")}><SketchToolbarIcon file="refine" /></Tool>
+            <Tool label={t("sketch.mergePoints")} enabled={mergeableSketchPointIds.length === 2} onClick={mergeSelectedSketchPoints}><SketchToolbarIcon file="merge-points" /></Tool>
+            <Tool label={t("sketch.trim")} active={sketchTool === "trim"} onClick={() => chooseSketchTool("trim")}><SketchToolbarIcon file="trim" /></Tool>
+            <Tool label={sketchSelection ? t("sketch.eraseSelection") : t("sketch.erase")} active={!sketchSelection && sketchTool === "erase"} onClick={() => { if (!deleteCurrentSketchSelection()) chooseSketchTool("erase"); }}><SketchToolbarIcon file="erase" /></Tool>
           </ToolbarSection>
           <ToolbarSection label={t("sketch.inspect")}>
             <Tool label={t("sketch.measure")} active={sketchTool === "measure"} onClick={() => chooseSketchTool("measure")}><SketchToolbarIcon file="measure" /></Tool>

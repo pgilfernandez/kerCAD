@@ -2,7 +2,7 @@
 
 import { ChevronUp, CornerDownRight, Home, Link, Link2Off, Minus, Plus, Split, Trash2, Waves } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { SketchToolbarIcon } from "@/components/icons";
+import { ViewToolbarIcon } from "@/components/icons";
 import { SnapGridControl } from "@/components/workplane/ShapeInspector";
 import { SketchRevolvePreview } from "@/components/SketchRevolvePreview";
 import { parseMeasurementInput } from "@/lib/measurementUnits";
@@ -1055,8 +1055,8 @@ export function SketchWorkspace({
         <button aria-label="Zoom in" onClick={() => setZoom((value) => clamp(value * 1.25, 0.75, 6))}><Plus size={33} /></button>
         <button aria-label="Zoom out" onClick={() => setZoom((value) => clamp(value / 1.25, 0.75, 6))}><Minus size={33} /></button>
         <span className="camera-control-separator" />
-        <button className={showDimensionLabels ? "active" : ""} type="button" aria-label={locale === "es" ? "Mostrar u ocultar cotas" : "Show or hide dimensions"} title={locale === "es" ? "Mostrar u ocultar cotas" : "Show or hide dimensions"} aria-pressed={showDimensionLabels} onClick={() => setShowDimensionLabels((visible) => !visible)}><SketchToolbarIcon file="toggle-dimensions" /></button>
-        <button className={showConstraintLabels ? "active" : ""} type="button" aria-label={locale === "es" ? "Mostrar u ocultar etiquetas de restricciones" : "Show or hide constraint labels"} title={locale === "es" ? "Mostrar u ocultar etiquetas de restricciones" : "Show or hide constraint labels"} aria-pressed={showConstraintLabels} onClick={() => setShowConstraintLabels((visible) => !visible)}><SketchToolbarIcon file="toggle-constraints" /></button>
+        <button className={showDimensionLabels ? "active" : ""} type="button" aria-label={locale === "es" ? "Mostrar u ocultar cotas" : "Show or hide dimensions"} title={locale === "es" ? "Mostrar u ocultar cotas" : "Show or hide dimensions"} aria-pressed={showDimensionLabels} onClick={() => setShowDimensionLabels((visible) => !visible)}><ViewToolbarIcon file="toggle-dimensions" /></button>
+        <button className={showConstraintLabels ? "active" : ""} type="button" aria-label={locale === "es" ? "Mostrar u ocultar etiquetas de restricciones" : "Show or hide constraint labels"} title={locale === "es" ? "Mostrar u ocultar etiquetas de restricciones" : "Show or hide constraint labels"} aria-pressed={showConstraintLabels} onClick={() => setShowConstraintLabels((visible) => !visible)}><ViewToolbarIcon file="toggle-constraints" /></button>
       </div>
       <section className="sketch-plate-wrap" aria-label="2D sketch plate">
         <svg
