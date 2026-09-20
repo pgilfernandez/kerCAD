@@ -39,6 +39,18 @@ export function createEmptyChallenge(): EducadChallenge {
   };
 }
 
+export function duplicateChallenge(challenge: EducadChallenge, existing: EducadChallenge[]): EducadChallenge {
+  const copy = structuredClone(challenge);
+  copy.id = createEmptyChallenge().id;
+  copy.installedAt = Date.now();
+  delete copy.bundledSource;
+  const names = new Set(existing.map((item) => item.title));
+  const base = `${challenge.title} (copy)`;
+  copy.title = base;
+  for (let index = 2; names.has(copy.title); index += 1) copy.title = `${base} ${index}`;
+  return copy;
+}
+
 type ChallengeManifest = {
   format: "educad-challenge";
   version: number;

@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FileArchive, Grid3X3, Home, List, Search, Settings, Trash2, Upload, X } from "lucide-react";
+import { Copy, Download, FileArchive, Grid3X3, Home, List, Search, Settings, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ToolbarEditOperationIcon } from "@/components/icons";
 import { SharedProjects } from "@/components/SharedProjects";
@@ -25,6 +25,7 @@ type Props = {
   onCreateChallenge: () => void;
   onStartChallenge: (challenge: EducadChallenge) => void;
   onEditChallenge: (challenge: EducadChallenge) => void;
+  onDuplicateChallenge: (challenge: EducadChallenge) => void;
   onExportChallenge: (challenge: EducadChallenge) => void;
   onDeleteChallenge: (challenge: EducadChallenge) => void;
 };
@@ -37,7 +38,7 @@ function updatedLabel(timestamp: number) {
   return new Intl.DateTimeFormat("en", { day: "numeric", month: "short" }).format(timestamp);
 }
 
-export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSaved, busy = false, section, onSectionChange, onShowLanding, onCreate, onOpen, onImport, onDelete, onRename, challenges, onImportChallenge, onCreateChallenge, onStartChallenge, onEditChallenge, onExportChallenge, onDeleteChallenge }: Props) {
+export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSaved, busy = false, section, onSectionChange, onShowLanding, onCreate, onOpen, onImport, onDelete, onRename, challenges, onImportChallenge, onCreateChallenge, onStartChallenge, onEditChallenge, onDuplicateChallenge, onExportChallenge, onDeleteChallenge }: Props) {
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [sort, setSort] = useState<"recent" | "name">("recent");
@@ -117,6 +118,7 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
               </button>
               <nav className="challenge-actions" aria-label={`${challenge.title} actions`}>
                 <button type="button" title="Edit challenge" aria-label={`Edit ${challenge.title}`} onClick={() => onEditChallenge(challenge)}><ToolbarEditOperationIcon /></button>
+                <button type="button" title="Duplicate challenge" aria-label={`Duplicate ${challenge.title}`} disabled={busy} onClick={() => onDuplicateChallenge(challenge)}><Copy size={17} /></button>
                 <button type="button" title="Export challenge" aria-label={`Export ${challenge.title}`} onClick={() => onExportChallenge(challenge)}><Download size={17} /></button>
                 <button type="button" title="Remove challenge" aria-label={`Remove ${challenge.title}`} onClick={() => onDeleteChallenge(challenge)}><Trash2 size={17} /></button>
               </nav>

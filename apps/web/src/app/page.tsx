@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ProjectDashboard } from "@/components/ProjectDashboard";
 import { EducadLandingPage } from "@/components/EducadLandingPage";
 import { SketchForgeParametricEditor } from "@/components/SketchForgeParametricEditor";
-import { createEmptyChallenge, deleteInstalledChallenge, exportChallengePackage, importChallengePackage, listInstalledChallenges, saveInstalledChallenge, syncBundledChallenges, type EducadChallenge } from "@/lib/challengeLibrary";
+import { createEmptyChallenge, deleteInstalledChallenge, duplicateChallenge, exportChallengePackage, importChallengePackage, listInstalledChallenges, saveInstalledChallenge, syncBundledChallenges, type EducadChallenge } from "@/lib/challengeLibrary";
 import { exportEducadProject, importEducadProject, EDUCAD_PACKAGE_MEDIA_TYPE } from "@/lib/educadProject";
 import { createEmptyDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { deleteLibraryProject, getLibraryProject, listLibraryProjects, newProjectLibraryId, saveLibraryProject, updateLibraryProjectThumbnail, type ProjectLibraryEntry } from "@/lib/projectLibrary";
@@ -209,6 +209,16 @@ export default function Home() {
     link.click();
     window.setTimeout(() => URL.revokeObjectURL(link.href), 1_000);
   };
+  const duplicateInstalledChallenge = async (challenge: EducadChallenge) => {
+    setBusy(true);
+    try {
+      const copy = duplicateChallenge(challenge, await listInstalledChallenges());
+      await saveInstalledChallenge(copy);
+      setChallenges(await listInstalledChallenges());
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Could not duplicate the challenge.");
+    } finally { setBusy(false); }
+  };
   const importProject = async (file: File) => {
     setBusy(true);
     try {
@@ -258,5 +268,5 @@ export default function Home() {
 
   if (active) return <SketchForgeParametricEditor key={`${active.id}:${editorSession}`} initialProject={active.document} sharedFileName={active.sharedSource?.fileName} onSaveShared={sharedEnabled && !editingChallenge ? saveActiveShared : undefined} challenge={activeChallenge} challengeEditor={editingChallenge} onSaveChallenge={(challenge, document) => void finishChallengeEdit(challenge, document)} onCancelChallengeEdit={cancelChallengeEdit} onProjectChange={persistActive} onProjectThumbnail={persistThumbnail} onExitToProjects={(document) => void leaveEditor(document)} />;
   if (showLanding) return <EducadLandingPage projectCount={projects.length} preview={projects.find((project) => project.thumbnail)?.thumbnail} onStart={() => { setDashboardSection("home"); setShowLanding(false); }} onOpenChallenges={() => { setDashboardSection("challenges"); setShowLanding(false); }} />;
-  return <ProjectDashboard sharedEnabled={sharedEnabled} onSharedSaved={() => void refresh()} projects={projects} challenges={challenges} busy={busy} section={dashboardSection} onSectionChange={setDashboardSection} onShowLanding={() => setShowLanding(true)} onCreate={() => void createProject()} onOpen={(project) => { setActiveChallenge(null); setEditingChallenge(null); void openStoredProject(project); }} onImport={(file) => void importProject(file)} onImportChallenge={(file) => void installChallenge(file)} onCreateChallenge={() => editChallenge()} onEditChallenge={editChallenge} onExportChallenge={downloadChallenge} onStartChallenge={(challenge) => void startChallenge(challenge)} onDeleteChallenge={(challenge) => void (async () => { await deleteInstalledChallenge(challenge.id); setChallenges(await listInstalledChallenges()); })()} onRename={(project, name) => void renameProject(project, name)} onDelete={(project) => void (async () => { await deleteLibraryProject(project.id); await refresh(); })()} />;
+  return <ProjectDashboard sharedEnabled={sharedEnabled} onSharedSaved={() => void refresh()} projects={projects} challenges={challenges} busy={busy} section={dashboardSection} onSectionChange={setDashboardSection} onShowLanding={() => setShowLanding(true)} onCreate={() => void createProject()} onOpen={(project) => { setActiveChallenge(null); setEditingChallenge(null); void openStoredProject(project); }} onImport={(file) => void importProject(file)} onImportChallenge={(file) => void installChallenge(file)} onCreateChallenge={() => editChallenge()} onEditChallenge={editChallenge} onDuplicateChallenge={(challenge) => void duplicateInstalledChallenge(challenge)} onExportChallenge={downloadChallenge} onStartChallenge={(challenge) => void startChallenge(challenge)} onDeleteChallenge={(challenge) => void (async () => { await deleteInstalledChallenge(challenge.id); setChallenges(await listInstalledChallenges()); })()} onRename={(project, name) => void renameProject(project, name)} onDelete={(project) => void (async () => { await deleteLibraryProject(project.id); await refresh(); })()} />;
 }
