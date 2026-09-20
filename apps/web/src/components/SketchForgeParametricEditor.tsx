@@ -92,6 +92,7 @@ import {
   deleteParametricFeature,
   deleteParametricSelection,
   duplicateParametricObject,
+  duplicateParametricFeature,
   duplicateParametricSelection,
   lastOperationForObject,
   moveParametricObjectOrigin,
@@ -2296,9 +2297,14 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const duplicateSelected = useCallback((sourceId?: string | null) => {
     if (sourceId) {
       let nextId: string | null = null;
-      const changed = mutate((draft) => { nextId = duplicateParametricObject(draft, sourceId); });
+      const sourceIsFeature = document.features.some((feature) => feature.id === sourceId);
+      const changed = mutate((draft) => {
+        nextId = sourceIsFeature
+          ? duplicateParametricFeature(draft, sourceId, selectedObjectId ?? undefined)
+          : duplicateParametricObject(draft, sourceId);
+      });
       if (changed && nextId) {
-        setModelSelection([{ id: nextId, kind: "object" }]);
+        setModelSelection([{ id: nextId, kind: sourceIsFeature ? "feature" : "object" }]);
         setNotice({ type: "ok", text: t("notice.shapeDuplicated") });
       }
       return;
@@ -2310,7 +2316,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       setModelSelection(duplicated);
       setNotice({ type: "ok", text: t("notice.shapeDuplicated") });
     }
-  }, [modelSelection, mutate]);
+  }, [document.features, modelSelection, mutate, selectedObjectId]);
 
   const deleteFeature = useCallback((id: string) => {
     let result: ReturnType<typeof deleteParametricFeature> = { objectId: null, nextId: null };
@@ -3054,7 +3060,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               <Tool label={t("toolbar.redo")} enabled={history.index < history.entries.length - 1} onClick={redo}><ToolbarRedoIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label={t("toolbar.clipboard")}>
-              <Tool label={t("toolbar.copy")} enabled={Boolean(selectedObjectId)} onClick={() => { setClipboardId(selectedObjectId); setNotice({ type: "info", text: t("notice.objectCopied") }); }}><ToolbarCopyIcon /></Tool>
+              <Tool label={t("toolbar.copy")} enabled={Boolean(selectedId)} onClick={() => { setClipboardId(selectedId); setNotice({ type: "info", text: selectionKind === "feature" ? (locale === "es" ? "Operación copiada" : "Operation copied") : t("notice.objectCopied") }); }}><ToolbarCopyIcon /></Tool>
               <Tool label={t("toolbar.paste")} enabled={Boolean(clipboardId)} onClick={() => duplicateSelected(clipboardId)}><ToolbarPasteIcon /></Tool>
               <Tool label={t("toolbar.duplicate")} enabled={Boolean(selectedObjectId)} onClick={() => duplicateSelected()}><ToolbarDuplicateIcon /></Tool>
               <Tool label={modelSelection.length > 1 ? t("toolbar.deleteSelection") : selectionKind === "feature" ? t("toolbar.deleteOperation") : t("toolbar.deleteObject")} enabled={modelSelection.length > 0} onClick={deleteCurrentSelection}><ToolbarTrashIcon /></Tool>
