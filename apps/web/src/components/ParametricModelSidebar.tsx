@@ -1,4 +1,5 @@
 "use client";
+import { ShellCornerButtons } from "@/components/ShellCornerButtons";
 
 import {
   ArrowDown,
@@ -106,7 +107,8 @@ type Props = {
   onFaceExtrudeDraftChange: (update: Partial<{ operation: "add" | "cut"; distance: number }>) => void;
   onAcceptFaceExtrude: () => void;
   onCancelFaceExtrude: () => void;
-  shellDraft: { thickness: number; faceCount: number; editing: boolean } | null;
+  shellDraft: { thickness: number; cornerType?: "rounded" | "sharp"; faceCount: number; editing: boolean } | null;
+  onShellCornerTypeChange: (cornerType: "rounded" | "sharp") => void;
   onShellDraftChange: (thickness: number) => void;
   onAcceptShell: () => void;
   onCancelShell: () => void;
@@ -152,6 +154,7 @@ export function ParametricModelSidebar({
   onCancelFaceExtrude,
   shellDraft,
   onShellDraftChange,
+  onShellCornerTypeChange,
   onAcceptShell,
   onCancelShell,
   revolveDraft,
@@ -306,7 +309,7 @@ export function ParametricModelSidebar({
           </div>
         ) : shellDraft ? (
           <div className="educad-feature-inspector educad-edge-treatment-draft" aria-label={t("operation.previewShell")}>
-            <div className="educad-feature-card"><h3>{shellDraft.editing ? t("operation.edit") : t("operation.new")}</h3><BoundedNumberField label={t("property.thickness")} value={shellDraft.thickness} min={0.01} max={50} onChange={onShellDraftChange} /></div>
+            <div className="educad-feature-card"><h3>{shellDraft.editing ? t("operation.edit") : t("operation.new")}</h3><div className="educad-operation-mode-property"><div className="educad-operation-mode-buttons"><ShellCornerButtons value={shellDraft.cornerType} locale={locale} onChange={onShellCornerTypeChange} /></div></div><BoundedNumberField label={t("property.thickness")} value={shellDraft.thickness} min={0.01} max={50} onChange={onShellDraftChange} /></div>
             <div className="educad-topology-selection-actions"><button type="button" onClick={onCancelShell}>{t("common.cancel")}</button><button type="button" className="primary" disabled={shellDraft.faceCount === 0} onClick={onAcceptShell}>{t("common.accept")}</button></div>
             <p className="educad-topology-selection-count">{t("operation.openFaces")}: {shellDraft.faceCount}</p>
           </div>
@@ -701,9 +704,8 @@ function ParametricFeatureInspector({
 
       {feature.kind === "shell" ? (
         <>
-          <div className="educad-feature-card"><h3>{t("model.operation")}</h3><ReadOnlyField label={t("property.type")} value={t("toolbar.shell")} /><BoundedNumberField label={t("property.thickness")} value={feature.thickness} min={0.01} max={50} onChange={(value) => onUpdate((draft) => { if (draft.kind === "shell") draft.thickness = Math.max(0.01, value); })} /></div>
+          <div className="educad-feature-card"><h3>{t("model.operation")}</h3><ReadOnlyField label={t("property.type")} value={t("toolbar.shell")} /><div className="educad-operation-mode-property"><div className="educad-operation-mode-buttons"><ShellCornerButtons value={feature.cornerType} locale={locale} onChange={(cornerType) => onUpdate((draft) => { if (draft.kind === "shell") draft.cornerType = cornerType; })} /></div></div><BoundedNumberField label={t("property.thickness")} value={feature.thickness} min={0.01} max={50} onChange={(value) => onUpdate((draft) => { if (draft.kind === "shell") draft.thickness = Math.max(0.01, value); })} /></div>
           <button className="educad-edit-topology-selection" type="button" onClick={() => onEditShellSelection(feature.id)}>{t("operation.editOpenFaces")}</button>
-          <TransformSection description="Sin transformación propia"><p className="educad-transform-empty">{t("help.shell")}</p></TransformSection>
         </>
       ) : null}
 
@@ -726,7 +728,6 @@ function ParametricFeatureInspector({
             </div>
           </div>
           <button className="educad-edit-topology-selection" type="button" onClick={() => onEditMirrorPlane(feature.id)}>{t("mirror.choosePlane")}</button>
-          <TransformSection description="Plano local del objeto"><p className="educad-transform-empty">{t("help.mirror")}</p></TransformSection>
         </>
       ) : null}
 
@@ -753,7 +754,6 @@ function ParametricFeatureInspector({
             <BoundedNumberField label={t("property.count")} value={feature.count} min={2} max={50} step={1} onChange={(value) => onUpdate((draft) => { if (draft.kind === "linearPattern") draft.count = Math.min(50, Math.max(2, Math.round(value))); })} />
             <BoundedNumberField label={t("property.spacing")} value={feature.spacing} min={-1000} max={1000} unit="mm" onChange={(value) => onUpdate((draft) => { if (draft.kind === "linearPattern") draft.spacing = Math.abs(value) < 0.01 ? (value < 0 ? -0.01 : 0.01) : value; })} />
           </div>
-          <TransformSection description="Dirección local del objeto"><p className="educad-transform-empty">{t("help.linearPattern")}</p></TransformSection>
         </>
       ) : null}
 
@@ -781,7 +781,6 @@ function ParametricFeatureInspector({
             <BoundedNumberField label={t("property.count")} value={feature.count} min={2} max={50} step={1} onChange={(value) => onUpdate((draft) => { if (draft.kind === "polarPattern") draft.count = Math.min(50, Math.max(2, Math.round(value))); })} />
             <BoundedNumberField label={feature.equalSpacing ? t("property.totalAngle") : t("property.angularStep")} value={feature.angle} min={-360} max={360} step={1} unit="°" onChange={(value) => onUpdate((draft) => { if (draft.kind === "polarPattern") draft.angle = Math.abs(value) < 0.1 ? (value < 0 ? -0.1 : 0.1) : value; })} />
           </div>
-          <TransformSection description="Rotación alrededor del origen local"><p className="educad-transform-empty">{t("help.polarPattern")}</p></TransformSection>
         </>
       ) : null}
 
@@ -792,7 +791,6 @@ function ParametricFeatureInspector({
             <OperationModeButtons addOnly={requiresAddOperation(document, feature)} value={feature.operation} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "objectBoolean") draft.operation = operation; })} />
             <label><span>{t("property.object")}</span><select value={feature.sourceObjectId} onChange={(event) => onUpdate((draft) => { if (draft.kind !== "objectBoolean") return; draft.sourceObjectId = event.target.value; draft.dependencies = [{ type: "object", id: event.target.value }]; })}>{document.objects.filter((object) => object.id !== feature.objectId).map((object) => <option key={object.id} value={object.id}>{object.name}</option>)}</select></label>
           </div>
-          <TransformSection description="Referencia entre objetos"><p className="educad-transform-empty">{t("help.objectBoolean")}</p></TransformSection>
         </>
       ) : null}
 

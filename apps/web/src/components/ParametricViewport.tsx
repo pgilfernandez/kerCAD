@@ -11,6 +11,7 @@ import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import { acceleratedRaycast, MeshBVH } from "three-mesh-bvh";
 import { Check, X } from "lucide-react";
+import { ShellCornerButtons } from "@/components/ShellCornerButtons";
 import { constrainViewportAxisDrag, coplanarFaceRegion, exactEdgeRegion, exactFaceRegion, finalReferenceWireframeDepthTest, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, type ViewportDimensionAxis, type ViewportEdgeGroup, type ViewportFaceGroup } from "@/lib/viewportGeometry";
 import { AdaptiveViewportResolution, viewportPerformanceOptions, viewportRenderProfile, type ViewportRenderQuality } from "@/lib/viewportPerformance";
 import { orthographicTouchTargetWorldSize, perspectiveTouchTargetWorldSize, viewportPointerDragIntent, type ViewportPointerDragIntent } from "@/lib/viewportPointer";
@@ -65,77 +66,66 @@ export type TopologyEdgePick = {
 type ShapeParameter = "width" | "depth" | "height" | "size" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "thickness" | "majorRadius" | "tubeRadius" | "cornerRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius";
 
 function ViewportEdgeRadiusInput({ radius, displayUnit, snap, locale, onCommit }: { radius: number; displayUnit: ParametricDisplayUnit; snap: number; locale: "en" | "es"; onCommit: (radius: number) => void }) {
-  const [draft, setDraft] = useState(() => formatDisplayLength(radius, displayUnit));
-  const editingRef = useRef(false);
-
-  useEffect(() => {
-    if (!editingRef.current) setDraft(formatDisplayLength(radius, displayUnit));
-  }, [radius, displayUnit]);
-
-  const restore = () => setDraft(formatDisplayLength(radius, displayUnit));
-  const commit = () => {
-    editingRef.current = false;
-    const parsed = Number.parseFloat(draft.replace(",", "."));
-    const nextRadius = displayLengthToMillimeters(parsed, displayUnit);
-    if (!Number.isFinite(nextRadius) || nextRadius <= 0) {
-      restore();
-      return;
-    }
-    setDraft(formatDisplayLength(nextRadius, displayUnit));
-    if (Math.abs(nextRadius - radius) > 1e-6) onCommit(nextRadius);
-  };
-  const step = millimetersToDisplayLength(Math.max(0.01, snap / 2), displayUnit);
-  const label = locale === "es" ? "Radio" : "Radius";
-
-  return <label className="educad-viewport-edge-treatment-radius">
-    <div>
-      <input
-        type="text"
-        inputMode="decimal"
-        aria-label={label}
-        value={draft}
-        onFocus={(event) => {
-          editingRef.current = true;
-          event.currentTarget.select();
-        }}
-        onChange={(event) => setDraft(event.currentTarget.value)}
-        onBlur={commit}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") event.currentTarget.blur();
-          if (event.key === "Escape") {
-            editingRef.current = false;
-            restore();
-            event.currentTarget.blur();
-          }
-          if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-            event.preventDefault();
-            const current = Number.parseFloat(draft.replace(",", "."));
-            const fallback = millimetersToDisplayLength(radius, displayUnit);
-            const next = Math.max(step, (Number.isFinite(current) ? current : fallback) + (event.key === "ArrowUp" ? step : -step));
-            setDraft(String(Number(next.toFixed(displayUnit === "in" ? 4 : 3))));
-          }
-        }}
-      />
-      <span>{displayUnitLabel(displayUnit)}</span>
-    </div>
-  </label>;
+  return <ViewportFloatingNumberInput value={radius} unit="length" displayUnit={displayUnit} snap={snap} label={locale === "es" ? "Radio" : "Radius"} min={0.01} max={Infinity} onCommit={onCommit} />;
 }
 
-function ViewportFloatingNumberInput({ value, unit, displayUnit, snap, label, min, max, onCommit }: { value: number; unit: "length" | "angle"; displayUnit: ParametricDisplayUnit; snap: number; label: string; min: number; max: number; onCommit: (value: number) => void }) {
-  const shown = unit === "length" ? formatDisplayLength(value, displayUnit) : formatViewportDimension(value);
+function ViewportFloatingNumberInput({ value, unit, displayUnit, snap, label, min, max, onCommit }: { value: number; unit: "length" | "angle" | "count"; displayUnit: ParametricDisplayUnit; snap: number; label: string; min: number; max: number; onCommit: (value: number) => void }) {
+  const format = (number: number) => unit === "length" ? formatDisplayLength(number, displayUnit) : formatViewportDimension(number);
+  const shown = format(value);
   const [draft, setDraft] = useState(shown);
+  const draftRef = useRef(draft);
   const editingRef = useRef(false);
-  useEffect(() => { if (!editingRef.current) setDraft(shown); }, [shown]);
-  const commit = () => {
-    editingRef.current = false;
-    const parsed = Number.parseFloat(draft.replace(",", "."));
-    const raw = unit === "length" ? displayLengthToMillimeters(parsed, displayUnit) : parsed;
-    if (!Number.isFinite(raw)) { setDraft(shown); return; }
-    const next = Math.min(max, Math.max(min, raw));
-    setDraft(unit === "length" ? formatDisplayLength(next, displayUnit) : formatViewportDimension(next));
+  const fieldRef = useRef<HTMLDivElement | null>(null);
+  const updateDraft = (text: string) => { draftRef.current = text; setDraft(text); };
+  useEffect(() => { if (!editingRef.current) { draftRef.current = shown; setDraft(shown); } }, [shown]);
+  const parsedValue = () => {
+    const parsed = Number.parseFloat(draftRef.current.replace(",", "."));
+    return unit === "length" ? displayLengthToMillimeters(parsed, displayUnit) : parsed;
+  };
+  const apply = (raw: number) => {
+    const next = Math.min(max, Math.max(min, unit === "count" ? Math.round(raw) : raw));
+    updateDraft(format(next));
     if (Math.abs(next - value) > 1e-6) onCommit(next);
   };
-  return <label className="educad-viewport-edge-treatment-radius"><div><input type="text" inputMode="decimal" aria-label={label} value={draft} onFocus={(event) => { editingRef.current = true; event.currentTarget.select(); }} onChange={(event) => setDraft(event.currentTarget.value)} onBlur={commit} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); if (event.key === "Escape") { editingRef.current = false; setDraft(shown); event.currentTarget.blur(); } if (event.key === "ArrowUp" || event.key === "ArrowDown") { event.preventDefault(); const parsed = Number.parseFloat(draft.replace(",", ".")); const step = unit === "length" ? millimetersToDisplayLength(Math.max(0.01, snap / 2), displayUnit) : 1; const base = Number.isFinite(parsed) ? parsed : Number.parseFloat(shown); setDraft(String(Number((base + (event.key === "ArrowUp" ? step : -step)).toFixed(unit === "angle" ? 0 : displayUnit === "in" ? 4 : 3)))); } }} /><span>{unit === "length" ? displayUnitLabel(displayUnit) : "°"}</span></div></label>;
+  const commit = () => {
+    editingRef.current = false;
+    const raw = parsedValue();
+    if (!Number.isFinite(raw)) { updateDraft(shown); return; }
+    apply(raw);
+  };
+  const increment = (direction: number) => {
+    const raw = parsedValue();
+    const step = unit === "length" ? Math.max(0.01, snap / 2) : 1;
+    apply((Number.isFinite(raw) ? raw : value) + direction * step);
+  };
+  const incrementRef = useRef(increment);
+  incrementRef.current = increment;
+  useEffect(() => {
+    const field = fieldRef.current;
+    if (!field) return;
+    const wheel = (event: WheelEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.deltaY) incrementRef.current(event.deltaY < 0 ? 1 : -1);
+    };
+    field.addEventListener("wheel", wheel, { passive: false });
+    return () => field.removeEventListener("wheel", wheel);
+  }, []);
+  return <div className="educad-viewport-edge-treatment-radius"><div ref={fieldRef}>
+    <input type="text" inputMode={unit === "count" ? "numeric" : "decimal"} aria-label={label} value={draft}
+      onFocus={(event) => { editingRef.current = true; event.currentTarget.select(); }}
+      onChange={(event) => updateDraft(event.currentTarget.value)} onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") event.currentTarget.blur();
+        if (event.key === "Escape") { updateDraft(shown); editingRef.current = false; event.currentTarget.blur(); }
+        if (event.key === "ArrowUp" || event.key === "ArrowDown") { event.preventDefault(); increment(event.key === "ArrowUp" ? 1 : -1); }
+      }} />
+    <span>{unit === "length" ? displayUnitLabel(displayUnit) : unit === "angle" ? "°" : "×"}</span>
+    <div className="educad-viewport-number-steppers">
+      <button type="button" aria-label={`${label} +`} onPointerDown={(event) => event.preventDefault()} onClick={() => increment(1)}>▴</button>
+      <button type="button" aria-label={`${label} −`} onPointerDown={(event) => event.preventDefault()} onClick={() => increment(-1)}>▾</button>
+    </div>
+  </div></div>;
 }
 
 export type ViewportSelection = {
@@ -249,6 +239,10 @@ type Props = {
   historicalTopologyRecords?: ParametricObjectRenderRecord[];
   faceExtrudeHandle?: { origin: { x: number; y: number; z: number }; normal: { x: number; y: number; z: number }; distance: number; operation: "add" | "cut" } | null;
   onFaceExtrudeDistanceChange?: (distance: number, operation: "add" | "cut") => void;
+  faceExtrudeDraft?: { distance: number; operation: "add" | "cut" } | null;
+  onFaceExtrudeAccept?: () => void;
+  onFaceExtrudeCancel?: () => void;
+  faceExtrudeCanAccept?: boolean;
   edgeTreatmentHandle?: { origin: { x: number; y: number; z: number }; radius: number; treatment: "fillet" | "chamfer" } | null;
   onEdgeTreatmentRadiusChange?: (radius: number) => void;
   onEdgeTreatmentTypeChange?: (treatment: "fillet" | "chamfer") => void;
@@ -260,12 +254,26 @@ type Props = {
   onRevolveAnglePreview?: (angle: number) => void;
   onRevolveAngleChange?: (angle: number) => void;
   onRevolveAngleCancel?: () => void;
-  shellHandle?: { origin: { x: number; y: number; z: number }; direction: { x: number; y: number; z: number }; thickness: number } | null;
-  onShellThicknessDragStart?: () => void;
-  onShellThicknessPreview?: (thickness: number) => void;
-  onShellThicknessChange?: (thickness: number) => void;
-  onShellThicknessCancel?: () => void;
+  revolveDraft?: { operation: "add" | "cut" | "intersect"; angle: number } | null;
+  onRevolveDraftChange?: (update: Partial<{ operation: "add" | "cut" | "intersect"; angle: number }>) => void;
+  onRevolveAccept?: () => void;
+  onRevolveCancel?: () => void;
+  revolveCanAccept?: boolean;
+  distanceHandle?: { origin: { x: number; y: number; z: number }; direction: { x: number; y: number; z: number }; value: number; min?: number; max?: number; valueScale?: number; offset?: number } | null;
+  onDistanceParameterDragStart?: () => void;
+  onDistanceParameterPreview?: (value: number) => void;
+  onDistanceParameterChange?: (value: number) => void;
+  onDistanceParameterCancel?: () => void;
+  shellDraft?: { thickness: number; cornerType?: "rounded" | "sharp" } | null;
+  onShellCornerTypeChange?: (cornerType: "rounded" | "sharp") => void;
+  onShellDraftChange?: (thickness: number) => void;
+  onShellAccept?: () => void;
+  onShellCancel?: () => void;
+  shellCanAccept?: boolean;
   floatingFeature?: ParametricFeature | null;
+  booleanObjects?: Array<{ id: string; name: string }>;
+  patternSources?: Array<{ id: string; name: string }>;
+  booleanAddOnly?: boolean;
   operationModesVisible?: boolean;
   contextToolbarVisible?: boolean;
   manipulatorControls?: ReactNode;
@@ -276,7 +284,7 @@ type Props = {
   onEditRevolveFace?: (featureId: string) => void;
   onEditRevolveAxis?: (featureId: string) => void;
   onEditMirrorPlane?: (featureId: string) => void;
-  onFloatingFeatureChange?: (featureId: string, update: Partial<{ distance: number; angle: number; thickness: number; duplicate: boolean }>) => void;
+  onFloatingFeatureChange?: (featureId: string, update: Partial<{ distance: number; angle: number; thickness: number; cornerType: "rounded" | "sharp"; duplicate: boolean; operation: "add" | "cut" | "intersect"; sourceObjectId: string; count: number; axis: "x" | "y" | "z"; sourceFeatureId: string }>) => void;
   projectName?: string;
   onProjectRename?: () => void;
   onThumbnail?: (dataUrl: string) => void;
@@ -616,7 +624,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, shellHandle = null, onShellThicknessDragStart, onShellThicknessPreview, onShellThicknessChange, onShellThicknessCancel, floatingFeature = null, operationModesVisible = true, contextToolbarVisible, manipulatorControls, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = "Untitled design", onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions, alignmentActive = false, alignmentBusy = false, alignmentTargets = [], alignmentReference = null, onAlignmentSelect, onAlign }: Props) {
+export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, faceExtrudeDraft = null, onFaceExtrudeAccept, onFaceExtrudeCancel, faceExtrudeCanAccept = true, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, revolveDraft = null, onRevolveDraftChange, onRevolveAccept, onRevolveCancel, revolveCanAccept = true, distanceHandle = null, onDistanceParameterDragStart, onDistanceParameterPreview, onDistanceParameterChange, onDistanceParameterCancel, shellDraft = null, onShellDraftChange, onShellCornerTypeChange, onShellAccept, onShellCancel, shellCanAccept = true, floatingFeature = null, booleanObjects = [], patternSources = [], booleanAddOnly = false, operationModesVisible = true, contextToolbarVisible, manipulatorControls, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = "Untitled design", onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions, alignmentActive = false, alignmentBusy = false, alignmentTargets = [], alignmentReference = null, onAlignmentSelect, onAlign }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const alignmentRef = useRef({ active: alignmentActive, targets: alignmentTargets, onSelect: onAlignmentSelect });
   alignmentRef.current = { active: alignmentActive, targets: alignmentTargets, onSelect: onAlignmentSelect };
@@ -638,7 +646,7 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
   const [moveDimension, setMoveDimension] = useState<ViewportMoveDimension | null>(null);
   const [edgeTreatmentRadiusPreview, setEdgeTreatmentRadiusPreview] = useState<number | null>(null);
   const [revolveAnglePreview, setRevolveAnglePreview] = useState<number | null>(null);
-  const [shellThicknessPreview, setShellThicknessPreview] = useState<number | null>(null);
+  const [distanceParameterPreview, setDistanceParameterPreview] = useState<number | null>(null);
   const shapeParameterPreviewRef = useRef<{ parameter: ShapeParameter; value: number } | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | THREE.OrthographicCamera | null>(null);
@@ -666,17 +674,17 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
   const faceExtrudeHandleRef = useRef<THREE.Group | null>(null);
   const edgeTreatmentHandleRef = useRef<THREE.Group | null>(null);
   const revolveHandleRef = useRef<THREE.Group | null>(null);
-  const shellHandleRef = useRef<THREE.Group | null>(null);
+  const distanceHandleRef = useRef<THREE.Group | null>(null);
   const faceExtrudeDistanceChangeRef = useRef(onFaceExtrudeDistanceChange);
   const edgeTreatmentRadiusChangeRef = useRef(onEdgeTreatmentRadiusChange);
   const revolveAngleChangeRef = useRef(onRevolveAngleChange);
   const revolveAngleDragStartRef = useRef(onRevolveAngleDragStart);
   const revolveAnglePreviewRef = useRef(onRevolveAnglePreview);
   const revolveAngleCancelRef = useRef(onRevolveAngleCancel);
-  const shellThicknessDragStartRef = useRef(onShellThicknessDragStart);
-  const shellThicknessPreviewRef = useRef(onShellThicknessPreview);
-  const shellThicknessChangeRef = useRef(onShellThicknessChange);
-  const shellThicknessCancelRef = useRef(onShellThicknessCancel);
+  const distanceParameterDragStartRef = useRef(onDistanceParameterDragStart);
+  const distanceParameterPreviewRef = useRef(onDistanceParameterPreview);
+  const distanceParameterChangeRef = useRef(onDistanceParameterChange);
+  const distanceParameterCancelRef = useRef(onDistanceParameterCancel);
   const resizeHitboxesRef = useRef<THREE.Mesh[]>([]);
   const selectionRef = useRef(selection);
   const shapeParameterRef = useRef(onShapeParameterChange);
@@ -741,10 +749,10 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
   useEffect(() => { revolveAngleDragStartRef.current = onRevolveAngleDragStart; }, [onRevolveAngleDragStart]);
   useEffect(() => { revolveAnglePreviewRef.current = onRevolveAnglePreview; }, [onRevolveAnglePreview]);
   useEffect(() => { revolveAngleCancelRef.current = onRevolveAngleCancel; }, [onRevolveAngleCancel]);
-  useEffect(() => { shellThicknessDragStartRef.current = onShellThicknessDragStart; }, [onShellThicknessDragStart]);
-  useEffect(() => { shellThicknessPreviewRef.current = onShellThicknessPreview; }, [onShellThicknessPreview]);
-  useEffect(() => { shellThicknessChangeRef.current = onShellThicknessChange; }, [onShellThicknessChange]);
-  useEffect(() => { shellThicknessCancelRef.current = onShellThicknessCancel; }, [onShellThicknessCancel]);
+  useEffect(() => { distanceParameterDragStartRef.current = onDistanceParameterDragStart; }, [onDistanceParameterDragStart]);
+  useEffect(() => { distanceParameterPreviewRef.current = onDistanceParameterPreview; }, [onDistanceParameterPreview]);
+  useEffect(() => { distanceParameterChangeRef.current = onDistanceParameterChange; }, [onDistanceParameterChange]);
+  useEffect(() => { distanceParameterCancelRef.current = onDistanceParameterCancel; }, [onDistanceParameterCancel]);
   useEffect(() => { topologyEdgeSelectRef.current = onTopologyEdgeSelect; }, [onTopologyEdgeSelect]);
   useEffect(() => {
     if (workplaneFaceSelection || topologyFaceSelection || topologyEdgeSelection) return;
@@ -1097,7 +1105,7 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
       updateRoot(faceExtrudeHandleRef.current);
       updateRoot(edgeTreatmentHandleRef.current);
       updateRoot(revolveHandleRef.current);
-      updateRoot(shellHandleRef.current);
+      updateRoot(distanceHandleRef.current);
     };
     const originWorldPosition = new THREE.Vector3();
     const render = (now: number) => {
@@ -1271,17 +1279,17 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
     revolveHandleLayer.name = "Revolution angle";
     modelGroup.add(revolveHandleLayer);
     revolveHandleRef.current = revolveHandleLayer;
-    const shellHandleLayer = new THREE.Group();
-    shellHandleLayer.name = "Shell thickness";
-    modelGroup.add(shellHandleLayer);
-    shellHandleRef.current = shellHandleLayer;
+    const distanceHandleLayer = new THREE.Group();
+    distanceHandleLayer.name = "Distance parameter";
+    modelGroup.add(distanceHandleLayer);
+    distanceHandleRef.current = distanceHandleLayer;
 
     const raycaster = new THREE.Raycaster();
     raycaster.firstHitOnly = true;
     const pointer = new THREE.Vector2();
     const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     const dragPoint = new THREE.Vector3();
-    let interaction: "parameter" | "origin" | "axisMove" | "snapMove" | "axisRotate" | "faceExtrude" | "edgeTreatmentRadius" | "revolveAngle" | "shellThickness" | null = null;
+    let interaction: "parameter" | "origin" | "axisMove" | "snapMove" | "axisRotate" | "faceExtrude" | "edgeTreatmentRadius" | "revolveAngle" | "distanceParameter" | null = null;
     let faceExtrudeAxis: THREE.Vector3 | null = null;
     let faceExtrudeOriginWorld: THREE.Vector3 | null = null;
     let faceExtrudeStartDistance = 0;
@@ -1302,10 +1310,10 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
     let revolveGuide: THREE.Group | null = null;
     let revolveGuideHighlight: LineSegments2 | null = null;
     let revolveGuideScale = 1;
-    let shellOriginWorld: THREE.Vector3 | null = null;
-    let shellDirectionWorld: THREE.Vector3 | null = null;
-    let shellPointerOffset = 0;
-    let pendingShellThickness: number | null = null;
+    let distanceOriginWorld: THREE.Vector3 | null = null;
+    let distanceDirectionWorld: THREE.Vector3 | null = null;
+    let distancePointerOffset = 0;
+    let pendingDistanceParameter: number | null = null;
     let pendingShapeParameter: { parameter: ShapeParameter; value: number } | null = null;
     let shapeParameterStartValue = 0;
     let shapeParameterWorldScale = 1;
@@ -1777,12 +1785,12 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
       });
       requestRender();
     };
-    let shellHandleHovered = false;
+    let distanceHandleHovered = false;
     const setShellHandleHover = (hovered: boolean) => {
-      if (shellHandleHovered === hovered) return;
-      shellHandleHovered = hovered;
-      shellHandleRef.current?.traverse((child) => {
-        if (!(child instanceof THREE.Mesh) || !child.userData.shellThicknessHandle) return;
+      if (distanceHandleHovered === hovered) return;
+      distanceHandleHovered = hovered;
+      distanceHandleRef.current?.traverse((child) => {
+        if (!(child instanceof THREE.Mesh) || !child.userData.distanceParameterHandle) return;
         const material = child.material;
         if (material instanceof THREE.MeshBasicMaterial) material.color.set(hovered ? 0xffe000 : 0xf0b83f);
       });
@@ -1811,9 +1819,9 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
       }
       setOriginHandleHover(null);
       renderer.domElement.style.cursor = "default";
-      const shellLayer = shellHandleRef.current;
+      const shellLayer = distanceHandleRef.current;
       const shellHit = shellLayer
-        ? raycaster.intersectObject(shellLayer, true).some((hit) => hit.object.userData.shellThicknessTarget)
+        ? raycaster.intersectObject(shellLayer, true).some((hit) => hit.object.userData.distanceParameterTarget)
         : false;
       setShellHandleHover(shellHit);
       if (shellHit) {
@@ -2119,24 +2127,24 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
         renderer.domElement.setPointerCapture(event.pointerId);
         return;
       }
-      const shellLayer = shellHandleRef.current;
-      const shellHit = shellLayer ? raycaster.intersectObject(shellLayer, true).find((hit) => hit.object.userData.shellThicknessTarget) : null;
+      const shellLayer = distanceHandleRef.current;
+      const shellHit = shellLayer ? raycaster.intersectObject(shellLayer, true).find((hit) => hit.object.userData.distanceParameterTarget) : null;
       if (shellLayer && shellHit) {
         const localOrigin = (shellLayer.userData.origin as THREE.Vector3).clone();
         const localDirection = (shellLayer.userData.direction as THREE.Vector3).clone().normalize();
-        shellOriginWorld = modelGroup.localToWorld(localOrigin);
-        shellDirectionWorld = localDirection.applyQuaternion(modelGroup.getWorldQuaternion(new THREE.Quaternion())).normalize();
+        distanceOriginWorld = modelGroup.localToWorld(localOrigin);
+        distanceDirectionWorld = localDirection.applyQuaternion(modelGroup.getWorldQuaternion(new THREE.Quaternion())).normalize();
         const cameraDirection = camera.getWorldDirection(new THREE.Vector3()).normalize();
-        const planeNormal = cameraDirection.clone().addScaledVector(shellDirectionWorld, -cameraDirection.dot(shellDirectionWorld));
-        if (planeNormal.lengthSq() < 0.0001) planeNormal.crossVectors(shellDirectionWorld, new THREE.Vector3(1, 0, 0));
-        if (planeNormal.lengthSq() < 0.0001) planeNormal.crossVectors(shellDirectionWorld, new THREE.Vector3(0, 1, 0));
-        dragPlane.setFromNormalAndCoplanarPoint(planeNormal.normalize(), shellOriginWorld);
+        const planeNormal = cameraDirection.clone().addScaledVector(distanceDirectionWorld, -cameraDirection.dot(distanceDirectionWorld));
+        if (planeNormal.lengthSq() < 0.0001) planeNormal.crossVectors(distanceDirectionWorld, new THREE.Vector3(1, 0, 0));
+        if (planeNormal.lengthSq() < 0.0001) planeNormal.crossVectors(distanceDirectionWorld, new THREE.Vector3(0, 1, 0));
+        dragPlane.setFromNormalAndCoplanarPoint(planeNormal.normalize(), distanceOriginWorld);
         if (raycaster.ray.intersectPlane(dragPlane, dragPoint)) {
-          const thickness = Number(shellLayer.userData.thickness) || 0.01;
-          shellPointerOffset = dragPoint.clone().sub(shellOriginWorld).dot(shellDirectionWorld) - thickness;
-          pendingShellThickness = thickness;
-          interaction = "shellThickness";
-          shellThicknessDragStartRef.current?.();
+          const thickness = Number(shellLayer.userData.value) || 0.01;
+          distancePointerOffset = dragPoint.clone().sub(distanceOriginWorld).dot(distanceDirectionWorld) / shellLayer.userData.valueScale - thickness;
+          pendingDistanceParameter = thickness;
+          interaction = "distanceParameter";
+          distanceParameterDragStartRef.current?.();
         }
       }
       const revolveLayer = revolveHandleRef.current;
@@ -2407,21 +2415,23 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
       }
       setPointer(event);
       if (!raycaster.ray.intersectPlane(dragPlane, dragPoint)) return;
-      if (interaction === "shellThickness" && shellOriginWorld && shellDirectionWorld) {
+      if (interaction === "distanceParameter" && distanceOriginWorld && distanceDirectionWorld) {
         const step = Math.max(0.01, snapRef.current);
-        const coordinate = dragPoint.clone().sub(shellOriginWorld).dot(shellDirectionWorld) - shellPointerOffset;
-        const previousThickness = pendingShellThickness;
-        pendingShellThickness = Math.max(0.01, Math.round(coordinate / step) * step);
-        setShellThicknessPreview(pendingShellThickness);
-        if (pendingShellThickness !== previousThickness) shellThicknessPreviewRef.current?.(pendingShellThickness);
-        const layer = shellHandleRef.current;
+        const layer = distanceHandleRef.current;
+        if (!layer) return;
+        const coordinate = dragPoint.clone().sub(distanceOriginWorld).dot(distanceDirectionWorld) / layer.userData.valueScale - distancePointerOffset;
+        const previousValue = pendingDistanceParameter;
+        pendingDistanceParameter = Math.min(layer.userData.max, Math.max(layer.userData.min, Math.round(coordinate / step) * step));
+        if (Math.abs(pendingDistanceParameter) < 0.01) pendingDistanceParameter = coordinate < 0 ? -0.01 : 0.01;
+        setDistanceParameterPreview(pendingDistanceParameter);
+        if (pendingDistanceParameter !== previousValue) distanceParameterPreviewRef.current?.(pendingDistanceParameter);
         if (layer) {
           const origin = layer.userData.origin as THREE.Vector3;
           const direction = layer.userData.direction as THREE.Vector3;
-          const end = origin.clone().addScaledVector(direction, pendingShellThickness + 2);
-          const guide = layer.children.find((child) => child.userData.shellThicknessGuide);
-          const handle = layer.children.find((child) => child.userData.shellThicknessHandle);
-          const target = layer.children.find((child) => child.userData.shellThicknessTarget);
+          const end = origin.clone().addScaledVector(direction, pendingDistanceParameter * layer.userData.valueScale + layer.userData.offset);
+          const guide = layer.children.find((child) => child.userData.distanceParameterGuide);
+          const handle = layer.children.find((child) => child.userData.distanceParameterHandle);
+          const target = layer.children.find((child) => child.userData.distanceParameterTarget);
           if (guide instanceof LineSegments2) updateYellowManipulatorLine(guide, origin, end);
           handle?.position.copy(end);
           target?.position.copy(end);
@@ -2811,18 +2821,18 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
       setOriginHandleHover(null);
       if (renderer.domElement.hasPointerCapture(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
       if (cancelled) {
-        if (completedInteraction === "shellThickness") {
-          setShellThicknessPreview(null);
-          shellThicknessCancelRef.current?.();
-          const layer = shellHandleRef.current;
+        if (completedInteraction === "distanceParameter") {
+          setDistanceParameterPreview(null);
+          distanceParameterCancelRef.current?.();
+          const layer = distanceHandleRef.current;
           if (layer) {
             const origin = layer.userData.origin as THREE.Vector3;
             const direction = layer.userData.direction as THREE.Vector3;
-            const thickness = Number(layer.userData.thickness) || 0.01;
-            const end = origin.clone().addScaledVector(direction, thickness + 2);
-            const guide = layer.children.find((child) => child.userData.shellThicknessGuide);
-            const handle = layer.children.find((child) => child.userData.shellThicknessHandle);
-            const target = layer.children.find((child) => child.userData.shellThicknessTarget);
+            const thickness = Number(layer.userData.value) || 0.01;
+            const end = origin.clone().addScaledVector(direction, thickness * layer.userData.valueScale + layer.userData.offset);
+            const guide = layer.children.find((child) => child.userData.distanceParameterGuide);
+            const handle = layer.children.find((child) => child.userData.distanceParameterHandle);
+            const target = layer.children.find((child) => child.userData.distanceParameterTarget);
             if (guide instanceof LineSegments2) updateYellowManipulatorLine(guide, origin, end);
             handle?.position.copy(end);
             target?.position.copy(end);
@@ -2912,9 +2922,9 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
           revolveAngleChangeRef.current?.(pendingRevolveAngle);
           setRevolveAnglePreview(null);
         }
-        if (completedInteraction === "shellThickness" && pendingShellThickness !== null) {
-          shellThicknessChangeRef.current?.(pendingShellThickness);
-          setShellThicknessPreview(null);
+        if (completedInteraction === "distanceParameter" && pendingDistanceParameter !== null) {
+          distanceParameterChangeRef.current?.(pendingDistanceParameter);
+          setDistanceParameterPreview(null);
         }
       }
       pendingShapeParameter = null;
@@ -2939,10 +2949,10 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
       revolveGuide = null;
       revolveGuideHighlight = null;
       revolveGuideScale = 1;
-      pendingShellThickness = null;
-      shellOriginWorld = null;
-      shellDirectionWorld = null;
-      shellPointerOffset = 0;
+      pendingDistanceParameter = null;
+      distanceOriginWorld = null;
+      distanceDirectionWorld = null;
+      distancePointerOffset = 0;
       shapeParameterPreviewRef.current = null;
       shapeParameterStartValue = 0;
       shapeParameterWorldScale = 1;
@@ -3118,7 +3128,7 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
       faceExtrudeHandleRef.current = null;
       edgeTreatmentHandleRef.current = null;
       revolveHandleRef.current = null;
-      shellHandleRef.current = null;
+      distanceHandleRef.current = null;
       [dimensionXRef.current, dimensionYRef.current, dimensionZRef.current].forEach((label) => { if (label) label.style.display = "none"; });
       invalidateRef.current = () => undefined;
     };
@@ -3307,7 +3317,7 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
   }, [parameterHandlesVisible, revolveHandle]);
 
   useEffect(() => {
-    const layer = shellHandleRef.current;
+    const layer = distanceHandleRef.current;
     if (!layer) return;
     for (const child of [...layer.children]) {
       layer.remove(child);
@@ -3318,34 +3328,40 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
         materials.forEach((material) => material.dispose());
       });
     }
-    if (!shellHandle || !parameterHandlesVisible) {
+    if (!distanceHandle || !parameterHandlesVisible) {
       invalidateRef.current();
       return;
     }
-    const origin = new THREE.Vector3(shellHandle.origin.x, shellHandle.origin.y, shellHandle.origin.z);
-    const direction = new THREE.Vector3(shellHandle.direction.x, shellHandle.direction.y, shellHandle.direction.z).normalize();
-    const end = origin.clone().addScaledVector(direction, shellHandle.thickness + 2);
+    const origin = new THREE.Vector3(distanceHandle.origin.x, distanceHandle.origin.y, distanceHandle.origin.z);
+    const direction = new THREE.Vector3(distanceHandle.direction.x, distanceHandle.direction.y, distanceHandle.direction.z).normalize();
+    const valueScale = Math.max(1e-8, distanceHandle.valueScale ?? 1);
+    const offset = distanceHandle.offset ?? 2;
+    const end = origin.clone().addScaledVector(direction, distanceHandle.value * valueScale + offset);
     const guide = yellowManipulatorLine(origin, end, 0xf0b83f);
-    guide.userData.shellThicknessGuide = true;
+    guide.userData.distanceParameterGuide = true;
     guide.renderOrder = 31;
     const handle = new THREE.Mesh(new THREE.SphereGeometry(1.0625, 18, 12), new THREE.MeshBasicMaterial({ color: 0xf0b83f, depthTest: false, depthWrite: false, transparent: true, opacity: 0.92 }));
     handle.position.copy(end);
-    handle.userData.shellThicknessHandle = true;
+    handle.userData.distanceParameterHandle = true;
     handle.userData.yellowManipulatorBaseRadius = 1.0625;
     handle.userData.yellowManipulatorDiameterPixels = 28;
     handle.renderOrder = 32;
     addYellowManipulatorOutline(handle, 1.0625);
     const target = new THREE.Mesh(new THREE.SphereGeometry(4, 12, 8), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthTest: false, depthWrite: false }));
     target.position.copy(end);
-    target.userData.shellThicknessTarget = true;
+    target.userData.distanceParameterTarget = true;
     target.userData.yellowManipulatorBaseRadius = 4;
     target.userData.yellowManipulatorDiameterPixels = 56;
     layer.userData.origin = origin;
     layer.userData.direction = direction;
-    layer.userData.thickness = shellHandle.thickness;
+    layer.userData.value = distanceHandle.value;
+    layer.userData.valueScale = valueScale;
+    layer.userData.offset = offset;
+    layer.userData.min = distanceHandle.min ?? 0.01;
+    layer.userData.max = distanceHandle.max ?? Infinity;
     layer.add(guide, handle, target);
     invalidateRef.current();
-  }, [parameterHandlesVisible, shellHandle]);
+  }, [parameterHandlesVisible, distanceHandle]);
 
   useEffect(() => {
     const layer = originLayerRef.current;
@@ -4260,10 +4276,12 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
       if (document.activeElement !== event.currentTarget) setDimensionHover(axis, false);
     }}
   />;
-  const showOperationModes = operationModesVisible && Boolean(selection?.operationPreview);
+  const faceExtrudeControls = faceExtrudeDraft ?? faceExtrudeHandle;
+  const floatingBoolean = floatingFeature?.kind === "objectBoolean" ? floatingFeature : null;
+  const showOperationModes = !faceExtrudeControls && !revolveDraft && !shellDraft && (Boolean(floatingBoolean) || operationModesVisible && Boolean(selection?.operationPreview));
   const showEdgeTreatmentControls = Boolean(edgeTreatmentHandle);
   const showFeatureControls = Boolean(floatingFeature && floatingFeature.kind !== "fillet");
-  const showContextToolbar = contextToolbarVisible ?? (showOperationModes || showEdgeTreatmentControls || showFeatureControls);
+  const showContextToolbar = contextToolbarVisible ?? (showOperationModes || showEdgeTreatmentControls || showFeatureControls || Boolean(faceExtrudeControls) || Boolean(revolveDraft) || Boolean(shellDraft));
 
   useEffect(() => {
     const host = hostRef.current;
@@ -4348,13 +4366,34 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
     </div> : null}
     <div ref={selectionBoxRef} className="parametric-selection-box" aria-hidden="true" />
     {showContextToolbar ? <div className="educad-viewport-context-toolbar" aria-label={locale === "es" ? "Herramientas de la selección" : "Selection tools"} onPointerDown={(event) => event.stopPropagation()}>
-      {manipulatorControls ? <div className="educad-context-toolbar-group" aria-label={alignmentActive ? (locale === "es" ? "Modo de alineación" : "Alignment mode") : (locale === "es" ? "Manipuladores" : "Manipulators")}>{manipulatorControls}</div> : null}
+      {manipulatorControls && !floatingBoolean ? <div className="educad-context-toolbar-group" aria-label={alignmentActive ? (locale === "es" ? "Modo de alineación" : "Alignment mode") : (locale === "es" ? "Manipuladores" : "Manipulators")}>{manipulatorControls}</div> : null}
       {showOperationModes ? <div className="educad-context-toolbar-group" aria-label={locale === "es" ? "Modo de la operación" : "Operation mode"}>
         {(["add", "cut", "intersect"] as const).map((mode) => {
-          const activeMode = selection?.operationPreview?.mode === (mode === "cut" ? "hole" : mode === "intersect" ? "common" : "add");
+          const activeMode = floatingBoolean ? (booleanAddOnly ? "add" : floatingBoolean.operation) === mode : selection?.operationPreview?.mode === (mode === "cut" ? "hole" : mode === "intersect" ? "common" : "add");
           const label = locale === "es" ? mode === "add" ? "Añadir" : mode === "cut" ? "Hueco" : "Común" : mode === "add" ? "Add" : mode === "cut" ? "Hole" : "Common";
-          return <button key={mode} type="button" className={`mode-${mode} ${activeMode ? "active" : ""}`} aria-label={label} title={label} aria-pressed={activeMode} onClick={() => onOperationModeChange?.(mode)}><ToolbarBooleanModeIcon mode={mode === "cut" ? "hole" : mode === "intersect" ? "common" : "add"} /></button>;
+          return <button key={mode} type="button" className={`mode-${mode} ${activeMode ? "active" : ""}`} aria-label={label} title={label} aria-pressed={activeMode} disabled={Boolean(floatingBoolean && booleanAddOnly && mode !== "add")} onClick={() => floatingBoolean ? onFloatingFeatureChange?.(floatingBoolean.id, { operation: mode }) : onOperationModeChange?.(mode)}><ToolbarBooleanModeIcon mode={mode === "cut" ? "hole" : mode === "intersect" ? "common" : "add"} /></button>;
         })}
+      </div> : null}
+      {faceExtrudeControls ? <div className="educad-context-toolbar-group" aria-label={locale === "es" ? "Extrusión de cara" : "Face extrusion"}>
+        {(["add", "cut"] as const).map((mode) => {
+          const label = locale === "es" ? mode === "add" ? "Añadir" : "Hueco" : mode === "add" ? "Add" : "Hole";
+          return <button key={mode} type="button" className={`mode-${mode} ${faceExtrudeControls.operation === mode ? "active" : ""}`} aria-label={label} title={label} aria-pressed={faceExtrudeControls.operation === mode} onClick={() => onFaceExtrudeDistanceChange?.(faceExtrudeControls.distance, mode)}><ToolbarBooleanModeIcon mode={mode === "cut" ? "hole" : "add"} /></button>;
+        })}
+        <ViewportFloatingNumberInput value={faceExtrudeControls.distance * (faceExtrudeControls.operation === "cut" ? -1 : 1)} unit="length" displayUnit={displayUnit} snap={snap} label={locale === "es" ? "Profundidad" : "Depth"} min={-200} max={200} onCommit={(distance) => onFaceExtrudeDistanceChange?.(Math.max(0.01, Math.abs(distance)), distance < 0 ? "cut" : "add")} />
+        {onFaceExtrudeCancel && onFaceExtrudeAccept ? <><button type="button" className="cancel" aria-label={locale === "es" ? "Cancelar" : "Cancel"} title={locale === "es" ? "Cancelar" : "Cancel"} onClick={onFaceExtrudeCancel}><X /></button><button type="button" className="accept" disabled={!faceExtrudeCanAccept} aria-label={locale === "es" ? "Aceptar" : "Accept"} title={locale === "es" ? "Aceptar" : "Accept"} onClick={onFaceExtrudeAccept}><Check /></button></> : null}
+      </div> : null}
+      {revolveDraft ? <div className="educad-context-toolbar-group" aria-label={locale === "es" ? "Revolución" : "Revolve"}>
+        {(["add", "cut", "intersect"] as const).map((mode) => {
+          const label = locale === "es" ? mode === "add" ? "Añadir" : mode === "cut" ? "Hueco" : "Común" : mode === "add" ? "Add" : mode === "cut" ? "Hole" : "Common";
+          return <button key={mode} type="button" className={`mode-${mode} ${revolveDraft.operation === mode ? "active" : ""}`} aria-label={label} title={label} aria-pressed={revolveDraft.operation === mode} onClick={() => onRevolveDraftChange?.({ operation: mode })}><ToolbarBooleanModeIcon mode={mode === "cut" ? "hole" : mode === "intersect" ? "common" : "add"} /></button>;
+        })}
+        <ViewportFloatingNumberInput value={revolveDraft.angle} unit="angle" displayUnit={displayUnit} snap={snap} label={locale === "es" ? "Ángulo" : "Angle"} min={-360} max={360} onCommit={(angle) => onRevolveDraftChange?.({ angle: Math.abs(angle) < 1 ? (angle < 0 ? -1 : 1) : angle })} />
+        {onRevolveCancel && onRevolveAccept ? <><button type="button" className="cancel" aria-label={locale === "es" ? "Cancelar" : "Cancel"} title={locale === "es" ? "Cancelar" : "Cancel"} onClick={onRevolveCancel}><X /></button><button type="button" className="accept" disabled={!revolveCanAccept} aria-label={locale === "es" ? "Aceptar" : "Accept"} title={locale === "es" ? "Aceptar" : "Accept"} onClick={onRevolveAccept}><Check /></button></> : null}
+      </div> : null}
+      {shellDraft ? <div className="educad-context-toolbar-group" aria-label="Shell">
+        <ShellCornerButtons value={shellDraft.cornerType} locale={locale} onChange={(cornerType) => onShellCornerTypeChange?.(cornerType)} />
+        <ViewportFloatingNumberInput value={shellDraft.thickness} unit="length" displayUnit={displayUnit} snap={snap} label={locale === "es" ? "Espesor" : "Thickness"} min={0.01} max={50} onCommit={(thickness) => onShellDraftChange?.(thickness)} />
+        {onShellCancel && onShellAccept ? <><button type="button" className="cancel" aria-label={locale === "es" ? "Cancelar" : "Cancel"} title={locale === "es" ? "Cancelar" : "Cancel"} onClick={onShellCancel}><X /></button><button type="button" className="accept" disabled={!shellCanAccept} aria-label={locale === "es" ? "Aceptar" : "Accept"} title={locale === "es" ? "Aceptar" : "Accept"} onClick={onShellAccept}><Check /></button></> : null}
       </div> : null}
       {showEdgeTreatmentControls ? <div className="educad-context-toolbar-group" aria-label={locale === "es" ? "Tratamiento de arista" : "Edge treatment"}>
         {floatingFeature?.kind === "fillet" ? <button type="button" aria-label={locale === "es" ? "Editar caras y aristas" : "Edit faces and edges"} title={locale === "es" ? "Editar caras y aristas" : "Edit faces and edges"} onClick={() => onEditEdgeTreatmentSelection?.(floatingFeature.id)}><ToolbarEditOperationIcon /></button> : null}
@@ -4364,10 +4403,20 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
         {onEdgeTreatmentCancel && onEdgeTreatmentAccept ? <><button type="button" className="cancel" aria-label={locale === "es" ? "Cancelar" : "Cancel"} title={locale === "es" ? "Cancelar" : "Cancel"} onClick={onEdgeTreatmentCancel}><X /></button><button type="button" className="accept" disabled={!edgeTreatmentCanAccept} aria-label={locale === "es" ? "Aceptar" : "Accept"} title={locale === "es" ? "Aceptar" : "Accept"} onClick={onEdgeTreatmentAccept}><Check /></button></> : null}
       </div> : null}
       {showFeatureControls ? <div className="educad-context-toolbar-group">
+        {floatingFeature?.kind === "linearPattern" || floatingFeature?.kind === "polarPattern" ? <ViewportFloatingNumberInput value={floatingFeature.count} unit="count" displayUnit={displayUnit} snap={1} label={locale === "es" ? "Repeticiones" : "Repetitions"} min={2} max={50} onCommit={(count) => onFloatingFeatureChange?.(floatingFeature.id, { count })} /> : null}
+        {floatingFeature?.kind === "polarPattern" ? <>
+          {(["x", "y", "z"] as const).map((axis) => <button key={axis} type="button" className={floatingFeature.axis === axis ? "active" : ""} aria-label={`${locale === "es" ? "Eje" : "Axis"} ${axis.toUpperCase()}`} title={`${locale === "es" ? "Eje" : "Axis"} ${axis.toUpperCase()}`} aria-pressed={floatingFeature.axis === axis} onClick={() => onFloatingFeatureChange?.(floatingFeature.id, { axis })}><strong>{axis.toUpperCase()}</strong></button>)}
+          <select className="educad-context-object-select" aria-label={locale === "es" ? "Fuente" : "Source"} value={floatingFeature.source === "feature" ? floatingFeature.sourceFeatureId ?? "body" : "body"} onChange={(event) => onFloatingFeatureChange?.(floatingFeature.id, { sourceFeatureId: event.target.value })}>
+            <option value="body">{locale === "es" ? "Cuerpo completo" : "Full body"}</option>
+            {patternSources.map((source) => <option key={source.id} value={source.id}>{source.name}</option>)}
+          </select>
+        </> : null}
+        {floatingBoolean ? <select className="educad-context-object-select" aria-label={locale === "es" ? "Objeto" : "Object"} value={floatingBoolean.sourceObjectId} onChange={(event) => onFloatingFeatureChange?.(floatingBoolean.id, { sourceObjectId: event.target.value })}>{booleanObjects.filter((object) => object.id !== floatingBoolean.objectId).map((object) => <option key={object.id} value={object.id}>{object.name}</option>)}</select> : null}
         {floatingFeature?.kind === "sketch" ? <button type="button" aria-label={locale === "es" ? "Editar boceto" : "Edit sketch"} title={locale === "es" ? "Editar boceto" : "Edit sketch"} onClick={() => onEditSketch?.(floatingFeature.id)}><ToolbarEditOperationIcon /></button> : null}
-        {floatingFeature?.kind === "faceExtrude" ? <><button type="button" aria-label={locale === "es" ? "Editar cara" : "Edit face"} title={locale === "es" ? "Editar cara" : "Edit face"} onClick={() => onEditFaceExtrudeSelection?.(floatingFeature.id)}><ToolbarEditOperationIcon /></button><ViewportFloatingNumberInput value={floatingFeature.distance} unit="length" displayUnit={displayUnit} snap={snap} label={locale === "es" ? "Profundidad" : "Depth"} min={0.01} max={200} onCommit={(distance) => onFloatingFeatureChange?.(floatingFeature.id, { distance })} /></> : null}
+        {floatingFeature?.kind === "faceExtrude" ? <button type="button" aria-label={locale === "es" ? "Editar cara" : "Edit face"} title={locale === "es" ? "Editar cara" : "Edit face"} onClick={() => onEditFaceExtrudeSelection?.(floatingFeature.id)}><ToolbarEditOperationIcon /></button> : null}
+        {floatingFeature?.kind === "extrude" ? <ViewportFloatingNumberInput value={floatingFeature.distance} unit="length" displayUnit={displayUnit} snap={snap} label={locale === "es" ? "Profundidad" : "Depth"} min={-200} max={200} onCommit={(distance) => onFloatingFeatureChange?.(floatingFeature.id, { distance })} /> : null}
         {floatingFeature?.kind === "revolve" ? <><button type="button" aria-label={locale === "es" ? "Editar cara" : "Edit face"} title={locale === "es" ? "Editar cara" : "Edit face"} onClick={() => onEditRevolveFace?.(floatingFeature.id)}><ToolbarEditOperationIcon /><small>F</small></button><button type="button" aria-label={locale === "es" ? "Editar eje" : "Edit axis"} title={locale === "es" ? "Editar eje" : "Edit axis"} onClick={() => onEditRevolveAxis?.(floatingFeature.id)}><ToolbarEditOperationIcon /><small>A</small></button><ViewportFloatingNumberInput value={revolveAnglePreview ?? floatingFeature.angle} unit="angle" displayUnit={displayUnit} snap={snap} label={locale === "es" ? "Ángulo" : "Angle"} min={-360} max={360} onCommit={(angle) => onFloatingFeatureChange?.(floatingFeature.id, { angle: Math.abs(angle) < 1 ? (angle < 0 ? -1 : 1) : angle })} /></> : null}
-        {floatingFeature?.kind === "shell" ? <><button type="button" aria-label={locale === "es" ? "Editar caras" : "Edit faces"} title={locale === "es" ? "Editar caras" : "Edit faces"} onClick={() => onEditShellSelection?.(floatingFeature.id)}><ToolbarEditOperationIcon /></button><ViewportFloatingNumberInput value={shellThicknessPreview ?? floatingFeature.thickness} unit="length" displayUnit={displayUnit} snap={snap} label={locale === "es" ? "Profundidad" : "Depth"} min={0.01} max={50} onCommit={(thickness) => onFloatingFeatureChange?.(floatingFeature.id, { thickness })} /></> : null}
+        {floatingFeature?.kind === "shell" ? <><ShellCornerButtons value={floatingFeature.cornerType} locale={locale} onChange={(cornerType) => onFloatingFeatureChange?.(floatingFeature.id, { cornerType })} /><button type="button" aria-label={locale === "es" ? "Editar caras" : "Edit faces"} title={locale === "es" ? "Editar caras" : "Edit faces"} onClick={() => onEditShellSelection?.(floatingFeature.id)}><ToolbarEditOperationIcon /></button><ViewportFloatingNumberInput value={distanceParameterPreview ?? floatingFeature.thickness} unit="length" displayUnit={displayUnit} snap={snap} label={locale === "es" ? "Espesor" : "Thickness"} min={0.01} max={50} onCommit={(thickness) => onFloatingFeatureChange?.(floatingFeature.id, { thickness })} /></> : null}
         {floatingFeature?.kind === "mirror" ? <><button type="button" className={floatingFeature.duplicate ? "active" : ""} aria-label={locale === "es" ? "Duplicar" : "Duplicate"} title={locale === "es" ? "Duplicar" : "Duplicate"} onClick={() => onFloatingFeatureChange?.(floatingFeature.id, { duplicate: true })}><strong>D</strong></button><button type="button" className={!floatingFeature.duplicate ? "active" : ""} aria-label={locale === "es" ? "Transformar" : "Transform"} title={locale === "es" ? "Transformar" : "Transform"} onClick={() => onFloatingFeatureChange?.(floatingFeature.id, { duplicate: false })}><strong>T</strong></button><button type="button" aria-label={locale === "es" ? "Editar plano" : "Edit plane"} title={locale === "es" ? "Editar plano" : "Edit plane"} onClick={() => onEditMirrorPlane?.(floatingFeature.id)}><ToolbarEditOperationIcon /></button></> : null}
       </div> : null}
     </div> : null}

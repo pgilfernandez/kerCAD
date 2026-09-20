@@ -111,6 +111,7 @@ import {
   type SupportedPrimitive,
 } from "@/lib/parametricObjects";
 import { globalParametricWorkplanePlacement, objectPlacementForWorkplane, operationPlacementForWorkplane, parametricTransformMatrix, parametricWorkplaneFromFace, parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
+import { patternHandlePlacement } from "@/lib/parametricPatternHandles";
 import { localizedParametricOperationDefinition, parametricOperationCatalog, parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import type { ViewportRenderQuality } from "@/lib/viewportPerformance";
 import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricFeature, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, PrimitiveFeature, RevolveFeature, SketchFeature } from "@/types/parametric";
@@ -317,7 +318,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [edgeTreatmentRadius, setEdgeTreatmentRadius] = useState(2);
   const [pendingFaceExtrude, setPendingFaceExtrude] = useState<{ operation: "add" | "cut"; distance: number } | null>(null);
   const [editingFaceExtrudeId, setEditingFaceExtrudeId] = useState<string | null>(null);
-  const [pendingShell, setPendingShell] = useState<{ thickness: number } | null>(null);
+  const [pendingShell, setPendingShell] = useState<{ thickness: number; cornerType: "rounded" | "sharp" } | null>(null);
   const [editingShellId, setEditingShellId] = useState<string | null>(null);
   const [pendingRevolve, setPendingRevolve] = useState<{ operation: "add" | "cut" | "intersect"; angle: number; axis: "x" | "y" | "z" | "edge" } | null>(null);
   const [editingRevolveId, setEditingRevolveId] = useState<string | null>(null);
@@ -686,6 +687,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     setTopologyPreviewBusy(false);
     const references = [...selectedTopologyFaces, ...selectedTopologyEdges];
     if ((!pendingEdgeTreatment && !pendingFaceExtrude && !pendingShell && !pendingRevolve) || references.length === 0 || ((pendingFaceExtrude || pendingRevolve) && selectedTopologyFaces.length !== 1)) return;
+    if (pendingRevolve?.axis === "edge" && selectedTopologyEdges.length !== 1) return;
     const preview = cloneDocument(document);
     let featureId = "";
     if (pendingEdgeTreatment) {
@@ -722,6 +724,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       const stored = selectedTopologyFaces.map((reference, index) => ({ ...structuredClone(reference), id: `${feature.id}:preview-face:${index + 1}` }));
       feature.objectId = selectedTopologyFaces[0].objectId;
       feature.thickness = pendingShell.thickness;
+      feature.cornerType = pendingShell.cornerType;
       feature.faceReferenceIds = stored.map((reference) => reference.id);
       preview.topologyReferences.push(...stored);
       if (!existing) preview.features.push(feature);
@@ -2137,9 +2140,13 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     };
   }, [document, modelSelection, pendingFaceExtrude, selectedTopologyFaces]);
   const revolveHandle = useMemo(() => {
-    if (selectedFeature?.kind !== "revolve" || !selectedFeature.objectId) return null;
+    if ((selectedFeature?.kind !== "revolve" && selectedFeature?.kind !== "polarPattern") || !selectedFeature.objectId) return null;
     const object = document.objects.find((candidate) => candidate.id === selectedFeature.objectId);
     if (!object || object.visible === false) return null;
+    if (selectedFeature.kind === "polarPattern") {
+      const placement = patternHandlePlacement(object, selectedFeature.axis);
+      return { origin: placement.origin, axis: placement.direction, angle: selectedFeature.angle, radius: 25 };
+    }
     const objectMatrix = parametricTransformMatrix(object.transform);
     let origin = new THREE.Vector3().applyMatrix4(objectMatrix);
     let axis = new THREE.Vector3(selectedFeature.axis === "x" ? 1 : 0, selectedFeature.axis === "y" ? 1 : 0, selectedFeature.axis === "z" ? 1 : 0);
@@ -2171,10 +2178,13 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     const radius = Math.max(8, Math.min(40, Math.max(selectedBox?.width ?? 0, selectedBox?.depth ?? 0, selectedBox?.height ?? 0) * 0.6));
     return { origin: { x: origin.x, y: origin.y, z: origin.z }, axis: { x: axis.x, y: axis.y, z: axis.z }, angle: selectedFeature.angle, radius };
   }, [document.features, document.objects, document.topologyReferences, selectedBox, selectedFeature]);
-  const shellHandle = useMemo(() => {
-    if (selectedFeature?.kind !== "shell" || !selectedFeature.objectId) return null;
+  const distanceHandle = useMemo(() => {
+    if ((selectedFeature?.kind !== "shell" && selectedFeature?.kind !== "linearPattern") || !selectedFeature.objectId) return null;
     const object = document.objects.find((candidate) => candidate.id === selectedFeature.objectId);
     if (!object || object.visible === false) return null;
+    if (selectedFeature.kind === "linearPattern") {
+      return { ...patternHandlePlacement(object, selectedFeature.axis), value: selectedFeature.spacing, min: -1000, max: 1000, offset: 0 };
+    }
     const reference = selectedFeature.faceReferenceIds
       .map((id) => document.topologyReferences.find((candidate) => candidate.id === id))
       .find((candidate) => candidate?.reference.hint.entityType === "face" && candidate.reference.hint.centroid && candidate.reference.hint.normal);
@@ -2183,17 +2193,24 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     return {
       origin: { x: hint.centroid[0], y: hint.centroid[1], z: hint.centroid[2] },
       direction: { x: -hint.normal[0], y: -hint.normal[1], z: -hint.normal[2] },
-      thickness: selectedFeature.thickness,
+      value: selectedFeature.thickness,
     };
   }, [document.objects, document.topologyReferences, selectedFeature]);
   const viewportFloatingFeature = !sketchSession && !pendingEdgeTreatment && !pendingFaceExtrude && !pendingShell && !pendingRevolve && !editingMirrorPlaneId && modelSelection.length === 1 && selectedFeature && selectedObjectVisible && (
     (selectedFeature.kind === "sketch" && selectedFeature.purpose === "user" && selectedFeature.profile.shape === "drawn")
     || selectedFeature.kind === "fillet"
     || selectedFeature.kind === "faceExtrude"
+    || selectedFeature.kind === "extrude"
     || selectedFeature.kind === "revolve"
     || selectedFeature.kind === "shell"
+    || selectedFeature.kind === "objectBoolean"
     || selectedFeature.kind === "mirror"
+    || selectedFeature.kind === "linearPattern"
+    || selectedFeature.kind === "polarPattern"
   ) ? selectedFeature : null;
+  const patternSources = viewportFloatingFeature?.kind === "polarPattern"
+    ? document.features.slice(0, document.features.findIndex((feature) => feature.id === viewportFloatingFeature.id)).filter((feature) => feature.objectId === viewportFloatingFeature.objectId && feature.kind !== "sketch")
+    : [];
   const hasActiveWorkplane = !parametricWorkplaneIsGlobal(document.workplane);
   const beginMirrorPlaneSelection = (featureId: string) => {
     setEditingMirrorPlaneId(featureId);
@@ -2650,7 +2667,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     setEditingFaceExtrudeId(null);
     setPendingRevolve(null);
     setEditingRevolveId(null);
-    setPendingShell({ thickness: feature?.kind === "shell" ? feature.thickness : 2 });
+    setPendingShell({ thickness: feature?.kind === "shell" ? feature.thickness : 2, cornerType: feature?.kind === "shell" ? feature.cornerType ?? "rounded" : "rounded" });
     setEditingShellId(featureId);
     setModelSidebarMode("normal");
     setSelectingTopologyFaces(true);
@@ -2683,6 +2700,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       const stored = selectedTopologyFaces.map((reference, index) => ({ ...structuredClone(reference), id: `${feature.id}:face:${index + 1}` }));
       feature.objectId = selectedTopologyFaces[0].objectId;
       feature.thickness = Math.max(0.01, pendingShell.thickness);
+      feature.cornerType = pendingShell.cornerType;
       feature.faceReferenceIds = stored.map((reference) => reference.id);
       featureId = feature.id;
       draft.topologyReferences.push(...stored);
@@ -2707,7 +2725,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     setEditingFaceExtrudeId(null);
     setPendingShell(null);
     setEditingShellId(null);
-    setPendingRevolve({ operation: feature?.kind === "revolve" ? feature.operation : "add", angle: feature?.kind === "revolve" ? feature.angle : 360, axis: feature?.kind === "revolve" ? feature.axis : "z" });
+    setPendingRevolve({ operation: feature?.kind === "revolve" ? feature.operation : "add", angle: feature?.kind === "revolve" ? feature.angle : 360, axis: target === "axis" ? "edge" : feature?.kind === "revolve" ? feature.axis : "edge" });
     setEditingRevolveId(featureId);
     setModelSidebarMode("normal");
     setSelectingTopologyFaces(target !== "axis");
@@ -2716,7 +2734,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     setSelectedTopologyEdges(savedAxis ? [savedAxis] : []);
     setPlacingWorkplane(false);
     setOriginEditObjectId(null);
-    setNotice({ type: "info", text: t("notice.selectPlanarFaceRevolve") });
+    setNotice({ type: "info", text: t(target === "axis" ? "notice.selectRevolveAxis" : "notice.selectPlanarFaceRevolve") });
   };
 
   const beginRevolveAxisEdit = (featureId: string) => {
@@ -2818,6 +2836,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     };
     if (pendingRevolve) {
       setSelectedTopologyFaces(face.selected ? [reference] : []);
+      if (face.selected && pendingRevolve.axis === "edge" && selectedTopologyEdges.length !== 1) setSelectingTopologyEdges(true);
+      setNotice({ type: "info", text: t(!face.selected ? "notice.selectPlanarFaceRevolve" : pendingRevolve.axis === "edge" && selectedTopologyEdges.length !== 1 ? "notice.selectRevolveAxis" : "notice.revolveReady") });
       return;
     }
     if (!face.additive) setSelectedTopologyEdges([]);
@@ -2858,6 +2878,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     if (pendingRevolve) {
       setSelectedTopologyEdges(edge.selected ? [reference] : []);
       if (edge.selected) setPendingRevolve((current) => current ? { ...current, axis: "edge" } : current);
+      setNotice({ type: "info", text: t(selectedTopologyFaces.length !== 1 ? "notice.selectPlanarFaceRevolve" : !edge.selected ? "notice.selectRevolveAxis" : "notice.revolveReady") });
       return;
     }
     if (!edge.additive) setSelectedTopologyFaces([]);
@@ -3341,7 +3362,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           displayUnit={displayUnit}
           locale={locale}
           parameterHandlesVisible={!alignOpen && showParameterHandles}
-          contextToolbarVisible={pendingEdgeTreatment
+          contextToolbarVisible={pendingFaceExtrude || pendingRevolve || pendingShell ? true : pendingEdgeTreatment
             ? selectedTopologyFaces.length + selectedTopologyEdges.length > 0
             : modelSelection.length > 0}
           manipulatorControls={alignOpen ? <>
@@ -3353,7 +3374,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/assets/educad/alignment/mode-group.svg" alt="" draggable={false} />
             </button>
-          </> : selectedEdgeTreatmentFeature || pendingEdgeTreatment ? null : <>
+          </> : selectedEdgeTreatmentFeature || pendingEdgeTreatment || pendingShell || editingMirrorPlaneId || selectedFeature?.kind === "shell" || selectedFeature?.kind === "mirror" || selectedFeature?.kind === "linearPattern" || selectedFeature?.kind === "polarPattern" ? null : <>
             <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
             <Tool label={t("camera.rotationTriad")} active={showRotationTriad} onClick={() => setShowRotationTriad((visible) => !visible)}><ToolbarRotationManipulatorIcon /></Tool>
             <Tool className="educad-parameter-handles-toggle" label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>
@@ -3439,6 +3460,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             if (pendingFaceExtrude) setPendingFaceExtrude((current) => current ? { ...current, distance, operation } : current);
             else if (faceExtrudeHandle?.featureId) updateFeature(faceExtrudeHandle.featureId, (feature) => { if (feature.kind === "faceExtrude") { feature.distance = distance; feature.operation = operation; } });
           }}
+          faceExtrudeDraft={alignOpen ? null : pendingFaceExtrude}
+          onFaceExtrudeAccept={pendingFaceExtrude ? acceptFaceExtrude : undefined}
+          onFaceExtrudeCancel={pendingFaceExtrude ? cancelFaceExtrude : undefined}
+          faceExtrudeCanAccept={selectedTopologyFaces.length === 1}
           edgeTreatmentHandle={alignOpen ? null : edgeTreatmentHandle}
           onEdgeTreatmentRadiusChange={(radius) => {
             if (pendingEdgeTreatment) setEdgeTreatmentRadius(radius);
@@ -3452,40 +3477,56 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           onEdgeTreatmentCancel={pendingEdgeTreatment ? cancelEdgeTreatment : undefined}
           edgeTreatmentCanAccept={selectedTopologyFaces.length + selectedTopologyEdges.length > 0}
           revolveHandle={alignOpen ? null : revolveHandle}
+          revolveDraft={alignOpen ? null : pendingRevolve}
+          onRevolveDraftChange={(update) => setPendingRevolve((current) => current ? { ...current, ...update } : current)}
+          onRevolveAccept={pendingRevolve ? acceptRevolve : undefined}
+          onRevolveCancel={pendingRevolve ? cancelRevolve : undefined}
+          revolveCanAccept={selectedTopologyFaces.length === 1 && (pendingRevolve?.axis !== "edge" || selectedTopologyEdges.length === 1)}
           onRevolveAngleDragStart={beginTransaction}
           onRevolveAnglePreview={(angle) => {
-            if (selectedFeature?.kind !== "revolve") return;
+            if (selectedFeature?.kind !== "revolve" && selectedFeature?.kind !== "polarPattern") return;
             mutate((draft) => {
               const feature = draft.features.find((candidate) => candidate.id === selectedFeature.id);
-              if (feature?.kind === "revolve") feature.angle = angle;
+              if (feature?.kind === "revolve" || feature?.kind === "polarPattern") feature.angle = angle;
             });
           }}
           onRevolveAngleChange={(angle) => {
-            if (selectedFeature?.kind === "revolve") mutate((draft) => {
+            if (selectedFeature?.kind === "revolve" || selectedFeature?.kind === "polarPattern") mutate((draft) => {
               const feature = draft.features.find((candidate) => candidate.id === selectedFeature.id);
-              if (feature?.kind === "revolve") feature.angle = Math.min(360, Math.max(-360, Math.abs(angle) < 1 ? (angle < 0 ? -1 : 1) : angle));
+              if (feature?.kind === "revolve" || feature?.kind === "polarPattern") feature.angle = Math.min(360, Math.max(-360, Math.abs(angle) < 1 ? (angle < 0 ? -1 : 1) : angle));
             });
             finishTransaction();
           }}
           onRevolveAngleCancel={cancelTransaction}
-          shellHandle={alignOpen ? null : shellHandle}
-          onShellThicknessDragStart={beginTransaction}
-          onShellThicknessPreview={(thickness) => {
-            if (selectedFeature?.kind !== "shell") return;
+          distanceHandle={alignOpen ? null : distanceHandle}
+          shellDraft={alignOpen ? null : pendingShell}
+          onShellDraftChange={(thickness) => setPendingShell((current) => current ? { ...current, thickness: Math.max(0.01, thickness) } : current)}
+          onShellCornerTypeChange={(cornerType) => setPendingShell((current) => current ? { ...current, cornerType } : current)}
+          onShellAccept={pendingShell ? acceptShell : undefined}
+          onShellCancel={pendingShell ? cancelShell : undefined}
+          shellCanAccept={selectedTopologyFaces.length > 0 && new Set(selectedTopologyFaces.map((reference) => reference.objectId)).size === 1}
+          onDistanceParameterDragStart={beginTransaction}
+          onDistanceParameterPreview={(value) => {
+            if (selectedFeature?.kind !== "shell" && selectedFeature?.kind !== "linearPattern") return;
             mutate((draft) => {
               const feature = draft.features.find((candidate) => candidate.id === selectedFeature.id);
-              if (feature?.kind === "shell") feature.thickness = Math.max(0.01, thickness);
+              if (feature?.kind === "shell") feature.thickness = Math.max(0.01, value);
+              if (feature?.kind === "linearPattern") feature.spacing = value;
             });
           }}
-          onShellThicknessChange={(thickness) => {
-            if (selectedFeature?.kind === "shell") mutate((draft) => {
+          onDistanceParameterChange={(value) => {
+            if (selectedFeature?.kind === "shell" || selectedFeature?.kind === "linearPattern") mutate((draft) => {
               const feature = draft.features.find((candidate) => candidate.id === selectedFeature.id);
-              if (feature?.kind === "shell") feature.thickness = Math.max(0.01, thickness);
+              if (feature?.kind === "shell") feature.thickness = Math.max(0.01, value);
+              if (feature?.kind === "linearPattern") feature.spacing = value;
             });
             finishTransaction();
           }}
-          onShellThicknessCancel={cancelTransaction}
+          onDistanceParameterCancel={cancelTransaction}
           floatingFeature={alignOpen ? null : viewportFloatingFeature}
+          booleanObjects={document.objects}
+          patternSources={patternSources}
+          booleanAddOnly={viewportFloatingFeature?.kind === "objectBoolean" && !hasPreviousSolidOperation(document, viewportFloatingFeature.id)}
           onEditSketch={beginSketch}
           onEditEdgeTreatmentSelection={(featureId) => {
             const feature = document.features.find((candidate) => candidate.id === featureId);
@@ -3500,9 +3541,33 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           onEditRevolveAxis={beginRevolveAxisEdit}
           onEditMirrorPlane={beginMirrorPlaneSelection}
           onFloatingFeatureChange={(featureId, update) => updateFeature(featureId, (feature) => {
+            if (feature.kind === "linearPattern" || feature.kind === "polarPattern") {
+              if (update.count !== undefined) feature.count = Math.min(50, Math.max(2, Math.round(update.count)));
+              if (feature.kind === "polarPattern") {
+                if (update.axis) feature.axis = update.axis;
+                if (update.sourceFeatureId === "body") {
+                  feature.source = "body";
+                  feature.sourceFeatureId = undefined;
+                  feature.dependencies = undefined;
+                } else if (update.sourceFeatureId && patternSources.some((source) => source.id === update.sourceFeatureId)) {
+                  feature.source = "feature";
+                  feature.sourceFeatureId = update.sourceFeatureId;
+                  feature.dependencies = [{ type: "feature", id: update.sourceFeatureId }];
+                }
+              }
+            }
+            if (feature.kind === "objectBoolean") {
+              if (update.operation && (update.operation === "add" || hasPreviousSolidOperation(document, featureId))) feature.operation = update.operation;
+              if (update.sourceObjectId && update.sourceObjectId !== feature.objectId && document.objects.some((object) => object.id === update.sourceObjectId)) {
+                feature.sourceObjectId = update.sourceObjectId;
+                feature.dependencies = [{ type: "object", id: update.sourceObjectId }];
+              }
+            }
+            if (feature.kind === "extrude" && update.distance !== undefined && Math.abs(update.distance) >= 0.01) feature.distance = update.distance;
             if (feature.kind === "faceExtrude" && update.distance !== undefined) feature.distance = Math.max(0.01, update.distance);
             if (feature.kind === "revolve" && update.angle !== undefined) feature.angle = Math.min(360, Math.max(-360, update.angle));
             if (feature.kind === "shell" && update.thickness !== undefined) feature.thickness = Math.max(0.01, update.thickness);
+            if (feature.kind === "shell" && update.cornerType !== undefined) feature.cornerType = update.cornerType;
             if (feature.kind === "mirror" && update.duplicate !== undefined) feature.duplicate = update.duplicate;
           })}
         />}
@@ -3642,9 +3707,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           onFaceExtrudeDraftChange={(update) => setPendingFaceExtrude((current) => current ? { ...current, ...update } : current)}
           onAcceptFaceExtrude={acceptFaceExtrude}
           onCancelFaceExtrude={cancelFaceExtrude}
-          shellDraft={pendingShell ? { thickness: pendingShell.thickness, faceCount: selectedTopologyFaces.length, editing: Boolean(editingShellId) } : null}
+          shellDraft={pendingShell ? { ...pendingShell, faceCount: selectedTopologyFaces.length, editing: Boolean(editingShellId) } : null}
           onShellDraftChange={(thickness) => setPendingShell((current) => current ? { ...current, thickness: Math.max(0.01, thickness) } : current)}
           onAcceptShell={acceptShell}
+          onShellCornerTypeChange={(cornerType) => setPendingShell((current) => current ? { ...current, cornerType } : current)}
           onCancelShell={cancelShell}
           revolveDraft={pendingRevolve ? { ...pendingRevolve, faceCount: selectedTopologyFaces.length, edgeCount: selectedTopologyEdges.length, editing: Boolean(editingRevolveId) } : null}
           onRevolveDraftChange={(update) => setPendingRevolve((current) => current ? { ...current, ...update } : current)}

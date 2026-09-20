@@ -448,12 +448,13 @@ button {
 .educad-viewport-feature-actions button small { position: absolute; right: 3px; bottom: 2px; color: #486779; font-size: 9px; font-weight: 900; }
 .educad-viewport-feature-actions button strong { font-size: 17px; }
 .educad-viewport-context-toolbar {
+  --context-sidebar-width: var(--educad-model-sidebar-width, 0px);
   position: absolute;
   z-index: 9;
   top: 10px;
-  left: 50%;
+  left: calc((100% - var(--context-sidebar-width)) / 2);
   display: flex;
-  max-width: calc(100% - 150px);
+  max-width: max(44px, calc(100% - var(--context-sidebar-width) - 24px));
   align-items: center;
   gap: 5px;
   padding: 5px;
@@ -468,6 +469,7 @@ button {
 }
 .educad-viewport-context-toolbar::-webkit-scrollbar { display: none; }
 .educad-context-toolbar-group { display: flex; flex: 0 0 auto; align-items: center; gap: 2px; }
+.educad-context-object-select { width: 160px; max-width: 30vw; height: 36px; margin: 0 3px; padding: 0 8px; border: 1px solid #c2d1db; border-radius: 8px; background: #fff; color: #173b5a; font: inherit; }
 .educad-context-toolbar-group + .educad-context-toolbar-group { padding-left: 5px; border-left: 1px solid rgba(151, 174, 188, 0.72); }
 .educad-viewport-context-toolbar button {
   position: relative;
@@ -502,18 +504,15 @@ button {
 .educad-viewport-context-toolbar .educad-viewport-edge-treatment-radius { min-width: 84px; padding: 0 4px; border-top: 0; }
 .educad-viewport-context-toolbar .educad-viewport-edge-treatment-radius > div { height: 33px; }
 .educad-viewport-context-toolbar .educad-viewport-edge-treatment-radius input { width: 58px; }
-@media (max-width: 980px) {
-  .educad-viewport-context-toolbar {
-    left: 58px;
-    max-width: calc(100% - 126px);
-    transform: none;
-  }
-}
+.educad-viewport-number-steppers { display: flex; flex-direction: column; align-self: stretch; border-left: 1px solid #cbd7df; }
+.educad-viewport-context-toolbar .educad-viewport-number-steppers button { width: 22px; min-width: 22px; height: 16px; min-height: 0; flex: 1; padding: 0; border: 0; border-radius: 0; font-size: 11px; line-height: 1; color: #31566d; background: #f3f7f9; }
+.educad-viewport-context-toolbar .educad-viewport-number-steppers button:hover { background: #dceef7; }
 @media (max-width: 490px) {
+  .educad-reference-shell.sidebar-normal:has(.educad-viewport-context-toolbar) .educad-sidebar-mode-control.normal {
+    top: 64px;
+  }
   .educad-viewport-context-toolbar {
     top: 6px;
-    left: 48px;
-    max-width: calc(100% - 104px);
     padding: 4px;
     border-radius: 15px;
   }
@@ -1025,6 +1024,10 @@ button {
 .educad-history-lesson strong { font-size: 10px; }
 .educad-history-lesson p { margin: 4px 0 0; font-size: 8px; line-height: 1.45; }
 
+.educad-reference-shell.sidebar-normal { --educad-model-sidebar-width: 290px; }
+.educad-reference-shell.sidebar-simplified { --educad-model-sidebar-width: 68px; }
+.educad-reference-shell.sidebar-hidden { --educad-model-sidebar-width: 0px; }
+
 .educad-model-sidebar {
   position: absolute;
   top: 0;
@@ -1032,7 +1035,7 @@ button {
   bottom: 0;
   z-index: 9;
   display: flex;
-  width: 290px;
+  width: var(--educad-model-sidebar-width, 290px);
   min-height: 0;
   flex-direction: column;
   color: #2d485e;
@@ -1042,7 +1045,7 @@ button {
 }
 
 .educad-model-sidebar.simplified {
-  width: 68px;
+  width: var(--educad-model-sidebar-width, 68px);
   background: rgba(250, 252, 253, 0.98);
 }
 
@@ -1429,6 +1432,8 @@ button {
 .educad-operation-mode-buttons { display: grid; width: 100%; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; }
 .educad-operation-mode-buttons button { min-width: 0; height: 31px; padding: 3px; border-radius: 4px; }
 .educad-operation-mode-buttons svg { width: 22px; height: 22px; }
+.educad-operation-mode-buttons .educad-shell-corner-mode.active { background: #ddf1fa; border-color: #58abc9; }
+.educad-operation-mode-buttons .educad-shell-corner-mode img { width: 22px; height: 22px; object-fit: contain; }
 .educad-feature-card > label.educad-range-property {
   display: block;
   padding: 8px 0 9px;

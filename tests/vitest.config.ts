@@ -5,6 +5,7 @@ const rootDir = path.resolve(__dirname, "..");
 
 export default defineConfig({
   root: rootDir,
+  oxc: { jsx: { runtime: "automatic" } },
   resolve: {
     alias: {
       "@": path.resolve(rootDir, "apps/web/src"),
