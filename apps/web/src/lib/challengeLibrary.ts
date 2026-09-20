@@ -22,6 +22,8 @@ export type EducadChallenge = {
   cover?: string;
   steps: EducadChallengeStep[];
   workspaceDocument?: ParametricDocument;
+  /** Only untouched server-installed challenges may be replaced automatically. */
+  bundledSource?: { name: string; revision: string };
 };
 
 export function createEmptyChallenge(): EducadChallenge {
@@ -59,7 +61,9 @@ type ChallengeManifest = {
 
 const DATABASE_NAME = "educad.challenge-library";
 const STORE_NAME = "challenges";
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
+const BUNDLE_STORE_NAME = "bundled-packages";
+type InstalledBundle = { name: string; revision: string; challengeId: string };
 const MAX_PACKAGE_BYTES = 40 * 1024 * 1024;
 const MAX_UNPACKED_BYTES = 80 * 1024 * 1024;
 
@@ -68,9 +72,13 @@ function openChallengeLibrary() {
     const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
     request.onupgradeneeded = () => {
       if (!request.result.objectStoreNames.contains(STORE_NAME)) request.result.createObjectStore(STORE_NAME, { keyPath: "id" });
+      if (!request.result.objectStoreNames.contains(BUNDLE_STORE_NAME)) request.result.createObjectStore(BUNDLE_STORE_NAME, { keyPath: "name" });
     };
     request.onerror = () => reject(request.error ?? new Error("Could not open the challenge library."));
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      request.result.onversionchange = () => request.result.close();
+      resolve(request.result);
+    };
   });
 }
 
@@ -215,7 +223,9 @@ export async function saveInstalledChallenge(challenge: EducadChallenge) {
   try {
     await new Promise<void>((resolve, reject) => {
       const transaction = database.transaction(STORE_NAME, "readwrite");
-      transaction.objectStore(STORE_NAME).put(challenge);
+      const local = { ...challenge };
+      delete local.bundledSource;
+      transaction.objectStore(STORE_NAME).put(local);
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error ?? new Error("Could not install the challenge."));
     });
@@ -232,4 +242,98 @@ export async function deleteInstalledChallenge(id: string) {
       transaction.onerror = () => reject(transaction.error ?? new Error("Could not remove the challenge."));
     });
   } finally { database.close(); }
+}
+
+async function listInstalledBundles() {
+  const database = await openChallengeLibrary();
+  try {
+    return await new Promise<InstalledBundle[]>((resolve, reject) => {
+      const request = database.transaction(BUNDLE_STORE_NAME, "readonly").objectStore(BUNDLE_STORE_NAME).getAll();
+      request.onsuccess = () => resolve(request.result as InstalledBundle[]);
+      request.onerror = () => reject(request.error);
+    });
+  } finally { database.close(); }
+}
+
+async function installedChallengeIds() {
+  const database = await openChallengeLibrary();
+  try {
+    return await new Promise<Set<IDBValidKey>>((resolve, reject) => {
+      const request = database.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).getAllKeys();
+      request.onsuccess = () => resolve(new Set(request.result));
+      request.onerror = () => reject(request.error);
+    });
+  } finally { database.close(); }
+}
+
+function challengeContent(challenge: EducadChallenge) {
+  const content: Partial<EducadChallenge> = { ...challenge };
+  delete content.installedAt;
+  delete content.bundledSource;
+  return JSON.stringify(content);
+}
+
+async function installBundledChallenge(name: string, revision: string, challenge: EducadChallenge) {
+  const database = await openChallengeLibrary();
+  try {
+    return await new Promise<boolean>((resolve, reject) => {
+      let updated = false;
+      // Read ownership and write the challenge + receipt atomically. A local
+      // edit/import during a slow download must never be overwritten.
+      const transaction = database.transaction([STORE_NAME, BUNDLE_STORE_NAME], "readwrite");
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.get(challenge.id);
+      request.onsuccess = () => {
+        const existing = request.result as EducadChallenge | undefined;
+        if (!existing || existing.bundledSource?.name === name || challengeContent(existing) === challengeContent(challenge)) {
+          store.put({ ...challenge, bundledSource: { name, revision } });
+          updated = true;
+        }
+        transaction.objectStore(BUNDLE_STORE_NAME).put({ name, revision, challengeId: challenge.id } satisfies InstalledBundle);
+      };
+      transaction.oncomplete = () => resolve(updated);
+      transaction.onabort = transaction.onerror = () => reject(transaction.error ?? new Error("Could not update bundled challenge."));
+    });
+  } finally { database.close(); }
+}
+
+let bundledSync: Promise<boolean> | null = null;
+
+/** One small catalog request per app load; ZIPs only for new/changed packages. */
+export function syncBundledChallenges(): Promise<boolean> {
+  if (bundledSync) return bundledSync;
+  bundledSync = (async () => {
+    const response = await fetch("/api/bundled-challenges", { cache: "no-cache" });
+    if (!response.ok) return false;
+    const payload = await response.json() as { packages?: unknown };
+    // An older server without revision metadata must not trigger bulk downloads.
+    if (!Array.isArray(payload.packages)) return false;
+    const receipts = new Map((await listInstalledBundles()).map((entry) => [entry.name, entry]));
+    const installedIds = await installedChallengeIds();
+    let updated = false;
+    for (const item of payload.packages) {
+      if (!item || typeof item !== "object") continue;
+      const { name, revision, size } = item as { name?: unknown; revision?: unknown; size?: unknown };
+      if (typeof name !== "string" || !/^[a-z0-9][a-z0-9._ -]*\.zip$/i.test(name)
+        || typeof revision !== "string" || !/^[a-f0-9]{64}$/.test(revision)
+        || typeof size !== "number" || !Number.isFinite(size) || size < 0 || size > MAX_PACKAGE_BYTES) continue;
+      const receipt = receipts.get(name);
+      if (receipt?.revision === revision && installedIds.has(receipt.challengeId)) continue;
+      try {
+        const download = await fetch(`/api/bundled-challenges?file=${encodeURIComponent(name)}`, { cache: "no-cache" });
+        if (!download.ok) continue;
+        const blob = await download.blob();
+        if (blob.size > MAX_PACKAGE_BYTES) continue;
+        // If deployment changed while downloading, leave the old receipt intact
+        // and retry on the next load instead of recording the wrong revision.
+        if (download.headers.get("etag") !== `"${revision}"`) continue;
+        const challenge = await importChallengePackage(new File([blob], name, { type: "application/zip" }));
+        if (await installBundledChallenge(name, revision, challenge)) updated = true;
+        receipts.set(name, { name, revision, challengeId: challenge.id });
+        installedIds.add(challenge.id);
+      } catch { /* Keep installed/local challenges if any individual ZIP fails. */ }
+    }
+    return updated;
+  })().finally(() => { bundledSync = null; });
+  return bundledSync;
 }

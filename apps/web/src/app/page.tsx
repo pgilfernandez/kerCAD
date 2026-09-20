@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ProjectDashboard } from "@/components/ProjectDashboard";
 import { EducadLandingPage } from "@/components/EducadLandingPage";
 import { SketchForgeParametricEditor } from "@/components/SketchForgeParametricEditor";
-import { createEmptyChallenge, deleteInstalledChallenge, exportChallengePackage, importChallengePackage, listInstalledChallenges, saveInstalledChallenge, type EducadChallenge } from "@/lib/challengeLibrary";
+import { createEmptyChallenge, deleteInstalledChallenge, exportChallengePackage, importChallengePackage, listInstalledChallenges, saveInstalledChallenge, syncBundledChallenges, type EducadChallenge } from "@/lib/challengeLibrary";
 import { exportEducadProject, importEducadProject, EDUCAD_PACKAGE_MEDIA_TYPE } from "@/lib/educadProject";
 import { createEmptyDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { deleteLibraryProject, getLibraryProject, listLibraryProjects, newProjectLibraryId, saveLibraryProject, updateLibraryProjectThumbnail, type ProjectLibraryEntry } from "@/lib/projectLibrary";
@@ -98,32 +98,12 @@ export default function Home() {
       localStorage.removeItem("educad.parametric.snapshots.v1");
       setProjects(entries);
       await deleteInstalledChallenge("educad-demo-key-tag@1");
-      let installedChallenges = await listInstalledChallenges();
-      try {
-        const response = await fetch("/api/bundled-challenges", { cache: "no-store" });
-        const payload = await response.json() as { files?: unknown };
-        if (response.ok && Array.isArray(payload.files)) {
-          for (const name of payload.files) {
-            if (typeof name !== "string") continue;
-            try {
-              const packageResponse = await fetch(`/api/bundled-challenges?file=${encodeURIComponent(name)}`, { cache: "no-store" });
-              if (!packageResponse.ok) continue;
-              const packageFile = new File([await packageResponse.blob()], name, { type: "application/zip" });
-              const bundledChallenge = await importChallengePackage(packageFile);
-              if (!installedChallenges.some((challenge) => challenge.id === bundledChallenge.id)) {
-                await saveInstalledChallenge(bundledChallenge);
-                installedChallenges = [...installedChallenges, bundledChallenge];
-              }
-            } catch {
-              // One invalid package must not hide the remaining classroom activities.
-            }
-          }
-        }
-      } catch {
-        // Bundled challenges are optional: a missing or invalid package must not prevent the dashboard from loading.
-      }
-      setChallenges(installedChallenges);
+      setChallenges(await listInstalledChallenges());
       setBusy(false);
+      // The local library is usable immediately, including without a network.
+      void syncBundledChallenges()
+        .then(async (updated) => { if (updated) setChallenges(await listInstalledChallenges()); })
+        .catch(() => { /* Optional server updates must not hide local activities. */ });
     })();
   }, []);
 
