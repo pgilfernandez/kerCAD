@@ -1,5 +1,6 @@
 import { loadBrepWithOcct, type Brep, type BrepSolid } from "@/lib/brepKernel";
 import { shellWithCorners } from "@/lib/shellKernel";
+import { orientedMeshNormals } from "@/lib/parametricMeshNormals";
 import type { AlignmentItem, AlignmentTarget } from "@/lib/parametricAlignment";
 import { parametricReferenceRenderRecords } from "@/lib/parametricReferenceImport";
 import type { Edge, Face } from "brepjs";
@@ -1045,7 +1046,7 @@ function meshShape(brep: Brep, shape: RenderableShape, omittedEdgeDirections: Di
     // keeping those views here would therefore poison a later incremental mesh
     // of the same solid (a sketch-only history change is a common trigger).
     positions: new Float32Array(triangles.vertices),
-    normals: new Float32Array(triangles.normals),
+    normals: orientedMeshNormals(triangles.vertices, triangles.normals, triangles.triangles),
     indices: new Uint32Array(triangles.triangles),
     edges: new Float32Array(displayEdges.edges),
     faceGroups: triangles.faceGroups.map((group) => ({ ...group })),
