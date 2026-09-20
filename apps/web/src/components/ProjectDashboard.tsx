@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FileArchive, Grid3X3, Home, List, Play, Plus, Search, Settings, Trash2, Upload, X } from "lucide-react";
+import { Download, FileArchive, Grid3X3, Home, List, Plus, Search, Settings, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ToolbarEditOperationIcon } from "@/components/icons";
 import { SharedProjects } from "@/components/SharedProjects";
@@ -113,8 +113,7 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
             {visibleChallenges.map((challenge) => <article className="educad-challenge-card" key={challenge.id}>
               <button className="challenge-open" type="button" onClick={() => onStartChallenge(challenge)}>
                 <span className="challenge-cover">{challenge.cover ? <img src={challenge.cover} alt="" /> : <FileArchive size={52} />}</span>
-                <span className="challenge-copy"><small>{challenge.steps.length} STEPS</small><strong>{challenge.title}</strong><span>{challenge.description || "Guided eduCAD activity"}</span>{challenge.categories?.length ? <span className="challenge-categories">{challenge.categories.map((category) => <i key={category}>{category}</i>)}</span> : null}{challenge.author ? <em>By {challenge.author}</em> : null}</span>
-                <span className="challenge-play"><Play size={19} fill="currentColor" /> Start</span>
+                <span className="challenge-copy"><strong>{challenge.title}</strong><span>{challenge.description || "Guided eduCAD activity"}</span>{challenge.categories?.length ? <span className="challenge-categories">{challenge.categories.map((category) => <i key={category}>{category}</i>)}</span> : null}{challenge.author ? <em>By {challenge.author}</em> : null}</span>
               </button>
               <nav className="challenge-actions" aria-label={`${challenge.title} actions`}>
                 <button type="button" title="Edit challenge" aria-label={`Edit ${challenge.title}`} onClick={() => onEditChallenge(challenge)}><ToolbarEditOperationIcon /></button>
