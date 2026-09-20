@@ -7,8 +7,10 @@
 // loads ./occt-wasm.js relative to its own URL and does not survive bundling.
 // OCCT_INDEX_URL is typed as string (not a literal) so TypeScript treats the
 // dynamic import as runtime-resolved rather than a module to resolve.
-const OCCT_INDEX_URL: string = "/occt/index.js";
-const OCCT_WASM_URL = "/occt/occt-wasm.wasm";
+import { registerShellKernels } from "@/lib/shellKernel";
+
+const OCCT_INDEX_URL: string = "/occt/3.6.1+educad.1/index.js";
+const OCCT_WASM_URL = "/occt/3.6.1+educad.1/occt-wasm.wasm";
 
 export type Brep = typeof import("brepjs");
 export type BrepSolid = ReturnType<Brep["box"]>;
@@ -24,7 +26,7 @@ export async function loadBrepWithOcct(): Promise<Brep> {
     const brep = await import("brepjs");
     const occt = (await import(/* webpackIgnore: true */ OCCT_INDEX_URL)) as unknown as OcctWasmModule;
     const kernel = await occt.OcctKernel.init({ wasm: OCCT_WASM_URL });
-    brep.registerKernel("occt-wasm", brep.OcctWasmAdapter.fromKernel(kernel));
+    registerShellKernels(brep, kernel);
     return brep;
   })().catch((error) => {
     brepReady = null;

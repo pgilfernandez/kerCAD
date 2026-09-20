@@ -1,4 +1,5 @@
 import { loadBrepWithOcct, type Brep, type BrepSolid } from "@/lib/brepKernel";
+import { shellWithCorners } from "@/lib/shellKernel";
 import type { AlignmentItem, AlignmentTarget } from "@/lib/parametricAlignment";
 import { parametricReferenceRenderRecords } from "@/lib/parametricReferenceImport";
 import type { Edge, Face } from "brepjs";
@@ -585,7 +586,7 @@ function applyShellFeature(brep: Brep, document: ParametricDocument, current: An
     return resolveStoredFace(brep, document, current, stored, feature.name);
   });
   if (faces.length === 0) throw new Error(`${feature.name}: select at least one face to open.`);
-  return resultValue<AnySolid>(brep, brep.shell(current, faces as Parameters<Brep["shell"]>[1], feature.thickness));
+  return resultValue<AnySolid>(brep, shellWithCorners(brep, current, faces as Parameters<Brep["shell"]>[1], feature.thickness, feature.cornerType));
 }
 
 function sketchRevolveAxis(sketch: SketchFeature, segmentId: string, featureName: string) {
@@ -710,6 +711,9 @@ function applyPolarPatternFeature(brep: Brep, current: AnySolid, feature: Extrac
 function solidInTargetObjectSpace(brep: Brep, solid: AnySolid, source: ParametricObject, target: ParametricObject) {
   const relative = parametricTransformMatrix(target.transform).invert().multiply(parametricTransformMatrix(source.transform));
   const elements = relative.elements;
+  // Reuse the tool when both objects share coordinates, avoiding a redundant
+  // native identity transform of cached geometry during repeated rebuilds.
+  if (elements.every((value, index) => Math.abs(value - (index % 5 === 0 ? 1 : 0)) < 1e-12)) return solid;
   return brep.unwrap(brep.applyMatrix(solid, {
     linear: [elements[0], elements[4], elements[8], elements[1], elements[5], elements[9], elements[2], elements[6], elements[10]],
     translation: [elements[12], elements[13], elements[14]],

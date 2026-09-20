@@ -6,6 +6,7 @@ import {
   createPolarPatternFeature,
   createObjectBooleanFeature,
   createRevolveFeature,
+  createShellFeature,
   createSketchFeature,
   createStarterDocument,
   documentHasSolid,
@@ -16,6 +17,17 @@ import {
 } from "@/lib/parametricDocument";
 
 describe("parametric document", () => {
+  it("preserves sharp Shell corners and defaults legacy operations to rounded", () => {
+    const document = createStarterDocument(123);
+    const shell = createShellFeature(1);
+    shell.objectId = document.objects[0].id;
+    expect(shell.cornerType).toBe("rounded");
+    document.features.push(shell);
+    shell.cornerType = "sharp";
+    expect(normalizeParametricDocument(JSON.parse(JSON.stringify(document))).features.at(-1)).toMatchObject({ cornerType: "sharp" });
+    delete shell.cornerType;
+    expect(normalizeParametricDocument(document).features.at(-1)).toMatchObject({ cornerType: "rounded" });
+  });
   it("creates a reconstructable educational starter part", () => {
     const document = createStarterDocument(123);
     expect(document.schema).toBe("educad-parametric/v2");

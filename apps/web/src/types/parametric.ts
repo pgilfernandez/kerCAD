@@ -151,9 +151,13 @@ export type FaceExtrudeFeature = BaseFeature & {
   faceReferenceId: string;
 };
 
+export type ShellCornerType = "rounded" | "sharp";
+
 export type ShellFeature = BaseFeature & {
   kind: "shell";
   thickness: number;
+  /** Missing in older projects: preserve the original rounded joins. */
+  cornerType?: ShellCornerType;
   faceReferenceIds: string[];
 };
 

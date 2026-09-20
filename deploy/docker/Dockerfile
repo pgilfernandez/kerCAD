@@ -8,6 +8,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV EDUCAD_DOCKER_BUILD=true
 
 COPY package.json package-lock.json ./
+COPY vendor/occt-wasm-shell/ ./vendor/occt-wasm-shell/
 RUN npm ci
 
 COPY . .

@@ -1,0 +1,99 @@
+diff --git a/facade/generated/bindings.cpp b/facade/generated/bindings.cpp
+index ef288cf..bdb8855 100644
+--- a/facade/generated/bindings.cpp
++++ b/facade/generated/bindings.cpp
+@@ -133,6 +133,7 @@ EMSCRIPTEN_BINDINGS(occt_wasm) {
+         .function("chamfer", &OcctKernel::chamfer)
+         .function("chamferDistAngle", &OcctKernel::chamferDistAngle)
+         .function("shell", &OcctKernel::shell)
++        .function("shellSharp", &OcctKernel::shellSharp)
+         .function("offset", &OcctKernel::offset)
+         .function("draft", &OcctKernel::draft)
+         .function("thicken", &OcctKernel::thicken)
+@@ -291,6 +292,7 @@ EMSCRIPTEN_BINDINGS(occt_wasm) {
+         .function("intersectWithHistory", &OcctKernel::intersectWithHistory)
+         .function("chamferWithHistory", &OcctKernel::chamferWithHistory)
+         .function("shellWithHistory", &OcctKernel::shellWithHistory)
++        .function("shellSharpWithHistory", &OcctKernel::shellSharpWithHistory)
+         .function("offsetWithHistory", &OcctKernel::offsetWithHistory)
+         .function("thickenWithHistory", &OcctKernel::thickenWithHistory)
+ 
+diff --git a/facade/generated/kernel.cpp b/facade/generated/kernel.cpp
+index ce61cde..ed35b4e 100644
+--- a/facade/generated/kernel.cpp
++++ b/facade/generated/kernel.cpp
+@@ -678,6 +678,24 @@ uint32_t OcctKernel::shell(uint32_t solidId, std::vector<uint32_t> faceIds, doub
+     }
+ }
+ 
++uint32_t OcctKernel::shellSharp(uint32_t solidId, std::vector<uint32_t> faceIds, double thickness, double tolerance) {
++    try {
++        NCollection_List<TopoDS_Shape> facesToRemove;
++        for (uint32_t fid : faceIds) {
++            facesToRemove.Append(get(fid));
++        }
++        BRepOffsetAPI_MakeThickSolid maker;
++        maker.MakeThickSolidByJoin(get(solidId), facesToRemove, -thickness, tolerance, BRepOffset_Skin, false, false, GeomAbs_Intersection);
++        maker.Build();
++        if (!maker.IsDone()) {
++            throw std::runtime_error("shellSharp: operation failed");
++        }
++        return store(maker.Shape());
++    } catch (const Standard_Failure& e) {
++        throw std::runtime_error(std::string("shellSharp: ") + e.what());
++    }
++}
++
+ uint32_t OcctKernel::offset(uint32_t solidId, double distance, double tolerance) {
+     try {
+         BRepOffsetAPI_MakeOffsetShape maker;
+@@ -3254,6 +3272,26 @@ EvolutionData OcctKernel::shellWithHistory(uint32_t solidId, std::vector<uint32_
+     }
+ }
+ 
++EvolutionData OcctKernel::shellSharpWithHistory(uint32_t solidId, std::vector<uint32_t> faceIds, double thickness, double tolerance, std::vector<int> inputFaceHashes, int hashUpperBound) {
++    try {
++        const auto& solid = get(solidId);
++        NCollection_List<TopoDS_Shape> facesToRemove;
++        for (uint32_t fid : faceIds) {
++            facesToRemove.Append(get(fid));
++        }
++        BRepOffsetAPI_MakeThickSolid maker;
++        maker.MakeThickSolidByJoin(solid, facesToRemove, -thickness, tolerance, BRepOffset_Skin, false, false, GeomAbs_Intersection);
++        maker.Build();
++        if (!maker.IsDone()) {
++            throw std::runtime_error("shellSharpWithHistory: operation failed");
++        }
++        uint32_t resultId = store(maker.Shape());
++        return buildEvolution(maker, resultId, solid, inputFaceHashes, hashUpperBound);
++    } catch (const Standard_Failure& e) {
++        throw std::runtime_error(std::string("shellSharpWithHistory: ") + e.what());
++    }
++}
++
+ EvolutionData OcctKernel::offsetWithHistory(uint32_t solidId, double distance, double tolerance, std::vector<int> inputFaceHashes, int hashUpperBound) {
+     try {
+         const auto& solid = get(solidId);
+diff --git a/facade/include/occt_kernel.h b/facade/include/occt_kernel.h
+index 24fe74b..c87c83e 100644
+--- a/facade/include/occt_kernel.h
++++ b/facade/include/occt_kernel.h
+@@ -163,6 +163,8 @@ class OcctKernel {
+                               double angleDeg);
+     uint32_t shell(uint32_t solidId, std::vector<uint32_t> faceIds, double thickness,
+                    double tolerance);
++    uint32_t shellSharp(uint32_t solidId, std::vector<uint32_t> faceIds, double thickness,
++                        double tolerance);
+     uint32_t offset(uint32_t solidId, double distance, double tolerance);
+     uint32_t draft(uint32_t shapeId, uint32_t faceId, double angleRad, double dx, double dy,
+                    double dz);
+@@ -352,6 +354,9 @@ class OcctKernel {
+     EvolutionData shellWithHistory(uint32_t solidId, std::vector<uint32_t> faceIds,
+                                    double thickness, double tolerance,
+                                    std::vector<int> inputFaceHashes, int hashUpperBound);
++    EvolutionData shellSharpWithHistory(uint32_t solidId, std::vector<uint32_t> faceIds,
++                                        double thickness, double tolerance,
++                                        std::vector<int> inputFaceHashes, int hashUpperBound);
+     EvolutionData offsetWithHistory(uint32_t solidId, double distance, double tolerance,
+                                     std::vector<int> inputFaceHashes, int hashUpperBound);
+     EvolutionData thickenWithHistory(uint32_t shapeId, double thickness, double tolerance,

@@ -242,6 +242,7 @@ export function createShellFeature(index: number): ShellFeature {
     name: `Shell ${index}`,
     suppressed: false,
     thickness: 2,
+    cornerType: "rounded",
     faceReferenceIds: [],
   };
 }
@@ -440,6 +441,7 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
       feature.treatment ??= "fillet";
       feature.selectionReferenceIds ??= feature.edgeReferenceIds;
     }
+    if (feature.kind === "shell") feature.cornerType = feature.cornerType === "sharp" ? "sharp" : "rounded";
     if (feature.kind === "revolve") {
       const legacy = feature as RevolveFeature & { source?: RevolveFeature["source"] };
       legacy.source ??= legacy.sketchId ? "sketch" : "face";
