@@ -22,27 +22,28 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      inkscape:zoom="11.171166"
-     inkscape:cx="12.800813"
+     inkscape:cx="12.890329"
      inkscape:cy="22.871382"
      inkscape:current-layer="svg2" />
+  <ellipse
+     style="fill:none;stroke:#173b5a;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+     id="path4"
+     cx="17.220846"
+     cy="23.689978"
+     rx="12.534679"
+     ry="12.556705" />
   <path
-     d="M 35.713951,8.9805712 V 39.509129 m 0,0 -5,-5 m 5,5 5,-5"
+     style="fill:none;stroke:#173b5a;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+     d="m 17.220848,16.737011 v 6.952967 l 3.54734,3.205171"
+     id="path5"
+     sodipodi:nodetypes="ccc" />
+  <path
+     d="M 36.928922,5.5714339 V 43.02943 m 0,0 -6.13491,-6.134911 m 6.13491,6.134911 6.134911,-6.134911"
      stroke="#5b7489"
      stroke-width="3.5"
      stroke-linecap="round"
      stroke-linejoin="round"
-     id="path2"
+     id="path2-7"
      sodipodi:nodetypes="cccccc"
      style="stroke:#173b5a;stroke-opacity:1" />
-  <circle
-     style="fill:none;stroke:#173b5a;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
-     id="path4"
-     cx="17.046896"
-     cy="24"
-     r="9.9170599" />
-  <path
-     style="fill:none;stroke:#173b5a;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
-     d="M 17.046896,18.508672 V 24 l 2.806549,2.531386"
-     id="path5"
-     sodipodi:nodetypes="ccc" />
 </svg>
