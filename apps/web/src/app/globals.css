@@ -497,7 +497,7 @@ button {
 .educad-viewport-context-toolbar .mode-add.active { color: #167d54; background: #ddf4e8; border-color: #66b994; }
 .educad-viewport-context-toolbar .mode-cut.active { color: #ba434c; background: #fbe4e6; border-color: #d98990; }
 .educad-viewport-context-toolbar .mode-intersect.active { color: #7f46a5; background: #efe3f6; border-color: #b58acb; }
-.educad-viewport-context-toolbar button.active { color: #006b94; background: #def5fb; border-color: #6fc8df; box-shadow: inset 0 3px 0 #079bc6; }
+.educad-viewport-context-toolbar button.active { color: #006b94; background: #def5fb; border-color: #6fc8df; box-shadow: inset 0 0 0 #079bc6; }
 .educad-viewport-context-toolbar button.educad-alignment-mode { padding: 3px; }
 .educad-viewport-context-toolbar .cancel { color: #a3444a; }
 .educad-viewport-context-toolbar .accept { color: #23714e; }
@@ -6210,7 +6210,7 @@ circle.sketch-preview-line {
   color: #006b94;
   background: #def5fb;
   border-color: #6fc8df;
-  box-shadow: inset 3px 0 0 #079bc6;
+  box-shadow: inset 0 0 0 #079bc6;
 }
 
 .camera-controls button.educad-parameter-handles-toggle,
@@ -6269,7 +6269,7 @@ circle.sketch-preview-line {
   color: #b42318;
   background: #fff0ee;
   border-color: #ee9b92;
-  box-shadow: inset 3px 0 0 #dc3f36;
+  box-shadow: inset 0 0 0 #dc3f36;
 }
 
 @keyframes ruler-tools-in {
@@ -7772,7 +7772,7 @@ circle.sketch-preview-line {
   color: #176f95;
   background: #ffffff;
   border-color: #c7d9e4;
-  box-shadow: 0 1px 3px rgba(31, 64, 84, 0.08);
+  box-shadow: 0 1px 0 rgba(31, 64, 84, 0.08);
 }
 
 .workspace-modal-content {
@@ -9760,7 +9760,7 @@ html[data-theme="dark"] .grid-settings {
 .educad-dashboard-card .card-preview strong { z-index: 1; font-size: 14px; }
 .educad-dashboard-card .accent-1 { background: #fff8df; }.educad-dashboard-card .accent-2 { background: #e8f7f0; }.educad-dashboard-card .accent-3 { background: #fff0ef; }
 .educad-dashboard-new-card .card-preview { background: #eef5ff; }
-.educad-dashboard-new-card .new-project-plus { width: 82px; height: 82px; display: grid; place-items: center; border-radius: 17px; background: #1269eb; color: white; }
+.educad-dashboard-new-card .card-preview > img { width: 82px; height: 82px; object-fit: contain; }
 .educad-dashboard-open-card .card-preview { background: #f2f8fb; }
 .educad-dashboard-open-card .new-project-plus { background: #e8f0f4; color: #254c68; }
 .educad-dashboard-card .card-copy { padding: 13px 1px 3px; display: flex; flex-direction: column; gap: 7px; }
@@ -9802,7 +9802,7 @@ html[data-theme="dark"] .grid-settings {
 .educad-challenge-card .challenge-cover { height: 180px; display: grid; place-items: center; overflow: hidden; color: #1269eb; background: linear-gradient(145deg, #eef6ff, #e6f7fb); border-radius: 8px; }
 .educad-challenge-card .challenge-cover img { width: 100%; height: 100%; object-fit: cover; }
 .educad-challenge-new-card .challenge-cover { background: #eef5ff; }
-.educad-challenge-new-card .new-challenge-plus { width: 82px; height: 82px; display: grid; place-items: center; color: #fff; background: #1269eb; border-radius: 17px; }
+.educad-challenge-new-card .challenge-cover img { width: 82px; height: 82px; object-fit: contain; }
 .educad-challenge-new-card .challenge-copy > span { min-height: 0; }
 .educad-challenge-card .challenge-copy { padding: 13px 1px 4px; display: flex; flex-direction: column; gap: 5px; }
 .educad-challenge-card .challenge-copy small { color: #1269eb; font-size: 11px; font-weight: 900; letter-spacing: .08em; }

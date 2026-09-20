@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FileArchive, Grid3X3, Home, List, Plus, Search, Settings, Trash2, Upload, X } from "lucide-react";
+import { Download, FileArchive, Grid3X3, Home, List, Search, Settings, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ToolbarEditOperationIcon } from "@/components/icons";
 import { SharedProjects } from "@/components/SharedProjects";
@@ -106,7 +106,7 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
           <div className={`educad-challenge-library ${challengeView}`}>
             {!challengeQuery.trim() ? <article className="educad-challenge-card educad-challenge-new-card">
               <button className="challenge-open" type="button" onClick={onCreateChallenge}>
-                <span className="challenge-cover"><span className="new-challenge-plus"><Plus size={48} /></span></span>
+                <span className="challenge-cover"><img src="/assets/educad/create-new-3d-design.svg" alt="" draggable={false} /></span>
                 <span className="challenge-copy"><strong>Create new challenge</strong><span>Build a guided eduCAD activity</span></span>
               </button>
             </article> : null}
@@ -137,7 +137,7 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
         <div className={`educad-dashboard-projects ${view}`}>
           {!query.trim() ? <article className="educad-dashboard-card educad-dashboard-new-card">
             <button className="card-open" type="button" onClick={onCreate}>
-              <span className="card-preview"><span className="new-project-plus"><Plus size={48} /></span></span>
+              <span className="card-preview"><img src="/assets/educad/create-new-3d-design.svg" alt="" draggable={false} /></span>
               <span className="card-copy"><strong>Create new 3D design</strong><small>Start with an empty workplane</small></span>
             </button>
           </article> : null}

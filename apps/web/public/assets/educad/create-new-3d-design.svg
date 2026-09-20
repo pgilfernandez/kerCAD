@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="82"
+   height="82"
+   viewBox="0 0 82 82"
+   fill="none"
+   version="1.1"
+   id="svg1"
+   sodipodi:docname="create-new-3d-design.svg"
+   inkscape:version="1.4.4 (dcaf3e7d, 2026-05-05)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="4.7814206"
+     inkscape:cx="36.809144"
+     inkscape:cy="35.868002"
+     inkscape:current-layer="svg1" />
+  <rect
+     width="55.229713"
+     height="55.229713"
+     fill="#1269eb"
+     id="rect1"
+     x="13.385143"
+     y="13.385143"
+     style="stroke-width:1;fill:#1269eb;fill-opacity:0.60000002"
+     ry="12" />
+  <path
+     d="M41 27v28M27 41h28"
+     stroke="#fff"
+     stroke-width="4"
+     stroke-linecap="round"
+     stroke-linejoin="round"
+     id="path1" />
+</svg>
