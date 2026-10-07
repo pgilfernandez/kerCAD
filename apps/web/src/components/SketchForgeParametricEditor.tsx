@@ -3052,6 +3052,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           <ToolbarSection label={t("sketch.draw")}>
             <Tool label={t("sketch.line")} active={sketchTool === "line"} onClick={() => chooseSketchTool("line")}><SketchToolbarIcon file="line" /></Tool>
             <Tool label={t("sketch.rectangle")} active={sketchTool === "rectangle"} onClick={() => chooseSketchTool("rectangle")}><SketchToolbarIcon file="rectangle" /></Tool>
+            <Tool label={t("sketch.slot")} active={sketchTool === "slot"} onClick={() => chooseSketchTool("slot")}><SketchToolbarIcon file="slot" /></Tool>
+            <Tool label={t("sketch.arcSlot")} active={sketchTool === "arcSlot"} onClick={() => chooseSketchTool("arcSlot")}><SketchToolbarIcon file="arc-slot" /></Tool>
             <Tool label={t("sketch.circle")} active={sketchTool === "circle"} onClick={() => chooseSketchTool("circle")}><SketchToolbarIcon file="circle" /></Tool>
             <Tool label={t("sketch.centerArc")} active={sketchTool === "arc"} onClick={() => chooseSketchTool("arc")}><SketchToolbarIcon file="center-arc" /></Tool>
             <Tool label={t("sketch.bezier")} active={sketchTool === "bezier"} onClick={() => chooseSketchTool("bezier")}><SketchToolbarIcon file="bezier" /></Tool>
@@ -3182,6 +3184,13 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           initialWorkspace={{ ...DEFAULT_WORKPLANE_WORKSPACE, units: displayUnit === "in" ? "Imperial" : "Metric (Default)", scale: displayUnit === "in" ? "1:1 (inches)" : "1:1 (millimeters)", width: document.workplane.width, depth: document.workplane.depth, sizePreset: `${document.workplane.width} x ${document.workplane.depth} mm`, gridBlockSize: document.workplane.gridStep, gridBlockPreset: `${document.workplane.gridStep} mm`, showGrid: document.workplane.gridVisible }}
           onPlanePoint={addSketchPoint}
           onMoveSelection={(profile) => setSketchProfile(() => profile)}
+          onAddSlot={(contour) => {
+            const ids = new Map(contour.points.map((point) => [point.id, sketchEntityId("point")]));
+            const points = contour.points.map((point) => ({ ...point, id: ids.get(point.id)! }));
+            const segments = contour.segments.map((segment) => ({ ...segment, id: sketchEntityId("segment"), startId: ids.get(segment.startId)!, endId: ids.get(segment.endId)! }));
+            setSketchProfile((profile) => ({ ...profile, points: [...profile.points, ...points], segments: [...profile.segments, ...segments] }));
+            chooseSketchTool("select");
+          }}
           onAddRectangle={(corners) => {
             const points = corners.map((corner) => ({ ...corner, id: sketchEntityId("point"), mode: "corner" as const }));
             const segments = points.map((point, index) => ({ id: sketchEntityId("segment"), startId: point.id, endId: points[(index + 1) % points.length].id, kind: "line" as const }));

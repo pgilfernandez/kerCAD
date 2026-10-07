@@ -6,6 +6,7 @@ import { ViewToolbarIcon } from "@/components/icons";
 import { SnapGridControl } from "@/components/workplane/ShapeInspector";
 import { SketchRevolvePreview } from "@/components/SketchRevolvePreview";
 import { parseMeasurementInput } from "@/lib/measurementUnits";
+import { sketchSlot } from "@/lib/sketchSlots";
 import { WORKPLANE_MAJOR_GRID_INTERVAL } from "@/lib/workplaneGrid";
 import { mirrorSign, resizedImportedMeshPositions } from "@/lib/workplaneShapes";
 import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE, normalizeSnapGrid, normalizeWorkspaceSettings } from "@/lib/workplaneSettings";
@@ -14,7 +15,7 @@ import type { SketchProfileValidation } from "@/lib/sketchProfileValidation";
 import type { EducadLocale } from "@/lib/educadI18n";
 import type { GridSize, SketchCircle, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchSegment, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
 
-export type SketchTool = "line" | "rectangle" | "bezier" | "smooth" | "freehand" | "freehandSmooth" | "circle" | "arc" | "select" | "refine" | "trim" | "erase" | "measure";
+export type SketchTool = "line" | "rectangle" | "slot" | "arcSlot" | "bezier" | "smooth" | "freehand" | "freehandSmooth" | "circle" | "arc" | "select" | "refine" | "trim" | "erase" | "measure";
 export type SketchSelection =
   | { kind: "point"; id: string }
   | { kind: "segment"; id: string }
@@ -70,6 +71,7 @@ type SketchWorkspaceProps = {
   onPlanePoint: (point: { x: number; z: number }, handles?: { handleIn: { x: number; z: number }; handleOut: { x: number; z: number } }) => void;
   onFreehandContour?: (points: Array<{ x: number; z: number }>, smooth: boolean) => void;
   onAddRectangle?: (corners: Array<{ x: number; z: number }>) => void;
+  onAddSlot?: (contour: SketchProfile) => void;
   onMoveSelection?: (profile: SketchProfile) => void;
   onPointPress: (id: string, additive?: boolean) => void;
   onSelectSegment: (id: string, additive?: boolean) => void;
@@ -593,6 +595,7 @@ export function SketchWorkspace({
   onPlanePoint,
   onFreehandContour,
   onAddRectangle,
+  onAddSlot,
   onMoveSelection,
   onPointPress,
   onSelectSegment,
@@ -635,6 +638,7 @@ export function SketchWorkspace({
   const [hover, setHover] = useState<{ x: number; z: number } | null>(null);
   const [pendingCircleCenter, setPendingCircleCenter] = useState<{ x: number; z: number } | null>(null);
   const [pendingRectangleCorner, setPendingRectangleCorner] = useState<{ x: number; z: number } | null>(null);
+  const [slotPicks, setSlotPicks] = useState<Array<{ x: number; z: number }>>([]);
   const [pendingArc, setPendingArc] = useState<{ center: { x: number; z: number }; start?: { x: number; z: number } } | null>(null);
   const [pointerAction, setPointerAction] = useState<PointerAction | null>(null);
   const [svgSize, setSvgSize] = useState({ width: 0, height: 0 });
@@ -678,6 +682,7 @@ export function SketchWorkspace({
   useEffect(() => {
     if (tool === "freehand" || tool === "freehandSmooth") setShowDimensionLabels(false);
     if (tool !== "rectangle") setPendingRectangleCorner(null);
+    setSlotPicks([]);
   }, [tool, labelPreferencesLoaded]);
 
   useEffect(() => {
@@ -884,6 +889,15 @@ export function SketchWorkspace({
     } else if (tool === "bezier") {
       event.currentTarget.setPointerCapture(event.pointerId);
       setPointerAction({ kind: "bezier", pointerId: event.pointerId, origin: point, current: point });
+    } else if (tool === "slot" || tool === "arcSlot") {
+      const picks = [...slotPicks, point];
+      if (picks.length === (tool === "slot" ? 3 : 4)) {
+        const contour = sketchSlot(tool, picks);
+        if (contour) { onAddSlot?.(contour); setSlotPicks([]); }
+      } else if (!slotPicks.length || Math.hypot(point.x - slotPicks[slotPicks.length - 1].x, point.z - slotPicks[slotPicks.length - 1].z) > 0.001) {
+        setSlotPicks(picks);
+        setHover(point);
+      }
     } else if (tool === "rectangle") {
       if (!pendingRectangleCorner) {
         setPendingRectangleCorner(point);
@@ -1157,7 +1171,7 @@ export function SketchWorkspace({
           onPointerCancel={() => setPointerAction(null)}
           onPointerLeave={() => !pointerAction && setHover(null)}
           onContextMenu={(event) => {
-            if (tool !== "line") return;
+            if (!["line", "slot", "arcSlot", "rectangle"].includes(tool)) return;
             event.preventDefault();
             setPointerAction(null);
             setHover(null);
@@ -1494,6 +1508,22 @@ export function SketchWorkspace({
             </g>
           ) : null}
           {pendingRectangleCorner && hover ? <rect className="sketch-preview-line" fill="none" x={Math.min(pendingRectangleCorner.x, hover.x)} y={Math.min(pendingRectangleCorner.z, hover.z)} width={Math.abs(hover.x - pendingRectangleCorner.x)} height={Math.abs(hover.z - pendingRectangleCorner.z)} pointerEvents="none" /> : null}
+          {slotPicks.length > 0 && hover && (tool === "slot" || tool === "arcSlot") ? (() => {
+            const contour = sketchSlot(tool, [...slotPicks, hover]);
+            if (contour) {
+              const points = new Map(contour.points.map((point) => [point.id, point]));
+              return <g pointerEvents="none">{contour.segments.map((segment) => <path key={segment.id} className="sketch-preview-line" fill="none" d={segmentData(segment, points)} />)}</g>;
+            }
+            if (tool === "arcSlot" && slotPicks.length === 2) {
+              const [center, start] = slotPicks;
+              const radius = Math.hypot(start.x - center.x, start.z - center.z);
+              const angle = Math.atan2(hover.z - center.z, hover.x - center.x);
+              const end = { id: "end", x: center.x + radius * Math.cos(angle), z: center.z + radius * Math.sin(angle) };
+              const positive = (angle - Math.atan2(start.z - center.z, start.x - center.x) + Math.PI * 2) % (Math.PI * 2) <= Math.PI;
+              return <path className="sketch-preview-line" fill="none" pointerEvents="none" d={segmentData({ id: "guide", kind: "arc", startId: "start", endId: "end", center, clockwise: positive }, new Map([["start", { ...start, id: "start" }], ["end", end]]))} />;
+            }
+            return <line className="sketch-preview-line" x1={slotPicks[0].x} y1={slotPicks[0].z} x2={hover.x} y2={hover.z} pointerEvents="none" />;
+          })() : null}
           {pendingCircleCenter && hover ? <>
             <circle className="sketch-preview-line" cx={pendingCircleCenter.x} cy={pendingCircleCenter.z} r={Math.hypot(hover.x - pendingCircleCenter.x, hover.z - pendingCircleCenter.z)} pointerEvents="none" />
             <circle className="sketch-circle-center pending" cx={pendingCircleCenter.x} cy={pendingCircleCenter.z} r={pointRadius} pointerEvents="none" />

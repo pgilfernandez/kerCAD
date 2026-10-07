@@ -6267,6 +6267,8 @@ export function SketchForgeEditor({
     const messages: Record<SketchTool, string> = {
       line: "Line: click points to draw straight segments",
       rectangle: "Rectangle: click opposite corners to create a closed path",
+      slot: "Slot: choose both end centres, then the width",
+      arcSlot: "Arc slot: choose the arc centre, start, end, then the width",
       bezier: "Bézier: click and drag points to pull curve handles",
       smooth: "Smooth curve: click points to build a flowing path",
       freehand: "Freehand: drag to draw a closed contour",
