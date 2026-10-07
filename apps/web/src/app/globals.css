@@ -9924,12 +9924,13 @@ html[data-theme="dark"] .grid-settings {
 }
 
 .toolbar-workspace-tabs .educad-sketch-header-actions .educad-toolbar-brand-button:first-child {
-  color: #1269eb;
-  background: #ffffff;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.2);
 }
 .toolbar-workspace-tabs .educad-sketch-header-actions .educad-toolbar-brand-button:first-child:hover,
 .toolbar-workspace-tabs .educad-sketch-header-actions .educad-toolbar-brand-button:first-child:focus-visible {
-  background: #eaf3ff;
+  color: #1269eb;
+  background: #ffffff;
 }
 .toolbar-workspace-tabs .educad-sketch-header-actions .educad-toolbar-brand-button + .educad-toolbar-brand-button {
   background: rgba(255, 255, 255, 0.25);
