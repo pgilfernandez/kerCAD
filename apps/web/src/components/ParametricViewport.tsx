@@ -4166,9 +4166,23 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
     cameraTransitionRef.current = null;
     const target = controls.target;
     const distance = Math.max(75, camera.position.distanceTo(target));
+    const dampingEnabled = controls.enableDamping;
+    const stableDirection = (direction: THREE.Vector3) => {
+      const result = direction.clone().normalize();
+      // At either pole lookAt has no unique screen-up direction. Keep a
+      // deterministic, imperceptible tilt toward front for OrbitControls.
+      if (Math.hypot(result.x, result.z) < 0.00001) {
+        result.x = 0;
+        result.z = 0.00001;
+        result.normalize();
+      }
+      return result;
+    };
     const animateToDirection = (requestedDirection: THREE.Vector3) => {
       if (cameraTransitionRef.current !== null) cancelAnimationFrame(cameraTransitionRef.current);
-      const destination = requestedDirection.clone().normalize();
+      controls.enableDamping = false;
+      controls.update();
+      const destination = stableDirection(requestedDirection);
       const startDirection = camera.position.clone().sub(target).normalize();
       const rotation = new THREE.Quaternion().setFromUnitVectors(startDirection, destination);
       const identity = new THREE.Quaternion();
@@ -4179,6 +4193,7 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
         camera.up.set(0, 1, 0);
         camera.lookAt(targetPosition);
         controls.update();
+        controls.enableDamping = dampingEnabled;
         invalidateRef.current();
         cameraTransitionRef.current = null;
         return;
@@ -4188,14 +4203,17 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
         const progress = Math.min(1, (now - startedAt) / duration);
         const eased = progress * progress * (3 - 2 * progress);
         const frameRotation = identity.clone().slerp(rotation, eased);
-        const direction = startDirection.clone().applyQuaternion(frameRotation).normalize();
+        const direction = stableDirection(startDirection.clone().applyQuaternion(frameRotation));
         camera.position.copy(targetPosition).addScaledVector(direction, distance);
         camera.up.set(0, 1, 0);
         camera.lookAt(targetPosition);
         controls.update();
         invalidateRef.current();
         if (progress < 1) cameraTransitionRef.current = requestAnimationFrame(step);
-        else cameraTransitionRef.current = null;
+        else {
+          controls.enableDamping = dampingEnabled;
+          cameraTransitionRef.current = null;
+        }
       };
       cameraTransitionRef.current = requestAnimationFrame(step);
     };
@@ -4234,13 +4252,20 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
     }
     if (view.name === "custom") {
       if (view.direction && view.smooth === false) {
-        camera.position.copy(target).add(new THREE.Vector3(...view.direction).normalize().multiplyScalar(distance));
+        controls.enableDamping = false;
+        controls.update();
+        camera.position.copy(target).add(stableDirection(new THREE.Vector3(...view.direction)).multiplyScalar(distance));
         camera.up.set(0, 1, 0);
         camera.lookAt(target);
         controls.update();
+        controls.enableDamping = dampingEnabled;
         invalidateRef.current();
       } else if (view.direction) animateToDirection(new THREE.Vector3(...view.direction));
-      return;
+      return () => {
+        if (cameraTransitionRef.current !== null) cancelAnimationFrame(cameraTransitionRef.current);
+        cameraTransitionRef.current = null;
+        controls.enableDamping = dampingEnabled;
+      };
     }
     const vectors: Record<"iso" | "top" | "front" | "right" | "home", THREE.Vector3> = {
       iso: new THREE.Vector3(118, 96, 118),
@@ -4253,6 +4278,7 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
     return () => {
       if (cameraTransitionRef.current !== null) cancelAnimationFrame(cameraTransitionRef.current);
       cameraTransitionRef.current = null;
+      controls.enableDamping = dampingEnabled;
     };
   }, [view]);
 
