@@ -9923,6 +9923,22 @@ html[data-theme="dark"] .grid-settings {
   outline: none;
 }
 
+.toolbar-workspace-tabs .educad-sketch-header-actions .educad-toolbar-brand-button:first-child {
+  color: #245b38;
+  background: #d9f0df;
+}
+.toolbar-workspace-tabs .educad-sketch-header-actions .educad-toolbar-brand-button:first-child:hover,
+.toolbar-workspace-tabs .educad-sketch-header-actions .educad-toolbar-brand-button:first-child:focus-visible {
+  background: #bfe5ca;
+}
+.toolbar-workspace-tabs .educad-sketch-header-actions .educad-toolbar-brand-button + .educad-toolbar-brand-button {
+  background: rgba(255, 255, 255, 0.25);
+}
+.toolbar-workspace-tabs .educad-sketch-header-actions .educad-toolbar-brand-button + .educad-toolbar-brand-button:hover,
+.toolbar-workspace-tabs .educad-sketch-header-actions .educad-toolbar-brand-button + .educad-toolbar-brand-button:focus-visible {
+  background: rgba(255, 255, 255, 0.8);
+}
+
 .educad-toolbar-brand-button > span:first-child { margin-top: -1px; font-size: 22px; font-weight: 500; line-height: 1; }
 
 @media (max-width: 760px) {
