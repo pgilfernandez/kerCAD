@@ -14,7 +14,7 @@ import type { SketchProfileValidation } from "@/lib/sketchProfileValidation";
 import type { EducadLocale } from "@/lib/educadI18n";
 import type { GridSize, SketchCircle, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchSegment, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
 
-export type SketchTool = "line" | "bezier" | "smooth" | "freehand" | "freehandSmooth" | "circle" | "arc" | "select" | "refine" | "trim" | "erase" | "measure";
+export type SketchTool = "line" | "rectangle" | "bezier" | "smooth" | "freehand" | "freehandSmooth" | "circle" | "arc" | "select" | "refine" | "trim" | "erase" | "measure";
 export type SketchSelection =
   | { kind: "point"; id: string }
   | { kind: "segment"; id: string }
@@ -49,6 +49,7 @@ type SketchWorkspaceProps = {
   initialWorkspace?: WorkplaneWorkspaceSettings;
   onPlanePoint: (point: { x: number; z: number }, handles?: { handleIn: { x: number; z: number }; handleOut: { x: number; z: number } }) => void;
   onFreehandContour?: (points: Array<{ x: number; z: number }>, smooth: boolean) => void;
+  onAddRectangle?: (corners: Array<{ x: number; z: number }>) => void;
   onPointPress: (id: string, additive?: boolean) => void;
   onSelectSegment: (id: string, additive?: boolean) => void;
   onSelectMany: (pointIds: string[], segmentIds: string[], imageIds: string[], circleIds?: string[]) => void;
@@ -569,6 +570,7 @@ export function SketchWorkspace({
   initialWorkspace,
   onPlanePoint,
   onFreehandContour,
+  onAddRectangle,
   onPointPress,
   onSelectSegment,
   onSelectMany,
@@ -608,6 +610,7 @@ export function SketchWorkspace({
   const [showConstraintLabels, setShowConstraintLabels] = useState(true);
   const [hover, setHover] = useState<{ x: number; z: number } | null>(null);
   const [pendingCircleCenter, setPendingCircleCenter] = useState<{ x: number; z: number } | null>(null);
+  const [pendingRectangleCorner, setPendingRectangleCorner] = useState<{ x: number; z: number } | null>(null);
   const [pendingArc, setPendingArc] = useState<{ center: { x: number; z: number }; start?: { x: number; z: number } } | null>(null);
   const [pointerAction, setPointerAction] = useState<PointerAction | null>(null);
   const [svgSize, setSvgSize] = useState({ width: 0, height: 0 });
@@ -628,6 +631,7 @@ export function SketchWorkspace({
 
   useEffect(() => {
     if (tool === "freehand" || tool === "freehandSmooth") setShowDimensionLabels(false);
+    if (tool !== "rectangle") setPendingRectangleCorner(null);
   }, [tool]);
 
   useEffect(() => {
@@ -833,6 +837,14 @@ export function SketchWorkspace({
     } else if (tool === "bezier") {
       event.currentTarget.setPointerCapture(event.pointerId);
       setPointerAction({ kind: "bezier", pointerId: event.pointerId, origin: point, current: point });
+    } else if (tool === "rectangle") {
+      if (!pendingRectangleCorner) {
+        setPendingRectangleCorner(point);
+        setHover(point);
+      } else if (Math.abs(point.x - pendingRectangleCorner.x) > 0.001 && Math.abs(point.z - pendingRectangleCorner.z) > 0.001) {
+        onAddRectangle?.([pendingRectangleCorner, { x: point.x, z: pendingRectangleCorner.z }, point, { x: pendingRectangleCorner.x, z: point.z }]);
+        setPendingRectangleCorner(null);
+      }
     } else if (tool === "circle") {
       if (!pendingCircleCenter) {
         setPendingCircleCenter(point);
@@ -1416,6 +1428,7 @@ export function SketchWorkspace({
               <circle cx={pointerAction.origin.x} cy={pointerAction.origin.z} r={controlPointRadius} />
             </g>
           ) : null}
+          {pendingRectangleCorner && hover ? <rect className="sketch-preview-line" fill="none" x={Math.min(pendingRectangleCorner.x, hover.x)} y={Math.min(pendingRectangleCorner.z, hover.z)} width={Math.abs(hover.x - pendingRectangleCorner.x)} height={Math.abs(hover.z - pendingRectangleCorner.z)} pointerEvents="none" /> : null}
           {pendingCircleCenter && hover ? <>
             <circle className="sketch-preview-line" cx={pendingCircleCenter.x} cy={pendingCircleCenter.z} r={Math.hypot(hover.x - pendingCircleCenter.x, hover.z - pendingCircleCenter.z)} pointerEvents="none" />
             <circle className="sketch-circle-center pending" cx={pendingCircleCenter.x} cy={pendingCircleCenter.z} r={pointRadius} pointerEvents="none" />

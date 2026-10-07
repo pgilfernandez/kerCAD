@@ -6266,6 +6266,7 @@ export function SketchForgeEditor({
     if (tool !== "measure") setSketchMeasureStart(null);
     const messages: Record<SketchTool, string> = {
       line: "Line: click points to draw straight segments",
+      rectangle: "Rectangle: click opposite corners to create a closed path",
       bezier: "Bézier: click and drag points to pull curve handles",
       smooth: "Smooth curve: click points to build a flowing path",
       freehand: "Freehand: drag to draw a closed contour",

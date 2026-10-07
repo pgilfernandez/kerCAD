@@ -3045,6 +3045,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           </ToolbarSection>
           <ToolbarSection label={t("sketch.draw")}>
             <Tool label={t("sketch.line")} active={sketchTool === "line"} onClick={() => chooseSketchTool("line")}><SketchToolbarIcon file="line" /></Tool>
+            <Tool label={t("sketch.rectangle")} active={sketchTool === "rectangle"} onClick={() => chooseSketchTool("rectangle")}><SketchToolbarIcon file="rectangle" /></Tool>
             <Tool label={t("sketch.circle")} active={sketchTool === "circle"} onClick={() => chooseSketchTool("circle")}><SketchToolbarIcon file="circle" /></Tool>
             <Tool label={t("sketch.centerArc")} active={sketchTool === "arc"} onClick={() => chooseSketchTool("arc")}><SketchToolbarIcon file="center-arc" /></Tool>
             <Tool label={t("sketch.bezier")} active={sketchTool === "bezier"} onClick={() => chooseSketchTool("bezier")}><SketchToolbarIcon file="bezier" /></Tool>
@@ -3174,6 +3175,13 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           exactSnapStep={document.workplane.snapToGrid ? document.workplane.snapSpacing : 0}
           initialWorkspace={{ ...DEFAULT_WORKPLANE_WORKSPACE, units: displayUnit === "in" ? "Imperial" : "Metric (Default)", scale: displayUnit === "in" ? "1:1 (inches)" : "1:1 (millimeters)", width: document.workplane.width, depth: document.workplane.depth, sizePreset: `${document.workplane.width} x ${document.workplane.depth} mm`, gridBlockSize: document.workplane.gridStep, gridBlockPreset: `${document.workplane.gridStep} mm`, showGrid: document.workplane.gridVisible }}
           onPlanePoint={addSketchPoint}
+          onAddRectangle={(corners) => {
+            const points = corners.map((corner) => ({ ...corner, id: sketchEntityId("point"), mode: "corner" as const }));
+            const segments = points.map((point, index) => ({ id: sketchEntityId("segment"), startId: point.id, endId: points[(index + 1) % points.length].id, kind: "line" as const }));
+            const constraints = segments.map((segment, index) => ({ id: sketchEntityId("constraint"), kind: index % 2 === 0 ? "horizontal" as const : "vertical" as const, segmentId: segment.id }));
+            setSketchProfile((profile) => ({ ...profile, points: [...profile.points, ...points], segments: [...profile.segments, ...segments], constraints: [...(profile.constraints ?? []), ...constraints] }));
+            chooseSketchTool("select");
+          }}
           onFreehandContour={(points, smooth) => {
             try {
               setSketchProfile((profile) => appendScribbleContour(profile, points, profile.generator?.kind === "scribble" ? profile.generator.smoothing : 0.8, smooth));
