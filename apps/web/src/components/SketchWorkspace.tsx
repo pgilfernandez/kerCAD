@@ -608,6 +608,7 @@ export function SketchWorkspace({
   const [pan, setPan] = useState({ x: 0, z: 0 });
   const [showDimensionLabels, setShowDimensionLabels] = useState(tool !== "freehand" && tool !== "freehandSmooth");
   const [showConstraintLabels, setShowConstraintLabels] = useState(true);
+  const [labelPreferencesLoaded, setLabelPreferencesLoaded] = useState(false);
   const [hover, setHover] = useState<{ x: number; z: number } | null>(null);
   const [pendingCircleCenter, setPendingCircleCenter] = useState<{ x: number; z: number } | null>(null);
   const [pendingRectangleCorner, setPendingRectangleCorner] = useState<{ x: number; z: number } | null>(null);
@@ -630,9 +631,31 @@ export function SketchWorkspace({
   }, [depth, svgSize.height, svgSize.width, width]);
 
   useEffect(() => {
+    try {
+      const dimensions = window.localStorage.getItem("educad.sketch-dimension-labels");
+      const constraints = window.localStorage.getItem("educad.sketch-constraint-labels");
+      if (dimensions !== null) setShowDimensionLabels(dimensions !== "false");
+      if (constraints !== null) setShowConstraintLabels(constraints !== "false");
+    } catch {
+      // Keep session preferences when browser storage is unavailable.
+    }
+    setLabelPreferencesLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!labelPreferencesLoaded) return;
+    try {
+      window.localStorage.setItem("educad.sketch-dimension-labels", String(showDimensionLabels));
+      window.localStorage.setItem("educad.sketch-constraint-labels", String(showConstraintLabels));
+    } catch {
+      // The toggles remain usable without persistent storage.
+    }
+  }, [labelPreferencesLoaded, showDimensionLabels, showConstraintLabels]);
+
+  useEffect(() => {
     if (tool === "freehand" || tool === "freehandSmooth") setShowDimensionLabels(false);
     if (tool !== "rectangle") setPendingRectangleCorner(null);
-  }, [tool]);
+  }, [tool, labelPreferencesLoaded]);
 
   useEffect(() => {
     if (tool !== "circle") setPendingCircleCenter(null);
