@@ -9924,8 +9924,8 @@ html[data-theme="dark"] .grid-settings {
 }
 
 .toolbar-workspace-tabs .educad-sketch-header-actions .educad-toolbar-brand-button:first-child {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.2);
+  color: #1269eb;
+  background: rgba(255, 255, 255, 0.8);
 }
 .toolbar-workspace-tabs .educad-sketch-header-actions .educad-toolbar-brand-button:first-child:hover,
 .toolbar-workspace-tabs .educad-sketch-header-actions .educad-toolbar-brand-button:first-child:focus-visible {
