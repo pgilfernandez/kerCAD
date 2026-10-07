@@ -1613,7 +1613,7 @@ export function SketchWorkspace({
               {selectedPointHandles?.out ? <><line x1={selectedPoint.x} y1={selectedPoint.z} x2={selectedPointHandles.out.x} y2={selectedPointHandles.out.z} /><circle data-sketch-entity="handle" cx={selectedPointHandles.out.x} cy={selectedPointHandles.out.z} r={controlPointRadius} onPointerDown={(event) => event.button === 1 ? beginPan(event) : beginEntityDrag(event, { kind: "move-handle", pointerId: event.pointerId, pointId: selectedPoint.id, handle: "out", current: selectedPointHandles.out! })} /></> : null}
             </g>
           ) : null}
-          <g className="sketch-circle-dimensions">
+          {showDimensionLabels ? <g className="sketch-circle-dimensions">
             {displayCircles.map((circle) => {
               const constraint = (displayProfile.constraints ?? []).find((candidate) => (candidate.kind === "radius" || candidate.kind === "diameter") && candidate.circleId === circle.id);
               if (constraint?.kind === "radius" || constraint?.kind === "diameter") return <g key={`radius-${constraint.id}`} transform={`translate(${circle.x + circle.radius + 12 * screenUnit} ${circle.z + 18 * screenUnit})`}>
@@ -1626,7 +1626,7 @@ export function SketchWorkspace({
                 <text x={pill.width / 2} y={5 * screenUnit} fontSize={13 * screenUnit}>{label}</text>
               </g>;
             })}
-          </g>
+          </g> : null}
           {showDimensionLabels ? <g className="sketch-circle-dimensions sketch-arc-dimensions">
             {displayProfile.segments.filter((segment) => segment.kind === "arc" && segment.center).map((segment) => {
               const arc = arcDimensionGeometry(segment, pointById);
