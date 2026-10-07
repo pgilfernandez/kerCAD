@@ -3055,8 +3055,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     <main className={`educad-reference-shell sidebar-${modelSidebarMode}`}>
       <div className="secondary-toolbar">
         <div className="toolbar-workspace-tabs educad-toolbar-titlebar">
-          {onExitToProjects ? <button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={() => onExitToProjects(latestDocumentRef.current)} title="Back to projects">{'<'} back</button> : null}
-          <span className="educad-project-name"><img src="/assets/educad/logo.svg" alt="" /><strong>eduCAD</strong><span aria-hidden="true">-</span><button type="button" className="educad-project-rename-trigger" onClick={openProjectRename} title={locale === "es" ? "Cambiar nombre del proyecto" : "Rename project"}>{document.name}</button></span>
+          {sketchSession ? <div className="educad-sketch-header-actions"><button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={acceptSketch}>{'<'} {t("sketch.accept")}</button><button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={cancelSketch}>{t("common.cancel")}</button></div> : onExitToProjects ? <button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={() => onExitToProjects(latestDocumentRef.current)} title="Back to projects">{'<'} back</button> : null}
+          <span className="educad-project-name"><img src="/assets/educad/logo.svg" alt="" /><strong>eduCAD</strong><span aria-hidden="true">-</span><button type="button" className="educad-project-rename-trigger" onClick={openProjectRename} title={locale === "es" ? "Cambiar nombre del proyecto" : "Rename project"}>{document.name}</button>{sketchSession ? <strong className="educad-sketcher-badge">SKETCHER</strong> : null}</span>
         </div>
         {sketchSession ? <div className="sketch-toolbar-ribbon educad-parametric-sketch-toolbar" aria-label={t("sketch.tools")}>
           <ToolbarSection label={t("sketch.history")}>
@@ -3101,7 +3101,6 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("sketch.importSvg")} onClick={() => sketchSvgImportRef.current?.click()}><SketchToolbarIcon file="import-svg" /></Tool>
           </ToolbarSection>
           <div className="toolbar-spacer" />
-          <div className="educad-sketch-finish-actions"><button className="educad-sketch-action primary" type="button" onClick={acceptSketch}><SketchToolbarIcon file="accept" /><span>{t("sketch.accept")}</span></button><button className="educad-sketch-action" type="button" onClick={cancelSketch}><SketchToolbarIcon file="cancel" /><span>{t("common.cancel")}</span></button></div>
         </div> :
         <div className="toolbar-mode-content geometry">
           <div className="tool-group left">
