@@ -365,21 +365,37 @@ export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: 
   }
 
   const directional = constraints.filter((constraint): constraint is Extract<SketchConstraint, { kind: "horizontal" | "vertical" }> => constraint.kind === "horizontal" || constraint.kind === "vertical");
-  for (let pass = 0; pass < Math.max(1, directional.length); pass += 1) {
+  // Horizontal and vertical constraints share one coordinate, not both.
+  // Resolve each connected coordinate group from the dragged point so a
+  // closed chain cannot overwrite it according to segment iteration order.
+  for (const axis of ["x", "z"] as const) {
+    const coordinateNeighbors = new Map(allPoints.map((point) => [point.id, [...(neighbors.get(point.id) ?? [])]]));
     for (const constraint of directional) {
+      if ((constraint.kind === "horizontal" ? "z" : "x") !== axis) continue;
       const segment = segmentById.get(constraint.segmentId);
       if (!segment || segment.kind !== "line") continue;
-      const start = pointById.get(segment.startId);
-      const end = pointById.get(segment.endId);
-      if (!start || !end) continue;
-      const startFixed = (componentByPoint.get(start.id) ?? [start.id]).some((id) => fixedByPoint.has(id));
-      const endFixed = (componentByPoint.get(end.id) ?? [end.id]).some((id) => fixedByPoint.has(id));
-      const startDriven = driven.has(start.id);
-      const endDriven = driven.has(end.id);
-      const moveStart = endFixed || (!startFixed && startDriven && !endDriven);
-      const axis = constraint.kind === "horizontal" ? "z" : "x";
-      if (moveStart) assignComponent(start.id, axis, end[axis]);
-      else assignComponent(end.id, axis, start[axis]);
+      coordinateNeighbors.get(segment.startId)?.push(segment.endId);
+      coordinateNeighbors.get(segment.endId)?.push(segment.startId);
+    }
+    const visited = new Set<string>();
+    for (const point of allPoints) {
+      if (visited.has(point.id)) continue;
+      const component: string[] = [];
+      const pending = [point.id];
+      while (pending.length) {
+        const id = pending.pop()!;
+        if (visited.has(id)) continue;
+        visited.add(id);
+        component.push(id);
+        coordinateNeighbors.get(id)?.forEach((neighbor) => pending.push(neighbor));
+      }
+      const fixed = component.map((id) => fixedByPoint.get(id)).find(Boolean);
+      const source = fixed ? pointById.get(fixed.pointId)
+        : drivingPointId && component.includes(drivingPointId) ? pointById.get(drivingPointId)
+        : pointById.get(component[0]);
+      if (!source) continue;
+      const value = fixed?.[axis] ?? source[axis];
+      for (const id of component) assignComponent(id, axis, value);
     }
   }
 
