@@ -1,33 +1,17 @@
 "use client";
+import { OperationTreeIcon } from "@/components/OperationTreeIcon";
 import { ShellCornerButtons } from "@/components/ShellCornerButtons";
 
 import {
   ArrowDown,
   ArrowUp,
-  Box,
-  Circle,
   ChevronDown,
   ChevronRight,
-  CircleDot,
-  CircleOff,
   Crosshair,
-  DraftingCompass,
-  Eye,
-  EyeOff,
-  FileBox,
-  FlipHorizontal2,
   Layers3,
-  LockKeyhole,
-  LockKeyholeOpen,
   Pencil,
-  Radius,
-  Rows3,
   RotateCcw,
-  RotateCw,
-  Combine,
-  Triangle,
   Trash2,
-  Type,
   X,
 } from "lucide-react";
 import { createContext, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode, useContext, useEffect, useRef, useState } from "react";
@@ -256,15 +240,15 @@ export function ParametricModelSidebar({
                       aria-expanded={isExpanded}
                       onClick={() => onUpdateObject(object.id, (draft) => { draft.expanded = !draft.expanded; })}
                     >
-                      {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                      {isExpanded ? <OperationTreeIcon file="expanded" size={16} /> : <OperationTreeIcon file="collapsed" size={16} />}
                     </button>
                     <button className="educad-object-select" title={object.name} aria-pressed={objectSelected} onClick={(event) => selectNode({ id: object.id, kind: "object" }, event)}>
-                      {object.object.referenceMesh ? <FileBox size={17} /> : <Box size={17} />}
+                      {object.object.referenceMesh ? <OperationTreeIcon file="imported-step" size={17} /> : <OperationTreeIcon file="box" size={17} />}
                       <span><strong>{object.name}</strong></span>
                     </button>
                     <div className="educad-tree-actions">
-                      <button aria-label={`${object.object.visible ? t("model.hide") : t("model.show")} ${object.name}`} title={object.object.visible ? t("model.hide") : t("model.show")} aria-pressed={!object.object.visible} onClick={() => onUpdateObject(object.id, (draft) => { draft.visible = !draft.visible; })}>{object.object.visible ? <Eye size={15} /> : <EyeOff size={15} />}</button>
-                      <button aria-label={`${object.object.locked ? t("model.unlock") : t("model.lock")} ${object.name}`} title={object.object.locked ? t("model.unlock") : t("model.lock")} aria-pressed={object.object.locked} onClick={() => onUpdateObject(object.id, (draft) => { draft.locked = !draft.locked; })}>{object.object.locked ? <LockKeyhole size={15} /> : <LockKeyholeOpen size={15} />}</button>
+                      <button aria-label={`${object.object.visible ? t("model.hide") : t("model.show")} ${object.name}`} title={object.object.visible ? t("model.hide") : t("model.show")} aria-pressed={!object.object.visible} onClick={() => onUpdateObject(object.id, (draft) => { draft.visible = !draft.visible; })}>{object.object.visible ? <OperationTreeIcon file="visible" size={15} /> : <OperationTreeIcon file="hidden" size={15} />}</button>
+                      <button aria-label={`${object.object.locked ? t("model.unlock") : t("model.lock")} ${object.name}`} title={object.object.locked ? t("model.unlock") : t("model.lock")} aria-pressed={object.object.locked} onClick={() => onUpdateObject(object.id, (draft) => { draft.locked = !draft.locked; })}>{object.object.locked ? <OperationTreeIcon file="locked" size={15} /> : <OperationTreeIcon file="unlocked" size={15} />}</button>
                     </div>
                   </div>
                   {isExpanded ? (
@@ -277,8 +261,8 @@ export function ParametricModelSidebar({
                             <span className="educad-operation-name"><strong>{feature.name}</strong></span>
                           </button>
                           <div className="educad-tree-actions">
-                            {feature.kind === "sketch" ? <button aria-label={`${feature.visible ? t("model.hide") : t("model.show")} ${feature.name}`} title={feature.visible ? t("model.hideSketch") : t("model.showSketch")} aria-pressed={!feature.visible} onClick={() => onUpdateFeature(feature.id, (draft) => { if (draft.kind === "sketch") draft.visible = !draft.visible; })}>{feature.visible ? <Eye size={15} /> : <EyeOff size={15} />}</button> : null}
-                            <button aria-label={`${feature.suppressed ? t("model.activate") : t("model.suppress")} ${feature.name}`} title={feature.suppressed ? t("model.activate") : t("model.suppress")} aria-pressed={feature.suppressed} onClick={() => onUpdateFeature(feature.id, (draft) => { draft.suppressed = !draft.suppressed; })}><CircleOff size={15} /></button>
+                            {feature.kind === "sketch" ? <button aria-label={`${feature.visible ? t("model.hide") : t("model.show")} ${feature.name}`} title={feature.visible ? t("model.hideSketch") : t("model.showSketch")} aria-pressed={!feature.visible} onClick={() => onUpdateFeature(feature.id, (draft) => { if (draft.kind === "sketch") draft.visible = !draft.visible; })}>{feature.visible ? <OperationTreeIcon file="visible" size={15} /> : <OperationTreeIcon file="hidden" size={15} />}</button> : null}
+                            <button aria-label={`${feature.suppressed ? t("model.activate") : t("model.suppress")} ${feature.name}`} title={feature.suppressed ? t("model.activate") : t("model.suppress")} aria-pressed={feature.suppressed} onClick={() => onUpdateFeature(feature.id, (draft) => { draft.suppressed = !draft.suppressed; })}><OperationTreeIcon file="suppressed" size={15} /></button>
                           </div>
                         </div>
                       ))}
@@ -362,30 +346,30 @@ export function ParametricModelSidebar({
 function FeatureIcon({ document, feature }: { document: ParametricDocument; feature: ParametricFeature }) {
   const locale = useContext(LocaleContext);
   const t = (key: EducadTranslationKey) => educadTranslate(locale, key);
-  if (feature.kind === "sketch") return <DraftingCompass className="sketch" size={16} role="img" aria-label={t("operation.sketch")} />;
+  if (feature.kind === "sketch") return <OperationTreeIcon file="sketch" className="sketch" size={16} role="img" aria-label={t("operation.sketch")} />;
   if (feature.kind === "extrude") {
     const sketch = sketchForExtrude(document, feature);
     const role = feature.operation === "cut" ? "hole" : feature.operation === "intersect" ? "common" : "add";
     const label = feature.operation === "cut" ? t("model.hole") : feature.operation === "intersect" ? t("model.common") : t("model.add");
     const generatedText = sketch?.profile.shape === "drawn" && sketch.profile.geometry.generator?.kind === "text";
     const shapeName = generatedText ? t("sketch.text") : localizedParametricOperationDefinition(sketch?.profile.shape === "circle" ? "cylinder" : "box", locale).name;
-    return <span className={`educad-operation-icon ${role}`} role="img" aria-label={`${shapeName}: ${label}`}>{generatedText ? <Type size={17} /> : sketch?.profile.shape === "circle" ? <CircleDot size={17} /> : <Box size={17} />}<small aria-hidden="true">{role === "add" ? "+" : role === "hole" ? "−" : "∩"}</small></span>;
+    return <span className={`educad-operation-icon ${role}`} role="img" aria-label={`${shapeName}: ${label}`}>{generatedText ? <OperationTreeIcon file="text" size={17} /> : sketch?.profile.shape === "circle" ? <OperationTreeIcon file="cylinder" size={17} /> : <OperationTreeIcon file="box" size={17} />}<small aria-hidden="true"><OperationTreeIcon file={role === "add" ? "add" : role === "hole" ? "cut" : "common"} size={8} /></small></span>;
   }
   if (feature.kind === "primitive") {
     const definition = localizedParametricOperationDefinition(feature.primitive, locale);
     const role = feature.operation === "cut" ? "hole" : feature.operation === "intersect" ? "common" : "add";
-    return <span className={`educad-operation-icon ${role}`} role="img" aria-label={`${definition.name}: ${definition.roles[feature.operation].label}`}><Circle size={17} /><small aria-hidden="true">{role === "add" ? "+" : role === "hole" ? "−" : "∩"}</small></span>;
+    return <span className={`educad-operation-icon ${role}`} role="img" aria-label={`${definition.name}: ${definition.roles[feature.operation].label}`}><OperationTreeIcon file="circle" size={17} /><small aria-hidden="true"><OperationTreeIcon file={role === "add" ? "add" : role === "hole" ? "cut" : "common"} size={8} /></small></span>;
   }
-  if (feature.kind === "importedStep") return <FileBox className="imported-step" size={16} role="img" aria-label={t("operation.importedStep")} />;
-  if (feature.kind === "hole") return <CircleDot className="drill-hole" size={16} role="img" aria-label={t("operation.hole")} />;
-  if (feature.kind === "faceExtrude") return <span className={`educad-operation-icon ${feature.operation === "cut" ? "hole" : "add"}`} role="img" aria-label={feature.operation === "cut" ? t("operation.facePocket") : t("operation.faceExtrude")}><Box size={17} /><small aria-hidden="true">{feature.operation === "cut" ? "−" : "+"}</small></span>;
-  if (feature.kind === "shell") return <img className="educad-operation-asset-icon" src="/assets/educad/operations/shell.svg" alt={t("toolbar.shell")} />;
-  if (feature.kind === "revolve") return <img className="educad-operation-asset-icon" src="/assets/educad/operations/revolve.svg" alt={t("operation.revolve")} />;
-  if (feature.kind === "mirror") return <FlipHorizontal2 className="mirror" size={16} role="img" aria-label={t("operation.mirror")} />;
-  if (feature.kind === "linearPattern") return <Rows3 className="linear-pattern" size={16} role="img" aria-label={t("operation.linearPattern")} />;
-  if (feature.kind === "polarPattern") return <RotateCw className="polar-pattern" size={16} role="img" aria-label={t("operation.polarPattern")} />;
-  if (feature.kind === "objectBoolean") return <Combine className="object-boolean" size={16} role="img" aria-label={t("toolbar.objectBoolean")} />;
-  return feature.treatment === "chamfer" ? <Triangle className="chamfer" size={16} role="img" aria-label={t("operation.chamfer")} /> : <Radius className="fillet" size={16} role="img" aria-label={t("operation.fillet")} />;
+  if (feature.kind === "importedStep") return <OperationTreeIcon file="imported-step" className="imported-step" size={16} role="img" aria-label={t("operation.importedStep")} />;
+  if (feature.kind === "hole") return <OperationTreeIcon file="hole" className="drill-hole" size={16} role="img" aria-label={t("operation.hole")} />;
+  if (feature.kind === "faceExtrude") return <span className={`educad-operation-icon ${feature.operation === "cut" ? "hole" : "add"}`} role="img" aria-label={feature.operation === "cut" ? t("operation.facePocket") : t("operation.faceExtrude")}><OperationTreeIcon file="box" size={17} /><small aria-hidden="true"><OperationTreeIcon file={feature.operation === "cut" ? "cut" : "add"} size={8} /></small></span>;
+  if (feature.kind === "shell") return <img className="educad-operation-asset-icon" src="/assets/educad/operation-tree/shell.svg" alt={t("toolbar.shell")} />;
+  if (feature.kind === "revolve") return <img className="educad-operation-asset-icon" src="/assets/educad/operation-tree/revolve.svg" alt={t("operation.revolve")} />;
+  if (feature.kind === "mirror") return <OperationTreeIcon file="mirror" className="mirror" size={16} role="img" aria-label={t("operation.mirror")} />;
+  if (feature.kind === "linearPattern") return <OperationTreeIcon file="linear-pattern" className="linear-pattern" size={16} role="img" aria-label={t("operation.linearPattern")} />;
+  if (feature.kind === "polarPattern") return <OperationTreeIcon file="polar-pattern" className="polar-pattern" size={16} role="img" aria-label={t("operation.polarPattern")} />;
+  if (feature.kind === "objectBoolean") return <OperationTreeIcon file="boolean" className="object-boolean" size={16} role="img" aria-label={t("toolbar.objectBoolean")} />;
+  return feature.treatment === "chamfer" ? <OperationTreeIcon file="chamfer" className="chamfer" size={16} role="img" aria-label={t("operation.chamfer")} /> : <OperationTreeIcon file="fillet" className="fillet" size={16} role="img" aria-label={t("operation.fillet")} />;
 }
 
 function operationClass(feature: ParametricFeature) {

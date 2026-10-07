@@ -1210,9 +1210,10 @@ button {
   background: transparent;
 }
 .educad-tree-branch { position: relative; left: -8px; width: calc(100% + 8px); height: 1px; background: #c7d5de; }
-.educad-operation-list svg.sketch { color: #2292b8; }
-.educad-operation-list svg.drill-hole { color: #bd5d57; }
-.educad-operation-list svg.fillet { color: #7958aa; }
+.educad-operation-tree-icon { display: inline-block; flex: none; background-color: currentColor; mask-repeat: no-repeat; mask-position: center; mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: center; -webkit-mask-size: contain; }
+.educad-operation-list .educad-operation-tree-icon.sketch { color: #2292b8; }
+.educad-operation-list .educad-operation-tree-icon.drill-hole { color: #bd5d57; }
+.educad-operation-list .educad-operation-tree-icon.fillet { color: #7958aa; }
 .educad-operation-icon { position: relative; display: grid; width: 24px; height: 27px; place-items: center; border-radius: 5px; }
 .educad-operation-icon.add { color: #378451; background: #e4f3e9; }
 .educad-operation-icon.hole { color: #b6524d; background: #f8e6e5; }
