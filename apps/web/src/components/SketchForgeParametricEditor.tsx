@@ -333,7 +333,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [locale, setLocale] = useState<EducadLocale>("en");
   const [showFps, setShowFps] = useState(false);
   const [showPositionTriad, setShowPositionTriad] = useState(true);
-  const [showRotationTriad, setShowRotationTriad] = useState(true);
+  const [showRotationTriad, setShowRotationTriad] = useState(false);
   const [showParameterHandles, setShowParameterHandles] = useState(true);
   const [challengeOpen, setChallengeOpen] = useState(Boolean(challenge || challengeEditor));
   const [challengeDock, setChallengeDock] = useState<ChallengeDock>(() => {
@@ -624,7 +624,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       setLocale(normalizeEducadLocale(localStorage.getItem(LOCALE_STORAGE_KEY)));
       setShowFps(localStorage.getItem(FPS_VISIBLE_STORAGE_KEY) === "true");
       setShowPositionTriad(localStorage.getItem(POSITION_TRIAD_VISIBLE_STORAGE_KEY) !== "false");
-      setShowRotationTriad(localStorage.getItem(ROTATION_TRIAD_VISIBLE_STORAGE_KEY) !== "false");
+      setShowRotationTriad(localStorage.getItem(ROTATION_TRIAD_VISIBLE_STORAGE_KEY) === "true");
       setShowParameterHandles(localStorage.getItem(PARAMETER_HANDLES_VISIBLE_STORAGE_KEY) !== "false");
     } catch {}
     setHydrated(true);
