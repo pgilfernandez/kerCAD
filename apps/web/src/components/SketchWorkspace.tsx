@@ -643,6 +643,19 @@ export function SketchWorkspace({
   const [pendingCircleCenter, setPendingCircleCenter] = useState<{ x: number; z: number } | null>(null);
   const [pendingRectangleCorner, setPendingRectangleCorner] = useState<{ x: number; z: number } | null>(null);
   const [slotPicks, setSlotPicks] = useState<Array<{ x: number; z: number }>>([]);
+  const [creationRotationLocked, setCreationRotationLocked] = useState(false);
+  useEffect(() => {
+    const updateShift = (event: KeyboardEvent) => setCreationRotationLocked(event.shiftKey);
+    const clearShift = () => setCreationRotationLocked(false);
+    window.addEventListener("keydown", updateShift);
+    window.addEventListener("keyup", updateShift);
+    window.addEventListener("blur", clearShift);
+    return () => {
+      window.removeEventListener("keydown", updateShift);
+      window.removeEventListener("keyup", updateShift);
+      window.removeEventListener("blur", clearShift);
+    };
+  }, []);
   const [pendingArc, setPendingArc] = useState<{ center: { x: number; z: number }; start?: { x: number; z: number } } | null>(null);
   const [pointerAction, setPointerAction] = useState<PointerAction | null>(null);
   const [svgSize, setSvgSize] = useState({ width: 0, height: 0 });
@@ -939,7 +952,7 @@ export function SketchWorkspace({
       } else {
         const radius = Math.hypot(point.x - pendingCircleCenter.x, point.z - pendingCircleCenter.z);
         if (radius > 0.001) {
-          if (tool === "polygon") onAddPolygon?.(pendingCircleCenter, radius, Math.atan2(point.z - pendingCircleCenter.z, point.x - pendingCircleCenter.x));
+          if (tool === "polygon") onAddPolygon?.(pendingCircleCenter, radius, event.shiftKey ? -Math.PI / 2 - Math.PI / polygonSides : Math.atan2(point.z - pendingCircleCenter.z, point.x - pendingCircleCenter.x));
           else onAddCircle?.({ x: pendingCircleCenter.x, z: pendingCircleCenter.z, radius });
         }
         setPendingCircleCenter(null);
@@ -967,6 +980,7 @@ export function SketchWorkspace({
   };
 
   const handlePointerMove = (event: ReactPointerEvent<SVGSVGElement>) => {
+    setCreationRotationLocked(event.shiftKey);
     if (pointerAction?.kind === "pan") {
       const matrix = svgRef.current?.getScreenCTM();
       const scaleX = matrix ? Math.max(0.0001, Math.hypot(matrix.a, matrix.b)) : 1;
@@ -1561,7 +1575,7 @@ export function SketchWorkspace({
           {pendingCircleCenter && hover ? <>
             {tool === "polygon" ? (() => {
               const radius = Math.hypot(hover.x - pendingCircleCenter.x, hover.z - pendingCircleCenter.z);
-              const angle = Math.atan2(hover.z - pendingCircleCenter.z, hover.x - pendingCircleCenter.x);
+              const angle = creationRotationLocked ? -Math.PI / 2 - Math.PI / polygonSides : Math.atan2(hover.z - pendingCircleCenter.z, hover.x - pendingCircleCenter.x);
               const vertices = Array.from({ length: polygonSides }, (_, index) => `${pendingCircleCenter.x + radius * Math.cos(angle + index * 2 * Math.PI / polygonSides)},${pendingCircleCenter.z + radius * Math.sin(angle + index * 2 * Math.PI / polygonSides)}`).join(" ");
               return <g pointerEvents="none"><circle className="sketch-preview-line" style={{ fill: "none" }} cx={pendingCircleCenter.x} cy={pendingCircleCenter.z} r={radius} /><polygon className="sketch-preview-line" fill="none" points={vertices} /></g>;
             })() : <circle className="sketch-preview-line" cx={pendingCircleCenter.x} cy={pendingCircleCenter.z} r={Math.hypot(hover.x - pendingCircleCenter.x, hover.z - pendingCircleCenter.z)} pointerEvents="none" />}
