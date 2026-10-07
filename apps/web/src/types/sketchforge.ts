@@ -123,6 +123,7 @@ export type SketchConstraint =
   | { id: string; kind: "pointOnArc"; pointId: string; arcId: string }
   | { id: string; kind: "tangentLineCircle"; segmentId: string; circleId: string }
   | { id: string; kind: "tangentLineArc"; lineId: string; arcId: string }
+  | { id: string; kind: "tangentArcs"; arcIds: [string, string]; pointId: string }
   | { id: string; kind: "tangentCircles"; circleIds: [string, string] }
   | { id: string; kind: "symmetric"; pointIds: [string, string]; segmentId: string }
   | { id: string; kind: "coincident"; pointIds: [string, string] }

@@ -123,6 +123,17 @@ function constraintResiduals(profile: SketchProfile, constraint: SketchConstrain
     const radius = Math.hypot(start.x - arc.center.x, start.z - arc.center.z);
     return length > EPSILON ? [Math.abs((arc.center.x - line.start.x) * dz - (arc.center.z - line.start.z) * dx) / length - radius] : [];
   }
+  if (constraint.kind === "tangentArcs") {
+    const arcs = constraint.arcIds.map((id) => profile.segments.find((segment) => segment.id === id && segment.kind === "arc"));
+    const point = pointFor(profile, constraint.pointId);
+    if (!arcs[0]?.center || !arcs[1]?.center || !point) return [];
+    const ax = point.x - arcs[0].center.x;
+    const az = point.z - arcs[0].center.z;
+    const bx = point.x - arcs[1].center.x;
+    const bz = point.z - arcs[1].center.z;
+    const scale = Math.max(EPSILON, Math.hypot(ax, az), Math.hypot(bx, bz));
+    return [(ax * bz - az * bx) / scale];
+  }
   if (constraint.kind === "tangentCircles") {
     const circles = constraint.circleIds.map((id) => profile.circles?.find((circle) => circle.id === id));
     return circles[0] && circles[1] ? [Math.hypot(circles[1].x - circles[0].x, circles[1].z - circles[0].z) - circles[0].radius - circles[1].radius] : [];

@@ -66,6 +66,7 @@ export function sketchConstraintUsesSegment(constraint: SketchConstraint, segmen
   if (constraint.kind === "pointOnArc") return constraint.arcId === segmentId;
   if (constraint.kind === "tangentLineCircle" || constraint.kind === "symmetric") return constraint.segmentId === segmentId;
   if (constraint.kind === "tangentLineArc") return constraint.lineId === segmentId || constraint.arcId === segmentId;
+  if (constraint.kind === "tangentArcs") return constraint.arcIds.includes(segmentId);
   return (constraint.kind === "horizontal" || constraint.kind === "vertical" || constraint.kind === "distance") && constraint.segmentId === segmentId;
 }
 
@@ -78,6 +79,7 @@ export function sketchConstraintUsesPoint(constraint: SketchConstraint, pointId:
   if (constraint.kind === "symmetric") return constraint.pointIds.includes(pointId);
   if (constraint.kind === "tangentLineCircle") return circleSketchPointId(constraint.circleId, "center") === pointId;
   if (constraint.kind === "tangentLineArc") return arcSketchPointId(constraint.arcId) === pointId;
+  if (constraint.kind === "tangentArcs") return constraint.pointId === pointId || constraint.arcIds.some((id) => arcSketchPointId(id) === pointId);
   if (constraint.kind === "tangentCircles") return constraint.circleIds.some((circleId) => circleSketchPointId(circleId, "center") === pointId);
   return false;
 }

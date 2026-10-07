@@ -1431,6 +1431,10 @@ export function SketchWorkspace({
                 if (!dimension || !circle) return null;
                 return <SketchConstraintBadge key={constraint.id} id={constraint.id} label="T" x={(dimension.midpoint.x + circle.x) / 2} z={(dimension.midpoint.z + circle.z) / 2 - 14 * screenUnit} screenUnit={screenUnit} locale={locale} onDelete={onDeleteConstraint} />;
               }
+              if (constraint.kind === "tangentArcs") {
+                const point = pointById.get(constraint.pointId);
+                return point ? <SketchConstraintBadge key={constraint.id} id={constraint.id} label="T" x={point.x + 14 * screenUnit} z={point.z - 14 * screenUnit} screenUnit={screenUnit} locale={locale} onDelete={onDeleteConstraint} /> : null;
+              }
               if (constraint.kind === "tangentLineArc") {
                 const line = displayProfile.segments.find((candidate) => candidate.id === constraint.lineId);
                 const arc = displayProfile.segments.find((candidate) => candidate.id === constraint.arcId && candidate.kind === "arc" && candidate.center);

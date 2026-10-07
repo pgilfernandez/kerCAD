@@ -419,6 +419,7 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
           if (constraint.kind === "pointOnArc") return pointIds.has(constraint.pointId) && segmentIds.has(constraint.arcId);
           if (constraint.kind === "tangentLineCircle") return lineIds.has(constraint.segmentId) && circleIds.has(constraint.circleId);
           if (constraint.kind === "tangentLineArc") return lineIds.has(constraint.lineId) && segmentIds.has(constraint.arcId);
+          if (constraint.kind === "tangentArcs") return constraint.arcIds[0] !== constraint.arcIds[1] && constraint.arcIds.every((id) => geometry.segments.some((segment) => segment.id === id && segment.kind === "arc" && (segment.startId === constraint.pointId || segment.endId === constraint.pointId))) && pointIds.has(constraint.pointId);
           if (constraint.kind === "tangentCircles") return constraint.circleIds[0] !== constraint.circleIds[1] && constraint.circleIds.every((id) => circleIds.has(id));
           if (constraint.kind === "symmetric") return constraint.pointIds[0] !== constraint.pointIds[1] && constraint.pointIds.every((id) => pointIds.has(id)) && lineIds.has(constraint.segmentId);
           if (constraint.kind === "fixed") return pointIds.has(constraint.pointId) && Number.isFinite(constraint.x) && Number.isFinite(constraint.z);

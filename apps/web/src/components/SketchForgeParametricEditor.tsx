@@ -3207,7 +3207,14 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             const ids = new Map(contour.points.map((point) => [point.id, sketchEntityId("point")]));
             const points = contour.points.map((point) => ({ ...point, id: ids.get(point.id)! }));
             const segments = contour.segments.map((segment) => ({ ...segment, id: sketchEntityId("segment"), startId: ids.get(segment.startId)!, endId: ids.get(segment.endId)! }));
-            setSketchProfile((profile) => ({ ...profile, points: [...profile.points, ...points], segments: [...profile.segments, ...segments] }));
+            const constraints: NonNullable<SketchProfile["constraints"]> = segments.map((segment, index) => {
+              const next = segments[(index + 1) % segments.length];
+              if (segment.kind === "arc" && next.kind === "arc") return { id: sketchEntityId("constraint"), kind: "tangentArcs", arcIds: [segment.id, next.id], pointId: segment.endId };
+              const line = segment.kind === "line" ? segment : next;
+              const arc = segment.kind === "arc" ? segment : next;
+              return { id: sketchEntityId("constraint"), kind: "tangentLineArc", lineId: line.id, arcId: arc.id };
+            });
+            setSketchProfile((profile) => ({ ...profile, points: [...profile.points, ...points], segments: [...profile.segments, ...segments], constraints: [...(profile.constraints ?? []), ...constraints] }));
             chooseSketchTool("select");
           }}
           onAddRectangle={(corners) => {
