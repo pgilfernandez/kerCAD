@@ -604,7 +604,7 @@ export function SketchWorkspace({
   const [snapOpen, setSnapOpen] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, z: 0 });
-  const [showDimensionLabels, setShowDimensionLabels] = useState(true);
+  const [showDimensionLabels, setShowDimensionLabels] = useState(tool !== "freehand" && tool !== "freehandSmooth");
   const [showConstraintLabels, setShowConstraintLabels] = useState(true);
   const [hover, setHover] = useState<{ x: number; z: number } | null>(null);
   const [pendingCircleCenter, setPendingCircleCenter] = useState<{ x: number; z: number } | null>(null);
@@ -625,6 +625,10 @@ export function SketchWorkspace({
     );
     return fittedScale > 0 ? 1 / fittedScale : Math.max(width, depth) / 720;
   }, [depth, svgSize.height, svgSize.width, width]);
+
+  useEffect(() => {
+    if (tool === "freehand" || tool === "freehandSmooth") setShowDimensionLabels(false);
+  }, [tool]);
 
   useEffect(() => {
     if (tool !== "circle") setPendingCircleCenter(null);
