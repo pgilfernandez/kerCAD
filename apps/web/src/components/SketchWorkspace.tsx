@@ -25,6 +25,26 @@ export type SketchSelection =
   | { kind: "multiple"; pointIds: string[]; segmentIds: string[]; circleIds?: string[]; imageIds?: string[] }
   | null;
 export type SketchMeasurement = { start: SketchPoint; end: SketchPoint } | null;
+
+function translatedSketchSelection(profile: SketchProfile, selection: NonNullable<SketchSelection>, dx: number, dz: number): SketchProfile {
+  const pointIds = new Set(selection.kind === "point" ? [selection.id] : selection.kind === "multiple" ? selection.pointIds : []);
+  const segmentIds = new Set(selection.kind === "segment" ? [selection.id] : selection.kind === "multiple" ? selection.segmentIds : []);
+  const circleIds = new Set(selection.kind === "circle" ? [selection.id] : selection.kind === "multiple" ? selection.circleIds ?? [] : []);
+  const imageIds = new Set(selection.kind === "image" ? [selection.id] : selection.kind === "multiple" ? selection.imageIds ?? [] : []);
+  for (const segment of profile.segments) if (segmentIds.has(segment.id)) {
+    pointIds.add(segment.startId);
+    pointIds.add(segment.endId);
+  }
+  const translate = (point: { x: number; z: number }) => ({ x: point.x + dx, z: point.z + dz });
+  const next: SketchProfile = {
+    ...profile,
+    points: profile.points.map((point) => pointIds.has(point.id) ? { ...point, ...translate(point), handleIn: point.handleIn ? translate(point.handleIn) : undefined, handleOut: point.handleOut ? translate(point.handleOut) : undefined } : { ...point }),
+    segments: profile.segments.map((segment) => ({ ...segment, center: segment.center ? segmentIds.has(segment.id) || (pointIds.has(segment.startId) && pointIds.has(segment.endId)) ? translate(segment.center) : { ...segment.center } : undefined })),
+    circles: profile.circles?.map((circle) => circleIds.has(circle.id) || pointIds.has(`circle:${circle.id}:center`) ? { ...circle, ...translate(circle) } : { ...circle }),
+    images: profile.images?.map((image) => imageIds.has(image.id) ? { ...image, ...translate(image) } : { ...image }),
+  };
+  return solveSketchConstraints(next, [...pointIds][0] ?? (circleIds.size ? `circle:${[...circleIds][0]}:center` : undefined));
+}
 export type SketchSceneReference = {
   positions: Float32Array;
   indices: Uint32Array;
@@ -50,6 +70,7 @@ type SketchWorkspaceProps = {
   onPlanePoint: (point: { x: number; z: number }, handles?: { handleIn: { x: number; z: number }; handleOut: { x: number; z: number } }) => void;
   onFreehandContour?: (points: Array<{ x: number; z: number }>, smooth: boolean) => void;
   onAddRectangle?: (corners: Array<{ x: number; z: number }>) => void;
+  onMoveSelection?: (profile: SketchProfile) => void;
   onPointPress: (id: string, additive?: boolean) => void;
   onSelectSegment: (id: string, additive?: boolean) => void;
   onSelectMany: (pointIds: string[], segmentIds: string[], imageIds: string[], circleIds?: string[]) => void;
@@ -85,6 +106,7 @@ type PathStep = { segment: SketchSegment; from: SketchPoint; to: SketchPoint };
 type DisplayPath = { id: string; points: SketchPoint[]; steps: PathStep[]; closed: boolean };
 type SketchReferenceFootprint = { fillD: string | null; outlineD: string | null };
 type PointerAction =
+  | { kind: "move-selection"; pointerId: number; origin: { x: number; z: number }; current: { x: number; z: number }; selection: NonNullable<SketchSelection>; entityKind: string; entityId: string }
   | { kind: "bezier"; pointerId: number; origin: { x: number; z: number }; current: { x: number; z: number } }
   | { kind: "move-circle"; pointerId: number; circleId: string; origin: { x: number; z: number }; current: { x: number; z: number }; start: SketchCircle }
   | { kind: "resize-circle"; pointerId: number; circleId: string; current: { x: number; z: number }; start: SketchCircle }
@@ -571,6 +593,7 @@ export function SketchWorkspace({
   onPlanePoint,
   onFreehandContour,
   onAddRectangle,
+  onMoveSelection,
   onPointPress,
   onSelectSegment,
   onSelectMany,
@@ -662,6 +685,7 @@ export function SketchWorkspace({
     if (tool !== "arc") setPendingArc(null);
   }, [tool]);
   const displayProfile = useMemo(() => {
+    if (pointerAction?.kind === "move-selection") return translatedSketchSelection(profile, pointerAction.selection, pointerAction.current.x - pointerAction.origin.x, pointerAction.current.z - pointerAction.origin.z);
     if (pointerAction?.kind === "move-arc-center") {
       const segment = profile.segments.find((candidate) => candidate.id === pointerAction.segmentId);
       if (!segment?.center) return profile;
@@ -958,7 +982,12 @@ export function SketchWorkspace({
       setPointerAction(null);
       return;
     }
-    if (action.kind === "bezier") {
+    if (action.kind === "move-selection") {
+      if (Math.hypot(action.current.x - action.origin.x, action.current.z - action.origin.z) > 0.001) onMoveSelection?.(translatedSketchSelection(profile, action.selection, action.current.x - action.origin.x, action.current.z - action.origin.z));
+      else if (action.entityKind === "point") onPointPress(action.entityId, true);
+      else if (action.entityKind === "segment") onSelectSegment(action.entityId, true);
+      else if (action.entityKind === "circle") onSelectCircle?.(action.entityId, true);
+    } else if (action.kind === "bezier") {
       const dx = action.current.x - action.origin.x;
       const dz = action.current.z - action.origin.z;
       onPlanePoint(action.origin, {
@@ -1112,6 +1141,17 @@ export function SketchWorkspace({
           viewBox={`${pan.x - viewWidth / 2} ${-pan.z - viewDepth / 2} ${viewWidth} ${viewDepth}`}
           preserveAspectRatio="none"
           onPointerDown={handlePlanePointerDown}
+          onPointerDownCapture={(event) => {
+            if (event.button !== 0 || tool !== "select" || !selected || !onMoveSelection) return;
+            const entity = (event.target as Element).closest("[data-sketch-entity].selected");
+            if (!entity || !["point", "segment", "circle"].includes(entity.getAttribute("data-sketch-entity") ?? "")) return;
+            const origin = pointFromEvent(event);
+            if (!origin) return;
+            event.preventDefault();
+            event.stopPropagation();
+            event.currentTarget.setPointerCapture(event.pointerId);
+            setPointerAction({ kind: "move-selection", pointerId: event.pointerId, origin, current: origin, selection: selected, entityKind: entity.getAttribute("data-sketch-entity")!, entityId: entity.getAttribute("data-sketch-id")! });
+          }}
           onPointerMove={handlePointerMove}
           onPointerUp={finishPointerAction}
           onPointerCancel={() => setPointerAction(null)}
@@ -1252,6 +1292,7 @@ export function SketchWorkspace({
             {displayProfile.segments.filter((segment) => !segment.generatedTextId).map((segment) => (
               <path
                 data-sketch-entity="segment"
+                data-sketch-id={segment.id}
                 className={`${isSegmentSelected(segment.id) ? "selected" : ""} ${segment.construction ? "construction" : ""} ${invalidSegmentIds.has(segment.id) ? "invalid" : ""}`}
                 key={segment.id}
                 d={segmentData(segment, pointById)}
@@ -1270,6 +1311,7 @@ export function SketchWorkspace({
             {displayCircles.map((circle) => <circle
               key={circle.id}
               data-sketch-entity="circle"
+              data-sketch-id={circle.id}
               className={`${isCircleSelected(circle.id) ? "selected" : ""} ${circle.construction ? "construction" : ""} ${invalidCircleIds.has(circle.id) ? "invalid" : ""}`}
               cx={circle.x}
               cy={circle.z}
@@ -1549,6 +1591,7 @@ export function SketchWorkspace({
             {displayProfile.points.filter((point) => !point.generatedTextId).map((point) => (
               <circle
                 data-sketch-entity="point"
+                data-sketch-id={point.id}
                 className={`${isPointSelected(point.id) ? "selected" : ""} ${activePointId === point.id ? "active" : ""} ${invalidPointIds.has(point.id) ? "invalid" : ""}`}
                 key={point.id}
                 cx={point.x}

@@ -3181,6 +3181,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           exactSnapStep={document.workplane.snapToGrid ? document.workplane.snapSpacing : 0}
           initialWorkspace={{ ...DEFAULT_WORKPLANE_WORKSPACE, units: displayUnit === "in" ? "Imperial" : "Metric (Default)", scale: displayUnit === "in" ? "1:1 (inches)" : "1:1 (millimeters)", width: document.workplane.width, depth: document.workplane.depth, sizePreset: `${document.workplane.width} x ${document.workplane.depth} mm`, gridBlockSize: document.workplane.gridStep, gridBlockPreset: `${document.workplane.gridStep} mm`, showGrid: document.workplane.gridVisible }}
           onPlanePoint={addSketchPoint}
+          onMoveSelection={(profile) => setSketchProfile(() => profile)}
           onAddRectangle={(corners) => {
             const points = corners.map((corner) => ({ ...corner, id: sketchEntityId("point"), mode: "corner" as const }));
             const segments = points.map((point, index) => ({ id: sketchEntityId("segment"), startId: point.id, endId: points[(index + 1) % points.length].id, kind: "line" as const }));
