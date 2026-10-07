@@ -440,6 +440,19 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [sketchSession, setSketchSession] = useState<{ featureId: string | null; objectId: string | null; profile: SketchProfile; mode: "sketch" | "scribble"; revolveAxisFeatureId?: string } | null>(null);
   const [sketchTool, setSketchTool] = useState<SketchTool>("line");
   const [sketchPolygonSides, setSketchPolygonSides] = useState(6);
+  const [polygonMenuPosition, setPolygonMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const polygonMenuTriggerRef = useRef<HTMLButtonElement>(null);
+  const polygonMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!polygonMenuPosition) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (!polygonMenuRef.current?.contains(event.target as Node) && !polygonMenuTriggerRef.current?.contains(event.target as Node)) setPolygonMenuPosition(null);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setPolygonMenuPosition(null); };
+    window.addEventListener("pointerdown", closeOutside);
+    window.addEventListener("keydown", closeOnEscape);
+    return () => { window.removeEventListener("pointerdown", closeOutside); window.removeEventListener("keydown", closeOnEscape); };
+  }, [polygonMenuPosition]);
   const [sketchActivePointId, setSketchActivePointId] = useState<string | null>(null);
   const [sketchSelection, setSketchSelection] = useState<SketchSelection>(null);
   const [sketchMeasurement, setSketchMeasurement] = useState<SketchMeasurement>(null);
@@ -3063,10 +3076,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("sketch.smoothFreehand")} active={sketchTool === "freehandSmooth"} onClick={() => chooseSketchTool("freehandSmooth")}><SketchToolbarIcon file="smooth-freehand" /></Tool>
           </ToolbarSection>
           <ToolbarSection label={t("sketch.polygon")}>
-            <Tool label={t("sketch.polygon")} active={sketchTool === "polygon"} onClick={() => chooseSketchTool("polygon")}><SketchToolbarIcon file="polygon" /></Tool>
-            <select aria-label={t("sketch.polygonType")} title={t("sketch.polygonType")} value={sketchPolygonSides} onChange={(event) => { setSketchPolygonSides(Number(event.target.value)); chooseSketchTool("polygon"); }}>
-              {[3, 4, 5, 6, 7, 8, 9, 10, 12].map((sides) => <option key={sides} value={sides}>{sides} {t("sketch.sides")}</option>)}
-            </select>
+            <button ref={polygonMenuTriggerRef} type="button" className={`toolbar-icon ${sketchTool === "polygon" ? "active" : ""}`} aria-label={t("sketch.polygonType")} title={t("sketch.polygonType")} aria-expanded={Boolean(polygonMenuPosition)} aria-controls="sketch-polygon-menu" onClick={() => {
+              const bounds = polygonMenuTriggerRef.current?.getBoundingClientRect();
+              setPolygonMenuPosition(polygonMenuPosition || !bounds ? null : { top: bounds.bottom + 6, left: Math.max(8, Math.min(bounds.left, window.innerWidth - 208)) });
+            }}><SketchToolbarIcon file={`polygon-${sketchPolygonSides}`} /><ChevronDown size={12} /></button>
           </ToolbarSection>
           <ToolbarSection label={t("sketch.point")}>
             <Tool label={t("sketch.corner")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("corner")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "corner")}><SketchToolbarIcon file="corner" /></Tool>
@@ -3162,6 +3175,12 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         </div>}
       </div>
 
+      {sketchSession && polygonMenuPosition ? <div ref={polygonMenuRef} id="sketch-polygon-menu" className="educad-polygon-menu" style={polygonMenuPosition}>
+        {[3, 4, 5, 6, 7, 8].map((sides) => {
+          const names = locale === "es" ? ["Triángulo", "Rombo", "Pentágono", "Hexágono", "Heptágono", "Octógono"] : ["Triangle", "Rhombus", "Pentagon", "Hexagon", "Heptagon", "Octagon"];
+          return <button key={sides} type="button" aria-pressed={sketchTool === "polygon" && sketchPolygonSides === sides} onClick={() => { setSketchPolygonSides(sides); chooseSketchTool("polygon"); setPolygonMenuPosition(null); }}><SketchToolbarIcon file={`polygon-${sides}`} /><span>{names[sides - 3]}</span></button>;
+        })}
+      </div> : null}
       {shapesOpen ? <div id="educad-shape-menu" data-educad-popup="shapes" className="shape-menu-dropdown detached" style={{ top: shapeMenuPosition.top, left: shapeMenuPosition.left }}>
         <div className="shape-menu-title">{t("toolbar.shapes")}</div>
         <div className="shape-menu-list">

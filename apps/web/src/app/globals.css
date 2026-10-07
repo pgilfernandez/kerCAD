@@ -5511,6 +5511,11 @@ button {
   text-anchor: middle;
 }
 
+.educad-polygon-menu { position: fixed; z-index: 1000; width: 200px; max-height: calc(100dvh - 120px); overflow-y: auto; padding: 6px; border: 1px solid #c7d5de; border-radius: 8px; background: white; box-shadow: 0 6px 20px #173b5a26; }
+.educad-polygon-menu button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 12px; color: #173b5a; background: transparent; border: 0; border-radius: 4px; text-align: left; }
+.educad-polygon-menu button:hover, .educad-polygon-menu button[aria-pressed="true"] { background: #eaf3ff; }
+.educad-polygon-menu button img { width: 28px; height: 28px; }
+
 .sketch-preview-line {
   stroke: #169fce;
   stroke-width: 2;
