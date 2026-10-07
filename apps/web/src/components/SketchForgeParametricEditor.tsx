@@ -439,6 +439,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [clipboardId, setClipboardId] = useState<string | null>(null);
   const [sketchSession, setSketchSession] = useState<{ featureId: string | null; objectId: string | null; profile: SketchProfile; mode: "sketch" | "scribble"; revolveAxisFeatureId?: string } | null>(null);
   const [sketchTool, setSketchTool] = useState<SketchTool>("line");
+  const [sketchPolygonSides, setSketchPolygonSides] = useState(6);
   const [sketchActivePointId, setSketchActivePointId] = useState<string | null>(null);
   const [sketchSelection, setSketchSelection] = useState<SketchSelection>(null);
   const [sketchMeasurement, setSketchMeasurement] = useState<SketchMeasurement>(null);
@@ -3061,6 +3062,12 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("sketch.freehand")} active={sketchTool === "freehand"} onClick={() => chooseSketchTool("freehand")}><SketchToolbarIcon file="freehand" /></Tool>
             <Tool label={t("sketch.smoothFreehand")} active={sketchTool === "freehandSmooth"} onClick={() => chooseSketchTool("freehandSmooth")}><SketchToolbarIcon file="smooth-freehand" /></Tool>
           </ToolbarSection>
+          <ToolbarSection label={t("sketch.polygon")}>
+            <Tool label={t("sketch.polygon")} active={sketchTool === "polygon"} onClick={() => chooseSketchTool("polygon")}><SketchToolbarIcon file="polygon" /></Tool>
+            <select aria-label={t("sketch.polygonType")} title={t("sketch.polygonType")} value={sketchPolygonSides} onChange={(event) => { setSketchPolygonSides(Number(event.target.value)); chooseSketchTool("polygon"); }}>
+              {[3, 4, 5, 6, 7, 8, 9, 10, 12].map((sides) => <option key={sides} value={sides}>{sides} {t("sketch.sides")}</option>)}
+            </select>
+          </ToolbarSection>
           <ToolbarSection label={t("sketch.point")}>
             <Tool label={t("sketch.corner")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("corner")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "corner")}><SketchToolbarIcon file="corner" /></Tool>
             <Tool label={t("sketch.smooth")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("smooth")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "smooth")}><SketchToolbarIcon file="smooth-point" /></Tool>
@@ -3183,6 +3190,18 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           exactSnapStep={document.workplane.snapToGrid ? document.workplane.snapSpacing : 0}
           initialWorkspace={{ ...DEFAULT_WORKPLANE_WORKSPACE, units: displayUnit === "in" ? "Imperial" : "Metric (Default)", scale: displayUnit === "in" ? "1:1 (inches)" : "1:1 (millimeters)", width: document.workplane.width, depth: document.workplane.depth, sizePreset: `${document.workplane.width} x ${document.workplane.depth} mm`, gridBlockSize: document.workplane.gridStep, gridBlockPreset: `${document.workplane.gridStep} mm`, showGrid: document.workplane.gridVisible }}
           onPlanePoint={addSketchPoint}
+          polygonSides={sketchPolygonSides}
+          onAddPolygon={(center, radius, angle) => {
+            const circleId = sketchEntityId("circle");
+            const points = Array.from({ length: sketchPolygonSides }, (_, index) => ({ id: sketchEntityId("point"), x: center.x + radius * Math.cos(angle + index * 2 * Math.PI / sketchPolygonSides), z: center.z + radius * Math.sin(angle + index * 2 * Math.PI / sketchPolygonSides), mode: "corner" as const }));
+            const segments = points.map((point, index) => ({ id: sketchEntityId("segment"), startId: point.id, endId: points[(index + 1) % points.length].id, kind: "line" as const }));
+            const constraints: NonNullable<SketchProfile["constraints"]> = [
+              ...points.map((point) => ({ id: sketchEntityId("constraint"), kind: "pointOnCircle" as const, pointId: point.id, circleId })),
+              ...segments.slice(1).map((segment) => ({ id: sketchEntityId("constraint"), kind: "equalLength" as const, segmentIds: [segments[0].id, segment.id] as [string, string] })),
+            ];
+            setSketchProfile((profile) => ({ ...profile, points: [...profile.points, ...points], segments: [...profile.segments, ...segments], circles: [...(profile.circles ?? []), { id: circleId, ...center, radius, radiusAngle: angle, construction: true }], constraints: [...(profile.constraints ?? []), ...constraints] }));
+            chooseSketchTool("select");
+          }}
           onMoveSelection={(profile) => setSketchProfile(() => profile)}
           onAddSlot={(contour) => {
             const ids = new Map(contour.points.map((point) => [point.id, sketchEntityId("point")]));

@@ -15,7 +15,7 @@ import type { SketchProfileValidation } from "@/lib/sketchProfileValidation";
 import type { EducadLocale } from "@/lib/educadI18n";
 import type { GridSize, SketchCircle, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchSegment, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
 
-export type SketchTool = "line" | "rectangle" | "slot" | "arcSlot" | "bezier" | "smooth" | "freehand" | "freehandSmooth" | "circle" | "arc" | "select" | "refine" | "trim" | "erase" | "measure";
+export type SketchTool = "line" | "rectangle" | "polygon" | "slot" | "arcSlot" | "bezier" | "smooth" | "freehand" | "freehandSmooth" | "circle" | "arc" | "select" | "refine" | "trim" | "erase" | "measure";
 export type SketchSelection =
   | { kind: "point"; id: string }
   | { kind: "segment"; id: string }
@@ -72,6 +72,8 @@ type SketchWorkspaceProps = {
   onFreehandContour?: (points: Array<{ x: number; z: number }>, smooth: boolean) => void;
   onAddRectangle?: (corners: Array<{ x: number; z: number }>) => void;
   onAddSlot?: (contour: SketchProfile) => void;
+  polygonSides?: number;
+  onAddPolygon?: (center: { x: number; z: number }, radius: number, angle: number) => void;
   onMoveSelection?: (profile: SketchProfile) => void;
   onPointPress: (id: string, additive?: boolean) => void;
   onSelectSegment: (id: string, additive?: boolean) => void;
@@ -596,6 +598,8 @@ export function SketchWorkspace({
   onFreehandContour,
   onAddRectangle,
   onAddSlot,
+  polygonSides = 6,
+  onAddPolygon,
   onMoveSelection,
   onPointPress,
   onSelectSegment,
@@ -686,7 +690,7 @@ export function SketchWorkspace({
   }, [tool, labelPreferencesLoaded]);
 
   useEffect(() => {
-    if (tool !== "circle") setPendingCircleCenter(null);
+    if (tool !== "circle" && tool !== "polygon") setPendingCircleCenter(null);
     if (tool !== "arc") setPendingArc(null);
   }, [tool]);
   const displayProfile = useMemo(() => {
@@ -906,12 +910,15 @@ export function SketchWorkspace({
         onAddRectangle?.([pendingRectangleCorner, { x: point.x, z: pendingRectangleCorner.z }, point, { x: pendingRectangleCorner.x, z: point.z }]);
         setPendingRectangleCorner(null);
       }
-    } else if (tool === "circle") {
+    } else if (tool === "circle" || tool === "polygon") {
       if (!pendingCircleCenter) {
         setPendingCircleCenter(point);
       } else {
         const radius = Math.hypot(point.x - pendingCircleCenter.x, point.z - pendingCircleCenter.z);
-        if (radius > 0.001) onAddCircle?.({ x: pendingCircleCenter.x, z: pendingCircleCenter.z, radius });
+        if (radius > 0.001) {
+          if (tool === "polygon") onAddPolygon?.(pendingCircleCenter, radius, Math.atan2(point.z - pendingCircleCenter.z, point.x - pendingCircleCenter.x));
+          else onAddCircle?.({ x: pendingCircleCenter.x, z: pendingCircleCenter.z, radius });
+        }
         setPendingCircleCenter(null);
       }
     } else if (tool === "arc") {
@@ -1171,7 +1178,7 @@ export function SketchWorkspace({
           onPointerCancel={() => setPointerAction(null)}
           onPointerLeave={() => !pointerAction && setHover(null)}
           onContextMenu={(event) => {
-            if (!["line", "slot", "arcSlot", "rectangle"].includes(tool)) return;
+            if (!["line", "slot", "arcSlot", "rectangle", "polygon"].includes(tool)) return;
             event.preventDefault();
             setPointerAction(null);
             setHover(null);
@@ -1525,7 +1532,12 @@ export function SketchWorkspace({
             return <line className="sketch-preview-line" x1={slotPicks[0].x} y1={slotPicks[0].z} x2={hover.x} y2={hover.z} pointerEvents="none" />;
           })() : null}
           {pendingCircleCenter && hover ? <>
-            <circle className="sketch-preview-line" cx={pendingCircleCenter.x} cy={pendingCircleCenter.z} r={Math.hypot(hover.x - pendingCircleCenter.x, hover.z - pendingCircleCenter.z)} pointerEvents="none" />
+            {tool === "polygon" ? (() => {
+              const radius = Math.hypot(hover.x - pendingCircleCenter.x, hover.z - pendingCircleCenter.z);
+              const angle = Math.atan2(hover.z - pendingCircleCenter.z, hover.x - pendingCircleCenter.x);
+              const vertices = Array.from({ length: polygonSides }, (_, index) => `${pendingCircleCenter.x + radius * Math.cos(angle + index * 2 * Math.PI / polygonSides)},${pendingCircleCenter.z + radius * Math.sin(angle + index * 2 * Math.PI / polygonSides)}`).join(" ");
+              return <g pointerEvents="none"><circle className="sketch-preview-line" style={{ fill: "none" }} cx={pendingCircleCenter.x} cy={pendingCircleCenter.z} r={radius} /><polygon className="sketch-preview-line" fill="none" points={vertices} /></g>;
+            })() : <circle className="sketch-preview-line" cx={pendingCircleCenter.x} cy={pendingCircleCenter.z} r={Math.hypot(hover.x - pendingCircleCenter.x, hover.z - pendingCircleCenter.z)} pointerEvents="none" />}
             <circle className="sketch-circle-center pending" cx={pendingCircleCenter.x} cy={pendingCircleCenter.z} r={pointRadius} pointerEvents="none" />
           </> : null}
           {pendingArc && hover ? <g className="sketch-arc-preview" pointerEvents="none">
