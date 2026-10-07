@@ -695,16 +695,28 @@ export function SketchWorkspace({
   }, [tool]);
   const displayProfile = useMemo(() => {
     if (pointerAction?.kind === "move-selection") return translatedSketchSelection(profile, pointerAction.selection, pointerAction.current.x - pointerAction.origin.x, pointerAction.current.z - pointerAction.origin.z);
+    if (pointerAction?.kind === "move-circle" || pointerAction?.kind === "resize-circle") {
+      const next = structuredClone(profile);
+      const circle = next.circles?.find((candidate) => candidate.id === pointerAction.circleId);
+      if (!circle) return profile;
+      if (pointerAction.kind === "move-circle") {
+        circle.x = pointerAction.start.x + pointerAction.current.x - pointerAction.origin.x;
+        circle.z = pointerAction.start.z + pointerAction.current.z - pointerAction.origin.z;
+      } else {
+        circle.radius = Math.max(0.01, Math.hypot(pointerAction.current.x - circle.x, pointerAction.current.z - circle.z));
+        circle.radiusAngle = Math.atan2(pointerAction.current.z - circle.z, pointerAction.current.x - circle.x);
+      }
+      return solveSketchConstraints(next, `circle:${circle.id}:${pointerAction.kind === "move-circle" ? "center" : "radius"}`);
+    }
     if (pointerAction?.kind === "move-arc-center") {
       const segment = profile.segments.find((candidate) => candidate.id === pointerAction.segmentId);
       if (!segment?.center) return profile;
       const dx = pointerAction.current.x - pointerAction.origin.x;
       const dz = pointerAction.current.z - pointerAction.origin.z;
-      return {
-        ...profile,
-        points: profile.points.map((point) => point.id === segment.startId || point.id === segment.endId ? { ...point, x: point.x + dx, z: point.z + dz } : point),
-        segments: profile.segments.map((candidate) => candidate.id === segment.id ? { ...candidate, center: { x: pointerAction.startCenter.x + dx, z: pointerAction.startCenter.z + dz } } : candidate),
-      };
+      const next = structuredClone(profile);
+      next.points = next.points.map((point) => point.id === segment.startId || point.id === segment.endId ? { ...point, x: point.x + dx, z: point.z + dz } : point);
+      next.segments = next.segments.map((candidate) => candidate.id === segment.id ? { ...candidate, center: { x: pointerAction.startCenter.x + dx, z: pointerAction.startCenter.z + dz } } : candidate);
+      return solveSketchConstraints(next, `${segment.id}:center`);
     }
     if (pointerAction?.kind === "move-point") {
       const source = profile.points.find((point) => point.id === pointerAction.pointId);
@@ -717,10 +729,28 @@ export function SketchWorkspace({
         handleIn: point.handleIn ? { x: point.handleIn.x + deltaX, z: point.handleIn.z + deltaZ } : undefined,
         handleOut: point.handleOut ? { x: point.handleOut.x + deltaX, z: point.handleOut.z + deltaZ } : undefined,
       } : { ...point });
-      return {
-        ...profile,
-        points: solveSketchConstraints({ ...profile, points }, source.id).points,
-      };
+      const next = structuredClone(profile);
+      next.points = points;
+      const endingArc = next.segments.find((segment) => segment.kind === "arc" && segment.center && segment.endId === source.id);
+      const target = next.points.find((point) => point.id === source.id)!;
+      if (endingArc?.center) {
+        const start = next.points.find((point) => point.id === endingArc.startId);
+        if (start) {
+          const radius = Math.hypot(start.x - endingArc.center.x, start.z - endingArc.center.z);
+          const angle = Math.atan2(target.z - endingArc.center.z, target.x - endingArc.center.x);
+          target.x = endingArc.center.x + Math.cos(angle) * radius;
+          target.z = endingArc.center.z + Math.sin(angle) * radius;
+        }
+      }
+      for (const arc of next.segments.filter((segment) => segment.kind === "arc" && segment.center && segment.startId === source.id)) {
+        const end = next.points.find((point) => point.id === arc.endId);
+        if (!end || !arc.center) continue;
+        const radius = Math.hypot(target.x - arc.center.x, target.z - arc.center.z);
+        const angle = Math.atan2(end.z - arc.center.z, end.x - arc.center.x);
+        end.x = arc.center.x + Math.cos(angle) * radius;
+        end.z = arc.center.z + Math.sin(angle) * radius;
+      }
+      return solveSketchConstraints(next, source.id);
     }
     if (pointerAction?.kind === "move-handle") {
       return {
@@ -742,7 +772,7 @@ export function SketchWorkspace({
     return profile;
   }, [pointerAction, profile]);
   const displayImages = useMemo(() => {
-    const images = profile.images ?? [];
+    const images = displayProfile.images ?? [];
     if (pointerAction?.kind === "move-image") {
       const deltaX = pointerAction.current.x - pointerAction.origin.x;
       const deltaZ = pointerAction.current.z - pointerAction.origin.z;
@@ -752,17 +782,10 @@ export function SketchWorkspace({
       return images.map((image) => image.id === pointerAction.imageId ? { ...image, ...resizeSketchImage(pointerAction.start, pointerAction.handle, pointerAction.current) } : image);
     }
     return images;
-  }, [pointerAction, profile.images]);
+  }, [pointerAction, displayProfile.images]);
   const displayCircles = useMemo(() => {
-    const circles = profile.circles ?? [];
-    if (pointerAction?.kind === "move-circle") {
-      return circles.map((circle) => circle.id === pointerAction.circleId ? { ...circle, x: pointerAction.start.x + pointerAction.current.x - pointerAction.origin.x, z: pointerAction.start.z + pointerAction.current.z - pointerAction.origin.z } : circle);
-    }
-    if (pointerAction?.kind === "resize-circle") {
-      return circles.map((circle) => circle.id === pointerAction.circleId ? { ...circle, radius: Math.max(0.01, Math.hypot(pointerAction.current.x - circle.x, pointerAction.current.z - circle.z)), radiusAngle: Math.atan2(pointerAction.current.z - circle.z, pointerAction.current.x - circle.x) } : circle);
-    }
-    return circles;
-  }, [pointerAction, profile.circles]);
+    return displayProfile.circles ?? [];
+  }, [displayProfile.circles]);
   const pointById = useMemo(() => new Map<string, SketchPoint>(([
     ...displayProfile.points,
     ...displayCircles.flatMap((circle) => {
