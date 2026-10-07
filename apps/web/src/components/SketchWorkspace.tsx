@@ -990,7 +990,15 @@ export function SketchWorkspace({
 
   const measurementLength = measurement ? Math.hypot(measurement.end.x - measurement.start.x, measurement.end.z - measurement.start.z) : 0;
   const measurementLabel = formatDimension(measurementLength, workspace.accuracy);
-  const previewLength = activePoint && hover ? Math.hypot(hover.x - activePoint.x, hover.z - activePoint.z) : 0;
+  const previewEndpoint = tool === "bezier" && pointerAction?.kind === "bezier" ? pointerAction.origin : hover;
+  const bezierPreviewData = tool === "bezier" && activePoint && previewEndpoint ? (() => {
+    const first = activePoint.handleOut ?? activePoint;
+    const second = pointerAction?.kind === "bezier"
+      ? { x: 2 * pointerAction.origin.x - pointerAction.current.x, z: 2 * pointerAction.origin.z - pointerAction.current.z }
+      : previewEndpoint;
+    return `M ${activePoint.x} ${activePoint.z} C ${first.x} ${first.z} ${second.x} ${second.z} ${previewEndpoint.x} ${previewEndpoint.z}`;
+  })() : null;
+  const previewLength = activePoint && previewEndpoint ? Math.hypot(previewEndpoint.x - activePoint.x, previewEndpoint.z - activePoint.z) : 0;
   const previewLabel = formatDimension(previewLength, workspace.accuracy);
   const labelOffset = 22 * screenUnit;
   const pointRadius = 5 * screenUnit;
@@ -1384,9 +1392,9 @@ export function SketchWorkspace({
               </g>;
             })}
           </g> : null}
-          {smoothPreviewData ? <path className="sketch-preview-line" d={smoothPreviewData} pointerEvents="none" /> : activePoint && hover && ["line", "bezier"].includes(tool) ? <line className="sketch-preview-line" x1={activePoint.x} y1={activePoint.z} x2={hover.x} y2={hover.z} pointerEvents="none" /> : null}
-          {activePoint && hover && ["line", "bezier", "smooth"].includes(tool) ? (
-            <g className="sketch-segment-dimensions preview" pointerEvents="none" transform={`translate(${(activePoint.x + hover.x) / 2} ${(activePoint.z + hover.z) / 2 + labelOffset})`}>
+          {smoothPreviewData || bezierPreviewData ? <path className="sketch-preview-line" fill="none" d={(smoothPreviewData || bezierPreviewData)!} pointerEvents="none" /> : activePoint && hover && tool === "line" ? <line className="sketch-preview-line" x1={activePoint.x} y1={activePoint.z} x2={hover.x} y2={hover.z} pointerEvents="none" /> : null}
+          {activePoint && previewEndpoint && ["line", "bezier", "smooth"].includes(tool) ? (
+            <g className="sketch-segment-dimensions preview" pointerEvents="none" transform={`translate(${(activePoint.x + previewEndpoint.x) / 2} ${(activePoint.z + previewEndpoint.z) / 2 + labelOffset})`}>
               {(() => {
                 const pill = dimensionPillSize(previewLabel, screenUnit, 18);
                 return (
