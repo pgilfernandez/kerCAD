@@ -1871,10 +1871,12 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     return next;
   });
 
-  const setSketchPointMode = (id: string, mode: "corner" | "smooth" | "split") => setSketchProfile((profile) => {
+  const setSketchPointModes = (ids: string[], mode: "corner" | "smooth" | "split") => setSketchProfile((profile) => {
     let next = cloneSketchProfile(profile);
+    const selectedIds = new Set(ids);
+    for (const id of selectedIds) {
     const point = next.points.find((candidate) => candidate.id === id);
-    if (!point) return profile;
+    if (!point) continue;
     point.mode = mode;
     if (mode === "corner") {
       point.handleIn = undefined;
@@ -1900,19 +1902,23 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       point.handleOut = { x: point.x + tangent.x, z: point.z + tangent.z };
       for (const segment of next.segments.filter((candidate) => convertedIds.has(candidate.id))) {
         const other = points.get(segment.startId === id ? segment.endId : segment.startId);
-        if (!other) continue;
+        if (!other || selectedIds.has(other.id)) continue;
         const control = { x: other.x + (point.x - other.x) / 3, z: other.z + (point.z - other.z) / 3 };
         if (segment.startId === id) other.handleIn = control;
         else other.handleOut = control;
       }
       point.mode = mode;
     }
+    }
     return next;
   });
+  const setSketchPointMode = (id: string, mode: "corner" | "smooth" | "split") => setSketchPointModes([id], mode);
 
-  const selectedSketchPoint = sketchSession && sketchSelection?.kind === "point"
-    ? sketchSession.profile.points.find((point) => point.id === sketchSelection.id) ?? null
-    : null;
+  const selectedSketchPoints = sketchSession ? sketchSession.profile.points.filter((point) =>
+    sketchSelection?.kind === "point" ? point.id === sketchSelection.id
+      : sketchSelection?.kind === "multiple" ? sketchSelection.pointIds.includes(point.id) : false) : [];
+  const selectedPointMode = (mode: "corner" | "smooth" | "split") => selectedSketchPoints.length > 0
+    && selectedSketchPoints.every((point) => (point.mode ?? "corner") === mode);
 
   const mergeableSketchPointIds = useMemo(() => {
     if (!sketchSession || !sketchSelection) return [];
@@ -3054,9 +3060,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("sketch.smoothFreehand")} active={sketchTool === "freehandSmooth"} onClick={() => chooseSketchTool("freehandSmooth")}><SketchToolbarIcon file="smooth-freehand" /></Tool>
           </ToolbarSection>
           <ToolbarSection label={t("sketch.point")}>
-            <Tool label={t("sketch.corner")} enabled={Boolean(selectedSketchPoint)} active={selectedSketchPoint?.mode === "corner" || Boolean(selectedSketchPoint && !selectedSketchPoint.mode)} onClick={() => selectedSketchPoint && setSketchPointMode(selectedSketchPoint.id, "corner")}><SketchToolbarIcon file="corner" /></Tool>
-            <Tool label={t("sketch.smooth")} enabled={Boolean(selectedSketchPoint)} active={selectedSketchPoint?.mode === "smooth"} onClick={() => selectedSketchPoint && setSketchPointMode(selectedSketchPoint.id, "smooth")}><SketchToolbarIcon file="smooth-point" /></Tool>
-            <Tool label={t("sketch.splitHandles")} enabled={Boolean(selectedSketchPoint)} active={selectedSketchPoint?.mode === "split"} onClick={() => selectedSketchPoint && setSketchPointMode(selectedSketchPoint.id, "split")}><SketchToolbarIcon file="split-handles" /></Tool>
+            <Tool label={t("sketch.corner")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("corner")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "corner")}><SketchToolbarIcon file="corner" /></Tool>
+            <Tool label={t("sketch.smooth")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("smooth")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "smooth")}><SketchToolbarIcon file="smooth-point" /></Tool>
+            <Tool label={t("sketch.splitHandles")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("split")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "split")}><SketchToolbarIcon file="split-handles" /></Tool>
           </ToolbarSection>
           <ToolbarSection label={t("sketch.edit")}>
             <Tool label={t("sketch.select")} active={sketchTool === "select"} onClick={() => chooseSketchTool("select")}><SketchToolbarIcon file="select" /></Tool>
