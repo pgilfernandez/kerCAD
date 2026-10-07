@@ -3079,7 +3079,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <button ref={polygonMenuTriggerRef} type="button" className={`toolbar-icon ${sketchTool === "polygon" ? "active" : ""}`} aria-label={t("sketch.polygonType")} title={t("sketch.polygonType")} aria-expanded={Boolean(polygonMenuPosition)} aria-controls="sketch-polygon-menu" onClick={() => {
               const bounds = polygonMenuTriggerRef.current?.getBoundingClientRect();
               setPolygonMenuPosition(polygonMenuPosition || !bounds ? null : { top: bounds.bottom + 6, left: Math.max(8, Math.min(bounds.left, window.innerWidth - 208)) });
-            }}><SketchToolbarIcon file={`polygon-${sketchPolygonSides}`} /><ChevronDown size={12} /></button>
+            }}><SketchToolbarIcon file={`polygon-${sketchPolygonSides}`} /></button>
           </ToolbarSection>
           <ToolbarSection label={t("sketch.point")}>
             <Tool label={t("sketch.corner")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("corner")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "corner")}><SketchToolbarIcon file="corner" /></Tool>
