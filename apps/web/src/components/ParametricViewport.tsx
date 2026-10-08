@@ -3464,8 +3464,9 @@ export function ParametricViewport({ annotationsVisible = true, onMoveAnnotation
   useEffect(() => {
     const annotation = annotationPreview?.id === selectedAnnotationId ? annotationPreview : annotations?.find((item) => item.id === selectedAnnotationId);
     const marker = originLayerRef.current?.children.find((item) => item.userData.transformTargetId === selectedAnnotationId);
-    if (!marker || annotation?.kind !== "dimension" || !selectedAnnotationEndpoint) return;
-    const point = annotation[selectedAnnotationEndpoint];
+    if (!marker || !annotation) return;
+    const point = annotation.kind === "text" ? annotation.position : selectedAnnotationEndpoint ? annotation[selectedAnnotationEndpoint] : null;
+    if (!point) return;
     marker.position.set(point.x, point.y, point.z);
     invalidateRef.current();
   }, [annotationPreview, annotations, selectedAnnotationId, selectedAnnotationEndpoint, objectOrigins]);
@@ -4475,7 +4476,7 @@ export function ParametricViewport({ annotationsVisible = true, onMoveAnnotation
     };
   }, [onProjectRename, projection, renderQuality, shadingMode]);
   return <div className="parametric-viewport" ref={hostRef} aria-label={locale === "es" ? "Vista 3D de la pieza" : "3D model view"}>
-    <AnnotationInteraction host={hostRef} camera={cameraRef} model={modelRef} snapPoint={annotationSnapRef} positionHandleAtPointer={(event) => annotationPositionHandleRef.current(event)} workplane={workplane} tool={annotationTool} selected={annotationInteractionSelection ? { ...annotationInteractionSelection, visible: annotationInteractionSelection.visible && annotationsVisible } : undefined} parameterHandlesVisible={parameterHandlesVisible} selectedEndpoint={selectedAnnotationEndpoint} onSelectEndpoint={(endpoint) => onSelectAnnotationEndpoint?.(endpoint)} onMoveEndpoint={(id, endpoint, position) => onMoveAnnotationEndpoint?.(id, endpoint, position)} editing={Boolean(editingAnnotationId && editingAnnotationId === selectedAnnotationId)} locale={locale} onPlace={(kind, start, end) => onPlaceAnnotation?.(kind, start, end)} onFinish={(id, text, size) => onFinishAnnotation?.(id, text, size)} onEdit={(id) => onEditAnnotation?.(id)} onCancelTool={() => onCancelAnnotationTool?.()} onPreview={setAnnotationPreview} />
+    <AnnotationInteraction host={hostRef} camera={cameraRef} model={modelRef} snapPoint={annotationSnapRef} positionHandleAtPointer={(event) => annotationPositionHandleRef.current(event)} workplane={workplane} tool={annotationTool} selected={annotationInteractionSelection ? { ...annotationInteractionSelection, visible: annotationInteractionSelection.visible && annotationsVisible } : undefined} parameterHandlesVisible={parameterHandlesVisible} selectedEndpoint={selectedAnnotationEndpoint} onSelectEndpoint={(endpoint) => onSelectAnnotationEndpoint?.(endpoint)} onMoveEndpoint={(id, endpoint, position) => onMoveAnnotationEndpoint?.(id, endpoint, position)} onMoveText={(id, position) => onObjectAxisMove?.(id, position)} editing={Boolean(editingAnnotationId && editingAnnotationId === selectedAnnotationId)} locale={locale} onPlace={(kind, start, end) => onPlaceAnnotation?.(kind, start, end)} onFinish={(id, text, size) => onFinishAnnotation?.(id, text, size)} onEdit={(id) => onEditAnnotation?.(id)} onCancelTool={() => onCancelAnnotationTool?.()} onPreview={setAnnotationPreview} />
     {alignmentActive ? <div ref={alignmentButtonsRef} className="educad-alignment-face-buttons" role="group" aria-label={locale === "es" ? "Alinear con la referencia" : "Align with reference"}>
       {(["x", "y", "z"] as const).flatMap(axis => (["min", "center", "max"] as const).map(anchor => {
         const label = locale === "es"
