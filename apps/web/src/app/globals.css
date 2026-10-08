@@ -1564,8 +1564,8 @@ button {
 .educad-export-scope small { color: #657b8c; line-height: 1.4; }
 .educad-stl-quality > span:first-child { display: flex; justify-content: space-between; gap: 8px; }
 .educad-stl-quality > span strong { color: #31566d; font-size: 9px; }
-.educad-stl-quality input { width: 100%; margin: 0; accent-color: #159bc5; cursor: pointer; }
-.educad-stl-quality-labels { position: relative; display: block; height: 14px; margin-inline: 8px; color: #8a9aa6; }
+.educad-stl-quality input { width: calc(100% - 48px); margin: 0 24px; accent-color: #159bc5; cursor: pointer; }
+.educad-stl-quality-labels { position: relative; display: block; height: 14px; margin-inline: 32px; color: #8a9aa6; }
 .educad-stl-quality-labels small { position: absolute; top: 0; grid-column: auto; grid-row: auto; font-size: 7px; font-weight: 400; text-align: center; white-space: nowrap; transform: translateX(-50%); }
 .educad-stl-quality-labels small:nth-child(1) { left: 0; }
 .educad-stl-quality-labels small:nth-child(2) { left: calc(100% / 3); }
