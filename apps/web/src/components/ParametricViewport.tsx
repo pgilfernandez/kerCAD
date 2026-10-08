@@ -3555,22 +3555,39 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
           const buttonCanvas = document.createElement("canvas");
           buttonCanvas.width = buttonCanvas.height = 256;
           const buttonContext = buttonCanvas.getContext("2d")!;
-          buttonContext.fillStyle = "#ffffff";
-          buttonContext.beginPath();
-          buttonContext.roundRect(0, 0, 256, 256, 36);
-          buttonContext.fill();
           const buttonTexture = new THREE.CanvasTexture(buttonCanvas);
           buttonTexture.colorSpace = THREE.SRGBColorSpace;
           buttonTexture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-          const button = new THREE.Mesh(new THREE.PlaneGeometry(buttonSize, buttonSize), new THREE.MeshBasicMaterial({ map: buttonTexture, alphaTest: 0.1, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+          const button = new THREE.Mesh(new THREE.PlaneGeometry(buttonSize, buttonSize), new THREE.MeshBasicMaterial({ map: buttonTexture, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide }));
+          // The band is also transparent. Draw this overlay after it so the
+          // band cannot cover the pencil when its white background is removed.
+          button.renderOrder = 20;
           button.rotation.x = -Math.PI / 2;
           button.position.set(label.userData.renameAnchorX + buttonSize * 0.65, 0.06, label.position.z);
           button.visible = false;
-          new THREE.ImageLoader().load("/assets/educad/operations/edit.svg", (image) => {
-            if (projectRenameButtonRef.current !== button) return;
-            buttonContext.drawImage(image, 26, 26, 204, 204);
+          let icon: HTMLImageElement | null = null;
+          let hovered = false;
+          const redraw = () => {
+            buttonContext.clearRect(0, 0, 256, 256);
+            if (hovered) {
+              buttonContext.fillStyle = "rgba(0, 0, 0, 0.1)";
+              buttonContext.beginPath();
+              buttonContext.roundRect(0, 0, 256, 256, 36);
+              buttonContext.fill();
+            }
+            if (icon) buttonContext.drawImage(icon, 26, 26, 204, 204);
             buttonTexture.needsUpdate = true;
             invalidateRef.current();
+          };
+          button.userData.setHovered = (value: boolean) => {
+            if (value === hovered) return;
+            hovered = value;
+            redraw();
+          };
+          new THREE.ImageLoader().load("/assets/educad/operations/edit.svg", (image) => {
+            if (projectRenameButtonRef.current !== button) return;
+            icon = image;
+            redraw();
           });
           target.add(button);
           projectRenameButtonRef.current = button;
@@ -4332,6 +4349,7 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
     let lastPointer: PointerEvent | null = null;
     const hide = () => {
       const button = projectRenameButtonRef.current;
+      button?.userData.setHovered?.(false);
       if (button?.visible) { button.visible = false; invalidateRef.current(); }
     };
     const hit = (event: PointerEvent) => {
@@ -4351,7 +4369,9 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
       if (!button || !band || event.buttons || !hit(event)) { hide(); return; }
       band.updateWorldMatrix(true, false);
       button.updateWorldMatrix(true, false);
-      const visible = Boolean(raycaster.intersectObject(band, false).length || (button.visible && raycaster.intersectObject(button, false).length));
+      const buttonHovered = Boolean(button.visible && raycaster.intersectObject(button, false).length);
+      const visible = Boolean(raycaster.intersectObject(band, false).length || buttonHovered);
+      button.userData.setHovered?.(buttonHovered);
       if (button.visible !== visible) { button.visible = visible; invalidateRef.current(); }
     };
     let pressed = false;
