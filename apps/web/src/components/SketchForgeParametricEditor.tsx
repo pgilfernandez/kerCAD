@@ -3718,6 +3718,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             {selectedAnnotation.kind === "text" && <>
               <Tool label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>
               <Tool label={t("operation.edit")} active={editingAnnotationId === selectedAnnotation.id} onClick={() => setEditingAnnotationId(selectedAnnotation.id)}><ToolbarEditOperationIcon /></Tool>
+              {(["left", "center", "right"] as const).map((alignment) => <Tool key={alignment} label={`${t("annotation.alignment")}: ${t(`annotation.${alignment}`)}`} active={selectedAnnotation.alignment === alignment} onClick={() => mutate((draft) => { const annotation = draft.annotations?.find((item) => item.id === selectedAnnotation.id); if (annotation?.kind === "text") annotation.alignment = alignment; })}><AnnotationIcon kind={`align-${alignment}`} /></Tool>)}
             </>}
           </> : alignOpen ? <>
             <button type="button" className={`educad-alignment-mode ${alignmentMode === "reference" ? "active" : ""}`} aria-label={locale === "es" ? "Alinear a referencia" : "Align to reference"} title={locale === "es" ? "Alinear a referencia" : "Align to reference"} aria-pressed={alignmentMode === "reference"} onClick={() => setAlignmentMode("reference")}>
