@@ -4927,6 +4927,8 @@ button {
 .educad-toolbar-scroll-indicators { position: absolute; z-index: 4; pointer-events: none; }
 .educad-toolbar-scroll-edge { position: absolute; top: 0; bottom: 0; display: flex; width: 26px; align-items: center; color: #31566d; font-size: 26px; font-weight: 700; text-shadow: 0 1px 3px white; }
 .educad-toolbar-scroll-edge[hidden] { display: none; }
+.educad-toolbar-scroll-edge img { width: 16px; height: 16px; object-fit: contain; }
+html[data-theme="dark"] .educad-toolbar-scroll-edge img { filter: brightness(0) invert(1); }
 .educad-toolbar-scroll-edge.left { left: 0; padding-left: 3px; background: linear-gradient(to right, #f4f7f9 15%, rgba(244, 247, 249, 0)); }
 .educad-toolbar-scroll-edge.right { right: 0; padding-right: 3px; justify-content: flex-end; background: linear-gradient(to left, #f4f7f9 15%, rgba(244, 247, 249, 0)); }
 html[data-theme="dark"] .educad-toolbar-scroll-edge { color: #c9dbea; text-shadow: none; }
