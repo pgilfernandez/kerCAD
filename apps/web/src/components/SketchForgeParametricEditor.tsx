@@ -63,6 +63,7 @@ import { importReferenceMesh, parametricReferenceRenderRecords } from "@/lib/par
 import { assertImportByteLimit } from "@/lib/parametricImportLimits";
 import { displayLengthToMillimeters, displayUnitLabel, displayUnitWorkspace, millimetersToDisplayLength, normalizeDisplayUnit } from "@/lib/parametricUnits";
 import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
+import { AnnotationIcon } from "@/components/AnnotationIcon";
 import { educadTranslate, normalizeEducadLocale, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
 import { parametricRebuildSuggestion } from "@/lib/parametricRebuildDiagnostics";
 import { hasPreviousSolidOperation } from "@/lib/parametricOperationModes";
@@ -279,9 +280,12 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const initialDocument = useMemo(() => initialProject ? normalizeParametricDocument(structuredClone(initialProject)) : createEmptyDocument(), [initialProject]);
   const [history, setHistory] = useState<ParametricHistoryState>(() => createParametricHistory(initialDocument));
   const document = currentHistoryDocument(history);
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
   const latestDocumentRef = useRef(document);
   latestDocumentRef.current = document;
   const [modelSelection, setModelSelection] = useState<ModelTreeSelection[]>(initialDocument.objects[0] ? [{ id: initialDocument.objects[0].id, kind: "object" }] : []);
+  useEffect(() => { if (modelSelection.length) setSelectedAnnotationId(null); }, [modelSelection]);
+  useEffect(() => { if (selectedAnnotationId && !document.annotations?.some((annotation) => annotation.id === selectedAnnotationId)) setSelectedAnnotationId(null); }, [document.annotations, selectedAnnotationId]);
   const [build, setBuild] = useState<BuildResult>({ mesh: null, objectRecords: [], operationContext: null, completedFeatureIds: [], failedFeatureId: null, warning: null });
   const [operationContext, setOperationContext] = useState<BuildResult["operationContext"]>(null);
   const renderedGeometryFingerprintRef = useRef<string | null>(null);
@@ -2545,6 +2549,11 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   }, [mutate]);
 
   const deleteCurrentSelection = useCallback(() => {
+    if (selectedAnnotationId) {
+      mutate((draft) => { draft.annotations = draft.annotations?.filter((annotation) => annotation.id !== selectedAnnotationId); });
+      setSelectedAnnotationId(null);
+      return;
+    }
     if (modelSelection.length === 0) return;
     if (modelSelection.length === 1) {
       const item = modelSelection[0];
@@ -2555,7 +2564,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     if (!mutate((draft) => deleteParametricSelection(draft, modelSelection))) return;
     setModelSelection([]);
     setNotice({ type: "ok", text: `${modelSelection.length} ${t("notice.itemsDeleted")}` });
-  }, [deleteFeature, modelSelection, mutate, removeSelected]);
+  }, [deleteFeature, modelSelection, mutate, removeSelected, selectedAnnotationId]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -2575,11 +2584,12 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         return;
       }
       if (event.key === "Escape") {
+        setSelectedAnnotationId(null);
         setAlignOpen(false);
         setModelSelection([]);
         return;
       }
-      if ((event.key === "Delete" || event.key === "Backspace") && selectedId) {
+      if ((event.key === "Delete" || event.key === "Backspace") && (selectedId || selectedAnnotationId)) {
         event.preventDefault();
         deleteCurrentSelection();
         return;
@@ -2598,7 +2608,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [deleteCurrentSelection, document.workplane, mutate, selectedId, selectedObjectId, selectionKind, sketchSelection, sketchSession, snapAmount]);
+  }, [deleteCurrentSelection, document.workplane, mutate, selectedId, selectedAnnotationId, selectedObjectId, selectionKind, sketchSelection, sketchSession, snapAmount]);
 
   const [droppingToWorkplane, setDroppingToWorkplane] = useState(false);
   const dropWorkerRef = useRef<Worker | null>(null);
@@ -3314,7 +3324,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               <Tool label={t("toolbar.copy")} enabled={Boolean(selectedId)} onClick={() => { setClipboardId(selectedId); setNotice({ type: "info", text: selectionKind === "feature" ? (locale === "es" ? "Operación copiada" : "Operation copied") : t("notice.objectCopied") }); }}><ToolbarCopyIcon /></Tool>
               <Tool label={t("toolbar.paste")} enabled={Boolean(clipboardId)} onClick={() => duplicateSelected(clipboardId)}><ToolbarPasteIcon /></Tool>
               <Tool label={t("toolbar.duplicate")} enabled={Boolean(selectedObjectId)} onClick={() => duplicateSelected()}><ToolbarDuplicateIcon /></Tool>
-              <Tool label={modelSelection.length > 1 ? t("toolbar.deleteSelection") : selectionKind === "feature" ? t("toolbar.deleteOperation") : t("toolbar.deleteObject")} enabled={modelSelection.length > 0} onClick={deleteCurrentSelection}><ToolbarTrashIcon /></Tool>
+              <Tool label={modelSelection.length > 1 ? t("toolbar.deleteSelection") : selectionKind === "feature" ? t("toolbar.deleteOperation") : t("toolbar.deleteObject")} enabled={modelSelection.length > 0 || Boolean(selectedAnnotationId)} onClick={deleteCurrentSelection}><ToolbarTrashIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label={t("toolbar.shapes")} className="toolbar-shapes-section">
               <button ref={shapeMenuTriggerRef} data-educad-popup="shapes" className={`shape-menu-trigger ${shapesOpen ? "active" : ""}`} aria-label={t("toolbar.addShape")} title={t("toolbar.addShape")} aria-expanded={shapesOpen} aria-controls="educad-shape-menu" onClick={toggleShapeMenu}><ToolbarShapeAddIcon /></button>
@@ -3322,6 +3332,20 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             </ToolbarSection>
           </div>
           <div className="toolbar-modeling-groups">
+          <ToolbarSection label={t("annotation.group")}>
+            {(["text", "dimension"] as const).map((kind) => <Tool key={kind} label={t(`annotation.${kind}`)} onClick={() => {
+              const id = crypto.randomUUID();
+              const origin = { ...document.workplane.origin };
+              mutate((draft) => {
+                draft.annotations ??= [];
+                const common = { id, name: t(`annotation.${kind}`), visible: true };
+                draft.annotations.push(kind === "text"
+                  ? { ...common, kind, position: origin, alignment: "center", size: 3, font: "Arial", text: "eduCAD" }
+                  : { ...common, kind, start: origin, end: { x: origin.x + 20 * document.workplane.xAxis.x, y: origin.y + 20 * document.workplane.xAxis.y, z: origin.z + 20 * document.workplane.xAxis.z } });
+              });
+              setModelSelection([]); setSelectedAnnotationId(id); setModelSidebarMode("normal");
+            }}><AnnotationIcon kind={kind} /></Tool>)}
+          </ToolbarSection>
             <ToolbarSection label={t("toolbar.modify")} className="toolbar-modify-section">
               <Tool label={t("toolbar.chamfer")} active={pendingEdgeTreatment === "chamfer"} onClick={() => beginEdgeTreatment("chamfer")}><ToolbarChamferIcon /></Tool>
               <Tool label={t("toolbar.fillet")} active={pendingEdgeTreatment === "fillet"} onClick={() => beginEdgeTreatment("fillet")}><ToolbarFilletIcon /></Tool>
@@ -3617,6 +3641,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           showPointActions={false}
           showGridControls={false}
         /> : <ParametricViewport
+          annotations={document.annotations}
+          selectedAnnotationId={selectedAnnotationId}
           onThumbnail={(dataUrl) => {
             const stepId = challengeCaptureStepRef.current;
             if (stepId) {
@@ -3714,6 +3740,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             setModelSelection(selected);
           }}
           onEmptySelect={() => {
+            setSelectedAnnotationId(null);
             setAlignOpen(false);
             setModelSelection([]);
           }}
@@ -3961,6 +3988,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         {build.warning && <div className="educad-rebuild-error" role="alert" aria-live="assertive" aria-atomic="true"><strong>{t("history.stopped")}</strong><span>{build.warning}</span>{rebuildSuggestion ? <small><b>{t("rebuild.suggestionLabel")}:</b> {rebuildSuggestion}</small> : null}</div>}
         {notice && <div className={`educad-reference-toast ${notice.type}`} role={notice.type === "error" ? "alert" : "status"} aria-live={notice.type === "error" ? "assertive" : "polite"} aria-atomic="true">{notice.text}</div>}
         {modelSidebarMode !== "hidden" ? <ParametricModelSidebar
+          selectedAnnotationId={selectedAnnotationId}
+          onSelectAnnotation={(id) => { setModelSelection([]); setSelectedAnnotationId(id); }}
+          onUpdateAnnotation={(id, update) => mutate((draft) => { const annotation = draft.annotations?.find((item) => item.id === id); if (annotation) update(annotation); })}
           document={document}
           selection={modelSelection}
           mode={modelSidebarMode}
@@ -3969,7 +3999,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           locale={locale}
           editingOriginObjectId={originEditObjectId}
           failedFeatureId={build.failedFeatureId}
-          onSelectionChange={setModelSelection}
+          onSelectionChange={(selection) => { setSelectedAnnotationId(null); setModelSelection(selection); }}
           alignmentReference={alignmentDisplayReference}
           onAlignmentSelect={alignOpen ? selectAlignmentReference : undefined}
           onReorderSelection={reorderSelection}

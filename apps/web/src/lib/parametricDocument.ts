@@ -346,6 +346,24 @@ export function migrateParametricDocument(document: ParametricDocument): Paramet
 export function normalizeParametricDocument(document: ParametricDocument): ParametricDocument {
   const next = migrateParametricDocument(document);
   next.displayUnit = normalizeDisplayUnit(next.displayUnit);
+  next.annotations ??= [];
+  if (!Array.isArray(next.annotations) || next.annotations.length > 1000) throw new Error("Invalid annotation collection.");
+  const annotationIds = new Set<string>();
+  for (const annotation of next.annotations) {
+    if (!annotation || typeof annotation.id !== "string" || annotationIds.has(annotation.id)) throw new Error("Invalid annotation identifier.");
+    annotationIds.add(annotation.id);
+    if (annotation.kind !== "text" && annotation.kind !== "dimension") throw new Error("Unsupported annotation type.");
+    const positions = annotation.kind === "text" ? [annotation.position] : [annotation.start, annotation.end];
+    if (positions.some((point) => !point || ![point.x, point.y, point.z].every((value) => Number.isFinite(value) && Math.abs(value) <= 1e7))) throw new Error("Invalid annotation position.");
+    annotation.name = typeof annotation.name === "string" ? annotation.name.slice(0, 160) : annotation.kind;
+    annotation.visible = annotation.visible !== false;
+    if (annotation.kind === "text") {
+      annotation.text = typeof annotation.text === "string" ? annotation.text.slice(0, 2000) : "";
+      annotation.font = typeof annotation.font === "string" ? annotation.font.slice(0, 160) : "Arial";
+      annotation.size = Math.max(0.1, Math.min(1000, Number.isFinite(annotation.size) ? annotation.size : 3));
+      if (!["left", "center", "right"].includes(annotation.alignment)) annotation.alignment = "center";
+    }
+  }
   next.creator = typeof next.creator === "string" ? next.creator.trim().slice(0, 160) || undefined : undefined;
   next.author = typeof next.author === "string" ? next.author.trim().slice(0, 160) || undefined : undefined;
   next.objects ??= [];

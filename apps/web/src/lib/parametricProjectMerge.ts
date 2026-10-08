@@ -69,6 +69,7 @@ export function mergeParametricProjects(targetInput: ParametricDocument, importe
     ...target.objects.map((object) => object.id),
     ...target.features.map((feature) => feature.id),
     ...target.topologyReferences.map((reference) => reference.id),
+    ...(target.annotations ?? []).map((annotation) => annotation.id),
   ]);
   const objectIdMap = new Map(imported.objects.map((object) => [object.id, uniqueImportedId(object.id, usedIds)]));
   const featureIdMap = new Map(imported.features.map((feature) => [feature.id, uniqueImportedId(feature.id, usedIds)]));
@@ -86,6 +87,11 @@ export function mergeParametricProjects(targetInput: ParametricDocument, importe
   target.objects.push(...imported.objects);
   target.features.push(...imported.features);
   target.topologyReferences.push(...imported.topologyReferences);
+  target.annotations ??= [];
+  for (const annotation of imported.annotations ?? []) {
+    annotation.id = uniqueImportedId(annotation.id, usedIds);
+    target.annotations.push(annotation);
+  }
   target.updatedAt = Date.now();
   assertValidParametricDependencies(target);
   assertValidParametricTopology(target);

@@ -1,5 +1,6 @@
 "use client";
 import { OperationTreeIcon } from "@/components/OperationTreeIcon";
+import { AnnotationIcon } from "@/components/AnnotationIcon";
 import { ShellCornerButtons } from "@/components/ShellCornerButtons";
 
 import {
@@ -21,10 +22,10 @@ import { parametricTextFontNames, updateParametricTextSketch } from "@/lib/param
 import { requiresAddOperation } from "@/lib/parametricOperationModes";
 import { ToolbarBooleanModeIcon, ToolbarChamferIcon, ToolbarFilletIcon } from "@/components/icons";
 import { useAccessibleDialog } from "@/components/useAccessibleDialog";
-import { displayLengthToMillimeters, displayUnitLabel, millimetersToDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
+import { displayLengthToMillimeters, displayUnitLabel, formatDisplayLength, millimetersToDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
 import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
 import { educadTranslate, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
-import type { ParametricDocument, ParametricFeature, ParametricObject } from "@/types/parametric";
+import type { ParametricAnnotation, ParametricDocument, ParametricFeature, ParametricObject } from "@/types/parametric";
 
 export type ModelSelectionKind = "object" | "feature";
 export type ModelSidebarMode = "normal" | "simplified";
@@ -61,6 +62,9 @@ function useLocalizedSidebarLiteral(text: string) {
 }
 
 type Props = {
+  selectedAnnotationId?: string | null;
+  onSelectAnnotation?: (id: string | null) => void;
+  onUpdateAnnotation?: (id: string, update: (annotation: ParametricAnnotation) => void) => void;
   document: ParametricDocument;
   selection: ModelTreeSelection[];
   mode: ModelSidebarMode;
@@ -106,6 +110,9 @@ type Props = {
 };
 
 export function ParametricModelSidebar({
+  selectedAnnotationId = null,
+  onSelectAnnotation,
+  onUpdateAnnotation,
   document,
   selection,
   mode,
@@ -150,6 +157,8 @@ export function ParametricModelSidebar({
   onUpdateFeature,
 }: Props) {
   const objects = parametricObjectTree(document);
+  const [annotationsExpanded, setAnnotationsExpanded] = useState(true);
+  const selectedAnnotation = document.annotations?.find((annotation) => annotation.id === selectedAnnotationId);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameDraft, setRenameDraft] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
@@ -229,6 +238,18 @@ export function ParametricModelSidebar({
     <aside className={`educad-model-sidebar ${mode}`} aria-label={educadTranslate(locale, "model.label")}>
         <section className="educad-model-tree">
           <div ref={objectListRef} className="educad-object-list">
+            {Boolean(document.annotations?.length) && <div className="educad-object-node">
+              <div className="educad-object-row">
+                <button className="educad-tree-toggle" aria-label={t("annotation.group")} aria-expanded={annotationsExpanded} onClick={() => setAnnotationsExpanded(!annotationsExpanded)}><OperationTreeIcon file={annotationsExpanded ? "expanded" : "collapsed"} size={16} /></button>
+                <button className="educad-object-select" title={t("annotation.group")} onClick={() => setAnnotationsExpanded(!annotationsExpanded)}><AnnotationIcon kind="group" /><span><strong>{t("annotation.group")}</strong></span></button>
+              </div>
+              {annotationsExpanded && <div className="educad-operation-list" role="group" aria-label={t("annotation.group")}>
+                {document.annotations?.map((annotation) => <div key={annotation.id} className={`educad-operation-row ${selectedAnnotationId === annotation.id ? "selected" : ""} ${annotation.visible ? "" : "hidden"}`}>
+                  <button className="educad-operation-select" title={annotation.name} aria-pressed={selectedAnnotationId === annotation.id} onClick={() => onSelectAnnotation?.(annotation.id)}><span className="educad-tree-branch" aria-hidden="true" /><AnnotationIcon kind={annotation.kind} /><span className="educad-operation-name"><strong>{annotation.name}</strong></span></button>
+                  <div className="educad-tree-actions"><button title={annotation.visible ? t("model.hide") : t("model.show")} aria-label={annotation.visible ? t("model.hide") : t("model.show")} onClick={() => onUpdateAnnotation?.(annotation.id, (draft) => { draft.visible = !draft.visible; })}><OperationTreeIcon file={annotation.visible ? "visible" : "hidden"} size={15} /></button></div>
+                </div>)}
+              </div>}
+            </div>}
             {objects.map((object) => {
               const isExpanded = object.object.expanded;
               const objectSelected = selection.some((candidate) => candidate.kind === "object" && candidate.id === object.id);
@@ -283,11 +304,11 @@ export function ParametricModelSidebar({
         <button disabled={!selectedFeature || !canResetParametricFeature(selectedFeature)} aria-label={t("operation.reset")} title={t("operation.reset")} onClick={() => selectedFeature && onResetFeature(selectedFeature.id)}><RotateCcw size={16} /></button>
         <button className="educad-origin-tree-button" disabled={!selectedObject || selectedObject.locked} aria-label={t("model.editOrigin")} title={t("model.editOrigin")} aria-pressed={Boolean(selectedObject && editingOriginObjectId === selectedObject.id)} onClick={() => selectedObject && onToggleOriginEdit(selectedObject.id)}><Crosshair size={16} /></button>
         <span className="educad-tree-toolbar-separator" aria-hidden="true" />
-        <button className="danger" disabled={selection.length === 0} aria-label={t("common.delete")} title={t("common.delete")} onClick={onDeleteSelection}><Trash2 size={16} /></button>
+        <button className="danger" disabled={selection.length === 0 && !selectedAnnotation} aria-label={t("common.delete")} title={t("common.delete")} onClick={onDeleteSelection}><Trash2 size={16} /></button>
       </div> : null}
 
       {mode === "normal" ? <section className="educad-sidebar-editor">
-        {revolveDraft ? (
+        {selectedAnnotation ? <AnnotationProperties annotation={selectedAnnotation} onUpdate={(update) => onUpdateAnnotation?.(selectedAnnotation.id, update)} /> : revolveDraft ? (
           <div className="educad-feature-inspector educad-edge-treatment-draft" aria-label={t("operation.previewRevolve")}>
             <div className="educad-feature-card"><h3>{revolveDraft.editing ? t("operation.edit") : t("operation.new")}</h3><label><span>{t("property.type")}</span><select value={revolveDraft.operation} onChange={(event) => onRevolveDraftChange({ operation: event.target.value as typeof revolveDraft.operation })}><option value="add">{t("model.add")}</option><option value="cut">{t("model.hole")}</option><option value="intersect">{t("model.common")}</option></select></label><label><span>{t("property.axis")}</span><select value={revolveDraft.axis} onChange={(event) => onRevolveDraftChange({ axis: event.target.value as typeof revolveDraft.axis })}><option value="x">{t("value.localX")}</option><option value="y">{t("value.localY")}</option><option value="z">{t("value.localZ")}</option><option value="edge" disabled={revolveDraft.edgeCount !== 1}>{t("operation.selectedEdge")}</option></select></label><BoundedNumberField label={t("property.angle")} value={revolveDraft.angle} min={-360} max={360} step={1} unit="°" onChange={(angle) => onRevolveDraftChange({ angle: Math.abs(angle) < 1 ? (angle < 0 ? -1 : 1) : angle })} /></div>
             <div className="educad-topology-selection-actions"><button type="button" onClick={onCancelRevolve}>{t("common.cancel")}</button><button type="button" className="primary" disabled={revolveDraft.faceCount !== 1 || (revolveDraft.axis === "edge" && revolveDraft.edgeCount !== 1)} onClick={onAcceptRevolve}>{t("common.accept")}</button></div><p className="educad-topology-selection-count">{t("operation.faceAxis")}: {revolveDraft.faceCount} / {revolveDraft.edgeCount}</p>
@@ -342,6 +363,25 @@ export function ParametricModelSidebar({
     ) : null}
     </></NumericStepContext.Provider></LocaleContext.Provider>
   );
+}
+
+function AnnotationProperties({ annotation, onUpdate }: { annotation: ParametricAnnotation; onUpdate: (update: (annotation: ParametricAnnotation) => void) => void }) {
+  const t = useSidebarTranslation();
+  const steps = useContext(NumericStepContext);
+  const position = (key: "position" | "start" | "end", title: string) => {
+    const point = annotation.kind === "text" ? annotation.position : key === "start" ? annotation.start : annotation.end;
+    return <details className="educad-transform-section" open><summary><ChevronRight size={16} /><span>{title}</span></summary><div><div className="educad-feature-card">{(["x", "y", "z"] as const).map((axis) => <label key={axis}><span>{axis.toUpperCase()}</span><DeferredNumberInput value={point[axis]} step={steps.input} unit="mm" onCommit={(value) => onUpdate((draft) => { const target = draft.kind === "text" ? draft.position : key === "start" ? draft.start : draft.end; target[axis] = value; })} /></label>)}</div></div></details>;
+  };
+  return <div className="educad-feature-card educad-annotation-properties">
+    <label><span>{t("model.name")}</span><input value={annotation.name} onChange={(event) => onUpdate((draft) => { draft.name = event.target.value; })} /></label>
+    {annotation.kind === "text" ? <>
+      <label><span>{t("annotation.text")}</span><textarea value={annotation.text} maxLength={2000} onChange={(event) => onUpdate((draft) => { if (draft.kind === "text") draft.text = event.target.value; })} /></label>
+      <label><span>{t("annotation.font")}</span><input value={annotation.font} placeholder="Arial" maxLength={160} onChange={(event) => onUpdate((draft) => { if (draft.kind === "text") draft.font = event.target.value; })} /></label>
+      <label><span>{t("annotation.size")}</span><DeferredNumberInput value={annotation.size} min={0.1} max={1000} step={steps.input} unit="mm" onCommit={(value) => onUpdate((draft) => { if (draft.kind === "text") draft.size = value; })} /></label>
+      <label><span>{t("annotation.alignment")}</span><select value={annotation.alignment} onChange={(event) => onUpdate((draft) => { if (draft.kind === "text") draft.alignment = event.target.value as "left" | "center" | "right"; })}>{(["left", "center", "right"] as const).map((alignment) => <option key={alignment} value={alignment}>{t(`annotation.${alignment}`)}</option>)}</select></label>
+      {position("position", t("annotation.position"))}
+    </> : <><ReadOnlyField label={t("annotation.dimension")} value={`${formatDisplayLength(Math.hypot(annotation.end.x - annotation.start.x, annotation.end.y - annotation.start.y, annotation.end.z - annotation.start.z), steps.displayUnit)} ${displayUnitLabel(steps.displayUnit)}`} />{position("start", t("annotation.start"))}{position("end", t("annotation.end"))}</>}
+  </div>;
 }
 
 function FeatureIcon({ document, feature }: { document: ParametricDocument; feature: ParametricFeature }) {

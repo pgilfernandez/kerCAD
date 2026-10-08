@@ -240,6 +240,13 @@ export type ParametricObject = {
   };
 };
 
+export type ParametricAnnotation = {
+  id: string;
+  name: string;
+  visible: boolean;
+} & ({ kind: "text"; position: ParametricVector3; alignment: "left" | "center" | "right"; size: number; font: string; text: string }
+  | { kind: "dimension"; start: ParametricVector3; end: ParametricVector3 });
+
 export type ParametricDocument = {
   schema: "educad-parametric/v1" | "educad-parametric/v2";
   id: string;
@@ -249,6 +256,7 @@ export type ParametricDocument = {
   units: "mm";
   /** Display preference only; all stored lengths are millimeters. */
   displayUnit?: import("@/lib/parametricUnits").ParametricDisplayUnit;
+  annotations?: ParametricAnnotation[];
   color: string;
   workplane: {
     width: number;

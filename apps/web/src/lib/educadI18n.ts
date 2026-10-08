@@ -1,6 +1,7 @@
 export type EducadLocale = "es" | "en";
 
 const es = {
+  "annotation.group": "Anotaciones", "annotation.text": "Etiqueta de texto", "annotation.dimension": "Dimensión", "annotation.font": "Fuente", "annotation.size": "Tamaño", "annotation.alignment": "Alineación", "annotation.left": "Izquierda", "annotation.center": "Centro", "annotation.right": "Derecha", "annotation.position": "Posición", "annotation.start": "Punto inicial", "annotation.end": "Punto final",
   "dialog.authorName": "Tu nombre", "dialog.creator": "Creador", "dialog.lastAuthor": "Autor de la última modificación",
   "about.title": "acerca de eduCAD", "about.label": "Acerca de eduCAD",
   "about.description": "CAD paramétrico de código abierto para educación.",
@@ -143,6 +144,7 @@ const es = {
 export type EducadTranslationKey = keyof typeof es;
 
 const en: Record<EducadTranslationKey, string> = {
+  "annotation.group": "Annotations", "annotation.text": "Text label", "annotation.dimension": "Dimension", "annotation.font": "Font", "annotation.size": "Size", "annotation.alignment": "Alignment", "annotation.left": "Left", "annotation.center": "Center", "annotation.right": "Right", "annotation.position": "Position", "annotation.start": "Start point", "annotation.end": "End point",
   "dialog.authorName": "Your name", "dialog.creator": "Creator", "dialog.lastAuthor": "Last modified by",
   "about.title": "about eduCAD", "about.label": "about eduCAD",
   "about.description": "Open-source parametric CAD for education.",
