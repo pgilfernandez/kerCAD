@@ -8906,6 +8906,12 @@ circle.sketch-preview-line {
   --editor-toolbar-tools-height: 50px;
 }
 
+.educad-reference-shell:is(.sidebar-simplified, .sidebar-hidden) .secondary-toolbar:has(.toolbar-mode-content.geometry) .educad-toolbar-titlebar {
+  top: 0;
+  height: 32px;
+  align-items: center;
+}
+
 .educad-reference-shell.sketch-toolbar-compact {
   --editor-toolbar-height: 82px;
   --editor-toolbar-tools-height: 50px;
