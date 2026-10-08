@@ -3496,13 +3496,14 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
           const line = new LineSegments2(lineGeometry, lineMaterial);
           const headGeometry = new THREE.ConeGeometry(head * 0.44 * 0.8, head, 12);
           const headMesh = new THREE.Mesh(headGeometry, new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }));
-          line.position.y = 0.055;
           const start = new THREE.Vector3(shaft[0], shaft[1], shaft[2]);
           const end = new THREE.Vector3(shaft[3], shaft[4], shaft[5]);
           const direction = end.clone().sub(start).normalize();
+          const groundClearance = Math.abs(direction.y) < 0.001 ? head * 0.44 * 0.8 + 0.055 : 0.055;
+          line.position.y = groundClearance;
           headMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
           headMesh.position.copy(end).addScaledVector(direction, headOffset - head / 2);
-          headMesh.position.y += 0.055;
+          headMesh.position.y += groundClearance;
           line.renderOrder = 2;
           headMesh.renderOrder = 2;
           line.userData.globalWorkplaneElement = true;
