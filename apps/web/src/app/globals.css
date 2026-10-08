@@ -926,6 +926,15 @@ button {
 .educad-reference-toast.ok { border-left: 3px solid #3aa675; }
 .educad-reference-toast.error { border-left: 3px solid #cd5b55; }
 
+.educad-workplane-stage:not(.sketch-active) > .educad-reference-toast,
+.educad-workplane-stage:not(.sketch-active) > .educad-rebuild-error,
+.educad-workplane-stage:not(.sketch-active) > .educad-topology-selection-status {
+  left: auto;
+  right: calc(var(--educad-model-sidebar-width, 0px) + 12px);
+  max-width: max(120px, calc(100% - var(--educad-model-sidebar-width, 0px) - 100px));
+  transform: none;
+}
+
 .educad-topology-selection-status {
   position: absolute;
   bottom: 54px;
