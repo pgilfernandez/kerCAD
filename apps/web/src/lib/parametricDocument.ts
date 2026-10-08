@@ -367,6 +367,10 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
   next.creator = typeof next.creator === "string" ? next.creator.trim().slice(0, 160) || undefined : undefined;
   next.author = typeof next.author === "string" ? next.author.trim().slice(0, 160) || undefined : undefined;
   next.objects ??= [];
+  next.annotationGroup = {
+    expanded: next.annotationGroup?.expanded !== false,
+    position: Math.min(next.objects.length, Math.max(0, Math.floor(Number.isFinite(next.annotationGroup?.position) ? next.annotationGroup!.position : 0))),
+  };
   next.topologyReferences ??= [];
   if (next.objects.length > PARAMETRIC_IMPORT_LIMITS.objects) throw new Error(`The project exceeds the ${PARAMETRIC_IMPORT_LIMITS.objects.toLocaleString("en-US")} object limit.`);
   if (next.features.length > PARAMETRIC_IMPORT_LIMITS.features) throw new Error(`The project exceeds the ${PARAMETRIC_IMPORT_LIMITS.features.toLocaleString("en-US")} operation limit.`);

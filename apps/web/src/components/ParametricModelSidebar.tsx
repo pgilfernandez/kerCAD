@@ -16,7 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { createContext, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode, useContext, useEffect, useRef, useState } from "react";
-import { canReorderParametricSelection, canResetParametricFeature, OBJECT_COLOR_PALETTE, parametricObjectTree, sketchForExtrude, updateParametricTreeSelection, type ParametricTreeSelection } from "@/lib/parametricObjects";
+import { ANNOTATIONS_GROUP_ID, canReorderParametricSelection, canResetParametricFeature, OBJECT_COLOR_PALETTE, parametricObjectTree, sketchForExtrude, updateParametricTreeSelection, type ParametricTreeSelection } from "@/lib/parametricObjects";
 import { localizedParametricOperationDefinition, parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import { parametricTextFontNames, updateParametricTextSketch } from "@/lib/parametricText";
 import { requiresAddOperation } from "@/lib/parametricOperationModes";
@@ -65,6 +65,7 @@ type Props = {
   selectedAnnotationId?: string | null;
   onSelectAnnotation?: (id: string | null) => void;
   onUpdateAnnotation?: (id: string, update: (annotation: ParametricAnnotation) => void) => void;
+  onUpdateAnnotationGroup?: (update: Partial<{ expanded: boolean; position: number }>) => void;
   document: ParametricDocument;
   selection: ModelTreeSelection[];
   mode: ModelSidebarMode;
@@ -113,6 +114,7 @@ export function ParametricModelSidebar({
   selectedAnnotationId = null,
   onSelectAnnotation,
   onUpdateAnnotation,
+  onUpdateAnnotationGroup,
   document,
   selection,
   mode,
@@ -157,7 +159,11 @@ export function ParametricModelSidebar({
   onUpdateFeature,
 }: Props) {
   const objects = parametricObjectTree(document);
-  const [annotationsExpanded, setAnnotationsExpanded] = useState(true);
+  const annotationsExpanded = document.annotationGroup?.expanded !== false;
+  const annotationGroupSelected = selectedAnnotationId === ANNOTATIONS_GROUP_ID;
+  const reorderSelection: ModelTreeSelection[] = annotationGroupSelected ? [{ id: ANNOTATIONS_GROUP_ID, kind: "object" }] : selection;
+  const rootNodes: Array<(typeof objects)[number] | null> = [...objects];
+  if (document.annotations?.length) rootNodes.splice(document.annotationGroup?.position ?? 0, 0, null);
   const selectedAnnotation = document.annotations?.find((annotation) => annotation.id === selectedAnnotationId);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameDraft, setRenameDraft] = useState("");
@@ -238,19 +244,21 @@ export function ParametricModelSidebar({
     <aside className={`educad-model-sidebar ${mode}`} aria-label={educadTranslate(locale, "model.label")}>
         <section className="educad-model-tree">
           <div ref={objectListRef} className="educad-object-list">
-            {Boolean(document.annotations?.length) && <div className="educad-object-node">
-              <div className="educad-object-row">
-                <button className="educad-tree-toggle" aria-label={t("annotation.group")} aria-expanded={annotationsExpanded} onClick={() => setAnnotationsExpanded(!annotationsExpanded)}><OperationTreeIcon file={annotationsExpanded ? "expanded" : "collapsed"} size={16} /></button>
-                <button className="educad-object-select" title={t("annotation.group")} onClick={() => setAnnotationsExpanded(!annotationsExpanded)}><AnnotationIcon kind="group" /><span><strong>{t("annotation.group")}</strong></span></button>
-              </div>
-              {annotationsExpanded && <div className="educad-operation-list" role="group" aria-label={t("annotation.group")}>
-                {document.annotations?.map((annotation) => <div key={annotation.id} className={`educad-operation-row ${selectedAnnotationId === annotation.id ? "selected" : ""} ${annotation.visible ? "" : "hidden"}`}>
-                  <button className="educad-operation-select" title={annotation.name} aria-pressed={selectedAnnotationId === annotation.id} onClick={() => onSelectAnnotation?.(annotation.id)}><span className="educad-tree-branch" aria-hidden="true" /><AnnotationIcon kind={annotation.kind} /><span className="educad-operation-name"><strong>{annotation.name}</strong></span></button>
-                  <div className="educad-tree-actions"><button title={annotation.visible ? t("model.hide") : t("model.show")} aria-label={annotation.visible ? t("model.hide") : t("model.show")} onClick={() => onUpdateAnnotation?.(annotation.id, (draft) => { draft.visible = !draft.visible; })}><OperationTreeIcon file={annotation.visible ? "visible" : "hidden"} size={15} /></button></div>
-                </div>)}
-              </div>}
-            </div>}
-            {objects.map((object) => {
+            {rootNodes.map((object) => {
+              if (!object) return (
+                <div className="educad-object-node" key={ANNOTATIONS_GROUP_ID}>
+                  <div className={`educad-object-row ${annotationGroupSelected ? "selected" : ""}`}>
+                    <button className="educad-tree-toggle" aria-label={t("annotation.group")} aria-expanded={annotationsExpanded} onClick={() => onUpdateAnnotationGroup?.({ expanded: !annotationsExpanded })}><OperationTreeIcon file={annotationsExpanded ? "expanded" : "collapsed"} size={16} /></button>
+                    <button className="educad-object-select" title={t("annotation.group")} aria-pressed={annotationGroupSelected} onClick={() => onSelectAnnotation?.(ANNOTATIONS_GROUP_ID)}><AnnotationIcon kind="group" /><span><strong>{t("annotation.group")}</strong></span></button>
+                  </div>
+                  {annotationsExpanded && <div className="educad-operation-list" role="group" aria-label={t("annotation.group")}>
+                    {document.annotations?.map((annotation) => <div key={annotation.id} className={`educad-operation-row ${selectedAnnotationId === annotation.id ? "selected" : ""} ${annotation.visible ? "" : "hidden"}`}>
+                      <button className="educad-operation-select" title={annotation.name} aria-pressed={selectedAnnotationId === annotation.id} onClick={() => onSelectAnnotation?.(annotation.id)}><span className="educad-tree-branch" aria-hidden="true" /><AnnotationIcon kind={annotation.kind} /><span className="educad-operation-name"><strong>{annotation.name}</strong></span></button>
+                      <div className="educad-tree-actions"><button title={annotation.visible ? t("model.hide") : t("model.show")} aria-label={annotation.visible ? t("model.hide") : t("model.show")} onClick={() => onUpdateAnnotation?.(annotation.id, (draft) => { draft.visible = !draft.visible; })}><OperationTreeIcon file={annotation.visible ? "visible" : "hidden"} size={15} /></button></div>
+                    </div>)}
+                  </div>}
+                </div>
+              );
               const isExpanded = object.object.expanded;
               const objectSelected = selection.some((candidate) => candidate.kind === "object" && candidate.id === object.id);
               return (
@@ -297,8 +305,8 @@ export function ParametricModelSidebar({
         </section>
 
       {mode === "normal" ? <div className="educad-tree-toolbar" role="toolbar" aria-label={t("model.treeActions")}>
-        <button disabled={!canReorderParametricSelection(document, selection, "up")} aria-label={t("model.moveUp")} title={t("model.moveUp")} onClick={() => onReorderSelection("up")}><ArrowUp size={16} /></button>
-        <button disabled={!canReorderParametricSelection(document, selection, "down")} aria-label={t("model.moveDown")} title={t("model.moveDown")} onClick={() => onReorderSelection("down")}><ArrowDown size={16} /></button>
+        <button disabled={!canReorderParametricSelection(document, reorderSelection, "up")} aria-label={t("model.moveUp")} title={t("model.moveUp")} onClick={() => onReorderSelection("up")}><ArrowUp size={16} /></button>
+        <button disabled={!canReorderParametricSelection(document, reorderSelection, "down")} aria-label={t("model.moveDown")} title={t("model.moveDown")} onClick={() => onReorderSelection("down")}><ArrowDown size={16} /></button>
         <span className="educad-tree-toolbar-separator" aria-hidden="true" />
         <button disabled={selection.length === 0} aria-label={t("common.rename")} title={t("common.rename")} onClick={beginRename}><Pencil size={15} /></button>
         <button disabled={!selectedFeature || !canResetParametricFeature(selectedFeature)} aria-label={t("operation.reset")} title={t("operation.reset")} onClick={() => selectedFeature && onResetFeature(selectedFeature.id)}><RotateCcw size={16} /></button>

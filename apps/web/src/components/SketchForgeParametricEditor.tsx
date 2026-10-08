@@ -104,6 +104,7 @@ import {
   moveParametricObjectOrigin,
   objectIdForFeature,
   canReorderParametricSelection,
+  ANNOTATIONS_GROUP_ID,
   renameParametricSelection,
   resetParametricFeature,
   reorderParametricSelection,
@@ -292,7 +293,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [modelSelection, setModelSelection] = useState<ModelTreeSelection[]>(initialDocument.objects[0] ? [{ id: initialDocument.objects[0].id, kind: "object" }] : []);
   useEffect(() => { if (modelSelection.length) { setSelectedAnnotationId(null); setAnnotationTool(null); } }, [modelSelection]);
   useEffect(() => { if (selectedAnnotationId !== editingAnnotationId) setEditingAnnotationId(null); }, [selectedAnnotationId, editingAnnotationId]);
-  useEffect(() => { if (selectedAnnotationId && !document.annotations?.some((annotation) => annotation.id === selectedAnnotationId)) setSelectedAnnotationId(null); }, [document.annotations, selectedAnnotationId]);
+  useEffect(() => { if (selectedAnnotationId && selectedAnnotationId !== ANNOTATIONS_GROUP_ID && !document.annotations?.some((annotation) => annotation.id === selectedAnnotationId)) setSelectedAnnotationId(null); }, [document.annotations, selectedAnnotationId]);
   const [build, setBuild] = useState<BuildResult>({ mesh: null, objectRecords: [], operationContext: null, completedFeatureIds: [], failedFeatureId: null, warning: null });
   const [operationContext, setOperationContext] = useState<BuildResult["operationContext"]>(null);
   const renderedGeometryFingerprintRef = useRef<string | null>(null);
@@ -2563,6 +2564,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   }, [mutate]);
 
   const deleteCurrentSelection = useCallback(() => {
+    if (selectedAnnotationId === ANNOTATIONS_GROUP_ID) return;
     if (selectedAnnotationId) {
       mutate((draft) => { draft.annotations = draft.annotations?.filter((annotation) => annotation.id !== selectedAnnotationId); });
       setSelectedAnnotationId(null);
@@ -2690,8 +2692,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   };
 
   const reorderSelection = (direction: "up" | "down") => {
-    if (!canReorderParametricSelection(document, modelSelection, direction)) return;
-    mutate((draft) => { reorderParametricSelection(draft, modelSelection, direction); });
+    const nodes: ModelTreeSelection[] = selectedAnnotationId === ANNOTATIONS_GROUP_ID ? [{ id: ANNOTATIONS_GROUP_ID, kind: "object" }] : modelSelection;
+    if (!canReorderParametricSelection(document, nodes, direction)) return;
+    mutate((draft) => { reorderParametricSelection(draft, nodes, direction); });
   };
 
   const renameSelection = (name: string) => {
@@ -3338,7 +3341,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               <Tool label={t("toolbar.copy")} enabled={Boolean(selectedId)} onClick={() => { setClipboardId(selectedId); setNotice({ type: "info", text: selectionKind === "feature" ? (locale === "es" ? "Operación copiada" : "Operation copied") : t("notice.objectCopied") }); }}><ToolbarCopyIcon /></Tool>
               <Tool label={t("toolbar.paste")} enabled={Boolean(clipboardId)} onClick={() => duplicateSelected(clipboardId)}><ToolbarPasteIcon /></Tool>
               <Tool label={t("toolbar.duplicate")} enabled={Boolean(selectedObjectId)} onClick={() => duplicateSelected()}><ToolbarDuplicateIcon /></Tool>
-              <Tool label={modelSelection.length > 1 ? t("toolbar.deleteSelection") : selectionKind === "feature" ? t("toolbar.deleteOperation") : t("toolbar.deleteObject")} enabled={modelSelection.length > 0 || Boolean(selectedAnnotationId)} onClick={deleteCurrentSelection}><ToolbarTrashIcon /></Tool>
+              <Tool label={modelSelection.length > 1 ? t("toolbar.deleteSelection") : selectionKind === "feature" ? t("toolbar.deleteOperation") : t("toolbar.deleteObject")} enabled={modelSelection.length > 0 || Boolean(selectedAnnotation)} onClick={deleteCurrentSelection}><ToolbarTrashIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label={t("toolbar.shapes")} className="toolbar-shapes-section">
               <button ref={shapeMenuTriggerRef} data-educad-popup="shapes" className={`shape-menu-trigger ${shapesOpen ? "active" : ""}`} aria-label={t("toolbar.addShape")} title={t("toolbar.addShape")} aria-expanded={shapesOpen} aria-controls="educad-shape-menu" onClick={toggleShapeMenu}><ToolbarShapeAddIcon /></button>
@@ -4032,6 +4035,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           selectedAnnotationId={selectedAnnotationId}
           onSelectAnnotation={(id) => { setAnnotationTool(null); setEditingAnnotationId(null); setModelSelection([]); setSelectedAnnotationId(id); }}
           onUpdateAnnotation={(id, update) => mutate((draft) => { const annotation = draft.annotations?.find((item) => item.id === id); if (annotation) update(annotation); })}
+          onUpdateAnnotationGroup={(update) => mutate((draft) => { draft.annotationGroup = { expanded: true, position: 0, ...draft.annotationGroup, ...update }; })}
           document={document}
           selection={modelSelection}
           mode={modelSidebarMode}

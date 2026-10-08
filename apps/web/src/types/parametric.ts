@@ -257,6 +257,7 @@ export type ParametricDocument = {
   /** Display preference only; all stored lengths are millimeters. */
   displayUnit?: import("@/lib/parametricUnits").ParametricDisplayUnit;
   annotations?: ParametricAnnotation[];
+  annotationGroup?: { expanded: boolean; position: number };
   color: string;
   workplane: {
     width: number;

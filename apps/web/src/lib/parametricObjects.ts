@@ -9,6 +9,13 @@ import { transformParametricObjectTopologyHints } from "@/lib/parametricTopology
 import * as THREE from "three";
 
 export type SupportedPrimitive = ParametricPrimitiveKind;
+export const ANNOTATIONS_GROUP_ID = "$annotations";
+
+function rootObjectIds(document: ParametricDocument) {
+  const ids = document.objects.map((object) => object.id);
+  if (document.annotations?.length) ids.splice(document.annotationGroup?.position ?? 0, 0, ANNOTATIONS_GROUP_ID);
+  return ids;
+}
 type TransformableOperation = ExtrudeFeature | PrimitiveFeature;
 type MovableOperation = TransformableOperation | SketchFeature;
 
@@ -286,6 +293,8 @@ export function addPrimitiveToSelection(
 }
 
 export function deleteParametricObject(document: ParametricDocument, id: string) {
+  const index = document.objects.findIndex((object) => object.id === id);
+  if (document.annotationGroup && index >= 0 && index < document.annotationGroup.position) document.annotationGroup.position--;
   document.objects = document.objects.filter((object) => object.id !== id);
   document.features = document.features.filter((feature) => feature.objectId !== id);
   document.topologyReferences = document.topologyReferences.filter((reference) => reference.objectId !== id);
@@ -379,7 +388,7 @@ export function canReorderParametricSelection(document: ParametricDocument, sele
   const selectedKind = selection[0].kind;
   if (selection.some((item) => item.kind !== selectedKind)) return false;
   if (selectedKind === "object") {
-    const ids = document.objects.map((object) => object.id);
+    const ids = rootObjectIds(document);
     return moveSelectedIds(ids, new Set(selection.map((item) => item.id)), direction).moved;
   }
   const ownerIds = new Set(selection.map((item) => objectIdForFeature(document, item.id)));
@@ -395,9 +404,10 @@ export function reorderParametricSelection(document: ParametricDocument, selecti
   if (!canReorderParametricSelection(document, selection, direction)) return false;
   const selectedIds = new Set(selection.map((item) => item.id));
   if (selection[0].kind === "object") {
-    const { reordered } = moveSelectedIds(document.objects.map((object) => object.id), selectedIds, direction);
+    const { reordered } = moveSelectedIds(rootObjectIds(document), selectedIds, direction);
     const byId = new Map(document.objects.map((object) => [object.id, object]));
-    document.objects = reordered.map((id) => byId.get(id)!);
+    document.objects = reordered.filter((id) => id !== ANNOTATIONS_GROUP_ID).map((id) => byId.get(id)!);
+    if (reordered.includes(ANNOTATIONS_GROUP_ID)) document.annotationGroup = { expanded: document.annotationGroup?.expanded !== false, position: reordered.indexOf(ANNOTATIONS_GROUP_ID) };
     return true;
   }
 
