@@ -5026,7 +5026,7 @@ button {
 
 .sketch-profile-status {
   position: absolute;
-  top: 42px;
+  bottom: 12px;
   left: 50%;
   z-index: 9;
   display: flex;

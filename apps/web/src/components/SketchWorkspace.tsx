@@ -1171,14 +1171,15 @@ export function SketchWorkspace({
     }
     return { faces: faceCommands.join(" "), edges: edgeCommands.join(" ") };
   }, [sceneReference]);
-  const invalidSegmentIds = useMemo(() => new Set(profileValidation?.diagnostics.flatMap((diagnostic) => diagnostic.segmentIds ?? []) ?? []), [profileValidation]);
-  const invalidCircleIds = useMemo(() => new Set(profileValidation?.diagnostics.flatMap((diagnostic) => diagnostic.circleIds ?? []) ?? []), [profileValidation]);
-  const invalidPointIds = useMemo(() => new Set(profileValidation?.diagnostics.flatMap((diagnostic) => diagnostic.pointIds ?? []) ?? []), [profileValidation]);
+  const editingGeometry = Boolean(pointerAction) || !["select", "measure"].includes(tool);
+  const visibleValidation = editingGeometry ? null : profileValidation;
+  const invalidSegmentIds = useMemo(() => new Set(visibleValidation?.diagnostics.flatMap((diagnostic) => diagnostic.segmentIds ?? []) ?? []), [visibleValidation]);
+  const invalidCircleIds = useMemo(() => new Set(visibleValidation?.diagnostics.flatMap((diagnostic) => diagnostic.circleIds ?? []) ?? []), [visibleValidation]);
+  const invalidPointIds = useMemo(() => new Set(visibleValidation?.diagnostics.flatMap((diagnostic) => diagnostic.pointIds ?? []) ?? []), [visibleValidation]);
 
   return (
     <main className="sketch-workspace-stage">
-      <div className="sketch-mode-badge">{operation === "revolve" ? "Revolve sketch" : "Sketch view"}</div>
-      {profileValidation ? <aside className={`sketch-profile-status ${profileValidation.valid ? "valid" : "invalid"}`}>
+      {profileValidation && !editingGeometry ? <aside className={`sketch-profile-status ${profileValidation.valid ? "valid" : "invalid"}`}>
         <strong>{profileValidation.valid ? locale === "es" ? `Perfil válido · ${profileValidation.closedContourCount} contorno${profileValidation.closedContourCount === 1 ? "" : "s"}` : `Valid profile · ${profileValidation.closedContourCount} contour${profileValidation.closedContourCount === 1 ? "" : "s"}` : locale === "es" ? "Perfil no válido" : "Invalid profile"}</strong>
         {!profileValidation.valid ? <span>{profileValidation.diagnostics[0]?.message}</span> : null}
         {profileValidation.diagnostics.length > 1 ? <small>+{profileValidation.diagnostics.length - 1} {locale === "es" ? `problema${profileValidation.diagnostics.length === 2 ? "" : "s"}` : `problem${profileValidation.diagnostics.length === 2 ? "" : "s"}`}</small> : null}
