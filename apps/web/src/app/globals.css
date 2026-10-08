@@ -3623,7 +3623,8 @@ button {
 .educad-about-dialog dd { margin: 0; overflow-wrap: anywhere; }
 .educad-about-dialog footer { border-top: 1px solid #d9e4eb; text-align: center; }
 .educad-about-links { display: grid; gap: 8px; margin: 18px 0; }
-.educad-about-links a { padding: 8px 12px; color: #1269eb; background: #eef5ff; border: 1px solid #c7d5de; border-radius: 6px; text-decoration: none; font-size: 13px; }
+.educad-about-links a { display: flex; align-items: center; gap: 10px; padding: 8px 12px; color: #1269eb; background: #eef5ff; border: 1px solid #c7d5de; border-radius: 6px; text-decoration: none; font-size: 13px; }
+.educad-about-links .educad-header-svg-icon { flex-shrink: 0; }
 .educad-about-links a:hover { background: #deebff; }
 .toolbar-workspace-tabs .educad-header-language-menu button { display: block; width: 100%; padding: 9px 12px; border: 0; border-radius: 4px; color: #173b5a; font-size: 13px; text-align: left; text-transform: none; letter-spacing: 0; background: transparent; }
 .toolbar-workspace-tabs .educad-header-language-menu button:hover, .toolbar-workspace-tabs .educad-header-language-menu button[aria-pressed="true"] { background: #eaf3ff; }
@@ -3649,8 +3650,8 @@ button {
   .secondary-toolbar:has(.educad-parametric-sketch-toolbar) .educad-toolbar-titlebar .educad-project-name {
     position: static;
     grid-row: 1;
-    width: calc(100% - 116px);
-    max-width: calc(100% - 116px);
+    width: calc(100% - 76px);
+    max-width: calc(100% - 76px);
     min-width: 0;
     justify-content: center;
     gap: 5px;

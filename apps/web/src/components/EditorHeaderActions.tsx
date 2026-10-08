@@ -21,7 +21,6 @@ export function EditorHeaderActions({ locale, onLocaleChange }: { locale: Educad
     return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape); };
   }, [open]);
   return <div ref={root} className="educad-header-actions">
-    <a href={`/documentation?lang=${locale}`} target="_blank" rel="noopener noreferrer" aria-label={locale === "es" ? "Documentación" : "Documentation"} title={locale === "es" ? "Documentación" : "Documentation"}><HeaderToolbarIcon file="documentation" /></a>
     <button type="button" aria-label={locale === "es" ? "Idioma" : "Language"} title={locale === "es" ? "Idioma" : "Language"} aria-expanded={open} aria-controls="educad-header-language-menu" onClick={() => setOpen((value) => !value)}><HeaderToolbarIcon file="language" /></button>
     <button type="button" aria-label={locale === "es" ? "Acerca de eduCAD" : "About eduCAD"} title={locale === "es" ? "Acerca de eduCAD" : "About eduCAD"} onClick={() => { setOpen(false); setInfoOpen(true); }}><HeaderToolbarIcon file="information" /></button>
     {infoOpen ? createPortal(<div className="educad-dialog-backdrop" onPointerDown={(event) => { if (event.target === event.currentTarget) setInfoOpen(false); }}>
@@ -36,8 +35,8 @@ export function EditorHeaderActions({ locale, onLocaleChange }: { locale: Educad
           <dt>{locale === "es" ? "Licencia" : "License"}</dt><dd>{license}</dd>
         </dl>
         <nav className="educad-about-links" aria-label={locale === "es" ? "Recursos del proyecto" : "Project resources"}>
-          <a href={`/documentation?lang=${locale}`} target="_blank" rel="noopener noreferrer">{locale === "es" ? "Documentación y tutoriales" : "Documentation and tutorials"}</a>
-          <a href="/?about=1" target="_blank" rel="noopener noreferrer">{locale === "es" ? "Página del proyecto" : "Project overview"}</a>
+          <a href={`/documentation?lang=${locale}`} target="_blank" rel="noopener noreferrer"><HeaderToolbarIcon file="documentation" />{locale === "es" ? "Documentación y tutoriales" : "Documentation and tutorials"}</a>
+          <a href="/?about=1" target="_blank" rel="noopener noreferrer"><HeaderToolbarIcon file="project-overview" />{locale === "es" ? "Página del proyecto" : "Project overview"}</a>
         </nav>
         <footer><p lang="en">designed with love by Pablo Gil Fernández</p></footer>
       </section>
