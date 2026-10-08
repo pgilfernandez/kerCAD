@@ -3392,7 +3392,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
 
       <section className={`educad-workplane-stage ${sketchSession ? "sketch-active" : ""} ${challengeEditor ? "challenge-authoring" : ""} ${(challenge || challengeEditor) && challengeOpen && !sketchSession ? `challenge-docked-${challengeDock}` : ""}`}>
         {showFps ? <FpsCounter sketchMode={Boolean(sketchSession)} /> : null}
-        {backgroundProcessLabel ? <BackgroundProcessIndicator label={backgroundProcessLabel} rightOffset={viewportOverlayRightOffset} regenerating={!stlExporting && !exporting && !alignmentCalculating && kernelBusy} /> : null}
+        {backgroundProcessLabel ? <BackgroundProcessIndicator label={backgroundProcessLabel} rightOffset={viewportOverlayRightOffset + (showFps ? 90 : 0)} regenerating={!stlExporting && !exporting && !alignmentCalculating && kernelBusy} /> : null}
         {sketchSession ? <SketchWorkspace
           locale={locale}
           profile={sketchSmoothingPreview ?? sketchSession.profile}

@@ -928,7 +928,7 @@ button {
 
 .educad-workplane-stage.sketch-active > .educad-reference-toast {
   left: auto;
-  right: 12px;
+  right: calc(12px + var(--educad-fps-space, 0px));
   bottom: 70px;
   max-width: calc(100% - 100px);
 }
@@ -937,7 +937,7 @@ button {
 .educad-workplane-stage:not(.sketch-active) > .educad-rebuild-error,
 .educad-workplane-stage:not(.sketch-active) > .educad-topology-selection-status {
   left: auto;
-  right: calc(var(--educad-model-sidebar-width, 0px) + 12px);
+  right: calc(var(--educad-model-sidebar-width, 0px) + 12px + var(--educad-fps-space, 0px));
   max-width: max(120px, calc(100% - var(--educad-model-sidebar-width, 0px) - 100px));
   transform: none;
 }
@@ -1581,7 +1581,9 @@ button {
 .educad-settings-panel .educad-settings-toggle input { width: 18px; height: 18px; accent-color: #079bc9; }
 .educad-settings-panel p { margin: 11px 14px 0; color: #7b8f9e; font-size: 9px; }
 
-.educad-fps-counter { position: absolute; bottom: 18px; left: 72px; z-index: 35; display: flex; box-sizing: border-box; min-width: 66px; height: 42px; padding: 6px 9px; align-items: center; justify-content: center; color: #16794c; background: rgba(255, 255, 255, 0.86); border: 1px solid rgba(22, 121, 76, 0.33); border-radius: 6px; box-shadow: 0 2px 8px rgba(28, 62, 78, 0.12); font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; pointer-events: none; }
+.educad-fps-counter { position: absolute; bottom: 18px; right: calc(var(--educad-model-sidebar-width, 0px) + 12px); z-index: 35; display: flex; box-sizing: border-box; width: 82px; height: 42px; padding: 6px 9px; align-items: center; justify-content: center; color: #16794c; background: rgba(255, 255, 255, 0.86); border: 1px solid rgba(22, 121, 76, 0.33); border-radius: 6px; box-shadow: 0 2px 8px rgba(28, 62, 78, 0.12); font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; pointer-events: none; }
+.educad-workplane-stage:has(> .educad-fps-counter) { --educad-fps-space: 90px; }
+.educad-workplane-stage.sketch-active > .educad-fps-counter { right: 12px; }
 .educad-fps-counter.medium { color: #9a6700; border-color: rgba(154, 103, 0, 0.33); }
 .educad-fps-counter.low { color: #b42318; border-color: rgba(180, 35, 24, 0.33); }
 .educad-background-process { position: absolute; bottom: 18px; z-index: 35; display: flex; box-sizing: border-box; min-width: 146px; height: 42px; padding: 6px 10px; align-items: center; justify-content: center; gap: 8px; color: #476275; background: rgba(255, 255, 255, 0.9); border: 1px solid #c7d7e1; border-radius: 6px; box-shadow: 0 2px 8px rgba(28, 62, 78, 0.12); font-size: 10px; font-weight: 800; pointer-events: none; transition: right 160ms ease; }
