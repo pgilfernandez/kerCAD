@@ -3570,7 +3570,7 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
           const redraw = () => {
             buttonContext.clearRect(0, 0, 256, 256);
             if (hovered) {
-              buttonContext.fillStyle = "rgba(0, 0, 0, 0.1)";
+              buttonContext.fillStyle = "rgba(0, 0, 0, 0.05)";
               buttonContext.beginPath();
               buttonContext.roundRect(0, 0, 256, 256, 36);
               buttonContext.fill();
