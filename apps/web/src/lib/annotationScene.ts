@@ -14,6 +14,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
     if (!annotation.visible) continue;
     const color = annotation.kind === "text" ? "#000000" : annotation.id === selectedId ? "#1463ee" : "#233c52";
     const label = (text: string, position: THREE.Vector3, size: number, font = "Arial", alignment = "center") => {
+      if (!text) return;
       const canvas = document.createElement("canvas");
       const context = canvas.getContext("2d");
       if (!context) return;
@@ -22,16 +23,28 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
       context.font = fontSpec;
       canvas.width = Math.min(4096, Math.max(64, Math.ceil(Math.max(...lines.map((line) => context.measureText(line).width)) + 16)));
       canvas.height = Math.min(4096, Math.max(64, lines.length * 64));
-      context.font = fontSpec;
-      if (annotation.kind === "dimension") {
-        context.fillStyle = "rgba(255,255,255,0.85)";
-        context.fillRect(0, 0, canvas.width, canvas.height);
-      }
-      context.fillStyle = color;
-      context.textBaseline = "middle";
-      context.textAlign = alignment === "left" ? "left" : alignment === "right" ? "right" : "center";
       const x = alignment === "left" ? 8 : alignment === "right" ? canvas.width - 8 : canvas.width / 2;
-      lines.forEach((line, index) => context.fillText(line, x, index * 64 + 32));
+      const paint = (stroke: number, radius: number) => {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        const inset = stroke / 2;
+        const right = canvas.width - inset, bottom = canvas.height - inset;
+        radius = Math.min(radius, (right - inset) / 2, (bottom - inset) / 2);
+        context.beginPath();
+        context.moveTo(inset + radius, inset);
+        context.lineTo(right - radius, inset); context.quadraticCurveTo(right, inset, right, inset + radius);
+        context.lineTo(right, bottom - radius); context.quadraticCurveTo(right, bottom, right - radius, bottom);
+        context.lineTo(inset + radius, bottom); context.quadraticCurveTo(inset, bottom, inset, bottom - radius);
+        context.lineTo(inset, inset + radius); context.quadraticCurveTo(inset, inset, inset + radius, inset);
+        context.closePath();
+        context.fillStyle = "rgba(255,255,255,0.7)"; context.fill();
+        context.strokeStyle = "#000000"; context.lineWidth = stroke; context.stroke();
+        context.font = fontSpec;
+        context.fillStyle = color;
+        context.textBaseline = "middle";
+        context.textAlign = alignment === "left" ? "left" : alignment === "right" ? "right" : "center";
+        lines.forEach((line, index) => context.fillText(line, x, index * 64 + 32));
+      };
+      paint(2, 8);
       const texture = new THREE.CanvasTexture(canvas);
       texture.colorSpace = THREE.SRGBColorSpace;
       const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false });
@@ -40,6 +53,18 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
       sprite.center.set(alignment === "left" ? 0 : alignment === "right" ? 1 : 0.5, 0.5);
       sprite.scale.set(canvas.width / 48 * size, canvas.height / 48 * size, 1);
       sprite.renderOrder = 90;
+      let lastPaint = "";
+      const world = new THREE.Vector3(), scale = new THREE.Vector3(), ndc = new THREE.Vector3(), edge = new THREE.Vector3();
+      sprite.onBeforeRender = (renderer, _scene, camera) => {
+        sprite.getWorldPosition(world); sprite.getWorldScale(scale);
+        ndc.copy(world).project(camera);
+        edge.setFromMatrixColumn(camera.matrixWorld, 0).normalize().multiplyScalar(scale.x).add(world).project(camera);
+        const pixelsPerTexel = Math.max(0.001, Math.abs(edge.x - ndc.x) * renderer.domElement.clientWidth / (2 * canvas.width));
+        const stroke = Math.min(2 / pixelsPerTexel, Math.min(canvas.width, canvas.height) / 2);
+        const radius = 8 / pixelsPerTexel;
+        const stamp = `${stroke.toFixed(2)}:${radius.toFixed(2)}`;
+        if (stamp !== lastPaint) { paint(stroke, radius); texture.needsUpdate = true; lastPaint = stamp; }
+      };
       group.add(sprite);
       disposables.push(texture, material);
     };
