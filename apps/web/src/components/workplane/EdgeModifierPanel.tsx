@@ -3,6 +3,7 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { Check, LoaderCircle, Minus, Plus, RotateCcw, X } from "lucide-react";
 import { displayStepFromMillimeters, displayToMillimeters, formatMeasurementNumber, lengthDisplayUnit, millimetersToDisplay, parseMeasurementInput } from "@/lib/measurementUnits";
+import { validateNumericExpression } from "@/lib/numericExpression";
 import type { CadModifierKind, CadModifierQuality } from "@/lib/cadModifierTypes";
 import { CAD_MODIFIER_MAX_SHARP_ANGLE, edgeModifierSelectionStatus } from "@/lib/cadModifierRuntime";
 import type { WorkplaneWorkspaceSettings } from "@/types/sketchforge";
@@ -70,8 +71,9 @@ function EdgeModifierSlider({
 
   const toModelValue = (nextValue: number) => length ? displayToMillimeters(nextValue, workspace) : nextValue;
 
-  const commitDraft = () => {
-    const next = parseMeasurementInput(draft);
+  const commitDraft = (event: React.FocusEvent<HTMLInputElement>) => {
+    const next = parseMeasurementInput(draft, unitLabel ?? "");
+    if (!validateNumericExpression(event.currentTarget, next)) return;
     const finiteNext = Number.isFinite(next) ? next : controlValue;
     onChange(clamp(toModelValue(finiteNext), safeMin, safeMax));
     setEditing(false);
@@ -91,7 +93,7 @@ function EdgeModifierSlider({
           <input
             type="text"
             value={editing ? draft : formatSliderValue(controlValue, workspace.accuracy, controlStep)}
-            inputMode="decimal"
+            inputMode="text"
             disabled={disabled}
             onFocus={() => {
               setDraft(formatSliderValue(controlValue, workspace.accuracy, controlStep));

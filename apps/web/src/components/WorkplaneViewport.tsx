@@ -2365,7 +2365,7 @@ export function WorkplaneViewport({
   const commitMoveDimension = useCallback(
     (axis: MoveDimensionAxis, rawValue: string) => {
       const session = moveDimensionSessionRef.current;
-      const value = parseMeasurementInput(rawValue);
+      const value = parseMeasurementInput(rawValue, "mm");
       if (!session || !Number.isFinite(value)) {
         return;
       }
@@ -3679,7 +3679,7 @@ export function WorkplaneViewport({
       setEditingDimension(null);
       return;
     }
-    const value = parseMeasurementInput(edit.value);
+    const value = parseMeasurementInput(edit.value, "mm");
     if (edit.axis === "elevation") {
       if (Number.isFinite(value)) {
         const activeWorkplane = placementWorkplaneRef.current;
@@ -3752,7 +3752,7 @@ export function WorkplaneViewport({
     if (!edit) {
       return;
     }
-    const value = parseMeasurementInput(edit.value);
+    const value = parseMeasurementInput(edit.value, "deg");
     if (Number.isFinite(value)) {
       selectedIdsRef.current.forEach((id) => onUpdateShape(id, { ...rotationPatchForAxis(edit.axis, value), bakeTransform: true }));
     }

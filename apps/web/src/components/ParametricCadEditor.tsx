@@ -1,4 +1,5 @@
 "use client";
+import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
 
 import {
   ArrowDown,
@@ -86,18 +87,30 @@ function NumberField({ label, value, onChange, min = -1000, max = 1000, step = 1
   step?: number;
   suffix?: string;
 }) {
+  const [draft, setDraft] = useState(String(value));
+  const [editing, setEditing] = useState(false);
+  useEffect(() => { if (!editing) setDraft(String(value)); }, [value, editing]);
   return (
     <label className="pcad-number-field">
       <span>{label}</span>
       <span className="pcad-input-wrap">
         <input
           aria-label={label}
-          type="number"
+          type="text"
+          inputMode="text"
           min={min}
           max={max}
           step={step}
-          value={Number.isFinite(value) ? value : 0}
-          onChange={(event) => onChange(Math.min(max, Math.max(min, Number(event.target.value))))}
+          value={draft}
+          onFocus={() => setEditing(true)}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={(event) => {
+            const parsed = parseNumericExpression(draft, suffix);
+            if (!validateNumericExpression(event.currentTarget, parsed)) return;
+            const next = Math.min(max, Math.max(min, parsed));
+            setDraft(String(next)); setEditing(false); onChange(next);
+          }}
+          onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}
         />
         {suffix && <small>{suffix}</small>}
       </span>

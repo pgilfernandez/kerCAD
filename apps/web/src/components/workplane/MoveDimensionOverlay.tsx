@@ -60,7 +60,7 @@ export function MoveDimensionOverlay({
               aria-label={`${line.axis.toUpperCase()} movement`}
               value={editing.value}
               autoFocus
-              inputMode="decimal"
+              inputMode="text"
               spellCheck={false}
               style={styleForLine(line)}
               onChange={(event) => setEditing({ axis: line.axis, value: event.target.value })}

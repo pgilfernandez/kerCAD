@@ -22,6 +22,7 @@ import { requiresAddOperation } from "@/lib/parametricOperationModes";
 import { ToolbarBooleanModeIcon, ToolbarChamferIcon, ToolbarFilletIcon } from "@/components/icons";
 import { useAccessibleDialog } from "@/components/useAccessibleDialog";
 import { displayLengthToMillimeters, displayUnitLabel, millimetersToDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
+import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
 import { educadTranslate, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
 import type { ParametricDocument, ParametricFeature, ParametricObject } from "@/types/parametric";
 
@@ -840,7 +841,7 @@ function DeferredNumberInput({ value, min, max, step, unit, onCommit }: { value:
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (!editing) setDraft(String(displayValue)); }, [displayUnit, displayValue, editing]);
   const steppedValue = (direction: 1 | -1) => {
-    const parsed = Number(draft.replace(",", "."));
+    const parsed = parseNumericExpression(draft, isLength ? displayUnit : unit);
     const base = Number.isFinite(parsed) ? parsed : displayValue;
     const next = Math.round((base + direction * displayStep) * 1e10) / 1e10;
     return Math.min(displayMax ?? Number.POSITIVE_INFINITY, Math.max(displayMin ?? Number.NEGATIVE_INFINITY, next));
@@ -851,12 +852,9 @@ function DeferredNumberInput({ value, min, max, step, unit, onCommit }: { value:
     inputRef.current?.focus();
   };
   const commit = () => {
+    const parsed = parseNumericExpression(draft, isLength ? displayUnit : unit);
+    if (inputRef.current && !validateNumericExpression(inputRef.current, parsed)) return;
     setEditing(false);
-    const parsed = Number(draft.replace(",", "."));
-    if (!Number.isFinite(parsed)) {
-      setDraft(String(displayValue));
-      return;
-    }
     const nextDisplay = Math.min(displayMax ?? Number.POSITIVE_INFINITY, Math.max(displayMin ?? Number.NEGATIVE_INFINITY, parsed));
     const next = toInternal(nextDisplay);
     setDraft(String(nextDisplay));
@@ -873,7 +871,7 @@ function DeferredNumberInput({ value, min, max, step, unit, onCommit }: { value:
     }
   };
   const visibleUnit = isLength ? displayUnitLabel(displayUnit) : unit;
-  return <span className="educad-number-input" onWheel={(event) => { event.preventDefault(); nudge(event.deltaY < 0 ? 1 : -1); }}><input ref={inputRef} type="text" inputMode="decimal" value={draft} onFocus={() => setEditing(true)} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={handleKeyDown} />{visibleUnit ? <small>{visibleUnit}</small> : null}<span className="educad-number-steppers"><button type="button" tabIndex={-1} aria-label={t("input.increment")} title={t("input.increment")} onPointerDown={(event) => { event.preventDefault(); nudge(1); }}>▲</button><button type="button" tabIndex={-1} aria-label={t("input.decrement")} title={t("input.decrement")} onPointerDown={(event) => { event.preventDefault(); nudge(-1); }}>▼</button></span></span>;
+  return <span className="educad-number-input" onWheel={(event) => { event.preventDefault(); nudge(event.deltaY < 0 ? 1 : -1); }}><input ref={inputRef} type="text" inputMode="text" value={draft} onFocus={() => setEditing(true)} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={handleKeyDown} />{visibleUnit ? <small>{visibleUnit}</small> : null}<span className="educad-number-steppers"><button type="button" tabIndex={-1} aria-label={t("input.increment")} title={t("input.increment")} onPointerDown={(event) => { event.preventDefault(); nudge(1); }}>▲</button><button type="button" tabIndex={-1} aria-label={t("input.decrement")} title={t("input.decrement")} onPointerDown={(event) => { event.preventDefault(); nudge(-1); }}>▼</button></span></span>;
 }
 
 function BoundedNumberField({ label, value, min, max, step, unit = step === undefined ? "mm" : "", onChange }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (value: number) => void }) {

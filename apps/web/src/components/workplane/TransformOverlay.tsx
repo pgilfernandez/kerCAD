@@ -165,7 +165,7 @@ export function TransformOverlay({
           style={{ "--overlay-x": `${editingDimension.x}px`, "--overlay-y": `${editingDimension.y}px` } as CSSProperties}
           value={editingDimension.value}
           autoFocus
-          inputMode="decimal"
+          inputMode="text"
           onPointerDown={(event) => event.stopPropagation()}
           onChange={(event) => onEditingDimensionChange(event.target.value)}
           onBlur={onCommitDimensionEdit}
@@ -184,7 +184,7 @@ export function TransformOverlay({
           <input
             value={editingRotation.value}
             autoFocus
-            inputMode="decimal"
+            inputMode="text"
             onPointerDown={(event) => event.stopPropagation()}
             onChange={(event) => onEditingRotationChange(event.target.value)}
             onBlur={onCommitRotationEdit}

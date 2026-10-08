@@ -1,4 +1,5 @@
 import type { MeasurementAccuracy, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
+import { parseNumericExpression } from "@/lib/numericExpression";
 
 const MILLIMETERS_PER_INCH = 25.4;
 const MILLIMETERS_PER_FOOT = 304.8;
@@ -75,24 +76,8 @@ export function displayStepFromMillimeters(step: number, workspace: Pick<Workpla
   return step / lengthDisplayUnit(workspace).millimetersPerUnit;
 }
 
-export function parseMeasurementInput(value: string | number) {
-  if (typeof value === "number") return Number.isFinite(value) ? value : Number.NaN;
-  const compact = value.trim().replace(/[\s\u00a0]/g, "");
-  if (!compact) return Number.NaN;
-
-  const commaIndex = compact.lastIndexOf(",");
-  const dotIndex = compact.lastIndexOf(".");
-  let normalized = compact;
-  if (commaIndex >= 0 && dotIndex >= 0) {
-    normalized = commaIndex > dotIndex
-      ? compact.replace(/\./g, "").replace(",", ".")
-      : compact.replace(/,/g, "");
-  } else if (commaIndex >= 0) {
-    normalized = compact.replace(",", ".");
-  }
-
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : Number.NaN;
+export function parseMeasurementInput(value: string | number, unit = "") {
+  return parseNumericExpression(value, unit);
 }
 
 export function formatMeasurementNumber(value: number, accuracy: MeasurementAccuracy, _step?: number) {

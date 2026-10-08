@@ -5,7 +5,8 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerE
 import { ViewToolbarIcon } from "@/components/icons";
 import { SnapGridControl } from "@/components/workplane/ShapeInspector";
 import { SketchRevolvePreview } from "@/components/SketchRevolvePreview";
-import { lengthDisplayUnit, parseMeasurementInput } from "@/lib/measurementUnits";
+import { lengthDisplayUnit } from "@/lib/measurementUnits";
+import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
 import { sketchSlot } from "@/lib/sketchSlots";
 import { WORKPLANE_MAJOR_GRID_INTERVAL } from "@/lib/workplaneGrid";
 import { mirrorSign, resizedImportedMeshPositions } from "@/lib/workplaneShapes";
@@ -235,15 +236,16 @@ function SketchDimensionInput({ id, label, indicator, value: storedValue, millim
           autoFocus
         aria-label={label}
         type="text"
-        inputMode="decimal"
+        inputMode="text"
         value={draft}
           style={{ fontSize: 13 * screenUnit, padding: `0 ${removeWidth + 3 * screenUnit}px 0 ${indicatorWidth + 3 * screenUnit}px` }}
         onPointerDown={(event) => event.stopPropagation()}
         onChange={(event) => setDraft(event.currentTarget.value)}
         onBlur={(event) => {
-          const parsed = parseMeasurementInput(draft);
+          const parsed = parseNumericExpression(draft, indicator === "A" ? "deg" : millimetersPerUnit);
+          if (!validateNumericExpression(event.currentTarget, parsed)) return;
           if (Number.isFinite(parsed) && (allowSigned || parsed > 0)) onCommit?.(id, parsed);
-          else { onCommit?.(id, parsed); setDraft(formatted); }
+          else setDraft(formatted);
           setEditing(false);
         }}
         onKeyDown={(event) => {
@@ -1889,8 +1891,9 @@ function SketchImageRange({
   const safeValue = clamp(Number.isFinite(value) ? value : min, min, max);
   const [draft, setDraft] = useState(formatDimension(safeValue, accuracy));
   useEffect(() => setDraft(formatDimension(safeValue, accuracy)), [accuracy, safeValue]);
-  const commit = () => {
-    const parsed = parseMeasurementInput(draft);
+  const commit = (event: React.FocusEvent<HTMLInputElement>) => {
+    const parsed = parseNumericExpression(draft, suffix);
+    if (!validateNumericExpression(event.currentTarget, parsed)) return;
     onChange(clamp(Number.isFinite(parsed) ? parsed : safeValue, min, max));
   };
   const position = ((safeValue - min) / Math.max(0.001, max - min)) * 100;
@@ -1901,7 +1904,7 @@ function SketchImageRange({
         <input
           className="sketch-image-number-input"
           type="text"
-          inputMode="decimal"
+          inputMode="text"
           value={draft}
           onChange={(event) => setDraft(event.currentTarget.value)}
           onBlur={commit}
@@ -1928,8 +1931,9 @@ function SketchImagePositionField({
   const formatted = formatDimension(value, accuracy);
   const [draft, setDraft] = useState(formatted);
   useEffect(() => setDraft(formatted), [formatted]);
-  const commit = () => {
-    const parsed = parseMeasurementInput(draft);
+  const commit = (event: React.FocusEvent<HTMLInputElement>) => {
+    const parsed = parseNumericExpression(draft, label.match(/\(([^)]+)\)/)?.[1] ?? "mm");
+    if (!validateNumericExpression(event.currentTarget, parsed)) return;
     const next = Number.isFinite(parsed) ? parsed : value;
     onChange(next);
     setDraft(formatDimension(next, accuracy));
@@ -1940,7 +1944,7 @@ function SketchImagePositionField({
       <span>{label}</span>
       <input
         type="text"
-        inputMode="decimal"
+        inputMode="text"
         value={draft}
         onChange={(event) => setDraft(event.currentTarget.value)}
         onBlur={commit}

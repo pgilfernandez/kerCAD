@@ -18,6 +18,7 @@ import { orthographicTouchTargetWorldSize, perspectiveTouchTargetWorldSize, view
 import { parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
 import { ToolbarBooleanModeIcon, ToolbarChamferIcon, ToolbarEditOperationIcon, ToolbarFilletIcon } from "@/components/icons";
 import { displayLengthToMillimeters, displayUnitLabel, formatDisplayLength, millimetersToDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
+import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
 import { viewportSelectionBounds } from "@/lib/viewportBounds";
 import type { ParametricDocument, ParametricFeature, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, RenderMesh, SketchFeature } from "@/types/parametric";
 
@@ -79,7 +80,7 @@ function ViewportFloatingNumberInput({ value, unit, displayUnit, snap, label, mi
   const updateDraft = (text: string) => { draftRef.current = text; setDraft(text); };
   useEffect(() => { if (!editingRef.current) { draftRef.current = shown; setDraft(shown); } }, [shown]);
   const parsedValue = () => {
-    const parsed = Number.parseFloat(draftRef.current.replace(",", "."));
+    const parsed = parseNumericExpression(draftRef.current, unit === "length" ? displayUnit : unit === "angle" ? "deg" : "");
     return unit === "length" ? displayLengthToMillimeters(parsed, displayUnit) : parsed;
   };
   const apply = (raw: number) => {
@@ -88,9 +89,11 @@ function ViewportFloatingNumberInput({ value, unit, displayUnit, snap, label, mi
     if (Math.abs(next - value) > 1e-6) onCommit(next);
   };
   const commit = () => {
-    editingRef.current = false;
     const raw = parsedValue();
-    if (!Number.isFinite(raw)) { updateDraft(shown); return; }
+    const input = fieldRef.current?.querySelector("input");
+    if (input && !validateNumericExpression(input, raw)) return;
+    if (!Number.isFinite(raw)) return;
+    editingRef.current = false;
     apply(raw);
   };
   const increment = (direction: number) => {
@@ -112,7 +115,7 @@ function ViewportFloatingNumberInput({ value, unit, displayUnit, snap, label, mi
     return () => field.removeEventListener("wheel", wheel);
   }, []);
   return <div className="educad-viewport-edge-treatment-radius"><div ref={fieldRef}>
-    <input type="text" inputMode={unit === "count" ? "numeric" : "decimal"} aria-label={label} value={draft}
+    <input type="text" inputMode="text" aria-label={label} value={draft}
       onFocus={(event) => { editingRef.current = true; event.currentTarget.select(); }}
       onChange={(event) => updateDraft(event.currentTarget.value)} onBlur={commit}
       onKeyDown={(event) => {
@@ -839,10 +842,11 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
 
   const commitDimensionEdit = (axis: ViewportDimensionAxis, input: HTMLInputElement) => {
     const selected = selectionRef.current;
-    const parsedValue = Number.parseFloat(input.value.replace(",", "."));
     const scalar = selected?.shapeParameters?.shape === "polygon" && axis === "y";
+    const parsedValue = parseNumericExpression(input.value, scalar ? "" : displayUnit);
     const value = scalar ? parsedValue : displayLengthToMillimeters(parsedValue, displayUnit);
-    if (!selected || !Number.isFinite(value)) {
+    if (!validateNumericExpression(input, value)) return;
+    if (!selected) {
       input.value = scalar ? formatViewportDimension(dimensionValue(axis)) : formatDisplayLength(dimensionValue(axis), displayUnit);
       invalidateRef.current();
       return;
@@ -4310,7 +4314,7 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
     ref={ref}
     className={className}
     type="text"
-    inputMode="decimal"
+    inputMode="text"
     aria-label={label}
     onFocus={(event) => beginDimensionEdit(axis, event.currentTarget)}
     onBlur={(event) => commitDimensionEdit(axis, event.currentTarget)}

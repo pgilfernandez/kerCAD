@@ -108,7 +108,7 @@ export function WorkspaceSettingsModal({
     onWorkspaceChange({ ...next, scale: normalizeScaleForUnits(next.units, next.scale) });
   };
   const setDimension = (key: "width" | "depth", value: string) => {
-    const parsed = parseMeasurementInput(value);
+    const parsed = parseMeasurementInput(value, "mm");
     const next = clamp(Number.isFinite(parsed) ? parsed : workspace[key], MIN_WORKSPACE_SIZE, MAX_WORKSPACE_SIZE);
     setDimensionDrafts((current) => ({ ...current, [key]: next.toFixed(workspace.accuracy) }));
     patchWorkspace({ [key]: next, sizePreset: "Custom" } as Partial<WorkspaceSettings>);
@@ -125,21 +125,21 @@ export function WorkspaceSettingsModal({
     patchWorkspace({ gridBlockPreset, gridBlockSize: gridBlockSizeForPreset(gridBlockPreset, workspace.gridBlockSize) });
   };
   const setGridBlockSize = (value: string) => {
-    const parsed = parseMeasurementInput(value);
+    const parsed = parseMeasurementInput(value, "mm");
     const next = clamp(Number.isFinite(parsed) ? parsed : workspace.gridBlockSize, MIN_GRID_BLOCK_SIZE, MAX_GRID_BLOCK_SIZE);
     setGridBlockSizeDraft(next.toFixed(workspace.accuracy));
     patchWorkspace({ gridBlockPreset: "Custom", gridBlockSize: next });
   };
   const setHistoryLimitMode = (mode: (typeof HISTORY_LIMIT_OPTIONS)[number]) => {
     if (mode === "custom") {
-      const parsed = Number.parseInt(customHistoryDraft, 10);
+      const parsed = Math.round(parseMeasurementInput(customHistoryDraft));
       patchWorkspace({ historyLimit: Number.isFinite(parsed) ? clamp(parsed, 1, 5000) : HISTORY_CUSTOM_DEFAULT });
       return;
     }
     patchWorkspace({ historyLimit: mode });
   };
   const setCustomHistoryLimit = (value: string) => {
-    const parsed = Number.parseInt(value, 10);
+    const parsed = Math.round(parseMeasurementInput(value));
     const next = Number.isFinite(parsed) ? Math.round(clamp(parsed, 1, 5000)) : HISTORY_CUSTOM_DEFAULT;
     setCustomHistoryDraft(String(next));
     patchWorkspace({ historyLimit: next });
@@ -278,7 +278,7 @@ export function WorkspaceSettingsModal({
                       <span>Width</span>
                       <input
                         type="text"
-                        inputMode="decimal"
+                        inputMode="text"
                         value={dimensionDrafts.width}
                         onChange={(event) => {
                           const value = event.currentTarget.value;
@@ -294,7 +294,7 @@ export function WorkspaceSettingsModal({
                       <span>Length</span>
                       <input
                         type="text"
-                        inputMode="decimal"
+                        inputMode="text"
                         value={dimensionDrafts.depth}
                         onChange={(event) => {
                           const value = event.currentTarget.value;
@@ -315,7 +315,7 @@ export function WorkspaceSettingsModal({
                         <span>Block size</span>
                         <input
                           type="text"
-                          inputMode="decimal"
+                          inputMode="text"
                           value={gridBlockSizeDraft}
                           onChange={(event) => setGridBlockSizeDraft(event.currentTarget.value)}
                           onBlur={(event) => setGridBlockSize(event.currentTarget.value)}
@@ -362,7 +362,8 @@ export function WorkspaceSettingsModal({
                       <label className="workspace-history-custom">
                         <span>Actions to retain</span>
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="text"
                           min={1}
                           max={5000}
                           step={1}

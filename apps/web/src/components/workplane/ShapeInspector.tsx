@@ -22,6 +22,7 @@ import {
   gearToothPitch,
 } from "@/lib/gearGeometry";
 import { displayStepFromMillimeters, displayToMillimeters, formatMeasurementNumber, lengthDisplayUnit, millimetersToDisplay, parseMeasurementInput } from "@/lib/measurementUnits";
+import { validateNumericExpression } from "@/lib/numericExpression";
 import { resizedShapeSize, shapeDepth, shapeWidth } from "@/lib/workplaneShapes";
 import { normalizeSketchRevolveSettings } from "@/lib/sketchRevolve";
 import type { GearType, GridSize, MeasurementAccuracy, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
@@ -650,8 +651,9 @@ function RangeProperty({
     }
   }, [accuracy, controlStep, controlValue, editing]);
   const toModelValue = (nextValue: number) => isLength ? displayToMillimeters(nextValue, workspace) : nextValue;
-  const commitDraft = () => {
-    const next = parseMeasurementInput(draft);
+  const commitDraft = (event: React.FocusEvent<HTMLInputElement>) => {
+    const next = parseMeasurementInput(draft, unit ?? "");
+    if (!validateNumericExpression(event.currentTarget, next)) { onInteractionActiveChange?.(false); return; }
     const finiteNext = Number.isFinite(next) ? next : controlValue;
     const nextModelValue = toModelValue(finiteNext);
     onChange(allowsAboveSliderMax ? Math.max(min, nextModelValue) : clamp(nextModelValue, min, max));
@@ -672,7 +674,7 @@ function RangeProperty({
             type="text"
             value={editing ? draft : formatPropertyNumber(controlValue, accuracy, controlStep)}
             disabled={disabled}
-            inputMode="decimal"
+            inputMode="text"
             onFocus={() => {
               onInteractionActiveChange?.(true);
               setDraft(formatPropertyNumber(controlValue, accuracy, controlStep));
