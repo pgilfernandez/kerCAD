@@ -19,7 +19,14 @@ export function enableToolbarMouseScroll(toolbar: HTMLElement, vertical = false)
     indicators.style.left = `${bounds.left - (parentBounds?.left ?? 0)}px`;
     indicators.style.width = `${bounds.width}px`;
     indicators.style.height = `${bounds.height}px`;
-    if (vertical) indicators.style.borderRadius = getComputedStyle(toolbar).borderRadius;
+    if (vertical) {
+      const style = getComputedStyle(toolbar);
+      indicators.style.borderRadius = style.borderRadius;
+      // Reserve the panel's border inside the overlay without painting over it.
+      indicators.style.borderStyle = "solid";
+      indicators.style.borderColor = "transparent";
+      indicators.style.borderWidth = `${style.borderTopWidth} ${style.borderRightWidth} ${style.borderBottomWidth} ${style.borderLeftWidth}`;
+    }
     left.hidden = (vertical ? toolbar.scrollTop : toolbar.scrollLeft) <= 1;
     right.hidden = vertical ? toolbar.scrollHeight - toolbar.clientHeight - toolbar.scrollTop <= 1 : toolbar.scrollWidth - toolbar.clientWidth - toolbar.scrollLeft <= 1;
   };
