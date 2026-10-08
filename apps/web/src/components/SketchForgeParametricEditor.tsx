@@ -1799,7 +1799,11 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const pressSketchPoint = (id: string, additive = false) => {
     const point = sketchSession ? sketchConstraintPoint(sketchSession.profile, id) : null;
     if (!point) return;
-    if (sketchTool === "measure") {
+    if (sketchTool === "connect") {
+      if (!sketchSession?.profile.points.some((candidate) => candidate.id === id)) return;
+      if (sketchActivePointId && sketchActivePointId !== id) addEdgeBetweenSketchNodes(sketchActivePointId, id);
+      else { setSketchActivePointId(id); setSketchSelection({ kind: "point", id }); }
+    } else if (sketchTool === "measure") {
       if (sketchMeasureStart) { setSketchMeasurement({ start: sketchMeasureStart, end: point }); setSketchMeasureStart(null); }
       else { setSketchMeasureStart(point); setSketchMeasurement(null); }
     } else if (sketchTool === "select") {
@@ -1885,6 +1889,24 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     });
     setSketchSelection({ kind: "point", id: insertedId });
     setSketchTool("select");
+  };
+
+  const addEdgeBetweenSketchNodes = (startId: string, endId: string) => {
+    if (!sketchSession || startId === endId) return;
+    if (!sketchSession.profile.points.some((point) => point.id === startId) || !sketchSession.profile.points.some((point) => point.id === endId)) return;
+    const existing = sketchSession.profile.segments.find((segment) => (segment.startId === startId && segment.endId === endId) || (segment.startId === endId && segment.endId === startId));
+    const id = existing?.id ?? sketchEntityId("segment");
+    if (!existing) setSketchProfile((profile) => ({ ...profile, segments: [...profile.segments, { id, startId, endId, kind: "line" }] }));
+    chooseSketchTool("select");
+    setSketchSelection({ kind: "segment", id });
+  };
+  const connectSelectedSketchNodes = () => {
+    if (selectedSketchPoints.length === 2) addEdgeBetweenSketchNodes(selectedSketchPoints[0].id, selectedSketchPoints[1].id);
+    else {
+      const first = selectedSketchPoints.length === 1 ? selectedSketchPoints[0] : null;
+      chooseSketchTool("connect");
+      if (first) { setSketchActivePointId(first.id); setSketchSelection({ kind: "point", id: first.id }); }
+    }
   };
 
   const refineSketchSelection = () => {
@@ -3164,6 +3186,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           <ToolbarSection label={t("sketch.edit")}>
             <Tool label={t("sketch.construction")} enabled={selectedConstructionIds.segmentIds.length + selectedConstructionIds.circleIds.length > 0} active={selectedConstructionIds.allConstruction} onClick={toggleSketchConstruction}><SketchToolbarIcon file="construction" /></Tool>
             <Tool label={t("sketch.refine")} active={sketchTool === "refine"} onClick={refineSketchSelection}><SketchToolbarIcon file="refine" /></Tool>
+            <Tool label={t("sketch.connectNodes")} enabled={selectedSketchPoints.length <= 2} active={sketchTool === "connect"} onClick={connectSelectedSketchNodes}><SketchToolbarIcon file="connect-nodes" /></Tool>
             <Tool label={t("sketch.mergePoints")} enabled={mergeableSketchPointIds.length === 2} onClick={mergeSelectedSketchPoints}><SketchToolbarIcon file="merge-points" /></Tool>
             <Tool label={t("sketch.trim")} active={sketchTool === "trim"} onClick={() => chooseSketchTool("trim")}><SketchToolbarIcon file="trim" /></Tool>
           </ToolbarSection>

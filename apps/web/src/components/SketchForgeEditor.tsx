@@ -6268,6 +6268,7 @@ export function SketchForgeEditor({
       line: "Line: click points to draw straight segments",
       rectangle: "Rectangle: click opposite corners to create a closed path",
       polygon: "Polygon: choose the centre and circumcircle radius",
+      connect: "Connect nodes: choose two existing nodes",
       slot: "Slot: choose both end centres, then the width",
       arcSlot: "Arc slot: choose the arc centre, start, end, then the width",
       bezier: "Bézier: click and drag points to pull curve handles",

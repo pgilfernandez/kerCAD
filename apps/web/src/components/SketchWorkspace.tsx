@@ -15,7 +15,7 @@ import type { SketchProfileValidation } from "@/lib/sketchProfileValidation";
 import type { EducadLocale } from "@/lib/educadI18n";
 import type { GridSize, SketchCircle, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchSegment, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
 
-export type SketchTool = "line" | "rectangle" | "polygon" | "slot" | "arcSlot" | "bezier" | "smooth" | "freehand" | "freehandSmooth" | "circle" | "arc" | "select" | "refine" | "trim" | "erase" | "measure";
+export type SketchTool = "line" | "connect" | "rectangle" | "polygon" | "slot" | "arcSlot" | "bezier" | "smooth" | "freehand" | "freehandSmooth" | "circle" | "arc" | "select" | "refine" | "trim" | "erase" | "measure";
 export type SketchSelection =
   | { kind: "point"; id: string }
   | { kind: "segment"; id: string }
@@ -1216,7 +1216,7 @@ export function SketchWorkspace({
           onPointerCancel={() => setPointerAction(null)}
           onPointerLeave={() => !pointerAction && setHover(null)}
           onContextMenu={(event) => {
-            if (!["line", "slot", "arcSlot", "rectangle", "polygon"].includes(tool)) return;
+            if (!["line", "connect", "slot", "arcSlot", "rectangle", "polygon"].includes(tool)) return;
             event.preventDefault();
             setPointerAction(null);
             setHover(null);
