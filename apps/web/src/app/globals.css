@@ -6261,6 +6261,17 @@ circle.sketch-preview-line {
 }
 
 .camera-controls { top: var(--viewport-tool-offset); left: 10px; flex-direction: column; }
+.educad-workplane-stage > .camera-controls {
+  max-height: max(44px, calc(100% - var(--viewport-tool-offset) - 120px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+}
+.educad-workplane-stage > .camera-controls::-webkit-scrollbar { display: none; width: 0; }
+.educad-workplane-stage > .camera-controls > * { flex-shrink: 0; }
+.educad-workplane-stage > .educad-toolbar-scroll-indicators.vertical { z-index: 15; }
 .viewport-display-controls { top: 22px; left: var(--viewport-tool-offset); flex-direction: row; }
 
 .camera-control-separator {

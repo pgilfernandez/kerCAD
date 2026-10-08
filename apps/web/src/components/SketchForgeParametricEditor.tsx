@@ -445,6 +445,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [sketchTool, setSketchTool] = useState<SketchTool>("line");
   const toolbarScrollRef = useRef<HTMLDivElement>(null);
   const constraintsScrollRef = useRef<HTMLElement>(null);
+  const cameraControlsScrollRef = useRef<HTMLDivElement>(null);
   const [sketchPolygonSides, setSketchPolygonSides] = useState(6);
   const [polygonMenuPosition, setPolygonMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const polygonMenuTriggerRef = useRef<HTMLButtonElement>(null);
@@ -578,6 +579,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     if (toolbar) return enableToolbarMouseScroll(toolbar);
   }, [hydrated, Boolean(sketchSession)]);
   const [buildWorkersReady, setBuildWorkersReady] = useState(false);
+  useEffect(() => {
+    const panel = cameraControlsScrollRef.current;
+    if (!sketchSession && panel) return enableToolbarMouseScroll(panel, true);
+  }, [hydrated, Boolean(sketchSession)]);
   useEffect(() => {
     const panel = constraintsScrollRef.current;
     if (panel) return enableToolbarMouseScroll(panel, true);
@@ -3918,7 +3923,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         >
           {modelSidebarMode === "normal" ? <ChevronLeft size={23} /> : modelSidebarMode === "simplified" ? <ChevronDown size={23} /> : <ChevronRight size={23} />}
         </button>
-        <div className="camera-controls" aria-label={t("camera.controls")}>
+        <div ref={cameraControlsScrollRef} className="camera-controls" aria-label={t("camera.controls")}>
           <button aria-label={t("camera.home")} title={t("camera.home")} onClick={() => setCamera("home")}><Home size={24} /></button>
           <span className="camera-control-separator" aria-hidden="true" />
           <button className={displayMode === "wireframe" ? "active" : ""} aria-label={t("camera.wireframe")} aria-pressed={displayMode === "wireframe"} title={t("camera.wireframe")} onClick={() => setDisplayMode((current) => current === "solid" ? "wireframe" : "solid")}>
