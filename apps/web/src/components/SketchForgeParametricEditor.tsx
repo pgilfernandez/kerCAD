@@ -67,6 +67,7 @@ import { parametricRebuildSuggestion } from "@/lib/parametricRebuildDiagnostics"
 import { hasPreviousSolidOperation } from "@/lib/parametricOperationModes";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import { arcSketchPointId, circleSketchPointId, SKETCH_REFERENCE_AXES, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, sketchReferenceAxis, solveSketchConstraints } from "@/lib/sketchConstraints";
+import { copySketchSelection, pasteSketchSelection } from "@/lib/sketchClipboard";
 import { analyzeSketchConstraints } from "@/lib/sketchConstraintAnalysis";
 import { validateDrawnSketchProfile } from "@/lib/sketchProfileValidation";
 import { trimSketchGeometry } from "@/lib/sketchTrim";
@@ -455,6 +456,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   }, [polygonMenuPosition]);
   const [sketchActivePointId, setSketchActivePointId] = useState<string | null>(null);
   const [sketchSelection, setSketchSelection] = useState<SketchSelection>(null);
+  const [sketchClipboard, setSketchClipboard] = useState<SketchProfile | null>(null);
+  const sketchPasteCountRef = useRef(0);
   const [sketchMeasurement, setSketchMeasurement] = useState<SketchMeasurement>(null);
   const [sketchMeasureStart, setSketchMeasureStart] = useState<SketchPoint | null>(null);
   const sketchHistoryRef = useRef<SketchProfile[]>([]);
@@ -1233,6 +1236,19 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     setSketchActivePointId(null);
     setSketchSelection(null);
     if (tool !== "measure") setSketchMeasureStart(null);
+  };
+
+  const sketchCopyableSelection = useMemo(() => sketchSession ? copySketchSelection(sketchSession.profile, sketchSelection) : null, [sketchSession, sketchSelection]);
+  const copyCurrentSketchSelection = () => {
+    if (!sketchCopyableSelection) return;
+    setSketchClipboard(sketchCopyableSelection);
+    sketchPasteCountRef.current = 0;
+  };
+  const pasteSketchGeometry = (source: SketchProfile, count = 1) => {
+    const added = pasteSketchSelection(source, sketchEntityId, Math.max(1, document.workplane.snapSpacing) * 5 * count);
+    setSketchProfile((profile) => ({ ...profile, points: [...profile.points, ...added.points], segments: [...profile.segments, ...added.segments], circles: [...(profile.circles ?? []), ...(added.circles ?? [])], images: [...(profile.images ?? []), ...(added.images ?? [])], constraints: [...(profile.constraints ?? []), ...(added.constraints ?? [])] }));
+    chooseSketchTool("select");
+    setSketchSelection({ kind: "multiple", pointIds: added.points.map((point) => point.id), segmentIds: added.segments.map((segment) => segment.id), circleIds: added.circles?.map((circle) => circle.id), imageIds: added.images?.map((image) => image.id) });
   };
 
   const selectedConstructionIds = useMemo(() => {
@@ -3063,6 +3079,12 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("sketch.undo")} enabled={sketchHistoryIndex > 0} onClick={sketchUndo}><SketchToolbarIcon file="undo" /></Tool>
             <Tool label={t("sketch.redo")} enabled={sketchHistoryIndex >= 0 && sketchHistoryIndex < sketchHistoryRef.current.length - 1} onClick={sketchRedo}><SketchToolbarIcon file="redo" /></Tool>
           </ToolbarSection>
+          <ToolbarSection label={t("toolbar.clipboard")}>
+            <Tool label={t("toolbar.copy")} enabled={Boolean(sketchCopyableSelection)} onClick={copyCurrentSketchSelection}><ToolbarCopyIcon /></Tool>
+            <Tool label={t("toolbar.paste")} enabled={Boolean(sketchClipboard)} onClick={() => { if (sketchClipboard) pasteSketchGeometry(sketchClipboard, ++sketchPasteCountRef.current); }}><ToolbarPasteIcon /></Tool>
+            <Tool label={t("toolbar.duplicate")} enabled={Boolean(sketchCopyableSelection)} onClick={() => { if (sketchCopyableSelection) pasteSketchGeometry(sketchCopyableSelection); }}><ToolbarDuplicateIcon /></Tool>
+            <Tool label={sketchSelection ? t("sketch.eraseSelection") : t("sketch.erase")} active={!sketchSelection && sketchTool === "erase"} onClick={() => { if (!deleteCurrentSketchSelection()) chooseSketchTool("erase"); }}><ToolbarTrashIcon /></Tool>
+          </ToolbarSection>
           <ToolbarSection label={t("sketch.draw")}>
             <Tool label={t("sketch.line")} active={sketchTool === "line"} onClick={() => chooseSketchTool("line")}><SketchToolbarIcon file="line" /></Tool>
             <Tool label={t("sketch.rectangle")} active={sketchTool === "rectangle"} onClick={() => chooseSketchTool("rectangle")}><SketchToolbarIcon file="rectangle" /></Tool>
@@ -3092,7 +3114,6 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("sketch.refine")} active={sketchTool === "refine"} onClick={() => chooseSketchTool("refine")}><SketchToolbarIcon file="refine" /></Tool>
             <Tool label={t("sketch.mergePoints")} enabled={mergeableSketchPointIds.length === 2} onClick={mergeSelectedSketchPoints}><SketchToolbarIcon file="merge-points" /></Tool>
             <Tool label={t("sketch.trim")} active={sketchTool === "trim"} onClick={() => chooseSketchTool("trim")}><SketchToolbarIcon file="trim" /></Tool>
-            <Tool label={sketchSelection ? t("sketch.eraseSelection") : t("sketch.erase")} active={!sketchSelection && sketchTool === "erase"} onClick={() => { if (!deleteCurrentSketchSelection()) chooseSketchTool("erase"); }}><SketchToolbarIcon file="erase" /></Tool>
           </ToolbarSection>
           <ToolbarSection label={t("sketch.inspect")}>
             <Tool label={t("sketch.measure")} active={sketchTool === "measure"} onClick={() => chooseSketchTool("measure")}><SketchToolbarIcon file="measure" /></Tool>
