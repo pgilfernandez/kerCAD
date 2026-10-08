@@ -3488,18 +3488,21 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
         const headOffset = head * 0.12;
         const originX = -halfWidth;
         const originZ = halfDepth;
-        const addAxisArrow = (color: string, shaft: number[], headPositions: number[], spatialHead = false) => {
+        const addAxisArrow = (color: string, shaft: number[]) => {
           const lineGeometry = new LineSegmentsGeometry();
           lineGeometry.setPositions(shaft);
           const lineMaterial = new LineMaterial({ color, linewidth: 3, transparent: true, opacity: 0.96 });
           lineMaterial.resolution.set(Math.max(1, renderer.domElement.clientWidth), Math.max(1, renderer.domElement.clientHeight));
           const line = new LineSegments2(lineGeometry, lineMaterial);
-          const headGeometry = spatialHead ? new THREE.ConeGeometry(head * 0.44, head, 12) : new THREE.BufferGeometry();
-          if (!spatialHead) headGeometry.setAttribute("position", new THREE.Float32BufferAttribute(headPositions, 3));
+          const headGeometry = new THREE.ConeGeometry(head * 0.44 * 0.8, head, 12);
           const headMesh = new THREE.Mesh(headGeometry, new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }));
           line.position.y = 0.055;
-          headMesh.position.y = 0.055;
-          if (spatialHead) headMesh.position.set(originX, length + headOffset - head / 2 + 0.055, originZ);
+          const start = new THREE.Vector3(shaft[0], shaft[1], shaft[2]);
+          const end = new THREE.Vector3(shaft[3], shaft[4], shaft[5]);
+          const direction = end.clone().sub(start).normalize();
+          headMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
+          headMesh.position.copy(end).addScaledVector(direction, headOffset - head / 2);
+          headMesh.position.y += 0.055;
           line.renderOrder = 2;
           headMesh.renderOrder = 2;
           line.userData.globalWorkplaneElement = true;
@@ -3508,22 +3511,13 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
         };
         addAxisArrow("#d83b3b", [
           originX, 0, originZ, originX + length, 0, originZ,
-        ], [
-          originX + length + headOffset, 0, originZ, originX + length - head + headOffset, 0, originZ - head * 0.44,
-          originX + length - head + headOffset, 0, originZ + head * 0.44,
         ]);
         addAxisArrow("#319653", [
           originX, 0, originZ, originX, 0, originZ - length,
-        ], [
-          originX, 0, originZ - length - headOffset, originX - head * 0.44, 0, originZ - length + head - headOffset,
-          originX + head * 0.44, 0, originZ - length + head - headOffset,
         ]);
         addAxisArrow("#3279d6", [
           originX, 0, originZ, originX, length, originZ,
-        ], [
-          originX, length + headOffset, originZ, originX - head * 0.44, length - head + headOffset, originZ,
-          originX + head * 0.44, length - head + headOffset, originZ,
-        ], true);
+        ]);
         const bandDepth = Math.min(15, gridDepth);
         const labelCanvas = document.createElement("canvas");
         labelCanvas.width = 2048;
