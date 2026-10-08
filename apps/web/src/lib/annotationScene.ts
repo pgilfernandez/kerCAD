@@ -1,4 +1,7 @@
 import * as THREE from "three";
+import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
+import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
+import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import type { ParametricAnnotation } from "@/types/parametric";
 import { displayUnitLabel, formatDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
 
@@ -48,16 +51,20 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
     const distance = start.distanceTo(end);
     const direction = end.clone().sub(start).normalize();
     const perpendicular = direction.clone().cross(Math.abs(direction.z) < 0.9 ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(0, 1, 0)).normalize().multiplyScalar(2);
-    const geometry = new THREE.BufferGeometry().setFromPoints([
+    const points = [
       start, end, start.clone().sub(perpendicular), start.clone().add(perpendicular), end.clone().sub(perpendicular), end.clone().add(perpendicular),
-    ]);
-    const material = new THREE.LineBasicMaterial({ color, depthTest: false, depthWrite: false, transparent: true });
-    const lines = new THREE.LineSegments(geometry, material);
+    ];
+    const geometry = new LineSegmentsGeometry();
+    geometry.setPositions(points.flatMap((point) => [point.x, point.y, point.z]));
+    const material = new LineMaterial({ color, linewidth: 3, worldUnits: false, depthTest: false, depthWrite: false, transparent: true });
+    const lines = new LineSegments2(geometry, material);
+    // Keep the requested width in screen pixels across Retina/quality changes.
+    lines.onBeforeRender = (renderer) => material.resolution.set(Math.max(1, renderer.domElement.clientWidth), Math.max(1, renderer.domElement.clientHeight));
     lines.renderOrder = 89;
     group.add(lines);
     disposables.push(geometry, material);
     if (distance > 0.001) {
-      const height = Math.min(2, distance / 5);
+      const height = Math.min(2, distance / 5) * 2;
       const cone = new THREE.ConeGeometry(height * 0.3, height, 12);
       const coneMaterial = new THREE.MeshBasicMaterial({ color, depthTest: false, depthWrite: false, transparent: true });
       for (const [point, sign] of [[start, -1], [end, 1]] as const) {
