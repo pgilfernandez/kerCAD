@@ -2,7 +2,7 @@ import type { CSSProperties, SVGProps } from "react";
 
 type IconProps = SVGProps<SVGSVGElement>;
 
-export function HeaderToolbarIcon({ file }: { file: "documentation" | "language" }) {
+export function HeaderToolbarIcon({ file }: { file: "documentation" | "language" | "information" }) {
   const mask = `url("/assets/educad/toolbar/${file}.svg")`;
   return <span aria-hidden="true" className="educad-header-svg-icon" style={{ maskImage: mask, WebkitMaskImage: mask }} />;
 }
