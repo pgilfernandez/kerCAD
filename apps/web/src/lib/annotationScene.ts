@@ -21,9 +21,9 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
       const lines = text.split("\n");
       const fontSpec = `48px ${font}, sans-serif`;
       context.font = fontSpec;
-      canvas.width = Math.min(4096, Math.max(64, Math.ceil(Math.max(...lines.map((line) => context.measureText(line).width)) + 16)));
-      canvas.height = Math.min(4096, Math.max(64, lines.length * 64));
-      const x = alignment === "left" ? 8 : alignment === "right" ? canvas.width - 8 : canvas.width / 2;
+      canvas.width = Math.min(4096, Math.max(64, Math.ceil(Math.max(...lines.map((line) => context.measureText(line).width)) + 32)));
+      canvas.height = Math.min(4096, Math.max(80, lines.length * 64 + 16));
+      const x = alignment === "left" ? 16 : alignment === "right" ? canvas.width - 16 : canvas.width / 2;
       const paint = (stroke: number, radius: number) => {
         context.clearRect(0, 0, canvas.width, canvas.height);
         const inset = stroke / 2;
@@ -42,7 +42,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
         context.fillStyle = color;
         context.textBaseline = "middle";
         context.textAlign = alignment === "left" ? "left" : alignment === "right" ? "right" : "center";
-        lines.forEach((line, index) => context.fillText(line, x, index * 64 + 32));
+        lines.forEach((line, index) => context.fillText(line, x, index * 64 + 40));
       };
       paint(2, 8);
       const texture = new THREE.CanvasTexture(canvas);
@@ -61,7 +61,8 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
         edge.setFromMatrixColumn(camera.matrixWorld, 0).normalize().multiplyScalar(scale.x).add(world).project(camera);
         const pixelsPerTexel = Math.max(0.001, Math.abs(edge.x - ndc.x) * renderer.domElement.clientWidth / (2 * canvas.width));
         const stroke = Math.min(2 / pixelsPerTexel, Math.min(canvas.width, canvas.height) / 2);
-        const radius = 8 / pixelsPerTexel;
+        // Corner rounding scales with the label, preserving its proportions.
+        const radius = 8;
         const stamp = `${stroke.toFixed(2)}:${radius.toFixed(2)}`;
         if (stamp !== lastPaint) { paint(stroke, radius); texture.needsUpdate = true; lastPaint = stamp; }
       };

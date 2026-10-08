@@ -224,8 +224,8 @@ export function AnnotationInteraction(props: Props) {
           if (measure) {
             measure.font = `${point.fontSize}px ${active.font}, sans-serif`;
             const lines = draft.current.text.split("\n");
-            editor.current.style.width = `${Math.max(28, ...lines.map((line) => measure.measureText(line).width + point.fontSize / 3))}px`;
-            editor.current.style.height = `${Math.max(1, lines.length) * point.fontSize * 4 / 3}px`;
+            editor.current.style.width = `${Math.max(28, ...lines.map((line) => measure.measureText(line).width + point.fontSize * 2 / 3))}px`;
+            editor.current.style.height = `${(Math.max(1, lines.length) * 4 / 3 + 1 / 3) * point.fontSize}px`;
           }
         }
       }
