@@ -407,7 +407,7 @@ export function reorderParametricSelection(document: ParametricDocument, selecti
     const { reordered } = moveSelectedIds(rootObjectIds(document), selectedIds, direction);
     const byId = new Map(document.objects.map((object) => [object.id, object]));
     document.objects = reordered.filter((id) => id !== ANNOTATIONS_GROUP_ID).map((id) => byId.get(id)!);
-    if (reordered.includes(ANNOTATIONS_GROUP_ID)) document.annotationGroup = { expanded: document.annotationGroup?.expanded !== false, position: reordered.indexOf(ANNOTATIONS_GROUP_ID) };
+    if (reordered.includes(ANNOTATIONS_GROUP_ID)) document.annotationGroup = { ...document.annotationGroup, expanded: document.annotationGroup?.expanded !== false, position: reordered.indexOf(ANNOTATIONS_GROUP_ID) };
     return true;
   }
 

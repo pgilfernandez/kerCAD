@@ -999,12 +999,12 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     rotationEditable: object.id === selectedOriginObjectId && showRotationTriad,
   })), ...(selectedAnnotation && (selectedAnnotation.kind === "text" || annotationEndpoint) ? [{
     objectId: selectedAnnotation.id,
-    visible: selectedAnnotation.visible && showPositionTriad,
+    visible: selectedAnnotation.visible && document.annotationGroup?.visible !== false && showPositionTriad,
     position: selectedAnnotation.kind === "text" ? selectedAnnotation.position : selectedAnnotation[annotationEndpoint!],
     rotation: { x: 0, y: 0, z: 0 },
     positionVisible: showPositionTriad,
     rotationEditable: false,
-  }] : [])], [document.objects, selectedAnnotation, annotationEndpoint, originEditObjectId, selectedOriginObjectId, showPositionTriad, showRotationTriad]);
+  }] : [])], [document.objects, document.annotationGroup?.visible, selectedAnnotation, annotationEndpoint, originEditObjectId, selectedOriginObjectId, showPositionTriad, showRotationTriad]);
   const referenceObjectRecords = useMemo(() => parametricReferenceRenderRecords(document), [document]);
   const viewportObjectRecords = useMemo(() => {
     const visibleObjectIds = new Set(document.objects.filter((object) => object.visible !== false).map((object) => object.id));
@@ -3651,6 +3651,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           showGridControls={false}
         /> : <ParametricViewport
           annotations={document.annotations}
+          annotationsVisible={document.annotationGroup?.visible !== false}
           selectedAnnotationId={selectedAnnotationId}
           selectedAnnotationEndpoint={annotationEndpoint}
           onSelectAnnotationEndpoint={setAnnotationEndpoint}

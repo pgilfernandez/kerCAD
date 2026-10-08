@@ -369,6 +369,7 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
   next.objects ??= [];
   next.annotationGroup = {
     expanded: next.annotationGroup?.expanded !== false,
+    visible: next.annotationGroup?.visible !== false,
     position: Math.min(next.objects.length, Math.max(0, Math.floor(Number.isFinite(next.annotationGroup?.position) ? next.annotationGroup!.position : 0))),
   };
   next.topologyReferences ??= [];

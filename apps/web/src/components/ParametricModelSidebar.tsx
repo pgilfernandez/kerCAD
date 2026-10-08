@@ -65,7 +65,7 @@ type Props = {
   selectedAnnotationId?: string | null;
   onSelectAnnotation?: (id: string | null) => void;
   onUpdateAnnotation?: (id: string, update: (annotation: ParametricAnnotation) => void) => void;
-  onUpdateAnnotationGroup?: (update: Partial<{ expanded: boolean; position: number }>) => void;
+  onUpdateAnnotationGroup?: (update: Partial<{ expanded: boolean; position: number; visible: boolean }>) => void;
   document: ParametricDocument;
   selection: ModelTreeSelection[];
   mode: ModelSidebarMode;
@@ -160,6 +160,7 @@ export function ParametricModelSidebar({
 }: Props) {
   const objects = parametricObjectTree(document);
   const annotationsExpanded = document.annotationGroup?.expanded !== false;
+  const annotationsVisible = document.annotationGroup?.visible !== false;
   const annotationGroupSelected = selectedAnnotationId === ANNOTATIONS_GROUP_ID;
   const reorderSelection: ModelTreeSelection[] = annotationGroupSelected ? [{ id: ANNOTATIONS_GROUP_ID, kind: "object" }] : selection;
   const rootNodes: Array<(typeof objects)[number] | null> = [...objects];
@@ -247,9 +248,10 @@ export function ParametricModelSidebar({
             {rootNodes.map((object) => {
               if (!object) return (
                 <div className="educad-object-node" key={ANNOTATIONS_GROUP_ID}>
-                  <div className={`educad-object-row ${annotationGroupSelected ? "selected" : ""}`}>
+                  <div className={`educad-object-row ${annotationGroupSelected ? "selected" : ""} ${annotationsVisible ? "" : "hidden"}`}>
                     <button className="educad-tree-toggle" aria-label={t("annotation.group")} aria-expanded={annotationsExpanded} onClick={() => onUpdateAnnotationGroup?.({ expanded: !annotationsExpanded })}><OperationTreeIcon file={annotationsExpanded ? "expanded" : "collapsed"} size={16} /></button>
                     <button className="educad-object-select" title={t("annotation.group")} aria-pressed={annotationGroupSelected} onClick={() => onSelectAnnotation?.(ANNOTATIONS_GROUP_ID)}><AnnotationIcon kind="group" /><span><strong>{t("annotation.group")}</strong></span></button>
+                    <div className="educad-tree-actions"><button title={annotationsVisible ? t("model.hide") : t("model.show")} aria-label={`${annotationsVisible ? t("model.hide") : t("model.show")} ${t("annotation.group")}`} aria-pressed={!annotationsVisible} onClick={() => onUpdateAnnotationGroup?.({ visible: !annotationsVisible })}><OperationTreeIcon file={annotationsVisible ? "visible" : "hidden"} size={15} /></button></div>
                   </div>
                   {annotationsExpanded && <div className="educad-operation-list" role="group" aria-label={t("annotation.group")}>
                     {document.annotations?.map((annotation) => <div key={annotation.id} className={`educad-operation-row ${selectedAnnotationId === annotation.id ? "selected" : ""} ${annotation.visible ? "" : "hidden"}`}>
