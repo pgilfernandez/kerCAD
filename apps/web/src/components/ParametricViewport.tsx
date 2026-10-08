@@ -214,6 +214,7 @@ type Props = {
   annotations?: ParametricDocument["annotations"];
   annotationsVisible?: boolean;
   selectedAnnotationId?: string | null;
+  onAnnotationSelect?: (id: string) => void;
   selectedAnnotationEndpoint?: "start" | "end" | null;
   onSelectAnnotationEndpoint?: (endpoint: "start" | "end") => void;
   onMoveAnnotationEndpoint?: (id: string, endpoint: "start" | "end", position: { x: number; y: number; z: number }) => void;
@@ -641,10 +642,13 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ annotationsVisible = true, onMoveAnnotationEndpoint, selectedAnnotationEndpoint = null, onSelectAnnotationEndpoint, annotationTool = null, editingAnnotationId = null, onPlaceAnnotation, onFinishAnnotation, onEditAnnotation, onCancelAnnotationTool, annotations, selectedAnnotationId = null, onProjectRename, mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, faceExtrudeDraft = null, onFaceExtrudeAccept, onFaceExtrudeCancel, faceExtrudeCanAccept = true, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, revolveDraft = null, onRevolveDraftChange, onRevolveAccept, onRevolveCancel, revolveCanAccept = true, distanceHandle = null, onDistanceParameterDragStart, onDistanceParameterPreview, onDistanceParameterChange, onDistanceParameterCancel, shellDraft = null, onShellDraftChange, onShellCornerTypeChange, onShellAccept, onShellCancel, shellCanAccept = true, floatingFeature = null, booleanObjects = [], patternSources = [], booleanAddOnly = false, operationModesVisible = true, contextToolbarVisible, manipulatorControls, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = "Untitled design", onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions, alignmentActive = false, alignmentBusy = false, alignmentTargets = [], alignmentReference = null, onAlignmentSelect, onAlign }: Props) {
+export function ParametricViewport({ onAnnotationSelect, annotationsVisible = true, onMoveAnnotationEndpoint, selectedAnnotationEndpoint = null, onSelectAnnotationEndpoint, annotationTool = null, editingAnnotationId = null, onPlaceAnnotation, onFinishAnnotation, onEditAnnotation, onCancelAnnotationTool, annotations, selectedAnnotationId = null, onProjectRename, mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, faceExtrudeDraft = null, onFaceExtrudeAccept, onFaceExtrudeCancel, faceExtrudeCanAccept = true, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, revolveDraft = null, onRevolveDraftChange, onRevolveAccept, onRevolveCancel, revolveCanAccept = true, distanceHandle = null, onDistanceParameterDragStart, onDistanceParameterPreview, onDistanceParameterChange, onDistanceParameterCancel, shellDraft = null, onShellDraftChange, onShellCornerTypeChange, onShellAccept, onShellCancel, shellCanAccept = true, floatingFeature = null, booleanObjects = [], patternSources = [], booleanAddOnly = false, operationModesVisible = true, contextToolbarVisible, manipulatorControls, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = "Untitled design", onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions, alignmentActive = false, alignmentBusy = false, alignmentTargets = [], alignmentReference = null, onAlignmentSelect, onAlign }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const annotationSnapRef = useRef<(event: PointerEvent) => THREE.Vector3 | null>(() => null);
   const annotationPositionHandleRef = useRef<(event: PointerEvent) => boolean>(() => false);
+  const annotationLayerRef = useRef<THREE.Group | null>(null);
+  const annotationSelectRef = useRef(onAnnotationSelect);
+  annotationSelectRef.current = onAnnotationSelect;
   const [annotationPreview, setAnnotationPreview] = useState<NonNullable<ParametricDocument["annotations"]>[number] | null>(null);
   const annotationStateRef = useRef({ annotations, selectedAnnotationId, selectedAnnotationEndpoint, editingAnnotationId });
   annotationStateRef.current = { annotations, selectedAnnotationId, selectedAnnotationEndpoint, editingAnnotationId };
@@ -1908,6 +1912,13 @@ export function ParametricViewport({ annotationsVisible = true, onMoveAnnotation
       }
       return [];
     };
+    const annotationAtPointer = () => {
+      const layer = annotationLayerRef.current;
+      if (!layer?.visible) return null;
+      layer.updateWorldMatrix(true, true);
+      const labels = layer.children.filter((child) => child instanceof THREE.Sprite && child.visible && annotationStateRef.current.annotations?.some((annotation) => annotation.id === child.userData.annotationId && annotation.visible));
+      return raycaster.intersectObjects(labels, false)[0]?.object.userData.annotationId as string | undefined;
+    };
     processPendingHover = () => {
       const event = pendingHoverEvent;
       pendingHoverEvent = null;
@@ -1919,6 +1930,7 @@ export function ParametricViewport({ annotationsVisible = true, onMoveAnnotation
         return;
       }
       replaceHoverDimensions(hoveredManipulatorDimensions(event));
+      if (!alignmentRef.current.active && annotationAtPointer() && !originHandleAtPointer()) renderer.domElement.style.cursor = "pointer";
     };
     const snapTargetAtPointer = (event: PointerEvent): THREE.Vector3 | null => {
       const bounds = renderer.domElement.getBoundingClientRect();
@@ -2164,6 +2176,10 @@ export function ParametricViewport({ annotationsVisible = true, onMoveAnnotation
         pickCandidate = { pointerId: event.pointerId, pointerType: event.pointerType, x: event.clientX, y: event.clientY, dragIntent: "pending" };
         renderer.domElement.setPointerCapture(event.pointerId);
         return;
+      }
+      if (!workplaneFaceSelectionRef.current && !topologyFaceSelectionRef.current && !topologyEdgeSelectionRef.current) {
+        const annotationId = annotationAtPointer();
+        if (annotationId && annotationSelectRef.current && !originHandleAtPointer()) { annotationSelectRef.current(annotationId); return; }
       }
       const shellLayer = distanceHandleRef.current;
       const shellHit = shellLayer ? raycaster.intersectObject(shellLayer, true).find((hit) => hit.object.userData.distanceParameterTarget) : null;
@@ -3196,9 +3212,10 @@ export function ParametricViewport({ annotationsVisible = true, onMoveAnnotation
     if (annotationPreview && !displayed.some((annotation) => annotation.id === annotationPreview.id)) displayed.push(annotationPreview);
     const layer = createAnnotationScene(displayed, displayUnit, selectedAnnotationId);
     layer.group.visible = annotationsVisible;
+    annotationLayerRef.current = layer.group;
     model.add(layer.group);
     invalidateRef.current();
-    return () => { layer.dispose(); invalidateRef.current(); };
+    return () => { if (annotationLayerRef.current === layer.group) annotationLayerRef.current = null; layer.dispose(); invalidateRef.current(); };
   }, [annotations, annotationsVisible, annotationPreview, selectedAnnotationId, editingAnnotationId, displayUnit, locale, renderQuality, shadingMode]);
 
   useEffect(() => {

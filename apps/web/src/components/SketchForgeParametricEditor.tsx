@@ -3653,6 +3653,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           annotations={document.annotations}
           annotationsVisible={document.annotationGroup?.visible !== false}
           selectedAnnotationId={selectedAnnotationId}
+          onAnnotationSelect={(id) => { setAnnotationTool(null); setEditingAnnotationId(null); setModelSelection([]); setSelectedAnnotationId(id); }}
           selectedAnnotationEndpoint={annotationEndpoint}
           onSelectAnnotationEndpoint={setAnnotationEndpoint}
           onMoveAnnotationEndpoint={(id, endpoint, position) => mutate((draft) => {

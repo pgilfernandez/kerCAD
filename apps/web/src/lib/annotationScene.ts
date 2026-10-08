@@ -49,6 +49,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
       texture.colorSpace = THREE.SRGBColorSpace;
       const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false });
       const sprite = new THREE.Sprite(material);
+      sprite.userData.annotationId = annotation.id;
       sprite.position.copy(position);
       sprite.center.set(alignment === "left" ? 0 : alignment === "right" ? 1 : 0.5, 0.5);
       sprite.scale.set(canvas.width / 48 * size, canvas.height / 48 * size, 1);
