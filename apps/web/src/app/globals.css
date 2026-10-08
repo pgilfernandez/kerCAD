@@ -3606,6 +3606,18 @@ button {
 }
 
 .educad-toolbar-titlebar .educad-project-name strong { font-weight: 700; }
+.educad-header-actions { position: absolute; top: 0; right: 8px; height: 32px; display: flex; align-items: center; gap: 3px; z-index: 5; }
+.educad-header-actions > a, .toolbar-workspace-tabs .educad-header-actions > button { display: grid; place-items: center; width: 30px; height: 28px; padding: 3px; border: 0; border-radius: 5px; color: white; background: transparent; text-decoration: none; }
+.educad-header-actions > a:hover, .toolbar-workspace-tabs .educad-header-actions > button:hover { color: #1269eb; background: rgba(255,255,255,.8); }
+.educad-header-language-menu { position: absolute; top: 34px; right: 0; width: 150px; padding: 5px; border: 1px solid #c7d5de; border-radius: 7px; background: white; box-shadow: 0 5px 18px #173b5a26; }
+.toolbar-workspace-tabs .educad-header-language-menu button { display: block; width: 100%; padding: 9px 12px; border: 0; border-radius: 4px; color: #173b5a; font-size: 13px; text-align: left; text-transform: none; letter-spacing: 0; background: transparent; }
+.toolbar-workspace-tabs .educad-header-language-menu button:hover, .toolbar-workspace-tabs .educad-header-language-menu button[aria-pressed="true"] { background: #eaf3ff; }
+.educad-documentation-page { position: fixed; inset: 0; overflow-y: auto; color: #173b5a; background: #f4f7f9; }
+.educad-documentation-page > header { display: flex; align-items: center; gap: 20px; padding: 18px 24px; background: #1269eb; color: white; }
+.educad-documentation-page > header a { color: white; text-decoration: none; font-size: 22px; font-weight: 700; }
+.educad-documentation-page article { max-width: 850px; margin: 0 auto; padding: 36px 24px; line-height: 1.6; }
+.educad-documentation-page nav { display: flex; flex-wrap: wrap; gap: 16px; }
+.educad-documentation-page section { padding-top: 24px; }
 .educad-sketch-header-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .educad-sketch-header-actions .educad-toolbar-brand-button + .educad-toolbar-brand-button { margin-left: 0; }
 .educad-toolbar-titlebar .educad-project-name .educad-sketcher-badge { padding: 2px 6px; border-radius: 3px; background: white; color: #0d55bd; font-weight: 700; font-size: 12px; flex-shrink: 0; }
@@ -3622,8 +3634,8 @@ button {
   .secondary-toolbar:has(.educad-parametric-sketch-toolbar) .educad-toolbar-titlebar .educad-project-name {
     position: static;
     grid-row: 1;
-    width: 100%;
-    max-width: 100%;
+    width: calc(100% - 68px);
+    max-width: calc(100% - 68px);
     min-width: 0;
     justify-content: center;
     gap: 5px;

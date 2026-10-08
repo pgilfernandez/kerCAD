@@ -69,6 +69,7 @@ import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import { arcSketchPointId, circleSketchPointId, SKETCH_REFERENCE_AXES, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, sketchReferenceAxis, solveSketchConstraints } from "@/lib/sketchConstraints";
 import { copySketchSelection, pasteSketchSelection } from "@/lib/sketchClipboard";
 import { enableToolbarMouseScroll } from "@/lib/toolbarScroll";
+import { EditorHeaderActions } from "@/components/EditorHeaderActions";
 import { analyzeSketchConstraints } from "@/lib/sketchConstraintAnalysis";
 import { validateDrawnSketchProfile } from "@/lib/sketchProfileValidation";
 import { trimSketchGeometry } from "@/lib/sketchTrim";
@@ -3222,6 +3223,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     <main className={`educad-reference-shell sidebar-${modelSidebarMode} ${sketchSession && compactSketchToolbar ? "sketch-toolbar-compact" : ""}`}>
       <div className="secondary-toolbar">
         <div className="toolbar-workspace-tabs educad-toolbar-titlebar">
+          <EditorHeaderActions locale={locale} onLocaleChange={setLocale} />
           {sketchSession ? <div className="educad-sketch-header-actions"><button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={acceptSketch}><ChevronLeft size={20} aria-hidden="true" />{t("sketch.accept")}</button><button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={cancelSketch}>{t("common.cancel")}</button></div> : onExitToProjects ? <button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={() => onExitToProjects(latestDocumentRef.current)} title={locale === "es" ? "Volver a proyectos" : "Back to projects"}><ChevronLeft size={20} aria-hidden="true" />{locale === "es" ? "Proyectos" : "Projects"}</button> : null}
           <span className="educad-project-name"><img src="/assets/educad/logo.svg" alt="" /><strong>eduCAD</strong><span aria-hidden="true">-</span><button type="button" className="educad-project-rename-trigger" onClick={openProjectRename} title={locale === "es" ? "Cambiar nombre del proyecto" : "Rename project"}>{document.name}</button>{sketchSession ? <strong className="educad-sketcher-badge">SKETCHER</strong> : null}</span>
         </div>
@@ -4063,7 +4065,6 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       {settingsOpen && (
         <aside data-educad-popup="settings" className="top-action-panel educad-settings-panel">
           <header><strong>{t("settings.title")}</strong><button aria-label={t("common.close")} onClick={() => setSettingsOpen(false)}><X /></button></header>
-          <label><span>{t("settings.language")}</span><select value={locale} onChange={(event) => setLocale(event.target.value as EducadLocale)}><option value="es">{t("settings.spanish")}</option><option value="en">{t("settings.english")}</option></select></label>
           <label><span>{t("settings.rendering")}</span><select value={renderQuality} onChange={(event) => setRenderQuality(event.target.value as ViewportRenderQuality)}><option value="normal">{t("settings.renderNormal")}</option><option value="optimized">{t("settings.renderOptimized")}</option></select></label>
           <label><span>{t("settings.shading")}</span><select value={shadingMode} onChange={(event) => setShadingMode(event.target.value as ViewportShadingMode)}><option value="shadows">{t("settings.shadows")}</option><option value="basic">{t("settings.basicShadows")}</option><option value="noShadows">{t("settings.noShadows")}</option></select></label>
           <label><span>{t("settings.units")}</span><select value={displayUnit} onChange={(event) => setDisplayUnit(event.target.value as ParametricDisplayUnit)}><option value="mm">{t("settings.millimeters")}</option><option value="in">{t("settings.inches")}</option></select></label>
