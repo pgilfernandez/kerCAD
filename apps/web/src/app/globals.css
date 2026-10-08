@@ -4923,6 +4923,7 @@ button {
 .educad-parametric-sketch-toolbar > .toolbar-section { flex: 0 0 auto; }
 .educad-parametric-sketch-toolbar .toolbar-section-tools { flex-wrap: nowrap; }
 .educad-parametric-sketch-toolbar button { flex-shrink: 0; touch-action: manipulation; }
+.toolbar-scroll-dragging, .toolbar-scroll-dragging * { cursor: grabbing !important; user-select: none; }
 
 .toolbar-mode-content.geometry,
 .educad-parametric-sketch-toolbar {

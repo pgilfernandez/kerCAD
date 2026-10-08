@@ -68,6 +68,7 @@ import { hasPreviousSolidOperation } from "@/lib/parametricOperationModes";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import { arcSketchPointId, circleSketchPointId, SKETCH_REFERENCE_AXES, sketchConstraintConflict, sketchConstraintPoint, sketchConstraintUsesPoint, sketchConstraintUsesSegment, sketchReferenceAxis, solveSketchConstraints } from "@/lib/sketchConstraints";
 import { copySketchSelection, pasteSketchSelection } from "@/lib/sketchClipboard";
+import { enableToolbarMouseScroll } from "@/lib/toolbarScroll";
 import { analyzeSketchConstraints } from "@/lib/sketchConstraintAnalysis";
 import { validateDrawnSketchProfile } from "@/lib/sketchProfileValidation";
 import { trimSketchGeometry } from "@/lib/sketchTrim";
@@ -442,6 +443,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [clipboardId, setClipboardId] = useState<string | null>(null);
   const [sketchSession, setSketchSession] = useState<{ featureId: string | null; objectId: string | null; profile: SketchProfile; mode: "sketch" | "scribble"; revolveAxisFeatureId?: string } | null>(null);
   const [sketchTool, setSketchTool] = useState<SketchTool>("line");
+  const toolbarScrollRef = useRef<HTMLDivElement>(null);
   const [sketchPolygonSides, setSketchPolygonSides] = useState(6);
   const [polygonMenuPosition, setPolygonMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const polygonMenuTriggerRef = useRef<HTMLButtonElement>(null);
@@ -570,6 +572,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const newDocumentDialogRef = useAccessibleDialog(newDocumentOpen, () => setNewDocumentOpen(false));
   const importProjectDialogRef = useAccessibleDialog(Boolean(pendingProjectImport), () => setPendingProjectImport(null));
   const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    const toolbar = toolbarScrollRef.current;
+    if (toolbar) return enableToolbarMouseScroll(toolbar);
+  }, [hydrated, Boolean(sketchSession)]);
   const [buildWorkersReady, setBuildWorkersReady] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
   const sketchSvgImportRef = useRef<HTMLInputElement>(null);
@@ -3207,7 +3213,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           {sketchSession ? <div className="educad-sketch-header-actions"><button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={acceptSketch}>{'<'} {t("sketch.accept")}</button><button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={cancelSketch}>{t("common.cancel")}</button></div> : onExitToProjects ? <button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={() => onExitToProjects(latestDocumentRef.current)} title="Back to projects">{'<'} back</button> : null}
           <span className="educad-project-name"><img src="/assets/educad/logo.svg" alt="" /><strong>eduCAD</strong><span aria-hidden="true">-</span><button type="button" className="educad-project-rename-trigger" onClick={openProjectRename} title={locale === "es" ? "Cambiar nombre del proyecto" : "Rename project"}>{document.name}</button>{sketchSession ? <strong className="educad-sketcher-badge">SKETCHER</strong> : null}</span>
         </div>
-        {sketchSession ? <div className="sketch-toolbar-ribbon educad-parametric-sketch-toolbar" aria-label={t("sketch.tools")}>
+        {sketchSession ? <div ref={toolbarScrollRef} className="sketch-toolbar-ribbon educad-parametric-sketch-toolbar" aria-label={t("sketch.tools")}>
           <ToolbarSection label={t("sketch.history")}>
             <Tool label={t("sketch.undo")} enabled={sketchHistoryIndex > 0} onClick={sketchUndo}><ToolbarUndoIcon /></Tool>
             <Tool label={t("sketch.redo")} enabled={sketchHistoryIndex >= 0 && sketchHistoryIndex < sketchHistoryRef.current.length - 1} onClick={sketchRedo}><ToolbarRedoIcon /></Tool>
@@ -3268,7 +3274,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           </ToolbarSection>
           <div className="toolbar-spacer" />
         </div> :
-        <div className="toolbar-mode-content geometry">
+        <div ref={toolbarScrollRef} className="toolbar-mode-content geometry">
           <div className="tool-group left">
             <ToolbarSection label={t("toolbar.history")}>
               <Tool label={t("toolbar.undo")} enabled={history.index > 0} onClick={undo}><ToolbarUndoIcon /></Tool>
