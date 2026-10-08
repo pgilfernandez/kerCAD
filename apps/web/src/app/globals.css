@@ -1566,7 +1566,7 @@ button {
 .educad-stl-quality > span strong { color: #31566d; font-size: 9px; }
 .educad-stl-quality input { width: calc(100% - 48px); margin: 0 24px; accent-color: #159bc5; cursor: pointer; }
 .educad-stl-quality-labels { position: relative; display: block; height: 14px; margin-inline: 32px; color: #8a9aa6; }
-.educad-stl-quality-labels small { position: absolute; top: 0; grid-column: auto; grid-row: auto; font-size: 7px; font-weight: 400; text-align: center; white-space: nowrap; transform: translateX(-50%); }
+.educad-stl-quality-labels small { position: absolute; top: 0; grid-column: auto; grid-row: auto; font-size: 9.8px; font-weight: 400; text-align: center; white-space: nowrap; transform: translateX(-50%); }
 .educad-stl-quality-labels small:nth-child(1) { left: 0; }
 .educad-stl-quality-labels small:nth-child(2) { left: calc(100% / 3); }
 .educad-stl-quality-labels small:nth-child(3) { left: calc(200% / 3); }
