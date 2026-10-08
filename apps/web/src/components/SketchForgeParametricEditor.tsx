@@ -3335,12 +3335,6 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             </ToolbarSection>
           </div>
           <div className="toolbar-modeling-groups">
-          <ToolbarSection label={t("annotation.group")}>
-            {(["text", "dimension"] as const).map((kind) => <Tool key={kind} label={t(`annotation.${kind}`)} active={annotationTool === kind} onClick={() => {
-              setAnnotationTool(annotationTool === kind ? null : kind);
-              setEditingAnnotationId(null); setModelSelection([]); setSelectedAnnotationId(null);
-            }}><AnnotationIcon kind={kind} /></Tool>)}
-          </ToolbarSection>
             <ToolbarSection label={t("toolbar.modify")} className="toolbar-modify-section">
               <Tool label={t("toolbar.chamfer")} active={pendingEdgeTreatment === "chamfer"} onClick={() => beginEdgeTreatment("chamfer")}><ToolbarChamferIcon /></Tool>
               <Tool label={t("toolbar.fillet")} active={pendingEdgeTreatment === "fillet"} onClick={() => beginEdgeTreatment("fillet")}><ToolbarFilletIcon /></Tool>
@@ -3382,6 +3376,12 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
                   <p>{locale === "es" ? "Usa los triángulos sobre el recuadro para alinear los extremos o el centro de cada eje." : "Use the triangles on the box to align the ends or center of each axis."}</p>
                 </div> : null}
               </div>
+            </ToolbarSection>
+            <ToolbarSection label={t("annotation.group")}>
+              {(["text", "dimension"] as const).map((kind) => <Tool key={kind} label={t(`annotation.${kind}`)} active={annotationTool === kind} onClick={() => {
+                setAnnotationTool(annotationTool === kind ? null : kind);
+                setEditingAnnotationId(null); setModelSelection([]); setSelectedAnnotationId(null);
+              }}><AnnotationIcon kind={kind} /></Tool>)}
             </ToolbarSection>
           </div>
           <div className="toolbar-spacer" />
