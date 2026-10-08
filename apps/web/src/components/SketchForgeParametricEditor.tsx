@@ -3654,6 +3654,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           selectedAnnotationId={selectedAnnotationId}
           selectedAnnotationEndpoint={annotationEndpoint}
           onSelectAnnotationEndpoint={setAnnotationEndpoint}
+          onMoveAnnotationEndpoint={(id, endpoint, position) => mutate((draft) => {
+            const annotation = draft.annotations?.find((item) => item.id === id);
+            if (annotation?.kind === "dimension") annotation[endpoint] = { ...position };
+          })}
           annotationTool={annotationTool}
           editingAnnotationId={editingAnnotationId}
           onCancelAnnotationTool={() => setAnnotationTool(null)}

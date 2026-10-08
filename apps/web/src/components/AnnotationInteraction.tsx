@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject, type PointerEvent as ReactPointerEvent } from "react";
 import * as THREE from "three";
 import type { ParametricAnnotation, ParametricDocument, ParametricVector3 } from "@/types/parametric";
 
@@ -17,6 +17,7 @@ type Props = {
   parameterHandlesVisible: boolean;
   selectedEndpoint: "start" | "end" | null;
   onSelectEndpoint: (endpoint: "start" | "end") => void;
+  onMoveEndpoint: (id: string, endpoint: "start" | "end", position: ParametricVector3) => void;
   locale: "en" | "es";
   onPlace: (kind: "text" | "dimension", start: ParametricVector3, end?: ParametricVector3) => void;
   onFinish: (id: string, text: string, size: number) => void;
@@ -37,6 +38,13 @@ export function AnnotationInteraction(props: Props) {
   const input = useRef<HTMLTextAreaElement>(null);
   const startMarker = useRef<HTMLButtonElement>(null);
   const endMarker = useRef<HTMLButtonElement>(null);
+  const [endpointDragging, setEndpointDragging] = useState(false);
+  const endpointDrag = useRef<{
+    annotation: Extract<ParametricAnnotation, { kind: "dimension" }>;
+    endpoint: "start" | "end"; pointerId: number; element: HTMLButtonElement;
+    x: number; y: number; plane: THREE.Plane; offset: THREE.Vector3;
+    latest: THREE.Vector3 | null;
+  } | null>(null);
   const dragging = useRef<{ x: number; size: number; pointerId: number } | null>(null);
   const draft = useRef({ text, size }); draft.current = { text, size };
   const finish = () => {
@@ -48,6 +56,73 @@ export function AnnotationInteraction(props: Props) {
     const active = current.current.selected;
     if (active?.kind === "text") { setText(active.text); setSize(active.size); draft.current = { text: active.text, size: active.size }; }
     current.current.onEdit(null); current.current.onPreview(null);
+  };
+  const cancelEndpointDrag = () => {
+    const drag = endpointDrag.current;
+    endpointDrag.current = null;
+    if (drag?.element.hasPointerCapture(drag.pointerId)) drag.element.releasePointerCapture(drag.pointerId);
+    setEndpointDragging(false); setSnapped(null); current.current.onPreview(null);
+  };
+  const rayAtPointer = (event: { clientX: number; clientY: number }) => {
+    const cam = camera.current;
+    const canvas = host.current?.querySelector("canvas");
+    if (!cam || !canvas) return null;
+    const bounds = canvas.getBoundingClientRect();
+    const ray = new THREE.Raycaster();
+    cam.updateMatrixWorld();
+    ray.setFromCamera(new THREE.Vector2((event.clientX - bounds.left) / bounds.width * 2 - 1, -(event.clientY - bounds.top) / bounds.height * 2 + 1), cam);
+    return ray.ray;
+  };
+  const beginEndpointDrag = (event: ReactPointerEvent<HTMLButtonElement>, endpoint: "start" | "end") => {
+    event.stopPropagation();
+    if (event.button !== 0 || selected?.kind !== "dimension") return;
+    event.preventDefault(); props.onSelectEndpoint(endpoint);
+    const root = model.current, cam = camera.current, ray = rayAtPointer(event);
+    if (!root || !cam || !ray) return;
+    const point = selected[endpoint];
+    const world = root.localToWorld(new THREE.Vector3(point.x, point.y, point.z));
+    let normal = new THREE.Vector3(props.workplane.normal.x, props.workplane.normal.y, props.workplane.normal.z).transformDirection(root.matrixWorld);
+    if (Math.abs(normal.dot(ray.direction)) < 0.05) normal = cam.getWorldDirection(new THREE.Vector3());
+    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, world);
+    const hit = ray.intersectPlane(plane, new THREE.Vector3());
+    if (!hit) return;
+    endpointDrag.current = { annotation: structuredClone(selected), endpoint, element: event.currentTarget, pointerId: event.pointerId, x: event.clientX, y: event.clientY, plane, offset: world.clone().sub(hit), latest: null };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const moveEndpointDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const drag = endpointDrag.current, root = model.current;
+    if (!drag || drag.pointerId !== event.pointerId || !root) return;
+    event.preventDefault(); event.stopPropagation();
+    if (!drag.latest && Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < 3) return;
+    const target = snapPoint.current?.(event.nativeEvent) ?? null;
+    setSnapped((previous) => previous && target && previous.distanceToSquared(target) < 1e-12 ? previous : target?.clone() ?? null);
+    let point = target?.clone() ?? null;
+    if (!point) {
+      const ray = rayAtPointer(event);
+      const hit = ray?.intersectPlane(drag.plane, new THREE.Vector3());
+      if (!hit) return;
+      point = root.worldToLocal(hit.add(drag.offset));
+      const plane = props.workplane;
+      if (plane.snapToGrid) {
+        const origin = new THREE.Vector3(plane.origin.x, plane.origin.y, plane.origin.z);
+        const delta = point.clone().sub(origin);
+        const axes = [plane.xAxis, plane.yAxis, plane.normal].map((axis) => new THREE.Vector3(axis.x, axis.y, axis.z));
+        point.copy(origin);
+        axes.forEach((axis, index) => point!.addScaledVector(axis, index < 2 ? Math.round(delta.dot(axis) / plane.snapSpacing) * plane.snapSpacing : delta.dot(axis)));
+      }
+    }
+    drag.latest = point;
+    setEndpointDragging(true);
+    onPreview({ ...drag.annotation, [drag.endpoint]: { x: point.x, y: point.y, z: point.z } });
+  };
+  const finishEndpointDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const drag = endpointDrag.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    event.stopPropagation();
+    endpointDrag.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    if (drag.latest) props.onMoveEndpoint(drag.annotation.id, drag.endpoint, { x: drag.latest.x, y: drag.latest.y, z: drag.latest.z });
+    setEndpointDragging(false); setSnapped(null); onPreview(null);
   };
   useEffect(() => {
     if (selected?.kind === "text") { setText(selected.text); setSize(selected.size); }
@@ -106,6 +181,7 @@ export function AnnotationInteraction(props: Props) {
     };
     const key = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      if (endpointDrag.current) { event.stopImmediatePropagation(); cancelEndpointDrag(); return; }
       if (current.current.tool) { current.current.onCancelTool(); current.current.onPreview(null); start.current = null; setSnapped(null); }
       else if (current.current.editing) cancelEdit();
     };
@@ -170,8 +246,8 @@ export function AnnotationInteraction(props: Props) {
   const textAnnotation = selected?.kind === "text" ? selected : null;
   return <>
     {tool && <div className="educad-annotation-instruction">{locale === "es" ? tool === "text" ? "Pulsa en el plano para colocar la etiqueta · Esc cancela" : "Elige dos puntos · vértices y puntos medios disponibles · Esc cancela" : tool === "text" ? "Click the plane to place a label · Esc cancels" : "Pick two points · vertices and edge midpoints available · Esc cancels"}</div>}
-    {snapped && tool === "dimension" && <div ref={marker} className="educad-annotation-snap-marker" />}
-    {selected?.kind === "dimension" && selected.visible && (["start", "end"] as const).map((endpoint) => <button key={endpoint} ref={endpoint === "start" ? startMarker : endMarker} type="button" className={`educad-dimension-endpoint ${props.selectedEndpoint === endpoint ? "active" : ""}`} aria-pressed={props.selectedEndpoint === endpoint} aria-label={locale === "es" ? endpoint === "start" ? "Seleccionar punto inicial" : "Seleccionar punto final" : endpoint === "start" ? "Select start point" : "Select end point"} title={locale === "es" ? endpoint === "start" ? "Punto inicial" : "Punto final" : endpoint === "start" ? "Start point" : "End point"} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); props.onSelectEndpoint(endpoint); }} />)}
+    {snapped && (tool === "dimension" || endpointDragging) && <div ref={marker} className="educad-annotation-snap-marker" />}
+    {selected?.kind === "dimension" && selected.visible && (["start", "end"] as const).map((endpoint) => <button key={endpoint} ref={endpoint === "start" ? startMarker : endMarker} type="button" className={`educad-dimension-endpoint ${props.selectedEndpoint === endpoint ? "active" : ""}`} aria-pressed={props.selectedEndpoint === endpoint} aria-label={locale === "es" ? endpoint === "start" ? "Seleccionar punto inicial" : "Seleccionar punto final" : endpoint === "start" ? "Select start point" : "Select end point"} title={locale === "es" ? endpoint === "start" ? "Punto inicial" : "Punto final" : endpoint === "start" ? "Start point" : "End point"} onPointerDown={(event) => beginEndpointDrag(event, endpoint)} onPointerMove={moveEndpointDrag} onPointerUp={finishEndpointDrag} onPointerCancel={cancelEndpointDrag} onLostPointerCapture={() => { if (endpointDrag.current) cancelEndpointDrag(); }} onClick={(event) => { event.stopPropagation(); props.onSelectEndpoint(endpoint); }} />)}
     {textAnnotation?.visible && <div ref={editor} className="educad-annotation-editor" style={{ fontFamily: `${textAnnotation.font}, sans-serif`, textAlign: textAnnotation.alignment }}>
       {editing ? <textarea ref={input} value={text} maxLength={2000} aria-label={locale === "es" ? "Texto de la etiqueta" : "Label text"} onChange={(event) => { setText(event.target.value); draft.current.text = event.target.value; }} onKeyDown={(event) => { event.stopPropagation(); if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); finish(); } if (event.key === "Escape") cancelEdit(); }} /> : <button className="educad-annotation-edit-target" aria-label={locale === "es" ? "Editar etiqueta" : "Edit label"} title={locale === "es" ? "Doble clic para editar" : "Double-click to edit"} onDoubleClick={() => props.onEdit(textAnnotation.id)} />}
       {props.parameterHandlesVisible && <div className="educad-annotation-size-slider" style={{ width: Math.max(140, size * 8 + 28) }}>
