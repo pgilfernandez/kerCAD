@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, Languages } from "lucide-react";
+import { HeaderToolbarIcon } from "@/components/icons";
 import { useEffect, useRef, useState } from "react";
 import type { EducadLocale } from "@/lib/educadI18n";
 
@@ -16,8 +16,8 @@ export function EditorHeaderActions({ locale, onLocaleChange }: { locale: Educad
     return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape); };
   }, [open]);
   return <div ref={root} className="educad-header-actions">
-    <a href={`/documentation?lang=${locale}`} target="_blank" rel="noopener noreferrer" aria-label={locale === "es" ? "Documentación" : "Documentation"} title={locale === "es" ? "Documentación" : "Documentation"}><BookOpen size={20} aria-hidden="true" /></a>
-    <button type="button" aria-label={locale === "es" ? "Idioma" : "Language"} title={locale === "es" ? "Idioma" : "Language"} aria-expanded={open} aria-controls="educad-header-language-menu" onClick={() => setOpen((value) => !value)}><Languages size={20} aria-hidden="true" /></button>
+    <a href={`/documentation?lang=${locale}`} target="_blank" rel="noopener noreferrer" aria-label={locale === "es" ? "Documentación" : "Documentation"} title={locale === "es" ? "Documentación" : "Documentation"}><HeaderToolbarIcon file="documentation" /></a>
+    <button type="button" aria-label={locale === "es" ? "Idioma" : "Language"} title={locale === "es" ? "Idioma" : "Language"} aria-expanded={open} aria-controls="educad-header-language-menu" onClick={() => setOpen((value) => !value)}><HeaderToolbarIcon file="language" /></button>
     {open ? <div id="educad-header-language-menu" className="educad-header-language-menu" role="group" aria-label={locale === "es" ? "Idioma" : "Language"}>
       {(["en", "es"] as const).map((language) => <button key={language} type="button" lang={language} aria-pressed={locale === language} onClick={() => { onLocaleChange(language); setOpen(false); }}>{language === "en" ? "English" : "Español"}</button>)}
     </div> : null}

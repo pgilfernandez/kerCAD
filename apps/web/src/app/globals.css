@@ -3609,6 +3609,7 @@ button {
 
 .educad-toolbar-titlebar .educad-project-name strong { font-weight: 700; }
 .educad-header-actions { position: absolute; top: 0; right: 8px; height: 32px; display: flex; align-items: center; gap: 10px; z-index: 5; }
+.educad-header-svg-icon { display: block; width: 20px; height: 20px; background: currentColor; mask-size: contain; mask-position: center; mask-repeat: no-repeat; -webkit-mask-size: contain; -webkit-mask-position: center; -webkit-mask-repeat: no-repeat; }
 .educad-header-actions > a, .toolbar-workspace-tabs .educad-header-actions > button { display: grid; place-items: center; width: 30px; height: 28px; padding: 3px; border: 0; border-radius: 5px; color: white; background: transparent; text-decoration: none; }
 .educad-header-actions > a:hover, .toolbar-workspace-tabs .educad-header-actions > button:hover { color: #1269eb; background: rgba(255,255,255,.8); }
 .educad-header-language-menu { position: absolute; top: 34px; right: 0; width: 150px; padding: 5px; border: 1px solid #c7d5de; border-radius: 7px; background: white; box-shadow: 0 5px 18px #173b5a26; }
