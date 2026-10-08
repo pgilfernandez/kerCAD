@@ -3709,7 +3709,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             setEditingAnnotationId(kind === "text" ? id : null);
           }}
           onFinishAnnotation={(id, text, size) => {
-            mutate((draft) => { const annotation = draft.annotations?.find((item) => item.id === id); if (annotation?.kind === "text") { annotation.text = text; annotation.size = size; } });
+            mutate((draft) => { const annotation = draft.annotations?.find((item) => item.id === id); if (annotation) { if (annotation.kind === "text") annotation.text = text; annotation.size = size; } });
             setEditingAnnotationId(null);
           }}
           onThumbnail={(dataUrl) => {
@@ -3756,6 +3756,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             : modelSelection.length > 0 || Boolean(selectedAnnotation)}
           manipulatorControls={selectedAnnotation ? <>
             <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
+            {selectedAnnotation.kind !== "text" && (selectedAnnotation.kind === "angle" || selectedAnnotation.showLength !== false) && <Tool label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>}
             {selectedAnnotation.kind === "text" && <>
               <Tool label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>
               <Tool label={t("operation.edit")} active={editingAnnotationId === selectedAnnotation.id} onClick={() => setEditingAnnotationId(selectedAnnotation.id)}><ToolbarEditOperationIcon /></Tool>

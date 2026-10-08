@@ -91,7 +91,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
       const angle = annotationAngleGeometry(annotation);
       if (angle) {
         if (angle.degrees > 0.0001) for (let index = 1; index < angle.arc.length; index++) points.push(angle.arc[index - 1], angle.arc[index]);
-        label(`${angle.degrees.toFixed(2)}°`, angle.labelPosition, 3);
+        label(`${angle.degrees.toFixed(2)}°`, angle.labelPosition, annotation.size ?? 3);
       }
       drawLines(points, annotation.id, color);
       continue;
@@ -121,7 +121,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
       }
       disposables.push(cone, coneMaterial);
     }
-    if (annotation.showLength !== false) label(`${formatDisplayLength(distance, unit)} ${displayUnitLabel(unit)}`, start.clone().add(end).multiplyScalar(0.5), 3);
+    if (annotation.showLength !== false) label(`${formatDisplayLength(distance, unit)} ${displayUnitLabel(unit)}`, start.clone().add(end).multiplyScalar(0.5), annotation.size ?? 3);
   }
   return { group, dispose: () => { group.removeFromParent(); disposables.forEach((resource) => resource.dispose()); } };
 }

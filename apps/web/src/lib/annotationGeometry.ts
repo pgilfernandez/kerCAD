@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { ParametricAnnotation, ParametricVector3 } from "@/types/parametric";
+import { displayUnitLabel, formatDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
 
 export type AnnotationPoint = "start" | "center" | "end";
 
@@ -36,5 +37,16 @@ export function annotationAngleGeometry(annotation: Extract<ParametricAnnotation
   const pointAt = (radians: number, distance: number) => center.clone().addScaledVector(first, Math.cos(radians) * distance).addScaledVector(tangent, Math.sin(radians) * distance);
   const segments = Math.max(8, Math.ceil(angle * 24));
   const arc = Array.from({ length: segments + 1 }, (_, index) => pointAt(angle * index / segments, radius));
-  return { degrees: THREE.MathUtils.radToDeg(angle), radius, arc, labelPosition: pointAt(angle / 2, radius + Math.max(6, radius / 4)) };
+  return { degrees: THREE.MathUtils.radToDeg(angle), radius, arc, labelPosition: pointAt(angle / 2, radius + Math.max((annotation.size ?? 3) * 2, radius / 4)) };
+}
+
+export function annotationLabelInfo(annotation: ParametricAnnotation, unit: ParametricDisplayUnit) {
+  if (annotation.kind === "text") return { position: new THREE.Vector3(annotation.position.x, annotation.position.y, annotation.position.z), text: annotation.text, font: annotation.font, alignment: annotation.alignment };
+  if (annotation.kind === "angle") {
+    const angle = annotationAngleGeometry(annotation);
+    return angle ? { position: angle.labelPosition, text: `${angle.degrees.toFixed(2)}°`, font: "Arial", alignment: "center" as const } : null;
+  }
+  if (annotation.showLength === false) return null;
+  const distance = Math.hypot(annotation.end.x - annotation.start.x, annotation.end.y - annotation.start.y, annotation.end.z - annotation.start.z);
+  return { position: new THREE.Vector3((annotation.start.x + annotation.end.x) / 2, (annotation.start.y + annotation.end.y) / 2, (annotation.start.z + annotation.end.z) / 2), text: `${formatDisplayLength(distance, unit)} ${displayUnitLabel(unit)}`, font: "Arial", alignment: "center" as const };
 }

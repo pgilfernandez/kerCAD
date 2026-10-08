@@ -245,8 +245,8 @@ export type ParametricAnnotation = {
   name: string;
   visible: boolean;
 } & ({ kind: "text"; position: ParametricVector3; alignment: "left" | "center" | "right"; size: number; font: string; text: string }
-  | { kind: "dimension"; start: ParametricVector3; end: ParametricVector3; color?: string; startArrow?: boolean; endArrow?: boolean; lineStyle?: "solid" | "dashed"; showLength?: boolean }
-  | { kind: "angle"; start: ParametricVector3; center: ParametricVector3; end: ParametricVector3; color?: string });
+  | { kind: "dimension"; start: ParametricVector3; end: ParametricVector3; size?: number; color?: string; startArrow?: boolean; endArrow?: boolean; lineStyle?: "solid" | "dashed"; showLength?: boolean }
+  | { kind: "angle"; start: ParametricVector3; center: ParametricVector3; end: ParametricVector3; size?: number; color?: string });
 
 export type ParametricDocument = {
   schema: "educad-parametric/v1" | "educad-parametric/v2";
