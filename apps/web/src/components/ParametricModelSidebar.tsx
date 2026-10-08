@@ -876,13 +876,13 @@ function DeferredNumberInput({ value, min, max, step, unit, onCommit }: { value:
   return <span className="educad-number-input" onWheel={(event) => { event.preventDefault(); nudge(event.deltaY < 0 ? 1 : -1); }}><input ref={inputRef} type="text" inputMode="decimal" value={draft} onFocus={() => setEditing(true)} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={handleKeyDown} />{visibleUnit ? <small>{visibleUnit}</small> : null}<span className="educad-number-steppers"><button type="button" tabIndex={-1} aria-label={t("input.increment")} title={t("input.increment")} onPointerDown={(event) => { event.preventDefault(); nudge(1); }}>▲</button><button type="button" tabIndex={-1} aria-label={t("input.decrement")} title={t("input.decrement")} onPointerDown={(event) => { event.preventDefault(); nudge(-1); }}>▼</button></span></span>;
 }
 
-function BoundedNumberField({ label, value, min, max, unit = "mm", onChange }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (value: number) => void }) {
+function BoundedNumberField({ label, value, min, max, step, unit = step === undefined ? "mm" : "", onChange }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (value: number) => void }) {
   const steps = useContext(NumericStepContext);
   const localizedLabel = useLocalizedSidebarLiteral(label);
   const clampedValue = Math.min(max, Math.max(min, value));
   return (
     <label className="educad-compact-number-property">
-      <span>{localizedLabel}</span><DeferredNumberInput value={clampedValue} min={min} max={max} step={steps.input} unit={unit} onCommit={(next) => onChange(Math.min(max, Math.max(min, next)))} />
+      <span>{localizedLabel}</span><DeferredNumberInput value={clampedValue} min={min} max={max} step={step ?? steps.input} unit={unit} onCommit={(next) => onChange(Math.min(max, Math.max(min, next)))} />
     </label>
   );
 }

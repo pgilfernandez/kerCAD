@@ -3968,7 +3968,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           document={document}
           selection={modelSelection}
           mode={modelSidebarMode}
-          gridStep={document.workplane.gridStep}
+          gridStep={document.workplane.snapSpacing}
           displayUnit={displayUnit}
           locale={locale}
           editingOriginObjectId={originEditObjectId}
