@@ -256,7 +256,7 @@ export function ParametricModelSidebar({
                   {annotationsExpanded && <div className="educad-operation-list" role="group" aria-label={t("annotation.group")}>
                     {document.annotations?.map((annotation) => <div key={annotation.id} className={`educad-operation-row ${selectedAnnotationId === annotation.id ? "selected" : ""} ${annotation.visible ? "" : "hidden"}`}>
                       <button className="educad-operation-select" title={annotation.name} aria-pressed={selectedAnnotationId === annotation.id} onClick={() => onSelectAnnotation?.(annotation.id)}><span className="educad-tree-branch" aria-hidden="true" /><AnnotationIcon kind={annotation.kind} /><span className="educad-operation-name"><strong>{annotation.name}</strong></span></button>
-                      <div className="educad-tree-actions"><button title={annotation.visible ? t("model.hide") : t("model.show")} aria-label={annotation.visible ? t("model.hide") : t("model.show")} onClick={() => onUpdateAnnotation?.(annotation.id, (draft) => { draft.visible = !draft.visible; })}><OperationTreeIcon file={annotation.visible ? "visible" : "hidden"} size={15} /></button></div>
+                      <div className="educad-tree-actions"><button aria-pressed={!annotation.visible} title={annotation.visible ? t("model.hide") : t("model.show")} aria-label={annotation.visible ? t("model.hide") : t("model.show")} onClick={() => onUpdateAnnotation?.(annotation.id, (draft) => { draft.visible = !draft.visible; })}><OperationTreeIcon file={annotation.visible ? "visible" : "hidden"} size={15} /></button></div>
                     </div>)}
                   </div>}
                 </div>
