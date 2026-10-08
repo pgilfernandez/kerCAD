@@ -52,13 +52,13 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
       if (annotation.id === selectedId) {
         const sphere = (color: string, pixels: number) => {
           const geometry = new THREE.SphereGeometry(1, 16, 12);
-          const material = new THREE.MeshLambertMaterial({ color, depthTest: false, depthWrite: false, transparent: true });
+          const material = new THREE.MeshBasicMaterial({ color, depthTest: false, depthWrite: false, transparent: true });
           const handle = new THREE.Mesh(geometry, material);
           handle.renderOrder = 110; handle.userData.yellowManipulatorBaseRadius = 1; handle.userData.yellowManipulatorDiameterPixels = pixels;
           circle.add(handle); disposables.push(geometry, material);
           return handle;
         };
-        sphere("#ffffff", 14).userData.annotationPoint = "position";
+        sphere("#add8ff", 14).userData.annotationPoint = "position";
         if (pointSelection.parametersVisible) {
           const end = new THREE.Vector3(annotation.radius + 4, 0, 0);
           const guide = drawLines([new THREE.Vector3(), end], annotation.id, "#e4bc00");
@@ -76,7 +76,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
         const point = annotationPosition(annotation, key);
         if (!point) continue;
         const geometry = new THREE.SphereGeometry(1, 16, 12);
-        const material = new THREE.MeshLambertMaterial({ color: active ? "#ffe431" : "#ffffff", depthTest: false, depthWrite: false, transparent: true });
+        const material = new THREE.MeshBasicMaterial({ color: active ? "#ffe431" : "#add8ff", depthTest: false, depthWrite: false, transparent: true });
         const sphere = new THREE.Mesh(geometry, material);
         sphere.position.copy(vector(point));
         sphere.renderOrder = 110;
