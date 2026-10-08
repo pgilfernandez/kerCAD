@@ -5043,7 +5043,8 @@ button {
 .sketch-profile-status {
   position: absolute;
   bottom: 12px;
-  right: 12px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 9;
   display: flex;
   max-width: min(520px, calc(100% - 100px));
