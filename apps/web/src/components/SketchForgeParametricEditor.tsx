@@ -3489,14 +3489,14 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           onOperationAxisMove={(featureId, delta) => mutate((draft) => applyParametricSelectionWorldDelta(draft, featureId, "feature", delta))}
           onOperationRotate={(featureId, axis, deltaDegrees) => mutate((draft) => applyParametricSelectionWorkplaneRotation(draft, featureId, "feature", axis, deltaDegrees))}
           onCameraOrientation={setCameraOrientation}
-          onObjectSelect={(objectId) => {
+          onObjectSelect={(objectId, featureId) => {
             if (alignOpen) {
               selectAlignmentReference(modelSelection.find(item => objectIdForFeature(document, item.id) === objectId) ?? null);
               return;
             }
             const object = document.objects.find((candidate) => candidate.id === objectId);
             if (!object || object.locked || !object.visible) return;
-            const operation = lastOperationForObject(document, objectId);
+            const operation = featureId ? document.features.find((feature) => feature.id === featureId && feature.objectId === objectId) : lastOperationForObject(document, objectId);
             setModelSelection([{ id: operation?.id ?? objectId, kind: operation ? "feature" : "object" }]);
           }}
           onObjectsSelect={(objectIds) => {

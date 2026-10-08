@@ -218,7 +218,7 @@ type Props = {
   onOperationAxisMove?: (featureId: string, delta: { x: number; y: number; z: number }) => void;
   onOperationRotate?: (featureId: string, axis: { x: number; y: number; z: number }, deltaDegrees: number) => void;
   onCameraOrientation?: (orientation: CameraOrientation) => void;
-  onObjectSelect?: (objectId: string) => void;
+  onObjectSelect?: (objectId: string, featureId?: string) => void;
   alignmentActive?: boolean;
   alignmentBusy?: boolean;
   alignmentTargets?: AlignmentTarget[];
@@ -2806,6 +2806,17 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
           else alignment.onSelect?.(null);
           return;
         }
+        const sketchDrawings: THREE.Object3D[] = [];
+        sketchLayer.traverse((child) => {
+          if (child instanceof LineSegments2 && child.userData.editorPickable !== false && typeof child.userData.objectId === "string") sketchDrawings.push(child);
+        });
+        Object.assign(raycaster.params, { Line2: { threshold: 4 } });
+        sketchLayer.updateMatrixWorld(true);
+        const sketchHit = raycaster.intersectObjects(sketchDrawings, false)[0];
+        if (sketchHit && (!hit || sketchHit.distance <= hit.distance + 0.01)) {
+          objectSelectRef.current?.(sketchHit.object.userData.objectId, sketchHit.object.userData.sketchFeatureId);
+          return;
+        }
         const objectId = hit?.object.userData.objectId;
         if (typeof objectId === "string") objectSelectRef.current?.(objectId);
         else emptySelectRef.current?.();
@@ -3628,6 +3639,8 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
       const drawing = new LineSegments2(geometry, material);
       drawing.renderOrder = 19;
       drawing.userData.sketchFeatureId = overlay.feature.id;
+      drawing.userData.objectId = overlay.object?.id;
+      drawing.userData.editorPickable = Boolean(overlay.object && overlay.object.visible !== false && !overlay.object.locked);
       sketchRoot.add(drawing);
       objectRoot.add(sketchRoot);
       layer.add(objectRoot);
