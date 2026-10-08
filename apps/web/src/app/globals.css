@@ -1555,6 +1555,11 @@ button {
 .export-format-icon.step { color: #8d621a; background: #fff0cf; }
 .educad-stl-export-option { overflow: hidden; background: #fff; border: 1px solid #cfdae3; border-radius: 8px; transition: border-color 140ms ease, box-shadow 140ms ease; }
 .educad-stl-export-option:hover { border-color: #67b8d4; box-shadow: 0 4px 14px rgba(28, 70, 91, 0.12); }
+.educad-project-export-option { overflow: hidden; background: #fff; border: 1px solid #cfdae3; border-radius: 8px; }
+.educad-export-options .educad-project-export-option > button { width: 100%; border: 0; border-radius: 0; }
+.educad-project-author { display: grid; gap: 6px; padding: 8px 12px; border-top: 1px solid #e2e9ee; color: #31566d; font-size: 11px; }
+.educad-project-author input { width: 100%; padding: 7px 9px; border: 1px solid #cbdce6; border-radius: 5px; color: #173b5a; background: white; font: inherit; }
+.educad-project-credits { display: grid; gap: 4px; padding: 0 12px 10px; color: #657b8c; font-size: 10px; overflow-wrap: anywhere; }
 .educad-export-options .educad-stl-export-option > button { width: 100%; border: 0; border-radius: 0; box-shadow: none; }
 .educad-stl-scope-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 8px 12px; border-top: 1px solid #e2e9ee; }
 .educad-export-options .educad-stl-scope-buttons button { display: block; min-height: 34px; padding: 6px; text-align: center; font-size: 11px; }

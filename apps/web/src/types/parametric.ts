@@ -244,6 +244,8 @@ export type ParametricDocument = {
   schema: "educad-parametric/v1" | "educad-parametric/v2";
   id: string;
   name: string;
+  creator?: string;
+  author?: string;
   units: "mm";
   color: string;
   workplane: {

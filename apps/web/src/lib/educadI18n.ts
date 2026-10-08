@@ -1,6 +1,7 @@
 export type EducadLocale = "es" | "en";
 
 const es = {
+  "dialog.authorName": "Tu nombre", "dialog.creator": "Creador", "dialog.lastAuthor": "Autor de la última modificación",
   "about.title": "acerca de eduCAD", "about.label": "Acerca de eduCAD",
   "about.description": "CAD paramétrico de código abierto para educación.",
   "about.version": "Versión", "about.cadEngine": "Motor CAD", "about.viewer": "Visor 3D",
@@ -140,6 +141,7 @@ const es = {
 export type EducadTranslationKey = keyof typeof es;
 
 const en: Record<EducadTranslationKey, string> = {
+  "dialog.authorName": "Your name", "dialog.creator": "Creator", "dialog.lastAuthor": "Last modified by",
   "about.title": "about eduCAD", "about.label": "about eduCAD",
   "about.description": "Open-source parametric CAD for education.",
   "about.version": "Version", "about.cadEngine": "CAD engine", "about.viewer": "3D viewer",

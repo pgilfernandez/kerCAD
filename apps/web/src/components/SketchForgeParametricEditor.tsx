@@ -559,15 +559,25 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [sharedSaving, setSharedSaving] = useState(false);
   const [sharedName, setSharedName] = useState(sharedFileName?.replace(/\.educad$/i, "") ?? initialDocument.name);
   const [sharedAuthor, setSharedAuthor] = useState("");
+  const [authorPreferenceLoaded, setAuthorPreferenceLoaded] = useState(false);
   const [sharedSaveMessage, setSharedSaveMessage] = useState("");
   useEffect(() => {
     try { setSharedAuthor(localStorage.getItem("educad.shared-author") ?? ""); } catch {}
+    setAuthorPreferenceLoaded(true);
   }, []);
+  useEffect(() => {
+    if (!authorPreferenceLoaded) return;
+    try { localStorage.setItem("educad.shared-author", sharedAuthor.trim()); } catch {}
+  }, [sharedAuthor, authorPreferenceLoaded]);
   const publishShared = async () => {
     if (!onSaveShared || sharedSaving || !sharedName.trim() || !sharedAuthor.trim()) return;
     setSharedSaving(true); setSharedSaveMessage("");
     try {
-      await onSaveShared(structuredClone(latestDocumentRef.current), `${sharedName.trim().replace(/\.educad$/i, "")}.educad`, sharedAuthor.trim());
+      const saved = structuredClone(latestDocumentRef.current);
+      saved.creator = saved.creator || saved.author || sharedAuthor.trim();
+      saved.author = sharedAuthor.trim();
+      await onSaveShared(saved, `${sharedName.trim().replace(/\.educad$/i, "")}.educad`, sharedAuthor.trim());
+      commit(saved);
       try { localStorage.setItem("educad.shared-author", sharedAuthor.trim()); } catch {}
       setSharedSaveMessage(locale === "es" ? "Proyecto guardado en compartidos." : "Project saved to shared.");
     } catch (error) { setSharedSaveMessage(error instanceof Error ? error.message : "Could not save shared project."); }
@@ -917,12 +927,16 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
 
   const commit = useCallback((next: ParametricDocument) => {
     next.updatedAt = Date.now();
+    if (sharedAuthor.trim()) {
+      next.creator = next.creator || next.author || sharedAuthor.trim();
+      next.author = sharedAuthor.trim();
+    }
     // Keep the newest committed document available synchronously. A numeric
     // field commits on blur immediately before the brand button's click, so a
     // render-based closure can otherwise still contain the preceding value.
     latestDocumentRef.current = next;
     setHistory((current) => commitHistoryDocument(current, next));
-  }, []);
+  }, [sharedAuthor]);
 
   const beginTransaction = useCallback(() => setHistory(beginHistoryTransaction), []);
   const finishTransaction = useCallback(() => setHistory((current) => finishHistoryTransaction(current)), []);
@@ -3080,9 +3094,15 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const exportProject = async () => {
     setProjectExporting(true);
     try {
-      const bytes = await exportEducadProject(document);
+      const saved = structuredClone(latestDocumentRef.current);
+      if (sharedAuthor.trim()) {
+        saved.creator = saved.creator || saved.author || sharedAuthor.trim();
+        saved.author = sharedAuthor.trim();
+      }
+      const bytes = await exportEducadProject(saved);
       const archive = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
       downloadBlob(new Blob([archive], { type: EDUCAD_PACKAGE_MEDIA_TYPE }), `${fileName(exportFileName)}.educad`);
+      commit(saved);
       setNotice({ type: "ok", text: t("notice.projectSaved") });
       setExportOpen(false);
     } catch (error) {
@@ -4014,7 +4034,11 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             </form> : null}
           </> : null}
           <div className="educad-export-options">
-            <button onClick={() => void exportProject()} disabled={projectExporting}><span className="export-format-icon">edu</span><strong>{projectExporting ? t("dialog.saving") : t("dialog.projectFormat")}</strong><small>{t("dialog.projectFormatHint")}</small></button>
+            <div className="educad-project-export-option">
+              <button onClick={() => void exportProject()} disabled={projectExporting}><span className="export-format-icon">edu</span><strong>{projectExporting ? t("dialog.saving") : t("dialog.projectFormat")}</strong><small>{t("dialog.projectFormatHint")}</small></button>
+              <label className="educad-project-author"><span>{t("dialog.authorName")}</span><input type="text" value={sharedAuthor} maxLength={160} autoComplete="name" placeholder={t("dialog.authorName")} onChange={(event) => setSharedAuthor(event.target.value)} disabled={projectExporting || sharedSaving} /></label>
+              <div className="educad-project-credits"><span>{t("dialog.creator")}: {document.creator || document.author || sharedAuthor.trim() || "—"}</span><span>{t("dialog.lastAuthor")}: {sharedAuthor.trim() || document.author || "—"}</span></div>
+            </div>
             <button onClick={() => void exportStep()} disabled={exporting || kernelBusy || !build.mesh || (exportScope === "selection" && !exportSelectedObjectIds.length)}><span className="export-format-icon step">STEP</span><strong>{exporting ? t("dialog.exporting") : t("dialog.stepFormat")}</strong><small>{t("dialog.stepFormatHint")}</small></button>
             <div className="educad-stl-export-option">
               <button onClick={() => void exportStl()} disabled={stlExporting || kernelBusy || build.objectRecords.length === 0 || (stlExportScope === "selection" && !exportSelectedObjectIds.length)}><span className="export-format-icon">STL</span><strong>{stlExporting ? t("dialog.exporting") : t("dialog.stlFormat")}</strong><small>{t("dialog.stlFormatHint")}</small></button>

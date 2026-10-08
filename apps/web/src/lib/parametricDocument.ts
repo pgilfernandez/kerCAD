@@ -344,6 +344,8 @@ export function migrateParametricDocument(document: ParametricDocument): Paramet
 
 export function normalizeParametricDocument(document: ParametricDocument): ParametricDocument {
   const next = migrateParametricDocument(document);
+  next.creator = typeof next.creator === "string" ? next.creator.trim().slice(0, 160) || undefined : undefined;
+  next.author = typeof next.author === "string" ? next.author.trim().slice(0, 160) || undefined : undefined;
   next.objects ??= [];
   next.topologyReferences ??= [];
   if (next.objects.length > PARAMETRIC_IMPORT_LIMITS.objects) throw new Error(`The project exceeds the ${PARAMETRIC_IMPORT_LIMITS.objects.toLocaleString("en-US")} object limit.`);
