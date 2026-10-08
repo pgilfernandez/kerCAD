@@ -4924,6 +4924,17 @@ button {
 .educad-parametric-sketch-toolbar .toolbar-section-tools { flex-wrap: nowrap; }
 .educad-parametric-sketch-toolbar button { flex-shrink: 0; touch-action: manipulation; }
 
+.toolbar-mode-content.geometry,
+.educad-parametric-sketch-toolbar {
+  scrollbar-width: none;
+}
+.toolbar-mode-content.geometry::-webkit-scrollbar,
+.educad-parametric-sketch-toolbar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 .educad-sketch-finish-actions {
   display: flex;
   align-items: center;
