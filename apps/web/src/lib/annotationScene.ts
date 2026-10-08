@@ -56,7 +56,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
     ];
     const geometry = new LineSegmentsGeometry();
     geometry.setPositions(points.flatMap((point) => [point.x, point.y, point.z]));
-    const material = new LineMaterial({ color, linewidth: 3, worldUnits: false, depthTest: false, depthWrite: false, transparent: true });
+    const material = new LineMaterial({ color, linewidth: 2, worldUnits: false, depthTest: false, depthWrite: false, transparent: true });
     const lines = new LineSegments2(geometry, material);
     // Keep the requested width in screen pixels across Retina/quality changes.
     lines.onBeforeRender = (renderer) => material.resolution.set(Math.max(1, renderer.domElement.clientWidth), Math.max(1, renderer.domElement.clientHeight));
