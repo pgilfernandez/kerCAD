@@ -1,7 +1,7 @@
-export type AnnotationTool = "text" | "dimension" | "arrow" | "dashedLine" | "angle";
+export type AnnotationTool = "text" | "dimension" | "arrow" | "dashedLine" | "angle" | "circle";
 
 /** Toolbar tools share a dimension model and only differ in initial appearance. */
-export function annotationDimensionPreset(tool: Exclude<AnnotationTool, "text" | "angle">) {
+export function annotationDimensionPreset(tool: Exclude<AnnotationTool, "text" | "angle" | "circle">) {
   return {
     color: tool === "dimension" ? "#233c52" : "#000000",
     startArrow: tool === "dimension",

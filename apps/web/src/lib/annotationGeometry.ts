@@ -5,7 +5,7 @@ import { displayUnitLabel, formatDisplayLength, type ParametricDisplayUnit } fro
 export type AnnotationPoint = "start" | "center" | "end";
 
 export function annotationPosition(annotation: ParametricAnnotation, point: AnnotationPoint | null) {
-  if (annotation.kind === "text") return annotation.position;
+  if (annotation.kind === "text" || annotation.kind === "circle") return annotation.position;
   if (!point) return null;
   if (point === "center") return annotation.kind === "angle" ? annotation.center : null;
   return annotation[point];
@@ -14,6 +14,14 @@ export function annotationPosition(annotation: ParametricAnnotation, point: Anno
 export function setAnnotationPosition(annotation: ParametricAnnotation, point: AnnotationPoint | null, position: ParametricVector3) {
   const target = annotationPosition(annotation, point);
   if (target) Object.assign(target, position);
+}
+
+export function rotatedCircleAnnotation(rotation: ParametricVector3, axis: "x" | "y" | "z", degrees: number) {
+  const current = new THREE.Quaternion().setFromEuler(new THREE.Euler(THREE.MathUtils.degToRad(rotation.x), THREE.MathUtils.degToRad(rotation.y), THREE.MathUtils.degToRad(rotation.z), "ZYX"));
+  const direction = new THREE.Vector3(axis === "x" ? 1 : 0, axis === "y" ? 1 : 0, axis === "z" ? 1 : 0);
+  current.multiply(new THREE.Quaternion().setFromAxisAngle(direction, THREE.MathUtils.degToRad(degrees)));
+  const result = new THREE.Euler().setFromQuaternion(current, "ZYX");
+  return { x: THREE.MathUtils.radToDeg(result.x), y: THREE.MathUtils.radToDeg(result.y), z: THREE.MathUtils.radToDeg(result.z) };
 }
 
 /** Minor angle in the plane defined by three CAD-space points. */
@@ -41,6 +49,7 @@ export function annotationAngleGeometry(annotation: Extract<ParametricAnnotation
 }
 
 export function annotationLabelInfo(annotation: ParametricAnnotation, unit: ParametricDisplayUnit) {
+  if (annotation.kind === "circle") return null;
   if (annotation.kind === "text") return { position: new THREE.Vector3(annotation.position.x, annotation.position.y, annotation.position.z), text: annotation.text, font: annotation.font, alignment: annotation.alignment };
   if (annotation.kind === "angle") {
     const angle = annotationAngleGeometry(annotation);

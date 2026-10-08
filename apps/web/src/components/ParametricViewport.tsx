@@ -22,7 +22,7 @@ import { parseNumericExpression, validateNumericExpression } from "@/lib/numeric
 import { createAnnotationScene } from "@/lib/annotationScene";
 import { AnnotationInteraction } from "@/components/AnnotationInteraction";
 import type { AnnotationTool } from "@/lib/annotationPresets";
-import { annotationPosition, type AnnotationPoint } from "@/lib/annotationGeometry";
+import { annotationPosition, rotatedCircleAnnotation, type AnnotationPoint } from "@/lib/annotationGeometry";
 import { viewportSelectionBounds } from "@/lib/viewportBounds";
 import type { ParametricDocument, ParametricFeature, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, RenderMesh, SketchFeature } from "@/types/parametric";
 
@@ -220,6 +220,7 @@ type Props = {
   selectedAnnotationEndpoint?: AnnotationPoint | null;
   onSelectAnnotationEndpoint?: (endpoint: AnnotationPoint) => void;
   onMoveAnnotationEndpoint?: (id: string, endpoint: AnnotationPoint, position: { x: number; y: number; z: number }) => void;
+  onCircleAnnotationRadius?: (id: string, radius: number) => void;
   annotationTool?: AnnotationTool | null;
   editingAnnotationId?: string | null;
   onPlaceAnnotation?: (kind: AnnotationTool, start: { x: number; y: number; z: number }, end?: { x: number; y: number; z: number }, center?: { x: number; y: number; z: number }) => void;
@@ -644,11 +645,12 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ onAnnotationSelect, annotationsVisible = true, onMoveAnnotationEndpoint, selectedAnnotationEndpoint = null, onSelectAnnotationEndpoint, annotationTool = null, editingAnnotationId = null, onPlaceAnnotation, onFinishAnnotation, onEditAnnotation, onCancelAnnotationTool, annotations, selectedAnnotationId = null, onProjectRename, mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, faceExtrudeDraft = null, onFaceExtrudeAccept, onFaceExtrudeCancel, faceExtrudeCanAccept = true, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, revolveDraft = null, onRevolveDraftChange, onRevolveAccept, onRevolveCancel, revolveCanAccept = true, distanceHandle = null, onDistanceParameterDragStart, onDistanceParameterPreview, onDistanceParameterChange, onDistanceParameterCancel, shellDraft = null, onShellDraftChange, onShellCornerTypeChange, onShellAccept, onShellCancel, shellCanAccept = true, floatingFeature = null, booleanObjects = [], patternSources = [], booleanAddOnly = false, operationModesVisible = true, contextToolbarVisible, manipulatorControls, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = "Untitled design", onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions, alignmentActive = false, alignmentBusy = false, alignmentTargets = [], alignmentReference = null, onAlignmentSelect, onAlign }: Props) {
+export function ParametricViewport({ onCircleAnnotationRadius, onAnnotationSelect, annotationsVisible = true, onMoveAnnotationEndpoint, selectedAnnotationEndpoint = null, onSelectAnnotationEndpoint, annotationTool = null, editingAnnotationId = null, onPlaceAnnotation, onFinishAnnotation, onEditAnnotation, onCancelAnnotationTool, annotations, selectedAnnotationId = null, onProjectRename, mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, faceExtrudeDraft = null, onFaceExtrudeAccept, onFaceExtrudeCancel, faceExtrudeCanAccept = true, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, revolveDraft = null, onRevolveDraftChange, onRevolveAccept, onRevolveCancel, revolveCanAccept = true, distanceHandle = null, onDistanceParameterDragStart, onDistanceParameterPreview, onDistanceParameterChange, onDistanceParameterCancel, shellDraft = null, onShellDraftChange, onShellCornerTypeChange, onShellAccept, onShellCancel, shellCanAccept = true, floatingFeature = null, booleanObjects = [], patternSources = [], booleanAddOnly = false, operationModesVisible = true, contextToolbarVisible, manipulatorControls, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = "Untitled design", onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions, alignmentActive = false, alignmentBusy = false, alignmentTargets = [], alignmentReference = null, onAlignmentSelect, onAlign }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const annotationSnapRef = useRef<(event: PointerEvent) => THREE.Vector3 | null>(() => null);
   const annotationPositionHandleRef = useRef<(event: PointerEvent) => boolean>(() => false);
-  const annotationPointHandleRef = useRef<(event: PointerEvent) => AnnotationPoint | null>(() => null);
+  const annotationPointHandleRef = useRef<(event: PointerEvent) => AnnotationPoint | "position" | null>(() => null);
+  const annotationRadiusHandleRef = useRef<(event: PointerEvent) => THREE.Object3D | null>(() => null);
   const annotationLayerRef = useRef<THREE.Group | null>(null);
   const annotationSelectRef = useRef(onAnnotationSelect);
   annotationSelectRef.current = onAnnotationSelect;
@@ -1174,6 +1176,7 @@ export function ParametricViewport({ onAnnotationSelect, annotationsVisible = tr
           : perspectiveTouchTargetWorldSize(camera.position.distanceTo(worldPosition), camera.fov, renderer.domElement.clientHeight, 102);
         marker.scale.setScalar(Math.max(0.35, size));
       }
+      annotationLayerRef.current?.userData.updateBillboards?.(camera);
       updateYellowManipulatorScreenSizes();
       updateGroundOpacity();
       if (alignmentButtonsRef.current) {
@@ -1920,16 +1923,27 @@ export function ParametricViewport({ onAnnotationSelect, annotationsVisible = tr
       const layer = annotationLayerRef.current;
       if (!layer?.visible) return null;
       layer.updateWorldMatrix(true, true);
-      const labels = layer.children.filter((child) => (child instanceof THREE.Sprite || child.userData.annotationPickable) && child.visible && annotationStateRef.current.annotations?.some((annotation) => annotation.id === child.userData.annotationId && annotation.visible));
+      layer.userData.updateBillboards?.(camera);
+      const labels: THREE.Object3D[] = [];
+      layer.traverse((child) => { if ((child instanceof THREE.Sprite || child.userData.annotationPickable) && child.visible && annotationStateRef.current.annotations?.some((annotation) => annotation.id === child.userData.annotationId && annotation.visible)) labels.push(child); });
       Object.assign(raycaster.params, { Line2: { threshold: 4 } });
       return raycaster.intersectObjects(labels, false)[0]?.object.userData.annotationId as string | undefined;
     };
     annotationPointHandleRef.current = (event) => {
       const layer = annotationLayerRef.current;
       if (!layer?.visible) return null;
-      setPointer(event); updateYellowManipulatorScreenSizes(); layer.updateWorldMatrix(true, true);
-      const handles = layer.children.filter((child) => child.visible && child.userData.annotationPoint);
-      return raycaster.intersectObjects(handles, false)[0]?.object.userData.annotationPoint as AnnotationPoint | undefined ?? null;
+      setPointer(event); layer.userData.updateBillboards?.(camera); updateYellowManipulatorScreenSizes(); layer.updateWorldMatrix(true, true);
+      const handles: THREE.Object3D[] = [];
+      layer.traverse((child) => { if (child.visible && child.userData.annotationPoint) handles.push(child); });
+      return raycaster.intersectObjects(handles, false)[0]?.object.userData.annotationPoint as AnnotationPoint | "position" | undefined ?? null;
+    };
+    annotationRadiusHandleRef.current = (event) => {
+      const layer = annotationLayerRef.current;
+      if (!layer?.visible) return null;
+      setPointer(event); layer.userData.updateBillboards?.(camera); updateYellowManipulatorScreenSizes(); layer.updateWorldMatrix(true, true);
+      const handles: THREE.Object3D[] = [];
+      layer.traverse((child) => { if (child.visible && child.userData.annotationRadiusTarget) handles.push(child); });
+      return raycaster.intersectObjects(handles, false)[0]?.object.parent ?? null;
     };
     processPendingHover = () => {
       const event = pendingHoverEvent;
@@ -1944,6 +1958,7 @@ export function ParametricViewport({ onAnnotationSelect, annotationsVisible = tr
       replaceHoverDimensions(hoveredManipulatorDimensions(event));
       if (!alignmentRef.current.active && annotationAtPointer() && !originHandleAtPointer()) renderer.domElement.style.cursor = "pointer";
       if (!alignmentRef.current.active && annotationPointHandleRef.current(event)) renderer.domElement.style.cursor = "grab";
+      if (!alignmentRef.current.active && annotationRadiusHandleRef.current(event)) renderer.domElement.style.cursor = "ew-resize";
     };
     const snapTargetAtPointer = (event: PointerEvent): THREE.Vector3 | null => {
       const bounds = renderer.domElement.getBoundingClientRect();
@@ -1996,6 +2011,7 @@ export function ParametricViewport({ onAnnotationSelect, annotationsVisible = tr
       if (!annotation) return;
       const point = { x: position.x, y: position.y, z: position.z };
       if (annotation.kind === "text") setAnnotationPreview({ ...annotation, position: point, text: state.editingAnnotationId === id ? "" : annotation.text });
+      else if (annotation.kind === "circle") setAnnotationPreview({ ...annotation, position: point });
       else if (state.selectedAnnotationEndpoint && annotationPosition(annotation, state.selectedAnnotationEndpoint)) setAnnotationPreview({ ...annotation, [state.selectedAnnotationEndpoint]: point });
     };
     const updateConePreview = (selected: ViewportSelection, baseRadius: number, topRadius: number, height: number) => {
@@ -2662,6 +2678,8 @@ export function ParametricViewport({ onAnnotationSelect, annotationsVisible = tr
         const rotationStep = event.shiftKey ? 15 : 1;
         const degrees = preciseDegrees ?? Math.round(rawDegrees / rotationStep) * rotationStep;
         pendingRotation.deltaDegrees = degrees;
+        const circle = annotationStateRef.current.annotations?.find((annotation) => annotation.id === pendingRotation!.targetId);
+        if (circle?.kind === "circle") setAnnotationPreview({ ...circle, rotation: rotatedCircleAnnotation(circle.rotation, pendingRotation.localAxis, degrees) });
         const parentAxis = new THREE.Vector3(pendingRotation.axis.x, pendingRotation.axis.y, pendingRotation.axis.z).normalize();
         rotationDragMarker.quaternion.copy(new THREE.Quaternion().setFromAxisAngle(parentAxis, THREE.MathUtils.degToRad(degrees)).multiply(rotationStartQuaternion));
         rotationPreview?.quaternion.setFromAxisAngle(rotationPlaneAxis, THREE.MathUtils.degToRad(degrees));
@@ -2893,7 +2911,7 @@ export function ParametricViewport({ onAnnotationSelect, annotationsVisible = tr
       }
       const completedDimensions = interactionDimensions;
       const completedInteraction = interaction;
-      if (completedInteraction === "axisMove" || completedInteraction === "snapMove") setAnnotationPreview(null);
+      if (completedInteraction === "axisMove" || completedInteraction === "snapMove" || completedInteraction === "axisRotate") setAnnotationPreview(null);
       interaction = null;
       interactionDimensions = [];
       pickCandidate = null;
@@ -3223,13 +3241,13 @@ export function ParametricViewport({ onAnnotationSelect, annotationsVisible = tr
       return shown.kind === "text" && shown.id === editingAnnotationId ? { ...shown, text: "" } : shown;
     });
     if (annotationPreview && !displayed.some((annotation) => annotation.id === annotationPreview.id)) displayed.push(annotationPreview);
-    const layer = createAnnotationScene(displayed, displayUnit, selectedAnnotationId, { point: selectedAnnotationEndpoint, triadVisible: objectOrigins.some((origin) => origin.objectId === selectedAnnotationId && origin.visible && origin.positionVisible !== false) });
+    const layer = createAnnotationScene(displayed, displayUnit, selectedAnnotationId, { point: selectedAnnotationEndpoint, triadVisible: objectOrigins.some((origin) => origin.objectId === selectedAnnotationId && origin.visible && origin.positionVisible !== false), parametersVisible: parameterHandlesVisible });
     layer.group.visible = annotationsVisible;
     annotationLayerRef.current = layer.group;
     model.add(layer.group);
     invalidateRef.current();
     return () => { if (annotationLayerRef.current === layer.group) annotationLayerRef.current = null; layer.dispose(); invalidateRef.current(); };
-  }, [annotations, annotationsVisible, annotationPreview, selectedAnnotationId, selectedAnnotationEndpoint, objectOrigins, editingAnnotationId, displayUnit, locale, renderQuality, shadingMode]);
+  }, [annotations, annotationsVisible, annotationPreview, selectedAnnotationId, selectedAnnotationEndpoint, objectOrigins, parameterHandlesVisible, editingAnnotationId, displayUnit, locale, renderQuality, shadingMode]);
 
   useEffect(() => {
     const model = modelRef.current;
@@ -4506,7 +4524,7 @@ export function ParametricViewport({ onAnnotationSelect, annotationsVisible = tr
     };
   }, [onProjectRename, projection, renderQuality, shadingMode]);
   return <div className="parametric-viewport" ref={hostRef} aria-label={locale === "es" ? "Vista 3D de la pieza" : "3D model view"}>
-    <AnnotationInteraction host={hostRef} camera={cameraRef} model={modelRef} snapPoint={annotationSnapRef} positionHandleAtPointer={(event) => annotationPositionHandleRef.current(event)} pointHandleAtPointer={(event) => annotationPointHandleRef.current(event)} workplane={workplane} displayUnit={displayUnit} tool={annotationTool} selected={annotationInteractionSelection ? { ...annotationInteractionSelection, visible: annotationInteractionSelection.visible && annotationsVisible } : undefined} parameterHandlesVisible={parameterHandlesVisible} onSelectEndpoint={(endpoint) => onSelectAnnotationEndpoint?.(endpoint)} onMoveEndpoint={(id, endpoint, position) => onMoveAnnotationEndpoint?.(id, endpoint, position)} onMoveText={(id, position) => onObjectAxisMove?.(id, position)} editing={Boolean(editingAnnotationId && editingAnnotationId === selectedAnnotationId)} locale={locale} onPlace={(kind, start, end, center) => onPlaceAnnotation?.(kind, start, end, center)} onFinish={(id, text, size) => onFinishAnnotation?.(id, text, size)} onEdit={(id) => onEditAnnotation?.(id)} onCancelTool={() => onCancelAnnotationTool?.()} onPreview={setAnnotationPreview} />
+    <AnnotationInteraction host={hostRef} camera={cameraRef} model={modelRef} snapPoint={annotationSnapRef} positionHandleAtPointer={(event) => annotationPositionHandleRef.current(event)} pointHandleAtPointer={(event) => annotationPointHandleRef.current(event)} radiusHandleAtPointer={(event) => annotationRadiusHandleRef.current(event)} onCircleRadius={(id, radius) => onCircleAnnotationRadius?.(id, radius)} workplane={workplane} displayUnit={displayUnit} tool={annotationTool} selected={annotationInteractionSelection ? { ...annotationInteractionSelection, visible: annotationInteractionSelection.visible && annotationsVisible } : undefined} parameterHandlesVisible={parameterHandlesVisible} onSelectEndpoint={(endpoint) => onSelectAnnotationEndpoint?.(endpoint)} onMoveEndpoint={(id, endpoint, position) => onMoveAnnotationEndpoint?.(id, endpoint, position)} onMoveText={(id, position) => onObjectAxisMove?.(id, position)} editing={Boolean(editingAnnotationId && editingAnnotationId === selectedAnnotationId)} locale={locale} onPlace={(kind, start, end, center) => onPlaceAnnotation?.(kind, start, end, center)} onFinish={(id, text, size) => onFinishAnnotation?.(id, text, size)} onEdit={(id) => onEditAnnotation?.(id)} onCancelTool={() => onCancelAnnotationTool?.()} onPreview={setAnnotationPreview} />
     {alignmentActive ? <div ref={alignmentButtonsRef} className="educad-alignment-face-buttons" role="group" aria-label={locale === "es" ? "Alinear con la referencia" : "Align with reference"}>
       {(["x", "y", "z"] as const).flatMap(axis => (["min", "center", "max"] as const).map(anchor => {
         const label = locale === "es"

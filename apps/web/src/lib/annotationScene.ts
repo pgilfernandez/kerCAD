@@ -7,22 +7,67 @@ import { displayUnitLabel, formatDisplayLength, type ParametricDisplayUnit } fro
 import { annotationAngleGeometry, annotationPosition, type AnnotationPoint } from "@/lib/annotationGeometry";
 
 /** An independent display layer: annotations never enter the CAD kernel. */
-export function createAnnotationScene(annotations: ParametricAnnotation[], unit: ParametricDisplayUnit, selectedId: string | null, pointSelection: { point: AnnotationPoint | null; triadVisible: boolean }) {
+export function createAnnotationScene(annotations: ParametricAnnotation[], unit: ParametricDisplayUnit, selectedId: string | null, pointSelection: { point: AnnotationPoint | null; triadVisible: boolean; parametersVisible: boolean }) {
   const group = new THREE.Group();
   const disposables: Array<{ dispose: () => void }> = [];
   const vector = (point: { x: number; y: number; z: number }) => new THREE.Vector3(point.x, point.y, point.z);
-  const drawLines = (points: THREE.Vector3[], id: string, color: string, dashed = false) => {
+  const billboardCircles: THREE.Group[] = [];
+  const parentQuaternion = new THREE.Quaternion(), cameraQuaternion = new THREE.Quaternion(), spinQuaternion = new THREE.Quaternion();
+  const screenNormal = new THREE.Vector3(0, 0, 1);
+  group.userData.updateBillboards = (camera: THREE.Camera) => {
+    if (!group.visible || !billboardCircles.length) return;
+    group.getWorldQuaternion(parentQuaternion).invert();
+    camera.getWorldQuaternion(cameraQuaternion);
+    for (const circle of billboardCircles) {
+      circle.quaternion.copy(parentQuaternion).multiply(cameraQuaternion).multiply(spinQuaternion.setFromAxisAngle(screenNormal, circle.userData.rotationZ));
+      circle.updateWorldMatrix(false, true);
+    }
+  };
+  const drawLines = (points: THREE.Vector3[], id: string, color: string, dashed = false, width = 2) => {
     const geometry = new LineSegmentsGeometry();
     geometry.setPositions(points.flatMap((point) => [point.x, point.y, point.z]));
-    const material = new LineMaterial({ color, linewidth: 2, worldUnits: false, dashed, dashSize: 3, gapSize: 2, depthTest: false, depthWrite: false, transparent: true });
+    const material = new LineMaterial({ color, linewidth: width, worldUnits: false, dashed, dashSize: 3, gapSize: 2, depthTest: false, depthWrite: false, transparent: true });
     const lines = new LineSegments2(geometry, material);
     lines.computeLineDistances();
     lines.userData.annotationId = id; lines.userData.annotationPickable = true;
     lines.onBeforeRender = (renderer) => material.resolution.set(Math.max(1, renderer.domElement.clientWidth), Math.max(1, renderer.domElement.clientHeight));
     lines.renderOrder = 89; group.add(lines); disposables.push(geometry, material);
+    return lines;
   };
   for (const annotation of annotations) {
     if (!annotation.visible) continue;
+    if (annotation.kind === "circle") {
+      const circle = new THREE.Group();
+      circle.position.copy(vector(annotation.position));
+      circle.rotation.set(THREE.MathUtils.degToRad(annotation.rotation.x), THREE.MathUtils.degToRad(annotation.rotation.y), THREE.MathUtils.degToRad(annotation.rotation.z), "ZYX");
+      circle.userData.rotationZ = THREE.MathUtils.degToRad(annotation.rotation.z);
+      group.add(circle);
+      if (annotation.mode === "billboard") billboardCircles.push(circle);
+      const points: THREE.Vector3[] = [];
+      for (let index = 0; index < 128; index++) {
+        const first = index / 128 * Math.PI * 2, last = (index + 1) / 128 * Math.PI * 2;
+        points.push(new THREE.Vector3(Math.cos(first) * annotation.radius, Math.sin(first) * annotation.radius, 0), new THREE.Vector3(Math.cos(last) * annotation.radius, Math.sin(last) * annotation.radius, 0));
+      }
+      circle.add(drawLines(points, annotation.id, annotation.color, false, annotation.lineWidth));
+      if (annotation.id === selectedId) {
+        const sphere = (color: string, pixels: number) => {
+          const geometry = new THREE.SphereGeometry(1, 16, 12);
+          const material = new THREE.MeshLambertMaterial({ color, depthTest: false, depthWrite: false, transparent: true });
+          const handle = new THREE.Mesh(geometry, material);
+          handle.renderOrder = 110; handle.userData.yellowManipulatorBaseRadius = 1; handle.userData.yellowManipulatorDiameterPixels = pixels;
+          circle.add(handle); disposables.push(geometry, material);
+          return handle;
+        };
+        sphere("#ffffff", 14).userData.annotationPoint = "position";
+        if (pointSelection.parametersVisible) {
+          const end = new THREE.Vector3(annotation.radius + 4, 0, 0);
+          const guide = drawLines([new THREE.Vector3(), end], annotation.id, "#e4bc00");
+          guide.userData.annotationPickable = false; circle.add(guide);
+          const handle = sphere("#fff157", 28); handle.position.copy(end); handle.userData.annotationRadiusTarget = true;
+        }
+      }
+      continue;
+    }
     if (annotation.id === selectedId && annotation.kind !== "text") {
       const keys: AnnotationPoint[] = annotation.kind === "angle" ? ["start", "center", "end"] : ["start", "end"];
       for (const key of keys) {

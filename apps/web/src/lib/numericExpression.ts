@@ -14,6 +14,7 @@ register(["in", "inch", "inches", '"'], 25.4, 1);
 register(["ft", "foot", "feet", "'"], 304.8, 1);
 register(["yd", "yard", "yards"], 914.4, 1);
 register(["stud"], 8, 1);
+register(["px", "pixel", "pixels"], 1, 0);
 register(["deg", "degree", "degrees", "°"], 1, 0, 1);
 register(["rad", "radian", "radians"], 180 / Math.PI, 0, 1);
 // Percent fields use percentage points; percentages in other fields are ratios.
