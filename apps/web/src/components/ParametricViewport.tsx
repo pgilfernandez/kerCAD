@@ -888,6 +888,7 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.screenSpacePanning = true;
+    controls.zoomToCursor = true;
     controls.mouseButtons.LEFT = null;
     controls.mouseButtons.MIDDLE = THREE.MOUSE.PAN;
     controls.mouseButtons.RIGHT = THREE.MOUSE.ROTATE;

@@ -1080,7 +1080,13 @@ export function SketchWorkspace({
       || (Number.isInteger(event.deltaY) && Math.abs(event.deltaY) >= 40);
     if (event.ctrlKey || event.metaKey || physicalWheel) {
       const normalizedDelta = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? event.deltaY * 16 : event.deltaY;
-      setZoom((current) => clamp(current * Math.exp(-normalizedDelta * 0.012), 0.75, 6));
+      const nextZoom = clamp(zoom * Math.exp(-normalizedDelta * 0.012), 0.75, 6);
+      const anchor = pointFromEvent(event, false, false);
+      if (anchor) {
+        const ratio = zoom / nextZoom;
+        setPan((current) => ({ x: anchor.x - (anchor.x - current.x) * ratio, z: anchor.z - (anchor.z - current.z) * ratio }));
+      }
+      setZoom(nextZoom);
       return;
     }
     const matrix = svgRef.current?.getScreenCTM();
