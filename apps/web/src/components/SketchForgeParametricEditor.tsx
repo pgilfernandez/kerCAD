@@ -291,6 +291,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [shapeMenuPosition, setShapeMenuPosition] = useState({ top: 0, left: 10 });
   const shapeMenuTriggerRef = useRef<HTMLButtonElement>(null);
   const [modelSidebarMode, setModelSidebarMode] = useState<ModelSidebarMode | "hidden">("normal");
+  const [compactSketchToolbar, setCompactSketchToolbar] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [exportFileName, setExportFileName] = useState(document.name);
   const [exportScope, setExportScope] = useState<"project" | "selection">("project");
@@ -1056,6 +1057,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const rebuildSuggestion = build.warning ? t(parametricRebuildSuggestion(failedFeature, build.warning)) : null;
 
   const beginSketch = (featureId: string | null = null) => {
+    setCompactSketchToolbar(modelSidebarMode !== "normal");
     const feature = featureId ? document.features.find((candidate): candidate is SketchFeature => candidate.kind === "sketch" && candidate.id === featureId && candidate.profile.shape === "drawn") : null;
     const profile = feature?.profile.shape === "drawn" ? cloneSketchProfile(feature.profile.geometry) : emptySketchProfile();
     const mode = feature?.profile.shape === "drawn" && feature.profile.geometry.generator?.kind === "scribble" ? "scribble" : "sketch";
@@ -3197,7 +3199,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   }
 
   return (
-    <main className={`educad-reference-shell sidebar-${modelSidebarMode}`}>
+    <main className={`educad-reference-shell sidebar-${modelSidebarMode} ${sketchSession && compactSketchToolbar ? "sketch-toolbar-compact" : ""}`}>
       <div className="secondary-toolbar">
         <div className="toolbar-workspace-tabs educad-toolbar-titlebar">
           {sketchSession ? <div className="educad-sketch-header-actions"><button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={acceptSketch}>{'<'} {t("sketch.accept")}</button><button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={cancelSketch}>{t("common.cancel")}</button></div> : onExitToProjects ? <button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={() => onExitToProjects(latestDocumentRef.current)} title="Back to projects">{'<'} back</button> : null}

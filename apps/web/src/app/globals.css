@@ -8897,6 +8897,18 @@ circle.sketch-preview-line {
   --editor-toolbar-tools-height: 50px;
 }
 
+.educad-reference-shell.sketch-toolbar-compact {
+  --editor-toolbar-height: 82px;
+  --editor-toolbar-tools-height: 50px;
+}
+.sketch-toolbar-compact .educad-parametric-sketch-toolbar .toolbar-section-label { display: none; }
+.sketch-toolbar-compact .educad-parametric-sketch-toolbar .toolbar-section-tools { height: 49px; }
+@media (max-width: 720px) {
+  .educad-reference-shell.sketch-toolbar-compact:has(.educad-parametric-sketch-toolbar) {
+    --editor-toolbar-height: 122px;
+  }
+}
+
 .educad-reference-shell:is(.sidebar-simplified, .sidebar-hidden) .toolbar-mode-content.geometry {
   top: 32px;
   display: flex;
