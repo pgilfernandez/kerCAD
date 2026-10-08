@@ -3079,6 +3079,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("sketch.undo")} enabled={sketchHistoryIndex > 0} onClick={sketchUndo}><ToolbarUndoIcon /></Tool>
             <Tool label={t("sketch.redo")} enabled={sketchHistoryIndex >= 0 && sketchHistoryIndex < sketchHistoryRef.current.length - 1} onClick={sketchRedo}><ToolbarRedoIcon /></Tool>
           </ToolbarSection>
+          <ToolbarSection label={t("sketch.select")}>
+            <Tool label={t("sketch.select")} active={sketchTool === "select"} onClick={() => chooseSketchTool("select")}><SketchToolbarIcon file="select" /></Tool>
+          </ToolbarSection>
           <ToolbarSection label={t("toolbar.clipboard")}>
             <Tool label={t("toolbar.copy")} enabled={Boolean(sketchCopyableSelection)} onClick={copyCurrentSketchSelection}><ToolbarCopyIcon /></Tool>
             <Tool label={t("toolbar.paste")} enabled={Boolean(sketchClipboard)} onClick={() => { if (sketchClipboard) pasteSketchGeometry(sketchClipboard, ++sketchPasteCountRef.current); }}><ToolbarPasteIcon /></Tool>
@@ -3107,7 +3110,6 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("sketch.splitHandles")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("split")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "split")}><SketchToolbarIcon file="split-handles" /></Tool>
           </ToolbarSection>
           <ToolbarSection label={t("sketch.edit")}>
-            <Tool label={t("sketch.select")} active={sketchTool === "select"} onClick={() => chooseSketchTool("select")}><SketchToolbarIcon file="select" /></Tool>
             <Tool label={t("sketch.construction")} enabled={selectedConstructionIds.segmentIds.length + selectedConstructionIds.circleIds.length > 0} active={selectedConstructionIds.allConstruction} onClick={toggleSketchConstruction}><SketchToolbarIcon file="construction" /></Tool>
             <Tool label={t("sketch.refine")} active={sketchTool === "refine"} onClick={() => chooseSketchTool("refine")}><SketchToolbarIcon file="refine" /></Tool>
             <Tool label={t("sketch.mergePoints")} enabled={mergeableSketchPointIds.length === 2} onClick={mergeSelectedSketchPoints}><SketchToolbarIcon file="merge-points" /></Tool>
