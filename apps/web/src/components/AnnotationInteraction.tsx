@@ -39,6 +39,7 @@ export function AnnotationInteraction(props: Props) {
   const input = useRef<HTMLTextAreaElement>(null);
   const startMarker = useRef<HTMLButtonElement>(null);
   const endMarker = useRef<HTMLButtonElement>(null);
+  const textMarker = useRef<HTMLButtonElement>(null);
   const [endpointDragging, setEndpointDragging] = useState(false);
   const endpointDrag = useRef<{
     annotation: ParametricAnnotation;
@@ -219,6 +220,10 @@ export function AnnotationInteraction(props: Props) {
         if (point) {
           editor.current.style.display = point.visible && active.visible ? "block" : "none";
           editor.current.style.left = `${point.x}px`; editor.current.style.top = `${point.y}px`;
+          if (textMarker.current) {
+            textMarker.current.style.left = `${point.x}px`; textMarker.current.style.top = `${point.y}px`;
+            textMarker.current.style.display = point.visible && active.visible ? "block" : "none";
+          }
           editor.current.style.fontSize = `${point.fontSize}px`;
           editor.current.style.transform = `translate(${active.alignment === "left" ? "0" : active.alignment === "right" ? "-100%" : "-50%"}, -50%)`;
           if (measure) {
@@ -254,8 +259,8 @@ export function AnnotationInteraction(props: Props) {
     {tool && <div className="educad-annotation-instruction">{locale === "es" ? tool === "text" ? "Pulsa en el plano para colocar la etiqueta · Esc cancela" : "Elige dos puntos · vértices y puntos medios disponibles · Esc cancela" : tool === "text" ? "Click the plane to place a label · Esc cancels" : "Pick two points · vertices and edge midpoints available · Esc cancels"}</div>}
     {snapped && (tool === "dimension" || endpointDragging) && <div ref={marker} className="educad-annotation-snap-marker" />}
     {selected?.kind === "dimension" && selected.visible && (["start", "end"] as const).map((endpoint) => <button key={endpoint} ref={endpoint === "start" ? startMarker : endMarker} type="button" className={`educad-dimension-endpoint ${props.selectedEndpoint === endpoint ? "active" : ""}`} aria-pressed={props.selectedEndpoint === endpoint} aria-label={locale === "es" ? endpoint === "start" ? "Seleccionar punto inicial" : "Seleccionar punto final" : endpoint === "start" ? "Select start point" : "Select end point"} title={locale === "es" ? endpoint === "start" ? "Punto inicial" : "Punto final" : endpoint === "start" ? "Start point" : "End point"} onPointerDown={(event) => beginEndpointDrag(event, endpoint)} onPointerMove={moveEndpointDrag} onPointerUp={finishEndpointDrag} onPointerCancel={cancelEndpointDrag} onLostPointerCapture={() => { if (endpointDrag.current) cancelEndpointDrag(); }} onClick={(event) => { event.stopPropagation(); props.onSelectEndpoint(endpoint); }} />)}
+    {textAnnotation?.visible && <button ref={textMarker} style={{ display: "none" }} type="button" className={`educad-dimension-endpoint educad-annotation-position-handle ${endpointDragging ? "active" : ""}`} title={locale === "es" ? "Arrastrar posición · ajustar a geometría" : "Drag position · snap to geometry"} aria-label={locale === "es" ? "Mover etiqueta" : "Move label"} onPointerDown={(event) => beginEndpointDrag(event, "position")} onPointerMove={moveEndpointDrag} onPointerUp={finishEndpointDrag} onPointerCancel={cancelEndpointDrag} onLostPointerCapture={() => { if (endpointDrag.current) cancelEndpointDrag(); }} />}
     {textAnnotation?.visible && <div ref={editor} className="educad-annotation-editor" style={{ fontFamily: `${textAnnotation.font}, sans-serif`, textAlign: textAnnotation.alignment }}>
-      <button type="button" className={`educad-dimension-endpoint educad-annotation-position-handle ${endpointDragging ? "active" : ""}`} title={locale === "es" ? "Arrastrar posición · ajustar a geometría" : "Drag position · snap to geometry"} aria-label={locale === "es" ? "Mover etiqueta" : "Move label"} onPointerDown={(event) => beginEndpointDrag(event, "position")} onPointerMove={moveEndpointDrag} onPointerUp={finishEndpointDrag} onPointerCancel={cancelEndpointDrag} onLostPointerCapture={() => { if (endpointDrag.current) cancelEndpointDrag(); }} />
       {editing ? <textarea ref={input} value={text} maxLength={2000} aria-label={locale === "es" ? "Texto de la etiqueta" : "Label text"} onChange={(event) => { setText(event.target.value); draft.current.text = event.target.value; }} onKeyDown={(event) => { event.stopPropagation(); if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); finish(); } if (event.key === "Escape") { if (endpointDrag.current) cancelEndpointDrag(); else cancelEdit(); } }} /> : <button className="educad-annotation-edit-target" aria-label={locale === "es" ? "Editar etiqueta" : "Edit label"} title={locale === "es" ? "Doble clic para editar" : "Double-click to edit"} onDoubleClick={() => props.onEdit(textAnnotation.id)} />}
       {props.parameterHandlesVisible && <div className="educad-annotation-size-slider" style={{ width: Math.max(140, size * 8 + 28) }}>
         <svg width="100%" height="24" aria-hidden="true"><line x1="0" y1="12" x2="100%" y2="12" /><line x1="0" y1="6" x2="0" y2="18" /></svg>

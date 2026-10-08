@@ -10298,4 +10298,4 @@ input[aria-invalid="true"] { box-shadow: inset 0 0 0 1px #d34545; }
 .parametric-viewport .educad-dimension-endpoint:active { cursor: grabbing; }
 .parametric-viewport .educad-dimension-endpoint.active { width: 20px; height: 20px; border-color: #d3a900; background: #ffe431; }
 .parametric-viewport .educad-dimension-endpoint:hover { border-color: #d3a900; }
-.parametric-viewport .educad-annotation-position-handle { left: 50%; top: -16px; pointer-events: auto; }
+.parametric-viewport .educad-annotation-position-handle { pointer-events: auto; }
