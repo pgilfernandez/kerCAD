@@ -283,7 +283,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [history, setHistory] = useState<ParametricHistoryState>(() => createParametricHistory(initialDocument));
   const document = currentHistoryDocument(history);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
-  const [annotationTool, setAnnotationTool] = useState<"text" | "dimension" | null>(null);
+  const [annotationTool, setAnnotationTool] = useState<"text" | "dimension" | "arrow" | null>(null);
   const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
   const [annotationEndpoint, setAnnotationEndpoint] = useState<"start" | "end" | null>(null);
   const selectedAnnotation = document.annotations?.find((annotation) => annotation.id === selectedAnnotationId);
@@ -3421,7 +3421,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               </div>
             </ToolbarSection>
             <ToolbarSection label={t("annotation.group")}>
-              {(["text", "dimension"] as const).map((kind) => <Tool key={kind} label={t(`annotation.${kind}`)} active={annotationTool === kind} onClick={() => {
+              {(["text", "dimension", "arrow"] as const).map((kind) => <Tool key={kind} label={t(`annotation.${kind}`)} active={annotationTool === kind} onClick={() => {
                 setAnnotationTool(annotationTool === kind ? null : kind);
                 setEditingAnnotationId(null); setModelSelection([]); setSelectedAnnotationId(null);
               }}><AnnotationIcon kind={kind} /></Tool>)}
@@ -3687,7 +3687,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           onSelectAnnotationEndpoint={setAnnotationEndpoint}
           onMoveAnnotationEndpoint={(id, endpoint, position) => mutate((draft) => {
             const annotation = draft.annotations?.find((item) => item.id === id);
-            if (annotation?.kind === "dimension") annotation[endpoint] = { ...position };
+            if (annotation && annotation.kind !== "text") annotation[endpoint] = { ...position };
           })}
           annotationTool={annotationTool}
           editingAnnotationId={editingAnnotationId}
@@ -3700,7 +3700,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               const common = { id, name: t(`annotation.${kind}`), visible: true };
               draft.annotations.push(kind === "text"
                 ? { ...common, kind, position: start, alignment: "center", size: 6, font: "Arial", text: "eduCAD" }
-                : { ...common, kind, start, end: end ?? start });
+                : kind === "arrow" ? { ...common, kind, start, end: end ?? start, color: "#000000" } : { ...common, kind, start, end: end ?? start });
             });
             setAnnotationTool(null); setModelSelection([]); setSelectedAnnotationId(id); setModelSidebarMode("normal");
             setEditingAnnotationId(kind === "text" ? id : null);

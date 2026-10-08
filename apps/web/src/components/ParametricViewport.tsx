@@ -218,9 +218,9 @@ type Props = {
   selectedAnnotationEndpoint?: "start" | "end" | null;
   onSelectAnnotationEndpoint?: (endpoint: "start" | "end") => void;
   onMoveAnnotationEndpoint?: (id: string, endpoint: "start" | "end", position: { x: number; y: number; z: number }) => void;
-  annotationTool?: "text" | "dimension" | null;
+  annotationTool?: "text" | "dimension" | "arrow" | null;
   editingAnnotationId?: string | null;
-  onPlaceAnnotation?: (kind: "text" | "dimension", start: { x: number; y: number; z: number }, end?: { x: number; y: number; z: number }) => void;
+  onPlaceAnnotation?: (kind: "text" | "dimension" | "arrow", start: { x: number; y: number; z: number }, end?: { x: number; y: number; z: number }) => void;
   onFinishAnnotation?: (id: string, text: string, size: number) => void;
   onEditAnnotation?: (id: string | null) => void;
   onCancelAnnotationTool?: () => void;
@@ -1916,7 +1916,8 @@ export function ParametricViewport({ onAnnotationSelect, annotationsVisible = tr
       const layer = annotationLayerRef.current;
       if (!layer?.visible) return null;
       layer.updateWorldMatrix(true, true);
-      const labels = layer.children.filter((child) => child instanceof THREE.Sprite && child.visible && annotationStateRef.current.annotations?.some((annotation) => annotation.id === child.userData.annotationId && annotation.visible));
+      const labels = layer.children.filter((child) => (child instanceof THREE.Sprite || child.userData.annotationPickable) && child.visible && annotationStateRef.current.annotations?.some((annotation) => annotation.id === child.userData.annotationId && annotation.visible));
+      Object.assign(raycaster.params, { Line2: { threshold: 4 } });
       return raycaster.intersectObjects(labels, false)[0]?.object.userData.annotationId as string | undefined;
     };
     processPendingHover = () => {

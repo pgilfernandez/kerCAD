@@ -384,13 +384,35 @@ function AnnotationProperties({ annotation, onUpdate }: { annotation: Parametric
   };
   return <div className="educad-feature-card educad-annotation-properties">
     <label><span>{t("model.name")}</span><input value={annotation.name} onChange={(event) => onUpdate((draft) => { draft.name = event.target.value; })} /></label>
+    {annotation.kind === "arrow" && <AnnotationColorPicker color={annotation.color} onChange={(color) => onUpdate((draft) => { if (draft.kind === "arrow") draft.color = color; })} />}
     {annotation.kind === "text" ? <>
       <label><span>{t("annotation.text")}</span><textarea value={annotation.text} maxLength={2000} onChange={(event) => onUpdate((draft) => { if (draft.kind === "text") draft.text = event.target.value; })} /></label>
       <label><span>{t("annotation.font")}</span><input value={annotation.font} placeholder="Arial" maxLength={160} onChange={(event) => onUpdate((draft) => { if (draft.kind === "text") draft.font = event.target.value; })} /></label>
       <label><span>{t("annotation.size")}</span><DeferredNumberInput value={annotation.size} min={0.1} max={1000} step={steps.input} unit="mm" onCommit={(value) => onUpdate((draft) => { if (draft.kind === "text") draft.size = value; })} /></label>
       <label><span>{t("annotation.alignment")}</span><select value={annotation.alignment} onChange={(event) => onUpdate((draft) => { if (draft.kind === "text") draft.alignment = event.target.value as "left" | "center" | "right"; })}>{(["left", "center", "right"] as const).map((alignment) => <option key={alignment} value={alignment}>{t(`annotation.${alignment}`)}</option>)}</select></label>
       {position("position", t("annotation.position"))}
-    </> : <><ReadOnlyField label={t("annotation.dimension")} value={`${formatDisplayLength(Math.hypot(annotation.end.x - annotation.start.x, annotation.end.y - annotation.start.y, annotation.end.z - annotation.start.z), steps.displayUnit)} ${displayUnitLabel(steps.displayUnit)}`} />{position("start", t("annotation.start"))}{position("end", t("annotation.end"))}</>}
+    </> : <><ReadOnlyField label={t(annotation.kind === "arrow" ? "property.length" : "annotation.dimension")} value={`${formatDisplayLength(Math.hypot(annotation.end.x - annotation.start.x, annotation.end.y - annotation.start.y, annotation.end.z - annotation.start.z), steps.displayUnit)} ${displayUnitLabel(steps.displayUnit)}`} />{position("start", t("annotation.start"))}{position("end", t("annotation.end"))}</>}
+  </div>;
+}
+
+function AnnotationColorPicker({ color, onChange }: { color: string; onChange: (color: string) => void }) {
+  const t = useSidebarTranslation();
+  const [open, setOpen] = useState(false);
+  const panel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const closeOutside = (event: PointerEvent) => { if (event.target instanceof Node && !panel.current?.contains(event.target)) setOpen(false); };
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
+    window.document.addEventListener("pointerdown", closeOutside);
+    window.document.addEventListener("keydown", closeOnEscape);
+    return () => { window.document.removeEventListener("pointerdown", closeOutside); window.document.removeEventListener("keydown", closeOnEscape); };
+  }, [open]);
+  return <div ref={panel} className="educad-feature-card educad-object-appearance">
+    <button className="educad-color-trigger" aria-label={t("property.color")} aria-expanded={open} title={t("property.color")} onClick={() => setOpen(!open)}><span>{t("property.color")}</span><span className="educad-color-preview" style={{ "--object-color": color } as CSSProperties} /><strong>{color.toUpperCase()}</strong><ChevronDown size={15} /></button>
+    {open && <div className="educad-color-palette">
+      {OBJECT_COLOR_PALETTE.map((entry) => <button key={entry} className={color.toLowerCase() === entry ? "selected" : ""} aria-label={`${t("property.color")} ${entry}`} title={entry.toUpperCase()} style={{ "--object-color": entry } as CSSProperties} onClick={() => { onChange(entry); setOpen(false); }} />)}
+      <label className="educad-custom-color" title={t("property.customColor")}><input type="color" aria-label={t("property.customColor")} value={color} onChange={(event) => onChange(event.target.value)} /><span aria-hidden="true">+</span></label>
+    </div>}
   </div>;
 }
 
