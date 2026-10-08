@@ -4973,7 +4973,7 @@ html[data-theme="dark"] .educad-toolbar-scroll-edge.right { background: linear-g
 .educad-sketch-action:focus-visible { outline: 3px solid rgba(0, 166, 219, 0.25); outline-offset: 2px; }
 .educad-sketch-action .educad-sketch-toolbar-icon { width: 18px; height: 18px; }
 
-.educad-workplane-stage.sketch-active > :not(.sketch-workspace-stage):not(.educad-sketch-constraints-panel):not(.educad-reference-toast):not(.educad-fps-counter):not(.educad-workplane-settings-button):not(.educad-workplane-snap-button):not(.educad-workplane-popover) {
+.educad-workplane-stage.sketch-active > :not(.sketch-workspace-stage):not(.educad-sketch-constraints-panel):not(.educad-toolbar-scroll-indicators):not(.educad-reference-toast):not(.educad-fps-counter):not(.educad-workplane-settings-button):not(.educad-workplane-snap-button):not(.educad-workplane-popover) {
   display: none !important;
 }
 
