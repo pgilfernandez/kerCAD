@@ -1,6 +1,12 @@
 export type EducadLocale = "es" | "en";
 
 const es = {
+  "about.title": "acerca de eduCAD", "about.label": "Acerca de eduCAD",
+  "about.description": "CAD paramétrico de código abierto para educación.",
+  "about.version": "Versión", "about.cadEngine": "Motor CAD", "about.viewer": "Visor 3D",
+  "about.sketches": "Bocetos", "about.constraints": "Restricciones paramétricas", "about.license": "Licencia",
+  "about.resources": "Recursos del proyecto", "about.documentation": "Documentación y tutoriales",
+  "about.projectOverview": "Página del proyecto", "about.credit": "diseñado con cariño por Pablo Gil Fernández",
   "settings.title": "Ajustes del diseño", "settings.name": "Nombre", "settings.rendering": "Renderizado",
   "settings.renderNormal": "Normal (suavizado)", "settings.renderOptimized": "Optimizar rendimiento",
   "settings.shading": "Sombreado", "settings.shadows": "Sombras", "settings.basicShadows": "Sombras básicas",
@@ -134,6 +140,12 @@ const es = {
 export type EducadTranslationKey = keyof typeof es;
 
 const en: Record<EducadTranslationKey, string> = {
+  "about.title": "about eduCAD", "about.label": "about eduCAD",
+  "about.description": "Open-source parametric CAD for education.",
+  "about.version": "Version", "about.cadEngine": "CAD engine", "about.viewer": "3D viewer",
+  "about.sketches": "Sketches", "about.constraints": "Parametric constraints", "about.license": "License",
+  "about.resources": "Project resources", "about.documentation": "Documentation and tutorials",
+  "about.projectOverview": "Project overview", "about.credit": "designed with love by Pablo Gil Fernández",
   "settings.title": "Design settings", "settings.name": "Name", "settings.rendering": "Rendering",
   "settings.renderNormal": "Normal (antialiased)", "settings.renderOptimized": "Optimize performance",
   "settings.shading": "Shading", "settings.shadows": "Shadows", "settings.basicShadows": "Basic shadows",
