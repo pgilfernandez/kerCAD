@@ -4541,6 +4541,9 @@ export function ParametricViewport({ onCircleAnnotationRadius, onAnnotationSelec
     </div> : null}
     <div ref={selectionBoxRef} className="parametric-selection-box" aria-hidden="true" />
     {showContextToolbar ? <div className="educad-viewport-context-toolbar" aria-label={locale === "es" ? "Herramientas de la selección" : "Selection tools"} onPointerDown={(event) => event.stopPropagation()}>
+      {annotationsVisible && annotationInteractionSelection?.visible && annotationInteractionSelection.kind === "angle" && <div className="educad-context-toolbar-group" aria-label={locale === "es" ? "Tamaño del texto" : "Text size"}>
+        <ViewportFloatingNumberInput value={annotationInteractionSelection.size ?? 3} unit="length" displayUnit={displayUnit} snap={snap} label={locale === "es" ? "Tamaño del texto" : "Text size"} min={0.1} max={1000} onCommit={(size) => onFinishAnnotation?.(annotationInteractionSelection.id, "", size)} />
+      </div>}
       {manipulatorControls && !floatingBoolean ? <div className="educad-context-toolbar-group" aria-label={alignmentActive ? (locale === "es" ? "Modo de alineación" : "Alignment mode") : (locale === "es" ? "Manipuladores" : "Manipulators")}>{manipulatorControls}</div> : null}
       {showOperationModes ? <div className="educad-context-toolbar-group" aria-label={locale === "es" ? "Modo de la operación" : "Operation mode"}>
         {(["add", "cut", "intersect"] as const).map((mode) => {
