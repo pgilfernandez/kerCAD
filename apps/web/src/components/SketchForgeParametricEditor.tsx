@@ -291,6 +291,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [shapeMenuPosition, setShapeMenuPosition] = useState({ top: 0, left: 10 });
   const shapeMenuTriggerRef = useRef<HTMLButtonElement>(null);
   const [modelSidebarMode, setModelSidebarMode] = useState<ModelSidebarMode | "hidden">("normal");
+  const sidebarModeBeforeSketchRef = useRef<ModelSidebarMode | "hidden">("normal");
   const [compactSketchToolbar, setCompactSketchToolbar] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [exportFileName, setExportFileName] = useState(document.name);
@@ -1057,6 +1058,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const rebuildSuggestion = build.warning ? t(parametricRebuildSuggestion(failedFeature, build.warning)) : null;
 
   const beginSketch = (featureId: string | null = null) => {
+    if (!sketchSession) sidebarModeBeforeSketchRef.current = modelSidebarMode;
     setCompactSketchToolbar(modelSidebarMode !== "normal");
     const feature = featureId ? document.features.find((candidate): candidate is SketchFeature => candidate.kind === "sketch" && candidate.id === featureId && candidate.profile.shape === "drawn") : null;
     const profile = feature?.profile.shape === "drawn" ? cloneSketchProfile(feature.profile.geometry) : emptySketchProfile();
@@ -1083,7 +1085,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     sketchHistoryRef.current = [];
     sketchHistoryIndexRef.current = -1;
     setSketchHistoryIndex(-1);
-    setModelSidebarMode("normal");
+    setModelSidebarMode(sidebarModeBeforeSketchRef.current);
     setNotice({ type: "info", text: t("notice.sketchCancelled") });
   };
 
@@ -1140,7 +1142,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       sketchHistoryRef.current = [];
       sketchHistoryIndexRef.current = -1;
       setSketchHistoryIndex(-1);
-      setModelSidebarMode("normal");
+      setModelSidebarMode(sidebarModeBeforeSketchRef.current);
       setModelSelection([{ id: revolveFeatureId, kind: "feature" }]);
       setNotice({ type: "ok", text: locale === "es" ? "Eje de revolución actualizado." : "Revolve axis updated." });
       return;
@@ -1199,7 +1201,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     sketchHistoryRef.current = [];
     sketchHistoryIndexRef.current = -1;
     setSketchHistoryIndex(-1);
-    setModelSidebarMode("normal");
+    setModelSidebarMode(sidebarModeBeforeSketchRef.current);
     if (sketchSession.featureId && sketchSession.mode === "scribble") selectedFeatureId = document.features.find((candidate) => candidate.kind === "extrude" && candidate.sketchId === sketchSession.featureId)?.id ?? sketchSession.featureId;
     setModelSelection([{ id: selectedFeatureId || featureId, kind: "feature" }]);
     setNotice({ type: "ok", text: sketchSession.mode === "scribble" ? (sketchSession.featureId ? t("notice.scribbleUpdated") : t("notice.scribbleAdded")) : sketchSession.featureId ? t("notice.sketchUpdated") : t("notice.sketchAdded") });
