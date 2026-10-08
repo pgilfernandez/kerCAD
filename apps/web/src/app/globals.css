@@ -10102,6 +10102,7 @@ html[data-theme="dark"] .grid-settings {
   .educad-dashboard-project-heading { margin-top: 8px; align-items: center; flex-wrap: wrap; gap: 14px; }
   .educad-dashboard-project-controls { width: 100%; flex-wrap: wrap; gap: 6px; }
   .educad-dashboard-project-controls .educad-dashboard-search { width: 100%; }
+  .educad-dashboard-project-controls .educad-install-challenge { width: 100%; flex-basis: 100%; justify-content: center; }
   .educad-import-project { width: 100%; justify-content: center; }
   .educad-dashboard-projects.grid { grid-template-columns: 1fr; }
   .educad-dashboard-card .card-delete { opacity: 1; }
