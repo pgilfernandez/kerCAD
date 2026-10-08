@@ -287,6 +287,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
   const [annotationEndpoint, setAnnotationEndpoint] = useState<"start" | "end" | null>(null);
   const selectedAnnotation = document.annotations?.find((annotation) => annotation.id === selectedAnnotationId);
+  const selectedAnnotationPoint = selectedAnnotation?.visible && document.annotationGroup?.visible !== false
+    ? selectedAnnotation.kind === "text" ? selectedAnnotation.position : annotationEndpoint ? selectedAnnotation[annotationEndpoint] : null
+    : null;
   useEffect(() => setAnnotationEndpoint(null), [selectedAnnotationId]);
   const latestDocumentRef = useRef(document);
   latestDocumentRef.current = document;
@@ -2629,7 +2632,27 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [droppingToWorkplane, setDroppingToWorkplane] = useState(false);
   const dropWorkerRef = useRef<Worker | null>(null);
   useEffect(() => () => dropWorkerRef.current?.terminate(), []);
+  const adjustAnnotationPoint = (action: "snap" | "drop") => {
+    if (!selectedAnnotationPoint || !selectedAnnotationId) return;
+    mutate((draft) => {
+      const annotation = draft.annotations?.find((item) => item.id === selectedAnnotationId);
+      if (!annotation) return;
+      const point = annotation.kind === "text" ? annotation.position : annotationEndpoint ? annotation[annotationEndpoint] : null;
+      if (!point) return;
+      const plane = draft.workplane;
+      const origin = new THREE.Vector3(plane.origin.x, plane.origin.y, plane.origin.z);
+      const delta = new THREE.Vector3(point.x, point.y, point.z).sub(origin);
+      const axes = [plane.xAxis, plane.yAxis, plane.normal].map((axis) => new THREE.Vector3(axis.x, axis.y, axis.z));
+      const position = origin.clone();
+      axes.forEach((axis, index) => {
+        const coordinate = delta.dot(axis);
+        position.addScaledVector(axis, action === "drop" && index === 2 ? 0 : action === "snap" && index < 2 ? Math.round(coordinate / plane.snapSpacing) * plane.snapSpacing : coordinate);
+      });
+      Object.assign(point, { x: position.x, y: position.y, z: position.z });
+    });
+  };
   const dropToWorkplane = async () => {
+    if (selectedAnnotationPoint) { adjustAnnotationPoint("drop"); return; }
     if (droppingToWorkplane || kernelBusy || !modelSelection.length) return;
     const source = latestDocumentRef.current;
     setDroppingToWorkplane(true);
@@ -3362,8 +3385,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             </ToolbarSection>
             <ToolbarSection label={t("toolbar.helpers")} className="toolbar-helpers-section">
               <Tool label={hasActiveWorkplane ? t("toolbar.resetWorkplane") : placingWorkplane ? t("toolbar.cancelWorkplane") : t("toolbar.placeWorkplane")} active={placingWorkplane || hasActiveWorkplane} onClick={toggleWorkplanePlacement}>{hasActiveWorkplane ? <ToolbarResetWorkplaneIcon /> : <ToolbarWorkplaneIcon />}</Tool>
-              <Tool label={t("toolbar.snapGrid")} enabled={Boolean(selectedShape && document.workplane.snapToGrid)} onClick={() => selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: Math.round((selectedShape?.x ?? 0) / snapAmount) * snapAmount, z: Math.round((selectedShape?.z ?? 0) / snapAmount) * snapAmount }))}><ToolbarSnapGridIcon /></Tool>
-              <Tool label={t("toolbar.dropToWorkplane")} enabled={modelSelection.some(item => {
+              <Tool label={t("toolbar.snapGrid")} enabled={Boolean((selectedShape || selectedAnnotationPoint) && document.workplane.snapToGrid)} onClick={() => selectedAnnotationPoint ? adjustAnnotationPoint("snap") : selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: Math.round((selectedShape?.x ?? 0) / snapAmount) * snapAmount, z: Math.round((selectedShape?.z ?? 0) / snapAmount) * snapAmount }))}><ToolbarSnapGridIcon /></Tool>
+              <Tool label={t("toolbar.dropToWorkplane")} enabled={Boolean(selectedAnnotationPoint) || modelSelection.some(item => {
                 const feature = item.kind === "feature" ? document.features.find(candidate => candidate.id === item.id) : undefined;
                 const object = document.objects.find(candidate => candidate.id === (item.kind === "object" ? item.id : feature?.objectId));
                 return object && !object.locked && (item.kind === "object" || feature && !feature.suppressed && (feature.kind === "primitive" || feature.kind === "extrude" || feature.kind === "sketch" && feature.purpose === "user"));
