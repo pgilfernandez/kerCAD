@@ -1887,6 +1887,58 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     setSketchTool("select");
   };
 
+  const refineSketchSelection = () => {
+    if (!sketchSession || !sketchSelection) { chooseSketchTool("refine"); return; }
+    const pointIds = new Set(sketchSelection.kind === "point" ? [sketchSelection.id] : sketchSelection.kind === "multiple" ? sketchSelection.pointIds : []);
+    const segmentIds = new Set(sketchSelection.kind === "segment" ? [sketchSelection.id] : sketchSelection.kind === "multiple" ? sketchSelection.segmentIds : []);
+    const targets = sketchSession.profile.segments.filter((segment) => segmentIds.has(segment.id) || (pointIds.has(segment.startId) && pointIds.has(segment.endId)));
+    if (!targets.length) return;
+    const insertedIds: string[] = [];
+    setSketchProfile((profile) => {
+      const next = cloneSketchProfile(profile);
+      const midpoint = (a: { x: number; z: number }, b: { x: number; z: number }) => ({ x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 });
+      for (const target of targets) {
+        const segment = next.segments.find((candidate) => candidate.id === target.id);
+        if (!segment) continue;
+        const start = next.points.find((point) => point.id === segment.startId);
+        const end = next.points.find((point) => point.id === segment.endId);
+        if (!start || !end) continue;
+        const inserted: SketchPoint = { id: sketchEntityId("point"), ...midpoint(start, end), mode: "corner" };
+        if (segment.kind === "arc" && segment.center) {
+          const startAngle = Math.atan2(start.z - segment.center.z, start.x - segment.center.x);
+          const endAngle = Math.atan2(end.z - segment.center.z, end.x - segment.center.x);
+          const positive = (endAngle - startAngle + Math.PI * 2) % (Math.PI * 2);
+          const sweep = segment.clockwise !== false ? positive : positive - Math.PI * 2;
+          const radius = Math.hypot(start.x - segment.center.x, start.z - segment.center.z);
+          inserted.x = segment.center.x + Math.cos(startAngle + sweep / 2) * radius;
+          inserted.z = segment.center.z + Math.sin(startAngle + sweep / 2) * radius;
+        } else if (segment.kind === "bezier" || segment.kind === "smooth") {
+          const a = midpoint(start, start.handleOut ?? start);
+          const b = midpoint(start.handleOut ?? start, end.handleIn ?? end);
+          const c = midpoint(end.handleIn ?? end, end);
+          const left = midpoint(a, b);
+          const right = midpoint(b, c);
+          Object.assign(inserted, midpoint(left, right), { mode: "smooth", handleIn: left, handleOut: right });
+          start.handleOut = a;
+          end.handleIn = c;
+        }
+        const first = { ...segment, id: sketchEntityId("segment"), endId: inserted.id };
+        const second = { ...segment, id: sketchEntityId("segment"), startId: inserted.id };
+        const inherited = (next.constraints ?? []).filter((constraint) => (constraint.kind === "horizontal" || constraint.kind === "vertical") && constraint.segmentId === segment.id);
+        next.constraints = (next.constraints ?? []).filter((constraint) => !sketchConstraintUsesSegment(constraint, segment.id));
+        for (const constraint of inherited) if (constraint.kind === "horizontal" || constraint.kind === "vertical") {
+          next.constraints.push({ ...constraint, id: sketchEntityId("constraint"), segmentId: first.id }, { ...constraint, id: sketchEntityId("constraint"), segmentId: second.id });
+        }
+        next.points.push(inserted);
+        next.segments = next.segments.flatMap((candidate) => candidate.id === segment.id ? [first, second] : [candidate]);
+        insertedIds.push(inserted.id);
+      }
+      return next;
+    });
+    chooseSketchTool("select");
+    setSketchSelection({ kind: "multiple", pointIds: insertedIds, segmentIds: [] });
+  };
+
   const moveSketchHandle = (id: string, handle: "in" | "out", position: { x: number; z: number }) => setSketchProfile((profile) => {
     const next = cloneSketchProfile(profile);
     const point = next.points.find((candidate) => candidate.id === id);
@@ -3111,7 +3163,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           </ToolbarSection>
           <ToolbarSection label={t("sketch.edit")}>
             <Tool label={t("sketch.construction")} enabled={selectedConstructionIds.segmentIds.length + selectedConstructionIds.circleIds.length > 0} active={selectedConstructionIds.allConstruction} onClick={toggleSketchConstruction}><SketchToolbarIcon file="construction" /></Tool>
-            <Tool label={t("sketch.refine")} active={sketchTool === "refine"} onClick={() => chooseSketchTool("refine")}><SketchToolbarIcon file="refine" /></Tool>
+            <Tool label={t("sketch.refine")} active={sketchTool === "refine"} onClick={refineSketchSelection}><SketchToolbarIcon file="refine" /></Tool>
             <Tool label={t("sketch.mergePoints")} enabled={mergeableSketchPointIds.length === 2} onClick={mergeSelectedSketchPoints}><SketchToolbarIcon file="merge-points" /></Tool>
             <Tool label={t("sketch.trim")} active={sketchTool === "trim"} onClick={() => chooseSketchTool("trim")}><SketchToolbarIcon file="trim" /></Tool>
           </ToolbarSection>
