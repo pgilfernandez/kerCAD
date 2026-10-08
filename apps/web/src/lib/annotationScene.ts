@@ -9,7 +9,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
   const vector = (point: { x: number; y: number; z: number }) => new THREE.Vector3(point.x, point.y, point.z);
   for (const annotation of annotations) {
     if (!annotation.visible) continue;
-    const color = annotation.id === selectedId ? "#1463ee" : "#233c52";
+    const color = annotation.kind === "text" ? "#000000" : annotation.id === selectedId ? "#1463ee" : "#233c52";
     const label = (text: string, position: THREE.Vector3, size: number, font = "Arial", alignment = "center") => {
       const canvas = document.createElement("canvas");
       const context = canvas.getContext("2d");
@@ -20,8 +20,10 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
       canvas.width = Math.min(4096, Math.max(64, Math.ceil(Math.max(...lines.map((line) => context.measureText(line).width)) + 16)));
       canvas.height = Math.min(4096, Math.max(64, lines.length * 64));
       context.font = fontSpec;
-      context.fillStyle = "rgba(255,255,255,0.85)";
-      context.fillRect(0, 0, canvas.width, canvas.height);
+      if (annotation.kind === "dimension") {
+        context.fillStyle = "rgba(255,255,255,0.85)";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+      }
       context.fillStyle = color;
       context.textBaseline = "middle";
       context.textAlign = alignment === "left" ? "left" : alignment === "right" ? "right" : "center";

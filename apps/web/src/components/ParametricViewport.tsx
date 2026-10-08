@@ -20,6 +20,7 @@ import { ToolbarBooleanModeIcon, ToolbarChamferIcon, ToolbarEditOperationIcon, T
 import { displayLengthToMillimeters, displayUnitLabel, formatDisplayLength, millimetersToDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
 import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
 import { createAnnotationScene } from "@/lib/annotationScene";
+import { AnnotationInteraction } from "@/components/AnnotationInteraction";
 import { viewportSelectionBounds } from "@/lib/viewportBounds";
 import type { ParametricDocument, ParametricFeature, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, RenderMesh, SketchFeature } from "@/types/parametric";
 
@@ -212,6 +213,12 @@ type Props = {
   displayUnit?: ParametricDisplayUnit;
   annotations?: ParametricDocument["annotations"];
   selectedAnnotationId?: string | null;
+  annotationTool?: "text" | "dimension" | null;
+  editingAnnotationId?: string | null;
+  onPlaceAnnotation?: (kind: "text" | "dimension", start: { x: number; y: number; z: number }, end?: { x: number; y: number; z: number }) => void;
+  onFinishAnnotation?: (id: string, text: string, size: number) => void;
+  onEditAnnotation?: (id: string | null) => void;
+  onCancelAnnotationTool?: () => void;
   locale?: "en" | "es";
   parameterHandlesVisible?: boolean;
   selection?: ViewportSelection | null;
@@ -630,8 +637,10 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ annotations, selectedAnnotationId = null, onProjectRename, mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, faceExtrudeDraft = null, onFaceExtrudeAccept, onFaceExtrudeCancel, faceExtrudeCanAccept = true, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, revolveDraft = null, onRevolveDraftChange, onRevolveAccept, onRevolveCancel, revolveCanAccept = true, distanceHandle = null, onDistanceParameterDragStart, onDistanceParameterPreview, onDistanceParameterChange, onDistanceParameterCancel, shellDraft = null, onShellDraftChange, onShellCornerTypeChange, onShellAccept, onShellCancel, shellCanAccept = true, floatingFeature = null, booleanObjects = [], patternSources = [], booleanAddOnly = false, operationModesVisible = true, contextToolbarVisible, manipulatorControls, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = "Untitled design", onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions, alignmentActive = false, alignmentBusy = false, alignmentTargets = [], alignmentReference = null, onAlignmentSelect, onAlign }: Props) {
+export function ParametricViewport({ annotationTool = null, editingAnnotationId = null, onPlaceAnnotation, onFinishAnnotation, onEditAnnotation, onCancelAnnotationTool, annotations, selectedAnnotationId = null, onProjectRename, mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, faceExtrudeDraft = null, onFaceExtrudeAccept, onFaceExtrudeCancel, faceExtrudeCanAccept = true, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, revolveDraft = null, onRevolveDraftChange, onRevolveAccept, onRevolveCancel, revolveCanAccept = true, distanceHandle = null, onDistanceParameterDragStart, onDistanceParameterPreview, onDistanceParameterChange, onDistanceParameterCancel, shellDraft = null, onShellDraftChange, onShellCornerTypeChange, onShellAccept, onShellCancel, shellCanAccept = true, floatingFeature = null, booleanObjects = [], patternSources = [], booleanAddOnly = false, operationModesVisible = true, contextToolbarVisible, manipulatorControls, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = "Untitled design", onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions, alignmentActive = false, alignmentBusy = false, alignmentTargets = [], alignmentReference = null, onAlignmentSelect, onAlign }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const annotationSnapRef = useRef<(event: PointerEvent) => THREE.Vector3 | null>(() => null);
+  const [annotationPreview, setAnnotationPreview] = useState<NonNullable<ParametricDocument["annotations"]>[number] | null>(null);
   const alignmentRef = useRef({ active: alignmentActive, targets: alignmentTargets, onSelect: onAlignmentSelect });
   alignmentRef.current = { active: alignmentActive, targets: alignmentTargets, onSelect: onAlignmentSelect };
   const alignmentOverlayRef = useRef<THREE.Group | null>(null);
@@ -1943,6 +1952,7 @@ export function ParametricViewport({ annotations, selectedAnnotationId = null, o
       }
       return closestPoint as THREE.Vector3 | null;
     };
+    annotationSnapRef.current = snapTargetAtPointer;
     const updateConePreview = (selected: ViewportSelection, baseRadius: number, topRadius: number, height: number) => {
       if (selected.shapeParameters?.shape !== "cone") return;
       const radialScale = selected.width / Math.max(0.01, selected.shapeParameters.baseRadius * 2);
@@ -3154,13 +3164,15 @@ export function ParametricViewport({ annotations, selectedAnnotationId = null, o
   }, [displayUnit, locale, renderQuality, shadingMode]);
 
   useEffect(() => {
-    const scene = sceneRef.current;
-    if (!scene) return;
-    const layer = createAnnotationScene(annotations ?? [], displayUnit, selectedAnnotationId);
-    scene.add(layer.group);
+    const model = modelRef.current;
+    if (!model) return;
+    const displayed = (annotations ?? []).map((annotation) => annotationPreview?.id === annotation.id ? annotationPreview : annotation);
+    if (annotationPreview && !displayed.some((annotation) => annotation.id === annotationPreview.id)) displayed.push(annotationPreview);
+    const layer = createAnnotationScene(displayed, displayUnit, selectedAnnotationId);
+    model.add(layer.group);
     invalidateRef.current();
     return () => { layer.dispose(); invalidateRef.current(); };
-  }, [annotations, selectedAnnotationId, displayUnit, locale, renderQuality, shadingMode]);
+  }, [annotations, annotationPreview, selectedAnnotationId, displayUnit, locale, renderQuality, shadingMode]);
 
   useEffect(() => {
     const model = modelRef.current;
@@ -4419,6 +4431,7 @@ export function ParametricViewport({ annotations, selectedAnnotationId = null, o
     };
   }, [onProjectRename, projection, renderQuality, shadingMode]);
   return <div className="parametric-viewport" ref={hostRef} aria-label={locale === "es" ? "Vista 3D de la pieza" : "3D model view"}>
+    <AnnotationInteraction host={hostRef} camera={cameraRef} model={modelRef} snapPoint={annotationSnapRef} workplane={workplane} tool={annotationTool} selected={annotations?.find((annotation) => annotation.id === selectedAnnotationId)} editing={Boolean(editingAnnotationId && editingAnnotationId === selectedAnnotationId)} locale={locale} onPlace={(kind, start, end) => onPlaceAnnotation?.(kind, start, end)} onFinish={(id, text, size) => onFinishAnnotation?.(id, text, size)} onEdit={(id) => onEditAnnotation?.(id)} onCancelTool={() => onCancelAnnotationTool?.()} onPreview={setAnnotationPreview} />
     {alignmentActive ? <div ref={alignmentButtonsRef} className="educad-alignment-face-buttons" role="group" aria-label={locale === "es" ? "Alinear con la referencia" : "Align with reference"}>
       {(["x", "y", "z"] as const).flatMap(axis => (["min", "center", "max"] as const).map(anchor => {
         const label = locale === "es"

@@ -281,10 +281,13 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [history, setHistory] = useState<ParametricHistoryState>(() => createParametricHistory(initialDocument));
   const document = currentHistoryDocument(history);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
+  const [annotationTool, setAnnotationTool] = useState<"text" | "dimension" | null>(null);
+  const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
   const latestDocumentRef = useRef(document);
   latestDocumentRef.current = document;
   const [modelSelection, setModelSelection] = useState<ModelTreeSelection[]>(initialDocument.objects[0] ? [{ id: initialDocument.objects[0].id, kind: "object" }] : []);
-  useEffect(() => { if (modelSelection.length) setSelectedAnnotationId(null); }, [modelSelection]);
+  useEffect(() => { if (modelSelection.length) { setSelectedAnnotationId(null); setAnnotationTool(null); } }, [modelSelection]);
+  useEffect(() => { if (selectedAnnotationId !== editingAnnotationId) setEditingAnnotationId(null); }, [selectedAnnotationId, editingAnnotationId]);
   useEffect(() => { if (selectedAnnotationId && !document.annotations?.some((annotation) => annotation.id === selectedAnnotationId)) setSelectedAnnotationId(null); }, [document.annotations, selectedAnnotationId]);
   const [build, setBuild] = useState<BuildResult>({ mesh: null, objectRecords: [], operationContext: null, completedFeatureIds: [], failedFeatureId: null, warning: null });
   const [operationContext, setOperationContext] = useState<BuildResult["operationContext"]>(null);
@@ -3333,17 +3336,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           </div>
           <div className="toolbar-modeling-groups">
           <ToolbarSection label={t("annotation.group")}>
-            {(["text", "dimension"] as const).map((kind) => <Tool key={kind} label={t(`annotation.${kind}`)} onClick={() => {
-              const id = crypto.randomUUID();
-              const origin = { ...document.workplane.origin };
-              mutate((draft) => {
-                draft.annotations ??= [];
-                const common = { id, name: t(`annotation.${kind}`), visible: true };
-                draft.annotations.push(kind === "text"
-                  ? { ...common, kind, position: origin, alignment: "center", size: 3, font: "Arial", text: "eduCAD" }
-                  : { ...common, kind, start: origin, end: { x: origin.x + 20 * document.workplane.xAxis.x, y: origin.y + 20 * document.workplane.xAxis.y, z: origin.z + 20 * document.workplane.xAxis.z } });
-              });
-              setModelSelection([]); setSelectedAnnotationId(id); setModelSidebarMode("normal");
+            {(["text", "dimension"] as const).map((kind) => <Tool key={kind} label={t(`annotation.${kind}`)} active={annotationTool === kind} onClick={() => {
+              setAnnotationTool(annotationTool === kind ? null : kind);
+              setEditingAnnotationId(null); setModelSelection([]); setSelectedAnnotationId(null);
             }}><AnnotationIcon kind={kind} /></Tool>)}
           </ToolbarSection>
             <ToolbarSection label={t("toolbar.modify")} className="toolbar-modify-section">
@@ -3643,6 +3638,26 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         /> : <ParametricViewport
           annotations={document.annotations}
           selectedAnnotationId={selectedAnnotationId}
+          annotationTool={annotationTool}
+          editingAnnotationId={editingAnnotationId}
+          onCancelAnnotationTool={() => setAnnotationTool(null)}
+          onEditAnnotation={setEditingAnnotationId}
+          onPlaceAnnotation={(kind, start, end) => {
+            const id = crypto.randomUUID();
+            mutate((draft) => {
+              draft.annotations ??= [];
+              const common = { id, name: t(`annotation.${kind}`), visible: true };
+              draft.annotations.push(kind === "text"
+                ? { ...common, kind, position: start, alignment: "center", size: 6, font: "Arial", text: "eduCAD" }
+                : { ...common, kind, start, end: end ?? start });
+            });
+            setAnnotationTool(null); setModelSelection([]); setSelectedAnnotationId(id); setModelSidebarMode("normal");
+            setEditingAnnotationId(kind === "text" ? id : null);
+          }}
+          onFinishAnnotation={(id, text, size) => {
+            mutate((draft) => { const annotation = draft.annotations?.find((item) => item.id === id); if (annotation?.kind === "text") { annotation.text = text; annotation.size = size; } });
+            setEditingAnnotationId(null);
+          }}
           onThumbnail={(dataUrl) => {
             const stepId = challengeCaptureStepRef.current;
             if (stepId) {
@@ -3989,7 +4004,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         {notice && <div className={`educad-reference-toast ${notice.type}`} role={notice.type === "error" ? "alert" : "status"} aria-live={notice.type === "error" ? "assertive" : "polite"} aria-atomic="true">{notice.text}</div>}
         {modelSidebarMode !== "hidden" ? <ParametricModelSidebar
           selectedAnnotationId={selectedAnnotationId}
-          onSelectAnnotation={(id) => { setModelSelection([]); setSelectedAnnotationId(id); }}
+          onSelectAnnotation={(id) => { setAnnotationTool(null); setEditingAnnotationId(null); setModelSelection([]); setSelectedAnnotationId(id); }}
           onUpdateAnnotation={(id, update) => mutate((draft) => { const annotation = draft.annotations?.find((item) => item.id === id); if (annotation) update(annotation); })}
           document={document}
           selection={modelSelection}

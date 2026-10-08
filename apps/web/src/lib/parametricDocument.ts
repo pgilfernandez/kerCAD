@@ -360,7 +360,7 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
     if (annotation.kind === "text") {
       annotation.text = typeof annotation.text === "string" ? annotation.text.slice(0, 2000) : "";
       annotation.font = typeof annotation.font === "string" ? annotation.font.slice(0, 160) : "Arial";
-      annotation.size = Math.max(0.1, Math.min(1000, Number.isFinite(annotation.size) ? annotation.size : 3));
+      annotation.size = Math.max(0.1, Math.min(1000, Number.isFinite(annotation.size) ? annotation.size : 6));
       if (!["left", "center", "right"].includes(annotation.alignment)) annotation.alignment = "center";
     }
   }
