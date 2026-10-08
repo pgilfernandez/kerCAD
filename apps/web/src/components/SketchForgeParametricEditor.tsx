@@ -297,6 +297,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [exportOpen, setExportOpen] = useState(false);
   const [exportFileName, setExportFileName] = useState(document.name);
   const [exportScope, setExportScope] = useState<"project" | "selection">("project");
+  const [stlExportScope, setStlExportScope] = useState<"project" | "selection">("project");
+  useEffect(() => { if (exportOpen) setStlExportScope("project"); }, [exportOpen]);
   const [stlQuality, setStlQuality] = useState<StlTessellationQuality>("medium");
   const [stlExporting, setStlExporting] = useState(false);
   const [newDocumentOpen, setNewDocumentOpen] = useState(false);
@@ -3105,7 +3107,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const exportStl = async () => {
     setStlExporting(true);
     try {
-      const meshes = await buildParametricStlMeshes(document, stlQuality, exportObjectIds);
+      const meshes = await buildParametricStlMeshes(document, stlQuality, stlExportScope === "selection" ? exportSelectedObjectIds : undefined);
       if (meshes.length === 0) {
         setNotice({ type: "error", text: t("notice.noObjectsToExport") });
         return;
@@ -4012,7 +4014,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           <div className="educad-export-options">
             <button onClick={() => void exportProject()} disabled={projectExporting}><span className="export-format-icon">edu</span><strong>{projectExporting ? t("dialog.saving") : t("dialog.projectFormat")}</strong><small>{t("dialog.projectFormatHint")}</small></button>
             <label className="educad-export-scope">
-              <span>{locale === "es" ? "Exportar STEP / STL" : "Export STEP / STL"}</span>
+              <span>{locale === "es" ? "Exportar STEP" : "Export STEP"}</span>
               <select value={exportScope} disabled={exporting || stlExporting} onChange={(event) => setExportScope(event.target.value as "project" | "selection")}>
                 <option value="project">{locale === "es" ? "Proyecto completo" : "Whole project"}</option>
                 <option value="selection" disabled={!exportSelectedObjectIds.length}>{locale === "es" ? "Selección" : "Selection"} ({exportSelectedObjectIds.length})</option>
@@ -4021,7 +4023,11 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             </label>
             <button onClick={() => void exportStep()} disabled={exporting || kernelBusy || !build.mesh || (exportScope === "selection" && !exportSelectedObjectIds.length)}><span className="export-format-icon step">STEP</span><strong>{exporting ? t("dialog.exporting") : t("dialog.stepFormat")}</strong><small>{t("dialog.stepFormatHint")}</small></button>
             <div className="educad-stl-export-option">
-              <button onClick={() => void exportStl()} disabled={stlExporting || kernelBusy || build.objectRecords.length === 0 || (exportScope === "selection" && !exportSelectedObjectIds.length)}><span className="export-format-icon">STL</span><strong>{stlExporting ? t("dialog.exporting") : t("dialog.stlFormat")}</strong><small>{t("dialog.stlFormatHint")}</small></button>
+              <button onClick={() => void exportStl()} disabled={stlExporting || kernelBusy || build.objectRecords.length === 0 || (stlExportScope === "selection" && !exportSelectedObjectIds.length)}><span className="export-format-icon">STL</span><strong>{stlExporting ? t("dialog.exporting") : t("dialog.stlFormat")}</strong><small>{t("dialog.stlFormatHint")}</small></button>
+              <div className="educad-stl-scope-buttons" role="group" aria-label={locale === "es" ? "Alcance de exportación STL" : "STL export scope"}>
+                <button type="button" aria-pressed={stlExportScope === "project"} disabled={stlExporting} onClick={() => setStlExportScope("project")}>{locale === "es" ? "Proyecto completo" : "Whole project"}</button>
+                <button type="button" aria-pressed={stlExportScope === "selection"} disabled={stlExporting || !exportSelectedObjectIds.length} onClick={() => setStlExportScope("selection")}>{locale === "es" ? "Sólo selección" : "Selection only"} ({exportSelectedObjectIds.length})</button>
+              </div>
               <label className="educad-stl-quality"><span>{t("dialog.stlQuality")}: <strong>{t(stlQuality === "low" ? "dialog.qualityLow" : stlQuality === "medium" ? "dialog.qualityMedium" : stlQuality === "high" ? "dialog.qualityHigh" : "dialog.qualityVeryHigh")}</strong></span><input type="range" min={0} max={3} step={1} value={(["low", "medium", "high", "veryHigh"] as const).indexOf(stlQuality)} aria-valuetext={t(stlQuality === "low" ? "dialog.qualityLow" : stlQuality === "medium" ? "dialog.qualityMedium" : stlQuality === "high" ? "dialog.qualityHigh" : "dialog.qualityVeryHigh")} onChange={(event) => setStlQuality((["low", "medium", "high", "veryHigh"] as const)[Number(event.target.value)])} /><span className="educad-stl-quality-labels" aria-hidden="true"><small>{t("dialog.qualityLow")}</small><small>{t("dialog.qualityMedium")}</small><small>{t("dialog.qualityHigh")}</small><small>{t("dialog.qualityVeryHigh")}</small></span></label>
             </div>
           </div>
