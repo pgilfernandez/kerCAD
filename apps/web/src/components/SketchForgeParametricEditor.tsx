@@ -3285,7 +3285,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       </div> : null}
 
       <section className={`educad-workplane-stage ${sketchSession ? "sketch-active" : ""} ${challengeEditor ? "challenge-authoring" : ""} ${(challenge || challengeEditor) && challengeOpen && !sketchSession ? `challenge-docked-${challengeDock}` : ""}`}>
-        {showFps ? <FpsCounter /> : null}
+        {showFps ? <FpsCounter sketchMode={Boolean(sketchSession)} /> : null}
         {backgroundProcessLabel ? <BackgroundProcessIndicator label={backgroundProcessLabel} rightOffset={viewportOverlayRightOffset} regenerating={!stlExporting && !exporting && !alignmentCalculating && kernelBusy} /> : null}
         {sketchSession ? <SketchWorkspace
           locale={locale}
@@ -3970,14 +3970,31 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   );
 }
 
-function FpsCounter() {
+function FpsCounter({ sketchMode = false }: { sketchMode?: boolean }) {
   const [fps, setFps] = useState(0);
   useEffect(() => {
+    if (sketchMode) {
+      let frame = 0;
+      let frames = 0;
+      let started = performance.now();
+      setFps(0);
+      const sample = (now: number) => {
+        frames += 1;
+        if (now - started >= 500) {
+          setFps(Math.round(frames * 1000 / (now - started)));
+          frames = 0;
+          started = now;
+        }
+        frame = requestAnimationFrame(sample);
+      };
+      frame = requestAnimationFrame(sample);
+      return () => cancelAnimationFrame(frame);
+    }
     const update = () => setFps(Math.round(window.educadParametricPerf?.get().fps ?? 0));
     update();
     const timer = window.setInterval(update, 500);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [sketchMode]);
   const tone = fps > 0 && fps < 20 ? "low" : fps < 40 ? "medium" : "high";
   return <output className={`educad-fps-counter ${tone}`} aria-label={`${fps} frames per second`}>{fps} FPS</output>;
 }
