@@ -3165,18 +3165,18 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           <ToolbarSection label={t("sketch.draw")}>
             <Tool label={t("sketch.line")} active={sketchTool === "line"} onClick={() => chooseSketchTool("line")}><SketchToolbarIcon file="line" /></Tool>
             <Tool label={t("sketch.rectangle")} active={sketchTool === "rectangle"} onClick={() => chooseSketchTool("rectangle")}><SketchToolbarIcon file="rectangle" /></Tool>
-            <Tool label={t("sketch.slot")} active={sketchTool === "slot"} onClick={() => chooseSketchTool("slot")}><SketchToolbarIcon file="slot" /></Tool>
-            <Tool label={t("sketch.arcSlot")} active={sketchTool === "arcSlot"} onClick={() => chooseSketchTool("arcSlot")}><SketchToolbarIcon file="arc-slot" /></Tool>
             <Tool label={t("sketch.circle")} active={sketchTool === "circle"} onClick={() => chooseSketchTool("circle")}><SketchToolbarIcon file="circle" /></Tool>
             <Tool label={t("sketch.centerArc")} active={sketchTool === "arc"} onClick={() => chooseSketchTool("arc")}><SketchToolbarIcon file="center-arc" /></Tool>
             <Tool label={t("sketch.bezier")} active={sketchTool === "bezier"} onClick={() => chooseSketchTool("bezier")}><SketchToolbarIcon file="bezier" /></Tool>
-            {/* <Tool label={t("sketch.smoothCurve")} active={sketchTool === "smooth"} onClick={() => chooseSketchTool("smooth")}><SketchToolbarIcon file="smooth-curve" /></Tool> */}
-            <Tool label={t("sketch.freehand")} active={sketchTool === "freehand"} onClick={() => chooseSketchTool("freehand")}><SketchToolbarIcon file="freehand" /></Tool>
-            <Tool label={t("sketch.smoothFreehand")} active={sketchTool === "freehandSmooth"} onClick={() => chooseSketchTool("freehandSmooth")}><SketchToolbarIcon file="smooth-freehand" /></Tool>
             <button ref={polygonMenuTriggerRef} type="button" className={`toolbar-icon ${sketchTool === "polygon" ? "active" : ""}`} aria-label={t("sketch.polygonType")} title={t("sketch.polygonType")} aria-expanded={Boolean(polygonMenuPosition)} aria-controls="sketch-polygon-menu" onClick={() => {
               const bounds = polygonMenuTriggerRef.current?.getBoundingClientRect();
               setPolygonMenuPosition(polygonMenuPosition || !bounds ? null : { top: bounds.bottom + 6, left: Math.max(8, Math.min(bounds.left, window.innerWidth - 208)) });
             }}><SketchToolbarIcon file={`polygon-${sketchPolygonSides}`} /></button>
+            <Tool label={t("sketch.slot")} active={sketchTool === "slot"} onClick={() => chooseSketchTool("slot")}><SketchToolbarIcon file="slot" /></Tool>
+            <Tool label={t("sketch.arcSlot")} active={sketchTool === "arcSlot"} onClick={() => chooseSketchTool("arcSlot")}><SketchToolbarIcon file="arc-slot" /></Tool>
+            {/* <Tool label={t("sketch.smoothCurve")} active={sketchTool === "smooth"} onClick={() => chooseSketchTool("smooth")}><SketchToolbarIcon file="smooth-curve" /></Tool> */}
+            <Tool label={t("sketch.freehand")} active={sketchTool === "freehand"} onClick={() => chooseSketchTool("freehand")}><SketchToolbarIcon file="freehand" /></Tool>
+            <Tool label={t("sketch.smoothFreehand")} active={sketchTool === "freehandSmooth"} onClick={() => chooseSketchTool("freehandSmooth")}><SketchToolbarIcon file="smooth-freehand" /></Tool>
           </ToolbarSection>
           <ToolbarSection label={t("sketch.point")}>
             <Tool label={t("sketch.corner")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("corner")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "corner")}><SketchToolbarIcon file="corner" /></Tool>
