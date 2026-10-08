@@ -4023,6 +4023,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         <aside data-educad-popup="export" className="top-action-panel export-action-panel educad-export-panel">
           <header><div className="top-action-heading"><strong>{t("dialog.exportTitle")}</strong></div><button aria-label={t("common.close")} onClick={() => setExportOpen(false)}><X /></button></header>
           <label className="educad-export-name"><span>{t("dialog.fileName")}</span><input type="text" value={exportFileName} maxLength={120} placeholder="model" onChange={(event) => setExportFileName(event.target.value)} /></label>
+          <label className="educad-export-name"><span>{t("dialog.authorName")}</span><input type="text" value={sharedAuthor} maxLength={160} autoComplete="name" placeholder={t("dialog.authorName")} onChange={(event) => setSharedAuthor(event.target.value)} disabled={projectExporting || sharedSaving} /></label>
           {onSaveShared ? <>
             <button type="button" onClick={() => setSharedSaveOpen(current => !current)} aria-expanded={sharedSaveOpen}>{locale === "es" ? "Guardar en compartidos" : "Save to shared"}</button>
             {sharedSaveOpen ? <form className="educad-editor-share-form" onSubmit={event => { event.preventDefault(); void publishShared(); }}>
@@ -4036,7 +4037,6 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           <div className="educad-export-options">
             <div className="educad-project-export-option">
               <button onClick={() => void exportProject()} disabled={projectExporting}><span className="export-format-icon">edu</span><strong>{projectExporting ? t("dialog.saving") : t("dialog.projectFormat")}</strong><small>{t("dialog.projectFormatHint")}</small></button>
-              <label className="educad-project-author"><span>{t("dialog.authorName")}</span><input type="text" value={sharedAuthor} maxLength={160} autoComplete="name" placeholder={t("dialog.authorName")} onChange={(event) => setSharedAuthor(event.target.value)} disabled={projectExporting || sharedSaving} /></label>
               <div className="educad-project-credits"><span>{t("dialog.creator")}: {document.creator || document.author || sharedAuthor.trim() || "—"}</span><span>{t("dialog.lastAuthor")}: {sharedAuthor.trim() || document.author || "—"}</span></div>
             </div>
             <button onClick={() => void exportStep()} disabled={exporting || kernelBusy || !build.mesh || (exportScope === "selection" && !exportSelectedObjectIds.length)}><span className="export-format-icon step">STEP</span><strong>{exporting ? t("dialog.exporting") : t("dialog.stepFormat")}</strong><small>{t("dialog.stepFormatHint")}</small></button>
