@@ -384,14 +384,20 @@ function AnnotationProperties({ annotation, onUpdate }: { annotation: Parametric
   };
   return <div className="educad-feature-card educad-annotation-properties">
     <label><span>{t("model.name")}</span><input value={annotation.name} onChange={(event) => onUpdate((draft) => { draft.name = event.target.value; })} /></label>
-    {annotation.kind === "arrow" && <AnnotationColorPicker color={annotation.color} onChange={(color) => onUpdate((draft) => { if (draft.kind === "arrow") draft.color = color; })} />}
+    {annotation.kind === "dimension" && <>
+      <AnnotationColorPicker color={annotation.color ?? "#233c52"} onChange={(color) => onUpdate((draft) => { if (draft.kind === "dimension") draft.color = color; })} />
+      <label><span>{t("annotation.startArrow")}</span><input type="checkbox" checked={annotation.startArrow !== false} onChange={(event) => onUpdate((draft) => { if (draft.kind === "dimension") draft.startArrow = event.target.checked; })} /></label>
+      <label><span>{t("annotation.endArrow")}</span><input type="checkbox" checked={annotation.endArrow !== false} onChange={(event) => onUpdate((draft) => { if (draft.kind === "dimension") draft.endArrow = event.target.checked; })} /></label>
+      <label><span>{t("annotation.lineStyle")}</span><select value={annotation.lineStyle ?? "solid"} onChange={(event) => onUpdate((draft) => { if (draft.kind === "dimension") draft.lineStyle = event.target.value as "solid" | "dashed"; })}><option value="solid">{t("annotation.solid")}</option><option value="dashed">{t("annotation.dashed")}</option></select></label>
+      <label><span>{t("annotation.showLength")}</span><input type="checkbox" checked={annotation.showLength !== false} onChange={(event) => onUpdate((draft) => { if (draft.kind === "dimension") draft.showLength = event.target.checked; })} /></label>
+    </>}
     {annotation.kind === "text" ? <>
       <label><span>{t("annotation.text")}</span><textarea value={annotation.text} maxLength={2000} onChange={(event) => onUpdate((draft) => { if (draft.kind === "text") draft.text = event.target.value; })} /></label>
       <label><span>{t("annotation.font")}</span><input value={annotation.font} placeholder="Arial" maxLength={160} onChange={(event) => onUpdate((draft) => { if (draft.kind === "text") draft.font = event.target.value; })} /></label>
       <label><span>{t("annotation.size")}</span><DeferredNumberInput value={annotation.size} min={0.1} max={1000} step={steps.input} unit="mm" onCommit={(value) => onUpdate((draft) => { if (draft.kind === "text") draft.size = value; })} /></label>
       <label><span>{t("annotation.alignment")}</span><select value={annotation.alignment} onChange={(event) => onUpdate((draft) => { if (draft.kind === "text") draft.alignment = event.target.value as "left" | "center" | "right"; })}>{(["left", "center", "right"] as const).map((alignment) => <option key={alignment} value={alignment}>{t(`annotation.${alignment}`)}</option>)}</select></label>
       {position("position", t("annotation.position"))}
-    </> : <><ReadOnlyField label={t(annotation.kind === "arrow" ? "property.length" : "annotation.dimension")} value={`${formatDisplayLength(Math.hypot(annotation.end.x - annotation.start.x, annotation.end.y - annotation.start.y, annotation.end.z - annotation.start.z), steps.displayUnit)} ${displayUnitLabel(steps.displayUnit)}`} />{position("start", t("annotation.start"))}{position("end", t("annotation.end"))}</>}
+    </> : <><ReadOnlyField label={t("property.length")} value={`${formatDisplayLength(Math.hypot(annotation.end.x - annotation.start.x, annotation.end.y - annotation.start.y, annotation.end.z - annotation.start.z), steps.displayUnit)} ${displayUnitLabel(steps.displayUnit)}`} />{position("start", t("annotation.start"))}{position("end", t("annotation.end"))}</>}
   </div>;
 }
 

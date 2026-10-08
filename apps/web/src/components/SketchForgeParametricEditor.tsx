@@ -65,6 +65,7 @@ import { assertImportByteLimit } from "@/lib/parametricImportLimits";
 import { displayLengthToMillimeters, displayUnitLabel, displayUnitWorkspace, millimetersToDisplayLength, normalizeDisplayUnit } from "@/lib/parametricUnits";
 import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
 import { AnnotationIcon } from "@/components/AnnotationIcon";
+import { annotationDimensionPreset, type AnnotationTool } from "@/lib/annotationPresets";
 import { educadTranslate, normalizeEducadLocale, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
 import { parametricRebuildSuggestion } from "@/lib/parametricRebuildDiagnostics";
 import { hasPreviousSolidOperation } from "@/lib/parametricOperationModes";
@@ -283,7 +284,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [history, setHistory] = useState<ParametricHistoryState>(() => createParametricHistory(initialDocument));
   const document = currentHistoryDocument(history);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
-  const [annotationTool, setAnnotationTool] = useState<"text" | "dimension" | "arrow" | null>(null);
+  const [annotationTool, setAnnotationTool] = useState<AnnotationTool | null>(null);
   const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
   const [annotationEndpoint, setAnnotationEndpoint] = useState<"start" | "end" | null>(null);
   const selectedAnnotation = document.annotations?.find((annotation) => annotation.id === selectedAnnotationId);
@@ -3421,7 +3422,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               </div>
             </ToolbarSection>
             <ToolbarSection label={t("annotation.group")}>
-              {(["text", "dimension", "arrow"] as const).map((kind) => <Tool key={kind} label={t(`annotation.${kind}`)} active={annotationTool === kind} onClick={() => {
+              {(["text", "dimension", "arrow", "dashedLine"] as const).map((kind) => <Tool key={kind} label={t(`annotation.${kind}`)} active={annotationTool === kind} onClick={() => {
                 setAnnotationTool(annotationTool === kind ? null : kind);
                 setEditingAnnotationId(null); setModelSelection([]); setSelectedAnnotationId(null);
               }}><AnnotationIcon kind={kind} /></Tool>)}
@@ -3700,7 +3701,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               const common = { id, name: t(`annotation.${kind}`), visible: true };
               draft.annotations.push(kind === "text"
                 ? { ...common, kind, position: start, alignment: "center", size: 6, font: "Arial", text: "eduCAD" }
-                : kind === "arrow" ? { ...common, kind, start, end: end ?? start, color: "#000000" } : { ...common, kind, start, end: end ?? start });
+                : { ...common, kind: "dimension", start, end: end ?? start, ...annotationDimensionPreset(kind) });
             });
             setAnnotationTool(null); setModelSelection([]); setSelectedAnnotationId(id); setModelSidebarMode("normal");
             setEditingAnnotationId(kind === "text" ? id : null);

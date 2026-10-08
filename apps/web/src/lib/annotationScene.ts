@@ -12,7 +12,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
   const vector = (point: { x: number; y: number; z: number }) => new THREE.Vector3(point.x, point.y, point.z);
   for (const annotation of annotations) {
     if (!annotation.visible) continue;
-    const color = annotation.kind === "text" ? "#000000" : annotation.kind === "arrow" ? annotation.color : annotation.id === selectedId ? "#1463ee" : "#233c52";
+    const color = annotation.kind === "text" ? "#000000" : annotation.color ?? "#233c52";
     const label = (text: string, position: THREE.Vector3, size: number, font = "Arial", alignment = "center") => {
       if (!text) return;
       const canvas = document.createElement("canvas");
@@ -78,14 +78,15 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
     const distance = start.distanceTo(end);
     const direction = end.clone().sub(start).normalize();
     const perpendicular = direction.clone().cross(Math.abs(direction.z) < 0.9 ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(0, 1, 0)).normalize().multiplyScalar(2);
-    const points = annotation.kind === "arrow" ? [start, end] : [
+    const points = annotation.startArrow === false || annotation.endArrow === false ? [start, end] : [
       start, end, start.clone().sub(perpendicular), start.clone().add(perpendicular), end.clone().sub(perpendicular), end.clone().add(perpendicular),
     ];
     const geometry = new LineSegmentsGeometry();
     geometry.setPositions(points.flatMap((point) => [point.x, point.y, point.z]));
-    const material = new LineMaterial({ color, linewidth: 2, worldUnits: false, depthTest: false, depthWrite: false, transparent: true });
+    const material = new LineMaterial({ color, linewidth: 2, worldUnits: false, dashed: annotation.lineStyle === "dashed", dashSize: 3, gapSize: 2, depthTest: false, depthWrite: false, transparent: true });
     const lines = new LineSegments2(geometry, material);
-    if (annotation.kind === "arrow") { lines.userData.annotationId = annotation.id; lines.userData.annotationPickable = true; }
+    lines.computeLineDistances();
+    lines.userData.annotationId = annotation.id; lines.userData.annotationPickable = true;
     // Keep the requested width in screen pixels across Retina/quality changes.
     lines.onBeforeRender = (renderer) => material.resolution.set(Math.max(1, renderer.domElement.clientWidth), Math.max(1, renderer.domElement.clientHeight));
     lines.renderOrder = 89;
@@ -95,10 +96,12 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
       const height = Math.min(2, distance / 5) * 2;
       const cone = new THREE.ConeGeometry(height * 0.3, height, 12);
       const coneMaterial = new THREE.MeshBasicMaterial({ color, depthTest: false, depthWrite: false, transparent: true });
-      const ends: Array<[THREE.Vector3, number]> = annotation.kind === "arrow" ? [[end, 1]] : [[start, -1], [end, 1]];
+      const ends: Array<[THREE.Vector3, number]> = [];
+      if (annotation.startArrow !== false) ends.push([start, -1]);
+      if (annotation.endArrow !== false) ends.push([end, 1]);
       for (const [point, sign] of ends) {
         const arrow = new THREE.Mesh(cone, coneMaterial);
-        if (annotation.kind === "arrow") { arrow.userData.annotationId = annotation.id; arrow.userData.annotationPickable = true; }
+        arrow.userData.annotationId = annotation.id; arrow.userData.annotationPickable = true;
         arrow.position.copy(point).addScaledVector(direction, -sign * height / 2);
         arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().multiplyScalar(sign));
         arrow.renderOrder = 89;
@@ -106,7 +109,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
       }
       disposables.push(cone, coneMaterial);
     }
-    if (annotation.kind === "dimension") label(`${formatDisplayLength(distance, unit)} ${displayUnitLabel(unit)}`, start.clone().add(end).multiplyScalar(0.5), 3);
+    if (annotation.showLength !== false) label(`${formatDisplayLength(distance, unit)} ${displayUnitLabel(unit)}`, start.clone().add(end).multiplyScalar(0.5), 3);
   }
   return { group, dispose: () => { group.removeFromParent(); disposables.forEach((resource) => resource.dispose()); } };
 }

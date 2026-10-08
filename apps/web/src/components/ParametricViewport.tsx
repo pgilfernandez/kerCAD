@@ -21,6 +21,7 @@ import { displayLengthToMillimeters, displayUnitLabel, formatDisplayLength, mill
 import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
 import { createAnnotationScene } from "@/lib/annotationScene";
 import { AnnotationInteraction } from "@/components/AnnotationInteraction";
+import type { AnnotationTool } from "@/lib/annotationPresets";
 import { viewportSelectionBounds } from "@/lib/viewportBounds";
 import type { ParametricDocument, ParametricFeature, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, RenderMesh, SketchFeature } from "@/types/parametric";
 
@@ -218,9 +219,9 @@ type Props = {
   selectedAnnotationEndpoint?: "start" | "end" | null;
   onSelectAnnotationEndpoint?: (endpoint: "start" | "end") => void;
   onMoveAnnotationEndpoint?: (id: string, endpoint: "start" | "end", position: { x: number; y: number; z: number }) => void;
-  annotationTool?: "text" | "dimension" | "arrow" | null;
+  annotationTool?: AnnotationTool | null;
   editingAnnotationId?: string | null;
-  onPlaceAnnotation?: (kind: "text" | "dimension" | "arrow", start: { x: number; y: number; z: number }, end?: { x: number; y: number; z: number }) => void;
+  onPlaceAnnotation?: (kind: AnnotationTool, start: { x: number; y: number; z: number }, end?: { x: number; y: number; z: number }) => void;
   onFinishAnnotation?: (id: string, text: string, size: number) => void;
   onEditAnnotation?: (id: string | null) => void;
   onCancelAnnotationTool?: () => void;

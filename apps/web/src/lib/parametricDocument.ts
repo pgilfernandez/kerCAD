@@ -348,16 +348,27 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
   next.displayUnit = normalizeDisplayUnit(next.displayUnit);
   next.annotations ??= [];
   if (!Array.isArray(next.annotations) || next.annotations.length > 1000) throw new Error("Invalid annotation collection.");
+  type Annotation = NonNullable<ParametricDocument["annotations"]>[number];
+  type LegacyArrow = Omit<Extract<Annotation, { kind: "dimension" }>, "kind"> & { kind: "arrow" };
+  next.annotations = (next.annotations as Array<Annotation | LegacyArrow>).map<Annotation>((annotation) => annotation?.kind === "arrow"
+    ? { ...annotation, kind: "dimension", color: annotation.color ?? "#000000", startArrow: false, endArrow: true, lineStyle: "solid", showLength: false }
+    : annotation);
   const annotationIds = new Set<string>();
   for (const annotation of next.annotations) {
     if (!annotation || typeof annotation.id !== "string" || annotationIds.has(annotation.id)) throw new Error("Invalid annotation identifier.");
     annotationIds.add(annotation.id);
-    if (annotation.kind !== "text" && annotation.kind !== "dimension" && annotation.kind !== "arrow") throw new Error("Unsupported annotation type.");
+    if (annotation.kind !== "text" && annotation.kind !== "dimension") throw new Error("Unsupported annotation type.");
     const positions = annotation.kind === "text" ? [annotation.position] : [annotation.start, annotation.end];
     if (positions.some((point) => !point || ![point.x, point.y, point.z].every((value) => Number.isFinite(value) && Math.abs(value) <= 1e7))) throw new Error("Invalid annotation position.");
     annotation.name = typeof annotation.name === "string" ? annotation.name.slice(0, 160) : annotation.kind;
     annotation.visible = annotation.visible !== false;
-    if (annotation.kind === "arrow") annotation.color = typeof annotation.color === "string" && /^#[0-9a-f]{6}$/i.test(annotation.color) ? annotation.color : "#000000";
+    if (annotation.kind === "dimension") {
+      annotation.color = typeof annotation.color === "string" && /^#[0-9a-f]{6}$/i.test(annotation.color) ? annotation.color : "#233c52";
+      annotation.startArrow = annotation.startArrow !== false;
+      annotation.endArrow = annotation.endArrow !== false;
+      annotation.lineStyle = annotation.lineStyle === "dashed" ? "dashed" : "solid";
+      annotation.showLength = annotation.showLength !== false;
+    }
     if (annotation.kind === "text") {
       annotation.text = typeof annotation.text === "string" ? annotation.text.slice(0, 2000) : "";
       annotation.font = typeof annotation.font === "string" ? annotation.font.slice(0, 160) : "Arial";
