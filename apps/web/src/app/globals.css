@@ -9717,6 +9717,11 @@ html[data-theme="dark"] .grid-settings {
   outline-offset: 2px;
 }
 
+.educad-reference-shell .sketch-dimension-editor input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .educad-reference-shell *,
   .educad-reference-shell *::before,
