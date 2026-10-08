@@ -17,6 +17,9 @@ export default function Home() {
   const [editorSession, setEditorSession] = useState(0);
   const [busy, setBusy] = useState(true);
   const [showLanding, setShowLanding] = useState(false);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("about") === "1") setShowLanding(true);
+  }, []);
   const [dashboardSection, setDashboardSection] = useState<"home" | "challenges" | "shared">("home");
   const [sharedEnabled, setSharedEnabled] = useState(false);
   useEffect(() => {

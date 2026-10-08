@@ -35,6 +35,10 @@ export function EditorHeaderActions({ locale, onLocaleChange }: { locale: Educad
           <dt>{locale === "es" ? "Bocetos" : "Sketches"}</dt><dd>SVG · {locale === "es" ? "Restricciones paramétricas" : "Parametric constraints"}</dd>
           <dt>{locale === "es" ? "Licencia" : "License"}</dt><dd>{license}</dd>
         </dl>
+        <nav className="educad-about-links" aria-label={locale === "es" ? "Recursos del proyecto" : "Project resources"}>
+          <a href={`/documentation?lang=${locale}`} target="_blank" rel="noopener noreferrer">{locale === "es" ? "Documentación y tutoriales" : "Documentation and tutorials"}</a>
+          <a href="/?about=1" target="_blank" rel="noopener noreferrer">{locale === "es" ? "Página del proyecto" : "Project overview"}</a>
+        </nav>
         <footer><p lang="en">designed with love by Pablo Gil Fernández</p></footer>
       </section>
     </div>, document.body) : null}
