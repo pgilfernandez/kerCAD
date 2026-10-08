@@ -965,7 +965,10 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
   if (reuseObjectCache) {
     const activeObjectIds = new Set(document.objects.map((object) => object.id));
     const activeFeatureIds = new Set(document.features.map((feature) => feature.id));
-    for (const objectId of cachedObjectSolids.keys()) if (!activeObjectIds.has(objectId)) cachedObjectSolids.delete(objectId);
+    // A suppressed last solid removes its mesh from the renderer. Do not keep
+    // an older object cache entry that could later mark its mesh as unchanged
+    // when the feature is reactivated and the renderer no longer has it.
+    for (const objectId of cachedObjectSolids.keys()) if (!activeObjectIds.has(objectId) || !solids.has(objectId)) cachedObjectSolids.delete(objectId);
     for (const featureId of cachedFeatureSolids.keys()) if (!activeFeatureIds.has(featureId)) cachedFeatureSolids.delete(featureId);
     for (const [featureId, snapshot] of featureSolidSnapshots) {
       cachedFeatureSolids.set(featureId, {
