@@ -4913,7 +4913,16 @@ button {
   width: 100%;
   height: var(--editor-toolbar-tools-height);
   min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
 }
+
+.educad-parametric-sketch-toolbar > .toolbar-section { flex: 0 0 auto; }
+.educad-parametric-sketch-toolbar .toolbar-section-tools { flex-wrap: nowrap; }
+.educad-parametric-sketch-toolbar button { flex-shrink: 0; touch-action: manipulation; }
 
 .educad-sketch-finish-actions {
   display: flex;
