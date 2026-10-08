@@ -3076,8 +3076,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         </div>
         {sketchSession ? <div className="sketch-toolbar-ribbon educad-parametric-sketch-toolbar" aria-label={t("sketch.tools")}>
           <ToolbarSection label={t("sketch.history")}>
-            <Tool label={t("sketch.undo")} enabled={sketchHistoryIndex > 0} onClick={sketchUndo}><SketchToolbarIcon file="undo" /></Tool>
-            <Tool label={t("sketch.redo")} enabled={sketchHistoryIndex >= 0 && sketchHistoryIndex < sketchHistoryRef.current.length - 1} onClick={sketchRedo}><SketchToolbarIcon file="redo" /></Tool>
+            <Tool label={t("sketch.undo")} enabled={sketchHistoryIndex > 0} onClick={sketchUndo}><ToolbarUndoIcon /></Tool>
+            <Tool label={t("sketch.redo")} enabled={sketchHistoryIndex >= 0 && sketchHistoryIndex < sketchHistoryRef.current.length - 1} onClick={sketchRedo}><ToolbarRedoIcon /></Tool>
           </ToolbarSection>
           <ToolbarSection label={t("toolbar.clipboard")}>
             <Tool label={t("toolbar.copy")} enabled={Boolean(sketchCopyableSelection)} onClick={copyCurrentSketchSelection}><ToolbarCopyIcon /></Tool>
