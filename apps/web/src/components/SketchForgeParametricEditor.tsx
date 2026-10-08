@@ -4013,14 +4013,6 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           </> : null}
           <div className="educad-export-options">
             <button onClick={() => void exportProject()} disabled={projectExporting}><span className="export-format-icon">edu</span><strong>{projectExporting ? t("dialog.saving") : t("dialog.projectFormat")}</strong><small>{t("dialog.projectFormatHint")}</small></button>
-            <label className="educad-export-scope">
-              <span>{locale === "es" ? "Exportar STEP" : "Export STEP"}</span>
-              <select value={exportScope} disabled={exporting || stlExporting} onChange={(event) => setExportScope(event.target.value as "project" | "selection")}>
-                <option value="project">{locale === "es" ? "Proyecto completo" : "Whole project"}</option>
-                <option value="selection" disabled={!exportSelectedObjectIds.length}>{locale === "es" ? "Selección" : "Selection"} ({exportSelectedObjectIds.length})</option>
-              </select>
-              <small>{locale === "es" ? "Una operación seleccionada exporta su objeto completo. El archivo .educad siempre incluye todo el proyecto." : "A selected operation exports its complete object. The .educad file always includes the whole project."}</small>
-            </label>
             <button onClick={() => void exportStep()} disabled={exporting || kernelBusy || !build.mesh || (exportScope === "selection" && !exportSelectedObjectIds.length)}><span className="export-format-icon step">STEP</span><strong>{exporting ? t("dialog.exporting") : t("dialog.stepFormat")}</strong><small>{t("dialog.stepFormatHint")}</small></button>
             <div className="educad-stl-export-option">
               <button onClick={() => void exportStl()} disabled={stlExporting || kernelBusy || build.objectRecords.length === 0 || (stlExportScope === "selection" && !exportSelectedObjectIds.length)}><span className="export-format-icon">STL</span><strong>{stlExporting ? t("dialog.exporting") : t("dialog.stlFormat")}</strong><small>{t("dialog.stlFormatHint")}</small></button>
