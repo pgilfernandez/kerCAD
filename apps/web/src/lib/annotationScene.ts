@@ -47,8 +47,8 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
         context.lineTo(inset + radius, bottom); context.quadraticCurveTo(inset, bottom, inset, bottom - radius);
         context.lineTo(inset, inset + radius); context.quadraticCurveTo(inset, inset, inset + radius, inset);
         context.closePath();
-        context.fillStyle = "rgba(255,255,255,0.7)"; context.fill();
-        context.strokeStyle = "#000000"; context.lineWidth = stroke; context.stroke();
+        context.fillStyle = "#ffffff"; context.fill();
+        context.strokeStyle = color; context.lineWidth = stroke; context.stroke();
         context.font = fontSpec;
         context.fillStyle = color;
         context.textBaseline = "middle";
