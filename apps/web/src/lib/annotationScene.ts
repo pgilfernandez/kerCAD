@@ -21,9 +21,9 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
       const lines = text.split("\n");
       const fontSpec = `48px ${font}, sans-serif`;
       context.font = fontSpec;
-      canvas.width = Math.min(4096, Math.max(64, Math.ceil(Math.max(...lines.map((line) => context.measureText(line).width)) + 32)));
+      canvas.width = Math.min(4096, Math.max(64, Math.ceil(Math.max(...lines.map((line) => context.measureText(line).width)) + 64)));
       canvas.height = Math.min(4096, Math.max(80, lines.length * 64 + 16));
-      const x = alignment === "left" ? 16 : alignment === "right" ? canvas.width - 16 : canvas.width / 2;
+      const x = alignment === "left" ? 32 : alignment === "right" ? canvas.width - 32 : canvas.width / 2;
       const paint = (stroke: number, radius: number) => {
         context.clearRect(0, 0, canvas.width, canvas.height);
         const inset = stroke / 2;
