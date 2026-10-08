@@ -1,6 +1,31 @@
 /** Mouse alternatives to native touch/trackpad scrolling. */
 export function enableToolbarMouseScroll(toolbar: HTMLElement) {
   let drag: { pointerId: number; x: number; scroll: number } | null = null;
+  const indicators = document.createElement("div");
+  indicators.className = "educad-toolbar-scroll-indicators";
+  indicators.setAttribute("aria-hidden", "true");
+  const left = document.createElement("span");
+  const right = document.createElement("span");
+  left.className = "educad-toolbar-scroll-edge left";
+  right.className = "educad-toolbar-scroll-edge right";
+  left.textContent = "‹";
+  right.textContent = "›";
+  indicators.append(left, right);
+  toolbar.parentElement?.append(indicators);
+  const updateIndicators = () => {
+    indicators.style.top = `${toolbar.offsetTop}px`;
+    indicators.style.left = `${toolbar.offsetLeft}px`;
+    indicators.style.width = `${toolbar.clientWidth}px`;
+    indicators.style.height = `${toolbar.clientHeight}px`;
+    left.hidden = toolbar.scrollLeft <= 1;
+    right.hidden = toolbar.scrollWidth - toolbar.clientWidth - toolbar.scrollLeft <= 1;
+  };
+  const resizeObserver = new ResizeObserver(updateIndicators);
+  resizeObserver.observe(toolbar);
+  for (const child of toolbar.children) resizeObserver.observe(child);
+  toolbar.addEventListener("scroll", updateIndicators, { passive: true });
+  window.addEventListener("resize", updateIndicators);
+  updateIndicators();
   const wheel = (event: WheelEvent) => {
     if (event.ctrlKey || event.metaKey || toolbar.scrollWidth <= toolbar.clientWidth) return;
     const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
@@ -37,6 +62,10 @@ export function enableToolbarMouseScroll(toolbar: HTMLElement) {
   toolbar.addEventListener("mousedown", preventAutoscroll);
   toolbar.addEventListener("auxclick", preventAutoscroll);
   return () => {
+    resizeObserver.disconnect();
+    toolbar.removeEventListener("scroll", updateIndicators);
+    window.removeEventListener("resize", updateIndicators);
+    indicators.remove();
     if (drag && toolbar.hasPointerCapture(drag.pointerId)) toolbar.releasePointerCapture(drag.pointerId);
     toolbar.classList.remove("toolbar-scroll-dragging");
     toolbar.removeEventListener("wheel", wheel);
