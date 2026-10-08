@@ -2567,7 +2567,13 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   }, [mutate]);
 
   const deleteCurrentSelection = useCallback(() => {
-    if (selectedAnnotationId === ANNOTATIONS_GROUP_ID) return;
+    if (selectedAnnotationId === ANNOTATIONS_GROUP_ID) {
+      if (!mutate((draft) => { draft.annotations = []; })) return;
+      setSelectedAnnotationId(null);
+      setEditingAnnotationId(null);
+      setAnnotationTool(null);
+      return;
+    }
     if (selectedAnnotationId) {
       mutate((draft) => { draft.annotations = draft.annotations?.filter((annotation) => annotation.id !== selectedAnnotationId); });
       setSelectedAnnotationId(null);
@@ -3364,7 +3370,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               <Tool label={t("toolbar.copy")} enabled={Boolean(selectedId)} onClick={() => { setClipboardId(selectedId); setNotice({ type: "info", text: selectionKind === "feature" ? (locale === "es" ? "Operación copiada" : "Operation copied") : t("notice.objectCopied") }); }}><ToolbarCopyIcon /></Tool>
               <Tool label={t("toolbar.paste")} enabled={Boolean(clipboardId)} onClick={() => duplicateSelected(clipboardId)}><ToolbarPasteIcon /></Tool>
               <Tool label={t("toolbar.duplicate")} enabled={Boolean(selectedObjectId)} onClick={() => duplicateSelected()}><ToolbarDuplicateIcon /></Tool>
-              <Tool label={modelSelection.length > 1 ? t("toolbar.deleteSelection") : selectionKind === "feature" ? t("toolbar.deleteOperation") : t("toolbar.deleteObject")} enabled={modelSelection.length > 0 || Boolean(selectedAnnotation)} onClick={deleteCurrentSelection}><ToolbarTrashIcon /></Tool>
+              <Tool label={modelSelection.length > 1 ? t("toolbar.deleteSelection") : selectionKind === "feature" ? t("toolbar.deleteOperation") : t("toolbar.deleteObject")} enabled={modelSelection.length > 0 || Boolean(selectedAnnotation) || selectedAnnotationId === ANNOTATIONS_GROUP_ID} onClick={deleteCurrentSelection}><ToolbarTrashIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label={t("toolbar.shapes")} className="toolbar-shapes-section">
               <button ref={shapeMenuTriggerRef} data-educad-popup="shapes" className={`shape-menu-trigger ${shapesOpen ? "active" : ""}`} aria-label={t("toolbar.addShape")} title={t("toolbar.addShape")} aria-expanded={shapesOpen} aria-controls="educad-shape-menu" onClick={toggleShapeMenu}><ToolbarShapeAddIcon /></button>

@@ -314,7 +314,7 @@ export function ParametricModelSidebar({
         <button disabled={!selectedFeature || !canResetParametricFeature(selectedFeature)} aria-label={t("operation.reset")} title={t("operation.reset")} onClick={() => selectedFeature && onResetFeature(selectedFeature.id)}><RotateCcw size={16} /></button>
         <button className="educad-origin-tree-button" disabled={!selectedObject || selectedObject.locked} aria-label={t("model.editOrigin")} title={t("model.editOrigin")} aria-pressed={Boolean(selectedObject && editingOriginObjectId === selectedObject.id)} onClick={() => selectedObject && onToggleOriginEdit(selectedObject.id)}><Crosshair size={16} /></button>
         <span className="educad-tree-toolbar-separator" aria-hidden="true" />
-        <button className="danger" disabled={selection.length === 0 && !selectedAnnotation} aria-label={t("common.delete")} title={t("common.delete")} onClick={onDeleteSelection}><Trash2 size={16} /></button>
+        <button className="danger" disabled={selection.length === 0 && !selectedAnnotation && !annotationGroupSelected} aria-label={t("common.delete")} title={t("common.delete")} onClick={onDeleteSelection}><Trash2 size={16} /></button>
       </div> : null}
 
       {mode === "normal" ? <section className="educad-sidebar-editor">
