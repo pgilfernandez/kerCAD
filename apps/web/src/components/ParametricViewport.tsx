@@ -22,6 +22,7 @@ import { parseNumericExpression, validateNumericExpression } from "@/lib/numeric
 import { createAnnotationScene } from "@/lib/annotationScene";
 import { AnnotationInteraction } from "@/components/AnnotationInteraction";
 import type { AnnotationTool } from "@/lib/annotationPresets";
+import { annotationPosition, type AnnotationPoint } from "@/lib/annotationGeometry";
 import { viewportSelectionBounds } from "@/lib/viewportBounds";
 import type { ParametricDocument, ParametricFeature, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, RenderMesh, SketchFeature } from "@/types/parametric";
 
@@ -216,12 +217,12 @@ type Props = {
   annotationsVisible?: boolean;
   selectedAnnotationId?: string | null;
   onAnnotationSelect?: (id: string) => void;
-  selectedAnnotationEndpoint?: "start" | "end" | null;
-  onSelectAnnotationEndpoint?: (endpoint: "start" | "end") => void;
-  onMoveAnnotationEndpoint?: (id: string, endpoint: "start" | "end", position: { x: number; y: number; z: number }) => void;
+  selectedAnnotationEndpoint?: AnnotationPoint | null;
+  onSelectAnnotationEndpoint?: (endpoint: AnnotationPoint) => void;
+  onMoveAnnotationEndpoint?: (id: string, endpoint: AnnotationPoint, position: { x: number; y: number; z: number }) => void;
   annotationTool?: AnnotationTool | null;
   editingAnnotationId?: string | null;
-  onPlaceAnnotation?: (kind: AnnotationTool, start: { x: number; y: number; z: number }, end?: { x: number; y: number; z: number }) => void;
+  onPlaceAnnotation?: (kind: AnnotationTool, start: { x: number; y: number; z: number }, end?: { x: number; y: number; z: number }, center?: { x: number; y: number; z: number }) => void;
   onFinishAnnotation?: (id: string, text: string, size: number) => void;
   onEditAnnotation?: (id: string | null) => void;
   onCancelAnnotationTool?: () => void;
@@ -1985,7 +1986,7 @@ export function ParametricViewport({ onAnnotationSelect, annotationsVisible = tr
       if (!annotation) return;
       const point = { x: position.x, y: position.y, z: position.z };
       if (annotation.kind === "text") setAnnotationPreview({ ...annotation, position: point, text: state.editingAnnotationId === id ? "" : annotation.text });
-      else if (state.selectedAnnotationEndpoint) setAnnotationPreview({ ...annotation, [state.selectedAnnotationEndpoint]: point });
+      else if (state.selectedAnnotationEndpoint && annotationPosition(annotation, state.selectedAnnotationEndpoint)) setAnnotationPreview({ ...annotation, [state.selectedAnnotationEndpoint]: point });
     };
     const updateConePreview = (selected: ViewportSelection, baseRadius: number, topRadius: number, height: number) => {
       if (selected.shapeParameters?.shape !== "cone") return;
@@ -3484,7 +3485,7 @@ export function ParametricViewport({ onAnnotationSelect, annotationsVisible = tr
     const annotation = annotationPreview?.id === selectedAnnotationId ? annotationPreview : annotations?.find((item) => item.id === selectedAnnotationId);
     const marker = originLayerRef.current?.children.find((item) => item.userData.transformTargetId === selectedAnnotationId);
     if (!marker || !annotation) return;
-    const point = annotation.kind === "text" ? annotation.position : selectedAnnotationEndpoint ? annotation[selectedAnnotationEndpoint] : null;
+    const point = annotationPosition(annotation, selectedAnnotationEndpoint);
     if (!point) return;
     marker.position.set(point.x, point.y, point.z);
     invalidateRef.current();
@@ -4495,7 +4496,7 @@ export function ParametricViewport({ onAnnotationSelect, annotationsVisible = tr
     };
   }, [onProjectRename, projection, renderQuality, shadingMode]);
   return <div className="parametric-viewport" ref={hostRef} aria-label={locale === "es" ? "Vista 3D de la pieza" : "3D model view"}>
-    <AnnotationInteraction host={hostRef} camera={cameraRef} model={modelRef} snapPoint={annotationSnapRef} positionHandleAtPointer={(event) => annotationPositionHandleRef.current(event)} workplane={workplane} tool={annotationTool} selected={annotationInteractionSelection ? { ...annotationInteractionSelection, visible: annotationInteractionSelection.visible && annotationsVisible } : undefined} parameterHandlesVisible={parameterHandlesVisible} positionManipulatorVisible={objectOrigins.some((origin) => origin.objectId === selectedAnnotationId && origin.visible && origin.positionVisible !== false)} selectedEndpoint={selectedAnnotationEndpoint} onSelectEndpoint={(endpoint) => onSelectAnnotationEndpoint?.(endpoint)} onMoveEndpoint={(id, endpoint, position) => onMoveAnnotationEndpoint?.(id, endpoint, position)} onMoveText={(id, position) => onObjectAxisMove?.(id, position)} editing={Boolean(editingAnnotationId && editingAnnotationId === selectedAnnotationId)} locale={locale} onPlace={(kind, start, end) => onPlaceAnnotation?.(kind, start, end)} onFinish={(id, text, size) => onFinishAnnotation?.(id, text, size)} onEdit={(id) => onEditAnnotation?.(id)} onCancelTool={() => onCancelAnnotationTool?.()} onPreview={setAnnotationPreview} />
+    <AnnotationInteraction host={hostRef} camera={cameraRef} model={modelRef} snapPoint={annotationSnapRef} positionHandleAtPointer={(event) => annotationPositionHandleRef.current(event)} workplane={workplane} tool={annotationTool} selected={annotationInteractionSelection ? { ...annotationInteractionSelection, visible: annotationInteractionSelection.visible && annotationsVisible } : undefined} parameterHandlesVisible={parameterHandlesVisible} positionManipulatorVisible={objectOrigins.some((origin) => origin.objectId === selectedAnnotationId && origin.visible && origin.positionVisible !== false)} selectedEndpoint={selectedAnnotationEndpoint} onSelectEndpoint={(endpoint) => onSelectAnnotationEndpoint?.(endpoint)} onMoveEndpoint={(id, endpoint, position) => onMoveAnnotationEndpoint?.(id, endpoint, position)} onMoveText={(id, position) => onObjectAxisMove?.(id, position)} editing={Boolean(editingAnnotationId && editingAnnotationId === selectedAnnotationId)} locale={locale} onPlace={(kind, start, end, center) => onPlaceAnnotation?.(kind, start, end, center)} onFinish={(id, text, size) => onFinishAnnotation?.(id, text, size)} onEdit={(id) => onEditAnnotation?.(id)} onCancelTool={() => onCancelAnnotationTool?.()} onPreview={setAnnotationPreview} />
     {alignmentActive ? <div ref={alignmentButtonsRef} className="educad-alignment-face-buttons" role="group" aria-label={locale === "es" ? "Alinear con la referencia" : "Align with reference"}>
       {(["x", "y", "z"] as const).flatMap(axis => (["min", "center", "max"] as const).map(anchor => {
         const label = locale === "es"

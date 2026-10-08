@@ -66,6 +66,7 @@ import { displayLengthToMillimeters, displayUnitLabel, displayUnitWorkspace, mil
 import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
 import { AnnotationIcon } from "@/components/AnnotationIcon";
 import { annotationDimensionPreset, type AnnotationTool } from "@/lib/annotationPresets";
+import { annotationPosition, setAnnotationPosition, type AnnotationPoint } from "@/lib/annotationGeometry";
 import { educadTranslate, normalizeEducadLocale, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
 import { parametricRebuildSuggestion } from "@/lib/parametricRebuildDiagnostics";
 import { hasPreviousSolidOperation } from "@/lib/parametricOperationModes";
@@ -286,10 +287,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
   const [annotationTool, setAnnotationTool] = useState<AnnotationTool | null>(null);
   const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
-  const [annotationEndpoint, setAnnotationEndpoint] = useState<"start" | "end" | null>(null);
+  const [annotationEndpoint, setAnnotationEndpoint] = useState<AnnotationPoint | null>(null);
   const selectedAnnotation = document.annotations?.find((annotation) => annotation.id === selectedAnnotationId);
   const selectedAnnotationPoint = selectedAnnotation?.visible && document.annotationGroup?.visible !== false
-    ? selectedAnnotation.kind === "text" ? selectedAnnotation.position : annotationEndpoint ? selectedAnnotation[annotationEndpoint] : null
+    ? annotationPosition(selectedAnnotation, annotationEndpoint)
     : null;
   useEffect(() => setAnnotationEndpoint(null), [selectedAnnotationId]);
   const latestDocumentRef = useRef(document);
@@ -1001,10 +1002,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     rotation: object.transform.rotation,
     positionVisible: showPositionTriad || object.id === originEditObjectId,
     rotationEditable: object.id === selectedOriginObjectId && showRotationTriad,
-  })), ...(selectedAnnotation && (selectedAnnotation.kind === "text" || annotationEndpoint) ? [{
+  })), ...(selectedAnnotation && selectedAnnotationPoint ? [{
     objectId: selectedAnnotation.id,
     visible: selectedAnnotation.visible && document.annotationGroup?.visible !== false && showPositionTriad,
-    position: selectedAnnotation.kind === "text" ? selectedAnnotation.position : selectedAnnotation[annotationEndpoint!],
+    position: selectedAnnotationPoint,
     rotation: { x: 0, y: 0, z: 0 },
     positionVisible: showPositionTriad,
     rotationEditable: false,
@@ -2644,7 +2645,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     mutate((draft) => {
       const annotation = draft.annotations?.find((item) => item.id === selectedAnnotationId);
       if (!annotation) return;
-      const point = annotation.kind === "text" ? annotation.position : annotationEndpoint ? annotation[annotationEndpoint] : null;
+      const point = annotationPosition(annotation, annotationEndpoint);
       if (!point) return;
       const plane = draft.workplane;
       const origin = new THREE.Vector3(plane.origin.x, plane.origin.y, plane.origin.z);
@@ -3422,7 +3423,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               </div>
             </ToolbarSection>
             <ToolbarSection label={t("annotation.group")}>
-              {(["text", "dimension", "arrow", "dashedLine"] as const).map((kind) => <Tool key={kind} label={t(`annotation.${kind}`)} active={annotationTool === kind} onClick={() => {
+              {(["text", "dimension", "arrow", "dashedLine", "angle"] as const).map((kind) => <Tool key={kind} label={t(`annotation.${kind}`)} active={annotationTool === kind} onClick={() => {
                 setAnnotationTool(annotationTool === kind ? null : kind);
                 setEditingAnnotationId(null); setModelSelection([]); setSelectedAnnotationId(null);
               }}><AnnotationIcon kind={kind} /></Tool>)}
@@ -3688,19 +3689,20 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           onSelectAnnotationEndpoint={setAnnotationEndpoint}
           onMoveAnnotationEndpoint={(id, endpoint, position) => mutate((draft) => {
             const annotation = draft.annotations?.find((item) => item.id === id);
-            if (annotation && annotation.kind !== "text") annotation[endpoint] = { ...position };
+            if (annotation) setAnnotationPosition(annotation, endpoint, position);
           })}
           annotationTool={annotationTool}
           editingAnnotationId={editingAnnotationId}
           onCancelAnnotationTool={() => setAnnotationTool(null)}
           onEditAnnotation={setEditingAnnotationId}
-          onPlaceAnnotation={(kind, start, end) => {
+          onPlaceAnnotation={(kind, start, end, center) => {
             const id = crypto.randomUUID();
             mutate((draft) => {
               draft.annotations ??= [];
               const common = { id, name: t(`annotation.${kind}`), visible: true };
               draft.annotations.push(kind === "text"
                 ? { ...common, kind, position: start, alignment: "center", size: 6, font: "Arial", text: "eduCAD" }
+                : kind === "angle" ? { ...common, kind, start, center: center ?? start, end: end ?? start, color: "#233c52" }
                 : { ...common, kind: "dimension", start, end: end ?? start, ...annotationDimensionPreset(kind) });
             });
             setAnnotationTool(null); setModelSelection([]); setSelectedAnnotationId(id); setModelSidebarMode("normal");
@@ -3732,7 +3734,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           onAlign={alignSelection}
           sketchOverlays={viewportSketchOverlays}
           editableOriginId={alignOpen ? null : originEditObjectId}
-          selectedObjectOriginId={selectedAnnotation && (selectedAnnotation.kind === "text" || annotationEndpoint) ? selectedAnnotation.id : selectedOriginObjectId}
+          selectedObjectOriginId={selectedAnnotation && selectedAnnotationPoint ? selectedAnnotation.id : selectedOriginObjectId}
           selectedOperationOriginId={selectedOperationOriginId}
           selectedObjectIds={viewportSelectedObjectIds}
           operationContext={pendingEdgeTreatment || pendingFaceExtrude || pendingShell || pendingRevolve ? viewportTopologyPreviewContext : viewportOperationContext}
@@ -3785,8 +3787,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           onObjectAxisMove={(objectId, position) => mutate((draft) => {
             const annotation = draft.annotations?.find((candidate) => candidate.id === objectId);
             if (annotation) {
-              if (annotation.kind === "text") annotation.position = { ...position };
-              else if (annotationEndpoint) annotation[annotationEndpoint] = { ...position };
+              setAnnotationPosition(annotation, annotationEndpoint, position);
               return;
             }
             const object = draft.objects.find((candidate) => candidate.id === objectId);

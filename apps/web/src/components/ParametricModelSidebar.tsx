@@ -26,6 +26,7 @@ import { displayLengthToMillimeters, displayUnitLabel, formatDisplayLength, mill
 import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
 import { educadTranslate, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
 import type { ParametricAnnotation, ParametricDocument, ParametricFeature, ParametricObject } from "@/types/parametric";
+import { annotationAngleGeometry, annotationPosition, type AnnotationPoint } from "@/lib/annotationGeometry";
 
 export type ModelSelectionKind = "object" | "feature";
 export type ModelSidebarMode = "normal" | "simplified";
@@ -378,12 +379,14 @@ export function ParametricModelSidebar({
 function AnnotationProperties({ annotation, onUpdate }: { annotation: ParametricAnnotation; onUpdate: (update: (annotation: ParametricAnnotation) => void) => void }) {
   const t = useSidebarTranslation();
   const steps = useContext(NumericStepContext);
-  const position = (key: "position" | "start" | "end", title: string) => {
-    const point = annotation.kind === "text" ? annotation.position : key === "start" ? annotation.start : annotation.end;
-    return <details className="educad-transform-section" open><summary><ChevronRight size={16} /><span>{title}</span></summary><div><div className="educad-feature-card">{(["x", "y", "z"] as const).map((axis) => <label key={axis}><span>{axis.toUpperCase()}</span><DeferredNumberInput value={point[axis]} step={steps.input} unit="mm" onCommit={(value) => onUpdate((draft) => { const target = draft.kind === "text" ? draft.position : key === "start" ? draft.start : draft.end; target[axis] = value; })} /></label>)}</div></div></details>;
+  const position = (key: "position" | AnnotationPoint, title: string) => {
+    const point = annotationPosition(annotation, key === "position" ? null : key);
+    if (!point) return null;
+    return <details className="educad-transform-section" open><summary><ChevronRight size={16} /><span>{title}</span></summary><div><div className="educad-feature-card">{(["x", "y", "z"] as const).map((axis) => <label key={axis}><span>{axis.toUpperCase()}</span><DeferredNumberInput value={point[axis]} step={steps.input} unit="mm" onCommit={(value) => onUpdate((draft) => { const target = annotationPosition(draft, key === "position" ? null : key); if (target) target[axis] = value; })} /></label>)}</div></div></details>;
   };
   return <div className="educad-feature-card educad-annotation-properties">
     <label><span>{t("model.name")}</span><input value={annotation.name} onChange={(event) => onUpdate((draft) => { draft.name = event.target.value; })} /></label>
+    {annotation.kind === "angle" && <AnnotationColorPicker color={annotation.color ?? "#233c52"} onChange={(color) => onUpdate((draft) => { if (draft.kind === "angle") draft.color = color; })} />}
     {annotation.kind === "dimension" && <>
       <AnnotationColorPicker color={annotation.color ?? "#233c52"} onChange={(color) => onUpdate((draft) => { if (draft.kind === "dimension") draft.color = color; })} />
       <label><span>{t("annotation.startArrow")}</span><input type="checkbox" checked={annotation.startArrow !== false} onChange={(event) => onUpdate((draft) => { if (draft.kind === "dimension") draft.startArrow = event.target.checked; })} /></label>
@@ -397,7 +400,7 @@ function AnnotationProperties({ annotation, onUpdate }: { annotation: Parametric
       <label><span>{t("annotation.size")}</span><DeferredNumberInput value={annotation.size} min={0.1} max={1000} step={steps.input} unit="mm" onCommit={(value) => onUpdate((draft) => { if (draft.kind === "text") draft.size = value; })} /></label>
       <label><span>{t("annotation.alignment")}</span><select value={annotation.alignment} onChange={(event) => onUpdate((draft) => { if (draft.kind === "text") draft.alignment = event.target.value as "left" | "center" | "right"; })}>{(["left", "center", "right"] as const).map((alignment) => <option key={alignment} value={alignment}>{t(`annotation.${alignment}`)}</option>)}</select></label>
       {position("position", t("annotation.position"))}
-    </> : <><ReadOnlyField label={t("property.length")} value={`${formatDisplayLength(Math.hypot(annotation.end.x - annotation.start.x, annotation.end.y - annotation.start.y, annotation.end.z - annotation.start.z), steps.displayUnit)} ${displayUnitLabel(steps.displayUnit)}`} />{position("start", t("annotation.start"))}{position("end", t("annotation.end"))}</>}
+    </> : annotation.kind === "angle" ? <><ReadOnlyField label={t("annotation.angle")} value={annotationAngleGeometry(annotation)?.degrees.toFixed(2).concat("°") ?? "—"} />{position("start", t("annotation.start"))}{position("center", t("annotation.vertex"))}{position("end", t("annotation.end"))}</> : <><ReadOnlyField label={t("property.length")} value={`${formatDisplayLength(Math.hypot(annotation.end.x - annotation.start.x, annotation.end.y - annotation.start.y, annotation.end.z - annotation.start.z), steps.displayUnit)} ${displayUnitLabel(steps.displayUnit)}`} />{position("start", t("annotation.start"))}{position("end", t("annotation.end"))}</>}
   </div>;
 }
 

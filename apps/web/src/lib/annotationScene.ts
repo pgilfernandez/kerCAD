@@ -4,12 +4,23 @@ import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import type { ParametricAnnotation } from "@/types/parametric";
 import { displayUnitLabel, formatDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
+import { annotationAngleGeometry } from "@/lib/annotationGeometry";
 
 /** An independent display layer: annotations never enter the CAD kernel. */
 export function createAnnotationScene(annotations: ParametricAnnotation[], unit: ParametricDisplayUnit, selectedId: string | null) {
   const group = new THREE.Group();
   const disposables: Array<{ dispose: () => void }> = [];
   const vector = (point: { x: number; y: number; z: number }) => new THREE.Vector3(point.x, point.y, point.z);
+  const drawLines = (points: THREE.Vector3[], id: string, color: string, dashed = false) => {
+    const geometry = new LineSegmentsGeometry();
+    geometry.setPositions(points.flatMap((point) => [point.x, point.y, point.z]));
+    const material = new LineMaterial({ color, linewidth: 2, worldUnits: false, dashed, dashSize: 3, gapSize: 2, depthTest: false, depthWrite: false, transparent: true });
+    const lines = new LineSegments2(geometry, material);
+    lines.computeLineDistances();
+    lines.userData.annotationId = id; lines.userData.annotationPickable = true;
+    lines.onBeforeRender = (renderer) => material.resolution.set(Math.max(1, renderer.domElement.clientWidth), Math.max(1, renderer.domElement.clientHeight));
+    lines.renderOrder = 89; group.add(lines); disposables.push(geometry, material);
+  };
   for (const annotation of annotations) {
     if (!annotation.visible) continue;
     const color = annotation.kind === "text" ? "#000000" : annotation.color ?? "#233c52";
@@ -74,6 +85,17 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
       label(annotation.text, vector(annotation.position), annotation.size, annotation.font, annotation.alignment);
       continue;
     }
+    if (annotation.kind === "angle") {
+      const start = vector(annotation.start), center = vector(annotation.center), end = vector(annotation.end);
+      const points = [start, center, center, end];
+      const angle = annotationAngleGeometry(annotation);
+      if (angle) {
+        if (angle.degrees > 0.0001) for (let index = 1; index < angle.arc.length; index++) points.push(angle.arc[index - 1], angle.arc[index]);
+        label(`${angle.degrees.toFixed(2)}°`, angle.labelPosition, 3);
+      }
+      drawLines(points, annotation.id, color);
+      continue;
+    }
     const start = vector(annotation.start), end = vector(annotation.end);
     const distance = start.distanceTo(end);
     const direction = end.clone().sub(start).normalize();
@@ -81,17 +103,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
     const points = annotation.startArrow === false || annotation.endArrow === false ? [start, end] : [
       start, end, start.clone().sub(perpendicular), start.clone().add(perpendicular), end.clone().sub(perpendicular), end.clone().add(perpendicular),
     ];
-    const geometry = new LineSegmentsGeometry();
-    geometry.setPositions(points.flatMap((point) => [point.x, point.y, point.z]));
-    const material = new LineMaterial({ color, linewidth: 2, worldUnits: false, dashed: annotation.lineStyle === "dashed", dashSize: 3, gapSize: 2, depthTest: false, depthWrite: false, transparent: true });
-    const lines = new LineSegments2(geometry, material);
-    lines.computeLineDistances();
-    lines.userData.annotationId = annotation.id; lines.userData.annotationPickable = true;
-    // Keep the requested width in screen pixels across Retina/quality changes.
-    lines.onBeforeRender = (renderer) => material.resolution.set(Math.max(1, renderer.domElement.clientWidth), Math.max(1, renderer.domElement.clientHeight));
-    lines.renderOrder = 89;
-    group.add(lines);
-    disposables.push(geometry, material);
+    drawLines(points, annotation.id, color, annotation.lineStyle === "dashed");
     if (distance > 0.001) {
       const height = Math.min(2, distance / 5) * 2;
       const cone = new THREE.ConeGeometry(height * 0.3, height, 12);

@@ -357,11 +357,12 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
   for (const annotation of next.annotations) {
     if (!annotation || typeof annotation.id !== "string" || annotationIds.has(annotation.id)) throw new Error("Invalid annotation identifier.");
     annotationIds.add(annotation.id);
-    if (annotation.kind !== "text" && annotation.kind !== "dimension") throw new Error("Unsupported annotation type.");
-    const positions = annotation.kind === "text" ? [annotation.position] : [annotation.start, annotation.end];
+    if (annotation.kind !== "text" && annotation.kind !== "dimension" && annotation.kind !== "angle") throw new Error("Unsupported annotation type.");
+    const positions = annotation.kind === "text" ? [annotation.position] : annotation.kind === "angle" ? [annotation.start, annotation.center, annotation.end] : [annotation.start, annotation.end];
     if (positions.some((point) => !point || ![point.x, point.y, point.z].every((value) => Number.isFinite(value) && Math.abs(value) <= 1e7))) throw new Error("Invalid annotation position.");
     annotation.name = typeof annotation.name === "string" ? annotation.name.slice(0, 160) : annotation.kind;
     annotation.visible = annotation.visible !== false;
+    if (annotation.kind === "angle") annotation.color = typeof annotation.color === "string" && /^#[0-9a-f]{6}$/i.test(annotation.color) ? annotation.color : "#233c52";
     if (annotation.kind === "dimension") {
       annotation.color = typeof annotation.color === "string" && /^#[0-9a-f]{6}$/i.test(annotation.color) ? annotation.color : "#233c52";
       annotation.startArrow = annotation.startArrow !== false;
