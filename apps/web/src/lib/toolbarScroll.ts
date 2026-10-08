@@ -19,6 +19,7 @@ export function enableToolbarMouseScroll(toolbar: HTMLElement, vertical = false)
     indicators.style.left = `${bounds.left - (parentBounds?.left ?? 0)}px`;
     indicators.style.width = `${toolbar.clientWidth}px`;
     indicators.style.height = `${toolbar.clientHeight}px`;
+    if (vertical) indicators.style.borderRadius = getComputedStyle(toolbar).borderRadius;
     left.hidden = (vertical ? toolbar.scrollTop : toolbar.scrollLeft) <= 1;
     right.hidden = vertical ? toolbar.scrollHeight - toolbar.clientHeight - toolbar.scrollTop <= 1 : toolbar.scrollWidth - toolbar.clientWidth - toolbar.scrollLeft <= 1;
   };
