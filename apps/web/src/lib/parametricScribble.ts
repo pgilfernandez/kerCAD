@@ -12,7 +12,7 @@ function distanceToSegment(point: ScribblePoint, start: ScribblePoint, end: Scri
   return Math.hypot(point.x - start.x - amount * dx, point.z - start.z - amount * dz);
 }
 
-function simplify(points: ScribblePoint[], tolerance: number): ScribblePoint[] {
+export function simplify(points: ScribblePoint[], tolerance: number): ScribblePoint[] {
   if (points.length <= 2) return points;
   let farthest = 0;
   let splitIndex = 0;

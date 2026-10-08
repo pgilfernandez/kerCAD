@@ -55,7 +55,7 @@ import { binaryStlFromRenderMeshes } from "@/lib/stlExport";
 import { sketchProfileFromSvg } from "@/lib/svgImport";
 import { importSvgAsParametricExtrusion } from "@/lib/svgParametricImport";
 import { addParametricText } from "@/lib/parametricText";
-import { appendScribbleContour } from "@/lib/parametricScribble";
+import { appendScribbleContour, simplify } from "@/lib/parametricScribble";
 import { EDUCAD_PACKAGE_LIMITS, EDUCAD_PACKAGE_MEDIA_TYPE, exportEducadProject, importEducadProject } from "@/lib/educadProject";
 import { mergeParametricProjects } from "@/lib/parametricProjectMerge";
 import { importStepAsParametricObject } from "@/lib/parametricStepImport";
@@ -457,6 +457,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [sketchActivePointId, setSketchActivePointId] = useState<string | null>(null);
   const [sketchSelection, setSketchSelection] = useState<SketchSelection>(null);
   const [sketchClipboard, setSketchClipboard] = useState<SketchProfile | null>(null);
+  const [sketchSmoothingSource, setSketchSmoothingSource] = useState<SketchProfile | null>(null);
+  const [sketchSmoothing, setSketchSmoothing] = useState(0.5);
+  useEffect(() => { if (!sketchSession) setSketchSmoothingSource(null); }, [sketchSession]);
   const sketchPasteCountRef = useRef(0);
   const [sketchMeasurement, setSketchMeasurement] = useState<SketchMeasurement>(null);
   const [sketchMeasureStart, setSketchMeasureStart] = useState<SketchPoint | null>(null);
@@ -1239,6 +1242,58 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   };
 
   const sketchCopyableSelection = useMemo(() => sketchSession ? copySketchSelection(sketchSession.profile, sketchSelection) : null, [sketchSession, sketchSelection]);
+  const sketchSmoothingPreview = useMemo(() => {
+    if (!sketchSession || !sketchSmoothingSource) return null;
+    const original = sketchSession.profile;
+    const segmentIds = new Set(sketchSmoothingSource.segments.map((segment) => segment.id));
+    const oldPointIds = new Set(sketchSmoothingSource.points.map((point) => point.id));
+    const newPoints: SketchPoint[] = [];
+    const newSegments: SketchProfile["segments"] = [];
+    for (const path of orderedSketchPaths(sketchSmoothingSource)) {
+      if (path.points.length < 2) continue;
+      const extent = Math.max(0.01, Math.hypot(Math.max(...path.points.map((point) => point.x)) - Math.min(...path.points.map((point) => point.x)), Math.max(...path.points.map((point) => point.z)) - Math.min(...path.points.map((point) => point.z))));
+      const sampled: Array<{ x: number; z: number }> = [];
+      const count = path.closed ? path.points.length : path.points.length - 1;
+      for (let index = 0; index < count; index++) {
+        const start = path.points[index];
+        const end = path.points[(index + 1) % path.points.length];
+        const segment = sketchSmoothingSource.segments.find((candidate) => (candidate.startId === start.id && candidate.endId === end.id) || (candidate.endId === start.id && candidate.startId === end.id));
+        const forward = segment?.startId === start.id;
+        const first = (forward ? start.handleOut : start.handleIn) ?? start;
+        const second = (forward ? end.handleIn : end.handleOut) ?? end;
+        const steps = segment?.kind === "line" ? 1 : 12;
+        for (let step = 0; step < steps; step++) {
+          const t = step / steps;
+          if (segment?.kind === "arc" && segment.center) {
+            const a = Math.atan2(start.z - segment.center.z, start.x - segment.center.x);
+            const b = Math.atan2(end.z - segment.center.z, end.x - segment.center.x);
+            const positive = (b - a + Math.PI * 2) % (Math.PI * 2);
+            const increasing = forward ? segment.clockwise !== false : segment.clockwise === false;
+            const angle = a + t * (increasing ? positive : positive - Math.PI * 2);
+            const radius = Math.hypot(start.x - segment.center.x, start.z - segment.center.z);
+            sampled.push({ x: segment.center.x + radius * Math.cos(angle), z: segment.center.z + radius * Math.sin(angle) });
+          } else {
+            const u = 1 - t;
+            sampled.push({ x: u ** 3 * start.x + 3 * u * u * t * first.x + 3 * u * t * t * second.x + t ** 3 * end.x, z: u ** 3 * start.z + 3 * u * u * t * first.z + 3 * u * t * t * second.z + t ** 3 * end.z });
+          }
+        }
+      }
+      sampled.push(path.closed ? sampled[0] : path.points[path.points.length - 1]);
+      let contour = simplify(sampled, Math.max(0.00001, extent * sketchSmoothing * 0.03));
+      if (path.closed) contour = contour.slice(0, -1);
+      if (contour.length < (path.closed ? 3 : 2)) contour = path.points;
+      const points = contour.map((point, index) => {
+        const previous = contour[path.closed ? (index - 1 + contour.length) % contour.length : Math.max(0, index - 1)];
+        const following = contour[path.closed ? (index + 1) % contour.length : Math.min(contour.length - 1, index + 1)];
+        const dx = (following.x - previous.x) * sketchSmoothing / 6;
+        const dz = (following.z - previous.z) * sketchSmoothing / 6;
+        return { ...point, id: sketchEntityId("point"), mode: "smooth" as const, handleIn: { x: point.x - dx, z: point.z - dz }, handleOut: { x: point.x + dx, z: point.z + dz } };
+      });
+      newPoints.push(...points);
+      for (let index = 0; index < (path.closed ? points.length : points.length - 1); index++) newSegments.push({ id: sketchEntityId("segment"), startId: points[index].id, endId: points[(index + 1) % points.length].id, kind: "bezier", construction: sketchSmoothingSource.segments.every((segment) => segment.construction) });
+    }
+    return { ...original, points: [...original.points.filter((point) => !oldPointIds.has(point.id)), ...newPoints], segments: [...original.segments.filter((segment) => !segmentIds.has(segment.id)), ...newSegments], constraints: (original.constraints ?? []).filter((constraint) => ![...segmentIds].some((id) => sketchConstraintUsesSegment(constraint, id)) && ![...oldPointIds].some((id) => sketchConstraintUsesPoint(constraint, id))) };
+  }, [sketchSession, sketchSmoothingSource, sketchSmoothing]);
   const copyCurrentSketchSelection = () => {
     if (!sketchCopyableSelection) return;
     setSketchClipboard(sketchCopyableSelection);
@@ -3184,6 +3239,17 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("sketch.splitHandles")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("split")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "split")}><SketchToolbarIcon file="split-handles" /></Tool>
           </ToolbarSection>
           <ToolbarSection label={t("sketch.edit")}>
+            <Tool label={locale === "es" ? "Suavizar trazado" : "Smooth path"} enabled={Boolean(sketchCopyableSelection?.segments.length)} active={Boolean(sketchSmoothingSource)} onClick={() => {
+              if (!sketchCopyableSelection || !sketchSession) return;
+              const source = sketchCopyableSelection;
+              const ids = new Set(source.segments.map((segment) => segment.id));
+              const points = new Set(source.points.map((point) => point.id));
+              if (sketchSession.profile.segments.some((segment) => !ids.has(segment.id) && (points.has(segment.startId) || points.has(segment.endId))) || source.points.some((point) => source.segments.filter((segment) => segment.startId === point.id || segment.endId === point.id).length > 2)) {
+                setNotice({ type: "error", text: locale === "es" ? "Selecciona un trazado completo sin ramificaciones para suavizarlo." : "Select a complete path without branches to smooth it." });
+                return;
+              }
+              setSketchSmoothingSource(source);
+            }}><SketchToolbarIcon file="smooth-path" /></Tool>
             <Tool label={t("sketch.construction")} enabled={selectedConstructionIds.segmentIds.length + selectedConstructionIds.circleIds.length > 0} active={selectedConstructionIds.allConstruction} onClick={toggleSketchConstruction}><SketchToolbarIcon file="construction" /></Tool>
             <Tool label={t("sketch.refine")} active={sketchTool === "refine"} onClick={refineSketchSelection}><SketchToolbarIcon file="refine" /></Tool>
             <Tool label={t("sketch.connectNodes")} enabled={selectedSketchPoints.length <= 2} active={sketchTool === "connect"} onClick={connectSelectedSketchNodes}><SketchToolbarIcon file="connect-nodes" /></Tool>
@@ -3270,6 +3336,22 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         </div>}
       </div>
 
+      {sketchSession && sketchSmoothingSource && sketchSmoothingPreview ? <div className="educad-sketch-smoothing-overlay">
+        <section className="educad-sketch-smoothing-panel" role="dialog" aria-modal="true" aria-label={locale === "es" ? "Suavizar trazado" : "Smooth path"}>
+          <strong>{locale === "es" ? "Suavizar trazado" : "Smooth path"}</strong>
+          <label>{locale === "es" ? "Suavidad y simplificación" : "Smoothing and simplification"} <output>{Math.round(sketchSmoothing * 100)}%</output><input type="range" min="0" max="1" step="0.01" value={sketchSmoothing} onChange={(event) => setSketchSmoothing(Number(event.target.value))} /></label>
+          <small>{locale === "es" ? "Las restricciones del trazado reemplazado se eliminarán." : "Constraints on the replaced path will be removed."}</small>
+          <div><button type="button" onClick={() => setSketchSmoothingSource(null)}>{t("common.cancel")}</button><button type="button" onClick={() => {
+            const oldIds = new Set(sketchSession.profile.points.map((point) => point.id));
+            const newPoints = sketchSmoothingPreview.points.filter((point) => !oldIds.has(point.id));
+            const ids = new Set(newPoints.map((point) => point.id));
+            setSketchProfile(() => sketchSmoothingPreview);
+            setSketchSmoothingSource(null);
+            chooseSketchTool("select");
+            setSketchSelection({ kind: "multiple", pointIds: [...ids], segmentIds: sketchSmoothingPreview.segments.filter((segment) => ids.has(segment.startId) && ids.has(segment.endId)).map((segment) => segment.id) });
+          }}>{t("sketch.accept")}</button></div>
+        </section>
+      </div> : null}
       {sketchSession && polygonMenuPosition ? <div ref={polygonMenuRef} id="sketch-polygon-menu" className="educad-polygon-menu" style={polygonMenuPosition}>
         {[3, 4, 5, 6, 7, 8].map((sides) => {
           const names = locale === "es" ? ["Triángulo", "Rombo", "Pentágono", "Hexágono", "Heptágono", "Octógono"] : ["Triangle", "Rhombus", "Pentagon", "Hexagon", "Heptagon", "Octagon"];
@@ -3289,7 +3371,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         {backgroundProcessLabel ? <BackgroundProcessIndicator label={backgroundProcessLabel} rightOffset={viewportOverlayRightOffset} regenerating={!stlExporting && !exporting && !alignmentCalculating && kernelBusy} /> : null}
         {sketchSession ? <SketchWorkspace
           locale={locale}
-          profile={sketchSession.profile}
+          profile={sketchSmoothingPreview ?? sketchSession.profile}
           profileValidation={activeSketchProfileValidation}
           operation="extrude"
           referenceShapes={[]}
@@ -3340,8 +3422,16 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           }}
           onFreehandContour={(points, smooth) => {
             try {
-              setSketchProfile((profile) => appendScribbleContour(profile, points, profile.generator?.kind === "scribble" ? profile.generator.smoothing : 0.8, smooth));
-              setSketchTool(smooth ? "freehandSmooth" : "freehand");
+              let addedPointIds: string[] = [];
+              let addedSegmentIds: string[] = [];
+              setSketchProfile((profile) => {
+                const next = appendScribbleContour(profile, points, profile.generator?.kind === "scribble" ? profile.generator.smoothing : 0.8, smooth);
+                addedPointIds = next.points.slice(profile.points.length).map((point) => point.id);
+                addedSegmentIds = next.segments.slice(profile.segments.length).map((segment) => segment.id);
+                return next;
+              });
+              chooseSketchTool("select");
+              setSketchSelection({ kind: "multiple", pointIds: addedPointIds, segmentIds: addedSegmentIds });
             } catch (error) {
               setNotice({ type: "error", text: error instanceof Error ? error.message : t("notice.freehandFailed") });
             }

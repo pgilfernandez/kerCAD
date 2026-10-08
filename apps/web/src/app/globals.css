@@ -5536,6 +5536,13 @@ button {
 .educad-polygon-menu button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 12px; color: #173b5a; background: transparent; border: 0; border-radius: 4px; text-align: left; }
 .educad-polygon-menu button:hover, .educad-polygon-menu button[aria-pressed="true"] { background: #eaf3ff; }
 .educad-polygon-menu button img { width: 28px; height: 28px; }
+.educad-sketch-smoothing-overlay { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: flex-end; justify-content: center; padding: 20px; }
+.educad-sketch-smoothing-panel { display: grid; gap: 12px; width: min(380px, 100%); padding: 16px; border: 1px solid #c7d5de; border-radius: 8px; background: white; color: #173b5a; box-shadow: 0 6px 20px #173b5a26; }
+.educad-sketch-smoothing-panel label { display: grid; gap: 6px; font-size: 13px; }
+.educad-sketch-smoothing-panel input { width: 100%; }
+.educad-sketch-smoothing-panel small { font-size: 11px; }
+.educad-sketch-smoothing-panel > div { display: flex; justify-content: flex-end; gap: 8px; }
+.educad-sketch-smoothing-panel button { padding: 7px 12px; border: 1px solid #b6cbd6; border-radius: 5px; background: #eef5ff; color: #173b5a; }
 
 .sketch-preview-line {
   stroke: #169fce;
