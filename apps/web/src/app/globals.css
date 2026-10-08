@@ -10215,9 +10215,12 @@ html[data-theme="dark"] .grid-settings {
 @media (max-width: 620px) { .educad-shared-library { padding: 12px; } .educad-shared-files article { align-items: stretch; flex-direction: column; } }
 @media (max-width: 620px) {
   .educad-dashboard-topbar { height: auto; min-height: 76px; flex-wrap: wrap; gap: 12px; padding-block: 12px; }
-  .educad-dashboard-mobile-nav { position: static; transform: none; order: 3; width: 100%; justify-content: space-between; gap: 6px; }
-  .educad-dashboard-mobile-nav button { padding: 8px; }
-  .educad-dashboard-about { margin-left: auto; }
+  .educad-dashboard-mobile-nav { position: static; transform: none; order: 3; width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .educad-dashboard-mobile-nav button { padding: 8px; width: 100%; justify-content: center; background: rgba(255, 255, 255, 0.05); }
+  .educad-dashboard-mobile-nav button.active { background: #fff; }
+  .educad-dashboard-mobile-nav button:nth-child(3) { grid-column: 1 / -1; }
+  .educad-dashboard-about { margin-left: auto; width: auto; flex-shrink: 0; color: #fff; overflow: visible; white-space: nowrap; }
+  .educad-dashboard-about::after { content: none; }
 }
 .educad-shared-file-details { min-width: 0; display: grid; gap: 6px; }
 .educad-shared-file-details small { color: #536d80; font-size: 13px; line-height: 1.5; }
