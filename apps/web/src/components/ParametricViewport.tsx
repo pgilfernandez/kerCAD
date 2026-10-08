@@ -3488,17 +3488,18 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
         const headOffset = head * 0.12;
         const originX = -halfWidth;
         const originZ = halfDepth;
-        const addAxisArrow = (color: string, shaft: number[], headPositions: number[]) => {
+        const addAxisArrow = (color: string, shaft: number[], headPositions: number[], spatialHead = false) => {
           const lineGeometry = new LineSegmentsGeometry();
           lineGeometry.setPositions(shaft);
           const lineMaterial = new LineMaterial({ color, linewidth: 3, transparent: true, opacity: 0.96 });
           lineMaterial.resolution.set(Math.max(1, renderer.domElement.clientWidth), Math.max(1, renderer.domElement.clientHeight));
           const line = new LineSegments2(lineGeometry, lineMaterial);
-          const headGeometry = new THREE.BufferGeometry();
-          headGeometry.setAttribute("position", new THREE.Float32BufferAttribute(headPositions, 3));
+          const headGeometry = spatialHead ? new THREE.ConeGeometry(head * 0.44, head, 12) : new THREE.BufferGeometry();
+          if (!spatialHead) headGeometry.setAttribute("position", new THREE.Float32BufferAttribute(headPositions, 3));
           const headMesh = new THREE.Mesh(headGeometry, new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }));
           line.position.y = 0.055;
           headMesh.position.y = 0.055;
+          if (spatialHead) headMesh.position.set(originX, length + headOffset - head / 2 + 0.055, originZ);
           line.renderOrder = 2;
           headMesh.renderOrder = 2;
           line.userData.globalWorkplaneElement = true;
@@ -3522,7 +3523,7 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
         ], [
           originX, length + headOffset, originZ, originX - head * 0.44, length - head + headOffset, originZ,
           originX + head * 0.44, length - head + headOffset, originZ,
-        ]);
+        ], true);
         const bandDepth = Math.min(15, gridDepth);
         const labelCanvas = document.createElement("canvas");
         labelCanvas.width = 2048;
