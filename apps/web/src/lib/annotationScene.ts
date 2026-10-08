@@ -4,10 +4,10 @@ import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import type { ParametricAnnotation } from "@/types/parametric";
 import { displayUnitLabel, formatDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
-import { annotationAngleGeometry } from "@/lib/annotationGeometry";
+import { annotationAngleGeometry, annotationPosition, type AnnotationPoint } from "@/lib/annotationGeometry";
 
 /** An independent display layer: annotations never enter the CAD kernel. */
-export function createAnnotationScene(annotations: ParametricAnnotation[], unit: ParametricDisplayUnit, selectedId: string | null) {
+export function createAnnotationScene(annotations: ParametricAnnotation[], unit: ParametricDisplayUnit, selectedId: string | null, pointSelection: { point: AnnotationPoint | null; triadVisible: boolean }) {
   const group = new THREE.Group();
   const disposables: Array<{ dispose: () => void }> = [];
   const vector = (point: { x: number; y: number; z: number }) => new THREE.Vector3(point.x, point.y, point.z);
@@ -23,6 +23,25 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
   };
   for (const annotation of annotations) {
     if (!annotation.visible) continue;
+    if (annotation.id === selectedId && annotation.kind !== "text") {
+      const keys: AnnotationPoint[] = annotation.kind === "angle" ? ["start", "center", "end"] : ["start", "end"];
+      for (const key of keys) {
+        const active = pointSelection.point === key;
+        if (active && pointSelection.triadVisible) continue;
+        const point = annotationPosition(annotation, key);
+        if (!point) continue;
+        const geometry = new THREE.SphereGeometry(1, 16, 12);
+        const material = new THREE.MeshLambertMaterial({ color: active ? "#ffe431" : "#ffffff", depthTest: false, depthWrite: false, transparent: true });
+        const sphere = new THREE.Mesh(geometry, material);
+        sphere.position.copy(vector(point));
+        sphere.renderOrder = 110;
+        sphere.userData.annotationPoint = key;
+        // Reuse the viewport's pre-render screen-size adjustment for handles.
+        sphere.userData.yellowManipulatorBaseRadius = 1;
+        sphere.userData.yellowManipulatorDiameterPixels = active ? 20 : 14;
+        group.add(sphere); disposables.push(geometry, material);
+      }
+    }
     const color = annotation.kind === "text" ? "#000000" : annotation.color ?? "#233c52";
     const label = (text: string, position: THREE.Vector3, size: number, font = "Arial", alignment = "center") => {
       if (!text) return;

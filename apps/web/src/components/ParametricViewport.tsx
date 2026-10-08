@@ -648,6 +648,7 @@ export function ParametricViewport({ onAnnotationSelect, annotationsVisible = tr
   const hostRef = useRef<HTMLDivElement>(null);
   const annotationSnapRef = useRef<(event: PointerEvent) => THREE.Vector3 | null>(() => null);
   const annotationPositionHandleRef = useRef<(event: PointerEvent) => boolean>(() => false);
+  const annotationPointHandleRef = useRef<(event: PointerEvent) => AnnotationPoint | null>(() => null);
   const annotationLayerRef = useRef<THREE.Group | null>(null);
   const annotationSelectRef = useRef(onAnnotationSelect);
   annotationSelectRef.current = onAnnotationSelect;
@@ -1136,6 +1137,7 @@ export function ParametricViewport({ onAnnotationSelect, annotationsVisible = tr
       updateRoot(edgeTreatmentHandleRef.current);
       updateRoot(revolveHandleRef.current);
       updateRoot(distanceHandleRef.current);
+      updateRoot(annotationLayerRef.current);
     };
     const originWorldPosition = new THREE.Vector3();
     const render = (now: number) => {
@@ -1922,6 +1924,13 @@ export function ParametricViewport({ onAnnotationSelect, annotationsVisible = tr
       Object.assign(raycaster.params, { Line2: { threshold: 4 } });
       return raycaster.intersectObjects(labels, false)[0]?.object.userData.annotationId as string | undefined;
     };
+    annotationPointHandleRef.current = (event) => {
+      const layer = annotationLayerRef.current;
+      if (!layer?.visible) return null;
+      setPointer(event); updateYellowManipulatorScreenSizes(); layer.updateWorldMatrix(true, true);
+      const handles = layer.children.filter((child) => child.visible && child.userData.annotationPoint);
+      return raycaster.intersectObjects(handles, false)[0]?.object.userData.annotationPoint as AnnotationPoint | undefined ?? null;
+    };
     processPendingHover = () => {
       const event = pendingHoverEvent;
       pendingHoverEvent = null;
@@ -1934,6 +1943,7 @@ export function ParametricViewport({ onAnnotationSelect, annotationsVisible = tr
       }
       replaceHoverDimensions(hoveredManipulatorDimensions(event));
       if (!alignmentRef.current.active && annotationAtPointer() && !originHandleAtPointer()) renderer.domElement.style.cursor = "pointer";
+      if (!alignmentRef.current.active && annotationPointHandleRef.current(event)) renderer.domElement.style.cursor = "grab";
     };
     const snapTargetAtPointer = (event: PointerEvent): THREE.Vector3 | null => {
       const bounds = renderer.domElement.getBoundingClientRect();
@@ -3213,13 +3223,13 @@ export function ParametricViewport({ onAnnotationSelect, annotationsVisible = tr
       return shown.kind === "text" && shown.id === editingAnnotationId ? { ...shown, text: "" } : shown;
     });
     if (annotationPreview && !displayed.some((annotation) => annotation.id === annotationPreview.id)) displayed.push(annotationPreview);
-    const layer = createAnnotationScene(displayed, displayUnit, selectedAnnotationId);
+    const layer = createAnnotationScene(displayed, displayUnit, selectedAnnotationId, { point: selectedAnnotationEndpoint, triadVisible: objectOrigins.some((origin) => origin.objectId === selectedAnnotationId && origin.visible && origin.positionVisible !== false) });
     layer.group.visible = annotationsVisible;
     annotationLayerRef.current = layer.group;
     model.add(layer.group);
     invalidateRef.current();
     return () => { if (annotationLayerRef.current === layer.group) annotationLayerRef.current = null; layer.dispose(); invalidateRef.current(); };
-  }, [annotations, annotationsVisible, annotationPreview, selectedAnnotationId, editingAnnotationId, displayUnit, locale, renderQuality, shadingMode]);
+  }, [annotations, annotationsVisible, annotationPreview, selectedAnnotationId, selectedAnnotationEndpoint, objectOrigins, editingAnnotationId, displayUnit, locale, renderQuality, shadingMode]);
 
   useEffect(() => {
     const model = modelRef.current;
@@ -4496,7 +4506,7 @@ export function ParametricViewport({ onAnnotationSelect, annotationsVisible = tr
     };
   }, [onProjectRename, projection, renderQuality, shadingMode]);
   return <div className="parametric-viewport" ref={hostRef} aria-label={locale === "es" ? "Vista 3D de la pieza" : "3D model view"}>
-    <AnnotationInteraction host={hostRef} camera={cameraRef} model={modelRef} snapPoint={annotationSnapRef} positionHandleAtPointer={(event) => annotationPositionHandleRef.current(event)} workplane={workplane} displayUnit={displayUnit} tool={annotationTool} selected={annotationInteractionSelection ? { ...annotationInteractionSelection, visible: annotationInteractionSelection.visible && annotationsVisible } : undefined} parameterHandlesVisible={parameterHandlesVisible} positionManipulatorVisible={objectOrigins.some((origin) => origin.objectId === selectedAnnotationId && origin.visible && origin.positionVisible !== false)} selectedEndpoint={selectedAnnotationEndpoint} onSelectEndpoint={(endpoint) => onSelectAnnotationEndpoint?.(endpoint)} onMoveEndpoint={(id, endpoint, position) => onMoveAnnotationEndpoint?.(id, endpoint, position)} onMoveText={(id, position) => onObjectAxisMove?.(id, position)} editing={Boolean(editingAnnotationId && editingAnnotationId === selectedAnnotationId)} locale={locale} onPlace={(kind, start, end, center) => onPlaceAnnotation?.(kind, start, end, center)} onFinish={(id, text, size) => onFinishAnnotation?.(id, text, size)} onEdit={(id) => onEditAnnotation?.(id)} onCancelTool={() => onCancelAnnotationTool?.()} onPreview={setAnnotationPreview} />
+    <AnnotationInteraction host={hostRef} camera={cameraRef} model={modelRef} snapPoint={annotationSnapRef} positionHandleAtPointer={(event) => annotationPositionHandleRef.current(event)} pointHandleAtPointer={(event) => annotationPointHandleRef.current(event)} workplane={workplane} displayUnit={displayUnit} tool={annotationTool} selected={annotationInteractionSelection ? { ...annotationInteractionSelection, visible: annotationInteractionSelection.visible && annotationsVisible } : undefined} parameterHandlesVisible={parameterHandlesVisible} onSelectEndpoint={(endpoint) => onSelectAnnotationEndpoint?.(endpoint)} onMoveEndpoint={(id, endpoint, position) => onMoveAnnotationEndpoint?.(id, endpoint, position)} onMoveText={(id, position) => onObjectAxisMove?.(id, position)} editing={Boolean(editingAnnotationId && editingAnnotationId === selectedAnnotationId)} locale={locale} onPlace={(kind, start, end, center) => onPlaceAnnotation?.(kind, start, end, center)} onFinish={(id, text, size) => onFinishAnnotation?.(id, text, size)} onEdit={(id) => onEditAnnotation?.(id)} onCancelTool={() => onCancelAnnotationTool?.()} onPreview={setAnnotationPreview} />
     {alignmentActive ? <div ref={alignmentButtonsRef} className="educad-alignment-face-buttons" role="group" aria-label={locale === "es" ? "Alinear con la referencia" : "Align with reference"}>
       {(["x", "y", "z"] as const).flatMap(axis => (["min", "center", "max"] as const).map(anchor => {
         const label = locale === "es"
