@@ -28,6 +28,7 @@ import {
   ToolbarParameterManipulatorIcon,
   ToolbarPasteIcon,
   ToolbarPositionManipulatorIcon,
+  ToolbarEditOperationIcon,
   ToolbarPerspectiveIcon,
   ToolbarRedoIcon,
   ToolbarRotationManipulatorIcon,
@@ -283,6 +284,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
   const [annotationTool, setAnnotationTool] = useState<"text" | "dimension" | null>(null);
   const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
+  const [annotationEndpoint, setAnnotationEndpoint] = useState<"start" | "end" | null>(null);
+  const selectedAnnotation = document.annotations?.find((annotation) => annotation.id === selectedAnnotationId);
+  useEffect(() => setAnnotationEndpoint(null), [selectedAnnotationId]);
   const latestDocumentRef = useRef(document);
   latestDocumentRef.current = document;
   const [modelSelection, setModelSelection] = useState<ModelTreeSelection[]>(initialDocument.objects[0] ? [{ id: initialDocument.objects[0].id, kind: "object" }] : []);
@@ -985,14 +989,21 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     const objectId = objectIdForFeature(document, item.id);
     return objectId ? [objectId] : [];
   }))], [document, modelSelection]);
-  const viewportObjectOrigins = useMemo(() => document.objects.map((object) => ({
+  const viewportObjectOrigins = useMemo(() => [...document.objects.map((object) => ({
     objectId: object.id,
     visible: object.visible !== false && object.id === selectedOriginObjectId && (showPositionTriad || showRotationTriad || object.id === originEditObjectId),
     position: object.transform.position,
     rotation: object.transform.rotation,
     positionVisible: showPositionTriad || object.id === originEditObjectId,
     rotationEditable: object.id === selectedOriginObjectId && showRotationTriad,
-  })), [document.objects, originEditObjectId, selectedOriginObjectId, showPositionTriad, showRotationTriad]);
+  })), ...(selectedAnnotation && (selectedAnnotation.kind === "text" || annotationEndpoint) ? [{
+    objectId: selectedAnnotation.id,
+    visible: selectedAnnotation.visible && showPositionTriad,
+    position: selectedAnnotation.kind === "text" ? selectedAnnotation.position : selectedAnnotation[annotationEndpoint!],
+    rotation: { x: 0, y: 0, z: 0 },
+    positionVisible: showPositionTriad,
+    rotationEditable: false,
+  }] : [])], [document.objects, selectedAnnotation, annotationEndpoint, originEditObjectId, selectedOriginObjectId, showPositionTriad, showRotationTriad]);
   const referenceObjectRecords = useMemo(() => parametricReferenceRenderRecords(document), [document]);
   const viewportObjectRecords = useMemo(() => {
     const visibleObjectIds = new Set(document.objects.filter((object) => object.visible !== false).map((object) => object.id));
@@ -3638,6 +3649,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         /> : <ParametricViewport
           annotations={document.annotations}
           selectedAnnotationId={selectedAnnotationId}
+          selectedAnnotationEndpoint={annotationEndpoint}
+          onSelectAnnotationEndpoint={setAnnotationEndpoint}
           annotationTool={annotationTool}
           editingAnnotationId={editingAnnotationId}
           onCancelAnnotationTool={() => setAnnotationTool(null)}
@@ -3680,7 +3693,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           onAlign={alignSelection}
           sketchOverlays={viewportSketchOverlays}
           editableOriginId={alignOpen ? null : originEditObjectId}
-          selectedObjectOriginId={selectedOriginObjectId}
+          selectedObjectOriginId={selectedAnnotation && (selectedAnnotation.kind === "text" || annotationEndpoint) ? selectedAnnotation.id : selectedOriginObjectId}
           selectedOperationOriginId={selectedOperationOriginId}
           selectedObjectIds={viewportSelectedObjectIds}
           operationContext={pendingEdgeTreatment || pendingFaceExtrude || pendingShell || pendingRevolve ? viewportTopologyPreviewContext : viewportOperationContext}
@@ -3699,8 +3712,14 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           parameterHandlesVisible={!alignOpen && showParameterHandles}
           contextToolbarVisible={pendingFaceExtrude || pendingRevolve || pendingShell ? true : pendingEdgeTreatment
             ? selectedTopologyFaces.length + selectedTopologyEdges.length > 0
-            : modelSelection.length > 0}
-          manipulatorControls={alignOpen ? <>
+            : modelSelection.length > 0 || Boolean(selectedAnnotation)}
+          manipulatorControls={selectedAnnotation ? <>
+            <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
+            {selectedAnnotation.kind === "text" && <>
+              <Tool label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>
+              <Tool label={t("operation.edit")} active={editingAnnotationId === selectedAnnotation.id} onClick={() => setEditingAnnotationId(selectedAnnotation.id)}><ToolbarEditOperationIcon /></Tool>
+            </>}
+          </> : alignOpen ? <>
             <button type="button" className={`educad-alignment-mode ${alignmentMode === "reference" ? "active" : ""}`} aria-label={locale === "es" ? "Alinear a referencia" : "Align to reference"} title={locale === "es" ? "Alinear a referencia" : "Align to reference"} aria-pressed={alignmentMode === "reference"} onClick={() => setAlignmentMode("reference")}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/assets/educad/alignment/mode-reference.svg" alt="" draggable={false} />
@@ -3724,6 +3743,12 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           }}
           onObjectOriginMove={(objectId, position) => mutate((draft) => moveParametricObjectOrigin(draft, objectId, position))}
           onObjectAxisMove={(objectId, position) => mutate((draft) => {
+            const annotation = draft.annotations?.find((candidate) => candidate.id === objectId);
+            if (annotation) {
+              if (annotation.kind === "text") annotation.position = { ...position };
+              else if (annotationEndpoint) annotation[annotationEndpoint] = { ...position };
+              return;
+            }
             const object = draft.objects.find((candidate) => candidate.id === objectId);
             if (object) {
               const previousTransform = structuredClone(object.transform);

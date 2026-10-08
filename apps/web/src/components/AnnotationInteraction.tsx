@@ -9,10 +9,14 @@ type Props = {
   camera: RefObject<THREE.PerspectiveCamera | THREE.OrthographicCamera | null>;
   model: RefObject<THREE.Group | null>;
   snapPoint: RefObject<(event: PointerEvent) => THREE.Vector3 | null>;
+  positionHandleAtPointer: (event: PointerEvent) => boolean;
   workplane: ParametricDocument["workplane"];
   tool: "text" | "dimension" | null;
   selected?: ParametricAnnotation;
   editing: boolean;
+  parameterHandlesVisible: boolean;
+  selectedEndpoint: "start" | "end" | null;
+  onSelectEndpoint: (endpoint: "start" | "end") => void;
   locale: "en" | "es";
   onPlace: (kind: "text" | "dimension", start: ParametricVector3, end?: ParametricVector3) => void;
   onFinish: (id: string, text: string, size: number) => void;
@@ -31,6 +35,8 @@ export function AnnotationInteraction(props: Props) {
   const editor = useRef<HTMLDivElement>(null);
   const marker = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
+  const startMarker = useRef<HTMLButtonElement>(null);
+  const endMarker = useRef<HTMLButtonElement>(null);
   const dragging = useRef<{ x: number; size: number; pointerId: number } | null>(null);
   const draft = useRef({ text, size }); draft.current = { text, size };
   const finish = () => {
@@ -89,6 +95,7 @@ export function AnnotationInteraction(props: Props) {
     const down = (event: PointerEvent) => {
       const p = current.current;
       if (event.button !== 0 || !(event.target instanceof HTMLCanvasElement) || (!p.tool && !p.editing)) return;
+      if (p.editing && p.positionHandleAtPointer(event)) return;
       event.preventDefault(); event.stopImmediatePropagation();
       if (p.editing) { finish(); return; }
       const point = pointAt(event);
@@ -109,7 +116,7 @@ export function AnnotationInteraction(props: Props) {
   }, [host, camera, model, snapPoint]);
 
   useEffect(() => {
-    if (selected?.kind !== "text" && !snapped) return;
+    if (!selected?.visible && !snapped) return;
     let frame = 0;
     const project = (point: THREE.Vector3) => {
       const cam = camera.current, root = model.current, element = host.current;
@@ -144,19 +151,30 @@ export function AnnotationInteraction(props: Props) {
         const point = project(snapped);
         if (point) { marker.current.style.left = `${point.x}px`; marker.current.style.top = `${point.y}px`; marker.current.style.display = point.visible ? "block" : "none"; }
       }
+      if (active?.kind === "dimension") {
+        for (const [key, target] of [["start", startMarker], ["end", endMarker]] as const) {
+          const endpoint = active[key];
+          const point = project(new THREE.Vector3(endpoint.x, endpoint.y, endpoint.z));
+          if (point && target.current) {
+            target.current.style.left = `${point.x}px`; target.current.style.top = `${point.y}px`;
+            target.current.style.display = point.visible && active.visible ? "block" : "none";
+          }
+        }
+      }
       frame = requestAnimationFrame(update);
     };
     frame = requestAnimationFrame(update);
     return () => cancelAnimationFrame(frame);
-  }, [selected?.id, tool, snapped, camera, host, model]);
+  }, [selected?.id, selected?.visible, tool, snapped, camera, host, model]);
 
   const textAnnotation = selected?.kind === "text" ? selected : null;
   return <>
     {tool && <div className="educad-annotation-instruction">{locale === "es" ? tool === "text" ? "Pulsa en el plano para colocar la etiqueta · Esc cancela" : "Elige dos puntos · vértices y puntos medios disponibles · Esc cancela" : tool === "text" ? "Click the plane to place a label · Esc cancels" : "Pick two points · vertices and edge midpoints available · Esc cancels"}</div>}
     {snapped && tool === "dimension" && <div ref={marker} className="educad-annotation-snap-marker" />}
+    {selected?.kind === "dimension" && selected.visible && (["start", "end"] as const).map((endpoint) => <button key={endpoint} ref={endpoint === "start" ? startMarker : endMarker} type="button" className={`educad-dimension-endpoint ${props.selectedEndpoint === endpoint ? "active" : ""}`} aria-pressed={props.selectedEndpoint === endpoint} aria-label={locale === "es" ? endpoint === "start" ? "Seleccionar punto inicial" : "Seleccionar punto final" : endpoint === "start" ? "Select start point" : "Select end point"} title={locale === "es" ? endpoint === "start" ? "Punto inicial" : "Punto final" : endpoint === "start" ? "Start point" : "End point"} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); props.onSelectEndpoint(endpoint); }} />)}
     {textAnnotation?.visible && <div ref={editor} className="educad-annotation-editor" style={{ fontFamily: `${textAnnotation.font}, sans-serif`, textAlign: textAnnotation.alignment }}>
       {editing ? <textarea ref={input} value={text} maxLength={2000} aria-label={locale === "es" ? "Texto de la etiqueta" : "Label text"} onChange={(event) => { setText(event.target.value); draft.current.text = event.target.value; }} onKeyDown={(event) => { event.stopPropagation(); if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); finish(); } if (event.key === "Escape") cancelEdit(); }} /> : <button className="educad-annotation-edit-target" aria-label={locale === "es" ? "Editar etiqueta" : "Edit label"} title={locale === "es" ? "Doble clic para editar" : "Double-click to edit"} onDoubleClick={() => props.onEdit(textAnnotation.id)} />}
-      <div className="educad-annotation-size-slider" style={{ width: Math.max(140, size * 8 + 28) }}>
+      {props.parameterHandlesVisible && <div className="educad-annotation-size-slider" style={{ width: Math.max(140, size * 8 + 28) }}>
         <svg width="100%" height="24" aria-hidden="true"><line x1="0" y1="12" x2="100%" y2="12" /><line x1="0" y1="6" x2="0" y2="18" /></svg>
         <button type="button" className="educad-annotation-size-handle" style={{ left: size * 8 }} title={locale === "es" ? "Tamaño del texto" : "Text size"} aria-label={locale === "es" ? "Tamaño del texto" : "Text size"} onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); dragging.current = { x: event.clientX, size: draft.current.size, pointerId: event.pointerId }; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={(event) => {
           if (!dragging.current) return;
@@ -165,7 +183,7 @@ export function AnnotationInteraction(props: Props) {
           setSize(next); draft.current.size = next;
           onPreview({ ...textAnnotation, text: editing ? "" : draft.current.text, size: next });
         }} onPointerUp={(event) => { if (!dragging.current) return; dragging.current = null; event.currentTarget.releasePointerCapture(event.pointerId); if (!editing) finish(); }} onPointerCancel={() => { dragging.current = null; setSize(textAnnotation.size); draft.current.size = textAnnotation.size; onPreview(editing ? { ...textAnnotation, text: "" } : null); }} />
-      </div>
+      </div>}
     </div>}
   </>;
 }

@@ -213,6 +213,8 @@ type Props = {
   displayUnit?: ParametricDisplayUnit;
   annotations?: ParametricDocument["annotations"];
   selectedAnnotationId?: string | null;
+  selectedAnnotationEndpoint?: "start" | "end" | null;
+  onSelectAnnotationEndpoint?: (endpoint: "start" | "end") => void;
   annotationTool?: "text" | "dimension" | null;
   editingAnnotationId?: string | null;
   onPlaceAnnotation?: (kind: "text" | "dimension", start: { x: number; y: number; z: number }, end?: { x: number; y: number; z: number }) => void;
@@ -637,10 +639,13 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ annotationTool = null, editingAnnotationId = null, onPlaceAnnotation, onFinishAnnotation, onEditAnnotation, onCancelAnnotationTool, annotations, selectedAnnotationId = null, onProjectRename, mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, faceExtrudeDraft = null, onFaceExtrudeAccept, onFaceExtrudeCancel, faceExtrudeCanAccept = true, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, revolveDraft = null, onRevolveDraftChange, onRevolveAccept, onRevolveCancel, revolveCanAccept = true, distanceHandle = null, onDistanceParameterDragStart, onDistanceParameterPreview, onDistanceParameterChange, onDistanceParameterCancel, shellDraft = null, onShellDraftChange, onShellCornerTypeChange, onShellAccept, onShellCancel, shellCanAccept = true, floatingFeature = null, booleanObjects = [], patternSources = [], booleanAddOnly = false, operationModesVisible = true, contextToolbarVisible, manipulatorControls, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = "Untitled design", onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions, alignmentActive = false, alignmentBusy = false, alignmentTargets = [], alignmentReference = null, onAlignmentSelect, onAlign }: Props) {
+export function ParametricViewport({ selectedAnnotationEndpoint = null, onSelectAnnotationEndpoint, annotationTool = null, editingAnnotationId = null, onPlaceAnnotation, onFinishAnnotation, onEditAnnotation, onCancelAnnotationTool, annotations, selectedAnnotationId = null, onProjectRename, mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, faceExtrudeDraft = null, onFaceExtrudeAccept, onFaceExtrudeCancel, faceExtrudeCanAccept = true, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, revolveDraft = null, onRevolveDraftChange, onRevolveAccept, onRevolveCancel, revolveCanAccept = true, distanceHandle = null, onDistanceParameterDragStart, onDistanceParameterPreview, onDistanceParameterChange, onDistanceParameterCancel, shellDraft = null, onShellDraftChange, onShellCornerTypeChange, onShellAccept, onShellCancel, shellCanAccept = true, floatingFeature = null, booleanObjects = [], patternSources = [], booleanAddOnly = false, operationModesVisible = true, contextToolbarVisible, manipulatorControls, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = "Untitled design", onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions, alignmentActive = false, alignmentBusy = false, alignmentTargets = [], alignmentReference = null, onAlignmentSelect, onAlign }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const annotationSnapRef = useRef<(event: PointerEvent) => THREE.Vector3 | null>(() => null);
+  const annotationPositionHandleRef = useRef<(event: PointerEvent) => boolean>(() => false);
   const [annotationPreview, setAnnotationPreview] = useState<NonNullable<ParametricDocument["annotations"]>[number] | null>(null);
+  const annotationStateRef = useRef({ annotations, selectedAnnotationId, selectedAnnotationEndpoint, editingAnnotationId });
+  annotationStateRef.current = { annotations, selectedAnnotationId, selectedAnnotationEndpoint, editingAnnotationId };
   const alignmentRef = useRef({ active: alignmentActive, targets: alignmentTargets, onSelect: onAlignmentSelect });
   alignmentRef.current = { active: alignmentActive, targets: alignmentTargets, onSelect: onAlignmentSelect };
   const alignmentOverlayRef = useRef<THREE.Group | null>(null);
@@ -1737,6 +1742,11 @@ export function ParametricViewport({ annotationTool = null, editingAnnotationId 
       const hit = editableId ? hits[0] : snapHit ?? translationHit ?? rotationHit;
       return hit ? { editable: Boolean(editableId), snap: Boolean(snapHit), hit, marker, targetId: targetId!, targetKind, rotationAxis: rotationHit?.object.userData.rotationAxis as "x" | "y" | "z" | undefined, handleGroup: hit.object.userData.handleGroup as string | undefined } : null;
     };
+    annotationPositionHandleRef.current = (event) => {
+      setPointer(event);
+      const handle = originHandleAtPointer();
+      return Boolean(handle && handle.targetId === annotationStateRef.current.selectedAnnotationId);
+    };
     const setOriginHandleHover = (handle: ReturnType<typeof originHandleAtPointer>) => {
       let changed = false;
       for (const marker of originLayer.children) {
@@ -1953,6 +1963,14 @@ export function ParametricViewport({ annotationTool = null, editingAnnotationId 
       return closestPoint as THREE.Vector3 | null;
     };
     annotationSnapRef.current = snapTargetAtPointer;
+    const previewAnnotationPosition = (id: string, position: THREE.Vector3) => {
+      const state = annotationStateRef.current;
+      const annotation = state.annotations?.find((candidate) => candidate.id === id);
+      if (!annotation) return;
+      const point = { x: position.x, y: position.y, z: position.z };
+      if (annotation.kind === "text") setAnnotationPreview({ ...annotation, position: point, text: state.editingAnnotationId === id ? "" : annotation.text });
+      else if (state.selectedAnnotationEndpoint) setAnnotationPreview({ ...annotation, [state.selectedAnnotationEndpoint]: point });
+    };
     const updateConePreview = (selected: ViewportSelection, baseRadius: number, topRadius: number, height: number) => {
       if (selected.shapeParameters?.shape !== "cone") return;
       const radialScale = selected.width / Math.max(0.01, selected.shapeParameters.baseRadius * 2);
@@ -2629,6 +2647,7 @@ export function ParametricViewport({ annotationTool = null, editingAnnotationId 
         if (!target) return;
         originDragMarker.position.copy(target);
         pendingAxisMove.position = { x: target.x, y: target.y, z: target.z };
+        previewAnnotationPosition(pendingAxisMove.targetId, target);
         const delta = target.clone().sub(originDragStart);
         updateMoveDimension(originLayer.localToWorld(originDragStart.clone()), originLayer.localToWorld(target.clone()), delta.length());
         const root = selectionRootRef.current;
@@ -2665,6 +2684,7 @@ export function ParametricViewport({ annotationTool = null, editingAnnotationId 
         if (interaction === "origin" && pendingOrigin) pendingOrigin.position = { x: next.x, y: next.y, z: next.z };
         if (interaction === "axisMove" && pendingAxisMove) {
           pendingAxisMove.position = { x: next.x, y: next.y, z: next.z };
+          previewAnnotationPosition(pendingAxisMove.targetId, next);
           const root = selectionRootRef.current;
           if (root && axisMoveRootStart) root.position.copy(axisMoveRootStart).add(next.clone().sub(originDragStart));
           if (sketchPreviewRoot?.parent && sketchPreviewStartWorldPosition) {
@@ -2842,6 +2862,7 @@ export function ParametricViewport({ annotationTool = null, editingAnnotationId 
       }
       const completedDimensions = interactionDimensions;
       const completedInteraction = interaction;
+      if (completedInteraction === "axisMove" || completedInteraction === "snapMove") setAnnotationPreview(null);
       interaction = null;
       interactionDimensions = [];
       pickCandidate = null;
@@ -3166,13 +3187,16 @@ export function ParametricViewport({ annotationTool = null, editingAnnotationId 
   useEffect(() => {
     const model = modelRef.current;
     if (!model) return;
-    const displayed = (annotations ?? []).map((annotation) => annotationPreview?.id === annotation.id ? annotationPreview : annotation);
+    const displayed = (annotations ?? []).map((annotation) => {
+      const shown = annotationPreview?.id === annotation.id ? annotationPreview : annotation;
+      return shown.kind === "text" && shown.id === editingAnnotationId ? { ...shown, text: "" } : shown;
+    });
     if (annotationPreview && !displayed.some((annotation) => annotation.id === annotationPreview.id)) displayed.push(annotationPreview);
     const layer = createAnnotationScene(displayed, displayUnit, selectedAnnotationId);
     model.add(layer.group);
     invalidateRef.current();
     return () => { layer.dispose(); invalidateRef.current(); };
-  }, [annotations, annotationPreview, selectedAnnotationId, displayUnit, locale, renderQuality, shadingMode]);
+  }, [annotations, annotationPreview, selectedAnnotationId, editingAnnotationId, displayUnit, locale, renderQuality, shadingMode]);
 
   useEffect(() => {
     const model = modelRef.current;
@@ -4360,6 +4384,14 @@ export function ParametricViewport({ annotationTool = null, editingAnnotationId 
   const showEdgeTreatmentControls = Boolean(edgeTreatmentHandle);
   const showFeatureControls = Boolean(floatingFeature && floatingFeature.kind !== "fillet");
   const showContextToolbar = contextToolbarVisible ?? (showOperationModes || showEdgeTreatmentControls || showFeatureControls || Boolean(faceExtrudeControls) || Boolean(revolveDraft) || Boolean(shellDraft));
+  const selectedAnnotationForInteraction = annotations?.find((annotation) => annotation.id === selectedAnnotationId);
+  // Text preview can hide the sprite while the overlay edits its contents. Keep
+  // that display-only empty string separate from the editor's saved text/size.
+  const annotationInteractionSelection = annotationPreview?.id === selectedAnnotationId
+    ? annotationPreview.kind === "text" && selectedAnnotationForInteraction?.kind === "text"
+      ? { ...selectedAnnotationForInteraction, position: annotationPreview.position }
+      : annotationPreview
+    : selectedAnnotationForInteraction;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -4431,7 +4463,7 @@ export function ParametricViewport({ annotationTool = null, editingAnnotationId 
     };
   }, [onProjectRename, projection, renderQuality, shadingMode]);
   return <div className="parametric-viewport" ref={hostRef} aria-label={locale === "es" ? "Vista 3D de la pieza" : "3D model view"}>
-    <AnnotationInteraction host={hostRef} camera={cameraRef} model={modelRef} snapPoint={annotationSnapRef} workplane={workplane} tool={annotationTool} selected={annotations?.find((annotation) => annotation.id === selectedAnnotationId)} editing={Boolean(editingAnnotationId && editingAnnotationId === selectedAnnotationId)} locale={locale} onPlace={(kind, start, end) => onPlaceAnnotation?.(kind, start, end)} onFinish={(id, text, size) => onFinishAnnotation?.(id, text, size)} onEdit={(id) => onEditAnnotation?.(id)} onCancelTool={() => onCancelAnnotationTool?.()} onPreview={setAnnotationPreview} />
+    <AnnotationInteraction host={hostRef} camera={cameraRef} model={modelRef} snapPoint={annotationSnapRef} positionHandleAtPointer={(event) => annotationPositionHandleRef.current(event)} workplane={workplane} tool={annotationTool} selected={annotationInteractionSelection} parameterHandlesVisible={parameterHandlesVisible} selectedEndpoint={selectedAnnotationEndpoint} onSelectEndpoint={(endpoint) => onSelectAnnotationEndpoint?.(endpoint)} editing={Boolean(editingAnnotationId && editingAnnotationId === selectedAnnotationId)} locale={locale} onPlace={(kind, start, end) => onPlaceAnnotation?.(kind, start, end)} onFinish={(id, text, size) => onFinishAnnotation?.(id, text, size)} onEdit={(id) => onEditAnnotation?.(id)} onCancelTool={() => onCancelAnnotationTool?.()} onPreview={setAnnotationPreview} />
     {alignmentActive ? <div ref={alignmentButtonsRef} className="educad-alignment-face-buttons" role="group" aria-label={locale === "es" ? "Alinear con la referencia" : "Align with reference"}>
       {(["x", "y", "z"] as const).flatMap(axis => (["min", "center", "max"] as const).map(anchor => {
         const label = locale === "es"

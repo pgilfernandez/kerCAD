@@ -10294,3 +10294,6 @@ input[aria-invalid="true"] { box-shadow: inset 0 0 0 1px #d34545; }
 .educad-annotation-size-slider .educad-annotation-size-handle:hover { background: #ffdf00; opacity: 1; }
 .educad-annotation-snap-marker { position: absolute; z-index: 31; width: 18px; height: 18px; border: 2px solid #f1c500; background: #fff15744; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
 .educad-annotation-instruction { position: absolute; right: 12px; bottom: 64px; z-index: 30; max-width: calc(100% - 24px); padding: 8px 12px; border: 1px solid #cbd9e4; border-radius: 6px; background: #ffffffee; color: #233c52; font-size: 12px; pointer-events: none; }
+.parametric-viewport .educad-dimension-endpoint { position: absolute; z-index: 32; width: 14px; height: 14px; transform: translate(-50%, -50%); padding: 0; border: 2px solid #526579; border-radius: 50%; background: #fff; cursor: pointer; touch-action: none; }
+.parametric-viewport .educad-dimension-endpoint.active { width: 20px; height: 20px; border-color: #d3a900; background: #ffe431; }
+.parametric-viewport .educad-dimension-endpoint:hover { border-color: #d3a900; }
