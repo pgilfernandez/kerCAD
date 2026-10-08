@@ -247,6 +247,8 @@ export type ParametricDocument = {
   creator?: string;
   author?: string;
   units: "mm";
+  /** Display preference only; all stored lengths are millimeters. */
+  displayUnit?: import("@/lib/parametricUnits").ParametricDisplayUnit;
   color: string;
   workplane: {
     width: number;

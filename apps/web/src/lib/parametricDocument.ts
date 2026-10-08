@@ -1,3 +1,4 @@
+import { normalizeDisplayUnit } from "@/lib/parametricUnits";
 import type {
   CircleProfile,
   ExtrudeFeature,
@@ -344,6 +345,7 @@ export function migrateParametricDocument(document: ParametricDocument): Paramet
 
 export function normalizeParametricDocument(document: ParametricDocument): ParametricDocument {
   const next = migrateParametricDocument(document);
+  next.displayUnit = normalizeDisplayUnit(next.displayUnit);
   next.creator = typeof next.creator === "string" ? next.creator.trim().slice(0, 160) || undefined : undefined;
   next.author = typeof next.author === "string" ? next.author.trim().slice(0, 160) || undefined : undefined;
   next.objects ??= [];

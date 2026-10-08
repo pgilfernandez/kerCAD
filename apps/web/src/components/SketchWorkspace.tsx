@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerE
 import { ViewToolbarIcon } from "@/components/icons";
 import { SnapGridControl } from "@/components/workplane/ShapeInspector";
 import { SketchRevolvePreview } from "@/components/SketchRevolvePreview";
-import { parseMeasurementInput } from "@/lib/measurementUnits";
+import { lengthDisplayUnit, parseMeasurementInput } from "@/lib/measurementUnits";
 import { sketchSlot } from "@/lib/sketchSlots";
 import { WORKPLANE_MAJOR_GRID_INTERVAL } from "@/lib/workplaneGrid";
 import { mirrorSign, resizedImportedMeshPositions } from "@/lib/workplaneShapes";
@@ -190,7 +190,7 @@ function resizeSketchImage(start: SketchImage, handle: ResizeHandle, point: { x:
   };
 }
 
-function formatDimension(value: number, accuracy: 1 | 2 | 3) {
+function formatDimension(value: number, accuracy: number) {
   const threshold = 0.5 * 10 ** -accuracy;
   return (Math.abs(value) < threshold ? 0 : value).toFixed(accuracy);
 }
@@ -203,8 +203,10 @@ function dimensionPillSize(label: string, screenUnit: number, extra = 24) {
   };
 }
 
-function SketchDimensionInput({ id, label, indicator, value, accuracy, screenUnit, locale, align = "center", allowSigned = false, onCommit, onDelete }: { id: string; label: string; indicator: string; value: number; accuracy: 1 | 2 | 3; screenUnit: number; locale: EducadLocale; align?: "center" | "start"; allowSigned?: boolean; onCommit?: (id: string, value: number) => void; onDelete?: (id: string) => void }) {
-  const formatted = formatDimension(value, accuracy);
+function SketchDimensionInput({ id, label, indicator, value: storedValue, millimetersPerUnit = 1, accuracy, screenUnit, locale, align = "center", allowSigned = false, onCommit: commitStoredValue, onDelete }: { id: string; label: string; indicator: string; value: number; millimetersPerUnit?: number; accuracy: 1 | 2 | 3; screenUnit: number; locale: EducadLocale; align?: "center" | "start"; allowSigned?: boolean; onCommit?: (id: string, value: number) => void; onDelete?: (id: string) => void }) {
+  const value = storedValue / millimetersPerUnit;
+  const onCommit = commitStoredValue ? (key: string, next: number) => commitStoredValue(key, next * millimetersPerUnit) : undefined;
+  const formatted = formatDimension(value, accuracy + Math.max(0, Math.ceil(Math.log10(millimetersPerUnit))));
   const [draft, setDraft] = useState(formatted);
   const [editing, setEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -632,6 +634,8 @@ export function SketchWorkspace({
   showGridControls = true,
 }: SketchWorkspaceProps) {
   const workspace = useMemo(() => normalizeWorkspaceSettings(initialWorkspace, DEFAULT_WORKPLANE_WORKSPACE), [initialWorkspace]);
+  const millimetersPerUnit = lengthDisplayUnit(workspace).millimetersPerUnit;
+  const formatLength = (value: number, accuracy: 1 | 2 | 3) => formatDimension(value / millimetersPerUnit, accuracy + Math.max(0, Math.ceil(Math.log10(millimetersPerUnit))));
   const [snap, setSnap] = useState<GridSize>(() => normalizeSnapGrid(initialSnap, DEFAULT_SNAP_GRID));
   const [snapOpen, setSnapOpen] = useState(false);
   const [zoom, setZoom] = useState(1);
@@ -1121,7 +1125,7 @@ export function SketchWorkspace({
   };
 
   const measurementLength = measurement ? Math.hypot(measurement.end.x - measurement.start.x, measurement.end.z - measurement.start.z) : 0;
-  const measurementLabel = formatDimension(measurementLength, workspace.accuracy);
+  const measurementLabel = formatLength(measurementLength, workspace.accuracy);
   const previewEndpoint = tool === "bezier" && pointerAction?.kind === "bezier" ? pointerAction.origin : hover;
   const bezierPreviewData = tool === "bezier" && activePoint && previewEndpoint ? (() => {
     const first = activePoint.handleOut ?? activePoint;
@@ -1131,7 +1135,7 @@ export function SketchWorkspace({
     return `M ${activePoint.x} ${activePoint.z} C ${first.x} ${first.z} ${second.x} ${second.z} ${previewEndpoint.x} ${previewEndpoint.z}`;
   })() : null;
   const previewLength = activePoint && previewEndpoint ? Math.hypot(previewEndpoint.x - activePoint.x, previewEndpoint.z - activePoint.z) : 0;
-  const previewLabel = formatDimension(previewLength, workspace.accuracy);
+  const previewLabel = formatLength(previewLength, workspace.accuracy);
   const labelOffset = 22 * screenUnit;
   const pointRadius = 5 * screenUnit;
   const controlPointRadius = 6 * screenUnit;
@@ -1514,11 +1518,11 @@ export function SketchWorkspace({
               const constraints = (displayProfile.constraints ?? []).filter((candidate): candidate is Extract<NonNullable<SketchProfile["constraints"]>[number], { kind: "distance" }> => candidate.kind === "distance" && candidate.segmentId === segment.id);
               if (constraints.length) return showConstraintLabels ? constraints.map((constraint, index) => (
                 <g key={`dimension-${constraint.id}`} transform={`translate(${dimension.midpoint.x} ${dimension.midpoint.z + labelOffset + index * 30 * screenUnit})`}>
-                  <SketchDimensionInput id={constraint.id} label={locale === "es" ? constraint.axis === "x" ? "Distancia X" : constraint.axis === "z" ? "Distancia Y" : "Longitud" : constraint.axis === "x" ? "X distance" : constraint.axis === "z" ? "Y distance" : "Length"} indicator={constraint.axis === "x" ? "H" : constraint.axis === "z" ? "V" : "D"} value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
+                  <SketchDimensionInput millimetersPerUnit={millimetersPerUnit} id={constraint.id} label={locale === "es" ? constraint.axis === "x" ? "Distancia X" : constraint.axis === "z" ? "Distancia Y" : "Longitud" : constraint.axis === "x" ? "X distance" : constraint.axis === "z" ? "Y distance" : "Length"} indicator={constraint.axis === "x" ? "H" : constraint.axis === "z" ? "V" : "D"} value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
                 </g>
               )) : null;
               if (!showDimensionLabels) return null;
-              const label = formatDimension(dimension.length, workspace.accuracy);
+              const label = formatLength(dimension.length, workspace.accuracy);
               const pill = dimensionPillSize(label, screenUnit, 18);
               return (
                 <g key={`dimension-${segment.id}`} pointerEvents="none" transform={`translate(${dimension.midpoint.x} ${dimension.midpoint.z + labelOffset})`}>
@@ -1640,9 +1644,9 @@ export function SketchWorkspace({
               const constraint = (displayProfile.constraints ?? []).find((candidate) => (candidate.kind === "radius" || candidate.kind === "diameter") && candidate.circleId === circle.id);
               if (constraint ? !showConstraintLabels : !showDimensionLabels) return null;
               if (constraint?.kind === "radius" || constraint?.kind === "diameter") return <g key={`radius-${constraint.id}`} transform={`translate(${circle.x + circle.radius + 12 * screenUnit} ${circle.z + 18 * screenUnit})`}>
-                <SketchDimensionInput id={constraint.id} label={locale === "es" ? constraint.kind === "diameter" ? "Diámetro" : "Radio" : constraint.kind === "diameter" ? "Diameter" : "Radius"} indicator={constraint.kind === "diameter" ? "Ø" : "R"} value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} align="start" onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
+                <SketchDimensionInput millimetersPerUnit={millimetersPerUnit} id={constraint.id} label={locale === "es" ? constraint.kind === "diameter" ? "Diámetro" : "Radio" : constraint.kind === "diameter" ? "Diameter" : "Radius"} indicator={constraint.kind === "diameter" ? "Ø" : "R"} value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} align="start" onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
               </g>;
-              const label = `R ${formatDimension(circle.radius, workspace.accuracy)}`;
+              const label = `R ${formatLength(circle.radius, workspace.accuracy)}`;
               const pill = dimensionPillSize(label, screenUnit, 18);
               return <g key={`radius-${circle.id}`} pointerEvents="none" transform={`translate(${circle.x + circle.radius + 12 * screenUnit} ${circle.z + 18 * screenUnit})`}>
                 <rect x={0} y={-pill.height / 2} width={pill.width} height={pill.height} rx={pill.radius} />
@@ -1664,11 +1668,11 @@ export function SketchWorkspace({
                 x: arc.center.x + Math.cos(arc.middleAngle) * arc.radius * 0.55,
                 z: arc.center.z + Math.sin(arc.middleAngle) * arc.radius * 0.55,
               };
-              const radialLabel = `R ${formatDimension(arc.radius, workspace.accuracy)}`;
+              const radialLabel = `R ${formatLength(arc.radius, workspace.accuracy)}`;
               const radialPill = dimensionPillSize(radialLabel, screenUnit, 18);
               return <g key={`arc-dimensions-${segment.id}`}>
                 {radialConstraint ? showConstraintLabels ? <g transform={`translate(${radialPosition.x} ${radialPosition.z})`}>
-                  <SketchDimensionInput id={radialConstraint.id} label={locale === "es" ? radialConstraint.kind === "arcDiameter" ? "Diámetro" : "Radio" : radialConstraint.kind === "arcDiameter" ? "Diameter" : "Radius"} indicator={radialConstraint.kind === "arcDiameter" ? "Ø" : "R"} value={radialConstraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} align="start" onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
+                  <SketchDimensionInput millimetersPerUnit={millimetersPerUnit} id={radialConstraint.id} label={locale === "es" ? radialConstraint.kind === "arcDiameter" ? "Diámetro" : "Radio" : radialConstraint.kind === "arcDiameter" ? "Diameter" : "Radius"} indicator={radialConstraint.kind === "arcDiameter" ? "Ø" : "R"} value={radialConstraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} align="start" onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
                 </g> : null : showDimensionLabels ? <g pointerEvents="none" transform={`translate(${radialPosition.x} ${radialPosition.z})`}>
                   <rect x={0} y={-radialPill.height / 2} width={radialPill.width} height={radialPill.height} rx={radialPill.radius} />
                   <text x={radialPill.width / 2} y={5 * screenUnit} fontSize={13 * screenUnit}>{radialLabel}</text>
@@ -1720,7 +1724,7 @@ export function SketchWorkspace({
               />
               <g className="sketch-image-dimension width" pointerEvents="none" transform={`translate(${selectedImage.x} ${selectedImageBounds.maxZ + labelOffset})`}>
                 {(() => {
-                  const label = formatDimension(selectedImage.width, workspace.accuracy);
+                  const label = formatLength(selectedImage.width, workspace.accuracy);
                   const pill = dimensionPillSize(label, screenUnit, 18);
                   return (
                     <>
@@ -1732,7 +1736,7 @@ export function SketchWorkspace({
               </g>
               <g className="sketch-image-dimension depth" pointerEvents="none" transform={`translate(${selectedImageBounds.maxX + 34 * screenUnit} ${selectedImage.z})`}>
                 {(() => {
-                  const label = formatDimension(selectedImage.depth, workspace.accuracy);
+                  const label = formatLength(selectedImage.depth, workspace.accuracy);
                   const pill = dimensionPillSize(label, screenUnit, 18);
                   return (
                     <>
@@ -1780,6 +1784,8 @@ export function SketchWorkspace({
       {selectedImage && tool === "select" ? (
         <SketchImageInspector
           image={selectedImage}
+          millimetersPerUnit={millimetersPerUnit}
+          unitLabel={lengthDisplayUnit(workspace).label}
           accuracy={workspace.accuracy}
           onClose={() => onSelectMany([], [], [])}
           onUpdate={(patch, message) => onUpdateImage(selectedImage.id, patch, message)}
@@ -1803,17 +1809,22 @@ export function SketchWorkspace({
 function SketchImageInspector({
   image,
   accuracy,
+  millimetersPerUnit,
+  unitLabel,
   onClose,
   onUpdate,
   onDelete,
 }: {
   image: SketchImage;
   accuracy: 1 | 2 | 3;
+  millimetersPerUnit: number;
+  unitLabel: string;
   onClose: () => void;
   onUpdate: (patch: Partial<SketchImage>, message?: string) => void;
   onDelete: () => void;
 }) {
   const aspect = image.width / Math.max(0.5, image.depth);
+  const displayAccuracy = accuracy + Math.max(0, Math.ceil(Math.log10(millimetersPerUnit)));
   const updateWidth = (width: number) => onUpdate({
     width,
     ...(image.lockAspect !== false ? { depth: Math.max(0.5, width / aspect) } : {}),
@@ -1843,11 +1854,11 @@ function SketchImageInspector({
       <div className="property-card">
         <div className="property-card-header static"><span>Properties</span></div>
         <div className="property-list">
-          <SketchImageRange label="Width" value={image.width} min={0.5} max={200} accuracy={accuracy} onChange={updateWidth} />
-          <SketchImageRange label="Height" value={image.depth} min={0.5} max={200} accuracy={accuracy} onChange={updateDepth} />
+          <SketchImageRange label="Width" value={image.width / millimetersPerUnit} min={0.5 / millimetersPerUnit} max={200 / millimetersPerUnit} accuracy={displayAccuracy} suffix={unitLabel} onChange={(value) => updateWidth(value * millimetersPerUnit)} />
+          <SketchImageRange label="Height" value={image.depth / millimetersPerUnit} min={0.5 / millimetersPerUnit} max={200 / millimetersPerUnit} accuracy={displayAccuracy} suffix={unitLabel} onChange={(value) => updateDepth(value * millimetersPerUnit)} />
           <SketchImageRange label="Opacity" value={(image.opacity ?? 0.55) * 100} min={5} max={100} accuracy={1} suffix="%" onChange={(opacity) => onUpdate({ opacity: opacity / 100 }, "Sketch image opacity updated")} />
-          <SketchImagePositionField label="Position X" value={image.x} accuracy={accuracy} onChange={(x) => onUpdate({ x }, "Sketch image moved")} />
-          <SketchImagePositionField label="Position Y" value={image.z} accuracy={accuracy} onChange={(z) => onUpdate({ z }, "Sketch image moved")} />
+          <SketchImagePositionField label={`Position X (${unitLabel})`} value={image.x / millimetersPerUnit} accuracy={displayAccuracy} onChange={(x) => onUpdate({ x: x * millimetersPerUnit }, "Sketch image moved")} />
+          <SketchImagePositionField label={`Position Y (${unitLabel})`} value={image.z / millimetersPerUnit} accuracy={displayAccuracy} onChange={(z) => onUpdate({ z: z * millimetersPerUnit }, "Sketch image moved")} />
           <button className={`sketch-image-aspect-toggle ${image.lockAspect !== false ? "active" : ""}`} type="button" onClick={() => onUpdate({ lockAspect: image.lockAspect === false }, "Image aspect ratio setting updated")}>
             {image.lockAspect !== false ? <Link size={17} /> : <Link2Off size={17} />}
             <span>{image.lockAspect !== false ? "Aspect ratio locked" : "Aspect ratio unlocked"}</span>
@@ -1871,7 +1882,7 @@ function SketchImageRange({
   value: number;
   min: number;
   max: number;
-  accuracy: 1 | 2 | 3;
+  accuracy: number;
   suffix?: string;
   onChange: (value: number) => void;
 }) {
@@ -1898,7 +1909,7 @@ function SketchImageRange({
         />
         <span>{suffix}</span>
       </div>
-      <input type="range" min={min} max={max} step={accuracy === 1 ? 0.1 : 0.01} value={safeValue} onChange={(event) => onChange(Number(event.currentTarget.value))} />
+      <input type="range" min={min} max={max} step={10 ** -accuracy} value={safeValue} onChange={(event) => onChange(Number(event.currentTarget.value))} />
     </label>
   );
 }
@@ -1911,7 +1922,7 @@ function SketchImagePositionField({
 }: {
   label: string;
   value: number;
-  accuracy: 1 | 2 | 3;
+  accuracy: number;
   onChange: (value: number) => void;
 }) {
   const formatted = formatDimension(value, accuracy);

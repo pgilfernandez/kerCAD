@@ -61,7 +61,7 @@ import { mergeParametricProjects } from "@/lib/parametricProjectMerge";
 import { importStepAsParametricObject } from "@/lib/parametricStepImport";
 import { importReferenceMesh, parametricReferenceRenderRecords } from "@/lib/parametricReferenceImport";
 import { assertImportByteLimit } from "@/lib/parametricImportLimits";
-import { displayLengthToMillimeters, displayUnitLabel, millimetersToDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
+import { displayLengthToMillimeters, displayUnitLabel, displayUnitWorkspace, millimetersToDisplayLength, normalizeDisplayUnit } from "@/lib/parametricUnits";
 import { educadTranslate, normalizeEducadLocale, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
 import { parametricRebuildSuggestion } from "@/lib/parametricRebuildDiagnostics";
 import { hasPreviousSolidOperation } from "@/lib/parametricOperationModes";
@@ -155,7 +155,6 @@ function localizeNewDocumentEntries(previous: ParametricDocument, next: Parametr
     else if (feature.kind === "objectBoolean") feature.name = `${en ? "Object boolean" : "Booleana de objeto"} ${index}`;
   });
 }
-const DISPLAY_UNIT_STORAGE_KEY = "educad.display-unit";
 const LOCALE_STORAGE_KEY = "educad.locale";
 type Notice = { type: "ok" | "info" | "error"; text: string } | null;
 
@@ -336,7 +335,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [renderQuality, setRenderQuality] = useState<ViewportRenderQuality>("normal");
   const [displayMode, setDisplayMode] = useState<ViewportDisplayMode>("solid");
   const [shadingMode, setShadingMode] = useState<ViewportShadingMode>("shadows");
-  const [displayUnit, setDisplayUnit] = useState<ParametricDisplayUnit>("mm");
+  const displayUnit = normalizeDisplayUnit(document.displayUnit);
   const [locale, setLocale] = useState<EducadLocale>("en");
   const [showFps, setShowFps] = useState(false);
   const [showPositionTriad, setShowPositionTriad] = useState(true);
@@ -657,7 +656,6 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       const storedShadingMode = localStorage.getItem(SHADING_MODE_STORAGE_KEY);
       if (storedShadingMode === "shadows" || storedShadingMode === "basic" || storedShadingMode === "noShadows") setShadingMode(storedShadingMode);
       else if (storedShadingMode === "unlit") setShadingMode("noShadows");
-      if (localStorage.getItem(DISPLAY_UNIT_STORAGE_KEY) === "in") setDisplayUnit("in");
       setLocale(normalizeEducadLocale(localStorage.getItem(LOCALE_STORAGE_KEY)));
       setShowFps(localStorage.getItem(FPS_VISIBLE_STORAGE_KEY) === "true");
       setShowPositionTriad(localStorage.getItem(POSITION_TRIAD_VISIBLE_STORAGE_KEY) !== "false");
@@ -682,10 +680,6 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   useEffect(() => {
     if (hydrated) localStorage.setItem(SHADING_MODE_STORAGE_KEY, shadingMode);
   }, [hydrated, shadingMode]);
-
-  useEffect(() => {
-    if (hydrated) localStorage.setItem(DISPLAY_UNIT_STORAGE_KEY, displayUnit);
-  }, [displayUnit, hydrated]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -3428,7 +3422,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           onCancelActiveTool={() => chooseSketchTool("select")}
           initialSnap={closestSketchGrid(document.workplane.snapSpacing, document.workplane.snapToGrid)}
           exactSnapStep={document.workplane.snapToGrid ? document.workplane.snapSpacing : 0}
-          initialWorkspace={{ ...DEFAULT_WORKPLANE_WORKSPACE, units: displayUnit === "in" ? "Imperial" : "Metric (Default)", scale: displayUnit === "in" ? "1:1 (inches)" : "1:1 (millimeters)", width: document.workplane.width, depth: document.workplane.depth, sizePreset: `${document.workplane.width} x ${document.workplane.depth} mm`, gridBlockSize: document.workplane.gridStep, gridBlockPreset: `${document.workplane.gridStep} mm`, showGrid: document.workplane.gridVisible }}
+          initialWorkspace={{ ...DEFAULT_WORKPLANE_WORKSPACE, ...displayUnitWorkspace(displayUnit), width: document.workplane.width, depth: document.workplane.depth, sizePreset: `${document.workplane.width} x ${document.workplane.depth} mm`, gridBlockSize: document.workplane.gridStep, gridBlockPreset: `${document.workplane.gridStep} mm`, showGrid: document.workplane.gridVisible }}
           onPlanePoint={addSketchPoint}
           polygonSides={sketchPolygonSides}
           onAddPolygon={(center, radius, angle) => {
@@ -4091,7 +4085,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           <header><strong>{t("settings.title")}</strong><button aria-label={t("common.close")} onClick={() => setSettingsOpen(false)}><X /></button></header>
           <label><span>{t("settings.rendering")}</span><select value={renderQuality} onChange={(event) => setRenderQuality(event.target.value as ViewportRenderQuality)}><option value="normal">{t("settings.renderNormal")}</option><option value="optimized">{t("settings.renderOptimized")}</option></select></label>
           <label><span>{t("settings.shading")}</span><select value={shadingMode} onChange={(event) => setShadingMode(event.target.value as ViewportShadingMode)}><option value="shadows">{t("settings.shadows")}</option><option value="basic">{t("settings.basicShadows")}</option><option value="noShadows">{t("settings.noShadows")}</option></select></label>
-          <label><span>{t("settings.units")}</span><select value={displayUnit} onChange={(event) => setDisplayUnit(event.target.value as ParametricDisplayUnit)}><option value="mm">{t("settings.millimeters")}</option><option value="in">{t("settings.inches")}</option></select></label>
+          <label><span>{t("settings.units")}</span><select value={displayUnit} onChange={(event) => { const next = cloneDocument(latestDocumentRef.current); next.displayUnit = normalizeDisplayUnit(event.target.value); commit(next); }}><option value="mm">{t("settings.millimeters")}</option><option value="cm">{t("settings.centimeters")}</option><option value="m">{t("settings.meters")}</option><option value="in">{t("settings.inches")}</option><option value="ft">{t("settings.feet")}</option></select></label>
+          <p>{t("settings.unitsHint")}</p>
           <label className="educad-settings-toggle"><span>{t("settings.showFps")}</span><input type="checkbox" checked={showFps} onChange={(event) => setShowFps(event.target.checked)} /></label>
           {/* <p>{t("settings.autosave")}</p> */}
         </aside>
