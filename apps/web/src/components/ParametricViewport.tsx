@@ -3585,7 +3585,7 @@ export function ParametricViewport({ onProjectRename, mesh, objectRecords = [], 
             hovered = value;
             redraw();
           };
-          new THREE.ImageLoader().load("/assets/educad/operations/edit.svg", (image) => {
+          new THREE.ImageLoader().load("/assets/educad/operations/edit-project-ground.svg", (image) => {
             if (projectRenameButtonRef.current !== button) return;
             icon = image;
             redraw();
