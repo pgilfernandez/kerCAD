@@ -3079,14 +3079,14 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("sketch.undo")} enabled={sketchHistoryIndex > 0} onClick={sketchUndo}><ToolbarUndoIcon /></Tool>
             <Tool label={t("sketch.redo")} enabled={sketchHistoryIndex >= 0 && sketchHistoryIndex < sketchHistoryRef.current.length - 1} onClick={sketchRedo}><ToolbarRedoIcon /></Tool>
           </ToolbarSection>
-          <ToolbarSection label={t("sketch.select")}>
-            <Tool label={t("sketch.select")} active={sketchTool === "select"} onClick={() => chooseSketchTool("select")}><SketchToolbarIcon file="select" /></Tool>
-          </ToolbarSection>
           <ToolbarSection label={t("toolbar.clipboard")}>
             <Tool label={t("toolbar.copy")} enabled={Boolean(sketchCopyableSelection)} onClick={copyCurrentSketchSelection}><ToolbarCopyIcon /></Tool>
             <Tool label={t("toolbar.paste")} enabled={Boolean(sketchClipboard)} onClick={() => { if (sketchClipboard) pasteSketchGeometry(sketchClipboard, ++sketchPasteCountRef.current); }}><ToolbarPasteIcon /></Tool>
             <Tool label={t("toolbar.duplicate")} enabled={Boolean(sketchCopyableSelection)} onClick={() => { if (sketchCopyableSelection) pasteSketchGeometry(sketchCopyableSelection); }}><ToolbarDuplicateIcon /></Tool>
             <Tool label={sketchSelection ? t("sketch.eraseSelection") : t("sketch.erase")} active={!sketchSelection && sketchTool === "erase"} onClick={() => { if (!deleteCurrentSketchSelection()) chooseSketchTool("erase"); }}><ToolbarTrashIcon /></Tool>
+          </ToolbarSection>
+          <ToolbarSection label={t("sketch.select")}>
+            <Tool label={t("sketch.select")} active={sketchTool === "select"} onClick={() => chooseSketchTool("select")}><SketchToolbarIcon file="select" /></Tool>
           </ToolbarSection>
           <ToolbarSection label={t("sketch.draw")}>
             <Tool label={t("sketch.line")} active={sketchTool === "line"} onClick={() => chooseSketchTool("line")}><SketchToolbarIcon file="line" /></Tool>
