@@ -3628,6 +3628,7 @@ button {
 .educad-about-links a:hover { background: #deebff; }
 .toolbar-workspace-tabs .educad-header-language-menu button { display: block; width: 100%; padding: 9px 12px; border: 0; border-radius: 4px; color: #173b5a; font-size: 13px; text-align: left; text-transform: none; letter-spacing: 0; background: transparent; }
 .toolbar-workspace-tabs .educad-header-language-menu button:hover, .toolbar-workspace-tabs .educad-header-language-menu button[aria-pressed="true"] { background: #eaf3ff; }
+.toolbar-workspace-tabs .educad-header-language-menu button { margin-block: 4px; }
 .educad-documentation-page { position: fixed; inset: 0; overflow-y: auto; color: #173b5a; background: #f4f7f9; }
 .educad-documentation-page > header { display: flex; align-items: center; gap: 20px; padding: 18px 24px; background: #1269eb; color: white; }
 .educad-documentation-page > header a { color: white; text-decoration: none; font-size: 22px; font-weight: 700; }
