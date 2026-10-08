@@ -1,24 +1,26 @@
 /** Mouse alternatives to native touch/trackpad scrolling. */
-export function enableToolbarMouseScroll(toolbar: HTMLElement) {
+export function enableToolbarMouseScroll(toolbar: HTMLElement, vertical = false) {
   let drag: { pointerId: number; x: number; scroll: number } | null = null;
   const indicators = document.createElement("div");
-  indicators.className = "educad-toolbar-scroll-indicators";
+  indicators.className = `educad-toolbar-scroll-indicators${vertical ? " vertical" : ""}`;
   indicators.setAttribute("aria-hidden", "true");
   const left = document.createElement("span");
   const right = document.createElement("span");
-  left.className = "educad-toolbar-scroll-edge left";
-  right.className = "educad-toolbar-scroll-edge right";
-  left.textContent = "‹";
-  right.textContent = "›";
+  left.className = `educad-toolbar-scroll-edge ${vertical ? "top" : "left"}`;
+  right.className = `educad-toolbar-scroll-edge ${vertical ? "bottom" : "right"}`;
+  left.textContent = vertical ? "⌃" : "‹";
+  right.textContent = vertical ? "⌄" : "›";
   indicators.append(left, right);
   toolbar.parentElement?.append(indicators);
   const updateIndicators = () => {
-    indicators.style.top = `${toolbar.offsetTop}px`;
-    indicators.style.left = `${toolbar.offsetLeft}px`;
+    const bounds = toolbar.getBoundingClientRect();
+    const parentBounds = toolbar.parentElement?.getBoundingClientRect();
+    indicators.style.top = `${bounds.top - (parentBounds?.top ?? 0)}px`;
+    indicators.style.left = `${bounds.left - (parentBounds?.left ?? 0)}px`;
     indicators.style.width = `${toolbar.clientWidth}px`;
     indicators.style.height = `${toolbar.clientHeight}px`;
-    left.hidden = toolbar.scrollLeft <= 1;
-    right.hidden = toolbar.scrollWidth - toolbar.clientWidth - toolbar.scrollLeft <= 1;
+    left.hidden = (vertical ? toolbar.scrollTop : toolbar.scrollLeft) <= 1;
+    right.hidden = vertical ? toolbar.scrollHeight - toolbar.clientHeight - toolbar.scrollTop <= 1 : toolbar.scrollWidth - toolbar.clientWidth - toolbar.scrollLeft <= 1;
   };
   const resizeObserver = new ResizeObserver(updateIndicators);
   resizeObserver.observe(toolbar);
@@ -27,24 +29,26 @@ export function enableToolbarMouseScroll(toolbar: HTMLElement) {
   window.addEventListener("resize", updateIndicators);
   updateIndicators();
   const wheel = (event: WheelEvent) => {
-    if (event.ctrlKey || event.metaKey || toolbar.scrollWidth <= toolbar.clientWidth) return;
+    if (event.ctrlKey || event.metaKey || (vertical ? toolbar.scrollHeight <= toolbar.clientHeight : toolbar.scrollWidth <= toolbar.clientWidth)) return;
     const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
     const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? toolbar.clientWidth : 1;
     event.preventDefault();
-    toolbar.scrollLeft += delta * scale;
+    if (vertical) toolbar.scrollTop += delta * scale;
+    else toolbar.scrollLeft += delta * scale;
   };
   const down = (event: PointerEvent) => {
-    if (event.button !== 1 || toolbar.scrollWidth <= toolbar.clientWidth) return;
+    if (event.button !== 1 || (vertical ? toolbar.scrollHeight <= toolbar.clientHeight : toolbar.scrollWidth <= toolbar.clientWidth)) return;
     event.preventDefault();
     event.stopPropagation();
-    drag = { pointerId: event.pointerId, x: event.clientX, scroll: toolbar.scrollLeft };
+    drag = { pointerId: event.pointerId, x: vertical ? event.clientY : event.clientX, scroll: vertical ? toolbar.scrollTop : toolbar.scrollLeft };
     toolbar.setPointerCapture(event.pointerId);
     toolbar.classList.add("toolbar-scroll-dragging");
   };
   const move = (event: PointerEvent) => {
     if (!drag || drag.pointerId !== event.pointerId) return;
     event.preventDefault();
-    toolbar.scrollLeft = drag.scroll + drag.x - event.clientX;
+    if (vertical) toolbar.scrollTop = drag.scroll + drag.x - event.clientY;
+    else toolbar.scrollLeft = drag.scroll + drag.x - event.clientX;
   };
   const stop = (event: PointerEvent) => {
     if (!drag || drag.pointerId !== event.pointerId) return;

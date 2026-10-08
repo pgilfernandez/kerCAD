@@ -444,6 +444,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [sketchSession, setSketchSession] = useState<{ featureId: string | null; objectId: string | null; profile: SketchProfile; mode: "sketch" | "scribble"; revolveAxisFeatureId?: string } | null>(null);
   const [sketchTool, setSketchTool] = useState<SketchTool>("line");
   const toolbarScrollRef = useRef<HTMLDivElement>(null);
+  const constraintsScrollRef = useRef<HTMLElement>(null);
   const [sketchPolygonSides, setSketchPolygonSides] = useState(6);
   const [polygonMenuPosition, setPolygonMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const polygonMenuTriggerRef = useRef<HTMLButtonElement>(null);
@@ -577,6 +578,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     if (toolbar) return enableToolbarMouseScroll(toolbar);
   }, [hydrated, Boolean(sketchSession)]);
   const [buildWorkersReady, setBuildWorkersReady] = useState(false);
+  useEffect(() => {
+    const panel = constraintsScrollRef.current;
+    if (panel) return enableToolbarMouseScroll(panel, true);
+  }, [hydrated, Boolean(sketchSession)]);
   const importRef = useRef<HTMLInputElement>(null);
   const sketchSvgImportRef = useRef<HTMLInputElement>(null);
   const buildCounter = useRef(0);
@@ -3835,7 +3840,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             if (feature.kind === "mirror" && update.duplicate !== undefined) feature.duplicate = update.duplicate;
           })}
         />}
-        {sketchSession ? <aside className="educad-sketch-constraints-panel" aria-label={t("sketch.constraints")}>
+        {sketchSession ? <aside ref={constraintsScrollRef} className="educad-sketch-constraints-panel" aria-label={t("sketch.constraints")}>
           <header>
             <div><strong>{t("sketch.constraints")}</strong><span>{t("sketch.constraintHint")}</span></div>
             <output className={`educad-sketch-constraint-status ${sketchConstraintStatus.kind}`} role="status" aria-live="polite" aria-atomic="true">{sketchConstraintStatus.label}</output>
