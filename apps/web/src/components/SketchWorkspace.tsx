@@ -1501,16 +1501,17 @@ export function SketchWorkspace({
               return point ? <SketchConstraintBadge key={constraint.id} id={constraint.id} label="C" x={point.x - 18 * screenUnit} z={point.z + 13 * screenUnit} screenUnit={screenUnit} locale={locale} onDelete={onDeleteConstraint} /> : null;
             })}
           </g> : null}
-          {showDimensionLabels ? <g className="sketch-segment-dimensions">
+          {showDimensionLabels || showConstraintLabels ? <g className="sketch-segment-dimensions">
             {displayProfile.segments.filter((segment) => !segment.generatedTextId).map((segment) => {
               const dimension = segmentDimension(segment, pointById);
               if (!dimension) return null;
               const constraints = (displayProfile.constraints ?? []).filter((candidate): candidate is Extract<NonNullable<SketchProfile["constraints"]>[number], { kind: "distance" }> => candidate.kind === "distance" && candidate.segmentId === segment.id);
-              if (constraints.length) return constraints.map((constraint, index) => (
+              if (constraints.length) return showConstraintLabels ? constraints.map((constraint, index) => (
                 <g key={`dimension-${constraint.id}`} transform={`translate(${dimension.midpoint.x} ${dimension.midpoint.z + labelOffset + index * 30 * screenUnit})`}>
                   <SketchDimensionInput id={constraint.id} label={locale === "es" ? constraint.axis === "x" ? "Distancia X" : constraint.axis === "z" ? "Distancia Y" : "Longitud" : constraint.axis === "x" ? "X distance" : constraint.axis === "z" ? "Y distance" : "Length"} indicator={constraint.axis === "x" ? "H" : constraint.axis === "z" ? "V" : "D"} value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
                 </g>
-              ));
+              )) : null;
+              if (!showDimensionLabels) return null;
               const label = formatDimension(dimension.length, workspace.accuracy);
               const pill = dimensionPillSize(label, screenUnit, 18);
               return (
@@ -1521,7 +1522,7 @@ export function SketchWorkspace({
               );
             })}
           </g> : null}
-          {showDimensionLabels ? <g className="sketch-angle-dimensions">
+          {showConstraintLabels ? <g className="sketch-angle-dimensions">
             {(displayProfile.constraints ?? []).map((constraint) => {
               if (constraint.kind !== "angle") return null;
               const dimensions = constraint.segmentIds.map((id) => {
@@ -1628,9 +1629,10 @@ export function SketchWorkspace({
               {selectedPointHandles?.out ? <><line x1={selectedPoint.x} y1={selectedPoint.z} x2={selectedPointHandles.out.x} y2={selectedPointHandles.out.z} /><circle data-sketch-entity="handle" cx={selectedPointHandles.out.x} cy={selectedPointHandles.out.z} r={controlPointRadius} onPointerDown={(event) => event.button === 1 ? beginPan(event) : beginEntityDrag(event, { kind: "move-handle", pointerId: event.pointerId, pointId: selectedPoint.id, handle: "out", current: selectedPointHandles.out! })} /></> : null}
             </g>
           ) : null}
-          {showDimensionLabels ? <g className="sketch-circle-dimensions">
+          {showDimensionLabels || showConstraintLabels ? <g className="sketch-circle-dimensions">
             {displayCircles.map((circle) => {
               const constraint = (displayProfile.constraints ?? []).find((candidate) => (candidate.kind === "radius" || candidate.kind === "diameter") && candidate.circleId === circle.id);
+              if (constraint ? !showConstraintLabels : !showDimensionLabels) return null;
               if (constraint?.kind === "radius" || constraint?.kind === "diameter") return <g key={`radius-${constraint.id}`} transform={`translate(${circle.x + circle.radius + 12 * screenUnit} ${circle.z + 18 * screenUnit})`}>
                 <SketchDimensionInput id={constraint.id} label={locale === "es" ? constraint.kind === "diameter" ? "Diámetro" : "Radio" : constraint.kind === "diameter" ? "Diameter" : "Radius"} indicator={constraint.kind === "diameter" ? "Ø" : "R"} value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} align="start" onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
               </g>;
@@ -1642,7 +1644,7 @@ export function SketchWorkspace({
               </g>;
             })}
           </g> : null}
-          {showDimensionLabels ? <g className="sketch-circle-dimensions sketch-arc-dimensions">
+          {showDimensionLabels || showConstraintLabels ? <g className="sketch-circle-dimensions sketch-arc-dimensions">
             {displayProfile.segments.filter((segment) => segment.kind === "arc" && segment.center).map((segment) => {
               const arc = arcDimensionGeometry(segment, pointById);
               if (!arc) return null;
@@ -1659,13 +1661,13 @@ export function SketchWorkspace({
               const radialLabel = `R ${formatDimension(arc.radius, workspace.accuracy)}`;
               const radialPill = dimensionPillSize(radialLabel, screenUnit, 18);
               return <g key={`arc-dimensions-${segment.id}`}>
-                {radialConstraint ? <g transform={`translate(${radialPosition.x} ${radialPosition.z})`}>
+                {radialConstraint ? showConstraintLabels ? <g transform={`translate(${radialPosition.x} ${radialPosition.z})`}>
                   <SketchDimensionInput id={radialConstraint.id} label={locale === "es" ? radialConstraint.kind === "arcDiameter" ? "Diámetro" : "Radio" : radialConstraint.kind === "arcDiameter" ? "Diameter" : "Radius"} indicator={radialConstraint.kind === "arcDiameter" ? "Ø" : "R"} value={radialConstraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} align="start" onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
-                </g> : <g pointerEvents="none" transform={`translate(${radialPosition.x} ${radialPosition.z})`}>
+                </g> : null : showDimensionLabels ? <g pointerEvents="none" transform={`translate(${radialPosition.x} ${radialPosition.z})`}>
                   <rect x={0} y={-radialPill.height / 2} width={radialPill.width} height={radialPill.height} rx={radialPill.radius} />
                   <text x={radialPill.width / 2} y={5 * screenUnit} fontSize={13 * screenUnit}>{radialLabel}</text>
-                </g>}
-                {angleConstraint ? <g transform={`translate(${anglePosition.x} ${anglePosition.z})`}>
+                </g> : null}
+                {angleConstraint && showConstraintLabels ? <g transform={`translate(${anglePosition.x} ${anglePosition.z})`}>
                   <SketchDimensionInput id={angleConstraint.id} label={locale === "es" ? "Ángulo del arco" : "Arc angle"} indicator="A" value={angleConstraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
                 </g> : null}
               </g>;
