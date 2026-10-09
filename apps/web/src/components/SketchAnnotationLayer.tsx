@@ -130,7 +130,7 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
         {polyline && <polyline points={polyline} fill="none" stroke="transparent" strokeWidth={12} vectorEffect="non-scaling-stroke" />}
         {angle && angle.degrees > .0001 && <polyline points={angle.arc.map((point) => `${point.x},${point.y}`).join(" ")} fill="none" stroke="transparent" strokeWidth={12} vectorEffect="non-scaling-stroke" />}
         {annotation.kind === "circle" && <circle cx={annotation.position.x} cy={annotation.position.y} r={annotation.radius} fill="none" stroke="transparent" strokeWidth={12} vectorEffect="non-scaling-stroke" />}
-        {polyline && <polyline points={polyline} fill="none" stroke={color} strokeWidth={stroke} vectorEffect="non-scaling-stroke" strokeDasharray={annotation.kind === "dimension" && annotation.lineStyle === "dashed" ? `${3 * screenUnit} ${2 * screenUnit}` : undefined} />}
+        {polyline && <polyline points={polyline} fill="none" stroke={color} strokeWidth={stroke} vectorEffect="non-scaling-stroke" strokeDasharray={annotation.kind === "dimension" && annotation.lineStyle === "dashed" ? `${9 * screenUnit} ${6 * screenUnit}` : undefined} />}
         {angle && angle.degrees > .0001 && <polyline points={angle.arc.map((point) => `${point.x},${point.y}`).join(" ")} fill="none" stroke={color} strokeWidth={2} vectorEffect="non-scaling-stroke" />}
         {annotation.kind === "dimension" && <>{annotation.startArrow !== false && arrow(annotation.end, annotation.start, "start")}{annotation.endArrow !== false && arrow(annotation.start, annotation.end, "end")}</>}
         {annotation.kind === "dimension" && annotation.startArrow !== false && annotation.endArrow !== false && (() => {
