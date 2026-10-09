@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import type { ParametricAnnotation } from "@/types/parametric";
 import type { ParametricDisplayUnit } from "@/lib/parametricUnits";
+import { displayUnitLabel, formatDisplayLength } from "@/lib/parametricUnits";
 import { annotationAngleGeometry, annotationLabelInfo, annotationPosition, type AnnotationPoint } from "@/lib/annotationGeometry";
 import { annotationDimensionPreset, type AnnotationTool } from "@/lib/annotationPresets";
 import { educadTranslate, type EducadLocale } from "@/lib/educadI18n";
@@ -56,7 +57,7 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
     document.addEventListener("pointerdown", outside, true);
     return () => document.removeEventListener("pointerdown", outside, true);
   }, [editing?.id]);
-  const drag = useRef<{ annotation: ParametricAnnotation; point: AnnotationPoint | "position" | "radius" | "lineWidth" | null; origin: { x: number; y: number }; pointerId: number; latest: ParametricAnnotation | null } | null>(null);
+  const drag = useRef<{ annotation: ParametricAnnotation; point: AnnotationPoint | "position" | "radius" | "lineWidth" | "size" | null; origin: { x: number; y: number }; pointerId: number; latest: ParametricAnnotation | null } | null>(null);
   const measure = useRef<CanvasRenderingContext2D | null>(null);
   if (!measure.current && typeof document !== "undefined") measure.current = document.createElement("canvas").getContext("2d");
   useEffect(() => {
@@ -84,6 +85,10 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
     else if (action.point === "lineWidth" && next.kind === "circle") {
       next.lineWidth = Math.max(0.5, Math.min(20, Math.round((action.annotation.kind === "circle" ? action.annotation.lineWidth + point.z - action.origin.y : 2) * 10) / 10));
     }
+    else if (action.point === "size") {
+      const size = (action.annotation.size ?? 3) + point.x - action.origin.x;
+      next.size = Math.max(0.1, Math.min(1000, snapSpacing > 0 ? Math.round(size / snapSpacing) * snapSpacing : size));
+    }
     else if (action.point && action.point !== "radius" && action.point !== "lineWidth") {
       const target = annotationPosition(next, action.point === "position" ? null : action.point);
       if (target) { target.x = point.x; target.y = point.z; target.z = 0; }
@@ -109,7 +114,9 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
     {visible.map((annotation) => {
       const selected = annotation.id === selectedId;
       const color = annotation.color ?? (annotation.kind === "text" ? "#000000" : "#233c52");
-      const label = annotationLabelInfo(annotation.kind === "text" && editing?.id === annotation.id ? { ...annotation, text: editing.text } : annotation, displayUnit);
+      const label = annotation.kind === "circle" && selected
+        ? { position: { x: annotation.position.x + annotation.radius / 2, y: annotation.position.y, z: 0 }, text: `R ${formatDisplayLength(annotation.radius, displayUnit)} ${displayUnitLabel(displayUnit)}`, font: "Arial", alignment: "center" as const }
+        : annotationLabelInfo(annotation.kind === "text" && editing?.id === annotation.id ? { ...annotation, text: editing.text } : annotation, displayUnit);
       const stroke = annotation.kind === "circle" ? annotation.lineWidth : 2;
       const polyline = annotation.kind === "dimension" ? `${annotation.start.x},${annotation.start.y} ${annotation.end.x},${annotation.end.y}` : annotation.kind === "angle" ? `${annotation.start.x},${annotation.start.y} ${annotation.center.x},${annotation.center.y} ${annotation.end.x},${annotation.end.y}` : "";
       const angle = annotation.kind === "angle" ? annotationAngleGeometry(annotation) : null;
@@ -118,10 +125,10 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
         const size = Math.min(4, length / 3), x = dx / length, y = dy / length;
         return <polygon key={key} points={`${end.x},${end.y} ${end.x - x * size - y * size * .3},${end.y - y * size + x * size * .3} ${end.x - x * size + y * size * .3},${end.y - y * size - x * size * .3}`} fill={color} stroke="none" />;
       };
-      const configuredLabelSize = annotation.kind === "circle" ? 3 : annotation.size ?? 3;
+      const configuredLabelSize = annotation.size ?? 3;
       // Keep value labels readable at distant zooms and compact at close zooms.
       // Text annotations retain their explicitly chosen drawing size.
-      const labelSize = annotation.kind === "dimension" || annotation.kind === "angle"
+      const labelSize = annotation.kind !== "text"
         ? Math.max(12 * screenUnit, Math.min(28 * screenUnit, configuredLabelSize))
         : configuredLabelSize;
       const lines = label?.text.split("\n") ?? [];
@@ -159,6 +166,11 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
             }} />
           </foreignObject>}
           {editing?.id !== annotation.id && lines.map((line, index) => <text key={index} x={label.alignment === "left" ? labelX + labelSize * 2 / 3 : label.alignment === "right" ? labelX + width - labelSize * 2 / 3 : labelX + width / 2} y={-height / 2 + labelSize / 6 + labelSize * (index * 4 / 3 + 2 / 3)} dominantBaseline="middle" textAnchor={label.alignment === "left" ? "start" : label.alignment === "right" ? "end" : "middle"} style={{ fontSize: labelSize, fontFamily: label.font, fill: color, opacity: 1, fontWeight: 400, stroke: "none" }}>{line}</text>)}
+        </g>}
+        {selected && label && editing?.id !== annotation.id && <g transform={`translate(${label.position.x} ${label.position.y - height / 2 - 14 * screenUnit})`}>
+          <line x1={0} x2={configuredLabelSize + 12 * screenUnit} y1={0} y2={0} stroke="#e0b800" strokeWidth={2} vectorEffect="non-scaling-stroke" pointerEvents="none" />
+          <line x1={0} x2={0} y1={-4 * screenUnit} y2={4 * screenUnit} stroke="#e0b800" strokeWidth={2} vectorEffect="non-scaling-stroke" pointerEvents="none" />
+          <circle cx={configuredLabelSize + 12 * screenUnit} cy={0} r={8 * screenUnit} fill="#fff157" stroke="#e0b800" strokeWidth={2} vectorEffect="non-scaling-stroke" onPointerDown={(event) => begin(event, annotation, "size")} />
         </g>}
         {selected && points.map((key) => {
           const point = annotationPosition(annotation, key === "position" ? null : key); if (!point) return null;
