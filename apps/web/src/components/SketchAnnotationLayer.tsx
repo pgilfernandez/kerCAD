@@ -114,7 +114,12 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
         const size = Math.min(4, length / 3), x = dx / length, y = dy / length;
         return <polygon key={key} points={`${end.x},${end.y} ${end.x - x * size - y * size * .3},${end.y - y * size + x * size * .3} ${end.x - x * size + y * size * .3},${end.y - y * size - x * size * .3}`} fill={color} stroke="none" />;
       };
-      const labelSize = annotation.kind === "circle" ? 3 : annotation.size ?? 3;
+      const configuredLabelSize = annotation.kind === "circle" ? 3 : annotation.size ?? 3;
+      // Keep value labels readable at distant zooms and compact at close zooms.
+      // Text annotations retain their explicitly chosen drawing size.
+      const labelSize = annotation.kind === "dimension" || annotation.kind === "angle"
+        ? Math.max(12 * screenUnit, Math.min(28 * screenUnit, configuredLabelSize))
+        : configuredLabelSize;
       const lines = label?.text.split("\n") ?? [];
       const context = measure.current;
       if (context) context.font = `48px ${label?.font ?? "Arial"}`;
