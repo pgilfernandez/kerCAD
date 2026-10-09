@@ -21,6 +21,9 @@ import { displayLengthToMillimeters, displayUnitLabel, formatDisplayLength, mill
 import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
 import { createAnnotationScene } from "@/lib/annotationScene";
 import { AnnotationInteraction } from "@/components/AnnotationInteraction";
+import { ViewportFloatingNumberInput } from "@/components/ViewportFloatingNumberInput";
+import { AnnotationToolbar } from "@/components/SketchAnnotationToolbar";
+import type { ParametricAnnotation } from "@/types/parametric";
 import type { AnnotationTool } from "@/lib/annotationPresets";
 import { annotationPosition, rotatedCircleAnnotation, type AnnotationPoint } from "@/lib/annotationGeometry";
 import { viewportSelectionBounds } from "@/lib/viewportBounds";
@@ -74,66 +77,6 @@ function ViewportEdgeRadiusInput({ radius, displayUnit, snap, locale, onCommit }
   return <ViewportFloatingNumberInput value={radius} unit="length" displayUnit={displayUnit} snap={snap} label={locale === "es" ? "Radio" : "Radius"} min={0.01} max={Infinity} onCommit={onCommit} />;
 }
 
-export function ViewportFloatingNumberInput({ value, unit, displayUnit, snap, label, min, max, onCommit }: { value: number; unit: "length" | "angle" | "count" | "scalar"; displayUnit: ParametricDisplayUnit; snap: number; label: string; min: number; max: number; onCommit: (value: number) => void }) {
-  const format = (number: number) => unit === "length" ? formatDisplayLength(number, displayUnit) : formatViewportDimension(number);
-  const shown = format(value);
-  const [draft, setDraft] = useState(shown);
-  const draftRef = useRef(draft);
-  const editingRef = useRef(false);
-  const fieldRef = useRef<HTMLDivElement | null>(null);
-  const updateDraft = (text: string) => { draftRef.current = text; setDraft(text); };
-  useEffect(() => { if (!editingRef.current) { draftRef.current = shown; setDraft(shown); } }, [shown]);
-  const parsedValue = () => {
-    const parsed = parseNumericExpression(draftRef.current, unit === "length" ? displayUnit : unit === "angle" ? "deg" : "");
-    return unit === "length" ? displayLengthToMillimeters(parsed, displayUnit) : parsed;
-  };
-  const apply = (raw: number) => {
-    const next = Math.min(max, Math.max(min, unit === "count" ? Math.round(raw) : raw));
-    updateDraft(format(next));
-    if (Math.abs(next - value) > 1e-6) onCommit(next);
-  };
-  const commit = () => {
-    const raw = parsedValue();
-    const input = fieldRef.current?.querySelector("input");
-    if (input && !validateNumericExpression(input, raw)) return;
-    if (!Number.isFinite(raw)) return;
-    editingRef.current = false;
-    apply(raw);
-  };
-  const increment = (direction: number) => {
-    const raw = parsedValue();
-    const step = unit === "length" ? Math.max(0.01, snap / 2) : 1;
-    apply((Number.isFinite(raw) ? raw : value) + direction * step);
-  };
-  const incrementRef = useRef(increment);
-  incrementRef.current = increment;
-  useEffect(() => {
-    const field = fieldRef.current;
-    if (!field) return;
-    const wheel = (event: WheelEvent) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (event.deltaY) incrementRef.current(event.deltaY < 0 ? 1 : -1);
-    };
-    field.addEventListener("wheel", wheel, { passive: false });
-    return () => field.removeEventListener("wheel", wheel);
-  }, []);
-  return <div className="educad-viewport-edge-treatment-radius"><div ref={fieldRef}>
-    <input type="text" inputMode="text" aria-label={label} value={draft}
-      onFocus={(event) => { editingRef.current = true; event.currentTarget.select(); }}
-      onChange={(event) => updateDraft(event.currentTarget.value)} onBlur={commit}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") event.currentTarget.blur();
-        if (event.key === "Escape") { updateDraft(shown); editingRef.current = false; event.currentTarget.blur(); }
-        if (event.key === "ArrowUp" || event.key === "ArrowDown") { event.preventDefault(); increment(event.key === "ArrowUp" ? 1 : -1); }
-      }} />
-    <span>{unit === "length" ? displayUnitLabel(displayUnit) : unit === "angle" ? "°" : unit === "scalar" ? "px" : "×"}</span>
-    <div className="educad-viewport-number-steppers">
-      <button type="button" aria-label={`${label} +`} onPointerDown={(event) => event.preventDefault()} onClick={() => increment(1)}>▴</button>
-      <button type="button" aria-label={`${label} −`} onPointerDown={(event) => event.preventDefault()} onClick={() => increment(-1)}>▾</button>
-    </div>
-  </div></div>;
-}
 
 export type ViewportSelection = {
   id: string;
@@ -217,6 +160,8 @@ type Props = {
   annotationsVisible?: boolean;
   selectedAnnotationId?: string | null;
   onAnnotationSelect?: (id: string) => void;
+  onUpdateAnnotation?: (id: string, update: (annotation: ParametricAnnotation) => void) => void;
+  onDeleteAnnotation?: (id: string) => void;
   selectedAnnotationEndpoint?: AnnotationPoint | null;
   onSelectAnnotationEndpoint?: (endpoint: AnnotationPoint) => void;
   onMoveAnnotationEndpoint?: (id: string, endpoint: AnnotationPoint, position: { x: number; y: number; z: number }) => void;
@@ -225,7 +170,6 @@ type Props = {
   editingAnnotationId?: string | null;
   onPlaceAnnotation?: (kind: AnnotationTool, start: { x: number; y: number; z: number }, end?: { x: number; y: number; z: number }, center?: { x: number; y: number; z: number }) => void;
   onFinishAnnotation?: (id: string, text: string, size: number) => void;
-  onAnnotationTextSize?: (id: string, size: number) => void;
   onEditAnnotation?: (id: string | null) => void;
   onCancelAnnotationTool?: () => void;
   locale?: "en" | "es";
@@ -646,7 +590,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ onAnnotationTextSize, onCircleAnnotationRadius, onAnnotationSelect, annotationsVisible = true, onMoveAnnotationEndpoint, selectedAnnotationEndpoint = null, onSelectAnnotationEndpoint, annotationTool = null, editingAnnotationId = null, onPlaceAnnotation, onFinishAnnotation, onEditAnnotation, onCancelAnnotationTool, annotations, selectedAnnotationId = null, onProjectRename, mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, faceExtrudeDraft = null, onFaceExtrudeAccept, onFaceExtrudeCancel, faceExtrudeCanAccept = true, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, revolveDraft = null, onRevolveDraftChange, onRevolveAccept, onRevolveCancel, revolveCanAccept = true, distanceHandle = null, onDistanceParameterDragStart, onDistanceParameterPreview, onDistanceParameterChange, onDistanceParameterCancel, shellDraft = null, onShellDraftChange, onShellCornerTypeChange, onShellAccept, onShellCancel, shellCanAccept = true, floatingFeature = null, booleanObjects = [], patternSources = [], booleanAddOnly = false, operationModesVisible = true, contextToolbarVisible, manipulatorControls, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = "Untitled design", onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions, alignmentActive = false, alignmentBusy = false, alignmentTargets = [], alignmentReference = null, onAlignmentSelect, onAlign }: Props) {
+export function ParametricViewport({ onUpdateAnnotation, onDeleteAnnotation, onCircleAnnotationRadius, onAnnotationSelect, annotationsVisible = true, onMoveAnnotationEndpoint, selectedAnnotationEndpoint = null, onSelectAnnotationEndpoint, annotationTool = null, editingAnnotationId = null, onPlaceAnnotation, onFinishAnnotation, onEditAnnotation, onCancelAnnotationTool, annotations, selectedAnnotationId = null, onProjectRename, mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, faceExtrudeDraft = null, onFaceExtrudeAccept, onFaceExtrudeCancel, faceExtrudeCanAccept = true, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, revolveDraft = null, onRevolveDraftChange, onRevolveAccept, onRevolveCancel, revolveCanAccept = true, distanceHandle = null, onDistanceParameterDragStart, onDistanceParameterPreview, onDistanceParameterChange, onDistanceParameterCancel, shellDraft = null, onShellDraftChange, onShellCornerTypeChange, onShellAccept, onShellCancel, shellCanAccept = true, floatingFeature = null, booleanObjects = [], patternSources = [], booleanAddOnly = false, operationModesVisible = true, contextToolbarVisible, manipulatorControls, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = "Untitled design", onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions, alignmentActive = false, alignmentBusy = false, alignmentTargets = [], alignmentReference = null, onAlignmentSelect, onAlign }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const annotationSnapRef = useRef<(event: PointerEvent) => THREE.Vector3 | null>(() => null);
   const annotationPositionHandleRef = useRef<(event: PointerEvent) => boolean>(() => false);
@@ -4550,9 +4494,7 @@ export function ParametricViewport({ onAnnotationTextSize, onCircleAnnotationRad
     </div> : null}
     <div ref={selectionBoxRef} className="parametric-selection-box" aria-hidden="true" />
     {showContextToolbar ? <div className="educad-viewport-context-toolbar" aria-label={locale === "es" ? "Herramientas de la selección" : "Selection tools"} onPointerDown={(event) => event.stopPropagation()}>
-      {annotationsVisible && annotationInteractionSelection?.visible && annotationInteractionSelection.kind !== "circle" && (annotationInteractionSelection.kind !== "dimension" || annotationInteractionSelection.showLength !== false) && <div className="educad-context-toolbar-group" aria-label={locale === "es" ? "Tamaño del texto" : "Text size"}>
-        <ViewportFloatingNumberInput value={annotationInteractionSelection.size ?? 3} unit="length" displayUnit={displayUnit} snap={snap} label={locale === "es" ? "Tamaño del texto" : "Text size"} min={0.1} max={1000} onCommit={(size) => onAnnotationTextSize?.(annotationInteractionSelection.id, size)} />
-      </div>}
+      {annotationsVisible && annotationInteractionSelection?.visible && <AnnotationToolbar embedded key={annotationInteractionSelection.id} annotation={annotationInteractionSelection} displayUnit={displayUnit} snap={snap} locale={locale} onUpdate={(update) => onUpdateAnnotation?.(annotationInteractionSelection.id, update)} onDelete={() => onDeleteAnnotation?.(annotationInteractionSelection.id)} />}
       {manipulatorControls && !floatingBoolean ? <div className="educad-context-toolbar-group" aria-label={alignmentActive ? (locale === "es" ? "Modo de alineación" : "Alignment mode") : (locale === "es" ? "Manipuladores" : "Manipulators")}>{manipulatorControls}</div> : null}
       {showOperationModes ? <div className="educad-context-toolbar-group" aria-label={locale === "es" ? "Modo de la operación" : "Operation mode"}>
         {(["add", "cut", "intersect"] as const).map((mode) => {

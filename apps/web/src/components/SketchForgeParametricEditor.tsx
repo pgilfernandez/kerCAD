@@ -3749,6 +3749,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           annotationsVisible={document.annotationGroup?.visible !== false}
           selectedAnnotationId={selectedAnnotationId}
           onAnnotationSelect={(id) => { setAnnotationTool(null); setEditingAnnotationId(null); setModelSelection([]); setSelectedAnnotationId(id); }}
+          onUpdateAnnotation={(id, update) => { const draft = cloneDocument(latestDocumentRef.current); const annotation = draft.annotations?.find((entry) => entry.id === id); if (annotation) { update(annotation); commit(draft); } }}
+          onDeleteAnnotation={() => deleteCurrentSelection()}
           selectedAnnotationEndpoint={annotationEndpoint}
           onSelectAnnotationEndpoint={setAnnotationEndpoint}
           onMoveAnnotationEndpoint={(id, endpoint, position) => mutate((draft) => {
@@ -3778,7 +3780,6 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             mutate((draft) => { const annotation = draft.annotations?.find((item) => item.id === id); if (annotation && annotation.kind !== "circle") { if (annotation.kind === "text") annotation.text = text; annotation.size = size; } });
             setEditingAnnotationId(null);
           }}
-          onAnnotationTextSize={(id, size) => mutate((draft) => { const annotation = draft.annotations?.find((item) => item.id === id); if (annotation && annotation.kind !== "circle") annotation.size = size; })}
           onThumbnail={(dataUrl) => {
             const stepId = challengeCaptureStepRef.current;
             if (stepId) {

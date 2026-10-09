@@ -91,7 +91,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
         group.add(sphere); disposables.push(geometry, material);
       }
     }
-    const color = annotation.kind === "text" ? "#000000" : annotation.color ?? "#233c52";
+    const color = annotation.color ?? (annotation.kind === "text" ? "#000000" : "#233c52");
     const label = (text: string, position: THREE.Vector3, size: number, font = "Arial", alignment = "center") => {
       if (!text) return;
       const canvas = document.createElement("canvas");
