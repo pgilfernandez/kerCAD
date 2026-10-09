@@ -3,7 +3,6 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { ViewportFloatingNumberInput } from "@/components/ViewportFloatingNumberInput";
 import { AnnotationIcon } from "@/components/AnnotationIcon";
-import { ToolbarTrashIcon } from "@/components/icons";
 import { OBJECT_COLOR_PALETTE } from "@/lib/parametricObjects";
 import { enableToolbarMouseScroll } from "@/lib/toolbarScroll";
 import { educadTranslate, type EducadLocale } from "@/lib/educadI18n";
@@ -16,7 +15,7 @@ function LabelText({ value, onCommit, label }: { value: string; onCommit: (value
   return <input className="sketch-annotation-text-input" aria-label={label} title={label} maxLength={2000} value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={() => { if (draft !== value) onCommit(draft); }} onKeyDown={(event) => { event.stopPropagation(); if (event.key === "Enter") event.currentTarget.blur(); }} />;
 }
 
-export function AnnotationToolbar({ embedded = false, annotation, displayUnit, snap, locale, onUpdate, onDelete }: { embedded?: boolean; annotation: ParametricAnnotation; displayUnit: ParametricDisplayUnit; snap: number; locale: EducadLocale; onUpdate: (update: (annotation: ParametricAnnotation) => void) => void; onDelete: () => void }) {
+export function AnnotationToolbar({ embedded = false, annotation, displayUnit, snap, locale, onUpdate }: { embedded?: boolean; annotation: ParametricAnnotation; displayUnit: ParametricDisplayUnit; snap: number; locale: EducadLocale; onUpdate: (update: (annotation: ParametricAnnotation) => void) => void }) {
   const t = (key: Parameters<typeof educadTranslate>[1]) => educadTranslate(locale, key);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const toolbar = useRef<HTMLDivElement>(null);
@@ -51,7 +50,6 @@ export function AnnotationToolbar({ embedded = false, annotation, displayUnit, s
       <button type="button" className={annotation.lineStyle === "dashed" ? "active" : ""} title={t("annotation.dashed")} aria-label={t("annotation.dashed")} onClick={() => onUpdate((draft) => { if (draft.kind === "dimension") draft.lineStyle = draft.lineStyle === "dashed" ? "solid" : "dashed"; })}><AnnotationIcon kind="dashedLine" /></button>
       <button type="button" className={annotation.showLength !== false ? "active" : ""} title={t("annotation.showLength")} aria-label={t("annotation.showLength")} onClick={() => onUpdate((draft) => { if (draft.kind === "dimension") draft.showLength = draft.showLength === false; })}><AnnotationIcon kind="dimension" /></button>
     </>}
-    <button type="button" title={t("common.delete")} aria-label={t("common.delete")} onClick={onDelete}><ToolbarTrashIcon /></button>
   </div>;
 }
 

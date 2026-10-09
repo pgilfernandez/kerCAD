@@ -3537,7 +3537,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           onAddAnnotation={(annotation) => { setSketchAnnotations((annotations) => { annotations.push(annotation); }); setSketchAnnotationTool(null); setSketchTool("select"); setSketchSelection(null); setSelectedSketchAnnotationId(annotation.id); }}
           onSelectAnnotation={(id) => { setSketchAnnotationTool(null); setSketchSelection(null); setSketchActivePointId(null); setSelectedSketchAnnotationId(id); }}
           onCommitAnnotation={(annotation) => setSketchAnnotations((annotations) => { const index = annotations.findIndex((entry) => entry.id === annotation.id); if (index >= 0) annotations[index] = annotation; })}
-          annotationToolbar={selectedSketchAnnotation ? <SketchAnnotationToolbar key={selectedSketchAnnotation.id} annotation={selectedSketchAnnotation} displayUnit={displayUnit} snap={document.workplane.snapSpacing} locale={locale} onUpdate={(update) => setSketchAnnotations((annotations) => { const annotation = annotations.find((entry) => entry.id === selectedSketchAnnotationId); if (annotation) update(annotation); })} onDelete={() => { deleteCurrentSketchSelection(); }} /> : null}
+          annotationToolbar={selectedSketchAnnotation ? <SketchAnnotationToolbar key={selectedSketchAnnotation.id} annotation={selectedSketchAnnotation} displayUnit={displayUnit} snap={document.workplane.snapSpacing} locale={locale} onUpdate={(update) => setSketchAnnotations((annotations) => { const annotation = annotations.find((entry) => entry.id === selectedSketchAnnotationId); if (annotation) update(annotation); })} /> : null}
           locale={locale}
           profile={sketchSmoothingPreview ?? sketchSession.profile}
           profileValidation={activeSketchProfileValidation}
@@ -3750,7 +3750,6 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           selectedAnnotationId={selectedAnnotationId}
           onAnnotationSelect={(id) => { setAnnotationTool(null); setEditingAnnotationId(null); setModelSelection([]); setSelectedAnnotationId(id); }}
           onUpdateAnnotation={(id, update) => { const draft = cloneDocument(latestDocumentRef.current); const annotation = draft.annotations?.find((entry) => entry.id === id); if (annotation) { update(annotation); commit(draft); } }}
-          onDeleteAnnotation={() => deleteCurrentSelection()}
           selectedAnnotationEndpoint={annotationEndpoint}
           onSelectAnnotationEndpoint={setAnnotationEndpoint}
           onMoveAnnotationEndpoint={(id, endpoint, position) => mutate((draft) => {
