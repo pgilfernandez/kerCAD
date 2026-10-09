@@ -10,6 +10,7 @@ import { alignmentGroupBounds, sameAlignmentItem, translateAlignmentTargets, typ
 import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyEdgePick, type TopologyFacePick, type ViewportDisplayMode, type ViewportShadingMode } from "@/components/ParametricViewport";
 import { SketchWorkspace, type SketchMeasurement, type SketchSceneReference, type SketchSelection, type SketchTool } from "@/components/SketchWorkspace";
+import { SketchToolMenu } from "@/components/SketchToolMenu";
 import { useAccessibleDialog } from "@/components/useAccessibleDialog";
 import {
   ToolbarAlignIcon,
@@ -3373,19 +3374,25 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           </ToolbarSection>
           <ToolbarSection label={t("sketch.draw")}>
             <Tool label={t("sketch.line")} active={sketchTool === "line"} onClick={() => chooseSketchTool("line")}><SketchToolbarIcon file="line" /></Tool>
-            <Tool label={t("sketch.rectangle")} active={sketchTool === "rectangle"} onClick={() => chooseSketchTool("rectangle")}><SketchToolbarIcon file="rectangle" /></Tool>
-            <Tool label={t("sketch.circle")} active={sketchTool === "circle"} onClick={() => chooseSketchTool("circle")}><SketchToolbarIcon file="circle" /></Tool>
-            <Tool label={t("sketch.centerArc")} active={sketchTool === "arc"} onClick={() => chooseSketchTool("arc")}><SketchToolbarIcon file="center-arc" /></Tool>
+            <SketchToolMenu initialTool="rectangle" activeTool={sketchTool} onChoose={chooseSketchTool} options={[
+              { tool: "rectangle", label: t("sketch.rectangle"), icon: "rectangle" },
+              { tool: "circle", label: t("sketch.circle"), icon: "circle" },
+              { tool: "arc", label: t("sketch.centerArc"), icon: "center-arc" },
+            ]} />
             <Tool label={t("sketch.bezier")} active={sketchTool === "bezier"} onClick={() => chooseSketchTool("bezier")}><SketchToolbarIcon file="bezier" /></Tool>
             <button ref={polygonMenuTriggerRef} type="button" className={`toolbar-icon ${sketchTool === "polygon" ? "active" : ""}`} aria-label={t("sketch.polygonType")} title={t("sketch.polygonType")} aria-expanded={Boolean(polygonMenuPosition)} aria-controls="sketch-polygon-menu" onClick={() => {
               const bounds = polygonMenuTriggerRef.current?.getBoundingClientRect();
               setPolygonMenuPosition(polygonMenuPosition || !bounds ? null : { top: bounds.bottom + 6, left: Math.max(8, Math.min(bounds.left, window.innerWidth - 208)) });
             }}><SketchToolbarIcon file={`polygon-${sketchPolygonSides}`} /></button>
-            <Tool label={t("sketch.slot")} active={sketchTool === "slot"} onClick={() => chooseSketchTool("slot")}><SketchToolbarIcon file="slot" /></Tool>
-            <Tool label={t("sketch.arcSlot")} active={sketchTool === "arcSlot"} onClick={() => chooseSketchTool("arcSlot")}><SketchToolbarIcon file="arc-slot" /></Tool>
+            <SketchToolMenu initialTool="slot" activeTool={sketchTool} onChoose={chooseSketchTool} options={[
+              { tool: "slot", label: t("sketch.slot"), icon: "slot" },
+              { tool: "arcSlot", label: t("sketch.arcSlot"), icon: "arc-slot" },
+            ]} />
             {/* <Tool label={t("sketch.smoothCurve")} active={sketchTool === "smooth"} onClick={() => chooseSketchTool("smooth")}><SketchToolbarIcon file="smooth-curve" /></Tool> */}
-            <Tool label={t("sketch.freehand")} active={sketchTool === "freehand"} onClick={() => chooseSketchTool("freehand")}><SketchToolbarIcon file="freehand" /></Tool>
-            <Tool label={t("sketch.smoothFreehand")} active={sketchTool === "freehandSmooth"} onClick={() => chooseSketchTool("freehandSmooth")}><SketchToolbarIcon file="smooth-freehand" /></Tool>
+            <SketchToolMenu initialTool="freehandSmooth" activeTool={sketchTool} onChoose={chooseSketchTool} options={[
+              { tool: "freehandSmooth", label: t("sketch.smoothFreehand"), icon: "smooth-freehand" },
+              { tool: "freehand", label: t("sketch.freehand"), icon: "freehand" },
+            ]} />
           </ToolbarSection>
           <ToolbarSection label={t("sketch.point")}>
             <Tool label={t("sketch.corner")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("corner")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "corner")}><SketchToolbarIcon file="corner" /></Tool>
