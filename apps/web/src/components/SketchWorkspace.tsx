@@ -1,7 +1,11 @@
 "use client";
 
 import { ChevronUp, CornerDownRight, Home, Link, Link2Off, Minus, Plus, Split, Trash2, Waves } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type PointerEvent as ReactPointerEvent } from "react";
+import { SketchAnnotationLayer, sketchAnnotationFromPicks } from "@/components/SketchAnnotationLayer";
+import type { AnnotationTool } from "@/lib/annotationPresets";
+import type { ParametricAnnotation } from "@/types/parametric";
+import type { ParametricDisplayUnit } from "@/lib/parametricUnits";
 import { ViewToolbarIcon } from "@/components/icons";
 import { SnapGridControl } from "@/components/workplane/ShapeInspector";
 import { SketchRevolvePreview } from "@/components/SketchRevolvePreview";
@@ -54,6 +58,14 @@ export type SketchSceneReference = {
 };
 
 type SketchWorkspaceProps = {
+  annotations?: ParametricAnnotation[];
+  annotationTool?: AnnotationTool | null;
+  selectedAnnotationId?: string | null;
+  annotationToolbar?: ReactNode;
+  annotationDisplayUnit?: ParametricDisplayUnit;
+  onAddAnnotation?: (annotation: ParametricAnnotation) => void;
+  onSelectAnnotation?: (id: string | null) => void;
+  onCommitAnnotation?: (annotation: ParametricAnnotation) => void;
   locale?: EducadLocale;
   profile: SketchProfile;
   profileValidation?: SketchProfileValidation | null;
@@ -583,6 +595,7 @@ function importedMeshFootprint(shape: WorkplaneShape): SketchReferenceFootprint 
 }
 
 export function SketchWorkspace({
+  annotations = [], annotationTool = null, selectedAnnotationId = null, annotationToolbar, annotationDisplayUnit = "mm", onAddAnnotation, onSelectAnnotation, onCommitAnnotation,
   locale = "en",
   profile,
   profileValidation = null,
@@ -636,6 +649,15 @@ export function SketchWorkspace({
   showGridControls = true,
 }: SketchWorkspaceProps) {
   const workspace = useMemo(() => normalizeWorkspaceSettings(initialWorkspace, DEFAULT_WORKPLANE_WORKSPACE), [initialWorkspace]);
+  const [annotationPicks, setAnnotationPicks] = useState<Array<{ x: number; y: number }>>([]);
+  const [annotationHover, setAnnotationHover] = useState<{ x: number; y: number } | null>(null);
+  useEffect(() => { setAnnotationPicks([]); setAnnotationHover(null); }, [annotationTool]);
+  const annotationPreview = useMemo(() => {
+    if (!annotationTool || !annotationPicks.length || !annotationHover) return null;
+    const picks = [...annotationPicks, annotationHover];
+    if (annotationTool === "angle" && picks.length < 3) return { ...sketchAnnotationFromPicks("dashedLine", picks, locale), id: "annotation-preview" };
+    return { ...sketchAnnotationFromPicks(annotationTool, picks, locale), id: "annotation-preview" };
+  }, [annotationTool, annotationPicks, annotationHover, locale]);
   const millimetersPerUnit = lengthDisplayUnit(workspace).millimetersPerUnit;
   const formatLength = (value: number, accuracy: 1 | 2 | 3) => formatDimension(value / millimetersPerUnit, accuracy + Math.max(0, Math.ceil(Math.log10(millimetersPerUnit))));
   const [snap, setSnap] = useState<GridSize>(() => normalizeSnapGrid(initialSnap, DEFAULT_SNAP_GRID));
@@ -1211,8 +1233,18 @@ export function SketchWorkspace({
           className={`sketch-plate tool-${tool} ${pointerAction?.kind === "pan" ? "panning" : ""}`}
           viewBox={`${pan.x - viewWidth / 2} ${-pan.z - viewDepth / 2} ${viewWidth} ${viewDepth}`}
           preserveAspectRatio="none"
-          onPointerDown={handlePlanePointerDown}
+          onPointerDown={(event) => { if (selectedAnnotationId) onSelectAnnotation?.(null); handlePlanePointerDown(event); }}
           onPointerDownCapture={(event) => {
+            if (annotationTool && event.button === 0) {
+              const point = pointFromEvent(event, false, false); if (!point) return;
+              event.preventDefault(); event.stopPropagation();
+              const picks = [...annotationPicks, { x: point.x, y: point.z }];
+              const required = annotationTool === "text" ? 1 : annotationTool === "angle" ? 3 : 2;
+              if (picks.length === required) { onAddAnnotation?.(sketchAnnotationFromPicks(annotationTool, picks, locale)); setAnnotationPicks([]); setAnnotationHover(null); }
+              else setAnnotationPicks(picks);
+              return;
+            }
+            if ((event.target as Element).closest("[data-sketch-annotation]")) return;
             if (event.button !== 0 || tool !== "select" || !selected || !onMoveSelection) return;
             const entity = (event.target as Element).closest("[data-sketch-entity].selected");
             if (!entity || !["point", "segment", "circle"].includes(entity.getAttribute("data-sketch-entity") ?? "")) return;
@@ -1223,11 +1255,12 @@ export function SketchWorkspace({
             event.currentTarget.setPointerCapture(event.pointerId);
             setPointerAction({ kind: "move-selection", pointerId: event.pointerId, origin, current: origin, selection: selected, entityKind: entity.getAttribute("data-sketch-entity")!, entityId: entity.getAttribute("data-sketch-id")! });
           }}
-          onPointerMove={handlePointerMove}
+          onPointerMove={(event) => { if (annotationTool) { const point = pointFromEvent(event, false, false); if (point) setAnnotationHover({ x: point.x, y: point.z }); } else handlePointerMove(event); }}
           onPointerUp={finishPointerAction}
           onPointerCancel={() => setPointerAction(null)}
           onPointerLeave={() => !pointerAction && setHover(null)}
           onContextMenu={(event) => {
+            if (annotationTool) { event.preventDefault(); setAnnotationPicks([]); setAnnotationHover(null); onCancelActiveTool?.(); return; }
             if (!["line", "connect", "slot", "arcSlot", "rectangle", "polygon"].includes(tool)) return;
             event.preventDefault();
             setPointerAction(null);
@@ -1780,9 +1813,11 @@ export function SketchWorkspace({
             </g>
           ) : null}
           {hover && ["line", "bezier", "smooth", "circle", "arc", "measure"].includes(tool) ? <circle className="sketch-cursor-point" cx={hover.x} cy={hover.z} r={hoverPointRadius} pointerEvents="none" /> : null}
+          <SketchAnnotationLayer annotations={annotations} preview={annotationPreview} selectedId={selectedAnnotationId} screenUnit={screenUnit} displayUnit={annotationDisplayUnit} pointFromEvent={(event) => pointFromEvent(event, false, false)} onSelect={(id) => onSelectAnnotation?.(id)} onCommit={(annotation) => onCommitAnnotation?.(annotation)} />
           </g>
         </svg>
       </section>
+      {annotationToolbar}
       {selectedImage && tool === "select" ? (
         <SketchImageInspector
           image={selectedImage}

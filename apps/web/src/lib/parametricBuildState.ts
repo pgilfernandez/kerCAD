@@ -1,4 +1,10 @@
 import type { ParametricDocument } from "@/types/parametric";
+import type { ParametricFeature } from "@/types/parametric";
+
+function geometryFeature({ name: _name, ...feature }: ParametricFeature) {
+  if (feature.kind === "sketch") delete feature.annotations;
+  return feature;
+}
 
 const PARAMETRIC_GEOMETRY_VERSION = 6;
 
@@ -28,7 +34,7 @@ function objectDependencyState(document: ParametricDocument, dependencyIds: stri
     object: document.objects.find((candidate) => candidate.id === dependencyId)
       ? { id: dependencyId, transform: document.objects.find((candidate) => candidate.id === dependencyId)!.transform }
       : null,
-    features: document.features.filter((feature) => feature.objectId === dependencyId).map(({ name: _name, ...feature }) => feature),
+    features: document.features.filter((feature) => feature.objectId === dependencyId).map(geometryFeature),
     topologyReferences: document.topologyReferences.filter((reference) => reference.objectId === dependencyId),
   }));
 }
@@ -37,7 +43,7 @@ export function parametricGeometryFingerprint(document: ParametricDocument) {
   return JSON.stringify({
     geometryVersion: PARAMETRIC_GEOMETRY_VERSION,
     objects: document.objects.map((object) => ({ id: object.id, transform: object.transform })),
-    features: document.features.map(({ name: _name, ...feature }) => feature),
+    features: document.features.map(geometryFeature),
     topologyReferences: document.topologyReferences,
   });
 }
@@ -54,7 +60,7 @@ export function parametricObjectGeometryFingerprint(document: ParametricDocument
     object: object ? { id: object.id, transform: object.transform } : null,
     features: document.features
       .filter((feature) => feature.objectId === objectId)
-      .map(({ name: _name, ...feature }) => feature),
+      .map(geometryFeature),
     topologyReferences: document.topologyReferences.filter((reference) => reference.objectId === objectId),
     dependencies: objectDependencyState(document, dependencyIds),
   });
@@ -69,7 +75,7 @@ export function parametricObjectFeaturePrefixFingerprint(document: ParametricDoc
   return JSON.stringify({
     geometryVersion: PARAMETRIC_GEOMETRY_VERSION,
     object: object ? { id: object.id, transform: object.transform } : null,
-    features: features.map(({ name: _name, ...feature }) => feature),
+    features: features.map(geometryFeature),
     topologyReferences: document.topologyReferences.filter((reference) => reference.objectId === objectId),
     dependencies: objectDependencyState(document, dependencyIds),
   });

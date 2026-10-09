@@ -65,6 +65,7 @@ import { assertImportByteLimit } from "@/lib/parametricImportLimits";
 import { displayLengthToMillimeters, displayUnitLabel, displayUnitWorkspace, millimetersToDisplayLength, normalizeDisplayUnit } from "@/lib/parametricUnits";
 import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
 import { AnnotationIcon } from "@/components/AnnotationIcon";
+import { SketchAnnotationToolbar } from "@/components/SketchAnnotationToolbar";
 import { annotationDimensionPreset, type AnnotationTool } from "@/lib/annotationPresets";
 import { annotationPosition, rotatedCircleAnnotation, setAnnotationPosition, type AnnotationPoint } from "@/lib/annotationGeometry";
 import { educadTranslate, normalizeEducadLocale, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
@@ -125,7 +126,7 @@ import { globalParametricWorkplanePlacement, objectPlacementForWorkplane, operat
 import { patternHandlePlacement } from "@/lib/parametricPatternHandles";
 import { localizedParametricOperationDefinition, parametricOperationCatalog, parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import type { ViewportRenderQuality } from "@/lib/viewportPerformance";
-import type { BuildResult, ExtrudeFeature, ParametricDocument, ParametricFeature, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, PrimitiveFeature, RevolveFeature, SketchFeature } from "@/types/parametric";
+import type { BuildResult, ExtrudeFeature, ParametricAnnotation, ParametricDocument, ParametricFeature, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, PrimitiveFeature, RevolveFeature, SketchFeature } from "@/types/parametric";
 import type { GridSize, SketchConstraint, SketchPoint, SketchProfile, WorkplaneShape } from "@/types/sketchforge";
 
 const RENDER_QUALITY_STORAGE_KEY = "educad.viewport.render-mode";
@@ -463,7 +464,12 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   };
   const [cameraOrientation, setCameraOrientation] = useState<CameraOrientation>({ azimuth: -Math.PI / 4, polar: 1.02 });
   const [clipboardId, setClipboardId] = useState<string | null>(null);
-  const [sketchSession, setSketchSession] = useState<{ featureId: string | null; objectId: string | null; profile: SketchProfile; mode: "sketch" | "scribble"; revolveAxisFeatureId?: string } | null>(null);
+  const [sketchSession, setSketchSession] = useState<{ featureId: string | null; objectId: string | null; profile: SketchProfile; annotations: ParametricAnnotation[]; mode: "sketch" | "scribble"; revolveAxisFeatureId?: string } | null>(null);
+  const sketchSessionRef = useRef(sketchSession); sketchSessionRef.current = sketchSession;
+  const [sketchAnnotationTool, setSketchAnnotationTool] = useState<AnnotationTool | null>(null);
+  const [selectedSketchAnnotationId, setSelectedSketchAnnotationId] = useState<string | null>(null);
+  const selectedSketchAnnotation = sketchSession?.annotations.find((annotation) => annotation.id === selectedSketchAnnotationId) ?? null;
+  const [sketchAnnotationClipboard, setSketchAnnotationClipboard] = useState<ParametricAnnotation | null>(null);
   const [sketchTool, setSketchTool] = useState<SketchTool>("line");
   const toolbarScrollRef = useRef<HTMLDivElement>(null);
   const constraintsScrollRef = useRef<HTMLElement>(null);
@@ -492,6 +498,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [sketchMeasurement, setSketchMeasurement] = useState<SketchMeasurement>(null);
   const [sketchMeasureStart, setSketchMeasureStart] = useState<SketchPoint | null>(null);
   const sketchHistoryRef = useRef<SketchProfile[]>([]);
+  const sketchAnnotationHistoryRef = useRef<ParametricAnnotation[][]>([]);
   const sketchHistoryIndexRef = useRef(-1);
   const [sketchHistoryIndex, setSketchHistoryIndex] = useState(-1);
   const activeSketchProfileValidation = useMemo(() => {
@@ -1117,7 +1124,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     const feature = featureId ? document.features.find((candidate): candidate is SketchFeature => candidate.kind === "sketch" && candidate.id === featureId && candidate.profile.shape === "drawn") : null;
     const profile = feature?.profile.shape === "drawn" ? cloneSketchProfile(feature.profile.geometry) : emptySketchProfile();
     const mode = feature?.profile.shape === "drawn" && feature.profile.geometry.generator?.kind === "scribble" ? "scribble" : "sketch";
-    setSketchSession({ featureId: feature?.id ?? null, objectId: feature?.objectId ?? selectedObjectId, profile, mode });
+    const annotations = structuredClone(feature?.annotations ?? []);
+    setSketchSession({ featureId: feature?.id ?? null, objectId: feature?.objectId ?? selectedObjectId, profile, annotations, mode });
+    sketchAnnotationHistoryRef.current = [annotations]; setSketchAnnotationTool(null); setSelectedSketchAnnotationId(null);
     sketchHistoryRef.current = [cloneSketchProfile(profile)];
     sketchHistoryIndexRef.current = 0;
     setSketchHistoryIndex(0);
@@ -1131,6 +1140,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   };
 
   const cancelSketch = () => {
+    sketchSessionRef.current = null;
+    sketchAnnotationHistoryRef.current = [];
     setSketchSession(null);
     setSketchActivePointId(null);
     setSketchSelection(null);
@@ -1167,8 +1178,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   };
 
   const acceptSketch = () => {
+    const sketchSession = sketchSessionRef.current;
     const validation = sketchSession ? validateDrawnSketchProfile(sketchSession.profile) : null;
-    if (!sketchSession || !validation?.valid) {
+    const annotationsOnly = Boolean(sketchSession?.annotations.length && !sketchSession.profile.segments.length && !(sketchSession.profile.circles?.length));
+    if (!sketchSession || !validation?.valid && !annotationsOnly) {
       setNotice({ type: "error", text: validation?.diagnostics[0]?.message ?? t("notice.closeContours") });
       return;
     }
@@ -1185,11 +1198,13 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         const revolve = draft.features.find((candidate): candidate is RevolveFeature => candidate.id === revolveFeatureId && candidate.kind === "revolve");
         if (!sketch || sketch.profile.shape !== "drawn" || !revolve || revolve.source !== "sketch") return;
         sketch.profile.geometry = structuredClone(sketchSession.profile);
+        sketch.annotations = structuredClone(sketchSession.annotations);
         revolve.axis = "edge";
         revolve.sketchAxisSegmentId = axisSegment.id;
         revolve.axisReferenceId = undefined;
       });
       if (!changed) return;
+      sketchSessionRef.current = null; sketchAnnotationHistoryRef.current = [];
       setSketchSession(null);
       setSketchSelection(null);
       setSketchActivePointId(null);
@@ -1207,7 +1222,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     const changed = mutate((draft) => {
       if (featureId) {
         const feature = draft.features.find((candidate) => candidate.id === featureId);
-        if (feature?.kind === "sketch" && feature.profile.shape === "drawn") feature.profile.geometry = structuredClone(sketchSession.profile);
+        if (feature?.kind === "sketch" && feature.profile.shape === "drawn") { feature.profile.geometry = structuredClone(sketchSession.profile); feature.annotations = structuredClone(sketchSession.annotations); }
         return;
       }
       const usesExistingObject = Boolean(objectId && draft.objects.some((object) => object.id === objectId));
@@ -1221,6 +1236,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         }
       }
       const feature = createDrawnSketchFeature(draft.features.filter((candidate) => candidate.kind === "sketch" && candidate.purpose === "user").length + 1, sketchSession.profile);
+      feature.annotations = structuredClone(sketchSession.annotations);
       feature.name = `${locale === "es" ? "Boceto" : "Sketch"} ${draft.features.filter((candidate) => candidate.kind === "sketch" && candidate.purpose === "user").length + 1}`;
       feature.objectId = objectId ?? undefined;
       if (usesExistingObject && objectId) {
@@ -1251,6 +1267,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       } else selectedFeatureId = feature.id;
     });
     if (!changed || !featureId) return;
+    sketchSessionRef.current = null; sketchAnnotationHistoryRef.current = [];
     setSketchSession(null);
     sketchHistoryRef.current = [];
     sketchHistoryIndexRef.current = -1;
@@ -1262,14 +1279,34 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   };
 
   const setSketchProfile = (update: (profile: SketchProfile) => SketchProfile) => {
+    const sketchSession = sketchSessionRef.current;
     if (!sketchSession) return;
     const nextProfile = update(cloneSketchProfile(sketchSession.profile));
     if (JSON.stringify(nextProfile) === JSON.stringify(sketchSession.profile)) return;
     const nextHistory = [...sketchHistoryRef.current.slice(0, sketchHistoryIndexRef.current + 1), cloneSketchProfile(nextProfile)];
+    sketchAnnotationHistoryRef.current = [...sketchAnnotationHistoryRef.current.slice(0, sketchHistoryIndexRef.current + 1), structuredClone(sketchSession.annotations)];
     sketchHistoryRef.current = nextHistory;
     sketchHistoryIndexRef.current = nextHistory.length - 1;
     setSketchHistoryIndex(sketchHistoryIndexRef.current);
-    setSketchSession({ ...sketchSession, profile: nextProfile });
+    const next = { ...sketchSession, profile: nextProfile }; sketchSessionRef.current = next; setSketchSession(next);
+  };
+
+  const setSketchAnnotations = (update: (annotations: ParametricAnnotation[]) => void) => {
+    const session = sketchSessionRef.current; if (!session) return;
+    const annotations = structuredClone(session.annotations); update(annotations);
+    if (JSON.stringify(annotations) === JSON.stringify(session.annotations)) return;
+    sketchHistoryRef.current = [...sketchHistoryRef.current.slice(0, sketchHistoryIndexRef.current + 1), cloneSketchProfile(session.profile)];
+    sketchAnnotationHistoryRef.current = [...sketchAnnotationHistoryRef.current.slice(0, sketchHistoryIndexRef.current + 1), annotations];
+    sketchHistoryIndexRef.current = sketchHistoryRef.current.length - 1; setSketchHistoryIndex(sketchHistoryIndexRef.current);
+    const next = { ...session, annotations }; sketchSessionRef.current = next; setSketchSession(next);
+  };
+
+  const pasteSketchAnnotation = (source: ParametricAnnotation) => {
+    const annotation = structuredClone(source); annotation.id = crypto.randomUUID();
+    const points = annotation.kind === "text" || annotation.kind === "circle" ? [annotation.position] : annotation.kind === "angle" ? [annotation.start, annotation.center, annotation.end] : [annotation.start, annotation.end];
+    for (const point of points) { point.x += 5; point.y += 5; }
+    setSketchAnnotations((annotations) => { annotations.push(annotation); });
+    setSketchSelection(null); setSelectedSketchAnnotationId(annotation.id); setSketchAnnotationTool(null);
   };
 
   const sketchUndo = () => {
@@ -1277,7 +1314,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     const index = sketchHistoryIndexRef.current - 1;
     sketchHistoryIndexRef.current = index;
     setSketchHistoryIndex(index);
-    setSketchSession((current) => current ? { ...current, profile: cloneSketchProfile(sketchHistoryRef.current[index]) } : current);
+    const current = sketchSessionRef.current;
+    if (current) { const next = { ...current, profile: cloneSketchProfile(sketchHistoryRef.current[index]), annotations: structuredClone(sketchAnnotationHistoryRef.current[index] ?? []) }; sketchSessionRef.current = next; setSketchSession(next); }
+    setSelectedSketchAnnotationId(null); setSketchAnnotationTool(null);
     setSketchSelection(null);
     setSketchActivePointId(null);
   };
@@ -1287,12 +1326,15 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     const index = sketchHistoryIndexRef.current + 1;
     sketchHistoryIndexRef.current = index;
     setSketchHistoryIndex(index);
-    setSketchSession((current) => current ? { ...current, profile: cloneSketchProfile(sketchHistoryRef.current[index]) } : current);
+    const current = sketchSessionRef.current;
+    if (current) { const next = { ...current, profile: cloneSketchProfile(sketchHistoryRef.current[index]), annotations: structuredClone(sketchAnnotationHistoryRef.current[index] ?? []) }; sketchSessionRef.current = next; setSketchSession(next); }
+    setSelectedSketchAnnotationId(null); setSketchAnnotationTool(null);
     setSketchSelection(null);
     setSketchActivePointId(null);
   };
 
   const chooseSketchTool = (tool: SketchTool) => {
+    setSketchAnnotationTool(null); setSelectedSketchAnnotationId(null);
     setSketchTool(tool);
     setSketchActivePointId(null);
     setSketchSelection(null);
@@ -1353,8 +1395,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     return { ...original, points: [...original.points.filter((point) => !oldPointIds.has(point.id)), ...newPoints], segments: [...original.segments.filter((segment) => !segmentIds.has(segment.id)), ...newSegments], constraints: (original.constraints ?? []).filter((constraint) => ![...segmentIds].some((id) => sketchConstraintUsesSegment(constraint, id)) && ![...oldPointIds].some((id) => sketchConstraintUsesPoint(constraint, id))) };
   }, [sketchSession, sketchSmoothingSource, sketchSmoothing]);
   const copyCurrentSketchSelection = () => {
+    if (selectedSketchAnnotation) { setSketchAnnotationClipboard(structuredClone(selectedSketchAnnotation)); setSketchClipboard(null); return; }
     if (!sketchCopyableSelection) return;
     setSketchClipboard(sketchCopyableSelection);
+    setSketchAnnotationClipboard(null);
     sketchPasteCountRef.current = 0;
   };
   const pasteSketchGeometry = (source: SketchProfile, count = 1) => {
@@ -2208,6 +2252,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   };
 
   const deleteCurrentSketchSelection = () => {
+    if (selectedSketchAnnotationId) {
+      setSketchAnnotations((annotations) => { const index = annotations.findIndex((annotation) => annotation.id === selectedSketchAnnotationId); if (index >= 0) annotations.splice(index, 1); });
+      setSelectedSketchAnnotationId(null); return true;
+    }
     if (!sketchSelection) return false;
     const selectedPointIds = sketchSelection.kind === "point" ? [sketchSelection.id] : sketchSelection.kind === "multiple" ? sketchSelection.pointIds : [];
     const pointIds = selectedPointIds.filter((id) => sketchSession?.profile.points.some((point) => point.id === id));
@@ -2606,7 +2654,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           else sketchUndo();
           return;
         }
-        if (event.key === "Escape") cancelSketch();
+        if (event.key === "Escape") { if (sketchAnnotationTool) setSketchAnnotationTool(null); else cancelSketch(); }
         if (event.key === "Delete" || event.key === "Backspace") {
           if (deleteCurrentSketchSelection()) event.preventDefault();
         }
@@ -2637,7 +2685,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [deleteCurrentSelection, document.workplane, mutate, selectedId, selectedAnnotationId, selectedObjectId, selectionKind, sketchSelection, sketchSession, snapAmount]);
+  }, [deleteCurrentSelection, document.workplane, mutate, selectedId, selectedAnnotationId, selectedObjectId, selectionKind, sketchSelection, sketchSession, selectedSketchAnnotationId, sketchAnnotationTool, snapAmount]);
 
   const [droppingToWorkplane, setDroppingToWorkplane] = useState(false);
   const dropWorkerRef = useRef<Worker | null>(null);
@@ -3009,7 +3057,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       return;
     }
     const profile = cloneSketchProfile(sketch.profile.geometry);
-    setSketchSession({ featureId: sketch.id, objectId: sketch.objectId ?? null, profile, mode: "sketch", revolveAxisFeatureId: revolve.id });
+    const annotations = structuredClone(sketch.annotations ?? []);
+    setSketchSession({ featureId: sketch.id, objectId: sketch.objectId ?? null, profile, annotations, mode: "sketch", revolveAxisFeatureId: revolve.id });
+    sketchAnnotationHistoryRef.current = [annotations]; setSketchAnnotationTool(null); setSelectedSketchAnnotationId(null);
     sketchHistoryRef.current = [cloneSketchProfile(profile)];
     sketchHistoryIndexRef.current = 0;
     setSketchHistoryIndex(0);
@@ -3313,10 +3363,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("sketch.redo")} enabled={sketchHistoryIndex >= 0 && sketchHistoryIndex < sketchHistoryRef.current.length - 1} onClick={sketchRedo}><ToolbarRedoIcon /></Tool>
           </ToolbarSection>
           <ToolbarSection label={t("toolbar.clipboard")}>
-            <Tool label={t("toolbar.copy")} enabled={Boolean(sketchCopyableSelection)} onClick={copyCurrentSketchSelection}><ToolbarCopyIcon /></Tool>
-            <Tool label={t("toolbar.paste")} enabled={Boolean(sketchClipboard)} onClick={() => { if (sketchClipboard) pasteSketchGeometry(sketchClipboard, ++sketchPasteCountRef.current); }}><ToolbarPasteIcon /></Tool>
-            <Tool label={t("toolbar.duplicate")} enabled={Boolean(sketchCopyableSelection)} onClick={() => { if (sketchCopyableSelection) pasteSketchGeometry(sketchCopyableSelection); }}><ToolbarDuplicateIcon /></Tool>
-            <Tool label={sketchSelection ? t("sketch.eraseSelection") : t("sketch.erase")} active={!sketchSelection && sketchTool === "erase"} onClick={() => { if (!deleteCurrentSketchSelection()) chooseSketchTool("erase"); }}><ToolbarTrashIcon /></Tool>
+            <Tool label={t("toolbar.copy")} enabled={Boolean(sketchCopyableSelection || selectedSketchAnnotation)} onClick={copyCurrentSketchSelection}><ToolbarCopyIcon /></Tool>
+            <Tool label={t("toolbar.paste")} enabled={Boolean(sketchClipboard || sketchAnnotationClipboard)} onClick={() => { if (sketchAnnotationClipboard) pasteSketchAnnotation(sketchAnnotationClipboard); else if (sketchClipboard) pasteSketchGeometry(sketchClipboard, ++sketchPasteCountRef.current); }}><ToolbarPasteIcon /></Tool>
+            <Tool label={t("toolbar.duplicate")} enabled={Boolean(sketchCopyableSelection || selectedSketchAnnotation)} onClick={() => { if (selectedSketchAnnotation) pasteSketchAnnotation(selectedSketchAnnotation); else if (sketchCopyableSelection) pasteSketchGeometry(sketchCopyableSelection); }}><ToolbarDuplicateIcon /></Tool>
+            <Tool label={sketchSelection || selectedSketchAnnotation ? t("sketch.eraseSelection") : t("sketch.erase")} active={!sketchSelection && !selectedSketchAnnotation && sketchTool === "erase"} onClick={() => { if (!deleteCurrentSketchSelection()) chooseSketchTool("erase"); }}><ToolbarTrashIcon /></Tool>
           </ToolbarSection>
           <ToolbarSection label={t("sketch.select")}>
             <Tool label={t("sketch.select")} active={sketchTool === "select"} onClick={() => chooseSketchTool("select")}><SketchToolbarIcon file="select" /></Tool>
@@ -3360,8 +3410,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("sketch.mergePoints")} enabled={mergeableSketchPointIds.length === 2} onClick={mergeSelectedSketchPoints}><SketchToolbarIcon file="merge-points" /></Tool>
             <Tool label={t("sketch.trim")} active={sketchTool === "trim"} onClick={() => chooseSketchTool("trim")}><SketchToolbarIcon file="trim" /></Tool>
           </ToolbarSection>
-          <ToolbarSection label={t("sketch.inspect")}>
-            <Tool label={t("sketch.measure")} active={sketchTool === "measure"} onClick={() => chooseSketchTool("measure")}><SketchToolbarIcon file="measure" /></Tool>
+          <ToolbarSection label={t("annotation.group")}>
+            {(["text", "dimension", "arrow", "dashedLine", "angle", "circle"] as const).map((kind) => <Tool key={kind} label={`${t("annotation.group")}: ${t(`annotation.${kind}`)}`} active={sketchAnnotationTool === kind} onClick={() => { chooseSketchTool("select"); setSketchAnnotationTool(sketchAnnotationTool === kind ? null : kind); }}><AnnotationIcon kind={kind} /></Tool>)}
           </ToolbarSection>
           <ToolbarSection label={t("sketch.import")}>
             <Tool label={t("sketch.importSvg")} onClick={() => sketchSvgImportRef.current?.click()}><SketchToolbarIcon file="import-svg" /></Tool>
@@ -3480,6 +3530,14 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         {showFps ? <FpsCounter sketchMode={Boolean(sketchSession)} /> : null}
         {backgroundProcessLabel ? <BackgroundProcessIndicator label={backgroundProcessLabel} rightOffset={viewportOverlayRightOffset + (showFps ? 90 : 0)} regenerating={!stlExporting && !exporting && !alignmentCalculating && kernelBusy} /> : null}
         {sketchSession ? <SketchWorkspace
+          annotations={sketchSession.annotations}
+          annotationTool={sketchAnnotationTool}
+          selectedAnnotationId={selectedSketchAnnotationId}
+          annotationDisplayUnit={displayUnit}
+          onAddAnnotation={(annotation) => { setSketchAnnotations((annotations) => { annotations.push(annotation); }); setSketchAnnotationTool(null); setSketchTool("select"); setSketchSelection(null); setSelectedSketchAnnotationId(annotation.id); }}
+          onSelectAnnotation={(id) => { setSketchAnnotationTool(null); setSketchSelection(null); setSketchActivePointId(null); setSelectedSketchAnnotationId(id); }}
+          onCommitAnnotation={(annotation) => setSketchAnnotations((annotations) => { const index = annotations.findIndex((entry) => entry.id === annotation.id); if (index >= 0) annotations[index] = annotation; })}
+          annotationToolbar={selectedSketchAnnotation ? <SketchAnnotationToolbar key={selectedSketchAnnotation.id} annotation={selectedSketchAnnotation} displayUnit={displayUnit} snap={document.workplane.snapSpacing} locale={locale} onUpdate={(update) => setSketchAnnotations((annotations) => { const annotation = annotations.find((entry) => entry.id === selectedSketchAnnotationId); if (annotation) update(annotation); })} onDelete={() => { deleteCurrentSketchSelection(); }} /> : null}
           locale={locale}
           profile={sketchSmoothingPreview ?? sketchSession.profile}
           profileValidation={activeSketchProfileValidation}

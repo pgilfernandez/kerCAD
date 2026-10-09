@@ -343,18 +343,16 @@ export function migrateParametricDocument(document: ParametricDocument): Paramet
   return next;
 }
 
-export function normalizeParametricDocument(document: ParametricDocument): ParametricDocument {
-  const next = migrateParametricDocument(document);
-  next.displayUnit = normalizeDisplayUnit(next.displayUnit);
-  next.annotations ??= [];
-  if (!Array.isArray(next.annotations) || next.annotations.length > 1000) throw new Error("Invalid annotation collection.");
+export function normalizeParametricAnnotations(input: ParametricDocument["annotations"]): NonNullable<ParametricDocument["annotations"]> {
+  let annotations = input ?? [];
+  if (!Array.isArray(annotations) || annotations.length > 1000) throw new Error("Invalid annotation collection.");
   type Annotation = NonNullable<ParametricDocument["annotations"]>[number];
   type LegacyArrow = Omit<Extract<Annotation, { kind: "dimension" }>, "kind"> & { kind: "arrow" };
-  next.annotations = (next.annotations as Array<Annotation | LegacyArrow>).map<Annotation>((annotation) => annotation?.kind === "arrow"
+  annotations = (annotations as Array<Annotation | LegacyArrow>).map<Annotation>((annotation) => annotation?.kind === "arrow"
     ? { ...annotation, kind: "dimension", color: annotation.color ?? "#000000", startArrow: false, endArrow: true, lineStyle: "solid", showLength: false }
     : annotation);
   const annotationIds = new Set<string>();
-  for (const annotation of next.annotations) {
+  for (const annotation of annotations) {
     if (!annotation || typeof annotation.id !== "string" || annotationIds.has(annotation.id)) throw new Error("Invalid annotation identifier.");
     annotationIds.add(annotation.id);
     if (annotation.kind !== "text" && annotation.kind !== "dimension" && annotation.kind !== "angle" && annotation.kind !== "circle") throw new Error("Unsupported annotation type.");
@@ -380,12 +378,20 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
       annotation.showLength = annotation.showLength !== false;
     }
     if (annotation.kind === "text") {
+      annotation.color = typeof annotation.color === "string" && /^#[0-9a-f]{6}$/i.test(annotation.color) ? annotation.color : "#000000";
       annotation.text = typeof annotation.text === "string" ? annotation.text.slice(0, 2000) : "";
       annotation.font = typeof annotation.font === "string" ? annotation.font.slice(0, 160) : "Arial";
       annotation.size = Math.max(0.1, Math.min(1000, Number.isFinite(annotation.size) ? annotation.size : 6));
       if (!["left", "center", "right"].includes(annotation.alignment)) annotation.alignment = "center";
     }
   }
+  return annotations;
+}
+
+export function normalizeParametricDocument(document: ParametricDocument): ParametricDocument {
+  const next = migrateParametricDocument(document);
+  next.displayUnit = normalizeDisplayUnit(next.displayUnit);
+  next.annotations = normalizeParametricAnnotations(next.annotations);
   next.creator = typeof next.creator === "string" ? next.creator.trim().slice(0, 160) || undefined : undefined;
   next.author = typeof next.author === "string" ? next.author.trim().slice(0, 160) || undefined : undefined;
   next.objects ??= [];
@@ -434,6 +440,7 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
 
   for (const feature of next.features) {
     if (feature.kind === "sketch") {
+      feature.annotations = normalizeParametricAnnotations(feature.annotations);
       feature.visible = typeof feature.visible === "boolean" ? feature.visible : true;
       feature.purpose ??= feature.profile.shape === "drawn" ? "user" : "primitive";
       feature.rotation ??= { x: 0, y: 0, z: 0 };

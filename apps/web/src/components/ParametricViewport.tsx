@@ -74,7 +74,7 @@ function ViewportEdgeRadiusInput({ radius, displayUnit, snap, locale, onCommit }
   return <ViewportFloatingNumberInput value={radius} unit="length" displayUnit={displayUnit} snap={snap} label={locale === "es" ? "Radio" : "Radius"} min={0.01} max={Infinity} onCommit={onCommit} />;
 }
 
-function ViewportFloatingNumberInput({ value, unit, displayUnit, snap, label, min, max, onCommit }: { value: number; unit: "length" | "angle" | "count"; displayUnit: ParametricDisplayUnit; snap: number; label: string; min: number; max: number; onCommit: (value: number) => void }) {
+export function ViewportFloatingNumberInput({ value, unit, displayUnit, snap, label, min, max, onCommit }: { value: number; unit: "length" | "angle" | "count" | "scalar"; displayUnit: ParametricDisplayUnit; snap: number; label: string; min: number; max: number; onCommit: (value: number) => void }) {
   const format = (number: number) => unit === "length" ? formatDisplayLength(number, displayUnit) : formatViewportDimension(number);
   const shown = format(value);
   const [draft, setDraft] = useState(shown);
@@ -127,7 +127,7 @@ function ViewportFloatingNumberInput({ value, unit, displayUnit, snap, label, mi
         if (event.key === "Escape") { updateDraft(shown); editingRef.current = false; event.currentTarget.blur(); }
         if (event.key === "ArrowUp" || event.key === "ArrowDown") { event.preventDefault(); increment(event.key === "ArrowUp" ? 1 : -1); }
       }} />
-    <span>{unit === "length" ? displayUnitLabel(displayUnit) : unit === "angle" ? "°" : "×"}</span>
+    <span>{unit === "length" ? displayUnitLabel(displayUnit) : unit === "angle" ? "°" : unit === "scalar" ? "px" : "×"}</span>
     <div className="educad-viewport-number-steppers">
       <button type="button" aria-label={`${label} +`} onPointerDown={(event) => event.preventDefault()} onClick={() => increment(1)}>▴</button>
       <button type="button" aria-label={`${label} −`} onPointerDown={(event) => event.preventDefault()} onClick={() => increment(-1)}>▾</button>
