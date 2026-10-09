@@ -20,6 +20,7 @@ type Props = {
   preview?: ParametricAnnotation | null;
   selectedId: string | null;
   screenUnit: number;
+  zoom: number;
   snapSpacing: number;
   displayUnit: ParametricDisplayUnit;
   locale?: EducadLocale;
@@ -28,7 +29,7 @@ type Props = {
   onCommit: (annotation: ParametricAnnotation) => void;
 };
 
-export function SketchAnnotationLayer({ annotations, preview, selectedId, screenUnit, snapSpacing, displayUnit, locale = "en", pointFromEvent, onSelect, onCommit }: Props) {
+export function SketchAnnotationLayer({ annotations, preview, selectedId, screenUnit, zoom, snapSpacing, displayUnit, locale = "en", pointFromEvent, onSelect, onCommit }: Props) {
   const [moving, setMoving] = useState<ParametricAnnotation | null>(null);
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
   const editingRef = useRef(editing); editingRef.current = editing;
@@ -135,7 +136,7 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
         {polyline && <polyline points={polyline} fill="none" stroke="transparent" strokeWidth={12} vectorEffect="non-scaling-stroke" />}
         {angle && angle.degrees > .0001 && <polyline points={angle.arc.map((point) => `${point.x},${point.y}`).join(" ")} fill="none" stroke="transparent" strokeWidth={12} vectorEffect="non-scaling-stroke" />}
         {annotation.kind === "circle" && <circle cx={annotation.position.x} cy={annotation.position.y} r={annotation.radius} fill="none" stroke="transparent" strokeWidth={12} vectorEffect="non-scaling-stroke" />}
-        {polyline && <polyline points={polyline} fill="none" stroke={color} strokeWidth={stroke} vectorEffect="non-scaling-stroke" strokeDasharray={annotation.kind === "dimension" && annotation.lineStyle === "dashed" ? `${27 * screenUnit} ${18 * screenUnit}` : undefined} />}
+        {polyline && <polyline points={polyline} fill="none" stroke={color} strokeWidth={stroke} vectorEffect="non-scaling-stroke" strokeDasharray={annotation.kind === "dimension" && annotation.lineStyle === "dashed" ? `${54 * screenUnit * zoom} ${36 * screenUnit * zoom}` : undefined} />}
         {angle && angle.degrees > .0001 && <polyline points={angle.arc.map((point) => `${point.x},${point.y}`).join(" ")} fill="none" stroke={color} strokeWidth={2} vectorEffect="non-scaling-stroke" />}
         {annotation.kind === "dimension" && <>{annotation.startArrow !== false && arrow(annotation.end, annotation.start, "start")}{annotation.endArrow !== false && arrow(annotation.start, annotation.end, "end")}</>}
         {annotation.kind === "dimension" && annotation.startArrow !== false && annotation.endArrow !== false && (() => {
