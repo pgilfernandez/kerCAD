@@ -32,11 +32,17 @@ export function AnnotationToolbar({ embedded = false, annotation, displayUnit, s
   }, [paletteOpen]);
   const number = (value: number, label: string, unit: "length" | "scalar", change: (annotation: ParametricAnnotation, value: number) => void, min = .1, max = 1000) => <ViewportFloatingNumberInput value={value} unit={unit} displayUnit={displayUnit} snap={snap} label={label} min={min} max={max} onCommit={(value) => onUpdate((draft) => change(draft, value))} />;
   return <div ref={toolbar} className={`sketch-annotation-context-toolbar ${embedded ? "embedded" : ""}`} role="toolbar" aria-label={t("annotation.group")} onPointerDown={(event) => event.stopPropagation()}>
-    <AnnotationIcon kind={annotation.kind} />
     {embedded && annotation.kind === "circle" && <select className="educad-context-object-select" aria-label={t("annotation.mode")} title={t("annotation.mode")} value={annotation.mode} onChange={(event) => onUpdate((draft) => { if (draft.kind === "circle") draft.mode = event.target.value as "billboard" | "planar"; })}><option value="billboard">{t("annotation.billboard")}</option><option value="planar">{t("annotation.planar")}</option></select>}
     {annotation.kind === "text" && <LabelText key={annotation.id} value={annotation.text} label={t("annotation.text")} onCommit={(text) => onUpdate((draft) => { if (draft.kind === "text") draft.text = text; })} />}
     {annotation.kind !== "circle" && number(annotation.size ?? 3, t("annotation.size"), "length", (draft, value) => { if (draft.kind !== "circle") draft.size = value; })}
     {annotation.kind === "circle" && <>{number(annotation.radius, t("property.radius"), "length", (draft, value) => { if (draft.kind === "circle") draft.radius = value; }, .1, 10000)}{number(annotation.lineWidth, t("annotation.lineWidth"), "scalar", (draft, value) => { if (draft.kind === "circle") draft.lineWidth = value; }, .5, 20)}</>}
+    {annotation.kind === "dimension" && <>
+      <button type="button" className={annotation.startArrow !== false ? "active" : ""} title={t("annotation.startArrow")} aria-label={t("annotation.startArrow")} onClick={() => onUpdate((draft) => { if (draft.kind === "dimension") draft.startArrow = draft.startArrow === false; })}><span style={{ transform: "rotate(180deg)", display: "flex" }}><AnnotationIcon size={34} kind="arrow" /></span></button>
+      <button type="button" className={annotation.endArrow !== false ? "active" : ""} title={t("annotation.endArrow")} aria-label={t("annotation.endArrow")} onClick={() => onUpdate((draft) => { if (draft.kind === "dimension") draft.endArrow = draft.endArrow === false; })}><AnnotationIcon size={34} kind="arrow" /></button>
+      <button type="button" className={annotation.lineStyle === "dashed" ? "active" : ""} title={t("annotation.dashed")} aria-label={t("annotation.dashed")} onClick={() => onUpdate((draft) => { if (draft.kind === "dimension") draft.lineStyle = draft.lineStyle === "dashed" ? "solid" : "dashed"; })}><AnnotationIcon size={34} kind="dashedLine" /></button>
+      <button type="button" className={annotation.showLength !== false ? "active" : ""} title={t("annotation.showLength")} aria-label={t("annotation.showLength")} onClick={() => onUpdate((draft) => { if (draft.kind === "dimension") draft.showLength = draft.showLength === false; })}><AnnotationIcon size={34} kind="dimension" /></button>
+    </>}
+
     <div className="sketch-annotation-color-control" ref={palette}>
       <button type="button" title={t("property.color")} aria-label={t("property.color")} aria-expanded={paletteOpen} onClick={(event) => { const bounds = event.currentTarget.getBoundingClientRect(); setPalettePosition({ top: Math.max(8, Math.min(bounds.bottom + 8, window.innerHeight - 190)), left: Math.max(8, Math.min(bounds.left, window.innerWidth - 248)) }); setPaletteOpen(!paletteOpen); }}><span className="educad-color-preview" style={{ "--object-color": color } as CSSProperties} /></button>
       {paletteOpen && createPortal(<div ref={popup} className="educad-color-palette sketch-annotation-color-popup" style={palettePosition}>
@@ -44,12 +50,6 @@ export function AnnotationToolbar({ embedded = false, annotation, displayUnit, s
         <label className="educad-custom-color" title={t("property.customColor")}><input type="color" aria-label={t("property.customColor")} value={color} onChange={(event) => onUpdate((draft) => { draft.color = event.target.value; })} /><span>+</span></label>
       </div>, document.body)}
     </div>
-    {annotation.kind === "dimension" && <>
-      <button type="button" className={annotation.startArrow !== false ? "active" : ""} title={t("annotation.startArrow")} aria-label={t("annotation.startArrow")} onClick={() => onUpdate((draft) => { if (draft.kind === "dimension") draft.startArrow = draft.startArrow === false; })}><span style={{ transform: "rotate(180deg)", display: "flex" }}><AnnotationIcon kind="arrow" /></span></button>
-      <button type="button" className={annotation.endArrow !== false ? "active" : ""} title={t("annotation.endArrow")} aria-label={t("annotation.endArrow")} onClick={() => onUpdate((draft) => { if (draft.kind === "dimension") draft.endArrow = draft.endArrow === false; })}><AnnotationIcon kind="arrow" /></button>
-      <button type="button" className={annotation.lineStyle === "dashed" ? "active" : ""} title={t("annotation.dashed")} aria-label={t("annotation.dashed")} onClick={() => onUpdate((draft) => { if (draft.kind === "dimension") draft.lineStyle = draft.lineStyle === "dashed" ? "solid" : "dashed"; })}><AnnotationIcon kind="dashedLine" /></button>
-      <button type="button" className={annotation.showLength !== false ? "active" : ""} title={t("annotation.showLength")} aria-label={t("annotation.showLength")} onClick={() => onUpdate((draft) => { if (draft.kind === "dimension") draft.showLength = draft.showLength === false; })}><AnnotationIcon kind="dimension" /></button>
-    </>}
   </div>;
 }
 
