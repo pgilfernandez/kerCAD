@@ -22,13 +22,39 @@ type Props = {
   screenUnit: number;
   snapSpacing: number;
   displayUnit: ParametricDisplayUnit;
+  locale?: EducadLocale;
   pointFromEvent: (event: { clientX: number; clientY: number }) => { x: number; z: number } | null;
   onSelect: (id: string | null) => void;
   onCommit: (annotation: ParametricAnnotation) => void;
 };
 
-export function SketchAnnotationLayer({ annotations, preview, selectedId, screenUnit, snapSpacing, displayUnit, pointFromEvent, onSelect, onCommit }: Props) {
+export function SketchAnnotationLayer({ annotations, preview, selectedId, screenUnit, snapSpacing, displayUnit, locale = "en", pointFromEvent, onSelect, onCommit }: Props) {
   const [moving, setMoving] = useState<ParametricAnnotation | null>(null);
+  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
+  const editingRef = useRef(editing); editingRef.current = editing;
+  const annotationsRef = useRef(annotations); annotationsRef.current = annotations;
+  const textInput = useRef<HTMLTextAreaElement>(null);
+  const finishText = (accept = true) => {
+    const current = editingRef.current; if (!current) return;
+    editingRef.current = null; setEditing(null);
+    const annotation = annotationsRef.current.find((entry) => entry.id === current.id);
+    if (accept && annotation?.kind === "text" && annotation.text !== current.text) onCommit({ ...annotation, text: current.text });
+  };
+  useEffect(() => {
+    if (!editing?.id) return;
+    const frame = requestAnimationFrame(() => { textInput.current?.focus(); textInput.current?.select(); });
+    return () => cancelAnimationFrame(frame);
+  }, [editing?.id]);
+  useEffect(() => { if (editingRef.current && editingRef.current.id !== selectedId) finishText(); }, [selectedId]);
+  useEffect(() => {
+    if (!editing?.id) return;
+    const outside = (event: globalThis.PointerEvent) => {
+      const entry = event.target instanceof Element ? event.target.closest("[data-sketch-annotation]") : null;
+      if (entry?.getAttribute("data-sketch-annotation") !== editingRef.current?.id) finishText();
+    };
+    document.addEventListener("pointerdown", outside, true);
+    return () => document.removeEventListener("pointerdown", outside, true);
+  }, [editing?.id]);
   const drag = useRef<{ annotation: ParametricAnnotation; point: AnnotationPoint | "position" | "radius" | null; origin: { x: number; y: number }; pointerId: number; latest: ParametricAnnotation | null } | null>(null);
   const measure = useRef<CanvasRenderingContext2D | null>(null);
   if (!measure.current && typeof document !== "undefined") measure.current = document.createElement("canvas").getContext("2d");
@@ -38,6 +64,7 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
     return () => window.removeEventListener("keydown", cancel, true);
   }, []);
   const begin = (event: PointerEvent<SVGElement>, annotation: ParametricAnnotation, point: NonNullable<typeof drag.current>["point"]) => {
+    if (editingRef.current?.id === annotation.id) { event.stopPropagation(); return; }
     if (event.button !== 0) return;
     const origin = pointFromEvent(event); if (!origin) return;
     event.preventDefault(); event.stopPropagation(); onSelect(annotation.id);
@@ -78,7 +105,7 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
     {visible.map((annotation) => {
       const selected = annotation.id === selectedId;
       const color = annotation.color ?? (annotation.kind === "text" ? "#000000" : "#233c52");
-      const label = annotationLabelInfo(annotation, displayUnit);
+      const label = annotationLabelInfo(annotation.kind === "text" && editing?.id === annotation.id ? { ...annotation, text: editing.text } : annotation, displayUnit);
       const stroke = annotation.kind === "circle" ? annotation.lineWidth : 2;
       const polyline = annotation.kind === "dimension" ? `${annotation.start.x},${annotation.start.y} ${annotation.end.x},${annotation.end.y}` : annotation.kind === "angle" ? `${annotation.start.x},${annotation.start.y} ${annotation.center.x},${annotation.center.y} ${annotation.end.x},${annotation.end.y}` : "";
       const angle = annotation.kind === "angle" ? annotationAngleGeometry(annotation) : null;
@@ -95,7 +122,11 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
       const height = (lines.length * 4 / 3 + 1 / 3) * labelSize;
       const labelX = label?.alignment === "left" ? 0 : label?.alignment === "right" ? -width : -width / 2;
       const points: Array<AnnotationPoint | "position"> = annotation.kind === "text" || annotation.kind === "circle" ? ["position"] : annotation.kind === "angle" ? ["start", "center", "end"] : ["start", "end"];
-      return <g key={annotation.id} data-sketch-annotation={annotation.id} style={{ cursor: "move" }} opacity={preview?.id === annotation.id ? .65 : 1} onPointerDown={(event) => begin(event, annotation, null)}>
+      return <g key={annotation.id} data-sketch-annotation={annotation.id} style={{ cursor: editing?.id === annotation.id ? "text" : "move" }} opacity={preview?.id === annotation.id ? .65 : 1} onPointerDown={(event) => begin(event, annotation, null)} onDoubleClick={(event) => {
+        if (annotation.kind !== "text" || editingRef.current?.id === annotation.id) return;
+        event.preventDefault(); event.stopPropagation(); drag.current = null; setMoving(null); onSelect(annotation.id);
+        const next = { id: annotation.id, text: annotation.text }; editingRef.current = next; setEditing(next);
+      }}>
         {polyline && <polyline points={polyline} fill="none" stroke="transparent" strokeWidth={12} vectorEffect="non-scaling-stroke" />}
         {angle && angle.degrees > .0001 && <polyline points={angle.arc.map((point) => `${point.x},${point.y}`).join(" ")} fill="none" stroke="transparent" strokeWidth={12} vectorEffect="non-scaling-stroke" />}
         {annotation.kind === "circle" && <circle cx={annotation.position.x} cy={annotation.position.y} r={annotation.radius} fill="none" stroke="transparent" strokeWidth={12} vectorEffect="non-scaling-stroke" />}
@@ -111,7 +142,14 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
         {annotation.kind === "circle" && <circle cx={annotation.position.x} cy={annotation.position.y} r={annotation.radius} fill="none" stroke={color} strokeWidth={annotation.lineWidth} vectorEffect="non-scaling-stroke" />}
         {label && <g transform={`translate(${label.position.x} ${label.position.y}) scale(1 -1)`}>
           <rect x={labelX} y={-height / 2} width={width} height={height} rx={labelSize / 6} fill="#fff" stroke={color} strokeWidth={2} vectorEffect="non-scaling-stroke" />
-          {lines.map((line, index) => <text key={index} x={label.alignment === "left" ? labelX + labelSize * 2 / 3 : label.alignment === "right" ? labelX + width - labelSize * 2 / 3 : labelX + width / 2} y={-height / 2 + labelSize / 6 + labelSize * (index * 4 / 3 + 2 / 3)} dominantBaseline="middle" textAnchor={label.alignment === "left" ? "start" : label.alignment === "right" ? "end" : "middle"} style={{ fontSize: labelSize, fontFamily: label.font, fill: color, opacity: 1, fontWeight: 400, stroke: "none" }}>{line}</text>)}
+          {annotation.kind === "text" && editing?.id === annotation.id && <foreignObject x={labelX} y={-height / 2} width={width} height={height}>
+            <textarea ref={textInput} className="sketch-annotation-inline-editor" aria-label={educadTranslate(locale, "annotation.text")} maxLength={2000} value={editing.text} style={{ fontSize: labelSize, fontFamily: label.font, color, textAlign: label.alignment, padding: `${labelSize / 6}px ${labelSize * 2 / 3}px` }} onChange={(event) => { const next = { id: annotation.id, text: event.target.value }; editingRef.current = next; setEditing(next); }} onBlur={() => finishText()} onKeyDown={(event) => {
+              event.stopPropagation();
+              if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); finishText(); }
+              if (event.key === "Escape") { event.preventDefault(); finishText(false); }
+            }} />
+          </foreignObject>}
+          {editing?.id !== annotation.id && lines.map((line, index) => <text key={index} x={label.alignment === "left" ? labelX + labelSize * 2 / 3 : label.alignment === "right" ? labelX + width - labelSize * 2 / 3 : labelX + width / 2} y={-height / 2 + labelSize / 6 + labelSize * (index * 4 / 3 + 2 / 3)} dominantBaseline="middle" textAnchor={label.alignment === "left" ? "start" : label.alignment === "right" ? "end" : "middle"} style={{ fontSize: labelSize, fontFamily: label.font, fill: color, opacity: 1, fontWeight: 400, stroke: "none" }}>{line}</text>)}
         </g>}
         {selected && points.map((key) => {
           const point = annotationPosition(annotation, key === "position" ? null : key); if (!point) return null;

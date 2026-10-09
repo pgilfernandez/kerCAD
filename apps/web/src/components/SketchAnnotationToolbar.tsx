@@ -10,12 +10,6 @@ import { educadTranslate, type EducadLocale } from "@/lib/educadI18n";
 import type { ParametricAnnotation } from "@/types/parametric";
 import type { ParametricDisplayUnit } from "@/lib/parametricUnits";
 
-function LabelText({ value, onCommit, label }: { value: string; onCommit: (value: string) => void; label: string }) {
-  const [draft, setDraft] = useState(value);
-  useEffect(() => setDraft(value), [value]);
-  return <input className="sketch-annotation-text-input" aria-label={label} title={label} maxLength={2000} value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={() => { if (draft !== value) onCommit(draft); }} onKeyDown={(event) => { event.stopPropagation(); if (event.key === "Enter") event.currentTarget.blur(); }} />;
-}
-
 export function AnnotationToolbar({ embedded = false, annotation, displayUnit, snap, locale, onUpdate }: { embedded?: boolean; annotation: ParametricAnnotation; displayUnit: ParametricDisplayUnit; snap: number; locale: EducadLocale; onUpdate: (update: (annotation: ParametricAnnotation) => void) => void }) {
   const t = (key: Parameters<typeof educadTranslate>[1]) => educadTranslate(locale, key);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -35,7 +29,6 @@ export function AnnotationToolbar({ embedded = false, annotation, displayUnit, s
   return <div ref={toolbar} className={`sketch-annotation-context-toolbar ${embedded ? "embedded" : ""}`} role="toolbar" aria-label={t("annotation.group")} onPointerDown={(event) => event.stopPropagation()}>
     {annotation.kind !== "circle" && number(annotation.size ?? 3, t("annotation.size"), "length", (draft, value) => { if (draft.kind !== "circle") draft.size = value; })}
     {annotation.kind === "circle" && <>{number(annotation.radius, t("property.radius"), "length", (draft, value) => { if (draft.kind === "circle") draft.radius = value; }, .1, 10000)}{number(annotation.lineWidth, t("annotation.lineWidth"), "scalar", (draft, value) => { if (draft.kind === "circle") draft.lineWidth = value; }, .5, 20)}</>}
-    {annotation.kind === "text" && <LabelText key={annotation.id} value={annotation.text} label={t("annotation.text")} onCommit={(text) => onUpdate((draft) => { if (draft.kind === "text") draft.text = text; })} />}
     {embedded && annotation.kind === "circle" && <select className="educad-context-object-select" aria-label={t("annotation.mode")} title={t("annotation.mode")} value={annotation.mode} onChange={(event) => onUpdate((draft) => { if (draft.kind === "circle") draft.mode = event.target.value as "billboard" | "planar"; })}><option value="billboard">{t("annotation.billboard")}</option><option value="planar">{t("annotation.planar")}</option></select>}
     {annotation.kind === "text" && (["left", "center", "right"] as const).map((alignment) => <button key={alignment} type="button" className={annotation.alignment === alignment ? "active" : ""} aria-pressed={annotation.alignment === alignment} title={`${t("annotation.alignment")}: ${t(`annotation.${alignment}`)}`} aria-label={`${t("annotation.alignment")}: ${t(`annotation.${alignment}`)}`} onClick={() => onUpdate((draft) => { if (draft.kind === "text") draft.alignment = alignment; })}><AnnotationIcon size={34} kind={`align-${alignment}`} /></button>)}
     {annotation.kind === "text" && (["left", "center", "right"] as const).map((alignment) => <button key={alignment} type="button" className={annotation.alignment === alignment ? "active" : ""} aria-pressed={annotation.alignment === alignment} title={`${t("annotation.alignment")}: ${t(`annotation.${alignment}`)}`} aria-label={`${t("annotation.alignment")}: ${t(`annotation.${alignment}`)}`} onClick={() => onUpdate((draft) => { if (draft.kind === "text") draft.alignment = alignment; })}><AnnotationIcon size={34} kind={`align-${alignment}`} /></button>)}
