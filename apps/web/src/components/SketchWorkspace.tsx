@@ -1813,7 +1813,7 @@ export function SketchWorkspace({
             </g>
           ) : null}
           {hover && ["line", "bezier", "smooth", "circle", "arc", "measure"].includes(tool) ? <circle className="sketch-cursor-point" cx={hover.x} cy={hover.z} r={hoverPointRadius} pointerEvents="none" /> : null}
-          <SketchAnnotationLayer annotations={annotations} preview={annotationPreview} selectedId={selectedAnnotationId} screenUnit={screenUnit} zoom={zoom} snapSpacing={exactSnapStep ?? snapStep(snap)} displayUnit={annotationDisplayUnit} locale={locale} pointFromEvent={(event) => pointFromEvent(event, false, true)} onSelect={(id) => onSelectAnnotation?.(id)} onCommit={(annotation) => onCommitAnnotation?.(annotation)} />
+          <SketchAnnotationLayer annotations={annotations} preview={annotationPreview} selectedId={selectedAnnotationId} screenUnit={screenUnit} zoom={zoom} snapSpacing={exactSnapStep ?? snapStep(snap)} displayUnit={annotationDisplayUnit} locale={locale} pointFromEvent={(event, snapEnabled = true) => pointFromEvent(event, false, snapEnabled)} onSelect={(id) => onSelectAnnotation?.(id)} onCommit={(annotation) => onCommitAnnotation?.(annotation)} />
           </g>
         </svg>
       </section>

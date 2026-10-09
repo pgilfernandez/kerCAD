@@ -25,7 +25,7 @@ type Props = {
   snapSpacing: number;
   displayUnit: ParametricDisplayUnit;
   locale?: EducadLocale;
-  pointFromEvent: (event: { clientX: number; clientY: number }) => { x: number; z: number } | null;
+  pointFromEvent: (event: { clientX: number; clientY: number }, snapEnabled?: boolean) => { x: number; z: number } | null;
   onSelect: (id: string | null) => void;
   onCommit: (annotation: ParametricAnnotation) => void;
 };
@@ -57,7 +57,7 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
     document.addEventListener("pointerdown", outside, true);
     return () => document.removeEventListener("pointerdown", outside, true);
   }, [editing?.id]);
-  const drag = useRef<{ annotation: ParametricAnnotation; point: AnnotationPoint | "position" | "radius" | "lineWidth" | "size" | null; origin: { x: number; y: number }; pointerId: number; latest: ParametricAnnotation | null } | null>(null);
+  const drag = useRef<{ annotation: ParametricAnnotation; point: AnnotationPoint | "position" | "radius" | "lineWidth" | "size" | null; origin: { x: number; y: number }; resizeCorner?: { x: number; y: number }; pointerId: number; latest: ParametricAnnotation | null } | null>(null);
   const measure = useRef<CanvasRenderingContext2D | null>(null);
   if (!measure.current && typeof document !== "undefined") measure.current = document.createElement("canvas").getContext("2d");
   useEffect(() => {
@@ -65,18 +65,18 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
     window.addEventListener("keydown", cancel, true);
     return () => window.removeEventListener("keydown", cancel, true);
   }, []);
-  const begin = (event: PointerEvent<SVGElement>, annotation: ParametricAnnotation, point: NonNullable<typeof drag.current>["point"]) => {
+  const begin = (event: PointerEvent<SVGElement>, annotation: ParametricAnnotation, point: NonNullable<typeof drag.current>["point"], resizeCorner?: { x: number; y: number }) => {
     if (editingRef.current?.id === annotation.id) { event.stopPropagation(); return; }
     if (event.button !== 0) return;
-    const origin = pointFromEvent(event); if (!origin) return;
+    const origin = pointFromEvent(event, point !== "size"); if (!origin) return;
     event.preventDefault(); event.stopPropagation(); onSelect(annotation.id);
-    drag.current = { annotation: structuredClone(annotation), point, origin: { x: origin.x, y: origin.z }, pointerId: event.pointerId, latest: null };
+    drag.current = { annotation: structuredClone(annotation), point, origin: { x: origin.x, y: origin.z }, resizeCorner, pointerId: event.pointerId, latest: null };
     event.currentTarget.setPointerCapture(event.pointerId);
   };
   const move = (event: PointerEvent<SVGGElement>) => {
     const action = drag.current; if (!action || action.pointerId !== event.pointerId) return;
     event.preventDefault(); event.stopPropagation();
-    const point = pointFromEvent(event); if (!point) return;
+    const point = pointFromEvent(event, action.point !== "size"); if (!point) return;
     const next = structuredClone(action.annotation);
     if (action.point === "radius" && next.kind === "circle") {
       const radius = Math.hypot(point.x - next.position.x, point.z - next.position.y);
@@ -86,8 +86,11 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
       next.lineWidth = Math.max(0.5, Math.min(20, Math.round((action.annotation.kind === "circle" ? action.annotation.lineWidth + point.z - action.origin.y : 2) * 10) / 10));
     }
     else if (action.point === "size") {
-      const size = (action.annotation.size ?? 3) + point.x - action.origin.x;
-      next.size = Math.max(0.1, Math.min(1000, snapSpacing > 0 ? Math.round(size / snapSpacing) * snapSpacing : size));
+      const corner = action.resizeCorner ?? { x: 1, y: 1 };
+      const scale = 1 + ((point.x - action.origin.x) * corner.x + (point.z - action.origin.y) * corner.y) / Math.max(.0001, corner.x ** 2 + corner.y ** 2);
+      const size = (action.annotation.size ?? 3) * scale;
+      const step = snapSpacing / 2;
+      next.size = Math.max(0.1, Math.min(1000, step > 0 ? Math.round(size / step) * step : size));
     }
     else if (action.point && action.point !== "radius" && action.point !== "lineWidth") {
       const target = annotationPosition(next, action.point === "position" ? null : action.point);
@@ -167,11 +170,7 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
           </foreignObject>}
           {editing?.id !== annotation.id && lines.map((line, index) => <text key={index} x={label.alignment === "left" ? labelX + labelSize * 2 / 3 : label.alignment === "right" ? labelX + width - labelSize * 2 / 3 : labelX + width / 2} y={-height / 2 + labelSize / 6 + labelSize * (index * 4 / 3 + 2 / 3)} dominantBaseline="middle" textAnchor={label.alignment === "left" ? "start" : label.alignment === "right" ? "end" : "middle"} style={{ fontSize: labelSize, fontFamily: label.font, fill: color, opacity: 1, fontWeight: 400, stroke: "none" }}>{line}</text>)}
         </g>}
-        {selected && label && editing?.id !== annotation.id && <g transform={`translate(${label.position.x} ${label.position.y - height / 2 - 14 * screenUnit})`}>
-          <line x1={0} x2={configuredLabelSize + 12 * screenUnit} y1={0} y2={0} stroke="#e0b800" strokeWidth={2} vectorEffect="non-scaling-stroke" pointerEvents="none" />
-          <line x1={0} x2={0} y1={-4 * screenUnit} y2={4 * screenUnit} stroke="#e0b800" strokeWidth={2} vectorEffect="non-scaling-stroke" pointerEvents="none" />
-          <circle cx={configuredLabelSize + 12 * screenUnit} cy={0} r={8 * screenUnit} fill="#fff157" stroke="#e0b800" strokeWidth={2} vectorEffect="non-scaling-stroke" onPointerDown={(event) => begin(event, annotation, "size")} />
-        </g>}
+        {selected && label && editing?.id !== annotation.id && <circle cx={label.position.x + labelX + width} cy={label.position.y + height / 2} r={8 * screenUnit} fill="#fff157" stroke="#e0b800" strokeWidth={2} vectorEffect="non-scaling-stroke" style={{ cursor: "nesw-resize" }} onPointerDown={(event) => begin(event, annotation, "size", { x: labelX + width, y: height / 2 })} />}
         {selected && points.map((key) => {
           const point = annotationPosition(annotation, key === "position" ? null : key); if (!point) return null;
           return <circle key={key} cx={point.x} cy={point.y} r={6 * screenUnit} fill="#add8ff" stroke="#526579" strokeWidth={1} vectorEffect="non-scaling-stroke" onPointerDown={(event) => begin(event, annotation, key)} />;
