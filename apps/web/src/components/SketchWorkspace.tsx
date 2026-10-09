@@ -1236,7 +1236,7 @@ export function SketchWorkspace({
           onPointerDown={(event) => { if (selectedAnnotationId) onSelectAnnotation?.(null); handlePlanePointerDown(event); }}
           onPointerDownCapture={(event) => {
             if (annotationTool && event.button === 0) {
-              const point = pointFromEvent(event, false, false); if (!point) return;
+              const point = pointFromEvent(event, false, true); if (!point) return;
               event.preventDefault(); event.stopPropagation();
               const picks = [...annotationPicks, { x: point.x, y: point.z }];
               const required = annotationTool === "text" ? 1 : annotationTool === "angle" ? 3 : 2;
@@ -1255,7 +1255,7 @@ export function SketchWorkspace({
             event.currentTarget.setPointerCapture(event.pointerId);
             setPointerAction({ kind: "move-selection", pointerId: event.pointerId, origin, current: origin, selection: selected, entityKind: entity.getAttribute("data-sketch-entity")!, entityId: entity.getAttribute("data-sketch-id")! });
           }}
-          onPointerMove={(event) => { if (annotationTool) { const point = pointFromEvent(event, false, false); if (point) setAnnotationHover({ x: point.x, y: point.z }); } else handlePointerMove(event); }}
+          onPointerMove={(event) => { if (annotationTool) { const point = pointFromEvent(event, false, true); if (point) setAnnotationHover({ x: point.x, y: point.z }); } else handlePointerMove(event); }}
           onPointerUp={finishPointerAction}
           onPointerCancel={() => setPointerAction(null)}
           onPointerLeave={() => !pointerAction && setHover(null)}
@@ -1813,7 +1813,7 @@ export function SketchWorkspace({
             </g>
           ) : null}
           {hover && ["line", "bezier", "smooth", "circle", "arc", "measure"].includes(tool) ? <circle className="sketch-cursor-point" cx={hover.x} cy={hover.z} r={hoverPointRadius} pointerEvents="none" /> : null}
-          <SketchAnnotationLayer annotations={annotations} preview={annotationPreview} selectedId={selectedAnnotationId} screenUnit={screenUnit} displayUnit={annotationDisplayUnit} pointFromEvent={(event) => pointFromEvent(event, false, false)} onSelect={(id) => onSelectAnnotation?.(id)} onCommit={(annotation) => onCommitAnnotation?.(annotation)} />
+          <SketchAnnotationLayer annotations={annotations} preview={annotationPreview} selectedId={selectedAnnotationId} screenUnit={screenUnit} snapSpacing={exactSnapStep ?? snapStep(snap)} displayUnit={annotationDisplayUnit} pointFromEvent={(event) => pointFromEvent(event, false, true)} onSelect={(id) => onSelectAnnotation?.(id)} onCommit={(annotation) => onCommitAnnotation?.(annotation)} />
           </g>
         </svg>
       </section>

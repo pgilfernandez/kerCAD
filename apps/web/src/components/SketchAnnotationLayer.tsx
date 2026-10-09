@@ -20,13 +20,14 @@ type Props = {
   preview?: ParametricAnnotation | null;
   selectedId: string | null;
   screenUnit: number;
+  snapSpacing: number;
   displayUnit: ParametricDisplayUnit;
   pointFromEvent: (event: { clientX: number; clientY: number }) => { x: number; z: number } | null;
   onSelect: (id: string | null) => void;
   onCommit: (annotation: ParametricAnnotation) => void;
 };
 
-export function SketchAnnotationLayer({ annotations, preview, selectedId, screenUnit, displayUnit, pointFromEvent, onSelect, onCommit }: Props) {
+export function SketchAnnotationLayer({ annotations, preview, selectedId, screenUnit, snapSpacing, displayUnit, pointFromEvent, onSelect, onCommit }: Props) {
   const [moving, setMoving] = useState<ParametricAnnotation | null>(null);
   const drag = useRef<{ annotation: ParametricAnnotation; point: AnnotationPoint | "position" | "radius" | null; origin: { x: number; y: number }; pointerId: number; latest: ParametricAnnotation | null } | null>(null);
   const measure = useRef<CanvasRenderingContext2D | null>(null);
@@ -48,13 +49,19 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
     event.preventDefault(); event.stopPropagation();
     const point = pointFromEvent(event); if (!point) return;
     const next = structuredClone(action.annotation);
-    if (action.point === "radius" && next.kind === "circle") next.radius = Math.max(0.1, Math.hypot(point.x - next.position.x, point.z - next.position.y));
+    if (action.point === "radius" && next.kind === "circle") {
+      const radius = Math.hypot(point.x - next.position.x, point.z - next.position.y);
+      next.radius = Math.max(0.1, snapSpacing > 0 ? Math.round(radius / snapSpacing) * snapSpacing : radius);
+    }
     else if (action.point) {
       const target = annotationPosition(next, action.point === "position" ? null : action.point);
       if (target) { target.x = point.x; target.y = point.z; target.z = 0; }
     } else {
       const points = next.kind === "text" || next.kind === "circle" ? [next.position] : next.kind === "angle" ? [next.start, next.center, next.end] : [next.start, next.end];
-      for (const target of points) { target.x += point.x - action.origin.x; target.y += point.z - action.origin.y; }
+      const anchor = next.kind === "angle" ? next.center : points[0];
+      let dx = point.x - action.origin.x, dy = point.z - action.origin.y;
+      if (snapSpacing > 0) { dx = Math.round((anchor.x + dx) / snapSpacing) * snapSpacing - anchor.x; dy = Math.round((anchor.y + dy) / snapSpacing) * snapSpacing - anchor.y; }
+      for (const target of points) { target.x += dx; target.y += dy; }
     }
     action.latest = next; setMoving(next);
   };
