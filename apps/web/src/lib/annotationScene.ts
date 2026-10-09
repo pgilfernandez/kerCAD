@@ -68,6 +68,10 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
           const guide = drawLines([new THREE.Vector3(), end], annotation.id, "#e4bc00");
           guide.userData.annotationPickable = false; guide.renderOrder = 100009; circle.add(guide);
           const handle = sphere("#fff157", 28); handle.position.copy(end); handle.userData.annotationRadiusTarget = true;
+          const widthEnd = new THREE.Vector3(0, annotation.radius + 4 + annotation.lineWidth, 0);
+          const widthGuide = drawLines([new THREE.Vector3(0, annotation.radius + 4, 0), widthEnd], annotation.id, "#e4bc00");
+          widthGuide.userData.annotationPickable = false; widthGuide.renderOrder = 100009; circle.add(widthGuide);
+          const widthHandle = sphere("#fff157", 28); widthHandle.position.copy(widthEnd); widthHandle.userData.annotationLineWidthTarget = true;
         }
       }
       continue;

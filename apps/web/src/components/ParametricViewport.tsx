@@ -1894,8 +1894,8 @@ export function ParametricViewport({ onUpdateAnnotation, onCircleAnnotationRadiu
       if (!layer?.visible) return null;
       setPointer(event); layer.userData.updateBillboards?.(camera); updateYellowManipulatorScreenSizes(); layer.updateWorldMatrix(true, true);
       const handles: THREE.Object3D[] = [];
-      layer.traverse((child) => { if (child.visible && child.userData.annotationRadiusTarget) handles.push(child); });
-      return raycaster.intersectObjects(handles, false)[0]?.object.parent ?? null;
+      layer.traverse((child) => { if (child.visible && (child.userData.annotationRadiusTarget || child.userData.annotationLineWidthTarget)) handles.push(child); });
+      return raycaster.intersectObjects(handles, false)[0]?.object ?? null;
     };
     processPendingHover = () => {
       const event = pendingHoverEvent;
@@ -1910,7 +1910,8 @@ export function ParametricViewport({ onUpdateAnnotation, onCircleAnnotationRadiu
       replaceHoverDimensions(hoveredManipulatorDimensions(event));
       if (!alignmentRef.current.active && annotationAtPointer() && !originHandleAtPointer()) renderer.domElement.style.cursor = "pointer";
       if (!alignmentRef.current.active && annotationPointHandleRef.current(event)) renderer.domElement.style.cursor = "grab";
-      if (!alignmentRef.current.active && annotationRadiusHandleRef.current(event)) renderer.domElement.style.cursor = "ew-resize";
+      const annotationParameterHandle = !alignmentRef.current.active ? annotationRadiusHandleRef.current(event) : null;
+      if (annotationParameterHandle) renderer.domElement.style.cursor = annotationParameterHandle.userData.annotationLineWidthTarget ? "ns-resize" : "ew-resize";
     };
     const snapTargetAtPointer = (event: PointerEvent): THREE.Vector3 | null => {
       const bounds = renderer.domElement.getBoundingClientRect();
@@ -4476,7 +4477,7 @@ export function ParametricViewport({ onUpdateAnnotation, onCircleAnnotationRadiu
     };
   }, [onProjectRename, projection, renderQuality, shadingMode]);
   return <div className="parametric-viewport" ref={hostRef} aria-label={locale === "es" ? "Vista 3D de la pieza" : "3D model view"}>
-    <AnnotationInteraction host={hostRef} camera={cameraRef} model={modelRef} snapPoint={annotationSnapRef} positionHandleAtPointer={(event) => annotationPositionHandleRef.current(event)} pointHandleAtPointer={(event) => annotationPointHandleRef.current(event)} radiusHandleAtPointer={(event) => annotationRadiusHandleRef.current(event)} selectLabelAtPointer={(event) => annotationLabelSelectRef.current(event)} onCircleRadius={(id, radius) => onCircleAnnotationRadius?.(id, radius)} workplane={workplane} displayUnit={displayUnit} tool={annotationTool} selected={annotationInteractionSelection ? { ...annotationInteractionSelection, visible: annotationInteractionSelection.visible && annotationsVisible } : undefined} parameterHandlesVisible={parameterHandlesVisible} onSelectEndpoint={(endpoint) => onSelectAnnotationEndpoint?.(endpoint)} onMoveEndpoint={(id, endpoint, position) => onMoveAnnotationEndpoint?.(id, endpoint, position)} onMoveText={(id, position) => onObjectAxisMove?.(id, position)} editing={Boolean(editingAnnotationId && editingAnnotationId === selectedAnnotationId)} locale={locale} onPlace={(kind, start, end, center) => onPlaceAnnotation?.(kind, start, end, center)} onFinish={(id, text, size) => onFinishAnnotation?.(id, text, size)} onEdit={(id) => onEditAnnotation?.(id)} onCancelTool={() => onCancelAnnotationTool?.()} onPreview={setAnnotationPreview} />
+    <AnnotationInteraction host={hostRef} camera={cameraRef} model={modelRef} snapPoint={annotationSnapRef} positionHandleAtPointer={(event) => annotationPositionHandleRef.current(event)} pointHandleAtPointer={(event) => annotationPointHandleRef.current(event)} radiusHandleAtPointer={(event) => annotationRadiusHandleRef.current(event)} selectLabelAtPointer={(event) => annotationLabelSelectRef.current(event)} onCircleRadius={(id, radius) => onCircleAnnotationRadius?.(id, radius)} onCircleLineWidth={(id, width) => onUpdateAnnotation?.(id, (draft) => { if (draft.kind === "circle") draft.lineWidth = width; })} workplane={workplane} displayUnit={displayUnit} tool={annotationTool} selected={annotationInteractionSelection ? { ...annotationInteractionSelection, visible: annotationInteractionSelection.visible && annotationsVisible } : undefined} parameterHandlesVisible={parameterHandlesVisible} onSelectEndpoint={(endpoint) => onSelectAnnotationEndpoint?.(endpoint)} onMoveEndpoint={(id, endpoint, position) => onMoveAnnotationEndpoint?.(id, endpoint, position)} onMoveText={(id, position) => onObjectAxisMove?.(id, position)} editing={Boolean(editingAnnotationId && editingAnnotationId === selectedAnnotationId)} locale={locale} onPlace={(kind, start, end, center) => onPlaceAnnotation?.(kind, start, end, center)} onFinish={(id, text, size) => onFinishAnnotation?.(id, text, size)} onEdit={(id) => onEditAnnotation?.(id)} onCancelTool={() => onCancelAnnotationTool?.()} onPreview={setAnnotationPreview} />
     {alignmentActive ? <div ref={alignmentButtonsRef} className="educad-alignment-face-buttons" role="group" aria-label={locale === "es" ? "Alinear con la referencia" : "Align with reference"}>
       {(["x", "y", "z"] as const).flatMap(axis => (["min", "center", "max"] as const).map(anchor => {
         const label = locale === "es"

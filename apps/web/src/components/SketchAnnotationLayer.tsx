@@ -56,7 +56,7 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
     document.addEventListener("pointerdown", outside, true);
     return () => document.removeEventListener("pointerdown", outside, true);
   }, [editing?.id]);
-  const drag = useRef<{ annotation: ParametricAnnotation; point: AnnotationPoint | "position" | "radius" | null; origin: { x: number; y: number }; pointerId: number; latest: ParametricAnnotation | null } | null>(null);
+  const drag = useRef<{ annotation: ParametricAnnotation; point: AnnotationPoint | "position" | "radius" | "lineWidth" | null; origin: { x: number; y: number }; pointerId: number; latest: ParametricAnnotation | null } | null>(null);
   const measure = useRef<CanvasRenderingContext2D | null>(null);
   if (!measure.current && typeof document !== "undefined") measure.current = document.createElement("canvas").getContext("2d");
   useEffect(() => {
@@ -81,7 +81,10 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
       const radius = Math.hypot(point.x - next.position.x, point.z - next.position.y);
       next.radius = Math.max(0.1, snapSpacing > 0 ? Math.round(radius / snapSpacing) * snapSpacing : radius);
     }
-    else if (action.point) {
+    else if (action.point === "lineWidth" && next.kind === "circle") {
+      next.lineWidth = Math.max(0.5, Math.min(20, Math.round((action.annotation.kind === "circle" ? action.annotation.lineWidth + point.z - action.origin.y : 2) * 10) / 10));
+    }
+    else if (action.point && action.point !== "radius" && action.point !== "lineWidth") {
       const target = annotationPosition(next, action.point === "position" ? null : action.point);
       if (target) { target.x = point.x; target.y = point.z; target.z = 0; }
     } else {
@@ -162,6 +165,10 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
           return <circle key={key} cx={point.x} cy={point.y} r={6 * screenUnit} fill="#add8ff" stroke="#526579" strokeWidth={1} vectorEffect="non-scaling-stroke" onPointerDown={(event) => begin(event, annotation, key)} />;
         })}
         {selected && annotation.kind === "circle" && <circle cx={annotation.position.x + annotation.radius} cy={annotation.position.y} r={8 * screenUnit} fill="#fff157" stroke="#e0b800" strokeWidth={2} vectorEffect="non-scaling-stroke" onPointerDown={(event) => begin(event, annotation, "radius")} />}
+        {selected && annotation.kind === "circle" && <>
+          <line x1={annotation.position.x} x2={annotation.position.x} y1={annotation.position.y + annotation.radius + 4} y2={annotation.position.y + annotation.radius + 4 + annotation.lineWidth} stroke="#e0b800" strokeWidth={2} vectorEffect="non-scaling-stroke" pointerEvents="none" />
+          <circle cx={annotation.position.x} cy={annotation.position.y + annotation.radius + 4 + annotation.lineWidth} r={8 * screenUnit} fill="#fff157" stroke="#e0b800" strokeWidth={2} vectorEffect="non-scaling-stroke" onPointerDown={(event) => begin(event, annotation, "lineWidth")} />
+        </>}
       </g>;
     })}
   </g>;

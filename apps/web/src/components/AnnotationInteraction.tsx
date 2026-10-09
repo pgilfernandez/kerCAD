@@ -18,6 +18,7 @@ type Props = {
   radiusHandleAtPointer: (event: PointerEvent) => THREE.Object3D | null;
   selectLabelAtPointer: (event: PointerEvent) => boolean;
   onCircleRadius: (id: string, radius: number) => void;
+  onCircleLineWidth: (id: string, width: number) => void;
   workplane: ParametricDocument["workplane"];
   tool: AnnotationTool | null;
   selected?: ParametricAnnotation;
@@ -55,7 +56,7 @@ export function AnnotationInteraction(props: Props) {
     x: number; y: number; plane: THREE.Plane; offset: THREE.Vector3;
     latest: THREE.Vector3 | null;
   } | null>(null);
-  const radiusDrag = useRef<{ annotation: Extract<ParametricAnnotation, { kind: "circle" }>; pointerId: number; element: HTMLCanvasElement; plane: THREE.Plane; inverse: THREE.Matrix4; offset: number; latest: number | null } | null>(null);
+  const radiusDrag = useRef<{ annotation: Extract<ParametricAnnotation, { kind: "circle" }>; parameter: "radius" | "lineWidth"; pointerId: number; element: HTMLCanvasElement; plane: THREE.Plane; inverse: THREE.Matrix4; offset: number; latest: number | null } | null>(null);
   const dragging = useRef<{ x: number; size: number; pointerId: number } | null>(null);
   const draft = useRef({ text, size }); draft.current = { text, size };
   const labelSize = selected && selected.kind !== "circle" ? selected.size : undefined;
@@ -195,9 +196,11 @@ export function AnnotationInteraction(props: Props) {
         event.preventDefault(); event.stopImmediatePropagation();
         const hit = rayAtPointer(event)?.intersectPlane(radius.plane, new THREE.Vector3());
         if (!hit) return;
-        const step = current.current.workplane.snapToGrid ? current.current.workplane.snapSpacing : 0.01;
-        radius.latest = Math.max(0.1, Math.min(10000, Math.round((hit.applyMatrix4(radius.inverse).x - radius.offset) / step) * step));
-        current.current.onPreview({ ...radius.annotation, radius: radius.latest });
+        const width = radius.parameter === "lineWidth";
+        const step = width ? 0.1 : current.current.workplane.snapToGrid ? current.current.workplane.snapSpacing : 0.01;
+        const local = hit.applyMatrix4(radius.inverse);
+        radius.latest = Math.max(width ? 0.5 : 0.1, Math.min(width ? 20 : 10000, Math.round(((width ? local.y : local.x) - radius.offset) / step) * step));
+        current.current.onPreview({ ...radius.annotation, [radius.parameter]: radius.latest });
         return;
       }
       if (endpointDrag.current?.element instanceof HTMLCanvasElement && endpointDrag.current.pointerId === event.pointerId) {
@@ -220,15 +223,18 @@ export function AnnotationInteraction(props: Props) {
     const down = (event: PointerEvent) => {
       const p = current.current;
       if (event.button === 0 && event.target instanceof HTMLCanvasElement && !p.tool) {
-        const root = p.radiusHandleAtPointer(event);
-        if (root && p.selected?.kind === "circle") {
+        const handle = p.radiusHandleAtPointer(event);
+        const root = handle?.parent;
+        if (root && handle && p.selected?.kind === "circle") {
           event.preventDefault(); event.stopImmediatePropagation();
           root.updateWorldMatrix(true, false);
           const inverse = root.matrixWorld.clone().invert();
           const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 0, 1).transformDirection(root.matrixWorld), root.getWorldPosition(new THREE.Vector3()));
           const hit = rayAtPointer(event)?.intersectPlane(plane, new THREE.Vector3());
           if (!hit) return;
-          radiusDrag.current = { annotation: structuredClone(p.selected), pointerId: event.pointerId, element: event.target, inverse, plane, offset: hit.applyMatrix4(inverse).x - p.selected.radius, latest: null };
+          const parameter = handle.userData.annotationLineWidthTarget ? "lineWidth" : "radius";
+          const local = hit.applyMatrix4(inverse);
+          radiusDrag.current = { annotation: structuredClone(p.selected), parameter, pointerId: event.pointerId, element: event.target, inverse, plane, offset: (parameter === "lineWidth" ? local.y : local.x) - p.selected[parameter], latest: null };
           event.target.setPointerCapture(event.pointerId);
           return;
         }
@@ -272,7 +278,10 @@ export function AnnotationInteraction(props: Props) {
       if (radius && radius.pointerId === event.pointerId) {
         event.stopImmediatePropagation(); radiusDrag.current = null;
         if (radius.element.hasPointerCapture(event.pointerId)) radius.element.releasePointerCapture(event.pointerId);
-        if (radius.latest !== null) current.current.onCircleRadius(radius.annotation.id, radius.latest);
+        if (radius.latest !== null) {
+          if (radius.parameter === "lineWidth") current.current.onCircleLineWidth(radius.annotation.id, radius.latest);
+          else current.current.onCircleRadius(radius.annotation.id, radius.latest);
+        }
         current.current.onPreview(null); return;
       }
       if (endpointDrag.current?.element instanceof HTMLCanvasElement && endpointDrag.current.pointerId === event.pointerId) {
