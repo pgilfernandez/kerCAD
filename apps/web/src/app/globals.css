@@ -10299,16 +10299,20 @@ input[aria-invalid="true"] { box-shadow: inset 0 0 0 1px #d34545; }
 .parametric-viewport .educad-dimension-endpoint.active { width: 20px; height: 20px; border-color: #d3a900; background: #ffe431; }
 .parametric-viewport .educad-dimension-endpoint:hover { border-color: #d3a900; }
 .parametric-viewport .educad-annotation-position-handle { pointer-events: auto; }
-.sketch-annotation-context-toolbar { position: absolute; z-index: 40; top: 12px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; width: max-content; max-width: calc(100% - 150px); padding: 5px 8px; border: 1px solid #cbd7df; border-radius: 8px; background: #fff; box-shadow: 0 3px 12px #2342; overflow-x: auto; scrollbar-width: none; touch-action: pan-x; }
+.sketch-annotation-context-toolbar { --annotation-button-width: 44px; --annotation-button-height: 43px; --annotation-icon-size: 34px; position: absolute; z-index: 40; top: 12px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; width: max-content; max-width: calc(100% - 150px); padding: 5px; border: 1px solid rgba(194, 209, 219, 0.9); border-radius: 17px; background: #f4f7f9; box-shadow: 0 10px 30px rgba(32, 64, 84, 0.14), 0 2px 6px rgba(32, 64, 84, 0.08); backdrop-filter: blur(14px) saturate(1.15); overflow-x: auto; scrollbar-width: none; touch-action: pan-x; }
 .sketch-annotation-context-toolbar::-webkit-scrollbar { display: none; }
 .sketch-annotation-context-toolbar.embedded { position: static; transform: none; max-width: none; border: 0; padding: 0; box-shadow: none; background: transparent; overflow: visible; }
 .sketch-annotation-context-toolbar > * { flex-shrink: 0; }
-.sketch-annotation-context-toolbar > button, .sketch-annotation-color-control > button { display: grid; place-items: center; width: 44px; height: 43px; flex: 0 0 44px; padding: 3px; border: 1px solid transparent; border-radius: 12px; color: #526a7b; background: transparent; }
-.sketch-annotation-color-control .educad-color-preview { width: 34px; height: 34px; border-radius: 8px; }
-.sketch-annotation-context-toolbar > button:hover, .sketch-annotation-context-toolbar > button.active, .sketch-annotation-color-control > button:hover { background: #eaf2ff; color: var(--educad-primary-blue); }
+.sketch-annotation-context-toolbar > button, .sketch-annotation-color-control > button { display: grid; place-items: center; width: var(--annotation-button-width); height: var(--annotation-button-height); flex: 0 0 var(--annotation-button-width); padding: 3px; border: 1px solid transparent; border-radius: 12px; color: #173b5a; background: transparent; transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease, transform 140ms ease; }
+.sketch-annotation-context-toolbar .educad-operation-tree-icon { max-width: var(--annotation-icon-size); max-height: var(--annotation-icon-size); }
+.sketch-annotation-color-control .educad-color-preview { width: var(--annotation-icon-size); height: var(--annotation-icon-size); border-radius: 8px; }
+.sketch-annotation-context-toolbar > button:hover, .sketch-annotation-color-control > button:hover { color: #071f32; background: rgba(223, 239, 247, 0.82); border-color: rgba(155, 190, 207, 0.7); transform: translateY(1px); }
+.sketch-annotation-context-toolbar > button.active { color: #006b94; background: #def5fb; border-color: #6fc8df; }
+.sketch-annotation-context-toolbar > button:focus-visible, .sketch-annotation-color-control > button:focus-visible { outline: 2px solid #28a9d2; outline-offset: 1px; }
 .sketch-annotation-context-toolbar .educad-viewport-edge-treatment-radius { width: 120px; }
 .sketch-annotation-text-input { width: 140px; min-height: 32px; padding: 3px 6px; border: 1px solid #cbd7df; border-radius: 4px; color: #233c52; font-size: 14px; }
 .sketch-annotation-color-popup { position: fixed; z-index: 250; width: 240px; background: #fff; border: 1px solid #cbd7df; border-radius: 8px; box-shadow: 0 4px 18px #2343; }
 .sketch-annotations { opacity: 1; }
 .sketch-plate-world .sketch-annotations text { transform: none; }
 @media (max-width: 640px) { .sketch-annotation-context-toolbar { top: 8px; max-width: calc(100% - 84px); gap: 4px; } }
+@media (max-width: 490px) { .sketch-annotation-context-toolbar { --annotation-button-width: 38px; --annotation-button-height: 37px; --annotation-icon-size: 29px; padding: 4px; border-radius: 15px; } .sketch-annotation-context-toolbar.embedded { padding: 0; } .sketch-annotation-context-toolbar > button, .sketch-annotation-color-control > button { border-radius: 10px; } }

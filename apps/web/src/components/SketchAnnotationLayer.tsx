@@ -111,7 +111,7 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
         {annotation.kind === "circle" && <circle cx={annotation.position.x} cy={annotation.position.y} r={annotation.radius} fill="none" stroke={color} strokeWidth={annotation.lineWidth} vectorEffect="non-scaling-stroke" />}
         {label && <g transform={`translate(${label.position.x} ${label.position.y}) scale(1 -1)`}>
           <rect x={labelX} y={-height / 2} width={width} height={height} rx={labelSize / 6} fill="#fff" stroke={color} strokeWidth={2} vectorEffect="non-scaling-stroke" />
-          {lines.map((line, index) => <text key={index} x={labelX + width / 2} y={-height / 2 + labelSize / 6 + labelSize * (index * 4 / 3 + 2 / 3)} dominantBaseline="middle" textAnchor="middle" style={{ fontSize: labelSize, fontFamily: label.font, fill: color, opacity: 1, fontWeight: 400, stroke: "none" }}>{line}</text>)}
+          {lines.map((line, index) => <text key={index} x={label.alignment === "left" ? labelX + labelSize * 2 / 3 : label.alignment === "right" ? labelX + width - labelSize * 2 / 3 : labelX + width / 2} y={-height / 2 + labelSize / 6 + labelSize * (index * 4 / 3 + 2 / 3)} dominantBaseline="middle" textAnchor={label.alignment === "left" ? "start" : label.alignment === "right" ? "end" : "middle"} style={{ fontSize: labelSize, fontFamily: label.font, fill: color, opacity: 1, fontWeight: 400, stroke: "none" }}>{line}</text>)}
         </g>}
         {selected && points.map((key) => {
           const point = annotationPosition(annotation, key === "position" ? null : key); if (!point) return null;
