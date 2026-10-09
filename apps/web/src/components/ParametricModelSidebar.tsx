@@ -16,7 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { createContext, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode, useContext, useEffect, useRef, useState } from "react";
-import { ANNOTATIONS_GROUP_ID, canReorderParametricSelection, canResetParametricFeature, OBJECT_COLOR_PALETTE, parametricObjectTree, sketchForExtrude, updateParametricTreeSelection, type ParametricTreeSelection } from "@/lib/parametricObjects";
+import { ANNOTATIONS_GROUP_ID, canReorderAnnotation, canReorderParametricSelection, canResetParametricFeature, OBJECT_COLOR_PALETTE, parametricObjectTree, sketchForExtrude, updateParametricTreeSelection, type ParametricTreeSelection } from "@/lib/parametricObjects";
 import { localizedParametricOperationDefinition, parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import { parametricTextFontNames, updateParametricTextSketch } from "@/lib/parametricText";
 import { requiresAddOperation } from "@/lib/parametricOperationModes";
@@ -308,8 +308,8 @@ export function ParametricModelSidebar({
         </section>
 
       {mode === "normal" ? <div className="educad-tree-toolbar" role="toolbar" aria-label={t("model.treeActions")}>
-        <button disabled={!canReorderParametricSelection(document, reorderSelection, "up")} aria-label={t("model.moveUp")} title={t("model.moveUp")} onClick={() => onReorderSelection("up")}><ArrowUp size={16} /></button>
-        <button disabled={!canReorderParametricSelection(document, reorderSelection, "down")} aria-label={t("model.moveDown")} title={t("model.moveDown")} onClick={() => onReorderSelection("down")}><ArrowDown size={16} /></button>
+        <button disabled={!(selectedAnnotation ? canReorderAnnotation(document, selectedAnnotation.id, "up") : canReorderParametricSelection(document, reorderSelection, "up"))} aria-label={t("model.moveUp")} title={t("model.moveUp")} onClick={() => onReorderSelection("up")}><ArrowUp size={16} /></button>
+        <button disabled={!(selectedAnnotation ? canReorderAnnotation(document, selectedAnnotation.id, "down") : canReorderParametricSelection(document, reorderSelection, "down"))} aria-label={t("model.moveDown")} title={t("model.moveDown")} onClick={() => onReorderSelection("down")}><ArrowDown size={16} /></button>
         <span className="educad-tree-toolbar-separator" aria-hidden="true" />
         <button disabled={selection.length === 0} aria-label={t("common.rename")} title={t("common.rename")} onClick={beginRename}><Pencil size={15} /></button>
         <button disabled={!selectedFeature || !canResetParametricFeature(selectedFeature)} aria-label={t("operation.reset")} title={t("operation.reset")} onClick={() => selectedFeature && onResetFeature(selectedFeature.id)}><RotateCcw size={16} /></button>

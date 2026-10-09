@@ -106,6 +106,8 @@ import {
   moveParametricObjectOrigin,
   objectIdForFeature,
   canReorderParametricSelection,
+  canReorderAnnotation,
+  reorderAnnotation,
   ANNOTATIONS_GROUP_ID,
   renameParametricSelection,
   resetParametricFeature,
@@ -2723,6 +2725,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   };
 
   const reorderSelection = (direction: "up" | "down") => {
+    if (selectedAnnotation) {
+      if (canReorderAnnotation(document, selectedAnnotation.id, direction)) mutate((draft) => { reorderAnnotation(draft, selectedAnnotation.id, direction); });
+      return;
+    }
     const nodes: ModelTreeSelection[] = selectedAnnotationId === ANNOTATIONS_GROUP_ID ? [{ id: ANNOTATIONS_GROUP_ID, kind: "object" }] : modelSelection;
     if (!canReorderParametricSelection(document, nodes, direction)) return;
     mutate((draft) => { reorderParametricSelection(draft, nodes, direction); });
@@ -3714,6 +3720,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             mutate((draft) => { const annotation = draft.annotations?.find((item) => item.id === id); if (annotation && annotation.kind !== "circle") { if (annotation.kind === "text") annotation.text = text; annotation.size = size; } });
             setEditingAnnotationId(null);
           }}
+          onAnnotationTextSize={(id, size) => mutate((draft) => { const annotation = draft.annotations?.find((item) => item.id === id); if (annotation && annotation.kind !== "circle") annotation.size = size; })}
           onThumbnail={(dataUrl) => {
             const stepId = challengeCaptureStepRef.current;
             if (stepId) {

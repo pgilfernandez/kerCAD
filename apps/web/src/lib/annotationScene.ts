@@ -11,6 +11,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
   const group = new THREE.Group();
   const disposables: Array<{ dispose: () => void }> = [];
   const vector = (point: { x: number; y: number; z: number }) => new THREE.Vector3(point.x, point.y, point.z);
+  let drawOrder = 100;
   const billboardCircles: THREE.Group[] = [];
   const parentQuaternion = new THREE.Quaternion(), cameraQuaternion = new THREE.Quaternion(), spinQuaternion = new THREE.Quaternion();
   const screenNormal = new THREE.Vector3(0, 0, 1);
@@ -31,10 +32,13 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
     lines.computeLineDistances();
     lines.userData.annotationId = id; lines.userData.annotationPickable = true;
     lines.onBeforeRender = (renderer) => material.resolution.set(Math.max(1, renderer.domElement.clientWidth), Math.max(1, renderer.domElement.clientHeight));
-    lines.renderOrder = 89; group.add(lines); disposables.push(geometry, material);
+    lines.renderOrder = drawOrder; group.add(lines); disposables.push(geometry, material);
     return lines;
   };
-  for (const annotation of annotations) {
+  for (let index = 0; index < annotations.length; index++) {
+    const annotation = annotations[index];
+    // Earlier tree entries paint last, above every later annotation.
+    drawOrder = 100 + (annotations.length - index) * 4;
     if (!annotation.visible) continue;
     if (annotation.kind === "circle") {
       const circle = new THREE.Group();
@@ -54,7 +58,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
           const geometry = new THREE.SphereGeometry(1, 16, 12);
           const material = new THREE.MeshBasicMaterial({ color, depthTest: false, depthWrite: false, transparent: true });
           const handle = new THREE.Mesh(geometry, material);
-          handle.renderOrder = 110; handle.userData.yellowManipulatorBaseRadius = 1; handle.userData.yellowManipulatorDiameterPixels = pixels;
+          handle.renderOrder = 100010; handle.userData.yellowManipulatorBaseRadius = 1; handle.userData.yellowManipulatorDiameterPixels = pixels;
           circle.add(handle); disposables.push(geometry, material);
           return handle;
         };
@@ -62,7 +66,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
         if (pointSelection.parametersVisible) {
           const end = new THREE.Vector3(annotation.radius + 4, 0, 0);
           const guide = drawLines([new THREE.Vector3(), end], annotation.id, "#e4bc00");
-          guide.userData.annotationPickable = false; circle.add(guide);
+          guide.userData.annotationPickable = false; guide.renderOrder = 100009; circle.add(guide);
           const handle = sphere("#fff157", 28); handle.position.copy(end); handle.userData.annotationRadiusTarget = true;
         }
       }
@@ -79,7 +83,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
         const material = new THREE.MeshBasicMaterial({ color: active ? "#ffe431" : "#add8ff", depthTest: false, depthWrite: false, transparent: true });
         const sphere = new THREE.Mesh(geometry, material);
         sphere.position.copy(vector(point));
-        sphere.renderOrder = 110;
+        sphere.renderOrder = 100010;
         sphere.userData.annotationPoint = key;
         // Reuse the viewport's pre-render screen-size adjustment for handles.
         sphere.userData.yellowManipulatorBaseRadius = 1;
@@ -128,7 +132,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
       sprite.position.copy(position);
       sprite.center.set(alignment === "left" ? 0 : alignment === "right" ? 1 : 0.5, 0.5);
       sprite.scale.set(canvas.width / 48 * size, canvas.height / 48 * size, 1);
-      sprite.renderOrder = 90;
+      sprite.renderOrder = drawOrder + 1;
       let lastPaint = "";
       const world = new THREE.Vector3(), scale = new THREE.Vector3(), ndc = new THREE.Vector3(), edge = new THREE.Vector3();
       sprite.onBeforeRender = (renderer, _scene, camera) => {
@@ -180,7 +184,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
         arrow.userData.annotationId = annotation.id; arrow.userData.annotationPickable = true;
         arrow.position.copy(point).addScaledVector(direction, -sign * height / 2);
         arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().multiplyScalar(sign));
-        arrow.renderOrder = 89;
+        arrow.renderOrder = drawOrder;
         group.add(arrow);
       }
       disposables.push(cone, coneMaterial);

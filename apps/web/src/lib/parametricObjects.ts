@@ -383,6 +383,20 @@ function moveSelectedIds(ids: string[], selectedIds: Set<string>, direction: "up
   return { reordered, moved };
 }
 
+export function canReorderAnnotation(document: ParametricDocument, id: string, direction: "up" | "down") {
+  const annotations = document.annotations ?? [];
+  const index = annotations.findIndex((annotation) => annotation.id === id);
+  return index >= 0 && (direction === "up" ? index > 0 : index < annotations.length - 1);
+}
+
+export function reorderAnnotation(document: ParametricDocument, id: string, direction: "up" | "down") {
+  if (!canReorderAnnotation(document, id, direction) || !document.annotations) return false;
+  const index = document.annotations.findIndex((annotation) => annotation.id === id);
+  const neighbor = index + (direction === "up" ? -1 : 1);
+  [document.annotations[index], document.annotations[neighbor]] = [document.annotations[neighbor], document.annotations[index]];
+  return true;
+}
+
 export function canReorderParametricSelection(document: ParametricDocument, selection: ParametricTreeSelection[], direction: "up" | "down") {
   if (selection.length === 0) return false;
   const selectedKind = selection[0].kind;

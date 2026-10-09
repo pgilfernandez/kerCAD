@@ -16,6 +16,7 @@ type Props = {
   positionHandleAtPointer: (event: PointerEvent) => boolean;
   pointHandleAtPointer: (event: PointerEvent) => AnnotationPoint | "position" | null;
   radiusHandleAtPointer: (event: PointerEvent) => THREE.Object3D | null;
+  selectLabelAtPointer: (event: PointerEvent) => boolean;
   onCircleRadius: (id: string, radius: number) => void;
   workplane: ParametricDocument["workplane"];
   tool: AnnotationTool | null;
@@ -152,9 +153,9 @@ export function AnnotationInteraction(props: Props) {
     current.current.onPreview(null);
   };
   useEffect(() => {
-    if (selected?.kind === "text") { setText(selected.text); setSize(selected.size); }
-    else if (selected && selected.kind !== "circle") setSize(selected.size ?? 3);
-  }, [selected?.id, selected?.kind === "text" ? selected.text : null, labelSize]);
+    if (selected?.kind === "text") setText(selected.text);
+  }, [selected?.id, selected?.kind === "text" ? selected.text : null]);
+  useEffect(() => { if (selected && selected.kind !== "circle") setSize(labelSize ?? 3); }, [selected?.id, labelSize]);
   useEffect(() => {
     if (!editing) return;
     const frame = requestAnimationFrame(() => { input.current?.focus(); input.current?.select(); });
@@ -346,7 +347,7 @@ export function AnnotationInteraction(props: Props) {
     {snapped && (tool === "dimension" || tool === "arrow" || tool === "dashedLine" || tool === "angle" || tool === "circle" || endpointDragging) && <div ref={marker} className="educad-annotation-snap-marker" />}
     {textAnnotation?.visible && <button ref={textMarker} style={{ display: "none" }} type="button" className={`educad-dimension-endpoint educad-annotation-position-handle ${endpointDragging ? "active" : ""}`} title={locale === "es" ? "Arrastrar posición · ajustar a geometría" : "Drag position · snap to geometry"} aria-label={locale === "es" ? "Mover etiqueta" : "Move label"} onPointerDown={(event) => beginEndpointDrag(event, "position")} onPointerMove={moveEndpointDrag} onPointerUp={finishEndpointDrag} onPointerCancel={cancelEndpointDrag} onLostPointerCapture={() => { if (endpointDrag.current) cancelEndpointDrag(); }} />}
     {labelInfo && selected?.visible && <div ref={editor} className="educad-annotation-editor" style={{ fontFamily: `${labelInfo.font}, sans-serif`, textAlign: labelInfo.alignment }}>
-      {textAnnotation ? editing ? <textarea ref={input} value={text} maxLength={2000} aria-label={locale === "es" ? "Texto de la etiqueta" : "Label text"} onChange={(event) => { setText(event.target.value); draft.current.text = event.target.value; }} onKeyDown={(event) => { event.stopPropagation(); if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); finish(); } if (event.key === "Escape") { if (endpointDrag.current) cancelEndpointDrag(); else cancelEdit(); } }} /> : <button className="educad-annotation-edit-target" aria-label={locale === "es" ? "Editar etiqueta" : "Edit label"} title={locale === "es" ? "Doble clic para editar" : "Double-click to edit"} onDoubleClick={() => props.onEdit(textAnnotation.id)} /> : null}
+      {textAnnotation ? editing ? <textarea ref={input} value={text} maxLength={2000} aria-label={locale === "es" ? "Texto de la etiqueta" : "Label text"} onChange={(event) => { setText(event.target.value); draft.current.text = event.target.value; }} onKeyDown={(event) => { event.stopPropagation(); if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); finish(); } if (event.key === "Escape") { if (endpointDrag.current) cancelEndpointDrag(); else cancelEdit(); } }} /> : <button className="educad-annotation-edit-target" aria-label={locale === "es" ? "Editar etiqueta" : "Edit label"} title={locale === "es" ? "Doble clic para editar" : "Double-click to edit"} onPointerDown={(event) => { if (props.selectLabelAtPointer(event.nativeEvent)) { event.preventDefault(); event.stopPropagation(); } }} onDoubleClick={() => props.onEdit(textAnnotation.id)} /> : null}
       {props.parameterHandlesVisible && <div className="educad-annotation-size-slider" style={{ width: Math.max(140, size * 8 + 28) }}>
         <svg width="100%" height="24" aria-hidden="true"><line x1="0" y1="12" x2="100%" y2="12" /><line x1="0" y1="6" x2="0" y2="18" /></svg>
         <button type="button" className="educad-annotation-size-handle" style={{ left: size * 8 }} title={locale === "es" ? "Tamaño del texto" : "Text size"} aria-label={locale === "es" ? "Tamaño del texto" : "Text size"} onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); dragging.current = { x: event.clientX, size: draft.current.size, pointerId: event.pointerId }; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={(event) => {
