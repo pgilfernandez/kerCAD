@@ -334,7 +334,10 @@ export function AnnotationInteraction(props: Props) {
           if (measure) {
             measure.font = `${point.fontSize}px ${info.font}, sans-serif`;
             const lines = (active.kind === "text" ? draft.current.text : info.text).split("\n");
-            editor.current.style.width = `${Math.max(28, ...lines.map((line) => measure.measureText(line).width + point.fontSize * 4 / 3))}px`;
+            // Leave room for the caret and fractional browser glyph metrics.
+            // Otherwise the final character can wrap into a hidden extra row.
+            const editingAllowance = current.current.editing ? Math.max(8, point.fontSize * 0.15) : 0;
+            editor.current.style.width = `${Math.ceil(Math.max(28, ...lines.map((line) => measure.measureText(line).width + point.fontSize * 4 / 3)) + editingAllowance)}px`;
             editor.current.style.height = `${(Math.max(1, lines.length) * 4 / 3 + 1 / 3) * point.fontSize}px`;
           }
         }
