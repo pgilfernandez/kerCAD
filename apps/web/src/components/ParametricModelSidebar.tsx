@@ -19,6 +19,7 @@ import { createContext, type CSSProperties, type KeyboardEvent, type MouseEvent,
 import { ANNOTATIONS_GROUP_ID, canReorderAnnotation, canReorderParametricSelection, canResetParametricFeature, OBJECT_COLOR_PALETTE, parametricObjectTree, sketchForExtrude, updateParametricTreeSelection, type ParametricTreeSelection } from "@/lib/parametricObjects";
 import { localizedParametricOperationDefinition, parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import { parametricTextFontNames, updateParametricTextSketch } from "@/lib/parametricText";
+import { textFontNames } from "@/lib/textFonts";
 import { requiresAddOperation } from "@/lib/parametricOperationModes";
 import { ToolbarBooleanModeIcon, ToolbarChamferIcon, ToolbarFilletIcon } from "@/components/icons";
 import { useAccessibleDialog } from "@/components/useAccessibleDialog";
@@ -384,8 +385,7 @@ function AnnotationProperties({ annotation, onUpdate }: { annotation: Parametric
     if (!point) return null;
     return <details className="educad-transform-section" open><summary><ChevronRight size={16} /><span>{title}</span></summary><div><div className="educad-feature-card">{(["x", "y", "z"] as const).map((axis) => <label key={axis}><span>{axis.toUpperCase()}</span><DeferredNumberInput value={point[axis]} step={steps.input} unit="mm" onCommit={(value) => onUpdate((draft) => { const target = annotationPosition(draft, key === "position" ? null : key); if (target) target[axis] = value; })} /></label>)}</div></div></details>;
   };
-  return <div className="educad-feature-card educad-annotation-properties">
-    <label><span>{t("model.name")}</span><input value={annotation.name} onChange={(event) => onUpdate((draft) => { draft.name = event.target.value; })} /></label>
+  return <div className="educad-feature-inspector educad-annotation-properties"><div className="educad-feature-card">
     {annotation.kind !== "text" && annotation.kind !== "circle" && <label><span>{t("annotation.size")}</span><DeferredNumberInput value={annotation.size ?? 3} min={0.1} max={1000} step={steps.input} unit="mm" onCommit={(value) => onUpdate((draft) => { if (draft.kind !== "text" && draft.kind !== "circle") draft.size = value; })} /></label>}
     {annotation.kind === "circle" && <>
       <AnnotationColorPicker color={annotation.color} onChange={(color) => onUpdate((draft) => { if (draft.kind === "circle") draft.color = color; })} />
@@ -403,11 +403,19 @@ function AnnotationProperties({ annotation, onUpdate }: { annotation: Parametric
     </>}
     {annotation.kind === "text" ? <>
       <label><span>{t("annotation.text")}</span><textarea value={annotation.text} maxLength={2000} onChange={(event) => onUpdate((draft) => { if (draft.kind === "text") draft.text = event.target.value; })} /></label>
-      <label><span>{t("annotation.font")}</span><input value={annotation.font} placeholder="Arial" maxLength={160} onChange={(event) => onUpdate((draft) => { if (draft.kind === "text") draft.font = event.target.value; })} /></label>
+      <label><span>{t("annotation.font")}</span><select value={textFontNames.includes(annotation.font as typeof textFontNames[number]) ? annotation.font : "Sans"} onChange={(event) => onUpdate((draft) => { if (draft.kind === "text") draft.font = event.target.value; })}>{textFontNames.map((font) => <option key={font} value={font}>{font}</option>)}</select></label>
       <label><span>{t("annotation.size")}</span><DeferredNumberInput value={annotation.size} min={0.1} max={1000} step={steps.input} unit="mm" onCommit={(value) => onUpdate((draft) => { if (draft.kind === "text") draft.size = value; })} /></label>
       <label><span>{t("annotation.alignment")}</span><select value={annotation.alignment} onChange={(event) => onUpdate((draft) => { if (draft.kind === "text") draft.alignment = event.target.value as "left" | "center" | "right"; })}>{(["left", "center", "right"] as const).map((alignment) => <option key={alignment} value={alignment}>{t(`annotation.${alignment}`)}</option>)}</select></label>
-      {position("position", t("annotation.position"))}
-    </> : annotation.kind === "circle" ? <>{position("position", t("annotation.position"))}<TransformSection><TransformGroup label={t("property.rotation")} values={annotation.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "circle") draft.rotation[axis] = value; })} /></TransformSection></> : annotation.kind === "angle" ? <><ReadOnlyField label={t("annotation.angle")} value={annotationAngleGeometry(annotation)?.degrees.toFixed(2).concat("°") ?? "—"} />{position("start", t("annotation.start"))}{position("center", t("annotation.vertex"))}{position("end", t("annotation.end"))}</> : <><ReadOnlyField label={t("property.length")} value={`${formatDisplayLength(Math.hypot(annotation.end.x - annotation.start.x, annotation.end.y - annotation.start.y, annotation.end.z - annotation.start.z), steps.displayUnit)} ${displayUnitLabel(steps.displayUnit)}`} />{position("start", t("annotation.start"))}{position("end", t("annotation.end"))}</>}
+    </> : annotation.kind === "angle" ? <ReadOnlyField label={t("annotation.angle")} value={annotationAngleGeometry(annotation)?.degrees.toFixed(2).concat("°") ?? "—"} /> : annotation.kind === "dimension" ? <ReadOnlyField label={t("property.length")} value={`${formatDisplayLength(Math.hypot(annotation.end.x - annotation.start.x, annotation.end.y - annotation.start.y, annotation.end.z - annotation.start.z), steps.displayUnit)} ${displayUnitLabel(steps.displayUnit)}`} /> : null}
+    </div>
+    <TransformSection description="">
+      {annotation.kind === "text" || annotation.kind === "circle" ? position("position", t("annotation.position")) : <>
+        {position("start", t("annotation.start"))}
+        {annotation.kind === "angle" && position("center", t("annotation.vertex"))}
+        {position("end", t("annotation.end"))}
+      </>}
+      {annotation.kind === "circle" && <TransformGroup label={t("property.rotation")} values={annotation.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "circle") draft.rotation[axis] = value; })} />}
+    </TransformSection>
   </div>;
 }
 

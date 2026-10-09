@@ -1,4 +1,5 @@
 import { normalizeDisplayUnit } from "@/lib/parametricUnits";
+import { nextAnnotationName } from "@/lib/annotationNames";
 import type {
   CircleProfile,
   ExtrudeFeature,
@@ -352,6 +353,7 @@ export function normalizeParametricAnnotations(input: ParametricDocument["annota
     ? { ...annotation, kind: "dimension", color: annotation.color ?? "#000000", startArrow: false, endArrow: true, lineStyle: "solid", showLength: false }
     : annotation);
   const annotationIds = new Set<string>();
+  const namedAnnotations: Annotation[] = [];
   for (const annotation of annotations) {
     if (!annotation || typeof annotation.id !== "string" || annotationIds.has(annotation.id)) throw new Error("Invalid annotation identifier.");
     annotationIds.add(annotation.id);
@@ -359,6 +361,8 @@ export function normalizeParametricAnnotations(input: ParametricDocument["annota
     const positions = annotation.kind === "text" || annotation.kind === "circle" ? [annotation.position] : annotation.kind === "angle" ? [annotation.start, annotation.center, annotation.end] : [annotation.start, annotation.end];
     if (positions.some((point) => !point || ![point.x, point.y, point.z].every((value) => Number.isFinite(value) && Math.abs(value) <= 1e7))) throw new Error("Invalid annotation position.");
     annotation.name = typeof annotation.name === "string" ? annotation.name.slice(0, 160) : annotation.kind;
+    if (namedAnnotations.some((entry) => entry.name === annotation.name)) annotation.name = nextAnnotationName(annotations, annotation.name.replace(/ \d+$/, ""));
+    namedAnnotations.push(annotation);
     annotation.visible = annotation.visible !== false;
     if (annotation.kind !== "text") annotation.size = Math.max(0.1, Math.min(1000, Number.isFinite(annotation.size) ? annotation.size! : 3));
     if (annotation.kind === "circle") {

@@ -6,26 +6,16 @@ import type { ParametricDocument, SketchFeature } from "@/types/parametric";
 import type { SketchPoint, SketchProfile } from "@/types/sketchforge";
 import { CubicBezierCurve, LineCurve, QuadraticBezierCurve, type Curve, type Vector2 } from "three";
 import { FontLoader, type Font, type FontData } from "three/examples/jsm/loaders/FontLoader.js";
-import droidMonoFontJson from "three/examples/fonts/droid/droid_sans_mono_regular.typeface.json";
-import droidSansBoldFontJson from "three/examples/fonts/droid/droid_sans_bold.typeface.json";
-import droidSerifBoldFontJson from "three/examples/fonts/droid/droid_serif_bold.typeface.json";
-import gentilisBoldFontJson from "three/examples/fonts/gentilis_bold.typeface.json";
-import optimerBoldFontJson from "three/examples/fonts/optimer_bold.typeface.json";
+import { textFonts, textFontNames } from "@/lib/textFonts";
 
 export type ParametricTextSettings = Extract<NonNullable<SketchProfile["generator"]>, { kind: "text" }>;
 
 const fontLoader = new FontLoader();
-const PARAMETRIC_WEB_FONT_DATA: Record<ParametricTextSettings["font"], FontData> = {
-  Sans: droidSansBoldFontJson as FontData,
-  Serif: droidSerifBoldFontJson as FontData,
-  Script: gentilisBoldFontJson as FontData,
-  Monospace: droidMonoFontJson as FontData,
-  Rounded: optimerBoldFontJson as FontData,
-};
+const PARAMETRIC_WEB_FONT_DATA = Object.fromEntries(textFontNames.map((name) => [name, textFonts[name].geometry])) as Record<ParametricTextSettings["font"], FontData>;
 const parsedFonts = new Map<ParametricTextSettings["font"], Font>();
 const cachedGlyphs = new Map<string, TextGlyph>();
 
-export const parametricTextFontNames = Object.keys(PARAMETRIC_WEB_FONT_DATA) as ParametricTextSettings["font"][];
+export const parametricTextFontNames = textFontNames;
 
 function parametricWebFont(name: ParametricTextSettings["font"]) {
   const cached = parsedFonts.get(name);

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { annotationFontFamily } from "@/lib/textFonts";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
@@ -154,7 +155,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
       disposables.push(texture, material);
     };
     if (annotation.kind === "text") {
-      label(annotation.text, vector(annotation.position), annotation.size, annotation.font, annotation.alignment);
+      label(annotation.text, vector(annotation.position), annotation.size, annotationFontFamily(annotation.font), annotation.alignment);
       continue;
     }
     if (annotation.kind === "angle") {

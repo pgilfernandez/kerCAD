@@ -11,6 +11,7 @@ import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection 
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyEdgePick, type TopologyFacePick, type ViewportDisplayMode, type ViewportShadingMode } from "@/components/ParametricViewport";
 import { SketchWorkspace, type SketchMeasurement, type SketchSceneReference, type SketchSelection, type SketchTool } from "@/components/SketchWorkspace";
 import { SketchToolMenu } from "@/components/SketchToolMenu";
+import { nextAnnotationName } from "@/lib/annotationNames";
 import { useAccessibleDialog } from "@/components/useAccessibleDialog";
 import {
   ToolbarAlignIcon,
@@ -1306,7 +1307,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     const annotation = structuredClone(source); annotation.id = crypto.randomUUID();
     const points = annotation.kind === "text" || annotation.kind === "circle" ? [annotation.position] : annotation.kind === "angle" ? [annotation.start, annotation.center, annotation.end] : [annotation.start, annotation.end];
     for (const point of points) { point.x += 5; point.y += 5; }
-    setSketchAnnotations((annotations) => { annotations.push(annotation); });
+    setSketchAnnotations((annotations) => { annotation.name = nextAnnotationName(annotations, t(`annotation.${annotation.kind}`)); annotations.push(annotation); });
     setSketchSelection(null); setSelectedSketchAnnotationId(annotation.id); setSketchAnnotationTool(null);
   };
 
@@ -3541,7 +3542,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           annotationTool={sketchAnnotationTool}
           selectedAnnotationId={selectedSketchAnnotationId}
           annotationDisplayUnit={displayUnit}
-          onAddAnnotation={(annotation) => { setSketchAnnotations((annotations) => { annotations.push(annotation); }); setSketchAnnotationTool(null); setSketchTool("select"); setSketchSelection(null); setSelectedSketchAnnotationId(annotation.id); }}
+          onAddAnnotation={(annotation) => { setSketchAnnotations((annotations) => { annotation.name = nextAnnotationName(annotations, annotation.name); annotations.push(annotation); }); setSketchAnnotationTool(null); setSketchTool("select"); setSketchSelection(null); setSelectedSketchAnnotationId(annotation.id); }}
           onSelectAnnotation={(id) => { setSketchAnnotationTool(null); setSketchSelection(null); setSketchActivePointId(null); setSelectedSketchAnnotationId(id); }}
           onCommitAnnotation={(annotation) => setSketchAnnotations((annotations) => { const index = annotations.findIndex((entry) => entry.id === annotation.id); if (index >= 0) annotations[index] = annotation; })}
           annotationToolbar={selectedSketchAnnotation ? <SketchAnnotationToolbar key={selectedSketchAnnotation.id} annotation={selectedSketchAnnotation} displayUnit={displayUnit} snap={document.workplane.snapSpacing} locale={locale} onUpdate={(update) => setSketchAnnotations((annotations) => { const annotation = annotations.find((entry) => entry.id === selectedSketchAnnotationId); if (annotation) update(annotation); })} /> : null}
@@ -3772,9 +3773,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             const id = crypto.randomUUID();
             mutate((draft) => {
               draft.annotations ??= [];
-              const common = { id, name: t(`annotation.${kind}`), visible: true };
+              const common = { id, name: nextAnnotationName(draft.annotations, t(`annotation.${kind}`)), visible: true };
               draft.annotations.push(kind === "text"
-                ? { ...common, kind, position: start, alignment: "center", size: 6, font: "Arial", text: "eduCAD" }
+                ? { ...common, kind, position: start, alignment: "center", size: 6, font: "Sans", text: "eduCAD" }
                 : kind === "circle" ? { ...common, kind, position: start, rotation: { x: 0, y: 0, z: 0 }, radius: Math.max(0.1, Math.hypot((end?.x ?? start.x) - start.x, (end?.y ?? start.y) - start.y, (end?.z ?? start.z) - start.z)), mode: "billboard", color: "#233c52", lineWidth: 2 }
                 : kind === "angle" ? { ...common, kind, start, center: center ?? start, end: end ?? start, color: "#233c52" }
                 : { ...common, kind: "dimension", start, end: end ?? start, ...annotationDimensionPreset(kind) });

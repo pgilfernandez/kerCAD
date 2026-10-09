@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { ParametricAnnotation, ParametricVector3 } from "@/types/parametric";
+import { annotationFontFamily } from "@/lib/textFonts";
 import { displayUnitLabel, formatDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
 
 export type AnnotationPoint = "start" | "center" | "end";
@@ -50,7 +51,7 @@ export function annotationAngleGeometry(annotation: Extract<ParametricAnnotation
 
 export function annotationLabelInfo(annotation: ParametricAnnotation, unit: ParametricDisplayUnit) {
   if (annotation.kind === "circle") return null;
-  if (annotation.kind === "text") return { position: new THREE.Vector3(annotation.position.x, annotation.position.y, annotation.position.z), text: annotation.text, font: annotation.font, alignment: annotation.alignment };
+  if (annotation.kind === "text") return { position: new THREE.Vector3(annotation.position.x, annotation.position.y, annotation.position.z), text: annotation.text, font: annotationFontFamily(annotation.font), alignment: annotation.alignment };
   if (annotation.kind === "angle") {
     const angle = annotationAngleGeometry(annotation);
     return angle ? { position: angle.labelPosition, text: `${angle.degrees.toFixed(2)}°`, font: "Arial", alignment: "center" as const } : null;
