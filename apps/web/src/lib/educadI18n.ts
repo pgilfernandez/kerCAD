@@ -3,7 +3,7 @@ export type EducadLocale = "es" | "en";
 const es = {
   "annotation.arrow": "Flecha",
   "annotation.angle": "Ángulo", "annotation.vertex": "Vértice central",
-  "annotation.circle": "Círculo", "annotation.mode": "Modo", "annotation.billboard": "3D · orientado a la pantalla", "annotation.planar": "2D · plano XY local", "annotation.lineWidth": "Grosor del trazo",
+  "annotation.circle": "Círculo", "annotation.mode": "Modo", "annotation.billboard": "2D", "annotation.planar": "3D", "annotation.lineWidth": "Grosor del trazo",
   "annotation.dashedLine": "Línea rayada", "annotation.startArrow": "Punta inicial", "annotation.endArrow": "Punta final", "annotation.lineStyle": "Trazo", "annotation.solid": "Continuo", "annotation.dashed": "Rayado", "annotation.showLength": "Mostrar longitud",
   "annotation.group": "Anotaciones", "annotation.text": "Etiqueta de texto", "annotation.dimension": "Dimensión", "annotation.font": "Fuente", "annotation.size": "Tamaño", "annotation.alignment": "Alineación", "annotation.left": "Izquierda", "annotation.center": "Centro", "annotation.right": "Derecha", "annotation.position": "Posición", "annotation.start": "Punto inicial", "annotation.end": "Punto final",
   "dialog.authorName": "Tu nombre", "dialog.creator": "Creador", "dialog.lastAuthor": "Autor de la última modificación",
@@ -150,7 +150,7 @@ export type EducadTranslationKey = keyof typeof es;
 const en: Record<EducadTranslationKey, string> = {
   "annotation.arrow": "Arrow",
   "annotation.angle": "Angle", "annotation.vertex": "Central vertex",
-  "annotation.circle": "Circle", "annotation.mode": "Mode", "annotation.billboard": "3D · facing the screen", "annotation.planar": "2D · local XY plane", "annotation.lineWidth": "Stroke width",
+  "annotation.circle": "Circle", "annotation.mode": "Mode", "annotation.billboard": "2D", "annotation.planar": "3D", "annotation.lineWidth": "Stroke width",
   "annotation.dashedLine": "Dashed line", "annotation.startArrow": "Start arrowhead", "annotation.endArrow": "End arrowhead", "annotation.lineStyle": "Line style", "annotation.solid": "Solid", "annotation.dashed": "Dashed", "annotation.showLength": "Show length",
   "annotation.group": "Annotations", "annotation.text": "Text label", "annotation.dimension": "Dimension", "annotation.font": "Font", "annotation.size": "Size", "annotation.alignment": "Alignment", "annotation.left": "Left", "annotation.center": "Center", "annotation.right": "Right", "annotation.position": "Position", "annotation.start": "Start point", "annotation.end": "End point",
   "dialog.authorName": "Your name", "dialog.creator": "Creator", "dialog.lastAuthor": "Last modified by",

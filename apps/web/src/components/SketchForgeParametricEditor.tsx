@@ -1015,11 +1015,11 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     rotationEditable: object.id === selectedOriginObjectId && showRotationTriad,
   })), ...(selectedAnnotation && selectedAnnotationPoint ? [{
     objectId: selectedAnnotation.id,
-    visible: selectedAnnotation.visible && document.annotationGroup?.visible !== false && (showPositionTriad || selectedAnnotation.kind === "circle" && showRotationTriad),
+    visible: selectedAnnotation.visible && document.annotationGroup?.visible !== false && (showPositionTriad || selectedAnnotation.kind === "circle" && selectedAnnotation.mode === "planar" && showRotationTriad),
     position: selectedAnnotationPoint,
     rotation: selectedAnnotation.kind === "circle" ? selectedAnnotation.rotation : { x: 0, y: 0, z: 0 },
     positionVisible: showPositionTriad,
-    rotationEditable: selectedAnnotation.kind === "circle" && showRotationTriad,
+    rotationEditable: selectedAnnotation.kind === "circle" && selectedAnnotation.mode === "planar" && showRotationTriad,
   }] : [])], [document.objects, document.annotationGroup?.visible, selectedAnnotation, annotationEndpoint, originEditObjectId, selectedOriginObjectId, showPositionTriad, showRotationTriad]);
   const referenceObjectRecords = useMemo(() => parametricReferenceRenderRecords(document), [document]);
   const viewportObjectRecords = useMemo(() => {
@@ -3842,7 +3842,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           manipulatorControls={selectedAnnotation ? <>
             <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
             {selectedAnnotation.kind !== "text" && (selectedAnnotation.kind === "circle" || selectedAnnotation.kind === "angle" || selectedAnnotation.showLength !== false) && <Tool label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>}
-            {selectedAnnotation.kind === "circle" && <Tool label={t("camera.rotationTriad")} active={showRotationTriad} onClick={() => setShowRotationTriad((visible) => !visible)}><ToolbarRotationManipulatorIcon /></Tool>}
+            {selectedAnnotation.kind === "circle" && selectedAnnotation.mode === "planar" && <Tool label={t("camera.rotationTriad")} active={showRotationTriad} onClick={() => setShowRotationTriad((visible) => !visible)}><ToolbarRotationManipulatorIcon /></Tool>}
             {selectedAnnotation.kind === "text" && <>
               <Tool label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>
               <Tool label={t("operation.edit")} active={editingAnnotationId === selectedAnnotation.id} onClick={() => setEditingAnnotationId(selectedAnnotation.id)}><ToolbarEditOperationIcon /></Tool>
