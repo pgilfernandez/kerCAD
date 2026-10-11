@@ -2,7 +2,6 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import type { ParametricAnnotation } from "@/types/parametric";
 import type { ParametricDisplayUnit } from "@/lib/parametricUnits";
-import { displayUnitLabel, formatDisplayLength } from "@/lib/parametricUnits";
 import { annotationAngleGeometry, annotationLabelInfo, annotationPosition, type AnnotationPoint } from "@/lib/annotationGeometry";
 import { annotationDimensionPreset, type AnnotationTool } from "@/lib/annotationPresets";
 import { educadTranslate, type EducadLocale } from "@/lib/educadI18n";
@@ -117,9 +116,7 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
     {visible.map((annotation) => {
       const selected = annotation.id === selectedId;
       const color = annotation.color ?? (annotation.kind === "text" ? "#000000" : "#233c52");
-      const label = annotation.kind === "circle" && selected
-        ? { position: { x: annotation.position.x + annotation.radius / 2, y: annotation.position.y, z: 0 }, text: `R ${formatDisplayLength(annotation.radius, displayUnit)} ${displayUnitLabel(displayUnit)}`, font: "Arial", alignment: "center" as const }
-        : annotationLabelInfo(annotation.kind === "text" && editing?.id === annotation.id ? { ...annotation, text: editing.text } : annotation, displayUnit);
+      const label = annotationLabelInfo(annotation.kind === "text" && editing?.id === annotation.id ? { ...annotation, text: editing.text } : annotation, displayUnit);
       const stroke = annotation.kind === "circle" ? annotation.lineWidth : 2;
       const polyline = annotation.kind === "dimension" ? `${annotation.start.x},${annotation.start.y} ${annotation.end.x},${annotation.end.y}` : annotation.kind === "angle" ? `${annotation.start.x},${annotation.start.y} ${annotation.center.x},${annotation.center.y} ${annotation.end.x},${annotation.end.y}` : "";
       const angle = annotation.kind === "angle" ? annotationAngleGeometry(annotation) : null;
