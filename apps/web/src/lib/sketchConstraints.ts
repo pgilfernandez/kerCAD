@@ -60,6 +60,7 @@ export function sketchConstraintPoint(profile: SketchProfile, id: string): Sketc
 }
 
 export function sketchConstraintUsesSegment(constraint: SketchConstraint, segmentId: string) {
+  if (constraint.kind === "equalArcRadius") return constraint.arcIds.includes(segmentId);
   if (constraint.kind === "angle" || constraint.kind === "parallel" || constraint.kind === "perpendicular" || constraint.kind === "equalLength") return constraint.segmentIds.includes(segmentId);
   if (constraint.kind === "arcRadius" || constraint.kind === "arcDiameter" || constraint.kind === "arcAngle") return constraint.segmentId === segmentId;
   if (constraint.kind === "midpoint" || constraint.kind === "pointOnObject") return constraint.segmentId === segmentId;
@@ -71,6 +72,7 @@ export function sketchConstraintUsesSegment(constraint: SketchConstraint, segmen
 }
 
 export function sketchConstraintUsesPoint(constraint: SketchConstraint, pointId: string) {
+  if (constraint.kind === "equalArcRadius") return constraint.arcIds.some((id) => arcSketchPointId(id) === pointId);
   if (constraint.kind === "fixed") return constraint.pointId === pointId;
   if (constraint.kind === "coincident") return constraint.pointIds.includes(pointId);
   if (constraint.kind === "concentric") return constraint.circleIds.some((circleId) => circleSketchPointId(circleId, "center") === pointId);
@@ -366,6 +368,26 @@ export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: 
     assignComponent(component[0], "z", fixed?.z ?? source.z);
   }
 
+  // Center rectangles retain their center when a corner is driven, and translate
+  // both ends of each construction diagonal when the center itself is dragged.
+  for (const constraint of constraints) {
+    if (constraint.kind !== "midpoint" || !constraint.preserveCenter) continue;
+    const center = pointById.get(constraint.pointId);
+    const diagonal = segmentById.get(constraint.segmentId);
+    const start = diagonal ? pointById.get(diagonal.startId) : null;
+    const end = diagonal ? pointById.get(diagonal.endId) : null;
+    if (!center || !start || !end) continue;
+    if (driven.has(center.id)) {
+      const dx = center.x - (start.x + end.x) / 2, dz = center.z - (start.z + end.z) / 2;
+      for (const point of [start, end]) { assignComponent(point.id, "x", point.x + dx); assignComponent(point.id, "z", point.z + dz); }
+    } else if (driven.has(start.id) || driven.has(end.id)) {
+      const reference = driven.has(start.id) ? start : end;
+      const opposite = reference === start ? end : start;
+      assignComponent(opposite.id, "x", center.x * 2 - reference.x);
+      assignComponent(opposite.id, "z", center.z * 2 - reference.z);
+      driven.add(opposite.id);
+    }
+  }
   const directional = constraints.filter((constraint): constraint is Extract<SketchConstraint, { kind: "horizontal" | "vertical" }> => constraint.kind === "horizontal" || constraint.kind === "vertical");
   // Horizontal and vertical constraints share one coordinate, not both.
   // Resolve each connected coordinate group from the dragged point so a
@@ -394,6 +416,7 @@ export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: 
       const fixed = component.map((id) => fixedByPoint.get(id)).find(Boolean);
       const source = fixed ? pointById.get(fixed.pointId)
         : drivingPointId && component.includes(drivingPointId) ? pointById.get(drivingPointId)
+        : component.some((id) => driven.has(id)) ? pointById.get(component.find((id) => driven.has(id))!)
         : pointById.get(component[0]);
       if (!source) continue;
       const value = fixed?.[axis] ?? source[axis];

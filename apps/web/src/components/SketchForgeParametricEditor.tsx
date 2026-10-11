@@ -3386,6 +3386,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("sketch.line")} active={sketchTool === "line"} onClick={() => chooseSketchTool("line")}><SketchToolbarIcon file="line" /></Tool>
             <SketchToolMenu initialTool="rectangle" activeTool={sketchTool} onChoose={chooseSketchTool} options={[
               { tool: "rectangle", label: t("sketch.rectangle"), icon: "rectangle" },
+              { tool: "centerRectangle", label: t("sketch.centerRectangle"), icon: "center-rectangle" },
+              { tool: "roundedRectangle", label: t("sketch.roundedRectangle"), icon: "rounded-rectangle" },
               { tool: "circle", label: t("sketch.circle"), icon: "circle" },
               { tool: "arc", label: t("sketch.centerArc"), icon: "center-arc" },
             ]} />
@@ -3597,6 +3599,11 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               return { id: sketchEntityId("constraint"), kind: "tangentLineArc", lineId: line.id, arcId: arc.id };
             });
             setSketchProfile((profile) => ({ ...profile, points: [...profile.points, ...points], segments: [...profile.segments, ...segments], constraints: [...(profile.constraints ?? []), ...constraints] }));
+            chooseSketchTool("select");
+          }}
+          onAddRectangleVariant={(contour) => {
+            const added = pasteSketchSelection(contour, sketchEntityId, 0);
+            setSketchProfile((profile) => ({ ...profile, points: [...profile.points, ...added.points], segments: [...profile.segments, ...added.segments], constraints: [...(profile.constraints ?? []), ...(added.constraints ?? [])] }));
             chooseSketchTool("select");
           }}
           onAddRectangle={(corners) => {

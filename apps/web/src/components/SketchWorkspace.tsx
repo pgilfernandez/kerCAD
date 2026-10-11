@@ -12,6 +12,7 @@ import { SketchRevolvePreview } from "@/components/SketchRevolvePreview";
 import { lengthDisplayUnit } from "@/lib/measurementUnits";
 import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
 import { sketchSlot } from "@/lib/sketchSlots";
+import { sketchRectangle } from "@/lib/sketchRectangles";
 import { WORKPLANE_MAJOR_GRID_INTERVAL } from "@/lib/workplaneGrid";
 import { mirrorSign, resizedImportedMeshPositions } from "@/lib/workplaneShapes";
 import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE, normalizeSnapGrid, normalizeWorkspaceSettings } from "@/lib/workplaneSettings";
@@ -20,7 +21,7 @@ import type { SketchProfileValidation } from "@/lib/sketchProfileValidation";
 import type { EducadLocale } from "@/lib/educadI18n";
 import type { GridSize, SketchCircle, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchSegment, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
 
-export type SketchTool = "line" | "connect" | "rectangle" | "polygon" | "slot" | "arcSlot" | "bezier" | "smooth" | "freehand" | "freehandSmooth" | "circle" | "arc" | "select" | "refine" | "trim" | "erase" | "measure";
+export type SketchTool = "line" | "connect" | "rectangle" | "centerRectangle" | "roundedRectangle" | "polygon" | "slot" | "arcSlot" | "bezier" | "smooth" | "freehand" | "freehandSmooth" | "circle" | "arc" | "select" | "refine" | "trim" | "erase" | "measure";
 export type SketchSelection =
   | { kind: "point"; id: string }
   | { kind: "segment"; id: string }
@@ -84,6 +85,7 @@ type SketchWorkspaceProps = {
   onPlanePoint: (point: { x: number; z: number }, handles?: { handleIn: { x: number; z: number }; handleOut: { x: number; z: number } }) => void;
   onFreehandContour?: (points: Array<{ x: number; z: number }>, smooth: boolean) => void;
   onAddRectangle?: (corners: Array<{ x: number; z: number }>) => void;
+  onAddRectangleVariant?: (contour: SketchProfile) => void;
   onAddSlot?: (contour: SketchProfile) => void;
   polygonSides?: number;
   onAddPolygon?: (center: { x: number; z: number }, radius: number, angle: number) => void;
@@ -614,6 +616,7 @@ export function SketchWorkspace({
   onPlanePoint,
   onFreehandContour,
   onAddRectangle,
+  onAddRectangleVariant,
   onAddSlot,
   polygonSides = 6,
   onAddPolygon,
@@ -726,7 +729,7 @@ export function SketchWorkspace({
 
   useEffect(() => {
     if (tool === "freehand" || tool === "freehandSmooth") setShowDimensionLabels(false);
-    if (tool !== "rectangle") setPendingRectangleCorner(null);
+    setPendingRectangleCorner(null);
     setSlotPicks([]);
   }, [tool, labelPreferencesLoaded]);
 
@@ -966,12 +969,16 @@ export function SketchWorkspace({
         setSlotPicks(picks);
         setHover(point);
       }
-    } else if (tool === "rectangle") {
+    } else if (tool === "rectangle" || tool === "centerRectangle" || tool === "roundedRectangle") {
       if (!pendingRectangleCorner) {
         setPendingRectangleCorner(point);
         setHover(point);
       } else if (Math.abs(point.x - pendingRectangleCorner.x) > 0.001 && Math.abs(point.z - pendingRectangleCorner.z) > 0.001) {
-        onAddRectangle?.([pendingRectangleCorner, { x: point.x, z: pendingRectangleCorner.z }, point, { x: pendingRectangleCorner.x, z: point.z }]);
+        if (tool === "rectangle") onAddRectangle?.([pendingRectangleCorner, { x: point.x, z: pendingRectangleCorner.z }, point, { x: pendingRectangleCorner.x, z: point.z }]);
+        else {
+          const contour = sketchRectangle(tool, pendingRectangleCorner, point);
+          if (contour) onAddRectangleVariant?.(contour);
+        }
         setPendingRectangleCorner(null);
       }
     } else if (tool === "circle" || tool === "polygon") {
@@ -1261,7 +1268,7 @@ export function SketchWorkspace({
           onPointerLeave={() => !pointerAction && setHover(null)}
           onContextMenu={(event) => {
             if (annotationTool) { event.preventDefault(); setAnnotationPicks([]); setAnnotationHover(null); onCancelActiveTool?.(); return; }
-            if (!["line", "connect", "slot", "arcSlot", "rectangle", "polygon"].includes(tool)) return;
+            if (!["line", "connect", "slot", "arcSlot", "rectangle", "centerRectangle", "roundedRectangle", "polygon"].includes(tool)) return;
             event.preventDefault();
             setPointerAction(null);
             setHover(null);
@@ -1482,8 +1489,8 @@ export function SketchWorkspace({
               return <SketchConstraintBadge key={constraint.id} id={constraint.id} label={constraint.kind === "parallel" ? "∥" : "⊥"} x={x} z={z} screenUnit={screenUnit} locale={locale} onDelete={onDeleteConstraint} />;
             })}
             {(displayProfile.constraints ?? []).map((constraint) => {
-              if (constraint.kind !== "equalLength") return null;
-              const dimensions = constraint.segmentIds.map((id) => {
+              if (constraint.kind !== "equalLength" && constraint.kind !== "equalArcRadius") return null;
+              const dimensions = (constraint.kind === "equalArcRadius" ? constraint.arcIds : constraint.segmentIds).map((id) => {
                 const segment = displayProfile.segments.find((candidate) => candidate.id === id);
                 return segment ? segmentDimension(segment, pointById) : null;
               }).filter(Boolean) as Array<NonNullable<ReturnType<typeof segmentDimension>>>;
@@ -1602,7 +1609,12 @@ export function SketchWorkspace({
               <circle cx={pointerAction.origin.x} cy={pointerAction.origin.z} r={controlPointRadius} />
             </g>
           ) : null}
-          {pendingRectangleCorner && hover ? <rect className="sketch-preview-line" fill="none" x={Math.min(pendingRectangleCorner.x, hover.x)} y={Math.min(pendingRectangleCorner.z, hover.z)} width={Math.abs(hover.x - pendingRectangleCorner.x)} height={Math.abs(hover.z - pendingRectangleCorner.z)} pointerEvents="none" /> : null}
+          {pendingRectangleCorner && hover && tool === "rectangle" ? <rect className="sketch-preview-line" fill="none" x={Math.min(pendingRectangleCorner.x, hover.x)} y={Math.min(pendingRectangleCorner.z, hover.z)} width={Math.abs(hover.x - pendingRectangleCorner.x)} height={Math.abs(hover.z - pendingRectangleCorner.z)} pointerEvents="none" /> : null}
+          {pendingRectangleCorner && hover && (tool === "centerRectangle" || tool === "roundedRectangle") ? (() => {
+            const other = tool === "centerRectangle" ? { x: pendingRectangleCorner.x * 2 - hover.x, z: pendingRectangleCorner.z * 2 - hover.z } : pendingRectangleCorner;
+            const width = Math.abs(hover.x - other.x), height = Math.abs(hover.z - other.z);
+            return <g pointerEvents="none"><rect className="sketch-preview-line" fill="none" x={Math.min(other.x, hover.x)} y={Math.min(other.z, hover.z)} width={width} height={height} rx={tool === "roundedRectangle" ? Math.min(width, height) * .15 : 0} />{tool === "centerRectangle" && <circle cx={pendingRectangleCorner.x} cy={pendingRectangleCorner.z} r={4 * screenUnit} fill="none" stroke="#173b5a" vectorEffect="non-scaling-stroke" />}</g>;
+          })() : null}
           {slotPicks.length > 0 && hover && (tool === "slot" || tool === "arcSlot") ? (() => {
             const contour = sketchSlot(tool, [...slotPicks, hover]);
             if (contour) {
@@ -1723,7 +1735,7 @@ export function SketchWorkspace({
               <circle
                 data-sketch-entity="point"
                 data-sketch-id={point.id}
-                className={`${isPointSelected(point.id) ? "selected" : ""} ${activePointId === point.id ? "active" : ""} ${invalidPointIds.has(point.id) ? "invalid" : ""}`}
+                className={`${isPointSelected(point.id) ? "selected" : ""} ${activePointId === point.id ? "active" : ""} ${invalidPointIds.has(point.id) ? "invalid" : ""} ${point.construction ? "construction" : ""}`}
                 key={point.id}
                 cx={point.x}
                 cy={point.z}

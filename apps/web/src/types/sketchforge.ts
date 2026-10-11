@@ -74,6 +74,7 @@ export type AlignHandleStatus = {
 
 export type SketchPoint = {
   id: string;
+  construction?: boolean;
   x: number;
   z: number;
   handleIn?: { x: number; z: number };
@@ -118,7 +119,8 @@ export type SketchConstraint =
   | { id: string; kind: "parallel" | "perpendicular"; segmentIds: [string, string] }
   | { id: string; kind: "equalLength"; segmentIds: [string, string] }
   | { id: string; kind: "concentric" | "equalRadius"; circleIds: [string, string] }
-  | { id: string; kind: "midpoint" | "pointOnObject"; pointId: string; segmentId: string }
+  | { id: string; kind: "equalArcRadius"; arcIds: [string, string] }
+  | { id: string; kind: "midpoint" | "pointOnObject"; pointId: string; segmentId: string; preserveCenter?: boolean }
   | { id: string; kind: "pointOnCircle"; pointId: string; circleId: string }
   | { id: string; kind: "pointOnArc"; pointId: string; arcId: string }
   | { id: string; kind: "tangentLineCircle"; segmentId: string; circleId: string }

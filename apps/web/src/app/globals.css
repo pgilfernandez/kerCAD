@@ -5728,6 +5728,7 @@ circle.sketch-preview-line {
 }
 
 .sketch-arc-center { fill: #fff7d6; stroke: #d18a00; }
+.sketch-points circle.construction:not(.selected):not(:hover) { fill: #eef4f7; stroke: #718b9d; stroke-dasharray: 2 2; }
 .sketch-arc-center:hover { fill: #fde68a; stroke: #b66c00; }
 .sketch-arc-center.selected { fill: #60a5fa; stroke: #1d4ed8; }
 

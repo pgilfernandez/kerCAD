@@ -1,6 +1,8 @@
 export type EducadLocale = "es" | "en";
 
 const es = {
+  "sketch.centerRectangle": "Rectángulo por centro y esquina",
+  "sketch.roundedRectangle": "Rectángulo redondeado",
   "annotation.arrow": "Flecha",
   "annotation.angle": "Ángulo", "annotation.vertex": "Vértice central",
   "annotation.circle": "Círculo", "annotation.mode": "Modo", "annotation.billboard": "2D", "annotation.planar": "3D", "annotation.lineWidth": "Grosor del trazo",
@@ -148,6 +150,8 @@ const es = {
 export type EducadTranslationKey = keyof typeof es;
 
 const en: Record<EducadTranslationKey, string> = {
+  "sketch.centerRectangle": "Center rectangle",
+  "sketch.roundedRectangle": "Rounded rectangle",
   "annotation.arrow": "Arrow",
   "annotation.angle": "Angle", "annotation.vertex": "Central vertex",
   "annotation.circle": "Circle", "annotation.mode": "Mode", "annotation.billboard": "2D", "annotation.planar": "3D", "annotation.lineWidth": "Stroke width",

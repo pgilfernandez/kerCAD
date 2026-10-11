@@ -481,6 +481,7 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
           if (constraint.kind === "tangentLineArc") return lineIds.has(constraint.lineId) && segmentIds.has(constraint.arcId);
           if (constraint.kind === "tangentArcs") return constraint.arcIds[0] !== constraint.arcIds[1] && constraint.arcIds.every((id) => geometry.segments.some((segment) => segment.id === id && segment.kind === "arc" && (segment.startId === constraint.pointId || segment.endId === constraint.pointId))) && pointIds.has(constraint.pointId);
           if (constraint.kind === "tangentCircles") return constraint.circleIds[0] !== constraint.circleIds[1] && constraint.circleIds.every((id) => circleIds.has(id));
+          if (constraint.kind === "equalArcRadius") return constraint.arcIds[0] !== constraint.arcIds[1] && constraint.arcIds.every((id) => geometry.segments.some((segment) => segment.id === id && segment.kind === "arc"));
           if (constraint.kind === "symmetric") return constraint.pointIds[0] !== constraint.pointIds[1] && constraint.pointIds.every((id) => pointIds.has(id)) && lineIds.has(constraint.segmentId);
           if (constraint.kind === "fixed") return pointIds.has(constraint.pointId) && Number.isFinite(constraint.x) && Number.isFinite(constraint.z);
           if (constraint.kind === "coincident") return constraint.pointIds[0] !== constraint.pointIds[1] && constraint.pointIds.every((id) => pointIds.has(id));
