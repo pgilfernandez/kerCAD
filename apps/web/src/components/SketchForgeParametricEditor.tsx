@@ -3419,7 +3419,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("sketch.trim")} active={sketchTool === "trim"} onClick={() => chooseSketchTool("trim")}><SketchToolbarIcon file="trim" /></Tool>
           </ToolbarSection>
           <ToolbarSection label={t("annotation.group")}>
-            {(["text", "dimension", "arrow", "dashedLine", "angle", "circle"] as const).map((kind) => <Tool key={kind} label={`${t("annotation.group")}: ${t(`annotation.${kind}`)}`} active={sketchAnnotationTool === kind} onClick={() => { chooseSketchTool("select"); setSketchAnnotationTool(sketchAnnotationTool === kind ? null : kind); }}><AnnotationIcon kind={kind} /></Tool>)}
+            <Tool label={t("annotation.text")} active={sketchAnnotationTool === "text"} onClick={() => { chooseSketchTool("select"); setSketchAnnotationTool(sketchAnnotationTool === "text" ? null : "text"); }}><AnnotationIcon kind="text" /></Tool>
+            <SketchToolMenu initialTool="dimension" activeTool={sketchAnnotationTool} renderIcon={(option) => <AnnotationIcon kind={option.tool} />} options={(["dimension", "arrow", "dashedLine"] as const).map((tool) => ({ tool, label: t(`annotation.${tool}`), icon: tool }))} onChoose={(kind) => { chooseSketchTool("select"); setSketchAnnotationTool(sketchAnnotationTool === kind ? null : kind); }} />
+            {(["angle", "circle"] as const).map((kind) => <Tool key={kind} label={`${t("annotation.group")}: ${t(`annotation.${kind}`)}`} active={sketchAnnotationTool === kind} onClick={() => { chooseSketchTool("select"); setSketchAnnotationTool(sketchAnnotationTool === kind ? null : kind); }}><AnnotationIcon kind={kind} /></Tool>)}
           </ToolbarSection>
           <ToolbarSection label={t("sketch.import")}>
             <Tool label={t("sketch.importSvg")} onClick={() => sketchSvgImportRef.current?.click()}><SketchToolbarIcon file="import-svg" /></Tool>
@@ -3487,7 +3489,15 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               </div>
             </ToolbarSection>
             <ToolbarSection label={t("annotation.group")}>
-              {(["text", "dimension", "arrow", "dashedLine", "angle", "circle"] as const).map((kind) => <Tool key={kind} label={t(`annotation.${kind}`)} active={annotationTool === kind} onClick={() => {
+              <Tool label={t("annotation.text")} active={annotationTool === "text"} onClick={() => {
+                setAnnotationTool(annotationTool === "text" ? null : "text");
+                setEditingAnnotationId(null); setModelSelection([]); setSelectedAnnotationId(null);
+              }}><AnnotationIcon kind="text" /></Tool>
+              <SketchToolMenu initialTool="dimension" activeTool={annotationTool} renderIcon={(option) => <AnnotationIcon kind={option.tool} />} options={(["dimension", "arrow", "dashedLine"] as const).map((tool) => ({ tool, label: t(`annotation.${tool}`), icon: tool }))} onChoose={(kind) => {
+                setAnnotationTool(annotationTool === kind ? null : kind);
+                setEditingAnnotationId(null); setModelSelection([]); setSelectedAnnotationId(null);
+              }} />
+              {(["angle", "circle"] as const).map((kind) => <Tool key={kind} label={t(`annotation.${kind}`)} active={annotationTool === kind} onClick={() => {
                 setAnnotationTool(annotationTool === kind ? null : kind);
                 setEditingAnnotationId(null); setModelSelection([]); setSelectedAnnotationId(null);
               }}><AnnotationIcon kind={kind} /></Tool>)}
