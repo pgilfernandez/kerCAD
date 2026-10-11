@@ -1335,6 +1335,15 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     setSketchActivePointId(null);
   };
 
+  const chooseAnnotationTool = (tool: AnnotationTool) => {
+    const next = annotationTool === tool ? null : tool;
+    if (next && latestDocumentRef.current.annotationGroup?.visible === false) {
+      mutate((draft) => { draft.annotationGroup = { expanded: true, position: 0, ...draft.annotationGroup, visible: true }; });
+    }
+    setAnnotationTool(next);
+    setEditingAnnotationId(null); setModelSelection([]); setSelectedAnnotationId(null);
+  };
+
   const chooseSketchTool = (tool: SketchTool) => {
     setSketchAnnotationTool(null); setSelectedSketchAnnotationId(null);
     setSketchTool(tool);
@@ -3489,18 +3498,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               </div>
             </ToolbarSection>
             <ToolbarSection label={t("annotation.group")}>
-              <SketchToolMenu initialTool="dimension" activeTool={annotationTool} renderIcon={(option) => <AnnotationIcon kind={option.tool} />} options={(["dimension", "arrow", "dashedLine"] as const).map((tool) => ({ tool, label: t(`annotation.${tool}`), icon: tool }))} onChoose={(kind) => {
-                setAnnotationTool(annotationTool === kind ? null : kind);
-                setEditingAnnotationId(null); setModelSelection([]); setSelectedAnnotationId(null);
-              }} />
-              {(["angle", "circle"] as const).map((kind) => <Tool key={kind} label={t(`annotation.${kind}`)} active={annotationTool === kind} onClick={() => {
-                setAnnotationTool(annotationTool === kind ? null : kind);
-                setEditingAnnotationId(null); setModelSelection([]); setSelectedAnnotationId(null);
-              }}><AnnotationIcon kind={kind} /></Tool>)}
-              <Tool label={t("annotation.text")} active={annotationTool === "text"} onClick={() => {
-                setAnnotationTool(annotationTool === "text" ? null : "text");
-                setEditingAnnotationId(null); setModelSelection([]); setSelectedAnnotationId(null);
-              }}><AnnotationIcon kind="text" /></Tool>
+              <SketchToolMenu initialTool="dimension" activeTool={annotationTool} renderIcon={(option) => <AnnotationIcon kind={option.tool} />} options={(["dimension", "arrow", "dashedLine"] as const).map((tool) => ({ tool, label: t(`annotation.${tool}`), icon: tool }))} onChoose={chooseAnnotationTool} />
+              {(["angle", "circle"] as const).map((kind) => <Tool key={kind} label={t(`annotation.${kind}`)} active={annotationTool === kind} onClick={() => chooseAnnotationTool(kind)}><AnnotationIcon kind={kind} /></Tool>)}
+              <Tool label={t("annotation.text")} active={annotationTool === "text"} onClick={() => chooseAnnotationTool("text")}><AnnotationIcon kind="text" /></Tool>
             </ToolbarSection>
           </div>
           <div className="toolbar-spacer" />
