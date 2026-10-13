@@ -121,6 +121,11 @@ function constraintResiduals(profile: SketchProfile, constraint: SketchConstrain
     const dz = line.end.z - line.start.z;
     const length = Math.hypot(dx, dz);
     const radius = Math.hypot(start.x - arc.center.x, start.z - arc.center.z);
+    // Joined geometry must be tangent at its shared endpoint, not just
+    // somewhere along the infinite supporting line.
+    const sharedId = [arc.startId, arc.endId].find((id) => id === line.start.id || id === line.end.id);
+    const shared = sharedId ? pointFor(profile, sharedId) : null;
+    if (shared && length > EPSILON) return [((arc.center.x - shared.x) * dx + (arc.center.z - shared.z) * dz) / length];
     return length > EPSILON ? [Math.abs((arc.center.x - line.start.x) * dz - (arc.center.z - line.start.z) * dx) / length - radius] : [];
   }
   if (constraint.kind === "equalArcRadius") {
