@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
-import type { ParametricAnnotation } from "@/types/parametric";
+import type { AnnotationEnding, ParametricAnnotation } from "@/types/parametric";
+import { annotationEnding, annotationEndingSize } from "@/lib/annotationEndings";
 import type { ParametricDisplayUnit } from "@/lib/parametricUnits";
 import { annotationAngleGeometry, annotationLabelInfo, annotationPosition, type AnnotationPoint } from "@/lib/annotationGeometry";
 import { annotationDimensionPreset, type AnnotationTool } from "@/lib/annotationPresets";
@@ -120,9 +121,13 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
       const stroke = annotation.kind === "circle" ? annotation.lineWidth : 2;
       const polyline = annotation.kind === "dimension" ? `${annotation.start.x},${annotation.start.y} ${annotation.end.x},${annotation.end.y}` : annotation.kind === "angle" ? `${annotation.start.x},${annotation.start.y} ${annotation.center.x},${annotation.center.y} ${annotation.end.x},${annotation.end.y}` : "";
       const angle = annotation.kind === "angle" ? annotationAngleGeometry(annotation) : null;
-      const arrow = (start: { x: number; y: number }, end: { x: number; y: number }, key: string) => {
+      const arrow = (start: { x: number; y: number }, end: { x: number; y: number }, key: string, ending: AnnotationEnding) => {
         const dx = end.x - start.x, dy = end.y - start.y, length = Math.hypot(dx, dy); if (length < 0.001) return null;
-        const size = Math.min(4, length / 3), x = dx / length, y = dy / length;
+        if (ending === "none") return null;
+        const size = annotationEndingSize(ending, length), x = dx / length, y = dy / length;
+        if (ending === "circle") return <circle key={key} cx={end.x} cy={end.y} r={size / 2} fill={color} />;
+        if (ending === "square") return <rect key={key} x={end.x - size / 2} y={end.y - size / 2} width={size} height={size} fill={color} transform={`rotate(${Math.atan2(dy, dx) * 180 / Math.PI} ${end.x} ${end.y})`} />;
+        if (ending === "arrow4") return <polyline key={key} points={`${end.x - x * size - y * size * .4},${end.y - y * size + x * size * .4} ${end.x},${end.y} ${end.x - x * size + y * size * .4},${end.y - y * size - x * size * .4}`} fill="none" stroke={color} strokeWidth={2} vectorEffect="non-scaling-stroke" />;
         return <polygon key={key} points={`${end.x},${end.y} ${end.x - x * size - y * size * .3},${end.y - y * size + x * size * .3} ${end.x - x * size + y * size * .3},${end.y - y * size - x * size * .3}`} fill={color} stroke="none" />;
       };
       const configuredLabelSize = annotation.size ?? 3;
@@ -148,8 +153,8 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
         {annotation.kind === "circle" && <circle cx={annotation.position.x} cy={annotation.position.y} r={annotation.radius} fill="none" stroke="transparent" strokeWidth={12} vectorEffect="non-scaling-stroke" />}
         {polyline && <polyline points={polyline} fill="none" stroke={color} strokeWidth={stroke} vectorEffect="non-scaling-stroke" strokeDasharray={annotation.kind === "dimension" && annotation.lineStyle === "dashed" ? `${54 * screenUnit * zoom} ${36 * screenUnit * zoom}` : undefined} />}
         {angle && angle.degrees > .0001 && <polyline points={angle.arc.map((point) => `${point.x},${point.y}`).join(" ")} fill="none" stroke={color} strokeWidth={2} vectorEffect="non-scaling-stroke" />}
-        {annotation.kind === "dimension" && <>{annotation.startArrow !== false && arrow(annotation.end, annotation.start, "start")}{annotation.endArrow !== false && arrow(annotation.start, annotation.end, "end")}</>}
-        {annotation.kind === "dimension" && annotation.startArrow !== false && annotation.endArrow !== false && (() => {
+        {annotation.kind === "dimension" && <>{arrow(annotation.end, annotation.start, "start", annotationEnding(annotation, "start"))}{arrow(annotation.start, annotation.end, "end", annotationEnding(annotation, "end"))}</>}
+        {annotation.kind === "dimension" && annotationEnding(annotation, "start").startsWith("arrow") && annotationEnding(annotation, "end").startsWith("arrow") && (() => {
           const dx = annotation.end.x - annotation.start.x, dy = annotation.end.y - annotation.start.y, distance = Math.hypot(dx, dy);
           if (distance < .001) return null;
           const x = -dy / distance * 2, y = dx / distance * 2;

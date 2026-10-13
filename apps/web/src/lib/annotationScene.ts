@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { annotationFontFamily } from "@/lib/textFonts";
+import { annotationEnding, annotationEndingSize } from "@/lib/annotationEndings";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
@@ -173,26 +174,43 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
     const distance = start.distanceTo(end);
     const direction = end.clone().sub(start).normalize();
     const perpendicular = direction.clone().cross(Math.abs(direction.z) < 0.9 ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(0, 1, 0)).normalize().multiplyScalar(2);
-    const points = annotation.startArrow === false || annotation.endArrow === false ? [start, end] : [
+    const startEnding = annotationEnding(annotation, "start"), endEnding = annotationEnding(annotation, "end");
+    const points = !startEnding.startsWith("arrow") || !endEnding.startsWith("arrow") ? [start, end] : [
       start, end, start.clone().sub(perpendicular), start.clone().add(perpendicular), end.clone().sub(perpendicular), end.clone().add(perpendicular),
     ];
     drawLines(points, annotation.id, color, annotation.lineStyle === "dashed");
     if (distance > 0.001) {
-      const height = Math.min(2, distance / 5) * 2;
-      const cone = new THREE.ConeGeometry(height * 0.3, height, 12);
-      const coneMaterial = new THREE.MeshBasicMaterial({ color, depthTest: false, depthWrite: false, transparent: true });
-      const ends: Array<[THREE.Vector3, number]> = [];
-      if (annotation.startArrow !== false) ends.push([start, -1]);
-      if (annotation.endArrow !== false) ends.push([end, 1]);
-      for (const [point, sign] of ends) {
+      for (const [point, sign, ending] of [[start, -1, startEnding], [end, 1, endEnding]] as const) {
+        if (ending === "none") continue;
+        const height = annotationEndingSize(ending, distance);
+        if (ending === "circle" || ending === "square") {
+          const canvas = document.createElement("canvas"); canvas.width = canvas.height = 64;
+          const context = canvas.getContext("2d"); if (!context) continue;
+          context.fillStyle = color;
+          if (ending === "circle") { context.beginPath(); context.arc(32, 32, 30, 0, Math.PI * 2); context.fill(); }
+          else context.fillRect(2, 2, 60, 60);
+          const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
+          const material = new THREE.SpriteMaterial({ map: texture, depthTest: false, depthWrite: false });
+          const marker = new THREE.Sprite(material); marker.position.copy(point); marker.scale.set(height, height, 1); marker.renderOrder = drawOrder;
+          marker.userData.annotationId = annotation.id; marker.userData.annotationPickable = true;
+          group.add(marker); disposables.push(texture, material); continue;
+        }
+        if (ending === "arrow4") {
+          const base = point.clone().addScaledVector(direction, -sign * height);
+          const wing = perpendicular.clone().normalize().multiplyScalar(height * .4);
+          drawLines([base.clone().sub(wing), point, point, base.clone().add(wing)], annotation.id, color);
+          continue;
+        }
+        const cone = new THREE.ConeGeometry(height * 0.3, height, 12);
+        const coneMaterial = new THREE.MeshBasicMaterial({ color, depthTest: false, depthWrite: false, transparent: true });
         const arrow = new THREE.Mesh(cone, coneMaterial);
         arrow.userData.annotationId = annotation.id; arrow.userData.annotationPickable = true;
         arrow.position.copy(point).addScaledVector(direction, -sign * height / 2);
         arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().multiplyScalar(sign));
         arrow.renderOrder = drawOrder;
         group.add(arrow);
+        disposables.push(cone, coneMaterial);
       }
-      disposables.push(cone, coneMaterial);
     }
     if (annotation.showLength !== false) label(`${formatDisplayLength(distance, unit)} ${displayUnitLabel(unit)}`, start.clone().add(end).multiplyScalar(0.5), annotation.size ?? 3);
   }

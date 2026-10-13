@@ -1,12 +1,14 @@
 export type EducadLocale = "es" | "en";
 
 const es = {
+  "annotation.ending.none": "Ninguno", "annotation.ending.square": "Cuadrado", "annotation.ending.circle": "Círculo",
+  "annotation.ending.arrow1": "Flecha 1", "annotation.ending.arrow2": "Flecha 2", "annotation.ending.arrow3": "Flecha 3", "annotation.ending.arrow4": "Flecha 4",
   "sketch.centerRectangle": "Rectángulo por centro y esquina",
   "sketch.roundedRectangle": "Rectángulo redondeado",
   "annotation.arrow": "Flecha",
   "annotation.angle": "Ángulo", "annotation.vertex": "Vértice central",
   "annotation.circle": "Círculo", "annotation.mode": "Modo", "annotation.billboard": "2D", "annotation.planar": "3D", "annotation.lineWidth": "Grosor del trazo",
-  "annotation.dashedLine": "Línea rayada", "annotation.startArrow": "Punta inicial", "annotation.endArrow": "Punta final", "annotation.lineStyle": "Trazo", "annotation.solid": "Continuo", "annotation.dashed": "Rayado", "annotation.showLength": "Mostrar longitud",
+  "annotation.dashedLine": "Línea rayada", "annotation.startArrow": "Extremo inicial", "annotation.endArrow": "Extremo final", "annotation.lineStyle": "Trazo", "annotation.solid": "Continuo", "annotation.dashed": "Rayado", "annotation.showLength": "Mostrar longitud",
   "annotation.group": "Anotaciones", "annotation.text": "Etiqueta de texto", "annotation.dimension": "Dimensión", "annotation.font": "Fuente", "annotation.size": "Tamaño", "annotation.alignment": "Alineación", "annotation.left": "Izquierda", "annotation.center": "Centro", "annotation.right": "Derecha", "annotation.position": "Posición", "annotation.start": "Punto inicial", "annotation.end": "Punto final",
   "dialog.authorName": "Tu nombre", "dialog.creator": "Creador", "dialog.lastAuthor": "Autor de la última modificación",
   "about.title": "acerca de eduCAD", "about.label": "Acerca de eduCAD",
@@ -150,12 +152,14 @@ const es = {
 export type EducadTranslationKey = keyof typeof es;
 
 const en: Record<EducadTranslationKey, string> = {
+  "annotation.ending.none": "None", "annotation.ending.square": "Square", "annotation.ending.circle": "Circle",
+  "annotation.ending.arrow1": "Arrow 1", "annotation.ending.arrow2": "Arrow 2", "annotation.ending.arrow3": "Arrow 3", "annotation.ending.arrow4": "Arrow 4",
   "sketch.centerRectangle": "Center rectangle",
   "sketch.roundedRectangle": "Rounded rectangle",
   "annotation.arrow": "Arrow",
   "annotation.angle": "Angle", "annotation.vertex": "Central vertex",
   "annotation.circle": "Circle", "annotation.mode": "Mode", "annotation.billboard": "2D", "annotation.planar": "3D", "annotation.lineWidth": "Stroke width",
-  "annotation.dashedLine": "Dashed line", "annotation.startArrow": "Start arrowhead", "annotation.endArrow": "End arrowhead", "annotation.lineStyle": "Line style", "annotation.solid": "Solid", "annotation.dashed": "Dashed", "annotation.showLength": "Show length",
+  "annotation.dashedLine": "Dashed line", "annotation.startArrow": "Start ending", "annotation.endArrow": "End ending", "annotation.lineStyle": "Line style", "annotation.solid": "Solid", "annotation.dashed": "Dashed", "annotation.showLength": "Show length",
   "annotation.group": "Annotations", "annotation.text": "Text label", "annotation.dimension": "Dimension", "annotation.font": "Font", "annotation.size": "Size", "annotation.alignment": "Alignment", "annotation.left": "Left", "annotation.center": "Center", "annotation.right": "Right", "annotation.position": "Position", "annotation.start": "Start point", "annotation.end": "End point",
   "dialog.authorName": "Your name", "dialog.creator": "Creator", "dialog.lastAuthor": "Last modified by",
   "about.title": "about eduCAD", "about.label": "about eduCAD",

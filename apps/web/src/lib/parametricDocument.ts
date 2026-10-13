@@ -1,5 +1,6 @@
 import { normalizeDisplayUnit } from "@/lib/parametricUnits";
 import { nextAnnotationName } from "@/lib/annotationNames";
+import { annotationEnding, setAnnotationEnding } from "@/lib/annotationEndings";
 import type {
   CircleProfile,
   ExtrudeFeature,
@@ -378,6 +379,8 @@ export function normalizeParametricAnnotations(input: ParametricDocument["annota
       annotation.color = typeof annotation.color === "string" && /^#[0-9a-f]{6}$/i.test(annotation.color) ? annotation.color : "#233c52";
       annotation.startArrow = annotation.startArrow !== false;
       annotation.endArrow = annotation.endArrow !== false;
+      setAnnotationEnding(annotation, "start", annotationEnding(annotation, "start"));
+      setAnnotationEnding(annotation, "end", annotationEnding(annotation, "end"));
       annotation.lineStyle = annotation.lineStyle === "dashed" ? "dashed" : "solid";
       annotation.showLength = annotation.showLength !== false;
     }

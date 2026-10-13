@@ -13,7 +13,7 @@ export function SketchToolMenu<T extends string>({ options, initialTool, activeT
   onChoose: (tool: T) => void;
   renderIcon?: (option: Option<T>) => ReactNode;
 }) {
-  const [lastTool, setLastTool] = useState(initialTool);
+  const [lastTool, setLastTool] = useState(activeTool !== null && options.some((option) => option.tool === activeTool) ? activeTool : initialTool);
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);

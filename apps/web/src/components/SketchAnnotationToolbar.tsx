@@ -3,6 +3,8 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { ViewportFloatingNumberInput } from "@/components/ViewportFloatingNumberInput";
 import { AnnotationIcon } from "@/components/AnnotationIcon";
+import { AnnotationEndSelector } from "@/components/AnnotationEndSelector";
+import { annotationEnding, setAnnotationEnding } from "@/lib/annotationEndings";
 import { OBJECT_COLOR_PALETTE } from "@/lib/parametricObjects";
 import { enableToolbarMouseScroll } from "@/lib/toolbarScroll";
 import { educadTranslate, type EducadLocale } from "@/lib/educadI18n";
@@ -31,8 +33,8 @@ export function AnnotationToolbar({ embedded = false, annotation, displayUnit, s
     {embedded && annotation.kind === "circle" && <select className="educad-context-object-select educad-annotation-plane-select" aria-label={t("annotation.mode")} title={t("annotation.mode")} value={annotation.mode} onChange={(event) => onUpdate((draft) => { if (draft.kind === "circle") draft.mode = event.target.value as "billboard" | "planar"; })}><option value="billboard">{t("annotation.billboard")}</option><option value="planar">{t("annotation.planar")}</option></select>}
     {annotation.kind === "text" && (["left", "center", "right"] as const).map((alignment) => <button key={alignment} type="button" className={annotation.alignment === alignment ? "active" : ""} aria-pressed={annotation.alignment === alignment} title={`${t("annotation.alignment")}: ${t(`annotation.${alignment}`)}`} aria-label={`${t("annotation.alignment")}: ${t(`annotation.${alignment}`)}`} onClick={() => onUpdate((draft) => { if (draft.kind === "text") draft.alignment = alignment; })}><AnnotationIcon size={34} kind={`align-${alignment}`} /></button>)}
     {annotation.kind === "dimension" && <>
-      <button type="button" className={annotation.startArrow !== false ? "active" : ""} aria-pressed={annotation.startArrow !== false} title={t("annotation.startArrow")} aria-label={t("annotation.startArrow")} onClick={() => onUpdate((draft) => { if (draft.kind === "dimension") draft.startArrow = draft.startArrow === false; })}><AnnotationIcon size={34} kind="arrow_start" /></button>
-      <button type="button" className={annotation.endArrow !== false ? "active" : ""} aria-pressed={annotation.endArrow !== false} title={t("annotation.endArrow")} aria-label={t("annotation.endArrow")} onClick={() => onUpdate((draft) => { if (draft.kind === "dimension") draft.endArrow = draft.endArrow === false; })}><AnnotationIcon size={34} kind="arrow_end" /></button>
+      <AnnotationEndSelector side="start" value={annotationEnding(annotation, "start")} locale={locale} onChange={(value) => onUpdate((draft) => setAnnotationEnding(draft, "start", value))} />
+      <AnnotationEndSelector side="end" value={annotationEnding(annotation, "end")} locale={locale} onChange={(value) => onUpdate((draft) => setAnnotationEnding(draft, "end", value))} />
       <button type="button" className={annotation.lineStyle === "dashed" ? "active" : ""} aria-pressed={annotation.lineStyle === "dashed"} title={t("annotation.dashed")} aria-label={t("annotation.dashed")} onClick={() => onUpdate((draft) => { if (draft.kind === "dimension") draft.lineStyle = draft.lineStyle === "dashed" ? "solid" : "dashed"; })}><AnnotationIcon size={34} kind="dashedLine" /></button>
       <button type="button" className={annotation.showLength !== false ? "active" : ""} aria-pressed={annotation.showLength !== false} title={t("annotation.showLength")} aria-label={t("annotation.showLength")} onClick={() => onUpdate((draft) => { if (draft.kind === "dimension") draft.showLength = draft.showLength === false; })}><AnnotationIcon size={34} kind="length" /></button>
     </>}

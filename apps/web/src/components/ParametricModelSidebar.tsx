@@ -20,6 +20,8 @@ import { ANNOTATIONS_GROUP_ID, canReorderAnnotation, canReorderParametricSelecti
 import { localizedParametricOperationDefinition, parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import { parametricTextFontNames, updateParametricTextSketch } from "@/lib/parametricText";
 import { textFontNames } from "@/lib/textFonts";
+import { AnnotationEndSelector } from "@/components/AnnotationEndSelector";
+import { annotationEnding, setAnnotationEnding } from "@/lib/annotationEndings";
 import { requiresAddOperation } from "@/lib/parametricOperationModes";
 import { ToolbarBooleanModeIcon, ToolbarChamferIcon, ToolbarFilletIcon } from "@/components/icons";
 import { useAccessibleDialog } from "@/components/useAccessibleDialog";
@@ -379,6 +381,7 @@ export function ParametricModelSidebar({
 
 function AnnotationProperties({ annotation, onUpdate }: { annotation: ParametricAnnotation; onUpdate: (update: (annotation: ParametricAnnotation) => void) => void }) {
   const t = useSidebarTranslation();
+  const locale = useContext(LocaleContext);
   const steps = useContext(NumericStepContext);
   const position = (key: "position" | AnnotationPoint, title: string) => {
     const point = annotationPosition(annotation, key === "position" ? null : key);
@@ -396,8 +399,8 @@ function AnnotationProperties({ annotation, onUpdate }: { annotation: Parametric
     {annotation.kind === "angle" && <AnnotationColorPicker color={annotation.color ?? "#233c52"} onChange={(color) => onUpdate((draft) => { if (draft.kind === "angle") draft.color = color; })} />}
     {annotation.kind === "dimension" && <>
       <AnnotationColorPicker color={annotation.color ?? "#233c52"} onChange={(color) => onUpdate((draft) => { if (draft.kind === "dimension") draft.color = color; })} />
-      <label><span>{t("annotation.startArrow")}</span><input type="checkbox" checked={annotation.startArrow !== false} onChange={(event) => onUpdate((draft) => { if (draft.kind === "dimension") draft.startArrow = event.target.checked; })} /></label>
-      <label><span>{t("annotation.endArrow")}</span><input type="checkbox" checked={annotation.endArrow !== false} onChange={(event) => onUpdate((draft) => { if (draft.kind === "dimension") draft.endArrow = event.target.checked; })} /></label>
+      <label className="educad-annotation-ending-field"><span>{t("annotation.startArrow")}</span><AnnotationEndSelector side="start" value={annotationEnding(annotation, "start")} locale={locale} onChange={(value) => onUpdate((draft) => setAnnotationEnding(draft, "start", value))} /></label>
+      <label className="educad-annotation-ending-field"><span>{t("annotation.endArrow")}</span><AnnotationEndSelector side="end" value={annotationEnding(annotation, "end")} locale={locale} onChange={(value) => onUpdate((draft) => setAnnotationEnding(draft, "end", value))} /></label>
       <label><span>{t("annotation.lineStyle")}</span><select value={annotation.lineStyle ?? "solid"} onChange={(event) => onUpdate((draft) => { if (draft.kind === "dimension") draft.lineStyle = event.target.value as "solid" | "dashed"; })}><option value="solid">{t("annotation.solid")}</option><option value="dashed">{t("annotation.dashed")}</option></select></label>
       <label><span>{t("annotation.showLength")}</span><input type="checkbox" checked={annotation.showLength !== false} onChange={(event) => onUpdate((draft) => { if (draft.kind === "dimension") draft.showLength = event.target.checked; })} /></label>
     </>}
