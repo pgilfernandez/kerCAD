@@ -32,25 +32,43 @@ export function createVisualSection(model: THREE.Group, bodies: THREE.Mesh[], po
   });
   const canvas = document.createElement("canvas"); canvas.width = canvas.height = 320;
   const context = canvas.getContext("2d")!;
-  context.scale(5, 5);
-  context.fillStyle = "#d9dde1"; context.fillRect(0, 0, 64, 64);
-  context.strokeStyle = "#64707a"; context.lineWidth = 3;
-  for (let offset = -64; offset <= 64; offset += 16) { context.beginPath(); context.moveTo(offset, 64); context.lineTo(offset + 64, 0); context.stroke(); }
+  // Exact periodic sampling avoids cropped stroke ends at tile corners.
+  // Four periods fit the texture; 1.5 logical pixels is half the old stroke.
+  const image = context.createImageData(320, 320);
+  for (let y = 0; y < 320; y++) for (let x = 0; x < 320; x++) {
+    const phase = (x + y + 1) % 80;
+    const distance = Math.abs(phase - 40) / Math.SQRT2;
+    const offset = (y * 320 + x) * 4;
+    image.data[offset] = 100; image.data[offset + 1] = 110; image.data[offset + 2] = 120;
+    image.data[offset + 3] = Math.round(255 * THREE.MathUtils.clamp(3.75 + .5 - distance, 0, 1));
+  }
+  context.putImageData(image, 0, 0);
   const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(2, 2);
   texture.anisotropy = 4;
   resources.push(texture);
-  const capMaterial = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
   const edgeMaterial = new THREE.LineBasicMaterial({ color: "#000000", linewidth: 1, depthTest: true, depthWrite: false });
-  resources.push(capMaterial, edgeMaterial);
+  resources.push(edgeMaterial);
   bodies.forEach((body) => {
     const geometry = sectionCapGeometry(body, position, quaternion);
     if (!geometry) return;
-    const material = capMaterial;
+    const source = Array.isArray(body.material) ? body.material[0] : body.material;
+    const material = new THREE.MeshBasicMaterial({ color: (source as THREE.MeshBasicMaterial).color?.clone() ?? "#ffffff", map: texture, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+    // The texture has a transparent background, but the cut remains solid.
+    // Blend the hatch into the piece color in one pass rather than layering meshes.
+    material.onBeforeCompile = (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace("#include <map_fragment>", `
+        #ifdef USE_MAP
+          vec4 hatch = texture2D(map, vMapUv);
+          diffuseColor.rgb *= mix(vec3(1.0), hatch.rgb, hatch.a);
+        #endif
+      `);
+    };
+    material.customProgramCacheKey = () => "educad-section-hatch-v1";
     const cap = new THREE.Mesh(geometry, material);
     cap.renderOrder = 2;
-    group.add(cap); resources.push(geometry);
+    group.add(cap); resources.push(geometry, material);
     // Coplanar triangulation edges are discarded: only outer and hole contours remain.
     const edgeGeometry = new THREE.EdgesGeometry(geometry);
     const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
