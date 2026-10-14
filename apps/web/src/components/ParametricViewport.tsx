@@ -486,7 +486,7 @@ function coplanarFaceGeometry(source: THREE.BufferGeometry, faceIndex: number) {
   return { geometry, region };
 }
 
-function objectOriginMarker(targetId: string, editable: boolean, targetKind: "object" | "feature" = "object", positionVisible = true, rotationEditable = false) {
+function objectOriginMarker(targetId: string, editable: boolean, targetKind: "object" | "feature" = "object", positionVisible = true, rotationEditable = false, normalDirection = 1) {
   const marker = new THREE.Group();
   marker.name = `${targetKind === "object" ? "Origin" : "Operation"} ${targetId}`;
   marker.userData.transformTargetId = targetId;
@@ -494,7 +494,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   const axes: Array<["x" | "y" | "z", THREE.Vector3, number, number]> = [
     ["x", new THREE.Vector3(1, 0, 0), 0xd84b4b, 0xff0000],
     ["y", new THREE.Vector3(0, 1, 0), 0x35a85b, 0x00ff00],
-    ["z", new THREE.Vector3(0, 0, 1), 0x347fd1, 0x0000ff],
+    ["z", new THREE.Vector3(0, 0, targetId === SECTION_PLANE_ID ? normalDirection : 1), 0x347fd1, 0x0000ff],
   ];
   const translationAxes = targetId === SECTION_PLANE_ID ? axes.filter(([axis]) => axis === "z") : axes;
   if (positionVisible) for (const [axis, direction, color, hoverColor] of translationAxes) {
@@ -3442,7 +3442,7 @@ export function ParametricViewport({ visualSection = null, onUpdateAnnotation, o
     clearObjectOriginLayer(layer);
     for (const origin of objectOrigins) {
       if (!origin.visible) continue;
-      const marker = objectOriginMarker(origin.objectId, origin.objectId === editableOriginId, "object", origin.positionVisible !== false, origin.rotationEditable && origin.objectId !== editableOriginId);
+      const marker = objectOriginMarker(origin.objectId, origin.objectId === editableOriginId, "object", origin.positionVisible !== false, origin.rotationEditable && origin.objectId !== editableOriginId, visualSection?.inverted !== false ? 1 : -1);
       marker.position.set(origin.position.x, origin.position.y, origin.position.z);
       marker.rotation.set(
         THREE.MathUtils.degToRad(origin.rotation.x),
@@ -3465,7 +3465,7 @@ export function ParametricViewport({ visualSection = null, onUpdateAnnotation, o
       layer.add(marker);
     }
     invalidateRef.current();
-  }, [editableOriginId, objectOrigins, operationOrigins, projection, renderQuality, shadingMode]);
+  }, [editableOriginId, objectOrigins, operationOrigins, projection, renderQuality, shadingMode, visualSection?.inverted]);
 
   useEffect(() => {
     const annotation = annotationPreview?.id === selectedAnnotationId ? annotationPreview : annotations?.find((item) => item.id === selectedAnnotationId);
