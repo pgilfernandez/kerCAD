@@ -852,7 +852,7 @@ export function ParametricViewport({ visualSection = null, onUpdateAnnotation, o
     camera.position.set(-118, 96, 118);
     const renderProfile = viewportRenderProfile(renderQuality);
     const resolution = new AdaptiveViewportResolution(window.devicePixelRatio, viewportPerformanceOptions(renderQuality));
-    const renderer = new THREE.WebGLRenderer({ antialias: renderProfile.antialias, alpha: false, stencil: true, powerPreference: "high-performance" });
+    const renderer = new THREE.WebGLRenderer({ antialias: renderProfile.antialias, alpha: false, powerPreference: "high-performance" });
     renderer.localClippingEnabled = true;
     renderer.setPixelRatio(resolution.pixelRatio);
     renderer.shadowMap.enabled = shadingMode !== "noShadows";
