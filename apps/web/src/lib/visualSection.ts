@@ -3,7 +3,7 @@ import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { sectionCapGeometry } from "@/lib/sectionCapGeometry";
 import type { ParametricVector3 } from "@/types/parametric";
 
-export type VisualSection = { position: ParametricVector3; rotation: ParametricVector3 };
+export type VisualSection = { position: ParametricVector3; rotation: ParametricVector3; inverted?: boolean };
 export const SECTION_PLANE_ID = "$visual-section";
 
 /** Cached caps use the actual closed surface, including holes and cavities.
@@ -18,6 +18,8 @@ export function createVisualSection(model: THREE.Group, bodies: THREE.Mesh[], po
   const position = new THREE.Vector3(pose.position.x, pose.position.y, pose.position.z);
   model.updateWorldMatrix(true, true);
   const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal.clone().transformDirection(model.matrixWorld), position.clone().applyMatrix4(model.matrixWorld));
+  // Change only the retained half-space, never the plane's manipulators.
+  if (pose.inverted !== false) plane.negate();
   const bounds = new THREE.Box3(); bodies.forEach((body) => bounds.union(new THREE.Box3().setFromObject(body)));
   const side = Math.max(40, bounds.getSize(new THREE.Vector3()).length() * 2);
   model.traverse((object) => {
@@ -28,13 +30,16 @@ export function createVisualSection(model: THREE.Group, bodies: THREE.Mesh[], po
       material.clippingPlanes = [plane]; material.clipShadows = true; material.needsUpdate = true;
     }
   });
-  const canvas = document.createElement("canvas"); canvas.width = canvas.height = 64;
+  const canvas = document.createElement("canvas"); canvas.width = canvas.height = 320;
   const context = canvas.getContext("2d")!;
-  context.fillStyle = "#fff8db"; context.fillRect(0, 0, 64, 64);
-  context.strokeStyle = "#776a45"; context.lineWidth = 3;
+  context.scale(5, 5);
+  context.fillStyle = "#d9dde1"; context.fillRect(0, 0, 64, 64);
+  context.strokeStyle = "#64707a"; context.lineWidth = 3;
   for (let offset = -64; offset <= 64; offset += 16) { context.beginPath(); context.moveTo(offset, 64); context.lineTo(offset + 64, 0); context.stroke(); }
   const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(2, 2);
+  texture.anisotropy = 4;
   resources.push(texture);
   const capMaterial = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
   resources.push(capMaterial);
@@ -49,7 +54,7 @@ export function createVisualSection(model: THREE.Group, bodies: THREE.Mesh[], po
   const guideGeometry = new THREE.BufferGeometry().setFromPoints([
     new THREE.Vector3(-side / 2, -side / 2, 0), new THREE.Vector3(side / 2, -side / 2, 0), new THREE.Vector3(side / 2, side / 2, 0), new THREE.Vector3(-side / 2, side / 2, 0), new THREE.Vector3(-side / 2, -side / 2, 0),
   ]);
-  const guideMaterial = new THREE.LineDashedMaterial({ color: "#c9a600", dashSize: 3, gapSize: 2, transparent: true, opacity: .7 });
+  const guideMaterial = new THREE.LineDashedMaterial({ color: "#9099a1", dashSize: 3, gapSize: 2, transparent: true, opacity: .7 });
   const guide = new THREE.Line(guideGeometry, guideMaterial); guide.computeLineDistances(); guide.position.copy(position); guide.quaternion.copy(quaternion);
   group.add(guide); resources.push(guideGeometry, guideMaterial);
   model.add(group);

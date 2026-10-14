@@ -3869,7 +3869,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           manipulatorControls={sectionEnabled ? <>
             <Tool label={t("camera.positionTriad")} active={sectionPositionVisible} onClick={() => setSectionPositionVisible((value) => !value)}><ToolbarPositionManipulatorIcon /></Tool>
             <Tool label={t("camera.rotationTriad")} active={sectionRotationVisible} onClick={() => setSectionRotationVisible((value) => !value)}><ToolbarRotationManipulatorIcon /></Tool>
-            <Tool label={t("camera.reverseSection")} onClick={() => setSectionPose((pose) => ({ ...pose, rotation: rotatedCircleAnnotation(pose.rotation, "x", 180) }))}><ToolbarSectionViewIcon /></Tool>
+            <Tool label={t("camera.reverseSection")} onClick={() => setSectionPose((pose) => ({ ...pose, inverted: !(pose.inverted ?? true) }))}><ToolbarSectionViewIcon /></Tool>
           </> : selectedAnnotation ? <>
             <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
             {selectedAnnotation.kind !== "text" && (selectedAnnotation.kind === "circle" || selectedAnnotation.kind === "angle" || selectedAnnotation.showLength !== false) && <Tool label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>}
