@@ -537,6 +537,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   }
   if (rotationEditable) {
     for (const [axis, , color, hoverColor] of axes) {
+      if (targetId === SECTION_PLANE_ID && axis === "z") continue;
       const ring = new THREE.Mesh(
         new THREE.TorusGeometry(0.576, 0.015, 8, 64),
         new THREE.MeshBasicMaterial({ color, depthTest: false, depthWrite: false, transparent: true, opacity: 0.92 }),
