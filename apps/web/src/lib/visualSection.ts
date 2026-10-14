@@ -41,8 +41,9 @@ export function createVisualSection(model: THREE.Group, bodies: THREE.Mesh[], po
   texture.repeat.set(2, 2);
   texture.anisotropy = 4;
   resources.push(texture);
-  const capMaterial = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
-  resources.push(capMaterial);
+  const capMaterial = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+  const edgeMaterial = new THREE.LineBasicMaterial({ color: "#000000", linewidth: 1, depthTest: true, depthWrite: false });
+  resources.push(capMaterial, edgeMaterial);
   bodies.forEach((body) => {
     const geometry = sectionCapGeometry(body, position, quaternion);
     if (!geometry) return;
@@ -50,6 +51,11 @@ export function createVisualSection(model: THREE.Group, bodies: THREE.Mesh[], po
     const cap = new THREE.Mesh(geometry, material);
     cap.renderOrder = 2;
     group.add(cap); resources.push(geometry);
+    // Coplanar triangulation edges are discarded: only outer and hole contours remain.
+    const edgeGeometry = new THREE.EdgesGeometry(geometry);
+    const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+    edges.renderOrder = 17;
+    group.add(edges); resources.push(edgeGeometry);
   });
   const guideGeometry = new THREE.BufferGeometry().setFromPoints([
     new THREE.Vector3(-side / 2, -side / 2, 0), new THREE.Vector3(side / 2, -side / 2, 0), new THREE.Vector3(side / 2, side / 2, 0), new THREE.Vector3(-side / 2, side / 2, 0), new THREE.Vector3(-side / 2, -side / 2, 0),
