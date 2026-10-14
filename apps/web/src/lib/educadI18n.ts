@@ -1,6 +1,7 @@
 export type EducadLocale = "es" | "en";
 
 const es = {
+  "camera.sectionView": "Vista de sección", "camera.reverseSection": "Invertir lado del corte",
   "annotation.ending.none": "Ninguno", "annotation.ending.square": "Cuadrado", "annotation.ending.circle": "Círculo",
   "annotation.ending.arrow1": "Flecha 1", "annotation.ending.arrow2": "Flecha 2", "annotation.ending.arrow3": "Flecha 3", "annotation.ending.arrow4": "Flecha 4",
   "sketch.centerRectangle": "Rectángulo por centro y esquina",
@@ -152,6 +153,7 @@ const es = {
 export type EducadTranslationKey = keyof typeof es;
 
 const en: Record<EducadTranslationKey, string> = {
+  "camera.sectionView": "Section view", "camera.reverseSection": "Reverse cutting side",
   "annotation.ending.none": "None", "annotation.ending.square": "Square", "annotation.ending.circle": "Circle",
   "annotation.ending.arrow1": "Arrow 1", "annotation.ending.arrow2": "Arrow 2", "annotation.ending.arrow3": "Arrow 3", "annotation.ending.arrow4": "Arrow 4",
   "sketch.centerRectangle": "Center rectangle",

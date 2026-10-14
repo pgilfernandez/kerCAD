@@ -12,6 +12,7 @@ import { ParametricViewport, type CameraOrientation, type CameraProjection, type
 import { SketchWorkspace, type SketchMeasurement, type SketchSceneReference, type SketchSelection, type SketchTool } from "@/components/SketchWorkspace";
 import { SketchToolMenu } from "@/components/SketchToolMenu";
 import { nextAnnotationName } from "@/lib/annotationNames";
+import { SECTION_PLANE_ID, type VisualSection } from "@/lib/visualSection";
 import { useAccessibleDialog } from "@/components/useAccessibleDialog";
 import {
   ToolbarAlignIcon,
@@ -20,6 +21,7 @@ import {
   ToolbarDropToWorkplaneIcon,
   ToolbarDuplicateIcon,
   ToolbarExtrudeIcon,
+  ToolbarSectionViewIcon,
   ToolbarFilletIcon,
   ToolbarImportIcon,
   ToolbarMirrorIcon,
@@ -355,6 +357,11 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [topologyPreviewContext, setTopologyPreviewContext] = useState<BuildResult["operationContext"]>(null);
   const [view, setView] = useState<CameraView>({ name: "home", token: 0 });
   const [projection, setProjection] = useState<CameraProjection>("orthographic");
+  const [sectionEnabled, setSectionEnabled] = useState(false);
+  const [sectionPose, setSectionPose] = useState<VisualSection>({ position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 } });
+  const [sectionPositionVisible, setSectionPositionVisible] = useState(true);
+  const [sectionRotationVisible, setSectionRotationVisible] = useState(true);
+  useEffect(() => setSectionEnabled(false), [document.id]);
   const [renderQuality, setRenderQuality] = useState<ViewportRenderQuality>("normal");
   const [displayMode, setDisplayMode] = useState<ViewportDisplayMode>("solid");
   const [shadingMode, setShadingMode] = useState<ViewportShadingMode>("shadows");
@@ -3469,6 +3476,18 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               <Tool label={t("toolbar.polarPattern")} enabled={Boolean(selectedObjectId)} onClick={addPolarPatternOperation}><ToolbarPolarPatternIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label={t("toolbar.helpers")} className="toolbar-helpers-section">
+              <Tool label={t("camera.sectionView")} active={sectionEnabled} onClick={() => {
+                if (sectionEnabled) { setSectionEnabled(false); return; }
+                const positions = build.mesh?.positions;
+                if (positions?.length) {
+                  const bounds = new THREE.Box3();
+                  for (let index = 0; index < positions.length; index += 3) bounds.expandByPoint(new THREE.Vector3(positions[index], positions[index + 1], positions[index + 2]));
+                  const center = bounds.getCenter(new THREE.Vector3());
+                  setSectionPose({ position: { x: center.x, y: center.y, z: center.z }, rotation: { x: 0, y: 0, z: 0 } });
+                }
+                setModelSelection([]); setSelectedAnnotationId(null); setOriginEditObjectId(null); setAnnotationTool(null);
+                setSectionEnabled(true); setDisplayMode("solid");
+              }}><ToolbarSectionViewIcon /></Tool>
               <Tool label={hasActiveWorkplane ? t("toolbar.resetWorkplane") : placingWorkplane ? t("toolbar.cancelWorkplane") : t("toolbar.placeWorkplane")} active={placingWorkplane || hasActiveWorkplane} onClick={toggleWorkplanePlacement}>{hasActiveWorkplane ? <ToolbarResetWorkplaneIcon /> : <ToolbarWorkplaneIcon />}</Tool>
               <Tool label={t("toolbar.snapGrid")} enabled={Boolean((selectedShape || selectedAnnotationPoint) && document.workplane.snapToGrid)} onClick={() => selectedAnnotationPoint ? adjustAnnotationPoint("snap") : selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: Math.round((selectedShape?.x ?? 0) / snapAmount) * snapAmount, z: Math.round((selectedShape?.z ?? 0) / snapAmount) * snapAmount }))}><ToolbarSnapGridIcon /></Tool>
               <Tool label={t("toolbar.dropToWorkplane")} enabled={Boolean(selectedAnnotationPoint) || modelSelection.some(item => {
@@ -3816,8 +3835,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           mesh={viewportObjectRecords.length > 0 ? ((editingEdgeTreatmentId || editingFaceExtrudeId || editingShellId || editingRevolveId) && topologySelectionBuild ? topologySelectionBuild : build).mesh : null}
           objectRecords={viewportObjectRecords}
           objectColors={objectColors}
-          objectOrigins={alignOpen ? [] : viewportObjectOrigins}
-          operationOrigins={alignOpen ? [] : viewportOperationOrigins}
+          visualSection={sectionEnabled ? sectionPose : null}
+          objectOrigins={sectionEnabled ? [{ objectId: SECTION_PLANE_ID, visible: true, position: sectionPose.position, rotation: sectionPose.rotation, positionVisible: sectionPositionVisible, rotationEditable: sectionRotationVisible }] : alignOpen ? [] : viewportObjectOrigins}
+          operationOrigins={sectionEnabled || alignOpen ? [] : viewportOperationOrigins}
           alignmentActive={alignOpen}
           alignmentBusy={alignmentBusy}
           alignmentTargets={alignmentDisplayTargets}
@@ -3826,8 +3846,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           onAlign={alignSelection}
           sketchOverlays={viewportSketchOverlays}
           editableOriginId={alignOpen ? null : originEditObjectId}
-          selectedObjectOriginId={selectedAnnotation && selectedAnnotationPoint ? selectedAnnotation.id : selectedOriginObjectId}
-          selectedOperationOriginId={selectedOperationOriginId}
+          selectedObjectOriginId={sectionEnabled ? SECTION_PLANE_ID : selectedAnnotation && selectedAnnotationPoint ? selectedAnnotation.id : selectedOriginObjectId}
+          selectedOperationOriginId={sectionEnabled ? null : selectedOperationOriginId}
           selectedObjectIds={viewportSelectedObjectIds}
           operationContext={pendingEdgeTreatment || pendingFaceExtrude || pendingShell || pendingRevolve ? viewportTopologyPreviewContext : viewportOperationContext}
           isolatedHistoryObjectId={!editingEdgeTreatmentId && !editingFaceExtrudeId && !editingShellId && !editingRevolveId && selectedOperationTimeline && selectedOperationTimeline.index < selectedOperationTimeline.count - 1 ? selectedOperationTimeline.objectId : null}
@@ -3843,10 +3863,14 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           displayUnit={displayUnit}
           locale={locale}
           parameterHandlesVisible={!alignOpen && showParameterHandles}
-          contextToolbarVisible={pendingFaceExtrude || pendingRevolve || pendingShell ? true : pendingEdgeTreatment
+          contextToolbarVisible={sectionEnabled || (pendingFaceExtrude || pendingRevolve || pendingShell ? true : pendingEdgeTreatment
             ? selectedTopologyFaces.length + selectedTopologyEdges.length > 0
-            : modelSelection.length > 0 || Boolean(selectedAnnotation)}
-          manipulatorControls={selectedAnnotation ? <>
+            : modelSelection.length > 0 || Boolean(selectedAnnotation))}
+          manipulatorControls={sectionEnabled ? <>
+            <Tool label={t("camera.positionTriad")} active={sectionPositionVisible} onClick={() => setSectionPositionVisible((value) => !value)}><ToolbarPositionManipulatorIcon /></Tool>
+            <Tool label={t("camera.rotationTriad")} active={sectionRotationVisible} onClick={() => setSectionRotationVisible((value) => !value)}><ToolbarRotationManipulatorIcon /></Tool>
+            <Tool label={t("camera.reverseSection")} onClick={() => setSectionPose((pose) => ({ ...pose, rotation: rotatedCircleAnnotation(pose.rotation, "x", 180) }))}><ToolbarSectionViewIcon /></Tool>
+          </> : selectedAnnotation ? <>
             <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
             {selectedAnnotation.kind !== "text" && (selectedAnnotation.kind === "circle" || selectedAnnotation.kind === "angle" || selectedAnnotation.showLength !== false) && <Tool label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>}
             {selectedAnnotation.kind === "circle" && selectedAnnotation.mode === "planar" && <Tool label={t("camera.rotationTriad")} active={showRotationTriad} onClick={() => setShowRotationTriad((visible) => !visible)}><ToolbarRotationManipulatorIcon /></Tool>}
@@ -3868,7 +3892,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("camera.rotationTriad")} active={showRotationTriad} onClick={() => setShowRotationTriad((visible) => !visible)}><ToolbarRotationManipulatorIcon /></Tool>
             <Tool className="educad-parameter-handles-toggle" label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>
           </>}
-          selection={alignOpen || originEditObjectId || placingWorkplane || editingMirrorPlaneId || selectingTopologyFaces || selectingTopologyEdges ? null : selectedBox}
+          selection={sectionEnabled || alignOpen || originEditObjectId || placingWorkplane || editingMirrorPlaneId || selectingTopologyFaces || selectingTopologyEdges ? null : selectedBox}
           snap={snapAmount}
           operationModesVisible={Boolean(selectedOperationId && hasPreviousSolidOperation(document, selectedOperationId))}
           onOperationModeChange={setSelectedOperationMode}
@@ -3877,7 +3901,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             mutate((draft) => updateParametricShapeParameter(draft, selectedOperationId, parameter, value));
           }}
           onObjectOriginMove={(objectId, position) => mutate((draft) => moveParametricObjectOrigin(draft, objectId, position))}
-          onObjectAxisMove={(objectId, position) => mutate((draft) => {
+          onObjectAxisMove={(objectId, position) => {
+            if (objectId === SECTION_PLANE_ID) { setSectionPose((pose) => ({ ...pose, position: { ...position } })); return; }
+            mutate((draft) => {
             const annotation = draft.annotations?.find((candidate) => candidate.id === objectId);
             if (annotation) {
               setAnnotationPosition(annotation, annotationEndpoint, position);
@@ -3889,12 +3915,16 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               object.transform.position = { ...position };
               transformParametricObjectTopologyHints(draft, objectId, previousTransform);
             }
-          })}
-          onObjectRotate={(objectId, _axis, deltaDegrees, localAxis) => mutate((draft) => {
+            });
+          }}
+          onObjectRotate={(objectId, _axis, deltaDegrees, localAxis) => {
+            if (objectId === SECTION_PLANE_ID) { setSectionPose((pose) => ({ ...pose, rotation: rotatedCircleAnnotation(pose.rotation, localAxis, deltaDegrees) })); return; }
+            mutate((draft) => {
             const annotation = draft.annotations?.find((item) => item.id === objectId);
             if (annotation?.kind === "circle") annotation.rotation = rotatedCircleAnnotation(annotation.rotation, localAxis, deltaDegrees);
             else rotateParametricObjectAroundLocalAxis(draft, objectId, localAxis, deltaDegrees);
-          })}
+            });
+          }}
           onOperationAxisMove={(featureId, delta) => mutate((draft) => applyParametricSelectionWorldDelta(draft, featureId, "feature", delta))}
           onOperationRotate={(featureId, axis, deltaDegrees) => mutate((draft) => applyParametricSelectionWorkplaneRotation(draft, featureId, "feature", axis, deltaDegrees))}
           onCameraOrientation={setCameraOrientation}

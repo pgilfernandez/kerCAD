@@ -238,6 +238,10 @@ export function ToolbarExtrudeIcon() {
   return <EducadOperationImage file="extrude.svg" />;
 }
 
+export function ToolbarSectionViewIcon() {
+  return <EducadOperationImage file="section-view.svg" />;
+}
+
 export function ToolbarRevolveIcon() {
   return <EducadOperationImage file="revolve.svg" />;
 }

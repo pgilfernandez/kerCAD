@@ -23,6 +23,7 @@ import { createAnnotationScene } from "@/lib/annotationScene";
 import { AnnotationInteraction } from "@/components/AnnotationInteraction";
 import { ViewportFloatingNumberInput } from "@/components/ViewportFloatingNumberInput";
 import { AnnotationToolbar } from "@/components/SketchAnnotationToolbar";
+import { createVisualSection, type VisualSection } from "@/lib/visualSection";
 import type { ParametricAnnotation } from "@/types/parametric";
 import type { AnnotationTool } from "@/lib/annotationPresets";
 import { annotationPosition, rotatedCircleAnnotation, type AnnotationPoint } from "@/lib/annotationGeometry";
@@ -155,6 +156,7 @@ type Props = {
   renderQuality?: ViewportRenderQuality;
   displayMode?: ViewportDisplayMode;
   shadingMode?: ViewportShadingMode;
+  visualSection?: VisualSection | null;
   displayUnit?: ParametricDisplayUnit;
   annotations?: ParametricDocument["annotations"];
   annotationsVisible?: boolean;
@@ -589,7 +591,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ onUpdateAnnotation, onCircleAnnotationRadius, onAnnotationSelect, annotationsVisible = true, onMoveAnnotationEndpoint, selectedAnnotationEndpoint = null, onSelectAnnotationEndpoint, annotationTool = null, editingAnnotationId = null, onPlaceAnnotation, onFinishAnnotation, onEditAnnotation, onCancelAnnotationTool, annotations, selectedAnnotationId = null, onProjectRename, mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, faceExtrudeDraft = null, onFaceExtrudeAccept, onFaceExtrudeCancel, faceExtrudeCanAccept = true, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, revolveDraft = null, onRevolveDraftChange, onRevolveAccept, onRevolveCancel, revolveCanAccept = true, distanceHandle = null, onDistanceParameterDragStart, onDistanceParameterPreview, onDistanceParameterChange, onDistanceParameterCancel, shellDraft = null, onShellDraftChange, onShellCornerTypeChange, onShellAccept, onShellCancel, shellCanAccept = true, floatingFeature = null, booleanObjects = [], patternSources = [], booleanAddOnly = false, operationModesVisible = true, contextToolbarVisible, manipulatorControls, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = "Untitled design", onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions, alignmentActive = false, alignmentBusy = false, alignmentTargets = [], alignmentReference = null, onAlignmentSelect, onAlign }: Props) {
+export function ParametricViewport({ visualSection = null, onUpdateAnnotation, onCircleAnnotationRadius, onAnnotationSelect, annotationsVisible = true, onMoveAnnotationEndpoint, selectedAnnotationEndpoint = null, onSelectAnnotationEndpoint, annotationTool = null, editingAnnotationId = null, onPlaceAnnotation, onFinishAnnotation, onEditAnnotation, onCancelAnnotationTool, annotations, selectedAnnotationId = null, onProjectRename, mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, faceExtrudeDraft = null, onFaceExtrudeAccept, onFaceExtrudeCancel, faceExtrudeCanAccept = true, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, revolveDraft = null, onRevolveDraftChange, onRevolveAccept, onRevolveCancel, revolveCanAccept = true, distanceHandle = null, onDistanceParameterDragStart, onDistanceParameterPreview, onDistanceParameterChange, onDistanceParameterCancel, shellDraft = null, onShellDraftChange, onShellCornerTypeChange, onShellAccept, onShellCancel, shellCanAccept = true, floatingFeature = null, booleanObjects = [], patternSources = [], booleanAddOnly = false, operationModesVisible = true, contextToolbarVisible, manipulatorControls, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = "Untitled design", onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions, alignmentActive = false, alignmentBusy = false, alignmentTargets = [], alignmentReference = null, onAlignmentSelect, onAlign }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const annotationSnapRef = useRef<(event: PointerEvent) => THREE.Vector3 | null>(() => null);
   const annotationPositionHandleRef = useRef<(event: PointerEvent) => boolean>(() => false);
@@ -850,7 +852,8 @@ export function ParametricViewport({ onUpdateAnnotation, onCircleAnnotationRadiu
     camera.position.set(-118, 96, 118);
     const renderProfile = viewportRenderProfile(renderQuality);
     const resolution = new AdaptiveViewportResolution(window.devicePixelRatio, viewportPerformanceOptions(renderQuality));
-    const renderer = new THREE.WebGLRenderer({ antialias: renderProfile.antialias, alpha: false, powerPreference: "high-performance" });
+    const renderer = new THREE.WebGLRenderer({ antialias: renderProfile.antialias, alpha: false, stencil: true, powerPreference: "high-performance" });
+    renderer.localClippingEnabled = true;
     renderer.setPixelRatio(resolution.pixelRatio);
     renderer.shadowMap.enabled = shadingMode !== "noShadows";
     renderer.shadowMap.type = shadingMode === "basic" || renderQuality === "optimized" ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
@@ -3878,6 +3881,7 @@ export function ParametricViewport({ onUpdateAnnotation, onCircleAnnotationRadiu
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
     const batchedEdges = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color: "#000000", linewidth: 1, depthTest: true }));
+    batchedEdges.userData.sectionClip = true;
     batchedEdges.renderOrder = 17;
     group.add(batchedEdges);
     batchedSolidEdgesRef.current = batchedEdges;
@@ -3891,6 +3895,15 @@ export function ParametricViewport({ onUpdateAnnotation, onCircleAnnotationRadiu
       batchedSolidEdgesRef.current = null;
     };
   }, [displayMode, isolatedHistoryObjectId, mesh, objectRecords, selectedObjectIds]);
+
+  useEffect(() => {
+    const model = modelRef.current;
+    if (!model || !visualSection) return;
+    const bodies = model.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh && child.visible && typeof child.userData.renderId === "string");
+    const dispose = createVisualSection(model, bodies, visualSection);
+    invalidateRef.current();
+    return () => { dispose(); invalidateRef.current(); };
+  }, [visualSection, mesh, objectRecords, displayMode, selectedObjectIds, operationContext, renderQuality, shadingMode]);
 
   useEffect(() => {
     const layer = topologyFaceLayerRef.current;
