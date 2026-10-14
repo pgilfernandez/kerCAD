@@ -23,7 +23,7 @@ import { createAnnotationScene } from "@/lib/annotationScene";
 import { AnnotationInteraction } from "@/components/AnnotationInteraction";
 import { ViewportFloatingNumberInput } from "@/components/ViewportFloatingNumberInput";
 import { AnnotationToolbar } from "@/components/SketchAnnotationToolbar";
-import { createVisualSection, type VisualSection } from "@/lib/visualSection";
+import { createVisualSection, SECTION_PLANE_ID, type VisualSection } from "@/lib/visualSection";
 import type { ParametricAnnotation } from "@/types/parametric";
 import type { AnnotationTool } from "@/lib/annotationPresets";
 import { annotationPosition, rotatedCircleAnnotation, type AnnotationPoint } from "@/lib/annotationGeometry";
@@ -496,7 +496,8 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
     ["y", new THREE.Vector3(0, 1, 0), 0x35a85b, 0x00ff00],
     ["z", new THREE.Vector3(0, 0, 1), 0x347fd1, 0x0000ff],
   ];
-  if (positionVisible) for (const [axis, direction, color, hoverColor] of axes) {
+  const translationAxes = targetId === SECTION_PLANE_ID ? axes.filter(([axis]) => axis === "z") : axes;
+  if (positionVisible) for (const [axis, direction, color, hoverColor] of translationAxes) {
     const arrow = new THREE.ArrowHelper(direction, undefined, 1, color, 0.28, 0.16);
     arrow.line.visible = false;
     const arrowMaterials = Array.isArray(arrow.cone.material) ? arrow.cone.material : [arrow.cone.material];
