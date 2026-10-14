@@ -669,6 +669,7 @@ export function SketchWorkspace({
   const [pan, setPan] = useState({ x: 0, z: 0 });
   const [showDimensionLabels, setShowDimensionLabels] = useState(tool !== "freehand" && tool !== "freehandSmooth");
   const [showConstraintLabels, setShowConstraintLabels] = useState(true);
+  const [showAnnotations, setShowAnnotations] = useState(true);
   const [labelPreferencesLoaded, setLabelPreferencesLoaded] = useState(false);
   const [hover, setHover] = useState<{ x: number; z: number } | null>(null);
   const [pendingCircleCenter, setPendingCircleCenter] = useState<{ x: number; z: number } | null>(null);
@@ -709,8 +710,10 @@ export function SketchWorkspace({
     try {
       const dimensions = window.localStorage.getItem("educad.sketch-dimension-labels");
       const constraints = window.localStorage.getItem("educad.sketch-constraint-labels");
+      const annotationsVisible = window.localStorage.getItem("educad.sketch-annotations-visible");
       if (dimensions !== null) setShowDimensionLabels(dimensions !== "false");
       if (constraints !== null) setShowConstraintLabels(constraints !== "false");
+      if (annotationsVisible !== null) setShowAnnotations(annotationsVisible !== "false");
     } catch {
       // Keep session preferences when browser storage is unavailable.
     }
@@ -722,10 +725,13 @@ export function SketchWorkspace({
     try {
       window.localStorage.setItem("educad.sketch-dimension-labels", String(showDimensionLabels));
       window.localStorage.setItem("educad.sketch-constraint-labels", String(showConstraintLabels));
+      window.localStorage.setItem("educad.sketch-annotations-visible", String(showAnnotations));
     } catch {
       // The toggles remain usable without persistent storage.
     }
-  }, [labelPreferencesLoaded, showDimensionLabels, showConstraintLabels]);
+  }, [labelPreferencesLoaded, showDimensionLabels, showConstraintLabels, showAnnotations]);
+
+  useEffect(() => { if (annotationTool) setShowAnnotations(true); }, [annotationTool]);
 
   useEffect(() => {
     if (tool === "freehand" || tool === "freehandSmooth") setShowDimensionLabels(false);
@@ -1231,7 +1237,8 @@ export function SketchWorkspace({
         <button aria-label="Zoom in" onClick={() => setZoom((value) => clamp(value * 1.25, 0.75, 6))}><Plus size={33} /></button>
         <button aria-label="Zoom out" onClick={() => setZoom((value) => clamp(value / 1.25, 0.75, 6))}><Minus size={33} /></button>
         <span className="camera-control-separator" />
-        <button className={showDimensionLabels ? "active" : ""} type="button" aria-label={locale === "es" ? "Mostrar u ocultar cotas" : "Show or hide dimensions"} title={locale === "es" ? "Mostrar u ocultar cotas" : "Show or hide dimensions"} aria-pressed={showDimensionLabels} onClick={() => setShowDimensionLabels((visible) => !visible)}><ViewToolbarIcon file="toggle-dimensions" /></button>
+        <button className={showDimensionLabels ? "active" : ""} type="button" aria-label={locale === "es" ? "Mostrar u ocultar longitudes" : "Show or hide lengths"} title={locale === "es" ? "Mostrar u ocultar longitudes" : "Show or hide lengths"} aria-pressed={showDimensionLabels} onClick={() => setShowDimensionLabels((visible) => !visible)}><ViewToolbarIcon file="toggle-lengths" /></button>
+        <button className={showAnnotations ? "active" : ""} type="button" aria-label={locale === "es" ? "Mostrar u ocultar anotaciones" : "Show or hide annotations"} title={locale === "es" ? "Mostrar u ocultar anotaciones" : "Show or hide annotations"} aria-pressed={showAnnotations} onClick={() => { setShowAnnotations((visible) => !visible); if (showAnnotations) { onSelectAnnotation?.(null); if (annotationTool) onCancelActiveTool?.(); } }}><ViewToolbarIcon file="toggle-dimensions" /></button>
         <button className={showConstraintLabels ? "active" : ""} type="button" aria-label={locale === "es" ? "Mostrar u ocultar etiquetas de restricciones" : "Show or hide constraint labels"} title={locale === "es" ? "Mostrar u ocultar etiquetas de restricciones" : "Show or hide constraint labels"} aria-pressed={showConstraintLabels} onClick={() => setShowConstraintLabels((visible) => !visible)}><ViewToolbarIcon file="toggle-constraints" /></button>
       </div>
       <section className="sketch-plate-wrap" aria-label="2D sketch plate">
@@ -1825,11 +1832,11 @@ export function SketchWorkspace({
             </g>
           ) : null}
           {hover && ["line", "bezier", "smooth", "circle", "arc", "measure"].includes(tool) ? <circle className="sketch-cursor-point" cx={hover.x} cy={hover.z} r={hoverPointRadius} pointerEvents="none" /> : null}
-          <SketchAnnotationLayer annotations={annotations} preview={annotationPreview} selectedId={selectedAnnotationId} screenUnit={screenUnit} zoom={zoom} snapSpacing={exactSnapStep ?? snapStep(snap)} displayUnit={annotationDisplayUnit} locale={locale} pointFromEvent={(event, snapEnabled = true) => pointFromEvent(event, false, snapEnabled)} onSelect={(id) => onSelectAnnotation?.(id)} onCommit={(annotation) => onCommitAnnotation?.(annotation)} />
+          {showAnnotations && <SketchAnnotationLayer annotations={annotations} preview={annotationPreview} selectedId={selectedAnnotationId} screenUnit={screenUnit} zoom={zoom} snapSpacing={exactSnapStep ?? snapStep(snap)} displayUnit={annotationDisplayUnit} locale={locale} pointFromEvent={(event, snapEnabled = true) => pointFromEvent(event, false, snapEnabled)} onSelect={(id) => onSelectAnnotation?.(id)} onCommit={(annotation) => onCommitAnnotation?.(annotation)} />}
           </g>
         </svg>
       </section>
-      {annotationToolbar}
+      {showAnnotations && annotationToolbar}
       {selectedImage && tool === "select" ? (
         <SketchImageInspector
           image={selectedImage}
