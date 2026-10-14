@@ -358,10 +358,11 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [view, setView] = useState<CameraView>({ name: "home", token: 0 });
   const [projection, setProjection] = useState<CameraProjection>("orthographic");
   const [sectionEnabled, setSectionEnabled] = useState(false);
+  const [placingSection, setPlacingSection] = useState(false);
   const [sectionPose, setSectionPose] = useState<VisualSection>({ position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 } });
   const [sectionPositionVisible, setSectionPositionVisible] = useState(true);
   const [sectionRotationVisible, setSectionRotationVisible] = useState(true);
-  useEffect(() => setSectionEnabled(false), [document.id]);
+  useEffect(() => { setSectionEnabled(false); setPlacingSection(false); }, [document.id]);
   const [renderQuality, setRenderQuality] = useState<ViewportRenderQuality>("normal");
   const [displayMode, setDisplayMode] = useState<ViewportDisplayMode>("solid");
   const [shadingMode, setShadingMode] = useState<ViewportShadingMode>("shadows");
@@ -2511,6 +2512,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     setNotice({ type: "info", text: t("notice.selectMirrorPlane") });
   };
   const toggleWorkplanePlacement = () => {
+    setPlacingSection(false);
     if (hasActiveWorkplane) {
       mutate((draft) => { Object.assign(draft.workplane, globalParametricWorkplanePlacement()); });
       setPlacingWorkplane(false);
@@ -2679,6 +2681,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         return;
       }
       if (event.key === "Escape") {
+        setPlacingSection(false);
         setSelectedAnnotationId(null);
         setAlignOpen(false);
         setModelSelection([]);
@@ -3476,17 +3479,13 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               <Tool label={t("toolbar.polarPattern")} enabled={Boolean(selectedObjectId)} onClick={addPolarPatternOperation}><ToolbarPolarPatternIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label={t("toolbar.helpers")} className="toolbar-helpers-section">
-              <Tool label={t("camera.sectionView")} active={sectionEnabled} onClick={() => {
+              <Tool label={t("camera.sectionView")} active={sectionEnabled || placingSection} onClick={() => {
+                if (placingSection) { setPlacingSection(false); setNotice(null); return; }
                 if (sectionEnabled) { setSectionEnabled(false); return; }
-                const positions = build.mesh?.positions;
-                if (positions?.length) {
-                  const bounds = new THREE.Box3();
-                  for (let index = 0; index < positions.length; index += 3) bounds.expandByPoint(new THREE.Vector3(positions[index], positions[index + 1], positions[index + 2]));
-                  const center = bounds.getCenter(new THREE.Vector3());
-                  setSectionPose({ position: { x: center.x, y: center.y, z: center.z }, rotation: { x: 0, y: 0, z: 0 } });
-                }
                 setModelSelection([]); setSelectedAnnotationId(null); setOriginEditObjectId(null); setAnnotationTool(null);
-                setSectionEnabled(true); setDisplayMode("solid");
+                setPlacingWorkplane(false); setEditingMirrorPlaneId(null); setAlignOpen(false);
+                setPlacingSection(true); setDisplayMode("solid");
+                setNotice({ type: "info", text: t("camera.sectionPickHint") });
               }}><ToolbarSectionViewIcon /></Tool>
               <Tool label={hasActiveWorkplane ? t("toolbar.resetWorkplane") : placingWorkplane ? t("toolbar.cancelWorkplane") : t("toolbar.placeWorkplane")} active={placingWorkplane || hasActiveWorkplane} onClick={toggleWorkplanePlacement}>{hasActiveWorkplane ? <ToolbarResetWorkplaneIcon /> : <ToolbarWorkplaneIcon />}</Tool>
               <Tool label={t("toolbar.snapGrid")} enabled={Boolean((selectedShape || selectedAnnotationPoint) && document.workplane.snapToGrid)} onClick={() => selectedAnnotationPoint ? adjustAnnotationPoint("snap") : selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: Math.round((selectedShape?.x ?? 0) / snapAmount) * snapAmount, z: Math.round((selectedShape?.z ?? 0) / snapAmount) * snapAmount }))}><ToolbarSnapGridIcon /></Tool>
@@ -3892,7 +3891,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("camera.rotationTriad")} active={showRotationTriad} onClick={() => setShowRotationTriad((visible) => !visible)}><ToolbarRotationManipulatorIcon /></Tool>
             <Tool className="educad-parameter-handles-toggle" label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>
           </>}
-          selection={sectionEnabled || alignOpen || originEditObjectId || placingWorkplane || editingMirrorPlaneId || selectingTopologyFaces || selectingTopologyEdges ? null : selectedBox}
+          selection={sectionEnabled || placingSection || alignOpen || originEditObjectId || placingWorkplane || editingMirrorPlaneId || selectingTopologyFaces || selectingTopologyEdges ? null : selectedBox}
           snap={snapAmount}
           operationModesVisible={Boolean(selectedOperationId && hasPreviousSolidOperation(document, selectedOperationId))}
           onOperationModeChange={setSelectedOperationMode}
@@ -3952,8 +3951,16 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             setAlignOpen(false);
             setModelSelection([]);
           }}
-          workplaneFaceSelection={placingWorkplane || Boolean(editingMirrorPlaneId)}
+          workplaneFaceSelection={placingSection || placingWorkplane || Boolean(editingMirrorPlaneId)}
           onWorkplaneFaceSelect={({ origin, normal }) => {
+            if (placingSection) {
+              const direction = new THREE.Vector3(normal.x, normal.y, normal.z).normalize();
+              const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction);
+              const rotation = new THREE.Euler().setFromQuaternion(quaternion, "ZYX");
+              setSectionPose({ position: { ...origin }, rotation: { x: THREE.MathUtils.radToDeg(rotation.x), y: THREE.MathUtils.radToDeg(rotation.y), z: THREE.MathUtils.radToDeg(rotation.z) }, inverted: true });
+              setPlacingSection(false); setSectionEnabled(true); setNotice(null);
+              return;
+            }
             if (editingMirrorPlaneId) {
               mutate((draft) => {
                 const feature = draft.features.find((candidate) => candidate.id === editingMirrorPlaneId);
