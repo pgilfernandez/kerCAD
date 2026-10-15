@@ -13,6 +13,7 @@ import { SketchWorkspace, type SketchMeasurement, type SketchSceneReference, typ
 import { SketchToolMenu } from "@/components/SketchToolMenu";
 import { nextAnnotationName } from "@/lib/annotationNames";
 import { SECTION_PLANE_ID, type VisualSection } from "@/lib/visualSection";
+import type { CaptureCrop } from "@/lib/viewportCapture";
 import { useAccessibleDialog } from "@/components/useAccessibleDialog";
 import {
   ToolbarAlignIcon,
@@ -383,6 +384,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     return saved === "floating" || saved === "left" || saved === "right" ? saved : "left";
   });
   const [challengeCaptureToken, setChallengeCaptureToken] = useState(0);
+  const [pendingChallengeCapture, setPendingChallengeCapture] = useState<string | null>(null);
+  const [challengeCaptureCrop, setChallengeCaptureCrop] = useState<CaptureCrop | undefined>(undefined);
+  useEffect(() => setPendingChallengeCapture(null), [challengeEditor?.id]);
   const [challengeCapture, setChallengeCapture] = useState<{ stepId: string; dataUrl: string; token: number } | null>(null);
   const challengeCaptureStepRef = useRef<string | null>(null);
   const [originEditObjectId, setOriginEditObjectId] = useState<string | null>(null);
@@ -3842,7 +3846,15 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             } else if (!kernelBusy && renderedGeometryFingerprintRef.current === geometryFingerprint && !build.failedFeatureId && !pendingEdgeTreatment && !pendingFaceExtrude && !pendingShell && !pendingRevolve && !(selectedOperationTimeline && selectedOperationTimeline.index < selectedOperationTimeline.count - 1)) onProjectThumbnail?.(dataUrl, document);
           }}
           thumbnailRequestToken={challengeCaptureToken}
-          thumbnailRequestOptions={challengeEditor ? { includeOverlays: true, width: 1200, height: 750, quality: 0.92 } : undefined}
+          captureFrameActive={Boolean(pendingChallengeCapture)}
+          onCancelCaptureFrame={() => setPendingChallengeCapture(null)}
+          onCaptureFrame={(crop) => {
+            if (!pendingChallengeCapture) return;
+            challengeCaptureStepRef.current = pendingChallengeCapture;
+            setChallengeCaptureCrop(crop); setPendingChallengeCapture(null);
+            setChallengeCaptureToken((current) => current + 1);
+          }}
+          thumbnailRequestOptions={challengeEditor ? { includeOverlays: true, width: 1200, height: 750, quality: 0.92, crop: challengeCaptureCrop } : undefined}
           mesh={viewportObjectRecords.length > 0 ? ((editingEdgeTreatmentId || editingFaceExtrudeId || editingShellId || editingRevolveId) && topologySelectionBuild ? topologySelectionBuild : build).mesh : null}
           objectRecords={viewportObjectRecords}
           objectColors={objectColors}
@@ -4161,8 +4173,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           capture={challengeCapture}
           onDockChange={setChallengeDock}
           onCapture={(stepId) => {
-            challengeCaptureStepRef.current = stepId;
-            setChallengeCaptureToken((current) => current + 1);
+            setPendingChallengeCapture(stepId);
           }}
           onCancel={() => onCancelChallengeEdit?.()}
           onSave={(edited) => onSaveChallenge?.(edited, structuredClone(latestDocumentRef.current))}

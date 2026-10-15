@@ -10288,6 +10288,17 @@ input[aria-invalid="true"] { box-shadow: inset 0 0 0 1px #d34545; }
 .educad-sidebar-editor > .educad-annotation-properties { min-height: 0; flex: 1; overscroll-behavior: contain; }
 .educad-annotation-ending-field > .toolbar-icon { width: 44px; height: 38px; min-width: 44px; padding: 3px; border: 1px solid #c2d1db; border-radius: 5px; background: #fff; }
 .educad-annotation-ending-field > .toolbar-icon img { width: 32px; height: 32px; }
+.educad-capture-overlay { position: absolute; inset: 0; z-index: 65; pointer-events: none; overflow: hidden; }
+.educad-capture-frame { position: absolute; box-sizing: border-box; border: 4px solid #f43b94; background: rgba(244, 59, 148, .05); pointer-events: auto; touch-action: none; cursor: move; }
+.educad-capture-frame button { display: grid; place-items: center; padding: 0; color: white; touch-action: none; cursor: pointer; }
+.educad-capture-corner { position: absolute; width: 20px; height: 20px; border: 2px solid #f43b94; background: #f43b94; }
+.educad-capture-corner.nw { top: 0; left: 0; cursor: nwse-resize; }
+.educad-capture-corner.ne { top: 0; right: 0; cursor: nesw-resize; }
+.educad-capture-corner.sw { bottom: 0; left: 0; cursor: nesw-resize; }
+.educad-capture-corner.se { bottom: 0; right: 0; cursor: nwse-resize; }
+.educad-capture-shutter { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80px; height: 80px; border: 2px solid white; border-radius: 50%; background: #f43b94; box-shadow: 0 3px 12px #0003; }
+.educad-capture-shutter:hover { background: #d8247d; }
+.educad-capture-cancel { position: absolute; top: 24px; right: 24px; width: 30px; height: 30px; border-radius: 50%; background: #f43b94; }
 .educad-annotation-editor { position: absolute; z-index: 30; pointer-events: none; color: #000; }
 .educad-annotation-editor textarea { display: block; width: 100%; height: 100%; box-sizing: border-box; padding: max(0px, calc(1em / 6 - 2px)) max(0px, calc(2em / 3 - 2px)); margin: 0; resize: none; overflow: hidden; border: 2px solid currentColor; border-radius: calc(1em / 6); outline: none; background: #fff; color: inherit; -webkit-text-fill-color: currentColor; caret-color: currentColor; opacity: 1; font: inherit; font-weight: 400; letter-spacing: 0; white-space: pre; overflow-wrap: normal; line-height: 1.333333; text-align: inherit; pointer-events: auto; }
 .educad-annotation-editor .educad-annotation-edit-target { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; padding: 0; background: transparent; border-radius: 0; pointer-events: auto; cursor: text; }
