@@ -305,7 +305,11 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [modelSelection, setModelSelection] = useState<ModelTreeSelection[]>(initialDocument.objects[0] ? [{ id: initialDocument.objects[0].id, kind: "object" }] : []);
   useEffect(() => { if (modelSelection.length) { setSelectedAnnotationId(null); setAnnotationTool(null); } }, [modelSelection]);
   useEffect(() => { if (selectedAnnotationId !== editingAnnotationId) setEditingAnnotationId(null); }, [selectedAnnotationId, editingAnnotationId]);
-  useEffect(() => { if (selectedAnnotationId && selectedAnnotationId !== ANNOTATIONS_GROUP_ID && !document.annotations?.some((annotation) => annotation.id === selectedAnnotationId)) setSelectedAnnotationId(null); }, [document.annotations, selectedAnnotationId]);
+  useEffect(() => {
+    if (selectedAnnotationId && (selectedAnnotationId === ANNOTATIONS_GROUP_ID
+      ? !document.annotations?.length
+      : !document.annotations?.some((annotation) => annotation.id === selectedAnnotationId))) setSelectedAnnotationId(null);
+  }, [document.annotations, selectedAnnotationId]);
   const [build, setBuild] = useState<BuildResult>({ mesh: null, objectRecords: [], operationContext: null, completedFeatureIds: [], failedFeatureId: null, warning: null });
   const [operationContext, setOperationContext] = useState<BuildResult["operationContext"]>(null);
   const renderedGeometryFingerprintRef = useRef<string | null>(null);
@@ -957,6 +961,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   }, [build.objectRecords, editingEdgeTreatmentId, editingFaceExtrudeId, editingRevolveId, editingShellId, selectedTopologyEdges, selectedTopologyFaces, topologySelectionBuild]);
 
   const commit = useCallback((next: ParametricDocument) => {
+    if (!next.annotations?.length) delete next.annotationGroup;
     next.updatedAt = Date.now();
     if (sharedAuthor.trim()) {
       next.creator = next.creator || next.author || sharedAuthor.trim();
