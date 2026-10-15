@@ -344,6 +344,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const [workplaneOpen, setWorkplaneOpen] = useState(false);
+  const [snapSpacingOpen, setSnapSpacingOpen] = useState(false);
   const [workplaneDraft, setWorkplaneDraft] = useState(document.workplane);
   const [placingWorkplane, setPlacingWorkplane] = useState(false);
   const [editingMirrorPlaneId, setEditingMirrorPlaneId] = useState<string | null>(null);
@@ -548,6 +549,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       const target = event.target instanceof Element ? event.target : null;
       const popup = target?.closest<HTMLElement>("[data-educad-popup]")?.dataset.educadPopup ?? null;
       if (popup !== "shapes") setShapesOpen(false);
+      if (popup !== "snap-spacing") setSnapSpacingOpen(false);
       if (popup !== "grid") {
         const activeElement = window.document.activeElement;
         if (activeElement instanceof HTMLInputElement && activeElement.closest('[data-educad-popup="grid"]')) activeElement.blur();
@@ -4211,6 +4213,17 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             setWorkplaneDraft((current) => ({ ...current, snapToGrid: enabled }));
           }}
         ><GridControlIcon snap size={21} /></button>
+        <div className="educad-snap-spacing-control" data-educad-popup="snap-spacing" onKeyDown={(event) => { if (event.key === "Escape") setSnapSpacingOpen(false); }}>
+          <button type="button" className="educad-snap-spacing-trigger" aria-label={t("grid.snapSpacing")} title={t("grid.snapSpacing")} aria-expanded={snapSpacingOpen} aria-controls="educad-snap-spacing-options" onClick={() => setSnapSpacingOpen((open) => !open)}>
+            <span>{Number(millimetersToDisplayLength(document.workplane.snapSpacing, displayUnit).toFixed(4))} {displayUnitLabel(displayUnit)}</span><ChevronUp size={15} />
+          </button>
+          {snapSpacingOpen && <div id="educad-snap-spacing-options" className="educad-snap-spacing-options" role="group" aria-label={t("grid.snapSpacing")}>
+            {[0.5, 1, 2, 5, 10].map((value) => {
+              const active = Math.abs(document.workplane.snapSpacing - displayLengthToMillimeters(value, displayUnit)) < 0.000001;
+              return <button type="button" key={value} className={active ? "active" : ""} aria-pressed={active} onClick={() => { updateGridSettings({ snapSpacing: displayLengthToMillimeters(value, displayUnit) }); setSnapSpacingOpen(false); }}>{value} {displayUnitLabel(displayUnit)}{active && <Check size={15} />}</button>;
+            })}
+          </div>}
+        </div>
         {workplaneOpen ? <div data-educad-popup="grid" className="educad-workplane-popover">
           <header><div><strong>{t("grid.title")}</strong></div><button type="button" aria-label={t("common.close")} onClick={() => setWorkplaneOpen(false)}><X size={17} /></button></header>
           <label><span>{t("grid.showFloor")}</span><input type="checkbox" checked={workplaneDraft.gridVisible} onChange={(event) => updateGridSettings({ gridVisible: event.target.checked })} /></label>
@@ -4218,7 +4231,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           <label><span>{t("grid.width")}</span><span className="educad-number-input"><input key={`width-${displayUnit}`} type="text" inputMode="text" min={millimetersToDisplayLength(1, displayUnit)} max={millimetersToDisplayLength(2000, displayUnit)} step={millimetersToDisplayLength(1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.width, displayUnit)} onBlur={(event) => commitGridNumber(event, "width", 1, 2000, workplaneDraft.width)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
           <label><span>{t("grid.depth")}</span><span className="educad-number-input"><input key={`depth-${displayUnit}`} type="text" inputMode="text" min={millimetersToDisplayLength(1, displayUnit)} max={millimetersToDisplayLength(2000, displayUnit)} step={millimetersToDisplayLength(1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.depth, displayUnit)} onBlur={(event) => commitGridNumber(event, "depth", 1, 2000, workplaneDraft.depth)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
           <label><span>{t("grid.step")}</span><span className="educad-number-input"><input key={`step-${displayUnit}`} type="text" inputMode="text" min={millimetersToDisplayLength(0.1, displayUnit)} max={millimetersToDisplayLength(200, displayUnit)} step={millimetersToDisplayLength(0.1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.gridStep, displayUnit)} onBlur={(event) => commitGridNumber(event, "gridStep", 0.1, 200, workplaneDraft.gridStep)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
-          <label><span>{t("grid.snapSpacing")}</span><span className="educad-number-input"><input key={`snap-spacing-${displayUnit}`} type="text" inputMode="text" min={millimetersToDisplayLength(0.1, displayUnit)} max={millimetersToDisplayLength(200, displayUnit)} step={millimetersToDisplayLength(0.1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.snapSpacing, displayUnit)} onBlur={(event) => commitGridNumber(event, "snapSpacing", 0.1, 200, workplaneDraft.snapSpacing)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
+          <label><span>{t("grid.snapSpacing")}</span><span className="educad-number-input"><input key={`snap-spacing-${displayUnit}`} type="text" inputMode="text" min={millimetersToDisplayLength(0.1, displayUnit)} max={millimetersToDisplayLength(10000, displayUnit)} step={millimetersToDisplayLength(0.1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.snapSpacing, displayUnit)} onBlur={(event) => commitGridNumber(event, "snapSpacing", 0.1, 10000, workplaneDraft.snapSpacing)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
         </div> : null}
         <button
           className={`educad-sidebar-mode-control ${modelSidebarMode}`}

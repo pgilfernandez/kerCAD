@@ -419,7 +419,7 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
   next.workplane.width = Math.min(2000, Math.max(1, Number.isFinite(next.workplane.width) ? next.workplane.width : 200));
   next.workplane.depth = Math.min(2000, Math.max(1, Number.isFinite(next.workplane.depth) ? next.workplane.depth : 200));
   next.workplane.gridStep = Math.min(200, Math.max(0.1, Number.isFinite(next.workplane.gridStep) ? next.workplane.gridStep : 5));
-  next.workplane.snapSpacing = Math.min(200, Math.max(0.1, Number.isFinite(next.workplane.snapSpacing) ? next.workplane.snapSpacing : next.workplane.gridStep));
+  next.workplane.snapSpacing = Math.min(10000, Math.max(0.1, Number.isFinite(next.workplane.snapSpacing) ? next.workplane.snapSpacing : next.workplane.gridStep));
   next.workplane.snapToGrid = typeof next.workplane.snapToGrid === "boolean" ? next.workplane.snapToGrid : true;
   next.workplane.gridVisible = typeof next.workplane.gridVisible === "boolean" ? next.workplane.gridVisible : true;
   next.workplane.activeSizePercent = Math.min(100, Math.max(2, Number.isFinite(next.workplane.activeSizePercent) ? next.workplane.activeSizePercent : 20));

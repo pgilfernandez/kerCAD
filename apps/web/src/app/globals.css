@@ -805,7 +805,14 @@ button {
   border-radius: 8px;
   box-shadow: 0 3px 14px rgba(38, 62, 79, 0.14);
 }
-.educad-workplane-snap-button { bottom: 68px; }
+.educad-workplane-settings-button { bottom: 68px; }
+.educad-snap-spacing-control { position: absolute; bottom: 18px; left: 68px; z-index: 13; }
+.educad-snap-spacing-trigger { display: flex; align-items: center; gap: 7px; height: 42px; padding: 0 10px; color: #537183; background: rgba(255,255,255,.95); border: 1px solid #c5d6df; border-radius: 8px; box-shadow: 0 3px 14px rgba(38,62,79,.14); font: inherit; font-size: 12px; }
+.educad-snap-spacing-trigger:hover, .educad-snap-spacing-trigger[aria-expanded="true"] { color: #0d55bd; background: #effafe; border-color: #83c5d9; }
+.educad-snap-spacing-options { position: absolute; bottom: calc(100% + 7px); left: 0; min-width: 112px; display: grid; padding: 5px; background: #fff; border: 1px solid #c5d6df; border-radius: 8px; box-shadow: 0 3px 14px rgba(38,62,79,.14); }
+.educad-snap-spacing-options button { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 36px; padding: 6px 9px; border: 0; border-radius: 5px; background: transparent; color: #537183; font: inherit; font-size: 12px; white-space: nowrap; }
+.educad-snap-spacing-options button:hover, .educad-snap-spacing-options button:focus-visible { color: #1269eb; background: #eef5ff; }
+.educad-snap-spacing-options button.active { color: #fff; background: #1269eb; }
 .educad-workplane-settings-button:hover,
 .educad-workplane-settings-button.active,
 .educad-workplane-snap-button:hover { color: #0d55bd; background: #effafe; border-color: #83c5d9; }
@@ -5024,7 +5031,7 @@ html[data-theme="dark"] .educad-toolbar-scroll-edge.right { background: linear-g
 .educad-sketch-action:focus-visible { outline: 3px solid rgba(0, 166, 219, 0.25); outline-offset: 2px; }
 .educad-sketch-action .educad-sketch-toolbar-icon { width: 18px; height: 18px; }
 
-.educad-workplane-stage.sketch-active > :not(.sketch-workspace-stage):not(.educad-sketch-constraints-panel):not(.educad-toolbar-scroll-indicators):not(.educad-reference-toast):not(.educad-fps-counter):not(.educad-workplane-settings-button):not(.educad-workplane-snap-button):not(.educad-workplane-popover) {
+.educad-workplane-stage.sketch-active > :not(.sketch-workspace-stage):not(.educad-sketch-constraints-panel):not(.educad-toolbar-scroll-indicators):not(.educad-reference-toast):not(.educad-fps-counter):not(.educad-workplane-settings-button):not(.educad-workplane-snap-button):not(.educad-workplane-popover):not(.educad-snap-spacing-control) {
   display: none !important;
 }
 
