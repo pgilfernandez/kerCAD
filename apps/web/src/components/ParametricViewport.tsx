@@ -3895,19 +3895,36 @@ export function ParametricViewport({ onSectionPlaneSelect, captureFrameActive = 
 
     if (!hasFittedRef.current) {
       const box = new THREE.Box3().setFromObject(group);
+      if (box.isEmpty()) { invalidateRef.current(); return; }
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3());
-      controls.target.copy(center);
       const distance = Math.max(55, Math.max(size.x, size.y, size.z) * 2.35);
-      camera.position.copy(center).add(new THREE.Vector3(-distance, distance * 0.72, distance));
+      const startPosition = camera.position.clone();
+      const startTarget = controls.target.clone();
+      const startZoom = camera.zoom;
+      const endPosition = center.clone().add(new THREE.Vector3(-distance, distance * 0.72, distance));
+      const endZoom = camera instanceof THREE.OrthographicCamera ? Math.min(8, Math.max(0.1, 110 / Math.max(size.x, size.y, size.z, 1))) : startZoom;
       // Perspective needs enough separation between near and far to retain
       // depth precision; an almost-zero near plane causes z-fighting.
       camera.near = camera instanceof THREE.OrthographicCamera ? -Math.max(2000, distance * 50) : Math.max(0.05, distance / 2000);
       camera.far = Math.max(2000, distance * 50);
-      if (camera instanceof THREE.OrthographicCamera) camera.zoom = Math.min(8, Math.max(0.1, 110 / Math.max(size.x, size.y, size.z, 1)));
-      camera.updateProjectionMatrix();
-      controls.update();
       hasFittedRef.current = true;
+      if (cameraTransitionRef.current !== null) cancelAnimationFrame(cameraTransitionRef.current);
+      const duration = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 450;
+      const startedAt = performance.now();
+      const step = (now: number) => {
+        const progress = duration === 0 ? 1 : Math.min(1, (now - startedAt) / duration);
+        const eased = progress * progress * (3 - 2 * progress);
+        controls.target.lerpVectors(startTarget, center, eased);
+        camera.position.lerpVectors(startPosition, endPosition, eased);
+        camera.zoom = THREE.MathUtils.lerp(startZoom, endZoom, eased);
+        camera.updateProjectionMatrix();
+        camera.lookAt(controls.target);
+        controls.update();
+        invalidateRef.current();
+        cameraTransitionRef.current = progress < 1 ? requestAnimationFrame(step) : null;
+      };
+      cameraTransitionRef.current = requestAnimationFrame(step);
     }
     invalidateRef.current();
   }, [mesh, objectRecords, objectColors, color, displayMode, projection, renderQuality, selectedObjectIds, shadingMode]);
