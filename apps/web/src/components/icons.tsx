@@ -187,8 +187,8 @@ export function ToolbarIntersectionIcon(props: IconProps) {
   );
 }
 
-export function ToolbarAlignIcon(props: IconProps) {
-  return <ToolbarSpriteIcon rect={{ x: 97.3, y: 46.7, width: 29.1, height: 32.5 }} {...props} />;
+export function ToolbarAlignIcon() {
+  return <EducadOperationImage file="alignment.svg" />;
 }
 
 export function ToolbarMirrorIcon() {
