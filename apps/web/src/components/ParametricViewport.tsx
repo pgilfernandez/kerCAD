@@ -2869,11 +2869,9 @@ export function ParametricViewport({ onSectionPlaneSelect, captureFrameActive = 
         }
         setPointer(event);
         const bodies = modelGroup.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh && typeof child.userData.objectId === "string" && (alignmentRef.current.active || child.userData.editorPickable !== false));
-        const sectionGuide = modelGroup.userData.sectionGuide as THREE.Line | undefined;
+        const sectionGuide = modelGroup.userData.sectionGuide as LineSegments2 | undefined;
         if (sectionGuide) {
-          raycaster.params.Line.threshold = camera instanceof THREE.OrthographicCamera
-            ? (camera.top - camera.bottom) / camera.zoom / Math.max(1, renderer.domElement.clientHeight) * 7
-            : camera.position.distanceTo(controls.target) * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * 14 / Math.max(1, renderer.domElement.clientHeight);
+          Object.assign(raycaster.params, { Line2: { threshold: 7 } });
           if (raycaster.intersectObject(sectionGuide, false).length) { sectionPlaneSelectRef.current?.(); return; }
         }
         const clippingPlane = modelGroup.userData.sectionClippingPlane as THREE.Plane | undefined;

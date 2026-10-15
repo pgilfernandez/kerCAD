@@ -1,5 +1,7 @@
 import * as THREE from "three";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
+import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
+import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { sectionCapGeometry } from "@/lib/sectionCapGeometry";
 import type { ParametricVector3 } from "@/types/parametric";
 
@@ -75,11 +77,11 @@ export function createVisualSection(model: THREE.Group, bodies: THREE.Mesh[], po
     edges.renderOrder = 17;
     group.add(edges); resources.push(edgeGeometry);
   });
-  const guideGeometry = new THREE.BufferGeometry().setFromPoints([
-    new THREE.Vector3(-side / 2, -side / 2, 0), new THREE.Vector3(side / 2, -side / 2, 0), new THREE.Vector3(side / 2, side / 2, 0), new THREE.Vector3(-side / 2, side / 2, 0), new THREE.Vector3(-side / 2, -side / 2, 0),
-  ]);
-  const guideMaterial = new THREE.LineDashedMaterial({ color: "#9099a1", dashSize: 3, gapSize: 2, transparent: true, opacity: .7 });
-  const guide = new THREE.Line(guideGeometry, guideMaterial); guide.computeLineDistances(); guide.position.copy(position); guide.quaternion.copy(quaternion);
+  const guideGeometry = new LineSegmentsGeometry();
+  const half = side / 2;
+  guideGeometry.setPositions([-half, -half, 0, half, -half, 0, half, -half, 0, half, half, 0, half, half, 0, -half, half, 0, -half, half, 0, -half, -half, 0]);
+  const guideMaterial = new LineMaterial({ color: "#9099a1", linewidth: 3, dashed: true, dashSize: 3, gapSize: 2, transparent: true, opacity: .7 });
+  const guide = new LineSegments2(guideGeometry, guideMaterial); guide.computeLineDistances(); guide.position.copy(position); guide.quaternion.copy(quaternion);
   group.add(guide); resources.push(guideGeometry, guideMaterial);
   model.userData.sectionGuide = guide;
   model.userData.sectionClippingPlane = plane;
