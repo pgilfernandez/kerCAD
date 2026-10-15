@@ -33,11 +33,11 @@ export function createVisualSection(model: THREE.Group, bodies: THREE.Mesh[], po
   const canvas = document.createElement("canvas"); canvas.width = canvas.height = 320;
   const context = canvas.getContext("2d")!;
   // Exact periodic sampling avoids cropped stroke ends at tile corners.
-  // Four periods fit the texture; 1.5 logical pixels is half the old stroke.
+  // Eight periods fit the texture; keep the existing stroke thickness.
   const image = context.createImageData(320, 320);
   for (let y = 0; y < 320; y++) for (let x = 0; x < 320; x++) {
-    const phase = (x + y + 1) % 80;
-    const distance = Math.abs(phase - 40) / Math.SQRT2;
+    const phase = (x + y + 1) % 40;
+    const distance = Math.abs(phase - 20) / Math.SQRT2;
     const offset = (y * 320 + x) * 4;
     image.data[offset] = 100; image.data[offset + 1] = 110; image.data[offset + 2] = 120;
     image.data[offset + 3] = Math.round(255 * THREE.MathUtils.clamp(3.75 + .5 - distance, 0, 1));
