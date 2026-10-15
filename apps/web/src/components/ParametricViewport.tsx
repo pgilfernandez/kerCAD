@@ -1937,11 +1937,20 @@ export function ParametricViewport({ onSectionPlaneSelect, captureFrameActive = 
       layer.traverse((child) => { if (child.visible && (child.userData.annotationRadiusTarget || child.userData.annotationLineWidthTarget)) handles.push(child); });
       return raycaster.intersectObjects(handles, false)[0]?.object ?? null;
     };
+    const setSectionGuideHover = (hovered: boolean) => {
+      const guide = modelGroup.userData.sectionGuide as LineSegments2 | undefined;
+      if (!guide || Boolean(guide.userData.hovered) === hovered) return;
+      guide.userData.hovered = hovered;
+      guide.material.color.set(hovered ? "#4b5563" : "#9099a1");
+      guide.material.opacity = hovered ? 1 : .7;
+      requestRender();
+    };
     processPendingHover = () => {
       const event = pendingHoverEvent;
       pendingHoverEvent = null;
       if (!event || interaction || event.buttons !== 0) return;
       if (workplaneFaceSelectionRef.current || topologyFaceSelectionRef.current || topologyEdgeSelectionRef.current) {
+        setSectionGuideHover(false);
         setPointer(event);
         const edge = topologyEdgeSelectionRef.current ? updateTopologyEdgeHighlight() : null;
         if (!edge && (workplaneFaceSelectionRef.current || topologyFaceSelectionRef.current)) updateWorkplaneFaceHighlight();
@@ -1952,6 +1961,14 @@ export function ParametricViewport({ onSectionPlaneSelect, captureFrameActive = 
       if (!alignmentRef.current.active && annotationPointHandleRef.current(event)) renderer.domElement.style.cursor = "grab";
       const annotationParameterHandle = !alignmentRef.current.active ? annotationRadiusHandleRef.current(event) : null;
       if (annotationParameterHandle) renderer.domElement.style.cursor = annotationParameterHandle.userData.annotationLineWidthTarget ? "ns-resize" : "ew-resize";
+      const guide = modelGroup.userData.sectionGuide as LineSegments2 | undefined;
+      if (guide) {
+        setPointer(event);
+        Object.assign(raycaster.params, { Line2: { threshold: 7 } });
+        const hovered = raycaster.intersectObject(guide, false).length > 0;
+        setSectionGuideHover(hovered);
+        if (hovered) renderer.domElement.style.cursor = "pointer";
+      }
     };
     const snapTargetAtPointer = (event: PointerEvent): THREE.Vector3 | null => {
       const bounds = renderer.domElement.getBoundingClientRect();
@@ -3087,6 +3104,7 @@ export function ParametricViewport({ onSectionPlaneSelect, captureFrameActive = 
     };
     const leaveManipulatorArea = () => {
       pendingHoverEvent = null;
+      setSectionGuideHover(false);
       setOriginHandleHover(null);
       setShapeParameterHandleHover(null);
       setFaceExtrudeHandleHover(false);
