@@ -1362,6 +1362,11 @@ export function ParametricViewport({ visualSection = null, onUpdateAnnotation, o
       if (!group) return;
       group.parent?.remove(group);
       group.traverse((child) => {
+        if (child instanceof THREE.Sprite) {
+          child.material.map?.dispose();
+          child.material.dispose();
+          return;
+        }
         if (!(child instanceof LineSegments2 || child instanceof THREE.Mesh)) return;
         child.geometry.dispose();
         const materials = Array.isArray(child.material) ? child.material : [child.material];
@@ -1402,6 +1407,24 @@ export function ParametricViewport({ visualSection = null, onUpdateAnnotation, o
         const first = pointAt(degrees, circleRadius * 0.25);
         const second = pointAt(degrees, circleRadius * 0.75);
         tickPositions.push(first.x, first.y, first.z, second.x, second.y, second.z);
+        const text = `${degrees > 180 ? degrees - 360 : degrees}°`;
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        if (context) {
+          context.font = "48px Arial, sans-serif";
+          canvas.width = Math.ceil(context.measureText(text).width + 24); canvas.height = 72;
+          context.fillStyle = "#174f78"; context.fillRect(0, 0, canvas.width, canvas.height);
+          context.font = "48px Arial, sans-serif"; context.fillStyle = "#ffffff";
+          context.textAlign = "center"; context.textBaseline = "middle";
+          context.fillText(text, canvas.width / 2, canvas.height / 2);
+          const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
+          const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthTest: false, depthWrite: false }));
+          label.position.copy(pointAt(degrees, circleRadius * .82));
+          const height = markerScale * .17;
+          label.scale.set(height * canvas.width / canvas.height, height, 1);
+          label.renderOrder = 43;
+          group.add(label);
+        }
       }
       const addLines = (positions: number[], linewidth: number, renderOrder: number) => {
         const geometry = new LineSegmentsGeometry();
