@@ -255,11 +255,11 @@ export function ToolbarExportIcon() {
 }
 
 export function ToolbarWorkplaneIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/view-toolbar/workplane.svg" alt="" draggable={false} />;
+  return <EducadOperationImage file="workplane.svg" />;
 }
 
 export function ToolbarResetWorkplaneIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/view-toolbar/workplane-reset.svg" alt="" draggable={false} />;
+  return <EducadOperationImage file="workplane-reset.svg" />;
 }
 
 export function ToolbarDropToWorkplaneIcon() {
