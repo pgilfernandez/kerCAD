@@ -1422,7 +1422,7 @@ export function ParametricViewport({ visualSection = null, onUpdateAnnotation, o
           const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
           const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthTest: false, depthWrite: false }));
           label.position.copy(pointAt(degrees, circleRadius + markerScale * .30));
-          const height = markerScale * (canvas.height / 4 / 102) * 2;
+          const height = markerScale * (canvas.height / 4 / 102) * 1.5;
           label.scale.set(height * canvas.width / canvas.height, height, 1);
           label.renderOrder = 43;
           group.add(label);
