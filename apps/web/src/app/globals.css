@@ -9987,7 +9987,7 @@ html[data-theme="dark"] .grid-settings {
 .educad-challenge-library.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 20px; }
 .educad-challenge-library.list { display: flex; flex-direction: column; gap: 10px; }
 .educad-challenge-library.list .educad-challenge-card .challenge-open { min-height: 116px; display: flex; flex-direction: row; align-items: center; gap: 17px; }
-.educad-challenge-library.list .challenge-cover { width: 150px; height: 90px; flex: none; }
+.educad-challenge-library.list .challenge-cover { width: 150px; height: auto; aspect-ratio: 16 / 10; flex: none; }
 .educad-challenge-library.list .challenge-copy { min-width: 0; flex: 1; }
 .educad-challenge-library.list .challenge-copy > span { min-height: 0; }
 .educad-challenge-library.list .challenge-actions { top: 14px; right: 14px; }
@@ -9995,10 +9995,10 @@ html[data-theme="dark"] .grid-settings {
 .educad-challenge-card { position: relative; min-width: 0; overflow: hidden; border: 1px solid #cfdae3; border-radius: 11px; background: #fff; box-shadow: 0 1px 3px #2442; }
 .educad-challenge-card:hover { border-color: #82b5ef; box-shadow: 0 5px 18px #2442; }
 .educad-challenge-card .challenge-open { width: 100%; height: 100%; padding: 13px; display: flex; flex-direction: column; border: 0; background: transparent; text-align: left; }
-.educad-challenge-card .challenge-cover { height: 180px; display: grid; place-items: center; overflow: hidden; color: #1269eb; background: linear-gradient(145deg, #eef6ff, #e6f7fb); border-radius: 8px; }
-.educad-challenge-card .challenge-cover img { width: 100%; height: 100%; object-fit: cover; }
+.educad-challenge-card .challenge-cover { position: relative; width: 100%; height: auto; aspect-ratio: 16 / 10; display: grid; place-items: center; overflow: hidden; color: #1269eb; background: linear-gradient(145deg, #eef6ff, #e6f7fb); border-radius: 8px; }
+.educad-challenge-card .challenge-cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .educad-challenge-new-card .challenge-cover { background: #eef5ff; }
-.educad-challenge-new-card .challenge-cover img { width: 82px; height: 82px; object-fit: contain; }
+.educad-challenge-new-card .challenge-cover img { position: static; width: 82px; height: 82px; object-fit: contain; }
 .educad-challenge-new-card .challenge-copy > span { min-height: 0; }
 .educad-challenge-card .challenge-copy { padding: 13px 1px 4px; display: flex; flex-direction: column; gap: 5px; }
 .educad-challenge-card .challenge-copy small { color: #1269eb; font-size: 11px; font-weight: 900; letter-spacing: .08em; }
@@ -10074,8 +10074,8 @@ html[data-theme="dark"] .grid-settings {
 .educad-challenge-parameter-row > span { display: flex; gap: 2px; }
 .educad-challenge-parameter-row button { width: 27px; display: grid; place-items: center; padding: 0; color: #607a8d; background: #fff; border: 1px solid #cbd9e2; border-radius: 5px; }
 .educad-challenge-parameter-row button:hover { color: #1269eb; background: #eef5ff; }.educad-challenge-parameter-row button:disabled { opacity: .3; }
-.educad-challenge-capture { position: relative; min-height: 185px; display: grid; place-items: center; overflow: hidden; color: #7590a3; background: repeating-linear-gradient(0deg, transparent 0 24px, rgba(91,196,222,.18) 25px), repeating-linear-gradient(90deg, #f8fcfd 0 24px, rgba(91,196,222,.18) 25px); border: 1px solid #cbdbe5; border-radius: 10px; }
-.educad-challenge-capture > img { width: 100%; height: 100%; min-height: 185px; max-height: 260px; display: block; object-fit: cover; }
+.educad-challenge-capture { position: relative; min-height: 0; aspect-ratio: 16 / 10; display: grid; place-items: center; overflow: hidden; color: #7590a3; background: repeating-linear-gradient(0deg, transparent 0 24px, rgba(91,196,222,.18) 25px), repeating-linear-gradient(90deg, #f8fcfd 0 24px, rgba(91,196,222,.18) 25px); border: 1px solid #cbdbe5; border-radius: 10px; }
+.educad-challenge-capture > img { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; display: block; object-fit: contain; }
 .educad-challenge-capture-placeholder { display: flex; flex-direction: column; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; }
 .educad-challenge-capture-actions { position: absolute; top: 9px; right: 9px; display: flex; gap: 5px; }
 .educad-challenge-capture-actions button { width: 38px; height: 38px; display: grid; place-items: center; color: #1269eb; background: rgba(255,255,255,.94); border: 1px solid #a9c8e9; border-radius: 8px; box-shadow: 0 2px 8px rgba(31,64,88,.14); }
