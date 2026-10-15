@@ -8,6 +8,6 @@ export function OperationTreeIcon({ file, size = 16, className, "aria-label": la
   role?: "img";
   "aria-label"?: string;
 }) {
-  const mask = `url("/assets/educad/operation-tree/${file}.svg")`;
+  const mask = `url("/assets/educad/operations-tree/${file}.svg")`;
   return <span className={`educad-operation-tree-icon ${className ?? ""}`} role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true} style={{ width: size, height: size, maskImage: mask, WebkitMaskImage: mask } as CSSProperties} />;
 }

@@ -26,7 +26,7 @@ describe("parametric operation catalog", () => {
     const boxIndex = parametricOperationCatalog.findIndex((definition) => definition.kind === "box");
     const definition = parametricOperationCatalog[boxIndex + 1];
 
-    expect(definition).toMatchObject({ kind: "roundedBox", menuIcon: "assets/educad/shapes/box_rounded.svg" });
+    expect(definition).toMatchObject({ kind: "roundedBox", menuIcon: "assets/educad/toolbar-3d/shapes/box_rounded.svg" });
     expect(definition.parameters.map((parameter) => parameter.key)).toEqual(["width", "depth", "height", "cornerRadius"]);
   });
 

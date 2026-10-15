@@ -1,9 +1,15 @@
 import type { CSSProperties, SVGProps } from "react";
+import { operationIconPath } from "@/lib/educadIconPaths";
 
 type IconProps = SVGProps<SVGSVGElement>;
 
+export function GridControlIcon({ snap = false, size = 22 }: { snap?: boolean; size?: number }) {
+  const mask = `url("/assets/educad/toolbar-vertical/${snap ? "snap-toggle" : "grid"}.svg")`;
+  return <span aria-hidden="true" style={{ display: "inline-block", width: size, height: size, flexShrink: 0, backgroundColor: "currentColor", maskImage: mask, WebkitMaskImage: mask, maskSize: "contain", WebkitMaskSize: "contain", maskRepeat: "no-repeat", WebkitMaskRepeat: "no-repeat" }} />;
+}
+
 export function HeaderToolbarIcon({ file }: { file: "documentation" | "language" | "information" | "project-overview" }) {
-  const mask = `url("/assets/educad/toolbar/${file}.svg")`;
+  const mask = `url("/assets/educad/${file}.svg")`;
   return <span aria-hidden="true" className="educad-header-svg-icon" style={{ maskImage: mask, WebkitMaskImage: mask }} />;
 }
 type SpriteRect = {
@@ -74,24 +80,24 @@ function ToolbarCommandImage({ file, className }: ToolbarCommandImageProps) {
 type EducadOperationImageProps = { file: string; className?: string };
 
 function EducadOperationImage({ file, className }: EducadOperationImageProps) {
-  return <img aria-hidden="true" className={["toolbar-command-icon", "educad-toolbar-operation-icon", className].filter(Boolean).join(" ")} src={`/assets/educad/operations/${file}`} alt="" draggable={false} />;
+  return <img aria-hidden="true" className={["toolbar-command-icon", "educad-toolbar-operation-icon", className].filter(Boolean).join(" ")} src={operationIconPath(file)} alt="" draggable={false} />;
 }
 
 export function SketchToolbarIcon({ file }: { file: string }) {
-  return <img aria-hidden="true" className="toolbar-command-icon educad-sketch-toolbar-icon" src={`/assets/educad/sketch-toolbar/${file}.svg`} alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon educad-sketch-toolbar-icon" src={`/assets/educad/toolbar-sketch/${file}.svg`} alt="" draggable={false} />;
 }
 
 export function ViewToolbarIcon({ file }: { file: string }) {
-  return <img aria-hidden="true" className="toolbar-command-icon educad-sketch-toolbar-icon" src={`/assets/educad/view-toolbar/${file}.svg`} alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon educad-sketch-toolbar-icon" src={`/assets/educad/${file === "inverse" ? "toolbar-horizontal" : "toolbar-vertical"}/${file}.svg`} alt="" draggable={false} />;
 }
 
 export function SketchConstraintIcon({ file }: { file: string }) {
-  return <img aria-hidden="true" className="educad-sketch-constraint-icon" src={`/assets/educad/sketch-constraints/${file}.svg`} alt="" draggable={false} />;
+  return <img aria-hidden="true" className="educad-sketch-constraint-icon" src={`/assets/educad/toolbar-vertical/constraints/${file}.svg`} alt="" draggable={false} />;
 }
 
 export function ToolbarHomeIcon() {
   // return <ToolbarCommandImage file="toolbar-home.png" className="toolbar-user-art-icon" />;
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/document_new.svg" alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/document_new.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarCopyIcon() {
@@ -121,12 +127,12 @@ export function ToolbarRedoIcon() {
 export function ToolbarImportIcon() {
   // return <ToolbarCommandImage file="toolbar-import.png" className="toolbar-user-art-icon" />;
   // return <EducadOperationImage file="import.svg" />;
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/import.svg" alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar-3d/import.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarVectorExportIcon() {
   // return <ToolbarCommandImage file="toolbar-export.png" className="toolbar-user-art-icon" />;
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/export.svg" alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar-3d/export.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarSettingsIcon() {
@@ -138,19 +144,19 @@ export function ToolbarShapeAddIcon(props: IconProps) {
 }
 
 export function ToolbarSketchIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/sketch.svg" alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar-3d/sketch.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarPositionManipulatorIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/manipulator-position.svg" alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar-3d/manipulator-position.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarRotationManipulatorIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/manipulator-rotation.svg" alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar-3d/manipulator-rotation.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarParameterManipulatorIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/manipulator-parameters.svg" alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar-3d/manipulator-parameters.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarBooleanModeIcon({ mode }: { mode: "add" | "hole" | "common" }) {
@@ -263,13 +269,13 @@ export function ToolbarResetWorkplaneIcon() {
 }
 
 export function ToolbarDropToWorkplaneIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar/drop-to-workplane.svg" alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar-3d/drop-to-workplane.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarPerspectiveIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/view-toolbar/perspective.svg" alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar-vertical/perspective.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarOrthographicIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/view-toolbar/orthographic.svg" alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar-vertical/orthographic.svg" alt="" draggable={false} />;
 }

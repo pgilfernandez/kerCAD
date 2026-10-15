@@ -10,8 +10,8 @@ export function enableToolbarMouseScroll(toolbar: HTMLElement, vertical = false)
   right.className = `educad-toolbar-scroll-edge ${vertical ? "bottom" : "right"}`;
   const startIcon = document.createElement("img");
   const endIcon = document.createElement("img");
-  startIcon.src = `/assets/educad/toolbar/scroll-${vertical ? "up" : "left"}.svg`;
-  endIcon.src = `/assets/educad/toolbar/scroll-${vertical ? "down" : "right"}.svg`;
+  startIcon.src = `/assets/educad/toolbar-${vertical ? "vertical" : "horizontal"}/scroll-${vertical ? "up" : "left"}.svg`;
+  endIcon.src = `/assets/educad/toolbar-${vertical ? "vertical" : "horizontal"}/scroll-${vertical ? "down" : "right"}.svg`;
   startIcon.alt = endIcon.alt = "";
   startIcon.draggable = endIcon.draggable = false;
   left.append(startIcon);

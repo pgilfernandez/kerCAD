@@ -3712,7 +3712,7 @@ export function ParametricViewport({ onSectionPlaneSelect, captureFrameActive = 
             hovered = value;
             redraw();
           };
-          new THREE.ImageLoader().load("/assets/educad/operations/edit-project-ground.svg", (image) => {
+          new THREE.ImageLoader().load("/assets/educad/edit-project-ground.svg", (image) => {
             if (projectRenameButtonRef.current !== button) return;
             icon = image;
             redraw();

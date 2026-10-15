@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, RotateCcw, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Plus, Trash2, X } from "lucide-react";
+import { Camera, RotateCcw, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, Focus, Grid3X3, Home, Maximize2, Minus, Plus, Trash2, X } from "lucide-react";
 import { ChallengeEditor, type ChallengeDock } from "@/components/ChallengeEditor";
 import { ChallengePlayer } from "@/components/ChallengePlayer";
 import type { EducadChallenge } from "@/lib/challengeLibrary";
@@ -24,6 +24,7 @@ import {
   ToolbarExtrudeIcon,
   ToolbarSectionViewIcon,
   ViewToolbarIcon,
+  GridControlIcon,
   ToolbarFilletIcon,
   ToolbarImportIcon,
   ToolbarMirrorIcon,
@@ -4197,7 +4198,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         /> : null}
         {challenge && challengeOpen && !sketchSession ? <ChallengePlayer challenge={challenge} dock={challengeDock} onDockChange={setChallengeDock} onClose={() => { setChallengeOpen(false); setChallengeDock("left"); }} /> : null}
         {challenge && !challengeOpen && !sketchSession ? <button className="educad-challenge-reopen" type="button" onClick={() => { setChallengeDock("left"); setChallengeOpen(true); }}><Grid3X3 size={19} /> Challenge</button> : null}
-        <button data-educad-popup="grid" className={`educad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label={t("grid.settings")} title={t("grid.title")} onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><Grid3X3 size={22} /></button>
+        <button data-educad-popup="grid" className={`educad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label={t("grid.settings")} title={t("grid.title")} onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><GridControlIcon size={22} /></button>
         <button
           className={`educad-workplane-snap-button ${document.workplane.snapToGrid ? "active" : ""}`}
           aria-label={document.workplane.snapToGrid ? t("grid.disableSnap") : t("grid.enableSnap")}
@@ -4208,7 +4209,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             mutate((draft) => { draft.workplane.snapToGrid = enabled; });
             setWorkplaneDraft((current) => ({ ...current, snapToGrid: enabled }));
           }}
-        ><Magnet size={21} /></button>
+        ><GridControlIcon snap size={21} /></button>
         {workplaneOpen ? <div data-educad-popup="grid" className="educad-workplane-popover">
           <header><div><strong>{t("grid.title")}</strong></div><button type="button" aria-label={t("common.close")} onClick={() => setWorkplaneOpen(false)}><X size={17} /></button></header>
           <label><span>{t("grid.showFloor")}</span><input type="checkbox" checked={workplaneDraft.gridVisible} onChange={(event) => updateGridSettings({ gridVisible: event.target.checked })} /></label>
