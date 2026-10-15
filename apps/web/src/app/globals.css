@@ -9948,12 +9948,18 @@ html[data-theme="dark"] .grid-settings {
 .educad-dashboard-sort-toggle { display: flex; overflow: hidden; border: 1px solid #c9d8e3; border-radius: 9px; background: white; }
 .educad-dashboard-sort-toggle button { width: 50px; height: var(--dashboard-control-height); display: grid; place-items: center; border: 0; border-left: 1px solid #d4e0e8; background: white; color: #5b7489; }
 .educad-dashboard-sort-toggle button:first-child { border-left: 0; }
-.educad-dashboard-sort-toggle button.active { background: #375a75; }
+.educad-dashboard-sort-toggle button.active { background: #1269eb; color: white; }
 .educad-dashboard-sort-toggle img { width: 21px; height: 21px; object-fit: contain; }
 .educad-dashboard-sort-toggle button.active img { filter: brightness(0) invert(1); }
 .educad-dashboard-view-toggle button { width: 50px; height: var(--dashboard-control-height); display: grid; place-items: center; border: 0; border-left: 1px solid #d4e0e8; background: white; color: #5b7489; }
 .educad-dashboard-view-toggle button:first-child { border-left: 0; }
-.educad-dashboard-view-toggle button.active { background: #375a75; color: white; }
+.educad-dashboard-view-toggle button.active { background: #1269eb; color: white; }
+.educad-dashboard-sort-toggle button:hover:not(.active),
+.educad-dashboard-view-toggle button:hover:not(.active),
+.educad-dashboard-sort-toggle button:focus-visible:not(.active),
+.educad-dashboard-view-toggle button:focus-visible:not(.active) { background: #eef5ff; color: #1269eb; }
+.educad-dashboard-sort-toggle button.active:hover,
+.educad-dashboard-view-toggle button.active:hover { background: #075dcc; }
 .educad-dashboard-projects.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
 .educad-dashboard-card { position: relative; min-width: 0; overflow: hidden; border: 1px solid #cfdae3; border-radius: 11px; background: white; box-shadow: 0 1px 3px #2442; }
 .educad-dashboard-card:hover { border-color: #82b5ef; box-shadow: 0 5px 18px #2442; }
