@@ -3952,9 +3952,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             setModelSelection([]);
           }}
           workplaneFaceSelection={placingSection || placingWorkplane || Boolean(editingMirrorPlaneId)}
-          onWorkplaneFaceSelect={({ origin, normal }) => {
+          onWorkplaneFaceSelect={({ origin, normal, viewerSide }) => {
             if (placingSection) {
               const direction = new THREE.Vector3(normal.x, normal.y, normal.z).normalize();
+              if (viewerSide === -1) direction.negate();
               const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction);
               const rotation = new THREE.Euler().setFromQuaternion(quaternion, "ZYX");
               setSectionPose({ position: { ...origin }, rotation: { x: THREE.MathUtils.radToDeg(rotation.x), y: THREE.MathUtils.radToDeg(rotation.y), z: THREE.MathUtils.radToDeg(rotation.z) }, inverted: true });

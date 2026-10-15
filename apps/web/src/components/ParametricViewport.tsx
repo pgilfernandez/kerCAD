@@ -195,7 +195,7 @@ type Props = {
   onObjectsSelect?: (objectIds: string[]) => void;
   onEmptySelect?: () => void;
   workplaneFaceSelection?: boolean;
-  onWorkplaneFaceSelect?: (face: { origin: { x: number; y: number; z: number }; normal: { x: number; y: number; z: number } }) => void;
+  onWorkplaneFaceSelect?: (face: { origin: { x: number; y: number; z: number }; normal: { x: number; y: number; z: number }; viewerSide?: 1 | -1 }) => void;
   topologyFaceSelection?: boolean;
   onTopologyFaceSelect?: (face: TopologyFacePick) => void;
   topologyEdgeSelection?: boolean;
@@ -2271,6 +2271,9 @@ export function ParametricViewport({ visualSection = null, onUpdateAnnotation, o
           workplaneFaceSelectRef.current?.({
             origin: { x: origin.x, y: origin.y, z: origin.z },
             normal: { x: normal.x, y: normal.y, z: normal.z },
+            viewerSide: hit.object.userData.standardWorkplane
+              ? raycaster.ray.direction.dot(normal.clone().transformDirection(modelGroup.matrixWorld)) < 0 ? 1 : -1
+              : undefined,
           });
         }
         event.preventDefault();
