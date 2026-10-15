@@ -9982,7 +9982,7 @@ html[data-theme="dark"] .grid-settings {
 .educad-dashboard-card:hover .card-rename, .educad-dashboard-card:focus-within .card-rename { opacity: 1; }
 .educad-dashboard-card .card-delete { position: absolute; top: 22px; right: 22px; width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid #d3dfe7; border-radius: 9px; background: #fffc; color: #668096; opacity: 0; }
 .educad-dashboard-card .card-delete:hover,
-.educad-dashboard-card .card-delete:focus-visible { color: #1269eb; background: #eef5ff; border-color: #9ec6f8; }
+.educad-dashboard-card .card-delete:focus-visible { color: #c62828; background: #fff0f0; border-color: #efaaaa; }
 .educad-dashboard-card:hover .card-delete, .educad-dashboard-card:focus-within .card-delete { opacity: 1; }
 .educad-dashboard-projects.list { display: flex; flex-direction: column; gap: 10px; }
 .educad-dashboard-projects.list .educad-dashboard-card .card-open { display: flex; align-items: center; gap: 17px; }
@@ -10027,6 +10027,8 @@ html[data-theme="dark"] .grid-settings {
 .educad-challenge-card .challenge-actions { position: absolute; top: 22px; right: 22px; display: flex; gap: 4px; opacity: 0; }
 .educad-challenge-card .challenge-actions button { width: 36px; height: 36px; padding: 8px; display: grid; place-items: center; color: #668096; background: rgba(255,255,255,.94); border: 1px solid #d3dfe7; border-radius: 8px; }
 .educad-challenge-card .challenge-actions button:hover { color: #1269eb; background: #eef5ff; border-color: #9ec6f8; }
+.educad-challenge-card .challenge-actions .challenge-delete:hover,
+.educad-challenge-card .challenge-actions .challenge-delete:focus-visible { color: #c62828; background: #fff0f0; border-color: #efaaaa; }
 .educad-challenge-card .challenge-actions img { width: 100%; height: 100%; object-fit: contain; }
 .educad-challenge-card:hover .challenge-actions, .educad-challenge-card:focus-within .challenge-actions { opacity: 1; }
 .educad-challenge-empty { min-height: 310px; display: grid; place-content: center; justify-items: center; gap: 9px; color: #668196; background: rgba(255,255,255,.7); border: 2px dashed #bfd0dc; border-radius: 12px; font: inherit; text-align: center; }

@@ -120,7 +120,7 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
                 <button type="button" title="Edit challenge" aria-label={`Edit ${challenge.title}`} onClick={() => onEditChallenge(challenge)}><ToolbarEditOperationIcon /></button>
                 <button type="button" title="Duplicate challenge" aria-label={`Duplicate ${challenge.title}`} disabled={busy} onClick={() => onDuplicateChallenge(challenge)}><Copy size={17} /></button>
                 <button type="button" title="Export challenge" aria-label={`Export ${challenge.title}`} onClick={() => onExportChallenge(challenge)}><Download size={17} /></button>
-                <button type="button" title="Remove challenge" aria-label={`Remove ${challenge.title}`} onClick={() => onDeleteChallenge(challenge)}><Trash2 size={17} /></button>
+                <button className="challenge-delete" type="button" title="Remove challenge" aria-label={`Remove ${challenge.title}`} onClick={() => onDeleteChallenge(challenge)}><Trash2 size={17} /></button>
               </nav>
             </article>)}
             {!challenges.length ? <button className="educad-challenge-empty" type="button" onClick={() => challengeInputRef.current?.click()}><Upload size={34} /><strong>Install your first challenge</strong><span>Choose an eduCAD challenge ZIP from your computer.</span></button> : null}
