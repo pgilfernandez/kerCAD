@@ -3852,6 +3852,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               const next = cloneDocument(latestDocumentRef.current);
               next.thumbnailOverride = dataUrl; commit(next);
               onProjectThumbnail?.(dataUrl, next);
+              setNotice({ type: "ok", text: t("project.coverManual") });
               return;
             }
             const stepId = challengeCaptureStepRef.current;
