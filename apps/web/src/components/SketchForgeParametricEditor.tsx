@@ -23,6 +23,7 @@ import {
   ToolbarDuplicateIcon,
   ToolbarExtrudeIcon,
   ToolbarSectionViewIcon,
+  ViewToolbarIcon,
   ToolbarFilletIcon,
   ToolbarImportIcon,
   ToolbarMirrorIcon,
@@ -3907,7 +3908,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           manipulatorControls={editingSection ? <>
             <Tool label={t("camera.positionTriad")} active={sectionPositionVisible} onClick={() => setSectionPositionVisible((value) => !value)}><ToolbarPositionManipulatorIcon /></Tool>
             <Tool label={t("camera.rotationTriad")} active={sectionRotationVisible} onClick={() => setSectionRotationVisible((value) => !value)}><ToolbarRotationManipulatorIcon /></Tool>
-            <Tool label={t("camera.reverseSection")} onClick={() => setSectionPose((pose) => ({ ...pose, inverted: !(pose.inverted ?? true) }))}><ToolbarSectionViewIcon /></Tool>
+            <Tool label={t("camera.reverseSection")} onClick={() => setSectionPose((pose) => ({ ...pose, inverted: !(pose.inverted ?? true) }))}><ViewToolbarIcon file="inverse" /></Tool>
           </> : selectedAnnotation ? <>
             <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
             {selectedAnnotation.kind !== "text" && (selectedAnnotation.kind === "circle" || selectedAnnotation.kind === "angle" || selectedAnnotation.showLength !== false) && <Tool label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>}
