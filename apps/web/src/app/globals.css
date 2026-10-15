@@ -9949,8 +9949,7 @@ html[data-theme="dark"] .grid-settings {
 .educad-dashboard-sort-toggle button { width: 50px; height: var(--dashboard-control-height); display: grid; place-items: center; border: 0; border-left: 1px solid #d4e0e8; background: white; color: #5b7489; }
 .educad-dashboard-sort-toggle button:first-child { border-left: 0; }
 .educad-dashboard-sort-toggle button.active { background: #1269eb; color: white; }
-.educad-dashboard-sort-toggle img { width: 21px; height: 21px; object-fit: contain; }
-.educad-dashboard-sort-toggle button.active img { filter: brightness(0) invert(1); }
+.educad-dashboard-sort-toggle .educad-dashboard-sort-icon { width: 21px; height: 21px; color: inherit; background-color: currentColor; mask-size: contain; mask-position: center; mask-repeat: no-repeat; -webkit-mask-size: contain; -webkit-mask-position: center; -webkit-mask-repeat: no-repeat; }
 .educad-dashboard-view-toggle button { width: 50px; height: var(--dashboard-control-height); display: grid; place-items: center; border: 0; border-left: 1px solid #d4e0e8; background: white; color: #5b7489; }
 .educad-dashboard-view-toggle button:first-child { border-left: 0; }
 .educad-dashboard-view-toggle button.active { background: #1269eb; color: white; }
