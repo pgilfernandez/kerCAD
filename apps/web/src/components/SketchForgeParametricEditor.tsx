@@ -4364,7 +4364,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               <strong>{t("project.cover")}</strong>
               {document.thumbnailOverride && <img src={document.thumbnailOverride} alt={t("project.cover")} />}
               <small>{t(document.thumbnailOverride ? "project.coverManual" : "project.coverAutomatic")}</small>
-              <div><button type="button" onClick={() => {
+              <div><button type="button" disabled={Boolean(sketchSession)} onClick={() => {
+                if (sketchSession) return;
                 const name = projectRenameDraft.trim();
                 if (name && name !== document.name) mutate((draft) => { draft.name = name; });
                 setProjectRenameOpen(false); setPendingChallengeCapture(null); setPendingProjectCapture(true);
