@@ -601,6 +601,8 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
 
 export function ParametricViewport({ onSectionPlaneSelect, captureFrameActive = false, onCaptureFrame, onCancelCaptureFrame, visualSection = null, onUpdateAnnotation, onCircleAnnotationRadius, onAnnotationSelect, annotationsVisible = true, onMoveAnnotationEndpoint, selectedAnnotationEndpoint = null, onSelectAnnotationEndpoint, annotationTool = null, editingAnnotationId = null, onPlaceAnnotation, onFinishAnnotation, onEditAnnotation, onCancelAnnotationTool, annotations, selectedAnnotationId = null, onProjectRename, mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, faceExtrudeDraft = null, onFaceExtrudeAccept, onFaceExtrudeCancel, faceExtrudeCanAccept = true, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, revolveDraft = null, onRevolveDraftChange, onRevolveAccept, onRevolveCancel, revolveCanAccept = true, distanceHandle = null, onDistanceParameterDragStart, onDistanceParameterPreview, onDistanceParameterChange, onDistanceParameterCancel, shellDraft = null, onShellDraftChange, onShellCornerTypeChange, onShellAccept, onShellCancel, shellCanAccept = true, floatingFeature = null, booleanObjects = [], patternSources = [], booleanAddOnly = false, operationModesVisible = true, contextToolbarVisible, manipulatorControls, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = "Untitled design", onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions, alignmentActive = false, alignmentBusy = false, alignmentTargets = [], alignmentReference = null, onAlignmentSelect, onAlign }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const presentationRef = useRef({ locale, displayUnit });
+  presentationRef.current = { locale, displayUnit };
   const annotationSnapRef = useRef<(event: PointerEvent) => THREE.Vector3 | null>(() => null);
   const sectionPlaneSelectRef = useRef(onSectionPlaneSelect);
   sectionPlaneSelectRef.current = onSectionPlaneSelect;
@@ -994,7 +996,7 @@ export function ParametricViewport({ onSectionPlaneSelect, captureFrameActive = 
         dimensionValue("z"),
       ];
       const axes: ViewportDimensionAxis[] = ["x", "y", "z"];
-      const names = locale === "es"
+      const names = presentationRef.current.locale === "es"
         ? parameters?.shape === "cone"
           ? ["Radio inferior", "Radio superior", "Alto"]
           : parameters?.shape === "tube"
@@ -1021,7 +1023,7 @@ export function ParametricViewport({ onSectionPlaneSelect, captureFrameActive = 
                   : parameters?.shape === "text"
                     ? ["", "Size", "Height"]
                     : [parameters?.shape === "box" || parameters?.shape === "roundedBox" || parameters?.shape === "pyramid" || parameters?.shape === "wedge" || parameters?.shape === "roof" || parameters?.shape === "roundRoof" ? "Width" : "Radius", "Depth", "Height"];
-      const lengthUnit = displayUnitLabel(displayUnit);
+      const lengthUnit = displayUnitLabel(presentationRef.current.displayUnit);
       const units = parameters?.shape === "polygon" ? [lengthUnit, "", lengthUnit] : [lengthUnit, lengthUnit, lengthUnit];
       const offsets = [[0, 18], [-24, 0], [22, 0]];
       if (parameters?.shape === "text") {
@@ -1045,7 +1047,7 @@ export function ParametricViewport({ onSectionPlaneSelect, captureFrameActive = 
         label.style.top = `${(1 - projected.y) * host.clientHeight / 2}px`;
         label.style.transform = `translate(-50%, -50%) translate(${offsets[index][0]}px, ${offsets[index][1]}px)`;
         if (document.activeElement !== label) {
-          const text = `${names[index]} ${units[index] ? formatDisplayLength(values[index], displayUnit) : formatViewportDimension(values[index])} ${units[index]}`;
+          const text = `${names[index]} ${units[index] ? formatDisplayLength(values[index], presentationRef.current.displayUnit) : formatViewportDimension(values[index])} ${units[index]}`;
           label.value = text;
           label.style.width = `${Math.max(76, Math.min(172, text.length * 7.2 + 18))}px`;
         }
@@ -1364,7 +1366,7 @@ export function ParametricViewport({ onSectionPlaneSelect, captureFrameActive = 
         startX, startY, endX, endY,
         labelX: (startX + endX) / 2 + normalX * 13,
         labelY: (startY + endY) / 2 + normalY * 13,
-        value: `${formatDisplayLength(value, displayUnit)} ${displayUnitLabel(displayUnit)}`,
+        value: `${formatDisplayLength(value, presentationRef.current.displayUnit)} ${displayUnitLabel(presentationRef.current.displayUnit)}`,
       });
     };
     const disposeTemporaryLineGroup = (group: THREE.Group | null) => {
@@ -3249,7 +3251,9 @@ export function ParametricViewport({ onSectionPlaneSelect, captureFrameActive = 
       [dimensionXRef.current, dimensionYRef.current, dimensionZRef.current].forEach((label) => { if (label) label.style.display = "none"; });
       invalidateRef.current = () => undefined;
     };
-  }, [displayUnit, locale, renderQuality, shadingMode]);
+  }, [renderQuality, shadingMode]);
+
+  useEffect(() => { invalidateRef.current(); }, [locale, displayUnit]);
 
   useEffect(() => {
     const model = modelRef.current;
