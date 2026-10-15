@@ -1423,10 +1423,10 @@ export function ParametricViewport({ onSectionPlaneSelect, captureFrameActive = 
         const context = canvas.getContext("2d");
         if (context) {
           context.font = "48px Arial, sans-serif";
-          // Four texture pixels per display pixel: 2px padding and corner radius.
+          // Four texture pixels per display pixel: 2px padding, 6px corner radius.
           canvas.width = Math.ceil(context.measureText(text).width + 16); canvas.height = 64;
           context.fillStyle = "#174f78"; context.beginPath();
-          context.roundRect(0, 0, canvas.width, canvas.height, 8); context.fill();
+          context.roundRect(0, 0, canvas.width, canvas.height, 24); context.fill();
           context.font = "48px Arial, sans-serif"; context.fillStyle = "#ffffff";
           context.textAlign = "center"; context.textBaseline = "middle";
           context.fillText(text, canvas.width / 2, canvas.height / 2);
