@@ -81,8 +81,11 @@ export function createVisualSection(model: THREE.Group, bodies: THREE.Mesh[], po
   const guideMaterial = new THREE.LineDashedMaterial({ color: "#9099a1", dashSize: 3, gapSize: 2, transparent: true, opacity: .7 });
   const guide = new THREE.Line(guideGeometry, guideMaterial); guide.computeLineDistances(); guide.position.copy(position); guide.quaternion.copy(quaternion);
   group.add(guide); resources.push(guideGeometry, guideMaterial);
+  model.userData.sectionGuide = guide;
+  model.userData.sectionClippingPlane = plane;
   model.add(group);
   return () => {
+    if (model.userData.sectionGuide === guide) { delete model.userData.sectionGuide; delete model.userData.sectionClippingPlane; }
     group.removeFromParent(); resources.forEach((resource) => resource.dispose());
     for (const { material, planes, shadows } of restored) { material.clippingPlanes = planes; material.clipShadows = shadows; material.needsUpdate = true; }
   };

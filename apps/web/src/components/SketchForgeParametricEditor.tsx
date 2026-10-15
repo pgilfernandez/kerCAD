@@ -363,11 +363,14 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [view, setView] = useState<CameraView>({ name: "home", token: 0 });
   const [projection, setProjection] = useState<CameraProjection>("orthographic");
   const [sectionEnabled, setSectionEnabled] = useState(false);
+  const [sectionSelected, setSectionSelected] = useState(false);
+  const editingSection = sectionEnabled && sectionSelected;
+  useEffect(() => { if (modelSelection.length || selectedAnnotationId) setSectionSelected(false); }, [modelSelection, selectedAnnotationId]);
   const [placingSection, setPlacingSection] = useState(false);
   const [sectionPose, setSectionPose] = useState<VisualSection>({ position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 } });
   const [sectionPositionVisible, setSectionPositionVisible] = useState(true);
   const [sectionRotationVisible, setSectionRotationVisible] = useState(true);
-  useEffect(() => { setSectionEnabled(false); setPlacingSection(false); }, [document.id]);
+  useEffect(() => { setSectionEnabled(false); setSectionSelected(false); setPlacingSection(false); }, [document.id]);
   const [renderQuality, setRenderQuality] = useState<ViewportRenderQuality>("normal");
   const [displayMode, setDisplayMode] = useState<ViewportDisplayMode>("solid");
   const [shadingMode, setShadingMode] = useState<ViewportShadingMode>("shadows");
@@ -1056,12 +1059,12 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     rotationEditable: showRotationTriad,
   }] : [], [selectedBox, selectedObjectVisible, selectedOperationVisible, selectedOperationOriginId, selectedSketchPlacement, showPositionTriad, showRotationTriad]);
   // Camera orientation updates must not recreate GPU manipulator resources.
-  const activeViewportObjectOrigins = useMemo(() => sectionEnabled
+  const activeViewportObjectOrigins = useMemo(() => editingSection
     ? [{ objectId: SECTION_PLANE_ID, visible: true, position: sectionPose.position, rotation: sectionPose.rotation, positionVisible: sectionPositionVisible, rotationEditable: sectionRotationVisible }]
     : alignOpen ? [] : viewportObjectOrigins,
-  [sectionEnabled, sectionPose, sectionPositionVisible, sectionRotationVisible, alignOpen, viewportObjectOrigins]);
-  const activeViewportOperationOrigins = useMemo(() => sectionEnabled || alignOpen ? [] : viewportOperationOrigins,
-    [sectionEnabled, alignOpen, viewportOperationOrigins]);
+  [editingSection, sectionPose, sectionPositionVisible, sectionRotationVisible, alignOpen, viewportObjectOrigins]);
+  const activeViewportOperationOrigins = useMemo(() => editingSection || alignOpen ? [] : viewportOperationOrigins,
+    [editingSection, alignOpen, viewportOperationOrigins]);
   const viewportSketchOverlays = useMemo(() => document.features.flatMap((feature) => {
     if (feature.kind !== "sketch" || feature.purpose !== "user" || feature.suppressed || !feature.visible) return [];
     const object = feature.objectId ? document.objects.find((candidate) => candidate.id === feature.objectId) ?? null : null;
@@ -2698,6 +2701,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       }
       if (event.key === "Escape") {
         setPlacingSection(false);
+        setSectionSelected(false);
         setSelectedAnnotationId(null);
         setAlignOpen(false);
         setModelSelection([]);
@@ -3497,7 +3501,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <ToolbarSection label={t("toolbar.helpers")} className="toolbar-helpers-section">
               <Tool label={t("camera.sectionView")} active={sectionEnabled || placingSection} onClick={() => {
                 if (placingSection) { setPlacingSection(false); setNotice(null); return; }
-                if (sectionEnabled) { setSectionEnabled(false); return; }
+                if (sectionEnabled) { setSectionEnabled(false); setSectionSelected(false); return; }
                 setModelSelection([]); setSelectedAnnotationId(null); setOriginEditObjectId(null); setAnnotationTool(null);
                 setPlacingWorkplane(false); setEditingMirrorPlaneId(null); setAlignOpen(false);
                 setPlacingSection(true); setDisplayMode("solid");
@@ -3859,6 +3863,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           objectRecords={viewportObjectRecords}
           objectColors={objectColors}
           visualSection={sectionEnabled ? sectionPose : null}
+          onSectionPlaneSelect={() => { setModelSelection([]); setSelectedAnnotationId(null); setOriginEditObjectId(null); setSectionSelected(true); }}
           objectOrigins={activeViewportObjectOrigins}
           operationOrigins={activeViewportOperationOrigins}
           alignmentActive={alignOpen}
@@ -3869,8 +3874,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           onAlign={alignSelection}
           sketchOverlays={viewportSketchOverlays}
           editableOriginId={alignOpen ? null : originEditObjectId}
-          selectedObjectOriginId={sectionEnabled ? SECTION_PLANE_ID : selectedAnnotation && selectedAnnotationPoint ? selectedAnnotation.id : selectedOriginObjectId}
-          selectedOperationOriginId={sectionEnabled ? null : selectedOperationOriginId}
+          selectedObjectOriginId={editingSection ? SECTION_PLANE_ID : selectedAnnotation && selectedAnnotationPoint ? selectedAnnotation.id : selectedOriginObjectId}
+          selectedOperationOriginId={editingSection ? null : selectedOperationOriginId}
           selectedObjectIds={viewportSelectedObjectIds}
           operationContext={pendingEdgeTreatment || pendingFaceExtrude || pendingShell || pendingRevolve ? viewportTopologyPreviewContext : viewportOperationContext}
           isolatedHistoryObjectId={!editingEdgeTreatmentId && !editingFaceExtrudeId && !editingShellId && !editingRevolveId && selectedOperationTimeline && selectedOperationTimeline.index < selectedOperationTimeline.count - 1 ? selectedOperationTimeline.objectId : null}
@@ -3886,10 +3891,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           displayUnit={displayUnit}
           locale={locale}
           parameterHandlesVisible={!alignOpen && showParameterHandles}
-          contextToolbarVisible={sectionEnabled || (pendingFaceExtrude || pendingRevolve || pendingShell ? true : pendingEdgeTreatment
+          contextToolbarVisible={editingSection || (pendingFaceExtrude || pendingRevolve || pendingShell ? true : pendingEdgeTreatment
             ? selectedTopologyFaces.length + selectedTopologyEdges.length > 0
             : modelSelection.length > 0 || Boolean(selectedAnnotation))}
-          manipulatorControls={sectionEnabled ? <>
+          manipulatorControls={editingSection ? <>
             <Tool label={t("camera.positionTriad")} active={sectionPositionVisible} onClick={() => setSectionPositionVisible((value) => !value)}><ToolbarPositionManipulatorIcon /></Tool>
             <Tool label={t("camera.rotationTriad")} active={sectionRotationVisible} onClick={() => setSectionRotationVisible((value) => !value)}><ToolbarRotationManipulatorIcon /></Tool>
             <Tool label={t("camera.reverseSection")} onClick={() => setSectionPose((pose) => ({ ...pose, inverted: !(pose.inverted ?? true) }))}><ToolbarSectionViewIcon /></Tool>
@@ -3915,7 +3920,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("camera.rotationTriad")} active={showRotationTriad} onClick={() => setShowRotationTriad((visible) => !visible)}><ToolbarRotationManipulatorIcon /></Tool>
             <Tool className="educad-parameter-handles-toggle" label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>
           </>}
-          selection={sectionEnabled || placingSection || alignOpen || originEditObjectId || placingWorkplane || editingMirrorPlaneId || selectingTopologyFaces || selectingTopologyEdges ? null : selectedBox}
+          selection={editingSection || placingSection || alignOpen || originEditObjectId || placingWorkplane || editingMirrorPlaneId || selectingTopologyFaces || selectingTopologyEdges ? null : selectedBox}
           snap={snapAmount}
           operationModesVisible={Boolean(selectedOperationId && hasPreviousSolidOperation(document, selectedOperationId))}
           onOperationModeChange={setSelectedOperationMode}
@@ -3971,6 +3976,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             setModelSelection(selected);
           }}
           onEmptySelect={() => {
+            setSectionSelected(false);
             setSelectedAnnotationId(null);
             setAlignOpen(false);
             setModelSelection([]);
@@ -3983,7 +3989,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction);
               const rotation = new THREE.Euler().setFromQuaternion(quaternion, "ZYX");
               setSectionPose({ position: { ...origin }, rotation: { x: THREE.MathUtils.radToDeg(rotation.x), y: THREE.MathUtils.radToDeg(rotation.y), z: THREE.MathUtils.radToDeg(rotation.z) }, inverted: true });
-              setPlacingSection(false); setSectionEnabled(true); setNotice(null);
+              setPlacingSection(false); setSectionEnabled(true); setSectionSelected(true); setNotice(null);
               return;
             }
             if (editingMirrorPlaneId) {
