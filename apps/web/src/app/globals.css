@@ -3339,9 +3339,16 @@ button {
 
 .toolbar-mode-content.geometry {
   --geometry-toolbar-icon-size: clamp(33px, calc(3vw + 1px), 43px);
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
 }
 
-.toolbar-mode-content.geometry .toolbar-section { min-width: 0; }
+.toolbar-mode-content.geometry .toolbar-section { min-width: 0; flex-shrink: 0; }
+.toolbar-mode-content.geometry > .tool-group { flex-shrink: 0; }
 
 .toolbar-mode-content.geometry .toolbar-icon,
 .toolbar-mode-content.geometry .shape-menu-trigger,
@@ -8793,51 +8800,31 @@ circle.sketch-preview-line {
   }
 
   .educad-reference-shell:has(.toolbar-mode-content.geometry) {
-    --editor-toolbar-height: 184px;
+    --editor-toolbar-height: 108px;
   }
 
   .secondary-toolbar:has(.toolbar-mode-content.geometry) .toolbar-workspace-tabs {
-    height: calc(var(--editor-toolbar-height) - var(--editor-toolbar-tools-height) - var(--editor-toolbar-tools-height));
+    height: calc(var(--editor-toolbar-height) - var(--editor-toolbar-tools-height));
   }
 
   .toolbar-mode-content.geometry {
-    top: calc(var(--editor-toolbar-height) - var(--editor-toolbar-tools-height) - var(--editor-toolbar-tools-height));
-    display: grid;
-    height: calc(var(--editor-toolbar-tools-height) + var(--editor-toolbar-tools-height));
-    grid-template-columns: max-content max-content minmax(0, 1fr) max-content;
-    grid-template-rows: repeat(2, var(--editor-toolbar-tools-height));
-    overflow: visible;
-    touch-action: pan-x;
+    top: calc(var(--editor-toolbar-height) - var(--editor-toolbar-tools-height));
+    display: flex;
+    height: var(--editor-toolbar-tools-height);
   }
 
   .toolbar-mode-content.geometry button { position: relative; z-index: 1; touch-action: manipulation; }
 
-  .educad-reference-shell:has(.toolbar-mode-content.geometry) .educad-sidebar-mode-control { top: 87px; }
+  .educad-reference-shell:has(.toolbar-mode-content.geometry) .educad-sidebar-mode-control { top: 22px; }
 
-  .toolbar-mode-content.geometry > .tool-group.left {
-    grid-row: 1;
-    grid-column: 2;
-  }
+  .toolbar-mode-content.geometry > .tool-group.left { display: flex; }
 
-  .toolbar-mode-content.geometry > .toolbar-spacer {
-    grid-row: 1;
-    grid-column: 3;
-  }
-
-  .toolbar-mode-content.geometry > .toolbar-home-section,
-  .toolbar-mode-content.geometry > .toolbar-actions-section {
-    grid-row: 1;
-  }
-
-  .toolbar-mode-content.geometry > .toolbar-actions-section {
-    grid-column: 4;
-  }
+  .toolbar-mode-content.geometry > .toolbar-spacer { flex: 1 0 0; }
 
   .toolbar-mode-content.geometry > .toolbar-modeling-groups {
-    grid-row: 2;
-    grid-column: 1 / -1;
     width: max-content;
-    border-top: 1px solid #d7e0e8;
+    flex: 0 0 auto;
+    border-top: 0;
   }
 
   .toolbar-mode-content.sketch {
