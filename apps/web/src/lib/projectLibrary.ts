@@ -59,7 +59,7 @@ export async function saveLibraryProject(entry: ProjectLibraryEntry) {
   try {
     await new Promise<void>((resolve, reject) => {
       const transaction = database.transaction(STORE_NAME, "readwrite");
-      transaction.objectStore(STORE_NAME).put(entry);
+      transaction.objectStore(STORE_NAME).put(entry.document.thumbnailOverride ? { ...entry, thumbnail: entry.document.thumbnailOverride } : entry);
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error ?? new Error("Could not save the project."));
     });
@@ -77,7 +77,11 @@ export async function updateLibraryProjectThumbnail(id: string, thumbnail: strin
       const request = store.get(id);
       request.onsuccess = () => {
         const current = request.result as ProjectLibraryEntry | undefined;
-        if (current) store.put({ ...current, thumbnail, thumbnailDocumentKey });
+        if (current) {
+          // A late automatic render must not replace a persisted manual cover.
+          if (current.document.thumbnailOverride && current.document.thumbnailOverride !== thumbnail) return;
+          store.put({ ...current, thumbnail, thumbnailDocumentKey });
+        }
       };
       request.onerror = () => reject(request.error ?? new Error("Could not update the project thumbnail."));
       transaction.oncomplete = () => resolve();

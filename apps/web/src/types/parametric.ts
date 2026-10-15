@@ -259,6 +259,8 @@ export type ParametricDocument = {
   name: string;
   creator?: string;
   author?: string;
+  /** A manual project cover; absent means automatic viewport thumbnails. */
+  thumbnailOverride?: string;
   units: "mm";
   /** Display preference only; all stored lengths are millimeters. */
   displayUnit?: import("@/lib/parametricUnits").ParametricDisplayUnit;

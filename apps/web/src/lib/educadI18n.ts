@@ -1,6 +1,8 @@
 export type EducadLocale = "es" | "en";
 
 const es = {
+  "project.cover": "Imagen del proyecto", "project.coverManual": "Captura manual guardada", "project.coverAutomatic": "Capturas automáticas activadas",
+  "project.captureCover": "Capturar imagen", "project.resetCover": "Restablecer automática",
   "camera.sectionPickHint": "Selecciona un plano principal o una cara para definir el corte · Esc cancela",
   "camera.sectionView": "Vista de sección", "camera.reverseSection": "Invertir lado del corte",
   "annotation.ending.none": "Ninguno", "annotation.ending.square": "Cuadrado", "annotation.ending.circle": "Círculo",
@@ -154,6 +156,8 @@ const es = {
 export type EducadTranslationKey = keyof typeof es;
 
 const en: Record<EducadTranslationKey, string> = {
+  "project.cover": "Project image", "project.coverManual": "Saved manual capture", "project.coverAutomatic": "Automatic captures enabled",
+  "project.captureCover": "Capture image", "project.resetCover": "Reset to automatic",
   "camera.sectionPickHint": "Select a main plane or a face to define the section · Esc cancels",
   "camera.sectionView": "Section view", "camera.reverseSection": "Reverse cutting side",
   "annotation.ending.none": "None", "annotation.ending.square": "Square", "annotation.ending.circle": "Circle",

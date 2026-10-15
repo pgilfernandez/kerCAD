@@ -7,9 +7,10 @@ export function thumbnailDocumentKey(document: ParametricDocument) {
 
 /** A preview is optional; failure must not turn a successful project save into an error. */
 export async function uploadSharedThumbnail(fileName: string, revision: string, document: ParametricDocument, thumbnail?: string, documentKey?: string) {
-  if (!thumbnail?.startsWith("data:image/jpeg;base64,") || !documentKey || documentKey !== await thumbnailDocumentKey(document)) return;
+  const image = document.thumbnailOverride ?? thumbnail;
+  if (!image?.startsWith("data:image/jpeg;base64,") || (!document.thumbnailOverride && (!documentKey || documentKey !== await thumbnailDocumentKey(document)))) return;
   try {
-    const bytes = Uint8Array.from(atob(thumbnail.slice("data:image/jpeg;base64,".length)), character => character.charCodeAt(0));
+    const bytes = Uint8Array.from(atob(image.slice("data:image/jpeg;base64,".length)), character => character.charCodeAt(0));
     await fetch(`/api/educad-shared-projects?fileName=${encodeURIComponent(fileName)}`, {
       method: "PUT", headers: { "Content-Type": "image/jpeg", "If-Match": revision }, body: bytes,
     });

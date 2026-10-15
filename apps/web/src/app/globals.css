@@ -1398,6 +1398,14 @@ button {
 }
 .educad-new-document-dialog > header { display: flex; min-height: 48px; align-items: center; justify-content: space-between; padding: 0 14px; border-bottom: 1px solid #e1e8ed; }
 .educad-new-document-dialog > header strong { font-size: 14px; }
+.educad-project-cover-controls { display: grid; gap: 9px; padding: 0 16px 16px; color: #314a5f; }
+.educad-project-cover-controls > strong { font-size: 12px; }
+.educad-project-cover-controls > small { color: #657b8b; font-size: 11px; }
+.educad-project-cover-controls > img { width: 100%; max-height: 170px; aspect-ratio: 16 / 10; object-fit: contain; background: #edf4f7; border: 1px solid #c7d5de; border-radius: 6px; }
+.educad-project-cover-controls > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.educad-project-cover-controls button { display: flex; align-items: center; justify-content: center; gap: 7px; flex: 1 1 140px; min-height: 36px; padding: 7px 10px; border: 1px solid #c7d5de; border-radius: 6px; background: #fff; color: #315675; font: inherit; font-size: 12px; cursor: pointer; }
+.educad-project-cover-controls button:hover:not(:disabled) { background: #eaf3ff; border-color: #1269eb; }
+.educad-project-cover-controls button:disabled { opacity: .45; cursor: default; }
 .educad-new-document-dialog > header button { display: grid; width: 32px; height: 32px; place-items: center; color: #718493; background: transparent; border-radius: 5px; }
 .educad-new-document-dialog > p { margin: 0; padding: 20px 16px; color: #526b7c; font-size: 12px; line-height: 1.5; }
 .educad-new-document-dialog > footer { display: flex; justify-content: flex-end; gap: 8px; padding: 11px 16px; background: #f6f9fa; border-top: 1px solid #e1e8ed; }

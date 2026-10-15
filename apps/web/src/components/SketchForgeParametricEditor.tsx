@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Plus, Trash2, X } from "lucide-react";
+import { Camera, RotateCcw, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, Focus, Grid3X3, Home, Magnet, Maximize2, Minus, Plus, Trash2, X } from "lucide-react";
 import { ChallengeEditor, type ChallengeDock } from "@/components/ChallengeEditor";
 import { ChallengePlayer } from "@/components/ChallengePlayer";
 import type { EducadChallenge } from "@/lib/challengeLibrary";
@@ -388,6 +388,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   });
   const [challengeCaptureToken, setChallengeCaptureToken] = useState(0);
   const [pendingChallengeCapture, setPendingChallengeCapture] = useState<string | null>(null);
+  const [pendingProjectCapture, setPendingProjectCapture] = useState(false);
+  const projectCaptureRequestRef = useRef(false);
   const [challengeCaptureCrop, setChallengeCaptureCrop] = useState<CaptureCrop | undefined>(undefined);
   useEffect(() => setPendingChallengeCapture(null), [challengeEditor?.id]);
   const [challengeCapture, setChallengeCapture] = useState<{ stepId: string; dataUrl: string; token: number } | null>(null);
@@ -3843,22 +3845,30 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             setEditingAnnotationId(null);
           }}
           onThumbnail={(dataUrl) => {
+            if (projectCaptureRequestRef.current) {
+              projectCaptureRequestRef.current = false;
+              const next = cloneDocument(latestDocumentRef.current);
+              next.thumbnailOverride = dataUrl; commit(next);
+              onProjectThumbnail?.(dataUrl, next);
+              return;
+            }
             const stepId = challengeCaptureStepRef.current;
             if (stepId) {
               challengeCaptureStepRef.current = null;
               setChallengeCapture({ stepId, dataUrl, token: challengeCaptureToken });
-            } else if (!kernelBusy && renderedGeometryFingerprintRef.current === geometryFingerprint && !build.failedFeatureId && !pendingEdgeTreatment && !pendingFaceExtrude && !pendingShell && !pendingRevolve && !(selectedOperationTimeline && selectedOperationTimeline.index < selectedOperationTimeline.count - 1)) onProjectThumbnail?.(dataUrl, document);
+            } else if (!latestDocumentRef.current.thumbnailOverride && !kernelBusy && renderedGeometryFingerprintRef.current === geometryFingerprint && !build.failedFeatureId && !pendingEdgeTreatment && !pendingFaceExtrude && !pendingShell && !pendingRevolve && !(selectedOperationTimeline && selectedOperationTimeline.index < selectedOperationTimeline.count - 1)) onProjectThumbnail?.(dataUrl, document);
           }}
           thumbnailRequestToken={challengeCaptureToken}
-          captureFrameActive={Boolean(pendingChallengeCapture)}
-          onCancelCaptureFrame={() => setPendingChallengeCapture(null)}
+          captureFrameActive={Boolean(pendingChallengeCapture) || pendingProjectCapture}
+          onCancelCaptureFrame={() => { setPendingChallengeCapture(null); setPendingProjectCapture(false); }}
           onCaptureFrame={(crop) => {
-            if (!pendingChallengeCapture) return;
-            challengeCaptureStepRef.current = pendingChallengeCapture;
-            setChallengeCaptureCrop(crop); setPendingChallengeCapture(null);
+            if (!pendingChallengeCapture && !pendingProjectCapture) return;
+            projectCaptureRequestRef.current = pendingProjectCapture;
+            challengeCaptureStepRef.current = pendingProjectCapture ? null : pendingChallengeCapture;
+            setChallengeCaptureCrop(crop); setPendingChallengeCapture(null); setPendingProjectCapture(false);
             setChallengeCaptureToken((current) => current + 1);
           }}
-          thumbnailRequestOptions={challengeEditor ? { includeOverlays: true, width: 1200, height: 750, quality: 0.92, crop: challengeCaptureCrop } : undefined}
+          thumbnailRequestOptions={{ includeOverlays: Boolean(challengeEditor) && !projectCaptureRequestRef.current, width: 1200, height: 750, quality: 0.92, crop: challengeCaptureCrop }}
           mesh={viewportObjectRecords.length > 0 ? ((editingEdgeTreatmentId || editingFaceExtrudeId || editingShellId || editingRevolveId) && topologySelectionBuild ? topologySelectionBuild : build).mesh : null}
           objectRecords={viewportObjectRecords}
           objectColors={objectColors}
@@ -4334,6 +4344,21 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           }}>
             <header><strong id="educad-project-rename-title">{locale === "es" ? "Cambiar nombre del proyecto" : "Rename project"}</strong><button type="button" aria-label={t("common.close")} onClick={() => setProjectRenameOpen(false)}><X /></button></header>
             <label className="educad-project-rename-field"><span>{t("settings.name")}</span><input autoFocus value={projectRenameDraft} maxLength={120} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setProjectRenameDraft(event.target.value)} /></label>
+            <section className="educad-project-cover-controls">
+              <strong>{t("project.cover")}</strong>
+              {document.thumbnailOverride && <img src={document.thumbnailOverride} alt={t("project.cover")} />}
+              <small>{t(document.thumbnailOverride ? "project.coverManual" : "project.coverAutomatic")}</small>
+              <div><button type="button" onClick={() => {
+                const name = projectRenameDraft.trim();
+                if (name && name !== document.name) mutate((draft) => { draft.name = name; });
+                setProjectRenameOpen(false); setPendingChallengeCapture(null); setPendingProjectCapture(true);
+              }}><Camera size={18} />{t("project.captureCover")}</button>
+              <button type="button" disabled={!document.thumbnailOverride} onClick={() => {
+                mutate((draft) => { delete draft.thumbnailOverride; });
+                projectCaptureRequestRef.current = false; challengeCaptureStepRef.current = null;
+                setChallengeCaptureCrop(undefined); setChallengeCaptureToken((current) => current + 1);
+              }}><RotateCcw size={18} />{t("project.resetCover")}</button></div>
+            </section>
             <footer><button type="button" onClick={() => setProjectRenameOpen(false)}>{t("common.cancel")}</button><button type="submit" className="primary" disabled={!projectRenameDraft.trim()}>OK</button></footer>
           </form>
         </div>

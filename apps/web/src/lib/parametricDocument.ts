@@ -398,6 +398,7 @@ export function normalizeParametricAnnotations(input: ParametricDocument["annota
 export function normalizeParametricDocument(document: ParametricDocument): ParametricDocument {
   const next = migrateParametricDocument(document);
   next.displayUnit = normalizeDisplayUnit(next.displayUnit);
+  if (typeof next.thumbnailOverride !== "string" || !next.thumbnailOverride.startsWith("data:image/jpeg;base64,") || next.thumbnailOverride.length > 8_000_000) delete next.thumbnailOverride;
   next.annotations = normalizeParametricAnnotations(next.annotations);
   next.creator = typeof next.creator === "string" ? next.creator.trim().slice(0, 160) || undefined : undefined;
   next.author = typeof next.author === "string" ? next.author.trim().slice(0, 160) || undefined : undefined;

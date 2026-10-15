@@ -152,7 +152,7 @@ export default function Home() {
     if (!current) return;
     const pending = structuredClone(document);
     pendingDocumentRef.current = pending;
-    activeRef.current = { ...current, name: pending.name, updatedAt: Date.now(), document: pending };
+    activeRef.current = { ...current, name: pending.name, updatedAt: Date.now(), document: pending, thumbnail: pending.thumbnailOverride ?? current.thumbnail };
     changeVersionRef.current += 1;
     if (transientEditorRef.current) return;
     if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
@@ -161,9 +161,12 @@ export default function Home() {
   const persistThumbnail = useCallback((thumbnail: string, capturedDocument?: ParametricDocument) => {
     const current = activeRef.current;
     if (!current || transientEditorRef.current) return;
+    const manual = capturedDocument?.thumbnailOverride === thumbnail;
+    if (current.document.thumbnailOverride && !manual) return;
     void (async () => {
       const key = capturedDocument ? await thumbnailDocumentKey(capturedDocument) : undefined;
       if (activeRef.current?.id !== current.id) return;
+      if (activeRef.current.document.thumbnailOverride && !manual) return;
       activeRef.current = { ...activeRef.current, thumbnail, thumbnailDocumentKey: key };
       await enqueueLibraryWrite(() => updateLibraryProjectThumbnail(current.id, thumbnail, key));
     })();
