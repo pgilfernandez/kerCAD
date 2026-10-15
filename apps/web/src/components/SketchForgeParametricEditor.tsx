@@ -1046,6 +1046,13 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     positionVisible: showPositionTriad,
     rotationEditable: showRotationTriad,
   }] : [], [selectedBox, selectedObjectVisible, selectedOperationVisible, selectedOperationOriginId, selectedSketchPlacement, showPositionTriad, showRotationTriad]);
+  // Camera orientation updates must not recreate GPU manipulator resources.
+  const activeViewportObjectOrigins = useMemo(() => sectionEnabled
+    ? [{ objectId: SECTION_PLANE_ID, visible: true, position: sectionPose.position, rotation: sectionPose.rotation, positionVisible: sectionPositionVisible, rotationEditable: sectionRotationVisible }]
+    : alignOpen ? [] : viewportObjectOrigins,
+  [sectionEnabled, sectionPose, sectionPositionVisible, sectionRotationVisible, alignOpen, viewportObjectOrigins]);
+  const activeViewportOperationOrigins = useMemo(() => sectionEnabled || alignOpen ? [] : viewportOperationOrigins,
+    [sectionEnabled, alignOpen, viewportOperationOrigins]);
   const viewportSketchOverlays = useMemo(() => document.features.flatMap((feature) => {
     if (feature.kind !== "sketch" || feature.purpose !== "user" || feature.suppressed || !feature.visible) return [];
     const object = feature.objectId ? document.objects.find((candidate) => candidate.id === feature.objectId) ?? null : null;
@@ -3835,8 +3842,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           objectRecords={viewportObjectRecords}
           objectColors={objectColors}
           visualSection={sectionEnabled ? sectionPose : null}
-          objectOrigins={sectionEnabled ? [{ objectId: SECTION_PLANE_ID, visible: true, position: sectionPose.position, rotation: sectionPose.rotation, positionVisible: sectionPositionVisible, rotationEditable: sectionRotationVisible }] : alignOpen ? [] : viewportObjectOrigins}
-          operationOrigins={sectionEnabled || alignOpen ? [] : viewportOperationOrigins}
+          objectOrigins={activeViewportObjectOrigins}
+          operationOrigins={activeViewportOperationOrigins}
           alignmentActive={alignOpen}
           alignmentBusy={alignmentBusy}
           alignmentTargets={alignmentDisplayTargets}

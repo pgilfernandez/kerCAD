@@ -526,7 +526,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
     shaft.userData.handleHoverColor = hoverColor;
     const shaftTarget = new THREE.Mesh(
       new THREE.CylinderGeometry(0.055, 0.055, 0.72, 10),
-      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ visible: false }),
     );
     shaftTarget.position.copy(shaft.position);
     shaftTarget.quaternion.copy(shaft.quaternion);
@@ -544,7 +544,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
       );
       const ringTarget = new THREE.Mesh(
         new THREE.TorusGeometry(0.576, 0.055, 8, 64),
-        new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
+        new THREE.MeshBasicMaterial({ visible: false }),
       );
       if (axis === "x") ring.rotation.y = Math.PI / 2;
       else if (axis === "y") ring.rotation.x = -Math.PI / 2;
