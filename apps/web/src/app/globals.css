@@ -9975,6 +9975,8 @@ html[data-theme="dark"] .grid-settings {
 .educad-dashboard-card .card-rename:hover { color: #1269eb; background: #eef5ff; border-color: #9ec6f8; }
 .educad-dashboard-card:hover .card-rename, .educad-dashboard-card:focus-within .card-rename { opacity: 1; }
 .educad-dashboard-card .card-delete { position: absolute; top: 22px; right: 22px; width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid #d3dfe7; border-radius: 9px; background: #fffc; color: #668096; opacity: 0; }
+.educad-dashboard-card .card-delete:hover,
+.educad-dashboard-card .card-delete:focus-visible { color: #1269eb; background: #eef5ff; border-color: #9ec6f8; }
 .educad-dashboard-card:hover .card-delete, .educad-dashboard-card:focus-within .card-delete { opacity: 1; }
 .educad-dashboard-projects.list { display: flex; flex-direction: column; gap: 10px; }
 .educad-dashboard-projects.list .educad-dashboard-card .card-open { display: flex; align-items: center; gap: 17px; }
