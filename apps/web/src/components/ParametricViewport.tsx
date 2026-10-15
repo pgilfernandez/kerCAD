@@ -2303,11 +2303,9 @@ export function ParametricViewport({ visualSection = null, onUpdateAnnotation, o
             rotationPlaneAxis = worldRotationAxis;
             rotationCenterWorld = worldOrigin;
             rotationStartVector = dragPoint.clone().sub(worldOrigin).normalize();
-            const markerWorldQuaternion = originHandle.marker.getWorldQuaternion(new THREE.Quaternion());
-            const localGuideReference = originHandle.rotationAxis === "x"
-              ? new THREE.Vector3(0, 1, 0)
-              : new THREE.Vector3(1, 0, 0);
-            rotationGuideReferenceVector = localGuideReference.applyQuaternion(markerWorldQuaternion).normalize();
+            // Each drag starts its own angular reference: the pressed point is 0°.
+            // Drawing and snapping must use the same reference as the rotation delta.
+            rotationGuideReferenceVector = rotationStartVector.clone();
             const parentAxis = localRotationAxis.clone().applyQuaternion(originHandle.marker.quaternion).normalize();
             pendingRotation = { targetId: originHandle.targetId, targetKind: originHandle.targetKind, localAxis: originHandle.rotationAxis!, axis: { x: parentAxis.x, y: parentAxis.y, z: parentAxis.z }, deltaDegrees: 0 };
             const markerWorldScale = originHandle.marker.getWorldScale(new THREE.Vector3());
