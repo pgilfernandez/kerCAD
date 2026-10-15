@@ -3651,7 +3651,8 @@ export function ParametricViewport({ onSectionPlaneSelect, captureFrameActive = 
         addAxisArrow("#3279d6", [
           originX, 0, originZ, originX, length, originZ,
         ]);
-        const bandDepth = Math.min(15, gridDepth);
+        // Preserve the original 15 mm band at the default 200 mm floor width.
+        const bandDepth = 15 * gridWidth / 200;
         const labelCanvas = document.createElement("canvas");
         labelCanvas.width = 2048;
         labelCanvas.height = Math.max(128, Math.round(2048 * bandDepth / gridWidth));
