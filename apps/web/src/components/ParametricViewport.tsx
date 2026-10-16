@@ -1417,7 +1417,7 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
       const sectorPositions = new THREE.BufferAttribute(new Float32Array(144 * 9), 3).setUsage(THREE.DynamicDrawUsage);
       sectorGeometry.setAttribute("position", sectorPositions);
       sectorGeometry.setDrawRange(0, 0);
-      const sector = new THREE.Mesh(sectorGeometry, new THREE.MeshBasicMaterial({ color: "#25b85a", side: THREE.DoubleSide, depthTest: false, depthWrite: false, transparent: true, opacity: 0.5 }));
+      const sector = new THREE.Mesh(sectorGeometry, new THREE.MeshBasicMaterial({ color: "#25b85a", side: THREE.DoubleSide, depthTest: false, depthWrite: false, transparent: true, opacity: 0.8 }));
       sector.renderOrder = 39.5;
       sector.frustumCulled = false;
       sector.visible = false;
