@@ -435,6 +435,8 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
     object.locked ??= false;
     object.expanded ??= true;
     if (object.referenceMesh) {
+      const image = object.referenceMesh.image;
+      if (image && (!/^data:image\/(?:png|jpeg);base64,/i.test(image.dataUrl) || image.dataUrl.length > 15 * 1024 * 1024 || !Number.isFinite(image.width) || !Number.isFinite(image.height) || image.width <= 0 || image.height <= 0)) throw new Error(`${object.name}: reference image is invalid.`);
       object.referenceMesh.opacity = Math.min(1, Math.max(0.05, Number.isFinite(object.referenceMesh.opacity) ? object.referenceMesh.opacity : 0.4));
       object.referenceMesh.displayMode = object.referenceMesh.displayMode === "solid" || object.referenceMesh.displayMode === "wireframe" ? object.referenceMesh.displayMode : "solidEdges";
       object.referenceMesh.pickable = typeof object.referenceMesh.pickable === "boolean" ? object.referenceMesh.pickable : true;

@@ -18,6 +18,7 @@ export function ImportDesignDialog({ locale, onClose, onBrowse, onFile }: {
   const [error, setError] = useState("");
   const es = locale === "es";
   const formats = [
+    [".jpg · .jpeg · .png", es ? "Imágenes de referencia" : "Reference images", es ? "Imágenes planas que puedes mover, rotar y escalar. No forman parte del sólido." : "Flat images you can move, rotate and scale. They do not become solid geometry."],
     [".educad · .json", es ? "Proyectos eduCAD" : "eduCAD projects", es ? "Abre el proyecto o añade sus objetos al diseño actual." : "Open the project or add its objects to the current design."],
     [".step · .stp", es ? "Geometría sólida" : "Solid geometry", es ? "Importa sólidos CAD para trabajar con ellos." : "Import CAD solids to work with them."],
     [".stl · .obj", es ? "Mallas de referencia" : "Reference meshes", es ? "Se incorporan como referencia, no como sólidos paramétricos." : "Added as references, not as parametric solids."],
@@ -35,7 +36,7 @@ export function ImportDesignDialog({ locale, onClose, onBrowse, onFile }: {
           event.preventDefault(); event.stopPropagation(); depth.current = 0; setDragging(false);
           const files = event.dataTransfer.files;
           if (files.length !== 1) { setError(es ? "Suelta un único archivo cada vez." : "Drop one file at a time."); return; }
-          if (!/\.(educad|json|step|stp|stl|obj|svg)$/i.test(files[0].name)) { setError(es ? "Formato no compatible. Usa uno de los formatos indicados abajo." : "Unsupported format. Use one of the formats listed below."); return; }
+          if (!/\.(educad|json|step|stp|stl|obj|svg|jpe?g|png)$/i.test(files[0].name)) { setError(es ? "Formato no compatible. Usa uno de los formatos indicados abajo." : "Unsupported format. Use one of the formats listed below."); return; }
           onFile(files[0]);
         }}>
         <ToolbarImportIcon /><strong>{es ? "Arrastra y suelta un archivo aquí" : "Drag and drop a file here"}</strong><span>{es ? "o pulsa para elegirlo desde tu ordenador" : "or click to choose it from your computer"}</span>

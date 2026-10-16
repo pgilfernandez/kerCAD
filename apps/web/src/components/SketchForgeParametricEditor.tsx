@@ -68,7 +68,7 @@ import { appendScribbleContour, simplify } from "@/lib/parametricScribble";
 import { EDUCAD_PACKAGE_LIMITS, EDUCAD_PACKAGE_MEDIA_TYPE, exportEducadProject, importEducadProject } from "@/lib/educadProject";
 import { mergeParametricProjects } from "@/lib/parametricProjectMerge";
 import { importStepAsParametricObject } from "@/lib/parametricStepImport";
-import { importReferenceMesh, parametricReferenceRenderRecords } from "@/lib/parametricReferenceImport";
+import { importReferenceImage, importReferenceMesh, parametricReferenceRenderRecords } from "@/lib/parametricReferenceImport";
 import { assertImportByteLimit } from "@/lib/parametricImportLimits";
 import { displayLengthToMillimeters, displayUnitLabel, displayUnitWorkspace, millimetersToDisplayLength, normalizeDisplayUnit } from "@/lib/parametricUnits";
 import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
@@ -3349,6 +3349,22 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   };
 
   const importManagedFile = async (file: File) => {
+    if (/\.(?:jpe?g|png)$/i.test(file.name)) {
+      try {
+        const temporary = cloneDocument(latestDocumentRef.current);
+        const id = await importReferenceImage(temporary, file);
+        const imported = temporary.objects.find((object) => object.id === id)!;
+        const next = cloneDocument(latestDocumentRef.current);
+        Object.assign(imported.transform, objectPlacementForWorkplane(next.workplane));
+        next.objects.push(imported);
+        commit(next);
+        setModelSelection([{ id, kind: "object" }]);
+        setNotice({ type: "ok", text: locale === "es" ? "Imagen de referencia importada." : "Reference image imported." });
+      } catch (error) {
+        setNotice({ type: "error", text: error instanceof Error ? error.message : t("notice.referenceImportFailed") });
+      }
+      return;
+    }
     if (/\.(?:stl|obj)$/i.test(file.name)) {
       try {
         assertImportByteLimit("reference", file.size);
@@ -3938,6 +3954,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool className="educad-parameter-handles-toggle" label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>
           </>}
           selection={editingSection || placingSection || alignOpen || originEditObjectId || placingWorkplane || editingMirrorPlaneId || selectingTopologyFaces || selectingTopologyEdges ? null : selectedBox}
+          referenceImageSelection={modelSelection.length === 1 && selectionKind === "object" && !editingSection && !placingSection && !alignOpen && !originEditObjectId && !placingWorkplane && !editingMirrorPlaneId && !selectingTopologyFaces && !selectingTopologyEdges ? document.objects.find((object) => object.id === selectedObjectId && object.referenceMesh?.image) : null}
+          onReferenceImageScale={(id, factor) => updateObject(id, (object) => { object.transform.scale.x *= factor; object.transform.scale.y *= factor; })}
           snap={snapAmount}
           operationModesVisible={Boolean(selectedOperationId && hasPreviousSolidOperation(document, selectedOperationId))}
           onOperationModeChange={setSelectedOperationMode}
@@ -4415,7 +4433,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         </aside>
       )}
 
-      <input ref={importRef} hidden type="file" accept=".educad,.educad.json,.json,.svg,.step,.stp,.stl,.obj,application/vnd.educad.project+zip,application/json,image/svg+xml,model/step,model/stl,model/obj" onChange={(event) => { const file = event.target.files?.[0]; if (file) { setImportOpen(false); void importManagedFile(file); } event.target.value = ""; }} />
+      <input ref={importRef} hidden type="file" accept=".educad,.educad.json,.json,.svg,.step,.stp,.stl,.obj,.jpg,.jpeg,.png,image/jpeg,image/png,application/vnd.educad.project+zip,application/json,image/svg+xml,model/step,model/stl,model/obj" onChange={(event) => { const file = event.target.files?.[0]; if (file) { setImportOpen(false); void importManagedFile(file); } event.target.value = ""; }} />
       <input ref={sketchSvgImportRef} hidden type="file" accept=".svg,image/svg+xml" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importSvgIntoSketch(file); event.target.value = ""; }} />
     </main>
   );

@@ -232,7 +232,8 @@ export type ParametricObject = {
   /** Non-parametric visual aid. It never enters the OpenCascade history. */
   referenceMesh?: {
     sourceName: string;
-    format: "stl" | "obj";
+    format: "stl" | "obj" | "jpg" | "png";
+    image?: { dataUrl: string; width: number; height: number };
     positions: number[];
     normals: number[];
     edges: number[];
@@ -312,6 +313,7 @@ export type ParametricObjectRenderRecord = {
   worldTransform: ParametricObject["transform"];
   mesh: RenderMesh;
   reference?: {
+    image?: { dataUrl: string; width: number; height: number };
     opacity: number;
     displayMode: "solid" | "wireframe" | "solidEdges";
     pickable: boolean;

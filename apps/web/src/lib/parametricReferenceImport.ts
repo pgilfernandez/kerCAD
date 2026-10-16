@@ -75,6 +75,36 @@ export function importReferenceMesh(document: ParametricDocument, sourceName: st
   return object.id;
 }
 
+export async function importReferenceImage(document: ParametricDocument, file: File) {
+  if (file.size > 10 * 1024 * 1024) throw new Error("Reference images must be smaller than 10 MB.");
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Could not read the reference image."));
+    reader.readAsDataURL(file.slice(0, file.size, /\.png$/i.test(file.name) ? "image/png" : "image/jpeg"));
+  });
+  const image = new Image();
+  image.src = dataUrl;
+  await image.decode();
+  if (!image.naturalWidth || !image.naturalHeight || image.naturalWidth * image.naturalHeight > 25000000) throw new Error("Reference images must contain at most 25 million pixels.");
+  // A 100 mm initial width preserves the source aspect ratio. All dimensions
+  // remain in CAD millimeters; the original image is embedded in the project.
+  const width = 100, height = width * image.naturalHeight / image.naturalWidth;
+  const x = width / 2, y = height / 2;
+  const object = createParametricObject(document.objects.length + 1);
+  object.name = file.name.replace(/\.(?:jpe?g|png)$/i, "");
+  object.color = "#ffffff";
+  object.referenceMesh = {
+    sourceName: file.name, format: /\.png$/i.test(file.name) ? "png" : "jpg",
+    image: { dataUrl, width, height }, opacity: 1, displayMode: "solid", pickable: true,
+    positions: [-x,-y,0, x,-y,0, x,y,0, -x,-y,0, x,y,0, -x,y,0],
+    normals: [0,0,1, 0,0,1, 0,0,1, 0,0,1, 0,0,1, 0,0,1],
+    edges: [-x,-y,0, x,-y,0, x,-y,0, x,y,0, x,y,0, -x,y,0, -x,y,0, -x,-y,0],
+  };
+  document.objects.push(object);
+  return object.id;
+}
+
 export function parametricReferenceRenderRecords(document: ParametricDocument): ParametricObjectRenderRecord[] {
   return document.objects.flatMap((object) => {
     const reference = object.referenceMesh;
@@ -106,7 +136,7 @@ export function parametricReferenceRenderRecords(document: ParametricDocument): 
       color: object.color,
       worldTransform: object.transform,
       mesh: { positions, normals, indices, edges, metrics: { width: size.x, depth: size.y, height: size.z, volume: 0 } },
-      reference: { opacity: reference.opacity, displayMode: reference.displayMode, pickable: reference.pickable && !object.locked },
+      reference: { image: reference.image, opacity: reference.opacity, displayMode: reference.displayMode, pickable: reference.pickable && !object.locked },
     }];
   });
 }
