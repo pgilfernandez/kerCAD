@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, Download, FileArchive, Grid3X3, Home, List, Search, Settings, Trash2, Upload, X } from "lucide-react";
+import { Copy, Download, FileArchive, Grid3X3, Home, List, Search, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ToolbarEditOperationIcon } from "@/components/icons";
 import { SharedProjects } from "@/components/SharedProjects";
@@ -107,7 +107,6 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
         <button className={section === "home" ? "active" : ""} type="button" onClick={() => onSectionChange("home")}><Home size={23} /><span>{t("Projects")}</span></button>
         <button className={section === "challenges" ? "active" : ""} type="button" onClick={() => onSectionChange("challenges")}><Grid3X3 size={23} /><span>{t("Challenges")}</span></button>
         {sharedEnabled ? <button className={section === "shared" ? "active" : ""} type="button" onClick={() => onSectionChange("shared")}><Upload size={23} /><span>{t("Shared")}</span></button> : null}
-        <button className="settings" type="button" disabled><Settings size={23} /><span>{t("Settings")}</span></button>
       </aside>
       <section className="educad-dashboard-main">
         {section === "shared" ? <SharedProjects locale={locale} projects={projects} onOpen={onOpen} onSaved={onSharedSaved} /> : section === "challenges" ? <>
