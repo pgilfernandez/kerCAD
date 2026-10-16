@@ -5006,7 +5006,7 @@ button {
 .educad-parametric-sketch-toolbar button { flex-shrink: 0; touch-action: manipulation; }
 .toolbar-scroll-dragging, .toolbar-scroll-dragging * { cursor: grabbing !important; user-select: none; }
 .educad-toolbar-scroll-indicators { position: absolute; z-index: 4; pointer-events: none; }
-.educad-toolbar-scroll-edge { position: absolute; top: 0; bottom: 0; display: flex; width: 26px; align-items: center; color: #31566d; font-size: 26px; font-weight: 700; text-shadow: 0 1px 3px white; }
+.educad-toolbar-scroll-edge { position: absolute; top: 0; bottom: 0; display: flex; width: 26px; align-items: center; padding: 0; border: 0; border-radius: 0; pointer-events: auto; cursor: pointer; touch-action: pan-x pan-y; color: #31566d; font-size: 26px; font-weight: 700; text-shadow: 0 1px 3px white; }
 .educad-toolbar-scroll-edge[hidden] { display: none; }
 .educad-toolbar-scroll-edge img { width: 16px; height: 16px; object-fit: contain; }
 html[data-theme="dark"] .educad-toolbar-scroll-edge img { filter: brightness(0) invert(1); }
@@ -5170,6 +5170,11 @@ html[data-theme="dark"] .educad-toolbar-scroll-edge.right { background: linear-g
 .educad-toolbar-scroll-edge.bottom { top: auto; bottom: 0; background: linear-gradient(to top, #f4f7f9 15%, rgba(244, 247, 249, 0)); }
 html[data-theme="dark"] .educad-toolbar-scroll-edge.top { background: linear-gradient(to bottom, #243442 15%, rgba(36, 52, 66, 0)); }
 html[data-theme="dark"] .educad-toolbar-scroll-edge.bottom { background: linear-gradient(to top, #243442 15%, rgba(36, 52, 66, 0)); }
+.educad-toolbar-scroll-indicators .educad-toolbar-scroll-edge:hover { background: #e5efff; box-shadow: inset 0 0 0 1px #9ec6f8; }
+.educad-toolbar-scroll-indicators .educad-toolbar-scroll-edge:active { background: #cddfff; }
+.educad-toolbar-scroll-indicators .educad-toolbar-scroll-edge:focus-visible { outline: 2px solid var(--educad-primary-blue); outline-offset: -2px; background: #e5efff; }
+html[data-theme="dark"] .educad-toolbar-scroll-indicators .educad-toolbar-scroll-edge:hover,
+html[data-theme="dark"] .educad-toolbar-scroll-indicators .educad-toolbar-scroll-edge:focus-visible { background: #34516f; }
 
 @media (max-width: 720px) {
   .educad-workplane-stage.sketch-active .sketch-workspace-stage { right: 0; }

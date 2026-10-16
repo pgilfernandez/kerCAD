@@ -3,9 +3,15 @@ export function enableToolbarMouseScroll(toolbar: HTMLElement, vertical = false)
   let drag: { pointerId: number; x: number; scroll: number } | null = null;
   const indicators = document.createElement("div");
   indicators.className = `educad-toolbar-scroll-indicators${vertical ? " vertical" : ""}`;
-  indicators.setAttribute("aria-hidden", "true");
-  const left = document.createElement("span");
-  const right = document.createElement("span");
+  const left = document.createElement("button");
+  const right = document.createElement("button");
+  left.type = right.type = "button";
+  const scrollToward = (direction: number) => {
+    const distance = Math.max(48, (vertical ? toolbar.clientHeight : toolbar.clientWidth) * 0.7);
+    toolbar.scrollBy({ [vertical ? "top" : "left"]: direction * distance, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  };
+  left.addEventListener("click", () => scrollToward(-1));
+  right.addEventListener("click", () => scrollToward(1));
   left.className = `educad-toolbar-scroll-edge ${vertical ? "top" : "left"}`;
   right.className = `educad-toolbar-scroll-edge ${vertical ? "bottom" : "right"}`;
   const startIcon = document.createElement("img");
@@ -19,6 +25,11 @@ export function enableToolbarMouseScroll(toolbar: HTMLElement, vertical = false)
   indicators.append(left, right);
   toolbar.parentElement?.append(indicators);
   const updateIndicators = () => {
+    const spanish = document.documentElement.lang.startsWith("es");
+    left.title = spanish ? vertical ? "Desplazar hacia arriba" : "Desplazar hacia la izquierda" : vertical ? "Scroll up" : "Scroll left";
+    right.title = spanish ? vertical ? "Desplazar hacia abajo" : "Desplazar hacia la derecha" : vertical ? "Scroll down" : "Scroll right";
+    left.setAttribute("aria-label", left.title);
+    right.setAttribute("aria-label", right.title);
     const bounds = toolbar.getBoundingClientRect();
     const parentBounds = toolbar.parentElement?.getBoundingClientRect();
     indicators.style.top = `${bounds.top - (parentBounds?.top ?? 0)}px`;
@@ -72,6 +83,10 @@ export function enableToolbarMouseScroll(toolbar: HTMLElement, vertical = false)
   };
   const preventAutoscroll = (event: MouseEvent) => { if (event.button === 1) event.preventDefault(); };
   toolbar.addEventListener("wheel", wheel, { passive: false });
+  indicators.addEventListener("wheel", wheel, { passive: false });
+  indicators.addEventListener("pointerdown", down, true);
+  indicators.addEventListener("mousedown", preventAutoscroll);
+  indicators.addEventListener("auxclick", preventAutoscroll);
   toolbar.addEventListener("pointerdown", down, true);
   toolbar.addEventListener("pointermove", move);
   toolbar.addEventListener("pointerup", stop);
@@ -87,6 +102,10 @@ export function enableToolbarMouseScroll(toolbar: HTMLElement, vertical = false)
     if (drag && toolbar.hasPointerCapture(drag.pointerId)) toolbar.releasePointerCapture(drag.pointerId);
     toolbar.classList.remove("toolbar-scroll-dragging");
     toolbar.removeEventListener("wheel", wheel);
+    indicators.removeEventListener("wheel", wheel);
+    indicators.removeEventListener("pointerdown", down, true);
+    indicators.removeEventListener("mousedown", preventAutoscroll);
+    indicators.removeEventListener("auxclick", preventAutoscroll);
     toolbar.removeEventListener("pointerdown", down, true);
     toolbar.removeEventListener("pointermove", move);
     toolbar.removeEventListener("pointerup", stop);
