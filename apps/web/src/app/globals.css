@@ -1083,6 +1083,7 @@ button {
 
 .educad-model-sidebar.simplified .educad-model-tree { position: relative; min-height: 0; max-height: none; flex: 1; border-bottom: 0; }
 .educad-model-sidebar.simplified .educad-object-list { min-height: 0; padding: 7px 5px 12px; overscroll-behavior-y: contain; }
+.educad-model-sidebar.simplified .educad-tree-toggle-spacer { display: none; }
 .educad-model-sidebar.simplified .educad-toolbar-scroll-edge.top { background: linear-gradient(to bottom, #fff 15%, rgba(255,255,255,0)); }
 .educad-model-sidebar.simplified .educad-toolbar-scroll-edge.bottom { background: linear-gradient(to top, #fff 15%, rgba(255,255,255,0)); }
 .educad-model-sidebar.simplified .educad-toolbar-scroll-edge:hover,

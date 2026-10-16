@@ -277,21 +277,22 @@ export function ParametricModelSidebar({
                   </div>}
                 </div>
               );
-              const isExpanded = object.object.expanded;
+              const isImage = Boolean(object.object.referenceMesh?.image);
+              const isExpanded = !isImage && object.object.expanded;
               const objectSelected = selection.some((candidate) => candidate.kind === "object" && candidate.id === object.id);
               return (
                 <div className="educad-object-node" key={object.id}>
                   <div className={`educad-object-row ${alignmentClass(object.id, "object")} ${objectSelected ? "selected" : ""} ${object.object.visible ? "" : "hidden"} ${object.object.locked ? "locked" : ""}`} style={{ "--object-color": object.object.color } as CSSProperties}>
-                    <button
+                    {isImage ? <span className="educad-tree-toggle-spacer" aria-hidden="true" /> : <button
                       className="educad-tree-toggle"
                       aria-label={`${isExpanded ? t("model.collapse") : t("model.expand")} ${object.name}`}
                       aria-expanded={isExpanded}
                       onClick={() => onUpdateObject(object.id, (draft) => { draft.expanded = !draft.expanded; })}
                     >
                       {isExpanded ? <OperationTreeIcon file="expanded" size={16} /> : <OperationTreeIcon file="collapsed" size={16} />}
-                    </button>
+                    </button>}
                     <button className="educad-object-select" title={object.name} aria-pressed={objectSelected} onClick={(event) => selectNode({ id: object.id, kind: "object" }, event)}>
-                      {object.object.referenceMesh ? <OperationTreeIcon file="imported-step" size={17} /> : <OperationTreeIcon file="box" className="educad-object-color-icon" size={17} />}
+                      {isImage ? <OperationTreeIcon file="imported-img" size={17} /> : object.object.referenceMesh ? <OperationTreeIcon file="imported-step" size={17} /> : <OperationTreeIcon file="box" className="educad-object-color-icon" size={17} />}
                       <span><strong>{object.name}</strong></span>
                     </button>
                     <div className="educad-tree-actions">
