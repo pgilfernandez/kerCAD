@@ -4,6 +4,8 @@ import { Copy, Download, FileArchive, Grid3X3, Home, List, Search, Settings, Tra
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ToolbarEditOperationIcon } from "@/components/icons";
 import { SharedProjects } from "@/components/SharedProjects";
+import { EditorHeaderActions } from "@/components/EditorHeaderActions";
+import type { EducadLocale } from "@/lib/educadI18n";
 import type { EducadChallenge } from "@/lib/challengeLibrary";
 import type { ProjectLibraryEntry } from "@/lib/projectLibrary";
 
@@ -40,6 +42,18 @@ function updatedLabel(timestamp: number) {
 
 export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSaved, busy = false, section, onSectionChange, onShowLanding, onCreate, onOpen, onImport, onDelete, onRename, challenges, onImportChallenge, onCreateChallenge, onStartChallenge, onEditChallenge, onDuplicateChallenge, onExportChallenge, onDeleteChallenge }: Props) {
   const [query, setQuery] = useState("");
+  const [locale, setLocale] = useState<EducadLocale>("en");
+  useEffect(() => {
+    const saved = localStorage.getItem("educad.locale");
+    const language = saved === "es" ? "es" : "en";
+    setLocale(language);
+    document.documentElement.lang = language;
+  }, []);
+  const changeLocale = (language: EducadLocale) => {
+    setLocale(language);
+    localStorage.setItem("educad.locale", language);
+    document.documentElement.lang = language;
+  };
   const [view, setView] = useState<"grid" | "list">("grid");
   const [sort, setSort] = useState<"recent" | "name">("recent");
   const [challengeQuery, setChallengeQuery] = useState("");
@@ -84,7 +98,7 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
     <header className="educad-dashboard-topbar">
       <strong className="educad-dashboard-brand"><img className="educad-dashboard-logo" src="/assets/educad/logo.svg" alt="" /><span>eduCAD</span></strong>
       <nav className="educad-dashboard-mobile-nav" aria-label="Dashboard sections"><button className={section === "home" ? "active" : ""} type="button" onClick={() => onSectionChange("home")}><Home size={18} /> Projects</button><button className={section === "challenges" ? "active" : ""} type="button" onClick={() => onSectionChange("challenges")}><Grid3X3 size={18} /> Challenges</button>{sharedEnabled ? <button type="button" onClick={() => onSectionChange("shared")}>Shared</button> : null}</nav>
-      <button className="educad-dashboard-about" type="button" onClick={onShowLanding}>about eduCAD</button>
+      <EditorHeaderActions locale={locale} onLocaleChange={changeLocale} onShowLanding={onShowLanding} />
     </header>
     <div className="educad-dashboard-layout">
       <aside className="educad-dashboard-sidebar">

@@ -9958,6 +9958,18 @@ html[data-theme="dark"] .grid-settings {
 }
 .educad-dashboard-about { margin-left: auto; min-height: 42px; padding: 0 18px; color: #fff; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.55); border-radius: 9px; font-size: 14px; font-weight: 750; }
 .educad-dashboard-about:hover { color: #1269eb; background: #fff; }
+.educad-header-actions.dashboard-header-actions { position: relative; top: auto; right: auto; margin-left: auto; height: auto; gap: 10px; z-index: 45; flex-shrink: 0; }
+.dashboard-header-actions > button, .dashboard-header-actions > a { display: flex; align-items: center; justify-content: center; gap: 8px; width: auto; min-height: 38px; height: auto; padding: 7px 10px; border: 1px solid transparent; border-radius: 8px; color: white; background: transparent; font: inherit; font-size: 13px; text-decoration: none; white-space: nowrap; }
+.dashboard-header-actions > button:hover, .dashboard-header-actions > a:hover { color: #1269eb; background: rgba(255,255,255,.8); }
+.dashboard-header-actions > button:focus-visible, .dashboard-header-actions > a:focus-visible { outline: 2px solid white; outline-offset: 2px; }
+.dashboard-header-actions .educad-header-language-menu { top: calc(100% + 8px); }
+.dashboard-header-actions .educad-header-language-menu button { display: block; width: 100%; margin-block: 4px; padding: 9px 12px; border: 0; border-radius: 4px; color: #173b5a; background: transparent; font: inherit; font-size: 13px; text-align: left; }
+.dashboard-header-actions .educad-header-language-menu button:hover, .dashboard-header-actions .educad-header-language-menu button[aria-pressed="true"] { background: #eaf3ff; }
+@media (max-width: 620px) {
+  .educad-header-actions.dashboard-header-actions { gap: 4px; }
+  .dashboard-header-actions > button, .dashboard-header-actions > a { width: 36px; padding: 6px; }
+  .dashboard-header-actions > button > span:not(.educad-header-svg-icon), .dashboard-header-actions > a > span:not(.educad-header-svg-icon) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+}
 .educad-dashboard-mobile-nav { display: none; }
 
 .educad-dashboard-brand { display: flex; align-items: center; gap: 15px; font-size: 27px; letter-spacing: -.5px; }
