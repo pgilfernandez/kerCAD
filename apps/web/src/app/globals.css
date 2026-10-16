@@ -1372,12 +1372,12 @@ button {
 .educad-transform-section .educad-transform-card { margin: 8px 0 0; padding: 7px 5px 4px; background: #fbfcfd; }
 .educad-shape-parameters > div > .educad-feature-card { margin: 8px 0 0; padding: 7px 5px 4px; background: #fbfcfd; }
 .educad-transform-empty { margin: 8px 5px 0; padding: 9px; color: #7d909d; background: #fbfcfd; border-radius: 5px; font-size: 8px; line-height: 1.45; }
-.educad-reference-display-controls { display: flex; justify-content: space-between; align-items: center; gap: 5px; }
+.educad-reference-display-controls { display: grid; width: 100%; grid-auto-flow: column; grid-auto-columns: 1fr; align-items: center; gap: 4px; }
 .educad-reference-display-controls + label { margin-top: 10px; }
-.educad-reference-display-controls button { display: grid; place-items: center; width: 44px; height: 43px; padding: 3px; border: 1px solid transparent; border-radius: 12px; background: transparent; }
-.educad-reference-display-controls button img { width: 34px; height: 34px; object-fit: contain; }
-.educad-reference-display-controls button:hover { background: #dfeff7; border-color: #9bbecf; }
-.educad-reference-display-controls button.active { background: #def5fb; border-color: #6fc8df; }
+.educad-reference-display-controls button { display: grid; place-items: center; width: 100%; min-width: 0; height: 31px; padding: 3px; color: #617382; border: 1px solid #cbd7df; border-radius: 4px; background: #fff; cursor: pointer; }
+.educad-reference-display-controls button img { width: 22px; height: 22px; object-fit: contain; }
+.educad-reference-display-controls button:hover { background: #edf5f8; }
+.educad-reference-display-controls button.active { background: #ddf1fa; border-color: #58abc9; }
 .educad-reference-display-controls button:focus-visible { outline: 2px solid var(--educad-primary-blue); outline-offset: 1px; }
 
 .educad-object-appearance { padding: 6px; }
