@@ -1374,7 +1374,7 @@ button {
 .educad-transform-empty { margin: 8px 5px 0; padding: 9px; color: #7d909d; background: #fbfcfd; border-radius: 5px; font-size: 8px; line-height: 1.45; }
 .educad-reference-display-controls { display: grid; width: 100%; grid-auto-flow: column; grid-auto-columns: 1fr; align-items: center; gap: 4px; }
 .educad-reference-display-controls + label { margin-top: 10px; }
-.educad-reference-display-controls button { display: grid; place-items: center; width: 100%; min-width: 0; height: 31px; padding: 3px; color: #617382; border: 1px solid #cbd7df; border-radius: 4px; background: #fff; cursor: pointer; }
+.educad-reference-display-controls button { display: grid; place-items: center; width: 100%; min-width: 0; height: 43.4px; padding: 3px; color: #617382; border: 1px solid #cbd7df; border-radius: 4px; background: #fff; cursor: pointer; }
 .educad-reference-display-controls button.toolbar-icon { overflow: hidden; }
 .educad-reference-display-controls button.toolbar-icon img.toolbar-command-icon { display: block; width: 22px; height: 22px; max-width: 100%; max-height: 100%; min-width: 0; min-height: 0; object-fit: contain; }
 .educad-reference-display-controls button:hover { background: #edf5f8; }
