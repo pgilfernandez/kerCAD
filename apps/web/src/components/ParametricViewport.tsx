@@ -3911,6 +3911,8 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
       const wireframeMaterial = new LineMaterial({ color: item.reference?.image ? "#173b5a" : item.color, linewidth: 2, depthTest: true });
       wireframeMaterial.resolution.set(Math.max(1, rendererRef.current?.domElement.clientWidth ?? 1), Math.max(1, rendererRef.current?.domElement.clientHeight ?? 1));
       const wireframeEdges = new LineSegments2(wireframeGeometry, wireframeMaterial);
+      if (item.objectId) wireframeEdges.userData.referenceTransformObjectId = item.objectId;
+      wireframeEdges.userData.renderId = item.renderId;
       wireframeEdges.visible = displayMode === "wireframe";
       wireframeEdges.renderOrder = 17;
       if (item.reference) {
