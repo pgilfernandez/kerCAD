@@ -15,6 +15,7 @@ import { nextAnnotationName } from "@/lib/annotationNames";
 import { SECTION_PLANE_ID, type VisualSection } from "@/lib/visualSection";
 import type { CaptureCrop } from "@/lib/viewportCapture";
 import { useAccessibleDialog } from "@/components/useAccessibleDialog";
+import { ImportDesignDialog } from "@/components/ImportDesignDialog";
 import {
   ToolbarAlignIcon,
   ToolbarChamferIcon,
@@ -327,6 +328,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const sidebarModeBeforeSketchRef = useRef<ModelSidebarMode | "hidden">("normal");
   const [compactSketchToolbar, setCompactSketchToolbar] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [exportFileName, setExportFileName] = useState(document.name);
   const [exportScope, setExportScope] = useState<"project" | "selection">("project");
   const [stlExportScope, setStlExportScope] = useState<"project" | "selection">("project");
@@ -3552,7 +3554,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           <div className="toolbar-spacer" />
           <ToolbarSection label={t("toolbar.manage")} className="toolbar-actions-section">
             <div className="action-buttons">
-              <button className="action-icon-button" aria-label={t("toolbar.import")} title={t("toolbar.import")} onClick={() => importRef.current?.click()}><ToolbarImportIcon /></button>
+              <button className="action-icon-button" aria-label={t("toolbar.import")} title={t("toolbar.import")} onClick={() => setImportOpen(true)}><ToolbarImportIcon /></button>
               <button data-educad-popup="export" className="action-icon-button" aria-label={t("toolbar.export")} title={t("toolbar.export")} onClick={() => { if (!exportOpen) { setExportFileName(document.name); setExportScope(exportSelectedObjectIds.length ? "selection" : "project"); } setExportOpen((value) => !value); }}><ToolbarVectorExportIcon /></button>
               <button data-educad-popup="settings" className="action-icon-button" aria-label={t("toolbar.settings")} title={t("toolbar.settings")} onClick={() => setSettingsOpen((value) => !value)}><ToolbarSettingsIcon /></button>
             </div>
@@ -4317,6 +4319,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         /> : null}
       </section>
 
+      {importOpen && <ImportDesignDialog locale={locale} onClose={() => setImportOpen(false)} onBrowse={() => importRef.current?.click()} onFile={(file) => { setImportOpen(false); void importManagedFile(file); }} />}
       {exportOpen && (
         <aside data-educad-popup="export" className="top-action-panel export-action-panel educad-export-panel">
           <header><div className="top-action-heading"><strong>{t("dialog.exportTitle")}</strong></div><button aria-label={t("common.close")} onClick={() => setExportOpen(false)}><X /></button></header>
@@ -4412,7 +4415,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         </aside>
       )}
 
-      <input ref={importRef} hidden type="file" accept=".educad,.educad.json,.json,.svg,.step,.stp,.stl,.obj,application/vnd.educad.project+zip,application/json,image/svg+xml,model/step,model/stl,model/obj" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importManagedFile(file); event.target.value = ""; }} />
+      <input ref={importRef} hidden type="file" accept=".educad,.educad.json,.json,.svg,.step,.stp,.stl,.obj,application/vnd.educad.project+zip,application/json,image/svg+xml,model/step,model/stl,model/obj" onChange={(event) => { const file = event.target.files?.[0]; if (file) { setImportOpen(false); void importManagedFile(file); } event.target.value = ""; }} />
       <input ref={sketchSvgImportRef} hidden type="file" accept=".svg,image/svg+xml" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importSvgIntoSketch(file); event.target.value = ""; }} />
     </main>
   );
