@@ -16,6 +16,8 @@ import { SECTION_PLANE_ID, type VisualSection } from "@/lib/visualSection";
 import type { CaptureCrop } from "@/lib/viewportCapture";
 import { useAccessibleDialog } from "@/components/useAccessibleDialog";
 import { ImportDesignDialog } from "@/components/ImportDesignDialog";
+import { ReferenceDisplayButtons } from "@/components/ReferenceDisplayButtons";
+import { ViewportFloatingNumberInput } from "@/components/ViewportFloatingNumberInput";
 import {
   ToolbarAlignIcon,
   ToolbarChamferIcon,
@@ -1028,6 +1030,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const selectedBox = useMemo(() => modelSelection.length === 1 ? (selectionKind === "feature" ? selectedOperationId ? viewportSelectionForFeature(document, selectedOperationId) : null : viewportSelectionForObject(document, selectedObjectId)) : null, [document, modelSelection.length, selectedObjectId, selectedOperationId, selectionKind]);
   const selectedSketchPlacement = useMemo(() => selectedSketchId ? viewportPlacementForSketchFeature(document, selectedSketchId) : null, [document, selectedSketchId]);
   const selectedOriginObjectId = modelSelection.length === 1 && selectionKind === "object" ? selectedObjectId : null;
+  const selectedReferenceObject = selectedOriginObjectId ? document.objects.find((object) => object.id === selectedOriginObjectId && object.referenceMesh) : undefined;
   const selectedOperationOriginId = modelSelection.length === 1 ? selectedTransformOperationId : null;
   const selectedObjectVisible = Boolean(selectedObjectId && document.objects.find((object) => object.id === selectedObjectId)?.visible);
   const viewportSelectedObjectIds = useMemo(() => [...new Set(modelSelection.flatMap((item) => {
@@ -3952,6 +3955,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
             <Tool label={t("camera.rotationTriad")} active={showRotationTriad} onClick={() => setShowRotationTriad((visible) => !visible)}><ToolbarRotationManipulatorIcon /></Tool>
             <Tool className="educad-parameter-handles-toggle" label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>
+            {selectedReferenceObject?.referenceMesh && <>
+              <ViewportFloatingNumberInput value={selectedReferenceObject.referenceMesh.opacity * 100} unit="percent" displayUnit={displayUnit} snap={1} label={t("property.opacity")} min={5} max={100} onCommit={(value) => updateObject(selectedReferenceObject.id, (object) => { if (object.referenceMesh) object.referenceMesh.opacity = value / 100; })} />
+              <ReferenceDisplayButtons value={selectedReferenceObject.referenceMesh.displayMode} locale={locale} onChange={(mode) => updateObject(selectedReferenceObject.id, (object) => { if (object.referenceMesh) object.referenceMesh.displayMode = mode; })} />
+            </>}
           </>}
           selection={editingSection || placingSection || alignOpen || originEditObjectId || placingWorkplane || editingMirrorPlaneId || selectingTopologyFaces || selectingTopologyEdges ? null : selectedBox}
           referenceImageSelection={modelSelection.length === 1 && selectionKind === "object" && !editingSection && !placingSection && !alignOpen && !originEditObjectId && !placingWorkplane && !editingMirrorPlaneId && !selectingTopologyFaces && !selectingTopologyEdges ? document.objects.find((object) => object.id === selectedObjectId && object.referenceMesh?.image) : null}

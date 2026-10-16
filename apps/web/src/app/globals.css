@@ -1366,6 +1366,12 @@ button {
 .educad-transform-section .educad-transform-card { margin: 8px 0 0; padding: 7px 5px 4px; background: #fbfcfd; }
 .educad-shape-parameters > div > .educad-feature-card { margin: 8px 0 0; padding: 7px 5px 4px; background: #fbfcfd; }
 .educad-transform-empty { margin: 8px 5px 0; padding: 9px; color: #7d909d; background: #fbfcfd; border-radius: 5px; font-size: 8px; line-height: 1.45; }
+.educad-reference-display-controls { display: flex; justify-content: space-between; align-items: center; gap: 5px; }
+.educad-reference-display-controls button { display: grid; place-items: center; width: 44px; height: 43px; padding: 3px; border: 1px solid transparent; border-radius: 12px; background: transparent; }
+.educad-reference-display-controls button img { width: 34px; height: 34px; object-fit: contain; }
+.educad-reference-display-controls button:hover { background: #dfeff7; border-color: #9bbecf; }
+.educad-reference-display-controls button.active { background: #def5fb; border-color: #6fc8df; }
+.educad-reference-display-controls button:focus-visible { outline: 2px solid var(--educad-primary-blue); outline-offset: 1px; }
 
 .educad-object-appearance { padding: 6px; }
 .educad-color-trigger { display: grid; width: 100%; min-height: 38px; grid-template-columns: minmax(0, 1fr) 22px auto 18px; align-items: center; gap: 7px; padding: 0 7px; color: #526a7b; text-align: left; background: transparent; border-radius: 5px; font-size: 9px; font-weight: 800; }

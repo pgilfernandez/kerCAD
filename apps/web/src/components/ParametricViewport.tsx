@@ -3843,7 +3843,7 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
         const materials = Array.isArray(cached.body.material) ? cached.body.material : [cached.body.material];
         for (const material of materials) setMaterialColor(material, item.reference?.image ? "#ffffff" : item.color);
         const wireframeMaterials = Array.isArray(cached.wireframeEdges.material) ? cached.wireframeEdges.material : [cached.wireframeEdges.material];
-        for (const material of wireframeMaterials) setMaterialColor(material, item.color);
+        for (const material of wireframeMaterials) setMaterialColor(material, item.reference?.image ? "#173b5a" : item.color);
         continue;
       }
       if (cached) disposeCachedObjectRender(group, cached);
@@ -3894,7 +3894,7 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
       edges.visible = displayMode === "solid" && Boolean(item.objectId && selectedObjectIds.includes(item.objectId));
       const wireframeGeometry = new LineSegmentsGeometry();
       wireframeGeometry.setPositions(item.mesh.edges);
-      const wireframeMaterial = new LineMaterial({ color: item.color, linewidth: 2, depthTest: true });
+      const wireframeMaterial = new LineMaterial({ color: item.reference?.image ? "#173b5a" : item.color, linewidth: 2, depthTest: true });
       wireframeMaterial.resolution.set(Math.max(1, rendererRef.current?.domElement.clientWidth ?? 1), Math.max(1, rendererRef.current?.domElement.clientHeight ?? 1));
       const wireframeEdges = new LineSegments2(wireframeGeometry, wireframeMaterial);
       wireframeEdges.visible = displayMode === "wireframe";

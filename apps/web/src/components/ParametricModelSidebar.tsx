@@ -2,6 +2,7 @@
 import { OperationTreeIcon } from "@/components/OperationTreeIcon";
 import { AnnotationIcon } from "@/components/AnnotationIcon";
 import { ShellCornerButtons } from "@/components/ShellCornerButtons";
+import { ReferenceDisplayButtons } from "@/components/ReferenceDisplayButtons";
 
 import {
   ArrowDown,
@@ -494,6 +495,7 @@ function ParametricObjectInspector({
   onUpdate: (update: (object: ParametricObject) => void) => void;
 }) {
   const t = useSidebarTranslation();
+  const locale = useContext(LocaleContext);
   const [colorOpen, setColorOpen] = useState(false);
   const colorPanelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -506,7 +508,7 @@ function ParametricObjectInspector({
   }, [colorOpen]);
   return (
     <div className="educad-feature-inspector educad-object-inspector">
-      {object.referenceMesh ? <div className="educad-feature-card"><h3>{t("property.reference")}</h3><ReadOnlyField label={t("property.file")} value={object.referenceMesh.sourceName} /><ReadOnlyField label={t("property.format")} value={object.referenceMesh.format.toUpperCase()} /><label><span>{t("property.opacity")}</span><input type="range" min={0.05} max={1} step={0.05} value={object.referenceMesh.opacity} onChange={(event) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.opacity = Number(event.target.value); })} /></label><label><span>{t("property.display")}</span><select value={object.referenceMesh.displayMode} onChange={(event) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.displayMode = event.target.value as typeof draft.referenceMesh.displayMode; })}><option value="solidEdges">{t("display.solidEdges")}</option><option value="solid">{t("display.solid")}</option><option value="wireframe">{t("display.wireframe")}</option></select></label><label><span>{t("property.pickable")}</span><input type="checkbox" checked={object.referenceMesh.pickable} onChange={(event) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.pickable = event.target.checked; })} /></label></div> : null}
+      {object.referenceMesh ? <div className="educad-feature-card educad-reference-display-controls" role="group" aria-label={t("property.display")}><ReferenceDisplayButtons value={object.referenceMesh.displayMode} locale={locale} onChange={(mode) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.displayMode = mode; })} /></div> : null}
       <div ref={colorPanelRef} className="educad-feature-card educad-object-appearance">
         <button className="educad-color-trigger" aria-label={t("property.objectColor")} aria-expanded={colorOpen} onClick={() => setColorOpen((value) => !value)}>
           <span>{t("property.color")}</span><span className="educad-color-preview" style={{ "--object-color": object.color } as CSSProperties} /><strong>{object.color.toUpperCase()}</strong><ChevronDown size={15} />

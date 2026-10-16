@@ -136,7 +136,7 @@ export function parametricReferenceRenderRecords(document: ParametricDocument): 
       color: object.color,
       worldTransform: object.transform,
       mesh: { positions, normals, indices, edges, metrics: { width: size.x, depth: size.y, height: size.z, volume: 0 } },
-      reference: { image: reference.image, opacity: reference.opacity, displayMode: reference.displayMode, pickable: reference.pickable && !object.locked },
+      reference: { image: reference.image, opacity: reference.opacity, displayMode: reference.displayMode, pickable: !object.locked },
     }];
   });
 }

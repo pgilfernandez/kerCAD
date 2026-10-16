@@ -4,7 +4,7 @@ import { displayLengthToMillimeters, displayUnitLabel, formatDisplayLength, type
 import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
 import { formatViewportDimension } from "@/lib/viewportGeometry";
 
-export function ViewportFloatingNumberInput({ value, unit, displayUnit, snap, label, min, max, onCommit }: { value: number; unit: "length" | "angle" | "count" | "scalar"; displayUnit: ParametricDisplayUnit; snap: number; label: string; min: number; max: number; onCommit: (value: number) => void }) {
+export function ViewportFloatingNumberInput({ value, unit, displayUnit, snap, label, min, max, onCommit }: { value: number; unit: "length" | "angle" | "count" | "scalar" | "percent"; displayUnit: ParametricDisplayUnit; snap: number; label: string; min: number; max: number; onCommit: (value: number) => void }) {
   const format = (number: number) => unit === "length" ? formatDisplayLength(number, displayUnit) : formatViewportDimension(number);
   const shown = format(value);
   const [draft, setDraft] = useState(shown);
@@ -14,7 +14,7 @@ export function ViewportFloatingNumberInput({ value, unit, displayUnit, snap, la
   const updateDraft = (text: string) => { draftRef.current = text; setDraft(text); };
   useEffect(() => { if (!editingRef.current) { draftRef.current = shown; setDraft(shown); } }, [shown]);
   const parsedValue = () => {
-    const parsed = parseNumericExpression(draftRef.current, unit === "length" ? displayUnit : unit === "angle" ? "deg" : "");
+    const parsed = parseNumericExpression(draftRef.current, unit === "length" ? displayUnit : unit === "angle" ? "deg" : unit === "percent" ? "%" : "");
     return unit === "length" ? displayLengthToMillimeters(parsed, displayUnit) : parsed;
   };
   const apply = (raw: number) => {
@@ -57,7 +57,7 @@ export function ViewportFloatingNumberInput({ value, unit, displayUnit, snap, la
         if (event.key === "Escape") { updateDraft(shown); editingRef.current = false; event.currentTarget.blur(); }
         if (event.key === "ArrowUp" || event.key === "ArrowDown") { event.preventDefault(); increment(event.key === "ArrowUp" ? 1 : -1); }
       }} />
-    <span>{unit === "length" ? displayUnitLabel(displayUnit) : unit === "angle" ? "°" : unit === "scalar" ? "px" : "×"}</span>
+    <span>{unit === "length" ? displayUnitLabel(displayUnit) : unit === "angle" ? "°" : unit === "percent" ? "%" : unit === "scalar" ? "px" : "×"}</span>
     <div className="educad-viewport-number-steppers">
       <button type="button" aria-label={`${label} +`} onPointerDown={(event) => event.preventDefault()} onClick={() => increment(1)}>▴</button>
       <button type="button" aria-label={`${label} −`} onPointerDown={(event) => event.preventDefault()} onClick={() => increment(-1)}>▾</button>
