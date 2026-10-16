@@ -509,7 +509,7 @@ function ParametricObjectInspector({
   return (
     <div className="educad-feature-inspector educad-object-inspector">
       {object.referenceMesh ? <div className="educad-feature-card educad-reference-display-controls" role="group" aria-label={t("property.display")}><ReferenceDisplayButtons value={object.referenceMesh.displayMode} locale={locale} onChange={(mode) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.displayMode = mode; })} /></div> : null}
-      <div ref={colorPanelRef} className="educad-feature-card educad-object-appearance">
+      {!object.referenceMesh?.image && <div ref={colorPanelRef} className="educad-feature-card educad-object-appearance">
         <button className="educad-color-trigger" aria-label={t("property.objectColor")} aria-expanded={colorOpen} onClick={() => setColorOpen((value) => !value)}>
           <span>{t("property.color")}</span><span className="educad-color-preview" style={{ "--object-color": object.color } as CSSProperties} /><strong>{object.color.toUpperCase()}</strong><ChevronDown size={15} />
         </button>
@@ -517,7 +517,7 @@ function ParametricObjectInspector({
           {OBJECT_COLOR_PALETTE.map((color) => <button key={color} className={object.color.toLowerCase() === color ? "selected" : ""} aria-label={`${t("property.color")} ${color}`} title={color.toUpperCase()} style={{ "--object-color": color } as CSSProperties} onClick={() => { onUpdate((draft) => { draft.color = color; }); setColorOpen(false); }} />)}
           <label className="educad-custom-color" title={t("property.customColor")}><input type="color" aria-label={t("property.customColor")} value={object.color} onChange={(event) => onUpdate((draft) => { draft.color = event.target.value; })} /><span aria-hidden="true">+</span></label>
         </div> : null}
-      </div>
+      </div>}
       <TransformSection>
         <TransformGroup label={t("property.position")} values={object.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.position[axis] = value; })} />
         <TransformGroup label={t("property.rotation")} values={object.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.rotation[axis] = value; })} />
