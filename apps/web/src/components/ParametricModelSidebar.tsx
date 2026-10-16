@@ -509,8 +509,8 @@ function ParametricObjectInspector({
   return (
     <div className="educad-feature-inspector educad-object-inspector">
       {object.referenceMesh ? <div className="educad-feature-card">
-        <label><span>{t("property.opacity")}</span><DeferredNumberInput value={object.referenceMesh.opacity * 100} min={5} max={100} step={1} unit="%" onCommit={(value) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.opacity = value / 100; })} /></label>
         <div className="educad-reference-display-controls" role="group" aria-label={t("property.display")}><ReferenceDisplayButtons value={object.referenceMesh.displayMode} locale={locale} onChange={(mode) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.displayMode = mode; })} /></div>
+        <label><span>{t("property.opacity")}</span><DeferredNumberInput value={object.referenceMesh.opacity * 100} min={5} max={100} step={1} unit="%" onCommit={(value) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.opacity = value / 100; })} /></label>
       </div> : null}
       {!object.referenceMesh?.image && <div ref={colorPanelRef} className="educad-feature-card educad-object-appearance">
         <button className="educad-color-trigger" aria-label={t("property.objectColor")} aria-expanded={colorOpen} onClick={() => setColorOpen((value) => !value)}>
