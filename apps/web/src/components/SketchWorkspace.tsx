@@ -1892,17 +1892,17 @@ export function SketchWorkspace({
               ["nw", transformFrame.minX, transformFrame.maxZ], ["n", (transformFrame.minX + transformFrame.maxX) / 2, transformFrame.maxZ], ["ne", transformFrame.maxX, transformFrame.maxZ],
               ["w", transformFrame.minX, (transformFrame.minZ + transformFrame.maxZ) / 2], ["e", transformFrame.maxX, (transformFrame.minZ + transformFrame.maxZ) / 2],
               ["sw", transformFrame.minX, transformFrame.minZ], ["s", (transformFrame.minX + transformFrame.maxX) / 2, transformFrame.minZ], ["se", transformFrame.maxX, transformFrame.minZ],
-            ] as Array<[SketchTransformHandle, number, number]>).map(([handle, x, z]) => <rect key={handle} data-sketch-entity="selection-handle" className={`sketch-selection-transform-handle handle-${handle}`} x={x - 8 * screenUnit} y={z - 8 * screenUnit} width={16 * screenUnit} height={16 * screenUnit} strokeWidth={1.5 * screenUnit} onPointerDown={(event) => beginSelectionTransform(event, handle)}><title>{locale === "es" ? "Escalar selección" : "Scale selection"}</title></rect>)}
-            <circle data-sketch-entity="selection-handle" className="sketch-selection-transform-handle handle-rotate" cx={(transformFrame.minX + transformFrame.maxX) / 2} cy={transformFrame.maxZ + 28 * screenUnit} r={8 * screenUnit} strokeWidth={1.5 * screenUnit} onPointerDown={(event) => beginSelectionTransform(event, "rotate")}><title>{locale === "es" ? "Rotar selección" : "Rotate selection"}</title></circle>
+            ] as Array<[SketchTransformHandle, number, number]>).map(([handle, x, z]) => <rect key={handle} data-sketch-entity="selection-handle" className={`sketch-selection-transform-handle handle-${handle}`} x={x - 6.4 * screenUnit} y={z - 6.4 * screenUnit} width={12.8 * screenUnit} height={12.8 * screenUnit} strokeWidth={1.5 * screenUnit} onPointerDown={(event) => beginSelectionTransform(event, handle)}><title>{locale === "es" ? "Escalar selección" : "Scale selection"}</title></rect>)}
+            <circle data-sketch-entity="selection-handle" className="sketch-selection-transform-handle handle-rotate" cx={(transformFrame.minX + transformFrame.maxX) / 2} cy={transformFrame.maxZ + 28 * screenUnit} r={6.4 * screenUnit} strokeWidth={1.5 * screenUnit} onPointerDown={(event) => beginSelectionTransform(event, "rotate")}><title>{locale === "es" ? "Rotar selección" : "Rotate selection"}</title></circle>
             {transformPivot && <g className="sketch-selection-pivot">
-              <circle data-sketch-entity="selection-handle" className="sketch-selection-transform-handle handle-pivot" cx={transformPivot.x} cy={transformPivot.z} r={10 * screenUnit} strokeWidth={1.5 * screenUnit} onDoubleClick={(event) => { event.stopPropagation(); setSelectionPivot(null); }} onPointerDown={(event) => {
+              <circle data-sketch-entity="selection-handle" className="sketch-selection-transform-handle handle-pivot" cx={transformPivot.x} cy={transformPivot.z} r={8 * screenUnit} strokeWidth={1.5 * screenUnit} onDoubleClick={(event) => { event.stopPropagation(); setSelectionPivot(null); }} onPointerDown={(event) => {
                 if (event.button === 1) { beginPan(event); return; }
                 if (event.button !== 0) return;
                 const pointer = pointFromEvent(event, false, false);
                 if (!pointer) return;
                 beginEntityDrag(event, { kind: "move-selection-pivot", pointerId: event.pointerId, current: { ...transformPivot }, offset: { x: transformPivot.x - pointer.x, z: transformPivot.z - pointer.z } });
               }}><title>{locale === "es" ? "Origen de rotación · arrastra para mover · doble clic para centrar" : "Rotation origin · drag to move · double-click to center"}</title></circle>
-              <path d={`M ${transformPivot.x - 5 * screenUnit} ${transformPivot.z} h ${10 * screenUnit} M ${transformPivot.x} ${transformPivot.z - 5 * screenUnit} v ${10 * screenUnit}`} stroke="#1269eb" strokeWidth={screenUnit} pointerEvents="none" />
+              <path d={`M ${transformPivot.x - 4 * screenUnit} ${transformPivot.z} h ${8 * screenUnit} M ${transformPivot.x} ${transformPivot.z - 4 * screenUnit} v ${8 * screenUnit}`} stroke="#1269eb" strokeWidth={screenUnit} pointerEvents="none" />
             </g>}
           </g>}
           </g>
