@@ -1411,6 +1411,31 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
       background.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axis.clone().normalize());
       background.renderOrder = 39;
       group.add(background);
+      // Reuse one small dynamic triangle fan throughout the drag. This layer
+      // paints after the blue disk but before the fixed angular guide lines.
+      const sectorGeometry = new THREE.BufferGeometry();
+      const sectorPositions = new THREE.BufferAttribute(new Float32Array(144 * 9), 3).setUsage(THREE.DynamicDrawUsage);
+      sectorGeometry.setAttribute("position", sectorPositions);
+      sectorGeometry.setDrawRange(0, 0);
+      const sector = new THREE.Mesh(sectorGeometry, new THREE.MeshBasicMaterial({ color: "#25b85a", side: THREE.DoubleSide, depthTest: false, depthWrite: false, transparent: true, opacity: 0.5 }));
+      sector.renderOrder = 39.5;
+      sector.frustumCulled = false;
+      sector.visible = false;
+      group.add(sector);
+      group.userData.updateAngle = (degrees: number) => {
+        const angle = THREE.MathUtils.clamp(degrees, -360, 360);
+        const count = Math.ceil(Math.abs(angle) / 2.5);
+        sector.visible = count > 0;
+        for (let index = 0; index < count; index++) {
+          const first = pointAt(angle * index / count, backgroundRadius);
+          const second = pointAt(angle * (index + 1) / count, backgroundRadius);
+          sectorPositions.setXYZ(index * 3, 0, 0, 0);
+          sectorPositions.setXYZ(index * 3 + 1, first.x, first.y, first.z);
+          sectorPositions.setXYZ(index * 3 + 2, second.x, second.y, second.z);
+        }
+        sectorPositions.needsUpdate = true;
+        sectorGeometry.setDrawRange(0, count * 3);
+      };
       const circlePositions: number[] = [];
       for (let index = 0; index < 144; index += 1) {
         const first = pointAt(index * 2.5, circleRadius);
@@ -2272,6 +2297,7 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
           const guide = rotationGuideAt(revolveOriginWorld, revolveAxisWorld, revolveReferenceWorld, revolveGuideScale);
           revolveGuide = guide.group;
           revolveGuideHighlight = guide.highlight;
+          revolveGuide.userData.updateAngle?.(Math.abs(revolveStartAngle) >= 359.999 ? 0 : revolveStartAngle);
           revolveAngleDragStartRef.current?.();
         }
       }
@@ -2593,6 +2619,7 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
         const previousAngle = pendingRevolveAngle;
         pendingRevolveAngle = Math.min(360, Math.max(-360, Math.round(guidedAngle ?? freeAngle)));
         if (Math.abs(pendingRevolveAngle) < 1) pendingRevolveAngle = pendingRevolveAngle < 0 ? -1 : 1;
+        revolveGuide?.userData.updateAngle?.(pendingRevolveAngle);
         setRevolveAnglePreview(pendingRevolveAngle);
         if (pendingRevolveAngle !== previousAngle) revolveAnglePreviewRef.current?.(pendingRevolveAngle);
         const layer = revolveHandleRef.current;
@@ -2702,6 +2729,7 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
         const rotationStep = event.shiftKey ? 15 : 1;
         const degrees = preciseDegrees ?? Math.round(rawDegrees / rotationStep) * rotationStep;
         pendingRotation.deltaDegrees = degrees;
+        rotationGuide?.userData.updateAngle?.(degrees);
         const circle = annotationStateRef.current.annotations?.find((annotation) => annotation.id === pendingRotation!.targetId);
         if (circle?.kind === "circle") setAnnotationPreview({ ...circle, rotation: rotatedCircleAnnotation(circle.rotation, pendingRotation.localAxis, degrees) });
         const parentAxis = new THREE.Vector3(pendingRotation.axis.x, pendingRotation.axis.y, pendingRotation.axis.z).normalize();
