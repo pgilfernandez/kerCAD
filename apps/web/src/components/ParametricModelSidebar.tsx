@@ -219,6 +219,11 @@ export function ParametricModelSidebar({
     : null;
 
   const beginRename = () => {
+    if (selectedAnnotation) {
+      setRenameDraft(selectedAnnotation.name);
+      setRenameOpen(true);
+      return;
+    }
     if (selection.length === 0) return;
     const names = selection.flatMap((item) => {
       const entry = item.kind === "object"
@@ -239,7 +244,8 @@ export function ParametricModelSidebar({
     if (!renameOpen) return;
     const name = renameDraft.trim();
     if (!name) return;
-    onRenameSelection(name);
+    if (selectedAnnotation) onUpdateAnnotation?.(selectedAnnotation.id, (annotation) => { annotation.name = name; });
+    else onRenameSelection(name);
     closeRename();
   };
   const renameDialogRef = useAccessibleDialog<HTMLFormElement>(renameOpen, closeRename, renameInputRef);
@@ -314,7 +320,7 @@ export function ParametricModelSidebar({
         <button disabled={!(selectedAnnotation ? canReorderAnnotation(document, selectedAnnotation.id, "up") : canReorderParametricSelection(document, reorderSelection, "up"))} aria-label={t("model.moveUp")} title={t("model.moveUp")} onClick={() => onReorderSelection("up")}><ArrowUp size={16} /></button>
         <button disabled={!(selectedAnnotation ? canReorderAnnotation(document, selectedAnnotation.id, "down") : canReorderParametricSelection(document, reorderSelection, "down"))} aria-label={t("model.moveDown")} title={t("model.moveDown")} onClick={() => onReorderSelection("down")}><ArrowDown size={16} /></button>
         <span className="educad-tree-toolbar-separator" aria-hidden="true" />
-        <button disabled={selection.length === 0} aria-label={t("common.rename")} title={t("common.rename")} onClick={beginRename}><Pencil size={15} /></button>
+        <button disabled={selection.length === 0 && !selectedAnnotation} aria-label={t("common.rename")} title={t("common.rename")} onClick={beginRename}><Pencil size={15} /></button>
         <button disabled={!selectedFeature || !canResetParametricFeature(selectedFeature)} aria-label={t("operation.reset")} title={t("operation.reset")} onClick={() => selectedFeature && onResetFeature(selectedFeature.id)}><RotateCcw size={16} /></button>
         <button className="educad-origin-tree-button" disabled={!selectedObject || selectedObject.locked} aria-label={t("model.editOrigin")} title={t("model.editOrigin")} aria-pressed={Boolean(selectedObject && editingOriginObjectId === selectedObject.id)} onClick={() => selectedObject && onToggleOriginEdit(selectedObject.id)}><Crosshair size={16} /></button>
         <span className="educad-tree-toolbar-separator" aria-hidden="true" />
