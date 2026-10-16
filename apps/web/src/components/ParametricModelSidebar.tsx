@@ -291,7 +291,7 @@ export function ParametricModelSidebar({
                       {isExpanded ? <OperationTreeIcon file="expanded" size={16} /> : <OperationTreeIcon file="collapsed" size={16} />}
                     </button>
                     <button className="educad-object-select" title={object.name} aria-pressed={objectSelected} onClick={(event) => selectNode({ id: object.id, kind: "object" }, event)}>
-                      {object.object.referenceMesh ? <OperationTreeIcon file="imported-step" size={17} /> : <OperationTreeIcon file="box" size={17} />}
+                      {object.object.referenceMesh ? <OperationTreeIcon file="imported-step" size={17} /> : <OperationTreeIcon file="box" className="educad-object-color-icon" size={17} />}
                       <span><strong>{object.name}</strong></span>
                     </button>
                     <div className="educad-tree-actions">
