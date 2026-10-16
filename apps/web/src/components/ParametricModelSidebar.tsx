@@ -25,7 +25,7 @@ import { annotationEnding, setAnnotationEnding } from "@/lib/annotationEndings";
 import { requiresAddOperation } from "@/lib/parametricOperationModes";
 import { ToolbarBooleanModeIcon, ToolbarChamferIcon, ToolbarFilletIcon } from "@/components/icons";
 import { useAccessibleDialog } from "@/components/useAccessibleDialog";
-import { displayLengthToMillimeters, displayUnitLabel, formatDisplayLength, millimetersToDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
+import { displayLengthToMillimeters, displayUnitLabel, millimetersToDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
 import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
 import { educadTranslate, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
 import type { ParametricAnnotation, ParametricDocument, ParametricFeature, ParametricObject } from "@/types/parametric";
@@ -399,17 +399,19 @@ function AnnotationProperties({ annotation, onUpdate }: { annotation: Parametric
     {annotation.kind === "angle" && <AnnotationColorPicker color={annotation.color ?? "#233c52"} onChange={(color) => onUpdate((draft) => { if (draft.kind === "angle") draft.color = color; })} />}
     {annotation.kind === "dimension" && <>
       <AnnotationColorPicker color={annotation.color ?? "#233c52"} onChange={(color) => onUpdate((draft) => { if (draft.kind === "dimension") draft.color = color; })} />
-      <label className="educad-annotation-ending-field"><span>{t("annotation.startArrow")}</span><AnnotationEndSelector side="start" value={annotationEnding(annotation, "start")} locale={locale} onChange={(value) => onUpdate((draft) => setAnnotationEnding(draft, "start", value))} /></label>
-      <label className="educad-annotation-ending-field"><span>{t("annotation.endArrow")}</span><AnnotationEndSelector side="end" value={annotationEnding(annotation, "end")} locale={locale} onChange={(value) => onUpdate((draft) => setAnnotationEnding(draft, "end", value))} /></label>
-      <label><span>{t("annotation.lineStyle")}</span><select value={annotation.lineStyle ?? "solid"} onChange={(event) => onUpdate((draft) => { if (draft.kind === "dimension") draft.lineStyle = event.target.value as "solid" | "dashed"; })}><option value="solid">{t("annotation.solid")}</option><option value="dashed">{t("annotation.dashed")}</option></select></label>
-      <label><span>{t("annotation.showLength")}</span><input type="checkbox" checked={annotation.showLength !== false} onChange={(event) => onUpdate((draft) => { if (draft.kind === "dimension") draft.showLength = event.target.checked; })} /></label>
+      <div className="sketch-annotation-context-toolbar embedded educad-annotation-dimension-controls" role="group" aria-label={t("annotation.dimension")}>
+        <AnnotationEndSelector side="start" value={annotationEnding(annotation, "start")} locale={locale} onChange={(value) => onUpdate((draft) => setAnnotationEnding(draft, "start", value))} />
+        <AnnotationEndSelector side="end" value={annotationEnding(annotation, "end")} locale={locale} onChange={(value) => onUpdate((draft) => setAnnotationEnding(draft, "end", value))} />
+        <button type="button" className={annotation.lineStyle === "dashed" ? "active" : ""} aria-pressed={annotation.lineStyle === "dashed"} title={t("annotation.dashed")} aria-label={t("annotation.dashed")} onClick={() => onUpdate((draft) => { if (draft.kind === "dimension") draft.lineStyle = draft.lineStyle === "dashed" ? "solid" : "dashed"; })}><AnnotationIcon size={34} kind="dashedLine" /></button>
+        <button type="button" className={annotation.showLength !== false ? "active" : ""} aria-pressed={annotation.showLength !== false} title={t("annotation.showLength")} aria-label={t("annotation.showLength")} onClick={() => onUpdate((draft) => { if (draft.kind === "dimension") draft.showLength = draft.showLength === false; })}><AnnotationIcon size={34} kind="length" /></button>
+      </div>
     </>}
     {annotation.kind === "text" ? <>
       <label><span>{t("annotation.text")}</span><textarea value={annotation.text} maxLength={2000} onChange={(event) => onUpdate((draft) => { if (draft.kind === "text") draft.text = event.target.value; })} /></label>
       <label><span>{t("annotation.font")}</span><select value={textFontNames.includes(annotation.font as typeof textFontNames[number]) ? annotation.font : "Sans"} onChange={(event) => onUpdate((draft) => { if (draft.kind === "text") draft.font = event.target.value; })}>{textFontNames.map((font) => <option key={font} value={font}>{font}</option>)}</select></label>
       <label><span>{t("annotation.size")}</span><DeferredNumberInput value={annotation.size} min={0.1} max={1000} step={steps.input} unit="mm" onCommit={(value) => onUpdate((draft) => { if (draft.kind === "text") draft.size = value; })} /></label>
       <label><span>{t("annotation.alignment")}</span><select value={annotation.alignment} onChange={(event) => onUpdate((draft) => { if (draft.kind === "text") draft.alignment = event.target.value as "left" | "center" | "right"; })}>{(["left", "center", "right"] as const).map((alignment) => <option key={alignment} value={alignment}>{t(`annotation.${alignment}`)}</option>)}</select></label>
-    </> : annotation.kind === "angle" ? <ReadOnlyField label={t("annotation.angle")} value={annotationAngleGeometry(annotation)?.degrees.toFixed(2).concat("°") ?? "—"} /> : annotation.kind === "dimension" ? <ReadOnlyField label={t("property.length")} value={`${formatDisplayLength(Math.hypot(annotation.end.x - annotation.start.x, annotation.end.y - annotation.start.y, annotation.end.z - annotation.start.z), steps.displayUnit)} ${displayUnitLabel(steps.displayUnit)}`} /> : null}
+    </> : annotation.kind === "angle" ? <ReadOnlyField label={t("annotation.angle")} value={annotationAngleGeometry(annotation)?.degrees.toFixed(2).concat("°") ?? "—"} /> : null}
     </div>
     <TransformSection description="">
       {annotation.kind === "text" || annotation.kind === "circle" ? position("position", t("annotation.position")) : <>
