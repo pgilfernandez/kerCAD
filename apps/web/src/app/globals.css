@@ -3748,6 +3748,11 @@ button {
 .educad-project-rename-field { display: grid; gap: 8px; padding: 18px; }
 .educad-project-rename-field input { width: 100%; padding: 9px; border: 1px solid #b6cbd6; border-radius: 5px; }
 .educad-toolbar-titlebar .educad-project-name span { font-weight: 400; }
+@media (max-width: 720px) {
+  .educad-toolbar-titlebar .educad-project-name > strong:not(.educad-sketcher-badge),
+  .educad-toolbar-titlebar .educad-project-name > span,
+  .educad-toolbar-titlebar .educad-project-name > .educad-project-rename-trigger { display: none; }
+}
 .educad-toolbar-titlebar .educad-project-name img {
   width: 44px;
   height: 24px;

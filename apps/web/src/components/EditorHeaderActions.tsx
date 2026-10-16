@@ -34,8 +34,8 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding }: {
       <button type="button" title={t("about.title")} onClick={onShowLanding}><HeaderToolbarIcon file="information" /><span>{t("about.title")}</span></button>
       <a href={`/documentation?lang=${locale}`} target="_blank" rel="noopener noreferrer" title={t("about.documentation")}><HeaderToolbarIcon file="documentation" /><span>{locale === "es" ? "Documentación" : "Documentation"}</span></a>
     </>}
-    <button type="button" aria-label={t("settings.language")} title={t("settings.language")} aria-expanded={open} aria-controls="educad-header-language-menu" onClick={() => { setInfoOpen(false); setOpen((value) => !value); }}><HeaderToolbarIcon file="language" /></button>
     {!onShowLanding && <button ref={infoTriggerRef} type="button" aria-label={t("about.label")} title={t("about.title")} aria-expanded={infoOpen} aria-controls="educad-about-panel" onClick={() => { setOpen(false); setInfoOpen((value) => !value); }}><HeaderToolbarIcon file="information" /></button>}
+    <button type="button" aria-label={t("settings.language")} title={t("settings.language")} aria-expanded={open} aria-controls="educad-header-language-menu" onClick={() => { setInfoOpen(false); setOpen((value) => !value); }}><HeaderToolbarIcon file="language" /></button>
     {infoOpen ? createPortal(
       <section ref={infoRef} id="educad-about-panel" className="educad-about-dialog" role="dialog" aria-modal="false" aria-labelledby="educad-about-title" tabIndex={-1}>
         <header><h2 id="educad-about-title">{t("about.title")}</h2><button type="button" aria-label={t("common.close")} onClick={() => setInfoOpen(false)}>×</button></header>
