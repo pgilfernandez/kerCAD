@@ -13,6 +13,7 @@ import { lengthDisplayUnit } from "@/lib/measurementUnits";
 import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
 import { sketchSlot } from "@/lib/sketchSlots";
 import { sketchRectangle } from "@/lib/sketchRectangles";
+import { sketchSelectionBounds, transformSketchSelection, type SketchSelectionBounds, type SketchTransformHandle } from "@/lib/sketchSelectionTransform";
 import { WORKPLANE_MAJOR_GRID_INTERVAL } from "@/lib/workplaneGrid";
 import { mirrorSign, resizedImportedMeshPositions } from "@/lib/workplaneShapes";
 import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE, normalizeSnapGrid, normalizeWorkspaceSettings } from "@/lib/workplaneSettings";
@@ -125,6 +126,7 @@ type PathStep = { segment: SketchSegment; from: SketchPoint; to: SketchPoint };
 type DisplayPath = { id: string; points: SketchPoint[]; steps: PathStep[]; closed: boolean };
 type SketchReferenceFootprint = { fillD: string | null; outlineD: string | null };
 type PointerAction =
+  | { kind: "transform-selection"; pointerId: number; origin: { x: number; z: number }; current: { x: number; z: number }; selection: NonNullable<SketchSelection>; bounds: SketchSelectionBounds; handle: SketchTransformHandle; shift: boolean }
   | { kind: "move-selection"; pointerId: number; origin: { x: number; z: number }; current: { x: number; z: number }; selection: NonNullable<SketchSelection>; entityKind: string; entityId: string }
   | { kind: "bezier"; pointerId: number; origin: { x: number; z: number }; current: { x: number; z: number } }
   | { kind: "move-circle"; pointerId: number; circleId: string; origin: { x: number; z: number }; current: { x: number; z: number }; start: SketchCircle }
@@ -690,8 +692,19 @@ export function SketchWorkspace({
   }, []);
   const [pendingArc, setPendingArc] = useState<{ center: { x: number; z: number }; start?: { x: number; z: number } } | null>(null);
   const [pointerAction, setPointerAction] = useState<PointerAction | null>(null);
-  const [svgSize, setSvgSize] = useState({ width: 0, height: 0 });
   const svgRef = useRef<SVGSVGElement | null>(null);
+  useEffect(() => {
+    if (pointerAction?.kind !== "transform-selection") return;
+    const cancel = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault(); event.stopImmediatePropagation();
+      if (svgRef.current?.hasPointerCapture(pointerAction.pointerId)) svgRef.current.releasePointerCapture(pointerAction.pointerId);
+      setPointerAction(null);
+    };
+    window.addEventListener("keydown", cancel, true);
+    return () => window.removeEventListener("keydown", cancel, true);
+  }, [pointerAction]);
+  const [svgSize, setSvgSize] = useState({ width: 0, height: 0 });
   const width = workspace.width / zoom;
   const depth = workspace.depth / zoom;
   const viewportAspect = svgSize.width > 0 && svgSize.height > 0 ? svgSize.width / svgSize.height : width / depth;
@@ -744,6 +757,7 @@ export function SketchWorkspace({
     if (tool !== "arc") setPendingArc(null);
   }, [tool]);
   const displayProfile = useMemo(() => {
+    if (pointerAction?.kind === "transform-selection") return transformSketchSelection(profile, pointerAction.selection, pointerAction.bounds, pointerAction.handle, pointerAction.origin, pointerAction.current, pointerAction.shift);
     if (pointerAction?.kind === "move-selection") return translatedSketchSelection(profile, pointerAction.selection, pointerAction.current.x - pointerAction.origin.x, pointerAction.current.z - pointerAction.origin.z);
     if (pointerAction?.kind === "move-circle" || pointerAction?.kind === "resize-circle") {
       const next = structuredClone(profile);
@@ -1035,12 +1049,12 @@ export function SketchWorkspace({
       setPointerAction({ ...pointerAction, clientX: event.clientX, clientY: event.clientY });
       return;
     }
-    const point = pointFromEvent(event, pointerAction?.kind !== "marquee" && pointerAction?.kind !== "freehand", pointerAction?.kind !== "freehand");
+    const point = pointFromEvent(event, pointerAction?.kind !== "marquee" && pointerAction?.kind !== "freehand" && pointerAction?.kind !== "transform-selection", pointerAction?.kind !== "freehand" && !(pointerAction?.kind === "transform-selection" && pointerAction.handle === "rotate"));
     setHover(point);
     if (point && pointerAction?.kind === "freehand") {
       const last = pointerAction.points.at(-1)!;
       if (Math.hypot(point.x - last.x, point.z - last.z) >= screenUnit * 2) setPointerAction({ ...pointerAction, current: point, points: [...pointerAction.points, point] });
-    } else if (point && pointerAction) setPointerAction({ ...pointerAction, current: point });
+    } else if (point && pointerAction) setPointerAction(pointerAction.kind === "transform-selection" ? { ...pointerAction, current: point, shift: event.shiftKey } : { ...pointerAction, current: point });
   };
 
   const finishPointerAction = (event: ReactPointerEvent<SVGSVGElement>) => {
@@ -1048,6 +1062,11 @@ export function SketchWorkspace({
     if (!action || action.pointerId !== event.pointerId) return;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     if (action.kind === "pan") {
+      setPointerAction(null);
+      return;
+    }
+    if (action.kind === "transform-selection") {
+      if (Math.hypot(action.current.x - action.origin.x, action.current.z - action.origin.z) > 0.001) onMoveSelection?.(transformSketchSelection(profile, action.selection, action.bounds, action.handle, action.origin, action.current, action.shift));
       setPointerAction(null);
       return;
     }
@@ -1162,6 +1181,20 @@ export function SketchWorkspace({
   };
 
   const measurementLength = measurement ? Math.hypot(measurement.end.x - measurement.start.x, measurement.end.z - measurement.start.z) : 0;
+  const geometrySelectionBounds = useMemo(() => tool === "select" && !annotationTool && !selectedAnnotationId && onMoveSelection ? sketchSelectionBounds(displayProfile, selected) : null, [displayProfile, selected, tool, annotationTool, selectedAnnotationId, onMoveSelection]);
+  const transformFrame = geometrySelectionBounds ? {
+    minX: geometrySelectionBounds.minX - (geometrySelectionBounds.maxX - geometrySelectionBounds.minX < screenUnit * 12 ? screenUnit * 6 : 0),
+    maxX: geometrySelectionBounds.maxX + (geometrySelectionBounds.maxX - geometrySelectionBounds.minX < screenUnit * 12 ? screenUnit * 6 : 0),
+    minZ: geometrySelectionBounds.minZ - (geometrySelectionBounds.maxZ - geometrySelectionBounds.minZ < screenUnit * 12 ? screenUnit * 6 : 0),
+    maxZ: geometrySelectionBounds.maxZ + (geometrySelectionBounds.maxZ - geometrySelectionBounds.minZ < screenUnit * 12 ? screenUnit * 6 : 0),
+  } : null;
+  const beginSelectionTransform = (event: ReactPointerEvent<SVGElement>, handle: SketchTransformHandle) => {
+    if (event.button === 1) { beginPan(event); return; }
+    if (!selected || !geometrySelectionBounds || event.button !== 0) return;
+    const origin = pointFromEvent(event, false, handle !== "rotate");
+    if (!origin) return;
+    beginEntityDrag(event, { kind: "transform-selection", pointerId: event.pointerId, selection: selected, bounds: geometrySelectionBounds, handle, origin, current: origin, shift: event.shiftKey });
+  };
   const measurementLabel = formatLength(measurementLength, workspace.accuracy);
   const previewEndpoint = tool === "bezier" && pointerAction?.kind === "bezier" ? pointerAction.origin : hover;
   const bezierPreviewData = tool === "bezier" && activePoint && previewEndpoint ? (() => {
@@ -1833,6 +1866,16 @@ export function SketchWorkspace({
           ) : null}
           {hover && ["line", "bezier", "smooth", "circle", "arc", "measure"].includes(tool) ? <circle className="sketch-cursor-point" cx={hover.x} cy={hover.z} r={hoverPointRadius} pointerEvents="none" /> : null}
           {showAnnotations && <SketchAnnotationLayer annotations={annotations} preview={annotationPreview} selectedId={selectedAnnotationId} screenUnit={screenUnit} zoom={zoom} snapSpacing={exactSnapStep ?? snapStep(snap)} displayUnit={annotationDisplayUnit} locale={locale} pointFromEvent={(event, snapEnabled = true) => pointFromEvent(event, false, snapEnabled)} onSelect={(id) => onSelectAnnotation?.(id)} onCommit={(annotation) => onCommitAnnotation?.(annotation)} />}
+          {transformFrame && geometrySelectionBounds && (geometrySelectionBounds.maxX - geometrySelectionBounds.minX > 1e-8 || geometrySelectionBounds.maxZ - geometrySelectionBounds.minZ > 1e-8) && <g className="sketch-selection-transform">
+            <rect className="sketch-selection-transform-box" x={transformFrame.minX} y={transformFrame.minZ} width={transformFrame.maxX - transformFrame.minX} height={transformFrame.maxZ - transformFrame.minZ} strokeWidth={screenUnit} pointerEvents="none" />
+            <line className="sketch-selection-transform-connector" x1={(transformFrame.minX + transformFrame.maxX) / 2} x2={(transformFrame.minX + transformFrame.maxX) / 2} y1={transformFrame.maxZ} y2={transformFrame.maxZ + 28 * screenUnit} strokeWidth={screenUnit} pointerEvents="none" />
+            {([
+              ["nw", transformFrame.minX, transformFrame.maxZ], ["n", (transformFrame.minX + transformFrame.maxX) / 2, transformFrame.maxZ], ["ne", transformFrame.maxX, transformFrame.maxZ],
+              ["w", transformFrame.minX, (transformFrame.minZ + transformFrame.maxZ) / 2], ["e", transformFrame.maxX, (transformFrame.minZ + transformFrame.maxZ) / 2],
+              ["sw", transformFrame.minX, transformFrame.minZ], ["s", (transformFrame.minX + transformFrame.maxX) / 2, transformFrame.minZ], ["se", transformFrame.maxX, transformFrame.minZ],
+            ] as Array<[SketchTransformHandle, number, number]>).map(([handle, x, z]) => <rect key={handle} data-sketch-entity="selection-handle" className={`sketch-selection-transform-handle handle-${handle}`} x={x - 4 * screenUnit} y={z - 4 * screenUnit} width={8 * screenUnit} height={8 * screenUnit} strokeWidth={1.5 * screenUnit} onPointerDown={(event) => beginSelectionTransform(event, handle)}><title>{locale === "es" ? "Escalar selección" : "Scale selection"}</title></rect>)}
+            <circle data-sketch-entity="selection-handle" className="sketch-selection-transform-handle handle-rotate" cx={(transformFrame.minX + transformFrame.maxX) / 2} cy={transformFrame.maxZ + 28 * screenUnit} r={4 * screenUnit} strokeWidth={1.5 * screenUnit} onPointerDown={(event) => beginSelectionTransform(event, "rotate")}><title>{locale === "es" ? "Rotar selección" : "Rotate selection"}</title></circle>
+          </g>}
           </g>
         </svg>
       </section>
