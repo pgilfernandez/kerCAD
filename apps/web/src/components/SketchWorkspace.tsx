@@ -127,7 +127,7 @@ type DisplayPath = { id: string; points: SketchPoint[]; steps: PathStep[]; close
 type SketchReferenceFootprint = { fillD: string | null; outlineD: string | null };
 type PointerAction =
   | { kind: "transform-selection"; pointerId: number; origin: { x: number; z: number }; current: { x: number; z: number }; selection: NonNullable<SketchSelection>; bounds: SketchSelectionBounds; handle: SketchTransformHandle; shift: boolean; pivot: { x: number; z: number } }
-  | { kind: "move-selection-pivot"; pointerId: number; current: { x: number; z: number }; offset: { x: number; z: number } }
+  | { kind: "move-selection-pivot"; pointerId: number; current: { x: number; z: number }; offset: { x: number; z: number }; snapTarget?: { x: number; z: number } }
   | { kind: "move-selection"; pointerId: number; origin: { x: number; z: number }; current: { x: number; z: number }; selection: NonNullable<SketchSelection>; entityKind: string; entityId: string }
   | { kind: "bezier"; pointerId: number; origin: { x: number; z: number }; current: { x: number; z: number } }
   | { kind: "move-circle"; pointerId: number; circleId: string; origin: { x: number; z: number }; current: { x: number; z: number }; start: SketchCircle }
@@ -932,6 +932,21 @@ export function SketchWorkspace({
     return lines;
   }, [gridStep, workspace.depth]);
 
+  const pivotSnapCandidates = useMemo(() => {
+    const points: Array<{ x: number; z: number }> = profile.points.map((point) => ({ x: point.x, z: point.z }));
+    const byId = new Map(profile.points.map((point) => [point.id, point]));
+    for (const segment of profile.segments) {
+      const dimension = segmentDimension(segment, byId);
+      if (dimension) points.push(dimension.midpoint);
+      if (segment.kind === "arc" && segment.center) points.push(segment.center);
+    }
+    for (const circle of profile.circles ?? []) {
+      const angle = circle.radiusAngle ?? 0;
+      points.push({ x: circle.x, z: circle.z }, { x: circle.x + Math.cos(angle) * circle.radius, z: circle.z + Math.sin(angle) * circle.radius });
+    }
+    return points;
+  }, [profile]);
+
   const pointFromEvent = (event: { clientX: number; clientY: number }, constrainToGrid = true, snapEnabled = true) => {
     const svg = svgRef.current;
     const matrix = svg?.getScreenCTM();
@@ -1056,8 +1071,17 @@ export function SketchWorkspace({
     const point = pointFromEvent(event, pointerAction?.kind !== "marquee" && pointerAction?.kind !== "freehand" && pointerAction?.kind !== "transform-selection" && pointerAction?.kind !== "move-selection-pivot", pointerAction?.kind !== "freehand" && !(pointerAction?.kind === "transform-selection" && pointerAction.handle === "rotate"));
     setHover(point);
     if (point && pointerAction?.kind === "move-selection-pivot") {
+      const pointer = pointFromEvent(event, false, false);
+      if (!pointer) return;
+      const desired = { x: pointer.x + pointerAction.offset.x, z: pointer.z + pointerAction.offset.z };
+      let snapTarget: { x: number; z: number } | undefined;
+      let nearestDistance = 12 * screenUnit;
+      for (const candidate of pivotSnapCandidates) {
+        const distance = Math.hypot(candidate.x - desired.x, candidate.z - desired.z);
+        if (distance < nearestDistance) { snapTarget = candidate; nearestDistance = distance; }
+      }
       const step = exactSnapStep ?? snapStep(snap);
-      setPointerAction({ ...pointerAction, current: { x: snapValue(point.x + pointerAction.offset.x, step), z: snapValue(point.z + pointerAction.offset.z, step) } });
+      setPointerAction({ ...pointerAction, snapTarget, current: snapTarget ? { ...snapTarget } : { x: snapValue(desired.x, step), z: snapValue(desired.z, step) } });
       return;
     }
     if (point && pointerAction?.kind === "freehand") {
@@ -1895,6 +1919,7 @@ export function SketchWorkspace({
             ] as Array<[SketchTransformHandle, number, number]>).map(([handle, x, z]) => <rect key={handle} data-sketch-entity="selection-handle" className={`sketch-selection-transform-handle handle-${handle}`} x={x + (handle.includes("w") ? -12.8 : handle.includes("e") ? 0 : -6.4) * screenUnit} y={z + (handle.includes("n") ? 0 : handle.includes("s") ? -12.8 : -6.4) * screenUnit} width={12.8 * screenUnit} height={12.8 * screenUnit} strokeWidth={1.5 * screenUnit} onPointerDown={(event) => beginSelectionTransform(event, handle)}><title>{locale === "es" ? "Escalar selección" : "Scale selection"}</title></rect>)}
             <circle data-sketch-entity="selection-handle" className="sketch-selection-transform-handle handle-rotate" cx={(transformFrame.minX + transformFrame.maxX) / 2} cy={transformFrame.maxZ + 28 * screenUnit} r={6.4 * screenUnit} strokeWidth={1.5 * screenUnit} onPointerDown={(event) => beginSelectionTransform(event, "rotate")}><title>{locale === "es" ? "Rotar selección" : "Rotate selection"}</title></circle>
             {transformPivot && <g className="sketch-selection-pivot">
+              {pointerAction?.kind === "move-selection-pivot" && pointerAction.snapTarget && <circle className="sketch-selection-pivot-snap" cx={pointerAction.snapTarget.x} cy={pointerAction.snapTarget.z} r={12 * screenUnit} strokeWidth={2 * screenUnit} pointerEvents="none" />}
               <circle data-sketch-entity="selection-handle" className="sketch-selection-transform-handle handle-pivot" cx={transformPivot.x} cy={transformPivot.z} r={8 * screenUnit} strokeWidth={1.5 * screenUnit} onDoubleClick={(event) => { event.stopPropagation(); setSelectionPivot(null); }} onPointerDown={(event) => {
                 if (event.button === 1) { beginPan(event); return; }
                 if (event.button !== 0) return;
