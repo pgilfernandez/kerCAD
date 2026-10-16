@@ -1367,6 +1367,7 @@ button {
 .educad-shape-parameters > div > .educad-feature-card { margin: 8px 0 0; padding: 7px 5px 4px; background: #fbfcfd; }
 .educad-transform-empty { margin: 8px 5px 0; padding: 9px; color: #7d909d; background: #fbfcfd; border-radius: 5px; font-size: 8px; line-height: 1.45; }
 .educad-reference-display-controls { display: flex; justify-content: space-between; align-items: center; gap: 5px; }
+.educad-reference-display-controls + label { margin-top: 10px; }
 .educad-reference-display-controls button { display: grid; place-items: center; width: 44px; height: 43px; padding: 3px; border: 1px solid transparent; border-radius: 12px; background: transparent; }
 .educad-reference-display-controls button img { width: 34px; height: 34px; object-fit: contain; }
 .educad-reference-display-controls button:hover { background: #dfeff7; border-color: #9bbecf; }
