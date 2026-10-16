@@ -72,11 +72,18 @@ export function parametricObjectFeaturePrefixFingerprint(document: ParametricDoc
   const throughIndex = objectFeatures.findIndex((feature) => feature.id === throughFeatureId);
   const features = throughIndex < 0 ? [] : objectFeatures.slice(0, throughIndex + 1);
   const dependencyIds = dependentObjectIds(document, objectId, features);
+  const referenceIds = new Set(features.flatMap((feature) => {
+    if (feature.kind === "fillet") return [...(feature.edgeReferenceIds ?? []), ...(feature.selectionReferenceIds ?? [])];
+    if (feature.kind === "faceExtrude") return [feature.faceReferenceId];
+    if (feature.kind === "shell") return feature.faceReferenceIds;
+    if (feature.kind === "revolve") return [feature.faceReferenceId, feature.axisReferenceId].filter((id): id is string => Boolean(id));
+    return [];
+  }));
   return JSON.stringify({
     geometryVersion: PARAMETRIC_GEOMETRY_VERSION,
     object: object ? { id: object.id, transform: object.transform } : null,
     features: features.map(geometryFeature),
-    topologyReferences: document.topologyReferences.filter((reference) => reference.objectId === objectId),
+    topologyReferences: document.topologyReferences.filter((reference) => reference.objectId === objectId && referenceIds.has(reference.id)),
     dependencies: objectDependencyState(document, dependencyIds),
   });
 }

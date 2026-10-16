@@ -21,6 +21,9 @@ type CachedFeatureSolid = { fingerprint: string; objectId: string; solid: AnySol
 // in that worker and are discarded automatically if cancellation restarts it.
 const cachedObjectSolids = new Map<string, CachedObjectSolid>();
 const cachedFeatureSolids = new Map<string, CachedFeatureSolid>();
+// Context builds stop early, so keep their prefix cache separate from final-model
+// render reuse. No tessellated buffers are retained here (they are transferred).
+const cachedContextFeatureSolids = new Map<string, CachedFeatureSolid>();
 
 function resultValue<T>(brep: Brep, result: ReturnType<Brep["cut"]> | ReturnType<Brep["fuse"]> | ReturnType<Brep["intersect"]> | ReturnType<Brep["fillet"]>) {
   return brep.unwrap(result) as T;
@@ -750,24 +753,44 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
   const reuseObjectCache = contextFeatureId === null && !stopAtContext;
   const reusableObjectIds = new Set<string>();
   const reusablePrefixFeatureIds = new Set<string>();
-  if (reuseObjectCache) {
+  let sortedFeatures: ParametricDocument["features"];
+  try {
+    sortedFeatures = topologicallySortedParametricFeatures(document);
+  } catch (error) {
+    return { ...buildRenderOutput(brep, document, solids, objects, reusableObjectIds, incrementalRender, meshOptions, includeCombinedMesh, renderMeshes, outputObjectIds), operationContext, completedFeatureIds, failedFeatureId: null, warning: errorMessage(error) };
+  }
+  const contextIndex = sortedFeatures.findIndex((feature) => feature.id === contextFeatureId);
+  const prefixCache = stopAtContext ? cachedContextFeatureSolids : cachedFeatureSolids;
+  const recordFeatureSolid = (featureId: string, objectId: string, solid: AnySolid) => {
+    featureSolidSnapshots.set(featureId, { objectId, solid });
+    if (stopAtContext) cachedContextFeatureSolids.set(featureId, {
+      fingerprint: prefixFingerprint(objectId, featureId), objectId, solid, state: operationStates.get(featureId),
+    });
+  };
+  if (stopAtContext) {
+    const activeIds = new Set(document.features.map((feature) => feature.id));
+    for (const id of cachedContextFeatureSolids.keys()) if (!activeIds.has(id)) cachedContextFeatureSolids.delete(id);
+  }
+  if (reuseObjectCache || (stopAtContext && contextIndex >= 0)) {
     for (const object of document.objects) {
       const cached = cachedObjectSolids.get(object.id);
-      if (cached?.fingerprint === parametricObjectGeometryFingerprint(document, object.id)) {
+      if (reuseObjectCache && cached?.fingerprint === parametricObjectGeometryFingerprint(document, object.id)) {
         solids.set(object.id, cached.solid);
         reusableObjectIds.add(object.id);
         continue;
       }
-      const objectFeatures = document.features.filter((feature) => feature.objectId === object.id);
+      // Never skip the selected operation: its before/after meshes and detail
+      // must be produced even when its solid is already cached.
+      const objectFeatures = (stopAtContext ? sortedFeatures.slice(0, contextIndex) : document.features).filter((feature) => feature.objectId === object.id && !feature.suppressed);
       for (let index = objectFeatures.length - 1; index >= 0; index -= 1) {
         const feature = objectFeatures[index];
-        const featureCache = cachedFeatureSolids.get(feature.id);
+        const featureCache = prefixCache.get(feature.id);
         if (!featureCache || featureCache.objectId !== object.id || featureCache.fingerprint !== prefixFingerprint(object.id, feature.id)) continue;
         solids.set(object.id, featureCache.solid);
         for (const prefixFeature of objectFeatures.slice(0, index + 1)) {
           reusablePrefixFeatureIds.add(prefixFeature.id);
-          const prefixCache = cachedFeatureSolids.get(prefixFeature.id);
-          if (prefixCache?.fingerprint === prefixFingerprint(object.id, prefixFeature.id) && prefixCache.state) operationStates.set(prefixFeature.id, prefixCache.state);
+          const cachedPrefix = prefixCache.get(prefixFeature.id);
+          if (cachedPrefix?.fingerprint === prefixFingerprint(object.id, prefixFeature.id) && cachedPrefix.state) operationStates.set(prefixFeature.id, cachedPrefix.state);
         }
         break;
       }
@@ -775,7 +798,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
   }
 
   try {
-    for (const feature of topologicallySortedParametricFeatures(document)) {
+    for (const feature of sortedFeatures) {
       if (feature.suppressed) continue;
       activeFeatureId = feature.id;
       if (feature.objectId && reusableObjectIds.has(feature.objectId)) {
@@ -799,7 +822,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         const result = await solidFromImportedStep(brep, feature);
         solids.set(objectId, result);
         operationStates.set(feature.id, { before: null, after: result });
-        featureSolidSnapshots.set(feature.id, { objectId, solid: result });
+        recordFeatureSolid(feature.id, objectId, result);
         completedFeatureIds.push(feature.id);
         if (feature.id === contextFeatureId) {
           operationContext = {
@@ -827,7 +850,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
           after: result,
           ...(feature.operation === "add" ? { added: tool, removed: null } : feature.operation === "cut" ? { added: null, removed: tool } : {}),
         });
-        featureSolidSnapshots.set(feature.id, { objectId, solid: result });
+        recordFeatureSolid(feature.id, objectId, result);
         completedFeatureIds.push(feature.id);
         if (feature.id === contextFeatureId) {
           const selectedResult = solids.get(objectId);
@@ -848,7 +871,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         current = applyRevolveFeature(brep, document, null, feature);
         solids.set(objectId, current);
         operationStates.set(feature.id, { before: null, after: current });
-        featureSolidSnapshots.set(feature.id, { objectId, solid: current });
+        recordFeatureSolid(feature.id, objectId, current);
         completedFeatureIds.push(feature.id);
         if (feature.id === contextFeatureId) {
           operationContext = {
@@ -873,7 +896,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         current = refinedBooleanSolid(brep, brep.cut(current, cutter));
         solids.set(objectId, current);
         operationStates.set(feature.id, { before: previousSolid, after: current, added: null, removed: cutter });
-        featureSolidSnapshots.set(feature.id, { objectId, solid: current });
+        recordFeatureSolid(feature.id, objectId, current);
         completedFeatureIds.push(feature.id);
         continue;
       }
@@ -932,7 +955,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         completedFeatureIds.push(feature.id);
       }
       if (!operationStates.has(feature.id)) operationStates.set(feature.id, { before: previousSolid, after: current });
-      featureSolidSnapshots.set(feature.id, { objectId, solid: current });
+      recordFeatureSolid(feature.id, objectId, current);
       if (feature.id === contextFeatureId) {
         const selectedResult = solids.get(objectId);
         const removedMaterial = feature.kind === "fillet" || feature.kind === "shell" || (feature.kind === "faceExtrude" && feature.operation === "cut") || (feature.kind === "revolve" && feature.operation !== "add") || (feature.kind === "objectBoolean" && feature.operation !== "add");

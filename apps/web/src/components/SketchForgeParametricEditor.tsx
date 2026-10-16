@@ -665,6 +665,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const contextWorkerRef = useRef<ParametricBuildWorkerClient | null>(null);
   const topologySelectionWorkerRef = useRef<ParametricBuildWorkerClient | null>(null);
   const topologyPreviewWorkerRef = useRef<ParametricBuildWorkerClient | null>(null);
+  const topologyPreviewQueueRef = useRef<Promise<void>>(Promise.resolve());
   const geometryFingerprint = useMemo(() => parametricGeometryFingerprint(document), [document]);
   const objectColorFingerprint = useMemo(() => parametricObjectColorFingerprint(document), [document]);
   const objectColors = useMemo(() => objectColorsFromFingerprint(objectColorFingerprint), [objectColorFingerprint]);
@@ -854,8 +855,22 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     if (!featureId) return;
     let active = true;
     setTopologyPreviewBusy(true);
-    const timeout = window.setTimeout(() => topologyPreviewWorkerRef.current?.buildContext(preview, featureId).then((result) => { if (active) { setTopologyPreviewContext(result); setTopologyPreviewBusy(false); } }).catch(() => { if (active) { setTopologyPreviewContext(null); setTopologyPreviewBusy(false); } }), 80);
-    return () => { active = false; window.clearTimeout(timeout); topologyPreviewWorkerRef.current?.cancel(); setTopologyPreviewBusy(false); };
+    const timeout = window.setTimeout(() => {
+      // Let the active kernel call finish instead of restarting WASM on every
+      // selection change. Only the latest still-active request is then built.
+      topologyPreviewQueueRef.current = topologyPreviewQueueRef.current.catch(() => {}).then(async () => {
+        if (!active) return;
+        try {
+          const result = await topologyPreviewWorkerRef.current?.buildContext(preview, featureId);
+          if (active) setTopologyPreviewContext(result ?? null);
+        } catch {
+          if (active) setTopologyPreviewContext(null);
+        } finally {
+          if (active) setTopologyPreviewBusy(false);
+        }
+      });
+    }, 80);
+    return () => { active = false; window.clearTimeout(timeout); };
   }, [document, edgeTreatmentRadius, editingEdgeTreatmentId, editingFaceExtrudeId, editingRevolveId, editingShellId, pendingEdgeTreatment, pendingFaceExtrude, pendingRevolve, pendingShell, selectedTopologyEdges, selectedTopologyFaces]);
 
   useEffect(() => {
