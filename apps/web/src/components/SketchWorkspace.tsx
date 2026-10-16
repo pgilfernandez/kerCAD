@@ -1901,7 +1901,7 @@ export function SketchWorkspace({
                 const pointer = pointFromEvent(event, false, false);
                 if (!pointer) return;
                 beginEntityDrag(event, { kind: "move-selection-pivot", pointerId: event.pointerId, current: { ...transformPivot }, offset: { x: transformPivot.x - pointer.x, z: transformPivot.z - pointer.z } });
-              }}><title>{locale === "es" ? "Origen de escala y rotación · arrastra para mover · doble clic para centrar" : "Scale and rotation origin · drag to move · double-click to center"}</title></circle>
+              }}><title>{locale === "es" ? "Origen de rotación · arrastra para mover · doble clic para centrar" : "Rotation origin · drag to move · double-click to center"}</title></circle>
               <path d={`M ${transformPivot.x - 5 * screenUnit} ${transformPivot.z} h ${10 * screenUnit} M ${transformPivot.x} ${transformPivot.z - 5 * screenUnit} v ${10 * screenUnit}`} stroke="#1269eb" strokeWidth={screenUnit} pointerEvents="none" />
             </g>}
           </g>}
