@@ -388,7 +388,9 @@ function AnnotationProperties({ annotation, onUpdate }: { annotation: Parametric
     if (!point) return null;
     return <details className="educad-transform-section"><summary><ChevronRight size={16} /><span>{title}</span></summary><div><TransformGroup label={title} showHeading={false} values={point} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { const target = annotationPosition(draft, key === "position" ? null : key); if (target) target[axis] = value; })} /></div></details>;
   };
-  return <div className="educad-feature-inspector educad-annotation-properties"><div className="educad-feature-card">
+  return <div className="educad-feature-inspector educad-annotation-properties">
+    {annotation.kind === "dimension" && <AnnotationColorPicker color={annotation.color ?? "#233c52"} onChange={(color) => onUpdate((draft) => { if (draft.kind === "dimension") draft.color = color; })} />}
+    <div className="educad-feature-card">
     {annotation.kind !== "text" && annotation.kind !== "circle" && <label><span>{t("annotation.size")}</span><DeferredNumberInput value={annotation.size ?? 3} min={0.1} max={1000} step={steps.input} unit="mm" onCommit={(value) => onUpdate((draft) => { if (draft.kind !== "text" && draft.kind !== "circle") draft.size = value; })} /></label>}
     {annotation.kind === "circle" && <>
       <AnnotationColorPicker color={annotation.color} onChange={(color) => onUpdate((draft) => { if (draft.kind === "circle") draft.color = color; })} />
@@ -398,7 +400,6 @@ function AnnotationProperties({ annotation, onUpdate }: { annotation: Parametric
     </>}
     {annotation.kind === "angle" && <AnnotationColorPicker color={annotation.color ?? "#233c52"} onChange={(color) => onUpdate((draft) => { if (draft.kind === "angle") draft.color = color; })} />}
     {annotation.kind === "dimension" && <>
-      <AnnotationColorPicker color={annotation.color ?? "#233c52"} onChange={(color) => onUpdate((draft) => { if (draft.kind === "dimension") draft.color = color; })} />
       <div className="sketch-annotation-context-toolbar embedded educad-annotation-dimension-controls" role="group" aria-label={t("annotation.dimension")}>
         <AnnotationEndSelector side="start" value={annotationEnding(annotation, "start")} locale={locale} onChange={(value) => onUpdate((draft) => setAnnotationEnding(draft, "start", value))} />
         <AnnotationEndSelector side="end" value={annotationEnding(annotation, "end")} locale={locale} onChange={(value) => onUpdate((draft) => setAnnotationEnding(draft, "end", value))} />
