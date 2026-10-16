@@ -51,21 +51,25 @@ export function sketchSelectionBounds(profile: SketchProfile, selection: SketchS
   return { minX, maxX, minZ, maxZ };
 }
 
-export function transformSketchSelection(profile: SketchProfile, selection: NonNullable<SketchSelection>, bounds: SketchSelectionBounds, handle: SketchTransformHandle, origin: Point, current: Point, shift = false): SketchProfile {
+export function transformSketchSelection(profile: SketchProfile, selection: NonNullable<SketchSelection>, bounds: SketchSelectionBounds, handle: SketchTransformHandle, origin: Point, current: Point, shift = false, pivot?: Point): SketchProfile {
   const selected = entities(profile, selection);
   const center = { x: (bounds.minX + bounds.maxX) / 2, z: (bounds.minZ + bounds.maxZ) / 2 };
   let sx = 1, sz = 1, angle = 0;
-  const anchor = { ...center };
+  const anchor = { ...(pivot ?? center) };
   if (handle === "rotate") {
-    angle = Math.atan2(current.z - center.z, current.x - center.x) - Math.atan2(origin.z - center.z, origin.x - center.x);
+    angle = Math.atan2(current.z - anchor.z, current.x - anchor.x) - Math.atan2(origin.z - anchor.z, origin.x - anchor.x);
     const step = (shift ? 15 : 1) * Math.PI / 180;
     angle = Math.round(angle / step) * step;
   } else {
     const width = bounds.maxX - bounds.minX, height = bounds.maxZ - bounds.minZ;
-    if (handle.includes("e") && width > 1e-8) { anchor.x = bounds.minX; sx = Math.max(.001, (width + current.x - origin.x) / width); }
-    if (handle.includes("w") && width > 1e-8) { anchor.x = bounds.maxX; sx = Math.max(.001, (width - current.x + origin.x) / width); }
-    if (handle.includes("n") && height > 1e-8) { anchor.z = bounds.minZ; sz = Math.max(.001, (height + current.z - origin.z) / height); }
-    if (handle.includes("s") && height > 1e-8) { anchor.z = bounds.maxZ; sz = Math.max(.001, (height - current.z + origin.z) / height); }
+    if ((handle.includes("e") || handle.includes("w")) && width > 1e-8) {
+      const distance = (handle.includes("e") ? bounds.maxX : bounds.minX) - anchor.x;
+      sx = Math.max(.001, 1 + (current.x - origin.x) / (Math.abs(distance) > 1e-8 ? distance : handle.includes("e") ? width : -width));
+    }
+    if ((handle.includes("n") || handle.includes("s")) && height > 1e-8) {
+      const distance = (handle.includes("n") ? bounds.maxZ : bounds.minZ) - anchor.z;
+      sz = Math.max(.001, 1 + (current.z - origin.z) / (Math.abs(distance) > 1e-8 ? distance : handle.includes("n") ? height : -height));
+    }
     // Circular arcs/circles remain circular rather than silently becoming invalid
     // ellipses. Shift also preserves proportions for unrestricted geometry.
     const circular = selected.circles.size > 0 || profile.segments.some((segment) => selected.segments.has(segment.id) && segment.kind === "arc");

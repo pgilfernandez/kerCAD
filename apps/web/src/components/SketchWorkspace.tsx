@@ -126,7 +126,8 @@ type PathStep = { segment: SketchSegment; from: SketchPoint; to: SketchPoint };
 type DisplayPath = { id: string; points: SketchPoint[]; steps: PathStep[]; closed: boolean };
 type SketchReferenceFootprint = { fillD: string | null; outlineD: string | null };
 type PointerAction =
-  | { kind: "transform-selection"; pointerId: number; origin: { x: number; z: number }; current: { x: number; z: number }; selection: NonNullable<SketchSelection>; bounds: SketchSelectionBounds; handle: SketchTransformHandle; shift: boolean }
+  | { kind: "transform-selection"; pointerId: number; origin: { x: number; z: number }; current: { x: number; z: number }; selection: NonNullable<SketchSelection>; bounds: SketchSelectionBounds; handle: SketchTransformHandle; shift: boolean; pivot: { x: number; z: number } }
+  | { kind: "move-selection-pivot"; pointerId: number; current: { x: number; z: number }; offset: { x: number; z: number } }
   | { kind: "move-selection"; pointerId: number; origin: { x: number; z: number }; current: { x: number; z: number }; selection: NonNullable<SketchSelection>; entityKind: string; entityId: string }
   | { kind: "bezier"; pointerId: number; origin: { x: number; z: number }; current: { x: number; z: number } }
   | { kind: "move-circle"; pointerId: number; circleId: string; origin: { x: number; z: number }; current: { x: number; z: number }; start: SketchCircle }
@@ -692,9 +693,12 @@ export function SketchWorkspace({
   }, []);
   const [pendingArc, setPendingArc] = useState<{ center: { x: number; z: number }; start?: { x: number; z: number } } | null>(null);
   const [pointerAction, setPointerAction] = useState<PointerAction | null>(null);
+  const selectionKey = JSON.stringify(selected);
+  const [selectionPivot, setSelectionPivot] = useState<{ key: string; point: { x: number; z: number } } | null>(null);
+  useEffect(() => { setSelectionPivot(null); }, [selectionKey]);
   const svgRef = useRef<SVGSVGElement | null>(null);
   useEffect(() => {
-    if (pointerAction?.kind !== "transform-selection") return;
+    if (pointerAction?.kind !== "transform-selection" && pointerAction?.kind !== "move-selection-pivot") return;
     const cancel = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault(); event.stopImmediatePropagation();
@@ -757,7 +761,7 @@ export function SketchWorkspace({
     if (tool !== "arc") setPendingArc(null);
   }, [tool]);
   const displayProfile = useMemo(() => {
-    if (pointerAction?.kind === "transform-selection") return transformSketchSelection(profile, pointerAction.selection, pointerAction.bounds, pointerAction.handle, pointerAction.origin, pointerAction.current, pointerAction.shift);
+    if (pointerAction?.kind === "transform-selection") return transformSketchSelection(profile, pointerAction.selection, pointerAction.bounds, pointerAction.handle, pointerAction.origin, pointerAction.current, pointerAction.shift, pointerAction.pivot);
     if (pointerAction?.kind === "move-selection") return translatedSketchSelection(profile, pointerAction.selection, pointerAction.current.x - pointerAction.origin.x, pointerAction.current.z - pointerAction.origin.z);
     if (pointerAction?.kind === "move-circle" || pointerAction?.kind === "resize-circle") {
       const next = structuredClone(profile);
@@ -1049,8 +1053,13 @@ export function SketchWorkspace({
       setPointerAction({ ...pointerAction, clientX: event.clientX, clientY: event.clientY });
       return;
     }
-    const point = pointFromEvent(event, pointerAction?.kind !== "marquee" && pointerAction?.kind !== "freehand" && pointerAction?.kind !== "transform-selection", pointerAction?.kind !== "freehand" && !(pointerAction?.kind === "transform-selection" && pointerAction.handle === "rotate"));
+    const point = pointFromEvent(event, pointerAction?.kind !== "marquee" && pointerAction?.kind !== "freehand" && pointerAction?.kind !== "transform-selection" && pointerAction?.kind !== "move-selection-pivot", pointerAction?.kind !== "freehand" && !(pointerAction?.kind === "transform-selection" && pointerAction.handle === "rotate"));
     setHover(point);
+    if (point && pointerAction?.kind === "move-selection-pivot") {
+      const step = exactSnapStep ?? snapStep(snap);
+      setPointerAction({ ...pointerAction, current: { x: snapValue(point.x + pointerAction.offset.x, step), z: snapValue(point.z + pointerAction.offset.z, step) } });
+      return;
+    }
     if (point && pointerAction?.kind === "freehand") {
       const last = pointerAction.points.at(-1)!;
       if (Math.hypot(point.x - last.x, point.z - last.z) >= screenUnit * 2) setPointerAction({ ...pointerAction, current: point, points: [...pointerAction.points, point] });
@@ -1066,7 +1075,13 @@ export function SketchWorkspace({
       return;
     }
     if (action.kind === "transform-selection") {
-      if (Math.hypot(action.current.x - action.origin.x, action.current.z - action.origin.z) > 0.001) onMoveSelection?.(transformSketchSelection(profile, action.selection, action.bounds, action.handle, action.origin, action.current, action.shift));
+      if (Math.hypot(action.current.x - action.origin.x, action.current.z - action.origin.z) > 0.001) onMoveSelection?.(transformSketchSelection(profile, action.selection, action.bounds, action.handle, action.origin, action.current, action.shift, action.pivot));
+      setSelectionPivot({ key: selectionKey, point: action.pivot });
+      setPointerAction(null);
+      return;
+    }
+    if (action.kind === "move-selection-pivot") {
+      setSelectionPivot({ key: selectionKey, point: action.current });
       setPointerAction(null);
       return;
     }
@@ -1188,12 +1203,16 @@ export function SketchWorkspace({
     minZ: geometrySelectionBounds.minZ - (geometrySelectionBounds.maxZ - geometrySelectionBounds.minZ < screenUnit * 12 ? screenUnit * 6 : 0),
     maxZ: geometrySelectionBounds.maxZ + (geometrySelectionBounds.maxZ - geometrySelectionBounds.minZ < screenUnit * 12 ? screenUnit * 6 : 0),
   } : null;
+  const transformPivot = pointerAction?.kind === "move-selection-pivot" ? pointerAction.current
+    : pointerAction?.kind === "transform-selection" ? pointerAction.pivot
+    : selectionPivot?.key === selectionKey ? selectionPivot.point
+    : geometrySelectionBounds ? { x: (geometrySelectionBounds.minX + geometrySelectionBounds.maxX) / 2, z: (geometrySelectionBounds.minZ + geometrySelectionBounds.maxZ) / 2 } : null;
   const beginSelectionTransform = (event: ReactPointerEvent<SVGElement>, handle: SketchTransformHandle) => {
     if (event.button === 1) { beginPan(event); return; }
-    if (!selected || !geometrySelectionBounds || event.button !== 0) return;
+    if (!selected || !geometrySelectionBounds || !transformPivot || event.button !== 0) return;
     const origin = pointFromEvent(event, false, handle !== "rotate");
     if (!origin) return;
-    beginEntityDrag(event, { kind: "transform-selection", pointerId: event.pointerId, selection: selected, bounds: geometrySelectionBounds, handle, origin, current: origin, shift: event.shiftKey });
+    beginEntityDrag(event, { kind: "transform-selection", pointerId: event.pointerId, selection: selected, bounds: geometrySelectionBounds, handle, origin, current: origin, shift: event.shiftKey, pivot: { ...transformPivot } });
   };
   const measurementLabel = formatLength(measurementLength, workspace.accuracy);
   const previewEndpoint = tool === "bezier" && pointerAction?.kind === "bezier" ? pointerAction.origin : hover;
@@ -1875,6 +1894,16 @@ export function SketchWorkspace({
               ["sw", transformFrame.minX, transformFrame.minZ], ["s", (transformFrame.minX + transformFrame.maxX) / 2, transformFrame.minZ], ["se", transformFrame.maxX, transformFrame.minZ],
             ] as Array<[SketchTransformHandle, number, number]>).map(([handle, x, z]) => <rect key={handle} data-sketch-entity="selection-handle" className={`sketch-selection-transform-handle handle-${handle}`} x={x - 4 * screenUnit} y={z - 4 * screenUnit} width={8 * screenUnit} height={8 * screenUnit} strokeWidth={1.5 * screenUnit} onPointerDown={(event) => beginSelectionTransform(event, handle)}><title>{locale === "es" ? "Escalar selección" : "Scale selection"}</title></rect>)}
             <circle data-sketch-entity="selection-handle" className="sketch-selection-transform-handle handle-rotate" cx={(transformFrame.minX + transformFrame.maxX) / 2} cy={transformFrame.maxZ + 28 * screenUnit} r={4 * screenUnit} strokeWidth={1.5 * screenUnit} onPointerDown={(event) => beginSelectionTransform(event, "rotate")}><title>{locale === "es" ? "Rotar selección" : "Rotate selection"}</title></circle>
+            {transformPivot && <g className="sketch-selection-pivot">
+              <circle data-sketch-entity="selection-handle" className="sketch-selection-transform-handle handle-pivot" cx={transformPivot.x} cy={transformPivot.z} r={5 * screenUnit} strokeWidth={1.5 * screenUnit} onDoubleClick={(event) => { event.stopPropagation(); setSelectionPivot(null); }} onPointerDown={(event) => {
+                if (event.button === 1) { beginPan(event); return; }
+                if (event.button !== 0) return;
+                const pointer = pointFromEvent(event, false, false);
+                if (!pointer) return;
+                beginEntityDrag(event, { kind: "move-selection-pivot", pointerId: event.pointerId, current: { ...transformPivot }, offset: { x: transformPivot.x - pointer.x, z: transformPivot.z - pointer.z } });
+              }}><title>{locale === "es" ? "Origen de escala y rotación · arrastra para mover · doble clic para centrar" : "Scale and rotation origin · drag to move · double-click to center"}</title></circle>
+              <path d={`M ${transformPivot.x - 2.5 * screenUnit} ${transformPivot.z} h ${5 * screenUnit} M ${transformPivot.x} ${transformPivot.z - 2.5 * screenUnit} v ${5 * screenUnit}`} stroke="#1269eb" strokeWidth={screenUnit} pointerEvents="none" />
+            </g>}
           </g>}
           </g>
         </svg>
