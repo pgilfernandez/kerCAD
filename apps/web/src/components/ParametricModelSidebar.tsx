@@ -386,7 +386,7 @@ function AnnotationProperties({ annotation, onUpdate }: { annotation: Parametric
   const position = (key: "position" | AnnotationPoint, title: string) => {
     const point = annotationPosition(annotation, key === "position" ? null : key);
     if (!point) return null;
-    return <details className="educad-transform-section"><summary><ChevronRight size={16} /><span>{title}</span></summary><div><div className="educad-feature-card">{(["x", "y", "z"] as const).map((axis) => <label key={axis}><span>{axis.toUpperCase()}</span><DeferredNumberInput value={point[axis]} step={steps.input} unit="mm" onCommit={(value) => onUpdate((draft) => { const target = annotationPosition(draft, key === "position" ? null : key); if (target) target[axis] = value; })} /></label>)}</div></div></details>;
+    return <details className="educad-transform-section"><summary><ChevronRight size={16} /><span>{title}</span></summary><div><TransformGroup label={title} showHeading={false} values={point} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { const target = annotationPosition(draft, key === "position" ? null : key); if (target) target[axis] = value; })} /></div></details>;
   };
   return <div className="educad-feature-inspector educad-annotation-properties"><div className="educad-feature-card">
     {annotation.kind !== "text" && annotation.kind !== "circle" && <label><span>{t("annotation.size")}</span><DeferredNumberInput value={annotation.size ?? 3} min={0.1} max={1000} step={steps.input} unit="mm" onCommit={(value) => onUpdate((draft) => { if (draft.kind !== "text" && draft.kind !== "circle") draft.size = value; })} /></label>}
@@ -534,12 +534,14 @@ function ShapeParametersSection({ children }: { children: ReactNode }) {
 
 function TransformGroup({
   label,
+  showHeading = true,
   values,
   unit,
   min,
   onUpdate,
 }: {
   label: string;
+  showHeading?: boolean;
   values: { x: number; y: number; z: number };
   unit: string;
   min?: number;
@@ -549,7 +551,7 @@ function TransformGroup({
   const localizedLabel = useLocalizedSidebarLiteral(label);
   return (
     <div className="educad-feature-card educad-transform-card">
-      <h3>{localizedLabel}</h3>
+      {showHeading && <h3>{localizedLabel}</h3>}
       {(["x", "y", "z"] as const).map((axis) => (
         <label key={axis}>
           <span className={`educad-axis-label ${axis}`}>{axis.toUpperCase()}</span>
