@@ -21,6 +21,7 @@ import { displayLengthToMillimeters, displayUnitLabel, formatDisplayLength, mill
 import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
 import { createAnnotationScene } from "@/lib/annotationScene";
 import { attachReferenceImageHandle } from "@/lib/referenceImageHandle";
+import { referenceTransformPreview } from "@/lib/referenceTransformPreview";
 import { AnnotationInteraction } from "@/components/AnnotationInteraction";
 import { ViewportFloatingNumberInput } from "@/components/ViewportFloatingNumberInput";
 import { AnnotationToolbar } from "@/components/SketchAnnotationToolbar";
@@ -1346,6 +1347,7 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
     let rotationGuideHighlight: LineSegments2 | null = null;
     let rotationGuideScale = 1;
     let rotationPreview: THREE.Group | null = null;
+    let referenceDragPreview: ReturnType<typeof referenceTransformPreview> | null = null;
     let pendingRotation: { targetId: string; targetKind: "object" | "feature"; localAxis: "x" | "y" | "z"; axis: { x: number; y: number; z: number }; deltaDegrees: number } | null = null;
     let sketchPreviewRoot: THREE.Object3D | null = null;
     let sketchPreviewStartWorldPosition: THREE.Vector3 | null = null;
@@ -2358,6 +2360,7 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
         const worldRotationAxis = localRotationAxis?.clone().applyQuaternion(originHandle.marker.getWorldQuaternion(new THREE.Quaternion())).normalize() ?? null;
         dragPlane.setFromNormalAndCoplanarPoint(worldRotationAxis ?? camera.getWorldDirection(new THREE.Vector3()).normalize(), worldOrigin);
         if (raycaster.ray.intersectPlane(dragPlane, dragPoint)) {
+          if (!originHandle.editable && originHandle.targetKind === "object" && objectRenderCacheRef.current.get(originHandle.targetId)?.referenceDisplayMode) referenceDragPreview = referenceTransformPreview(modelGroup, originHandle.targetId);
           if (localRotationAxis && worldRotationAxis) {
             interaction = "axisRotate";
             rotationDragMarker = originHandle.marker;
@@ -2375,7 +2378,7 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
             const guide = rotationGuideAt(worldOrigin, worldRotationAxis, rotationGuideReferenceVector, rotationGuideScale);
             rotationGuide = guide.group;
             rotationGuideHighlight = guide.highlight;
-            rotationPreview = rotationWireframePreviewAt(originHandle.targetId, originHandle.targetKind, worldOrigin);
+            rotationPreview = referenceDragPreview ? null : rotationWireframePreviewAt(originHandle.targetId, originHandle.targetKind, worldOrigin);
           } else {
             interaction = originHandle.editable ? "origin" : originHandle.snap ? "snapMove" : "axisMove";
             const hitAxis = originHandle.hit.object.userData.originAxis;
@@ -2704,6 +2707,13 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
         const parentAxis = new THREE.Vector3(pendingRotation.axis.x, pendingRotation.axis.y, pendingRotation.axis.z).normalize();
         rotationDragMarker.quaternion.copy(new THREE.Quaternion().setFromAxisAngle(parentAxis, THREE.MathUtils.degToRad(degrees)).multiply(rotationStartQuaternion));
         rotationPreview?.quaternion.setFromAxisAngle(rotationPlaneAxis, THREE.MathUtils.degToRad(degrees));
+        if (referenceDragPreview && rotationCenterWorld) {
+          const center = rotationCenterWorld;
+          const worldDelta = new THREE.Matrix4().makeTranslation(center.x, center.y, center.z)
+            .multiply(new THREE.Matrix4().makeRotationAxis(rotationPlaneAxis, THREE.MathUtils.degToRad(degrees)))
+            .multiply(new THREE.Matrix4().makeTranslation(-center.x, -center.y, -center.z));
+          referenceDragPreview.apply(modelGroup.matrixWorld.clone().invert().multiply(worldDelta).multiply(modelGroup.matrixWorld));
+        }
         if (sketchPreviewRoot?.parent && sketchPreviewStartWorldQuaternion) {
           const desiredWorld = new THREE.Quaternion().setFromAxisAngle(rotationPlaneAxis, THREE.MathUtils.degToRad(degrees)).multiply(sketchPreviewStartWorldQuaternion);
           const parentWorld = sketchPreviewRoot.parent.getWorldQuaternion(new THREE.Quaternion());
@@ -2719,6 +2729,7 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
         pendingAxisMove.position = { x: target.x, y: target.y, z: target.z };
         previewAnnotationPosition(pendingAxisMove.targetId, target);
         const delta = target.clone().sub(originDragStart);
+        referenceDragPreview?.apply(new THREE.Matrix4().makeTranslation(delta.x, delta.y, delta.z));
         updateMoveDimension(originLayer.localToWorld(originDragStart.clone()), originLayer.localToWorld(target.clone()), delta.length());
         const root = selectionRootRef.current;
         if (root && axisMoveRootStart) root.position.copy(axisMoveRootStart).add(delta);
@@ -2749,6 +2760,7 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
         }
         originDragMarker.position.copy(next);
         const movement = next.clone().sub(originDragStart);
+        if (interaction === "axisMove") referenceDragPreview?.apply(new THREE.Matrix4().makeTranslation(movement.x, movement.y, movement.z));
         const signedDistance = originDragAxis === "x" ? movement.x : originDragAxis === "y" ? movement.y : originDragAxis === "z" ? movement.z : movement.length();
         updateMoveDimension(originLayer.localToWorld(originDragStart.clone()), originLayer.localToWorld(next.clone()), signedDistance);
         if (interaction === "origin" && pendingOrigin) pendingOrigin.position = { x: next.x, y: next.y, z: next.z };
@@ -3103,6 +3115,8 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
       rotationGuide = null;
       rotationGuideHighlight = null;
       rotationPreview = null;
+      referenceDragPreview?.restore();
+      referenceDragPreview = null;
       rotationGuideScale = 1;
       pendingRotation = null;
       sketchPreviewRoot = null;

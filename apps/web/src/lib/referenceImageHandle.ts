@@ -2,6 +2,7 @@ import * as THREE from "three";
 import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { ParametricObject } from "@/types/parametric";
 import { parametricTransformMatrix } from "@/lib/parametricWorkplane";
+import { referenceTransformPreview } from "@/lib/referenceTransformPreview";
 
 /** A screen-sized yellow corner handle; previews stay local until pointer-up. */
 export function attachReferenceImageHandle(model: THREE.Group, camera: THREE.Camera, canvas: HTMLCanvasElement, controls: OrbitControls, object: ParametricObject, snap: number, invalidate: () => void, onScale: (factor: number) => void) {
@@ -14,13 +15,14 @@ export function attachReferenceImageHandle(model: THREE.Group, camera: THREE.Cam
   const material = new THREE.SpriteMaterial({ map: texture, depthTest: false, depthWrite: false });
   const handle = new THREE.Sprite(material); handle.renderOrder = 100010;
   layer.userData.viewportOverlay = true;
+  layer.userData.referenceImageTarget = object.id;
   layer.add(handle); model.add(layer);
   const matrix = parametricTransformMatrix(object.transform);
   const corner = new THREE.Vector3(image.width / 2, image.height / 2, 0).applyMatrix4(matrix);
   const center = new THREE.Vector3().applyMatrix4(matrix);
   const raycaster = new THREE.Raycaster();
   let hovered = false;
-  let drag: { id: number; initial: number; factor: number; plane: THREE.Plane; bodies: Array<{ mesh: THREE.Mesh; positions: Float32Array }>; damping: boolean } | null = null;
+  let drag: { id: number; initial: number; factor: number; plane: THREE.Plane; preview: ReturnType<typeof referenceTransformPreview>; damping: boolean } | null = null;
   const setRay = (event: PointerEvent) => {
     const bounds = canvas.getBoundingClientRect();
     raycaster.setFromCamera(new THREE.Vector2((event.clientX - bounds.left) / bounds.width * 2 - 1, -(event.clientY - bounds.top) / bounds.height * 2 + 1), camera);
@@ -33,7 +35,7 @@ export function attachReferenceImageHandle(model: THREE.Group, camera: THREE.Cam
   const diagonal = new THREE.Vector3(image.width / 2, image.height / 2, 0);
   const update = () => {
     handle.position.copy(center).addScaledVector(corner.clone().sub(center), drag?.factor ?? 1);
-    const world = model.localToWorld(handle.position.clone());
+    const world = handle.getWorldPosition(new THREE.Vector3());
     const height = Math.max(1, canvas.clientHeight);
     const diameter = camera instanceof THREE.OrthographicCamera ? (camera.top - camera.bottom) / camera.zoom * 28 / height
       : camera instanceof THREE.PerspectiveCamera ? 2 * camera.position.distanceTo(world) * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * 28 / height : 1;
@@ -51,9 +53,7 @@ export function attachReferenceImageHandle(model: THREE.Group, camera: THREE.Cam
     if (!point) return;
     const initial = point.dot(diagonal) / diagonal.lengthSq();
     if (Math.abs(initial) < 0.00001) return;
-    const bodies: Array<{ mesh: THREE.Mesh; positions: Float32Array }> = [];
-    model.traverse((child) => { if (child instanceof THREE.Mesh && child.userData.objectId === object.id) bodies.push({ mesh: child, positions: Float32Array.from(child.geometry.getAttribute("position").array) }); });
-    drag = { id: event.pointerId, initial, factor: 1, plane, bodies, damping: controls.enableDamping };
+    drag = { id: event.pointerId, initial, factor: 1, plane, preview: referenceTransformPreview(model, object.id, false), damping: controls.enableDamping };
     event.preventDefault(); event.stopImmediatePropagation();
     controls.enabled = false; controls.enableDamping = false;
     canvas.setPointerCapture(event.pointerId);
@@ -69,14 +69,14 @@ export function attachReferenceImageHandle(model: THREE.Group, camera: THREE.Cam
     if (snap > 0) factor = Math.max(snap, Math.round(width * factor / snap) * snap) / width;
     drag.factor = factor;
     const scaleMatrix = new THREE.Matrix4().makeTranslation(center.x, center.y, center.z).multiply(new THREE.Matrix4().makeScale(factor, factor, factor)).multiply(new THREE.Matrix4().makeTranslation(-center.x, -center.y, -center.z));
-    for (const body of drag.bodies) { body.mesh.geometry.setAttribute("position", new THREE.BufferAttribute(body.positions.slice(), 3)); body.mesh.geometry.applyMatrix4(scaleMatrix); body.mesh.geometry.computeBoundingSphere(); }
+    drag.preview.apply(scaleMatrix);
     update(); invalidate();
   };
   const finish = (event: PointerEvent) => {
     if (!drag || event.pointerId !== drag.id) return;
     event.preventDefault(); event.stopImmediatePropagation();
     const current = drag; drag = null;
-    for (const body of current.bodies) { body.mesh.geometry.setAttribute("position", new THREE.BufferAttribute(body.positions, 3)); body.mesh.geometry.computeBoundingSphere(); }
+    current.preview.restore();
     controls.enabled = true; controls.enableDamping = current.damping;
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
     if (event.type === "pointerup") onScale(current.factor);
@@ -86,7 +86,7 @@ export function attachReferenceImageHandle(model: THREE.Group, camera: THREE.Cam
   canvas.addEventListener("pointerup", finish, true); canvas.addEventListener("pointercancel", finish, true); canvas.addEventListener("lostpointercapture", finish, true);
   update(); invalidate();
   return { group: layer, update, dispose: () => {
-    if (drag) { controls.enabled = true; controls.enableDamping = drag.damping; for (const body of drag.bodies) body.mesh.geometry.setAttribute("position", new THREE.BufferAttribute(body.positions, 3)); }
+    if (drag) { controls.enabled = true; controls.enableDamping = drag.damping; drag.preview.restore(); }
     canvas.removeEventListener("pointerdown", down, true); canvas.removeEventListener("pointermove", move, true);
     canvas.removeEventListener("pointerup", finish, true); canvas.removeEventListener("pointercancel", finish, true); canvas.removeEventListener("lostpointercapture", finish, true);
     layer.removeFromParent(); texture.dispose(); material.dispose(); invalidate();
