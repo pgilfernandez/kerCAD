@@ -1375,7 +1375,8 @@ button {
 .educad-reference-display-controls { display: grid; width: 100%; grid-auto-flow: column; grid-auto-columns: 1fr; align-items: center; gap: 4px; }
 .educad-reference-display-controls + label { margin-top: 10px; }
 .educad-reference-display-controls button { display: grid; place-items: center; width: 100%; min-width: 0; height: 31px; padding: 3px; color: #617382; border: 1px solid #cbd7df; border-radius: 4px; background: #fff; cursor: pointer; }
-.educad-reference-display-controls button img { width: 22px; height: 22px; object-fit: contain; }
+.educad-reference-display-controls button.toolbar-icon { overflow: hidden; }
+.educad-reference-display-controls button.toolbar-icon img.toolbar-command-icon { display: block; width: 22px; height: 22px; max-width: 100%; max-height: 100%; min-width: 0; min-height: 0; object-fit: contain; }
 .educad-reference-display-controls button:hover { background: #edf5f8; }
 .educad-reference-display-controls button.active { background: #ddf1fa; border-color: #58abc9; }
 .educad-reference-display-controls button:focus-visible { outline: 2px solid var(--educad-primary-blue); outline-offset: 1px; }
