@@ -96,7 +96,7 @@ export async function importReferenceImage(document: ParametricDocument, file: F
   object.color = "#ffffff";
   object.referenceMesh = {
     sourceName: file.name, format: /\.png$/i.test(file.name) ? "png" : "jpg",
-    image: { dataUrl, width, height }, opacity: 1, displayMode: "solid", pickable: true,
+    image: { dataUrl, width, height }, opacity: 1, displayMode: "solidEdges", pickable: true,
     positions: [-x,-y,0, x,-y,0, x,y,0, -x,-y,0, x,y,0, -x,y,0],
     normals: [0,0,1, 0,0,1, 0,0,1, 0,0,1, 0,0,1, 0,0,1],
     edges: [-x,-y,0, x,-y,0, x,-y,0, x,y,0, x,y,0, -x,y,0, -x,y,0, -x,-y,0],
