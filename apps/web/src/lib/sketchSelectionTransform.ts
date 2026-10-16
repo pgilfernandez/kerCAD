@@ -61,6 +61,12 @@ export function transformSketchSelection(profile: SketchProfile, selection: NonN
     const step = (shift ? 15 : 1) * Math.PI / 180;
     angle = Math.round(angle / step) * step;
   } else {
+    // Side handles use the opposite side, without modifying the user's pivot.
+    // Corners and rotation continue to use the independently movable origin.
+    if (handle.length === 1) {
+      anchor.x = handle === "w" ? bounds.maxX : handle === "e" ? bounds.minX : center.x;
+      anchor.z = handle === "n" ? bounds.minZ : handle === "s" ? bounds.maxZ : center.z;
+    }
     const width = bounds.maxX - bounds.minX, height = bounds.maxZ - bounds.minZ;
     if ((handle.includes("e") || handle.includes("w")) && width > 1e-8) {
       const distance = (handle.includes("e") ? bounds.maxX : bounds.minX) - anchor.x;
