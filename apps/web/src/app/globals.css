@@ -1081,8 +1081,12 @@ button {
   background: rgba(250, 252, 253, 0.98);
 }
 
-.educad-model-sidebar.simplified .educad-model-tree { max-height: none; flex: 1; border-bottom: 0; }
-.educad-model-sidebar.simplified .educad-object-list { padding: 7px 5px 12px; }
+.educad-model-sidebar.simplified .educad-model-tree { position: relative; min-height: 0; max-height: none; flex: 1; border-bottom: 0; }
+.educad-model-sidebar.simplified .educad-object-list { min-height: 0; padding: 7px 5px 12px; overscroll-behavior-y: contain; }
+.educad-model-sidebar.simplified .educad-toolbar-scroll-edge.top { background: linear-gradient(to bottom, #fff 15%, rgba(255,255,255,0)); }
+.educad-model-sidebar.simplified .educad-toolbar-scroll-edge.bottom { background: linear-gradient(to top, #fff 15%, rgba(255,255,255,0)); }
+.educad-model-sidebar.simplified .educad-toolbar-scroll-edge:hover,
+.educad-model-sidebar.simplified .educad-toolbar-scroll-edge:focus-visible { background: #e5efff; box-shadow: inset 0 0 0 1px #9ec6f8; }
 .educad-model-sidebar.simplified .educad-object-node { border: 1px solid #c7cdd2; border-radius: 6px; }
 .educad-model-sidebar.simplified .educad-object-node:has(> .educad-object-row.selected) { border-color: #8ec9dc; }
 .educad-model-sidebar.simplified .educad-object-node:has(> .educad-object-row.selected.alignment-reference) { border-color: #60a5fa; }

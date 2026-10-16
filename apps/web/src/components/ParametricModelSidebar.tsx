@@ -3,6 +3,7 @@ import { OperationTreeIcon } from "@/components/OperationTreeIcon";
 import { AnnotationIcon } from "@/components/AnnotationIcon";
 import { ShellCornerButtons } from "@/components/ShellCornerButtons";
 import { ReferenceDisplayButtons } from "@/components/ReferenceDisplayButtons";
+import { enableToolbarMouseScroll } from "@/lib/toolbarScroll";
 
 import {
   ArrowDown,
@@ -175,6 +176,10 @@ export function ParametricModelSidebar({
   const [renameDraft, setRenameDraft] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
   const objectListRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const list = objectListRef.current;
+    if (mode === "simplified" && list) return enableToolbarMouseScroll(list, true);
+  }, [mode, document.objects, document.annotations]);
   const rangeAnchorRef = useRef<ModelTreeSelection | null>(null);
   const primarySelection = selection.at(-1) ?? null;
   const selectedId = primarySelection?.id ?? null;
