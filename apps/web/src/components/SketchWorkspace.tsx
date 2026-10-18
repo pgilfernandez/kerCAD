@@ -57,6 +57,7 @@ export type SketchSceneReference = {
   positions: Float32Array;
   indices: Uint32Array;
   edges: Float32Array;
+  images?: Array<{ id: string; dataUrl: string; transform: string; opacity: number }>;
 };
 
 type SketchWorkspaceProps = {
@@ -1517,6 +1518,7 @@ export function SketchWorkspace({
             ))}
           </g>
           <g className="sketch-reference-shapes" pointerEvents="none">
+            {sceneReference?.images?.map((image) => <image key={image.id} href={image.dataUrl} x={0} y={0} width={1} height={1} transform={image.transform} opacity={image.opacity} preserveAspectRatio="none" />)}
             {sceneReferencePaths ? <g className="sketch-scene-reference">
               <path className="faces" d={sceneReferencePaths.faces} />
               <path className="edges" d={sceneReferencePaths.edges} />

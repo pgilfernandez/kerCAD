@@ -1125,8 +1125,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     };
   }, [document.objects, document.topologyReferences, edgeTreatmentRadius, pendingEdgeTreatment, selectedEdgeTreatmentFeature, selectedTopologyEdges, selectedTopologyFaces]);
   const sketchSceneReference = useMemo<SketchSceneReference | null>(() => {
-    const mesh = build.mesh;
-    if (!sketchSession || !mesh?.positions.length) return null;
+    if (!sketchSession) return null;
     const feature = sketchSession.featureId
       ? document.features.find((candidate): candidate is SketchFeature => candidate.id === sketchSession.featureId && candidate.kind === "sketch") ?? null
       : null;
@@ -1150,12 +1149,33 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       }
       return transformed;
     };
-    return {
-      positions: transformPositions(mesh.positions),
-      indices: mesh.indices,
-      edges: transformPositions(mesh.edges),
-    };
-  }, [build.mesh, document.features, document.objects, document.workplane, sketchSession?.featureId, sketchSession?.objectId]);
+    const visibleIds = new Set(document.objects.filter((object) => object.visible !== false).map((object) => object.id));
+    const records = [...build.objectRecords, ...referenceObjectRecords].filter((record) => visibleIds.has(record.objectId));
+    const meshes = records.filter((record) => !record.reference?.image).map((record) => record.mesh);
+    const positions = new Float32Array(meshes.reduce((count, mesh) => count + mesh.positions.length, 0));
+    const indices = new Uint32Array(meshes.reduce((count, mesh) => count + mesh.indices.length, 0));
+    const edges = new Float32Array(meshes.reduce((count, mesh) => count + mesh.edges.length, 0));
+    let positionOffset = 0, indexOffset = 0, edgeOffset = 0;
+    for (const mesh of meshes) {
+      positions.set(transformPositions(mesh.positions), positionOffset);
+      for (let index = 0; index < mesh.indices.length; index += 1) indices[indexOffset + index] = mesh.indices[index] + positionOffset / 3;
+      edges.set(transformPositions(mesh.edges), edgeOffset);
+      positionOffset += mesh.positions.length;
+      indexOffset += mesh.indices.length;
+      edgeOffset += mesh.edges.length;
+    }
+    const images: NonNullable<SketchSceneReference["images"]> = [];
+    for (const record of records) {
+      const image = record.reference?.image;
+      if (!image || record.mesh.positions.length < 18) continue;
+      const corners = transformPositions(record.mesh.positions);
+      // Image UV corners are top-left (vertex 5), top-right (2), bottom-left
+      // (0). Project the transformed quad into sketch coordinates, not world XY.
+      const x = corners[15], y = corners[16];
+      images.push({ id: record.objectId, dataUrl: image.dataUrl, opacity: .2 * (record.reference?.opacity ?? 1), transform: `matrix(${corners[6] - x} ${corners[7] - y} ${corners[0] - x} ${corners[1] - y} ${x} ${y})` });
+    }
+    return { positions, indices, edges, images };
+  }, [build.objectRecords, referenceObjectRecords, document.features, document.objects, document.workplane, sketchSession?.featureId, sketchSession?.objectId]);
   const snapAmount = document.workplane.snapToGrid ? document.workplane.snapSpacing : 0.01;
   const viewportOverlayRightOffset = sketchSession ? 12 : modelSidebarMode === "normal" ? 302 : modelSidebarMode === "simplified" ? 80 : 12;
   const alignmentCalculating = alignOpen && (alignmentBusy || !alignmentDisplayTargets.some(target => alignmentDisplayReference && sameAlignmentItem(target, alignmentDisplayReference)));
