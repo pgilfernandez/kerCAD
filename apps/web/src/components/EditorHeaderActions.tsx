@@ -3,7 +3,7 @@
 import { HeaderToolbarIcon } from "@/components/icons";
 import { createPortal } from "react-dom";
 import { version, license } from "../../../../package.json";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { educadTranslate, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
 
 export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding }: { locale: EducadLocale; onLocaleChange: (locale: EducadLocale) => void; onShowLanding?: () => void }) {
@@ -13,6 +13,18 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding }: {
   const infoRef = useRef<HTMLElement>(null);
   const infoTriggerRef = useRef<HTMLButtonElement>(null);
   const root = useRef<HTMLDivElement>(null);
+  const [infoTop, setInfoTop] = useState(40);
+  useLayoutEffect(() => {
+    if (!infoOpen || !onShowLanding) return;
+    const header = root.current?.closest("header");
+    if (!header) return;
+    const update = () => setInfoTop(header.getBoundingClientRect().bottom + 8);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(header);
+    window.addEventListener("resize", update);
+    return () => { observer.disconnect(); window.removeEventListener("resize", update); };
+  }, [infoOpen, onShowLanding]);
   useEffect(() => {
     if (!open && !infoOpen) return;
     const outside = (event: PointerEvent) => {
@@ -36,7 +48,7 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding }: {
     <button ref={infoTriggerRef} type="button" aria-label={t("about.label")} title={t("about.title")} aria-expanded={infoOpen} aria-controls="educad-about-panel" onClick={() => { setOpen(false); setInfoOpen((value) => !value); }}><HeaderToolbarIcon file="information" />{onShowLanding && <span>{t("about.title")}</span>}</button>
     <button type="button" aria-label={t("settings.language")} title={t("settings.language")} aria-expanded={open} aria-controls="educad-header-language-menu" onClick={() => { setInfoOpen(false); setOpen((value) => !value); }}><HeaderToolbarIcon file="language" /></button>
     {infoOpen ? createPortal(
-      <section ref={infoRef} id="educad-about-panel" className="educad-about-dialog" role="dialog" aria-modal="false" aria-labelledby="educad-about-title" tabIndex={-1}>
+      <section ref={infoRef} id="educad-about-panel" className="educad-about-dialog" style={onShowLanding ? { top: infoTop, maxHeight: `calc(100dvh - ${infoTop + 12}px)` } : undefined} role="dialog" aria-modal="false" aria-labelledby="educad-about-title" tabIndex={-1}>
         <header><h2 id="educad-about-title">{t("about.title")}</h2><button type="button" aria-label={t("common.close")} onClick={() => setInfoOpen(false)}>×</button></header>
         <p>{t("about.description")}</p>
         <dl>
