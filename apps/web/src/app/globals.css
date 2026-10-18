@@ -9996,6 +9996,10 @@ html[data-theme="dark"] .grid-settings {
 .dashboard-header-actions > button, .dashboard-header-actions > a { display: flex; align-items: center; justify-content: center; gap: 8px; width: auto; min-height: 38px; height: auto; padding: 7px 10px; border: 1px solid transparent; border-radius: 8px; color: white; background: transparent; font: inherit; font-size: 13px; text-decoration: none; white-space: nowrap; }
 .dashboard-header-actions > button:hover, .dashboard-header-actions > a:hover { color: #1269eb; background: rgba(255,255,255,.8); }
 .dashboard-header-actions > button:focus-visible, .dashboard-header-actions > a:focus-visible { outline: 2px solid white; outline-offset: 2px; }
+@media (min-width: 621px) {
+  .dashboard-header-actions > button, .dashboard-header-actions > a { border-color: white; background: rgba(255,255,255,.2); }
+  .dashboard-header-actions > button:hover, .dashboard-header-actions > a:hover { background: rgba(255,255,255,.8); }
+}
 .dashboard-header-actions .educad-header-language-menu { top: calc(100% + 8px); }
 .dashboard-header-actions .educad-header-language-menu button { display: block; width: 100%; margin-block: 4px; padding: 9px 12px; border: 0; border-radius: 4px; color: #173b5a; background: transparent; font: inherit; font-size: 13px; text-align: left; }
 .dashboard-header-actions .educad-header-language-menu button:hover, .dashboard-header-actions .educad-header-language-menu button[aria-pressed="true"] { background: #eaf3ff; }
