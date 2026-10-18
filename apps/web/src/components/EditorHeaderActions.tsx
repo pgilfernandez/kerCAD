@@ -18,7 +18,7 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding }: {
     if (!infoOpen || !onShowLanding) return;
     const header = root.current?.closest("header");
     if (!header) return;
-    const update = () => setInfoTop(header.getBoundingClientRect().bottom - 6);
+    const update = () => setInfoTop(header.getBoundingClientRect().bottom - 8);
     update();
     const observer = new ResizeObserver(update);
     observer.observe(header);
@@ -43,6 +43,7 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding }: {
   }, [open, infoOpen]);
   return <div ref={root} className={`educad-header-actions${onShowLanding ? " dashboard-header-actions" : ""}`}>
     {onShowLanding && <>
+      <button type="button" aria-label={t("about.projectOverview")} title={t("about.projectOverview")} onClick={onShowLanding}><HeaderToolbarIcon file="project-overview" /><span>{t("about.projectOverview")}</span></button>
       <a href={`/documentation?lang=${locale}`} target="_blank" rel="noopener noreferrer" title={t("about.documentation")}><HeaderToolbarIcon file="documentation" /><span>{locale === "es" ? "Documentación" : "Documentation"}</span></a>
     </>}
     <button ref={infoTriggerRef} type="button" aria-label={t("about.label")} title={t("about.title")} aria-expanded={infoOpen} aria-controls="educad-about-panel" onClick={() => { setOpen(false); setInfoOpen((value) => !value); }}><HeaderToolbarIcon file="information" />{onShowLanding && <span>{t("about.title")}</span>}</button>
