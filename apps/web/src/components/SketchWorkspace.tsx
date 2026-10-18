@@ -221,16 +221,26 @@ function dimensionPillSize(label: string, screenUnit: number, extra = 24) {
   };
 }
 
-function SketchFixedLengthDimension({ start, end, axis, screenUnit, labelWidth, index, children }: { start: { x: number; z: number }; end: { x: number; z: number }; axis: "aligned" | "x" | "z"; screenUnit: number; labelWidth: number; index: number; children: ReactNode }) {
+function SketchFixedLengthDimension({ start, end, contour, axis, screenUnit, labelWidth, index, children }: { start: { x: number; z: number }; end: { x: number; z: number }; contour?: Array<{ x: number; z: number }>; axis: "aligned" | "x" | "z"; screenUnit: number; labelWidth: number; index: number; children: ReactNode }) {
   const dx = end.x - start.x, dz = end.z - start.z;
   const distance = Math.hypot(dx, dz);
   if (distance < 1e-8) return null;
-  const nx = axis === "x" ? 0 : axis === "z" ? 1 : -dz / distance;
-  const nz = axis === "x" ? -1 : axis === "z" ? 0 : dx / distance;
+  let nx = axis === "x" ? 0 : axis === "z" ? 1 : -dz / distance;
+  let nz = axis === "x" ? -1 : axis === "z" ? 0 : dx / distance;
+  const projections = (contour?.length ? contour : [start, end]).map((point) => point.x * nx + point.z * nz);
+  const low = Math.min(...projections), high = Math.max(...projections);
+  const midpoint = ((start.x + end.x) * nx + (start.z + end.z) * nz) / 2;
+  // Choose the nearest outer support line of this contour, independently of
+  // segment direction, then leave enough room for the complete label.
+  const flip = midpoint - low < high - midpoint;
+  if (flip) { nx = -nx; nz = -nz; }
+  const boundary = flip ? -low : high;
   const offset = (22 + index * 30) * screenUnit + Math.abs(nx) * labelWidth / 2 + Math.abs(nz) * 12 * screenUnit;
-  const base = axis === "x" ? Math.min(start.z, end.z) : Math.max(start.x, end.x);
-  const a = axis === "x" ? { x: start.x, z: base - offset } : axis === "z" ? { x: base + offset, z: start.z } : { x: start.x + nx * offset, z: start.z + nz * offset };
-  const b = axis === "x" ? { x: end.x, z: base - offset } : axis === "z" ? { x: base + offset, z: end.z } : { x: end.x + nx * offset, z: end.z + nz * offset };
+  const projectOutside = (point: typeof start) => {
+    const shift = boundary + offset - (point.x * nx + point.z * nz);
+    return { x: point.x + nx * shift, z: point.z + nz * shift };
+  };
+  const a = projectOutside(start), b = projectOutside(end);
   const span = Math.hypot(b.x - a.x, b.z - a.z);
   const ux = span > 1e-8 ? (b.x - a.x) / span : 1, uz = span > 1e-8 ? (b.z - a.z) / span : 0;
   const arrowLength = Math.min(7 * screenUnit, span / 4), halfWidth = arrowLength * .4;
@@ -908,6 +918,25 @@ export function SketchWorkspace({
     ...displayProfile.segments.filter((segment) => segment.kind === "arc" && segment.center).map((segment) => ({ id: `${segment.id}:center`, x: segment.center!.x, z: segment.center!.z })),
   ] as SketchPoint[]).map((point) => [point.id, point])), [displayCircles, displayProfile.points, displayProfile.segments]);
   const paths = useMemo(() => orderedPaths({ ...displayProfile, segments: displayProfile.segments.filter((segment) => !segment.construction && !segment.generatedTextId) }), [displayProfile]);
+  const dimensionContours = useMemo(() => {
+    const contours = new Map<string, Array<{ x: number; z: number }>>();
+    for (const path of paths) {
+      const outline = path.steps.flatMap(({ segment, from, to }) => {
+        const points: Array<{ x: number; z: number }> = [from, to];
+        if (segment.kind === "arc" && segment.center) {
+          const radius = Math.hypot(from.x - segment.center.x, from.z - segment.center.z);
+          points.push({ x: segment.center.x - radius, z: segment.center.z }, { x: segment.center.x + radius, z: segment.center.z }, { x: segment.center.x, z: segment.center.z - radius }, { x: segment.center.x, z: segment.center.z + radius });
+        } else if (segment.kind !== "line") {
+          const controls = curveControls({ segment, from, to });
+          if (controls.first) points.push(controls.first);
+          if (controls.second) points.push(controls.second);
+        }
+        return points;
+      });
+      for (const step of path.steps) contours.set(step.segment.id, outline);
+    }
+    return contours;
+  }, [paths]);
   const activePoint = activePointId ? pointById.get(activePointId) ?? null : null;
   const selectedPoint = selected?.kind === "point" ? pointById.get(selected.id) ?? null : null;
   const selectedPointHandles = useMemo(() => {
@@ -1685,7 +1714,7 @@ export function SketchWorkspace({
               const constraints = (displayProfile.constraints ?? []).filter((candidate): candidate is Extract<NonNullable<SketchProfile["constraints"]>[number], { kind: "distance" }> => candidate.kind === "distance" && candidate.segmentId === segment.id);
               const dimensionStart = pointById.get(segment.startId), dimensionEnd = pointById.get(segment.endId);
               if (constraints.length) return showConstraintLabels && dimensionStart && dimensionEnd ? constraints.map((constraint, index) => (
-                <SketchFixedLengthDimension key={`dimension-${constraint.id}`} start={dimensionStart} end={dimensionEnd} axis={constraint.axis} screenUnit={screenUnit} index={index} labelWidth={dimensionPillSize(formatDimension(constraint.value / millimetersPerUnit, workspace.accuracy + Math.max(0, Math.ceil(Math.log10(millimetersPerUnit)))), screenUnit, 60).width}>
+                <SketchFixedLengthDimension key={`dimension-${constraint.id}`} start={dimensionStart} end={dimensionEnd} contour={dimensionContours.get(segment.id)} axis={constraint.axis} screenUnit={screenUnit} index={index} labelWidth={dimensionPillSize(formatDimension(constraint.value / millimetersPerUnit, workspace.accuracy + Math.max(0, Math.ceil(Math.log10(millimetersPerUnit)))), screenUnit, 60).width}>
                   <SketchDimensionInput millimetersPerUnit={millimetersPerUnit} id={constraint.id} label={locale === "es" ? constraint.axis === "x" ? "Distancia X" : constraint.axis === "z" ? "Distancia Y" : "Longitud" : constraint.axis === "x" ? "X distance" : constraint.axis === "z" ? "Y distance" : "Length"} indicator={constraint.axis === "x" ? "H" : constraint.axis === "z" ? "V" : "D"} value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
                 </SketchFixedLengthDimension>
               )) : null;
