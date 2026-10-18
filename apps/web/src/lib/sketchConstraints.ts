@@ -389,29 +389,74 @@ export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: 
     }
   }
   const directional = constraints.filter((constraint): constraint is Extract<SketchConstraint, { kind: "horizontal" | "vertical" }> => constraint.kind === "horizontal" || constraint.kind === "vertical");
+  const dimensions = constraints.filter((constraint): constraint is Extract<SketchConstraint, { kind: "distance" }> => constraint.kind === "distance");
+  const linearDimensions = new Set<string>();
   // Horizontal and vertical constraints share one coordinate, not both.
   // Resolve each connected coordinate group from the dragged point so a
   // closed chain cannot overwrite it according to segment iteration order.
   for (const axis of ["x", "z"] as const) {
     const coordinateNeighbors = new Map(allPoints.map((point) => [point.id, [...(neighbors.get(point.id) ?? [])]]));
+    const offsets = new Map<string, Map<string, number>>();
+    const connect = (from: string, to: string, offset: number) => {
+      coordinateNeighbors.get(from)?.push(to);
+      coordinateNeighbors.get(to)?.push(from);
+      if (!offsets.has(from)) offsets.set(from, new Map());
+      if (!offsets.has(to)) offsets.set(to, new Map());
+      offsets.get(from)!.set(to, offset);
+      offsets.get(to)!.set(from, -offset);
+    };
     for (const constraint of directional) {
       if ((constraint.kind === "horizontal" ? "z" : "x") !== axis) continue;
       const segment = segmentById.get(constraint.segmentId);
       if (!segment || segment.kind !== "line") continue;
-      coordinateNeighbors.get(segment.startId)?.push(segment.endId);
-      coordinateNeighbors.get(segment.endId)?.push(segment.startId);
+      connect(segment.startId, segment.endId, 0);
+    }
+    const equalityNeighbors = new Map([...coordinateNeighbors].map(([id, ids]) => [id, [...ids]]));
+    const referenceCoordinate = (point: SketchPoint) => {
+      const pending = [point.id], seen = new Set<string>();
+      while (pending.length) {
+        const id = pending.pop()!;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        const candidate = pointById.get(id);
+        // Use an undragged H/V partner to retain the original side of a fixed
+        // length even when the cursor moves past the opposite corner.
+        if (candidate && !driven.has(id)) return candidate[axis];
+        equalityNeighbors.get(id)?.forEach((neighbor) => pending.push(neighbor));
+      }
+      return point[axis];
+    };
+    // Axis dimensions and lengths of H/V lines are signed coordinate offsets.
+    // Solve them in the same graph as H/V equality so any corner can drive the
+    // whole rigid rectangle instead of being overwritten by dimension order.
+    for (const constraint of dimensions) {
+      const segment = segmentById.get(constraint.segmentId);
+      if (!segment || segment.kind !== "line") continue;
+      const alignedAxis = directional.some((candidate) => candidate.segmentId === segment.id && candidate.kind === "horizontal") ? "x"
+        : directional.some((candidate) => candidate.segmentId === segment.id && candidate.kind === "vertical") ? "z" : null;
+      if ((constraint.axis === "aligned" ? alignedAxis : constraint.axis) !== axis) continue;
+      const start = pointById.get(segment.startId), end = pointById.get(segment.endId);
+      if (!start || !end) continue;
+      const offset = (Math.sign(referenceCoordinate(end) - referenceCoordinate(start)) || 1) * Math.max(0.001, Math.abs(constraint.value));
+      connect(start.id, end.id, offset);
+      linearDimensions.add(constraint.id);
     }
     const visited = new Set<string>();
     for (const point of allPoints) {
       if (visited.has(point.id)) continue;
       const component: string[] = [];
+      const relative = new Map<string, number>([[point.id, 0]]);
       const pending = [point.id];
       while (pending.length) {
         const id = pending.pop()!;
         if (visited.has(id)) continue;
         visited.add(id);
         component.push(id);
-        coordinateNeighbors.get(id)?.forEach((neighbor) => pending.push(neighbor));
+        coordinateNeighbors.get(id)?.forEach((neighbor) => {
+          if (relative.has(neighbor)) return;
+          relative.set(neighbor, relative.get(id)! + (offsets.get(id)?.get(neighbor) ?? 0));
+          pending.push(neighbor);
+        });
       }
       const fixed = component.map((id) => fixedByPoint.get(id)).find(Boolean);
       const source = fixed ? pointById.get(fixed.pointId)
@@ -420,20 +465,21 @@ export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: 
         : pointById.get(component[0]);
       if (!source) continue;
       const value = fixed?.[axis] ?? source[axis];
-      for (const id of component) assignComponent(id, axis, value);
+      const origin = value - relative.get(source.id)!;
+      for (const id of component) assignComponent(id, axis, origin + relative.get(id)!);
     }
   }
 
-  const dimensions = constraints.filter((constraint): constraint is Extract<SketchConstraint, { kind: "distance" }> => constraint.kind === "distance");
   for (let pass = 0; pass < Math.max(1, dimensions.length); pass += 1) {
     for (const constraint of dimensions) {
+      if (linearDimensions.has(constraint.id)) continue;
       const segment = segmentById.get(constraint.segmentId);
       const start = segment ? pointById.get(segment.startId) : null;
       const end = segment ? pointById.get(segment.endId) : null;
       if (!segment || !start || !end) continue;
       const startFixed = (componentByPoint.get(start.id) ?? [start.id]).some((id) => fixedByPoint.has(id));
       const endFixed = (componentByPoint.get(end.id) ?? [end.id]).some((id) => fixedByPoint.has(id));
-      const moveStart = endFixed || (!startFixed && driven.has(start.id) && !driven.has(end.id));
+      const moveStart = endFixed || (!startFixed && driven.has(end.id) && !driven.has(start.id));
       const anchor = moveStart ? end : start;
       const moving = moveStart ? start : end;
       const value = Math.max(0.001, Math.abs(constraint.value));
