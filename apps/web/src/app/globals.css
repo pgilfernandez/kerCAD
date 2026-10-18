@@ -1372,6 +1372,21 @@ button {
 .educad-transform-section .educad-transform-card { margin: 8px 0 0; padding: 7px 5px 4px; background: #fbfcfd; }
 .educad-shape-parameters > div > .educad-feature-card { margin: 8px 0 0; padding: 7px 5px 4px; background: #fbfcfd; }
 .educad-transform-empty { margin: 8px 5px 0; padding: 9px; color: #7d909d; background: #fbfcfd; border-radius: 5px; font-size: 8px; line-height: 1.45; }
+.toolbar-icon[aria-controls][aria-expanded],
+.shape-menu-trigger[aria-controls] { position: relative; }
+.toolbar-icon[aria-controls][aria-expanded]::after,
+.shape-menu-trigger[aria-controls]::after {
+  content: "";
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 8px;
+  height: 8px;
+  background-color: currentColor;
+  -webkit-mask: url("/assets/educad/dropdown-indicator.svg") center / contain no-repeat;
+  mask: url("/assets/educad/dropdown-indicator.svg") center / contain no-repeat;
+  pointer-events: none;
+}
 .educad-reference-display-controls { display: grid; width: 100%; grid-auto-flow: column; grid-auto-columns: 1fr; align-items: center; gap: 4px; }
 .educad-reference-display-controls + label { margin-top: 10px; }
 .educad-reference-display-controls button { display: grid; place-items: center; width: 100%; min-width: 0; height: 43.4px; padding: 3px; color: #617382; border: 1px solid #cbd7df; border-radius: 4px; background: #fff; cursor: pointer; }
