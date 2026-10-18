@@ -299,7 +299,7 @@ function SketchDimensionInput({ id, label, indicator, value: storedValue, millim
   const borderInset = 0.75 * screenUnit;
   return <g className={`sketch-dimension-editor-group ${editing ? "editing" : ""}`} onPointerDown={(event) => { if (!editing) { event.preventDefault(); event.stopPropagation(); setEditing(true); } }}>
     <rect className="sketch-dimension-editor-background" x={x} y={-pill.height / 2} width={pill.width} height={pill.height} rx={pill.radius} />
-    {editing ? <foreignObject className="sketch-dimension-editor" x={x} y={-pill.height / 2} width={pill.width} height={pill.height}>
+    {editing ? <foreignObject className="sketch-dimension-editor" x={0} y={0} width={pill.width / screenUnit} height={pill.height / screenUnit} transform={`translate(${x} ${-pill.height / 2}) scale(${screenUnit})`}>
       <div className="sketch-dimension-editor-content">
         <input
           ref={inputRef}
@@ -308,7 +308,7 @@ function SketchDimensionInput({ id, label, indicator, value: storedValue, millim
         type="text"
         inputMode="text"
         value={draft}
-          style={{ fontSize: 13 * screenUnit, padding: `0 ${removeWidth + 3 * screenUnit}px 0 ${indicatorWidth + 3 * screenUnit}px` }}
+          style={{ fontSize: 13, padding: "0 25px 0 23px" }}
         onPointerDown={(event) => event.stopPropagation()}
         onChange={(event) => setDraft(event.currentTarget.value)}
         onBlur={(event) => {
