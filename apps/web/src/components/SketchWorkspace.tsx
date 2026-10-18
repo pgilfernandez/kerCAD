@@ -1791,15 +1791,16 @@ export function SketchWorkspace({
               const constraint = (displayProfile.constraints ?? []).find((candidate) => (candidate.kind === "radius" || candidate.kind === "diameter") && candidate.circleId === circle.id);
               if (constraint ? !showConstraintLabels : !showDimensionLabels) return null;
               const radialPosition = { x: circle.x + circle.radius + 12 * screenUnit, z: circle.z + 18 * screenUnit };
-              const leader = <SketchRadialLeader center={circle} label={radialPosition} radius={circle.radius} screenUnit={screenUnit} />;
+              const label = `R ${formatLength(circle.radius, workspace.accuracy)}`;
+              const pill = dimensionPillSize(label, screenUnit, 18);
+              const labelWidth = constraint ? dimensionPillSize(formatDimension(constraint.value / millimetersPerUnit, workspace.accuracy + Math.max(0, Math.ceil(Math.log10(millimetersPerUnit)))), screenUnit, 60).width : pill.width;
+              const leader = <SketchRadialLeader center={circle} label={{ x: radialPosition.x + labelWidth / 2, z: radialPosition.z }} radius={circle.radius} screenUnit={screenUnit} />;
               if (constraint?.kind === "radius" || constraint?.kind === "diameter") return <g key={`radius-${constraint.id}`}>
                 {leader}
                 <g transform={`translate(${radialPosition.x} ${radialPosition.z})`}>
                 <SketchDimensionInput millimetersPerUnit={millimetersPerUnit} id={constraint.id} label={locale === "es" ? constraint.kind === "diameter" ? "Diámetro" : "Radio" : constraint.kind === "diameter" ? "Diameter" : "Radius"} indicator={constraint.kind === "diameter" ? "Ø" : "R"} value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} align="start" onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
                 </g>
               </g>;
-              const label = `R ${formatLength(circle.radius, workspace.accuracy)}`;
-              const pill = dimensionPillSize(label, screenUnit, 18);
               return <g key={`radius-${circle.id}`} pointerEvents="none">
                 {leader}
                 <g transform={`translate(${radialPosition.x} ${radialPosition.z})`}>
@@ -1825,8 +1826,9 @@ export function SketchWorkspace({
               };
               const radialLabel = `R ${formatLength(arc.radius, workspace.accuracy)}`;
               const radialPill = dimensionPillSize(radialLabel, screenUnit, 18);
+              const radialLabelWidth = radialConstraint ? dimensionPillSize(formatDimension(radialConstraint.value / millimetersPerUnit, workspace.accuracy + Math.max(0, Math.ceil(Math.log10(millimetersPerUnit)))), screenUnit, 60).width : radialPill.width;
               return <g key={`arc-dimensions-${segment.id}`}>
-                {(radialConstraint ? showConstraintLabels : showDimensionLabels) && <SketchRadialLeader center={arc.center} label={radialPosition} radius={arc.radius} screenUnit={screenUnit} />}
+                {(radialConstraint ? showConstraintLabels : showDimensionLabels) && <SketchRadialLeader center={arc.center} label={{ x: radialPosition.x + radialLabelWidth / 2, z: radialPosition.z }} radius={arc.radius} screenUnit={screenUnit} />}
                 {radialConstraint ? showConstraintLabels ? <g transform={`translate(${radialPosition.x} ${radialPosition.z})`}>
                   <SketchDimensionInput millimetersPerUnit={millimetersPerUnit} id={radialConstraint.id} label={locale === "es" ? radialConstraint.kind === "arcDiameter" ? "Diámetro" : "Radio" : radialConstraint.kind === "arcDiameter" ? "Diameter" : "Radius"} indicator={radialConstraint.kind === "arcDiameter" ? "Ø" : "R"} value={radialConstraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} align="start" onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
                 </g> : null : showDimensionLabels ? <g pointerEvents="none" transform={`translate(${radialPosition.x} ${radialPosition.z})`}>
