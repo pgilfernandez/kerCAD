@@ -221,6 +221,31 @@ function dimensionPillSize(label: string, screenUnit: number, extra = 24) {
   };
 }
 
+function SketchFixedLengthDimension({ start, end, axis, screenUnit, labelWidth, index, children }: { start: { x: number; z: number }; end: { x: number; z: number }; axis: "aligned" | "x" | "z"; screenUnit: number; labelWidth: number; index: number; children: ReactNode }) {
+  const dx = end.x - start.x, dz = end.z - start.z;
+  const distance = Math.hypot(dx, dz);
+  if (distance < 1e-8) return null;
+  const nx = axis === "x" ? 0 : axis === "z" ? 1 : -dz / distance;
+  const nz = axis === "x" ? -1 : axis === "z" ? 0 : dx / distance;
+  const offset = (22 + index * 30) * screenUnit + Math.abs(nx) * labelWidth / 2 + Math.abs(nz) * 12 * screenUnit;
+  const base = axis === "x" ? Math.min(start.z, end.z) : Math.max(start.x, end.x);
+  const a = axis === "x" ? { x: start.x, z: base - offset } : axis === "z" ? { x: base + offset, z: start.z } : { x: start.x + nx * offset, z: start.z + nz * offset };
+  const b = axis === "x" ? { x: end.x, z: base - offset } : axis === "z" ? { x: base + offset, z: end.z } : { x: end.x + nx * offset, z: end.z + nz * offset };
+  const span = Math.hypot(b.x - a.x, b.z - a.z);
+  const ux = span > 1e-8 ? (b.x - a.x) / span : 1, uz = span > 1e-8 ? (b.z - a.z) / span : 0;
+  const arrowLength = Math.min(7 * screenUnit, span / 4), halfWidth = arrowLength * .4;
+  const head = (tip: typeof a, sign: number) => `${tip.x},${tip.z} ${tip.x + ux * arrowLength * sign - uz * halfWidth},${tip.z + uz * arrowLength * sign + ux * halfWidth} ${tip.x + ux * arrowLength * sign + uz * halfWidth},${tip.z + uz * arrowLength * sign - ux * halfWidth}`;
+  return <g>
+    <g pointerEvents="none" style={{ stroke: "#858d95", fill: "#858d95", strokeWidth: 1 }}>
+      <line x1={start.x} y1={start.z} x2={a.x + nx * 5 * screenUnit} y2={a.z + nz * 5 * screenUnit} vectorEffect="non-scaling-stroke" />
+      <line x1={end.x} y1={end.z} x2={b.x + nx * 5 * screenUnit} y2={b.z + nz * 5 * screenUnit} vectorEffect="non-scaling-stroke" />
+      <line x1={a.x} y1={a.z} x2={b.x} y2={b.z} vectorEffect="non-scaling-stroke" />
+      <polygon points={head(a, 1)} stroke="none" /><polygon points={head(b, -1)} stroke="none" />
+    </g>
+    <g transform={`translate(${(a.x + b.x) / 2} ${(a.z + b.z) / 2})`}>{children}</g>
+  </g>;
+}
+
 function SketchRadialLeader({ center, label, radius, screenUnit }: { center: { x: number; z: number }; label: { x: number; z: number }; radius: number; screenUnit: number }) {
   const distance = Math.hypot(label.x - center.x, label.z - center.z);
   if (distance < 1e-8 || radius <= 0) return null;
@@ -1658,10 +1683,11 @@ export function SketchWorkspace({
               const dimension = segmentDimension(segment, pointById);
               if (!dimension) return null;
               const constraints = (displayProfile.constraints ?? []).filter((candidate): candidate is Extract<NonNullable<SketchProfile["constraints"]>[number], { kind: "distance" }> => candidate.kind === "distance" && candidate.segmentId === segment.id);
-              if (constraints.length) return showConstraintLabels ? constraints.map((constraint, index) => (
-                <g key={`dimension-${constraint.id}`} transform={`translate(${dimension.midpoint.x} ${dimension.midpoint.z + labelOffset + index * 30 * screenUnit})`}>
+              const dimensionStart = pointById.get(segment.startId), dimensionEnd = pointById.get(segment.endId);
+              if (constraints.length) return showConstraintLabels && dimensionStart && dimensionEnd ? constraints.map((constraint, index) => (
+                <SketchFixedLengthDimension key={`dimension-${constraint.id}`} start={dimensionStart} end={dimensionEnd} axis={constraint.axis} screenUnit={screenUnit} index={index} labelWidth={dimensionPillSize(formatDimension(constraint.value / millimetersPerUnit, workspace.accuracy + Math.max(0, Math.ceil(Math.log10(millimetersPerUnit)))), screenUnit, 60).width}>
                   <SketchDimensionInput millimetersPerUnit={millimetersPerUnit} id={constraint.id} label={locale === "es" ? constraint.axis === "x" ? "Distancia X" : constraint.axis === "z" ? "Distancia Y" : "Longitud" : constraint.axis === "x" ? "X distance" : constraint.axis === "z" ? "Y distance" : "Length"} indicator={constraint.axis === "x" ? "H" : constraint.axis === "z" ? "V" : "D"} value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
-                </g>
+                </SketchFixedLengthDimension>
               )) : null;
               if (!showDimensionLabels) return null;
               const label = formatLength(dimension.length, workspace.accuracy);
