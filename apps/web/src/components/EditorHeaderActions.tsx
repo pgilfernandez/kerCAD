@@ -18,7 +18,7 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding }: {
     if (!infoOpen || !onShowLanding) return;
     const header = root.current?.closest("header");
     if (!header) return;
-    const update = () => setInfoTop(header.getBoundingClientRect().bottom + 8);
+    const update = () => setInfoTop(header.getBoundingClientRect().bottom - 6);
     update();
     const observer = new ResizeObserver(update);
     observer.observe(header);
