@@ -59,26 +59,32 @@ function drawnSketchFaces(brep: Brep, sketch: SketchFeature): Face[] {
     paths.push(path);
   }
   const loops: PlanarBrepLoop[] = [...paths.map((path) => {
-    const polygon = path.map(({ fromId }) => {
-      const point = points.get(fromId);
-      if (!point) throw new Error(`${sketch.name}: sketch contains incomplete references.`);
-      return { x: point.x, y: point.z };
-    });
+    const polygon: Array<{ x: number; y: number }> = [];
     const edges = path.map(({ segment, fromId, toId }) => {
       const from = points.get(fromId);
       const to = points.get(toId);
       if (!from || !to) throw new Error(`${sketch.name}: sketch contains incomplete references.`);
       const fromVec: [number, number, number] = [from.x, from.z, 0];
       const toVec: [number, number, number] = [to.x, to.z, 0];
+      polygon.push({ x: from.x, y: from.z });
       if (segment.kind === "arc" && segment.center) {
         const radius = Math.hypot(from.x - segment.center.x, from.z - segment.center.z);
-        const startAngle = Math.atan2(from.z - segment.center.z, from.x - segment.center.x) * 180 / Math.PI;
-        let endAngle = Math.atan2(to.z - segment.center.z, to.x - segment.center.x) * 180 / Math.PI;
+        const startAngle = Math.atan2(from.z - segment.center.z, from.x - segment.center.x);
+        let endAngle = Math.atan2(to.z - segment.center.z, to.x - segment.center.x);
         const forward = segment.startId === fromId;
         const positive = forward ? segment.clockwise !== false : segment.clockwise === false;
-        if (positive) while (endAngle <= startAngle) endAngle += 360;
-        else while (endAngle >= startAngle) endAngle -= 360;
-        return brep.unwrap(brep.ellipseArc(radius, radius, startAngle, endAngle, { at: [segment.center.x, segment.center.z, 0] })) as Edge;
+        if (positive) while (endAngle <= startAngle) endAngle += Math.PI * 2;
+        else while (endAngle >= startAngle) endAngle -= Math.PI * 2;
+        const sweep = endAngle - startAngle;
+        const atAngle = (angle: number): [number, number, number] => [segment.center!.x + Math.cos(angle) * radius, segment.center!.z + Math.sin(angle) * radius, 0];
+        // Sample only for nesting/containment classification; the actual B-Rep
+        // remains an exact trimmed circle, including clockwise and major arcs.
+        const steps = Math.max(2, Math.ceil(Math.abs(sweep) / (Math.PI / 32)));
+        for (let index = 1; index < steps; index += 1) {
+          const point = atAngle(startAngle + sweep * index / steps);
+          polygon.push({ x: point[0], y: point[1] });
+        }
+        return brep.threePointArc(fromVec, atAngle(startAngle + sweep / 2), toVec);
       }
       if (segment.kind === "line" || (!from.handleIn && !from.handleOut && !to.handleIn && !to.handleOut)) return brep.line(fromVec, toVec);
       const forward = segment.startId === fromId;
