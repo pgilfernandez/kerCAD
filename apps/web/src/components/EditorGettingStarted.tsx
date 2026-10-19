@@ -129,5 +129,5 @@ export function EditorGettingStarted({ locale, active, launchRequest = 0, onShow
     <div aria-live="polite"><h2 id="educad-getting-started-title">{card.title}</h2>{card.lines.map((line) => <p key={line}>{line}</p>)}</div>
     <footer>{step > 0 && <button type="button" onClick={() => navigate(step - 1)}>{text.previous}</button>}<button type="button" className="primary" onClick={() => step === text.cards.length - 1 ? dismiss() : navigate(step + 1)}>{step === text.cards.length - 1 ? text.finish : text.next}</button></footer>
     </div>
-  </section>, document.body);
+  </section>, document.querySelector(".educad-reference-shell") ?? document.body);
 }
