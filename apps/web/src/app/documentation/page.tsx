@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { EditorHeaderActions } from "@/components/EditorHeaderActions";
+import type { EducadLocale } from "@/lib/educadI18n";
 
 // One entry adds both the sidebar link and its documentation section.
 const sections = [
@@ -14,6 +16,14 @@ export default function DocumentationPage() {
   const [activeSection, setActiveSection] = useState(sections[0].id);
   const content = useRef<HTMLDivElement>(null);
   useEffect(() => { setSpanish(new URLSearchParams(window.location.search).get("lang") === "es"); }, []);
+  const changeLocale = (locale: EducadLocale) => {
+    setSpanish(locale === "es");
+    document.documentElement.lang = locale;
+    try { localStorage.setItem("educad.locale", locale); } catch { /* Language can still be changed without storage. */ }
+    const url = new URL(window.location.href);
+    url.searchParams.set("lang", locale);
+    window.history.replaceState(window.history.state, "", url);
+  };
   useEffect(() => {
     const root = content.current;
     if (!root) return;
@@ -37,7 +47,10 @@ export default function DocumentationPage() {
     return () => { root.removeEventListener("scroll", scroll); window.removeEventListener("resize", scroll); cancelAnimationFrame(frame); };
   }, []);
   return <main className="educad-documentation-page">
-    <header><a href="/">eduCAD</a><strong>{spanish ? "Documentación" : "Documentation"}</strong></header>
+    <header className="educad-dashboard-topbar">
+      <a className="educad-dashboard-brand" href="/"><img className="educad-dashboard-logo" src="/assets/educad/logo.svg" alt="" /><strong>eduCAD</strong></a>
+      <EditorHeaderActions locale={spanish ? "es" : "en"} onLocaleChange={changeLocale} onShowLanding={() => { window.location.href = "/?about=1"; }} />
+    </header>
     <div className="educad-documentation-layout">
       <aside className="educad-documentation-sidebar">
         <strong>{spanish ? "En esta guía" : "In this guide"}</strong>
