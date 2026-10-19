@@ -34,6 +34,9 @@ export function EditorGettingStarted({ locale, active, launchRequest = 0, onShow
   const [step, setStep] = useState(0);
   const [position, setPosition] = useState<{ left: number; top: number; arrowSide: "top" | "right" | "bottom" | "left"; arrowOffset: number } | null>(null);
   const panel = useRef<HTMLElement>(null);
+  const dragOffset = useRef({ x: 0, y: 0 });
+  const drag = useRef<{ pointerId: number; x: number; y: number; offsetX: number; offsetY: number } | null>(null);
+  const updatePosition = useRef<() => void>(() => {});
   const text = copy[locale];
   useEffect(() => {
     try { setVisible(localStorage.getItem(STORAGE_KEY) !== "true"); }
@@ -41,6 +44,7 @@ export function EditorGettingStarted({ locale, active, launchRequest = 0, onShow
   }, []);
   useEffect(() => {
     if (!launchRequest) return;
+    dragOffset.current = { x: 0, y: 0 };
     setStep(0);
     setPosition(null);
     setVisible(true);
@@ -51,6 +55,7 @@ export function EditorGettingStarted({ locale, active, launchRequest = 0, onShow
   };
   const navigate = (next: number) => {
     if (next === 2) onShowProperties();
+    dragOffset.current = { x: 0, y: 0 };
     setPosition(null);
     setStep(next);
   };
@@ -84,26 +89,43 @@ export function EditorGettingStarted({ locale, active, launchRequest = 0, onShow
         targetX = side.left + 20;
         targetY = side.top + side.height / 2;
       }
-      left = Math.max(12, Math.min(left, window.innerWidth - card.offsetWidth - 12));
-      top = Math.max(bounds.top + 8, Math.min(top, window.innerHeight - card.offsetHeight - 12));
+      left = Math.max(12, Math.min(left + dragOffset.current.x, window.innerWidth - card.offsetWidth - 12));
+      top = Math.max(bounds.top + 8, Math.min(top + dragOffset.current.y, window.innerHeight - card.offsetHeight - 12));
       const arrowSide = targetY <= top ? "top" : targetX >= left + card.offsetWidth ? "right" : targetX <= left ? "left" : targetY >= top + card.offsetHeight ? "bottom" : step === 2 ? "right" : "top";
       const horizontal = arrowSide === "top" || arrowSide === "bottom";
       const arrowOffset = Math.max(20, Math.min(horizontal ? targetX - left : targetY - top, (horizontal ? card.offsetWidth : card.offsetHeight) - 20));
       setPosition((previous) => previous?.left === left && previous.top === top && previous.arrowSide === arrowSide && previous.arrowOffset === arrowOffset ? previous : { left, top, arrowSide, arrowOffset });
     };
+    updatePosition.current = update;
     update();
     const observer = new ResizeObserver(update);
     for (const element of [stage, sidebar, anchor, panel.current]) if (element) observer.observe(element);
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
-    return () => { observer.disconnect(); window.removeEventListener("resize", update); window.removeEventListener("scroll", update, true); };
+    return () => { updatePosition.current = () => {}; observer.disconnect(); window.removeEventListener("resize", update); window.removeEventListener("scroll", update, true); };
   }, [active, visible, step, locale]);
   if (!active || !visible) return null;
   const card = text.cards[step];
   return createPortal(<section ref={panel} className="educad-getting-started" role="dialog" aria-modal="false" aria-labelledby="educad-getting-started-title" style={{ left: position?.left ?? 12, top: position?.top ?? 12, visibility: position ? "visible" : "hidden" }}>
     {position && <svg className={`educad-getting-started-pointer ${position.arrowSide}`} style={position.arrowSide === "top" || position.arrowSide === "bottom" ? { left: position.arrowOffset - 10 } : { top: position.arrowOffset - 10 }} width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M0 10 10 0 20 10" fill="white" stroke="#9ac2f4" strokeWidth="1" /></svg>}
     <div className="educad-getting-started-content">
-    <header><span className="educad-getting-started-count">{step + 1}/{text.cards.length}</span><button type="button" className="educad-getting-started-close" title={text.close} aria-label={text.close} onClick={dismiss}><X size={18} /></button></header>
+    <header title={locale === "es" ? "Arrastra para mover esta tarjeta" : "Drag to move this card"}
+      onPointerDown={(event) => {
+        if (event.button !== 0 || (event.target as HTMLElement).closest("button")) return;
+        event.preventDefault();
+        event.currentTarget.setPointerCapture(event.pointerId);
+        drag.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, offsetX: dragOffset.current.x, offsetY: dragOffset.current.y };
+      }}
+      onPointerMove={(event) => {
+        const current = drag.current;
+        if (!current || current.pointerId !== event.pointerId) return;
+        dragOffset.current = { x: current.offsetX + event.clientX - current.x, y: current.offsetY + event.clientY - current.y };
+        updatePosition.current();
+      }}
+      onPointerUp={(event) => { drag.current = null; if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); }}
+      onPointerCancel={() => { drag.current = null; }}
+      onLostPointerCapture={() => { drag.current = null; }}
+    ><span className="educad-getting-started-count">{step + 1}/{text.cards.length}</span><button type="button" className="educad-getting-started-close" title={text.close} aria-label={text.close} onClick={dismiss}><X size={18} /></button></header>
     <div aria-live="polite"><h2 id="educad-getting-started-title">{card.title}</h2>{card.lines.map((line) => <p key={line}>{line}</p>)}</div>
     <footer>{step > 0 && <button type="button" onClick={() => navigate(step - 1)}>{text.previous}</button>}<button type="button" className="primary" onClick={() => step === text.cards.length - 1 ? dismiss() : navigate(step + 1)}>{step === text.cards.length - 1 ? text.finish : text.next}</button></footer>
     </div>
