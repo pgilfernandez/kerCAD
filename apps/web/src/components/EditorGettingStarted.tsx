@@ -10,7 +10,7 @@ const copy = {
   en: {
     close: "Close and do not show again", previous: "Previous", next: "Next", finish: "Finish",
     cards: [
-      { title: "Move around in 3D", lines: ["Orbit: drag with the right mouse button, or move two fingers on a trackpad.", "Pan: drag with the middle mouse button, or hold Shift while moving two fingers.", "Zoom: use the mouse wheel or pinch on a trackpad. Zoom follows the pointer."] },
+      { title: "Move around in 3D", lines: ["Orbit: right-drag or move two fingers on a trackpad.", "Pan: middle-drag or Shift + two fingers.", "Zoom: mouse wheel or pinch."] },
       { title: "Create simple shapes", lines: ["Open Create to add a box, cylinder, sphere or another simple shape. You can also create a sketch here.", "Select a shape to edit its dimensions and position."] },
       { title: "Edit properties", lines: ["This panel lists your objects and their operations. Select an entry to see its properties.", "Change dimensions, color and transformations here. You can also use the handles directly in the 3D view."] },
       { title: "Modify your model", lines: ["Use Modify to chamfer or round edges, extrude a face, revolve a profile or hollow out a solid.", "Choose a tool and follow its selection instructions. Each change becomes an editable operation in the panel."] },
@@ -20,7 +20,7 @@ const copy = {
   es: {
     close: "Cerrar y no volver a mostrar", previous: "Anterior", next: "Siguiente", finish: "Terminar",
     cards: [
-      { title: "Muévete por la vista 3D", lines: ["Órbita: arrastra con el botón derecho del ratón o mueve dos dedos en el trackpad.", "Paneo: arrastra con el botón central del ratón o mantén Mayús mientras mueves dos dedos.", "Zoom: usa la rueda del ratón o pellizca en el trackpad. El zoom sigue al puntero."] },
+      { title: "Muévete por la vista 3D", lines: ["Órbita: arrastra con el botón derecho o mueve dos dedos en el trackpad.", "Pan: arrastra con el botón central o Mayús + dos dedos.", "Zoom: rueda del ratón o pellizco."] },
       { title: "Crea formas simples", lines: ["Abre Crear para añadir una caja, un cilindro, una esfera u otra forma simple. Aquí también puedes crear un boceto.", "Selecciona una forma para editar sus dimensiones y posición."] },
       { title: "Edita las propiedades", lines: ["Este panel muestra los objetos y sus operaciones. Selecciona una entrada para ver sus propiedades.", "Cambia aquí las dimensiones, el color y las transformaciones. También puedes usar los manipuladores de la vista 3D."] },
       { title: "Modifica tu modelo", lines: ["Usa Modificar para achaflanar o redondear aristas, extruir una cara, revolucionar un perfil o vaciar un sólido.", "Elige una herramienta y sigue sus indicaciones de selección. Cada cambio queda como una operación editable en el panel."] },
@@ -126,7 +126,7 @@ export function EditorGettingStarted({ locale, active, launchRequest = 0, onShow
       onPointerCancel={() => { drag.current = null; }}
       onLostPointerCapture={() => { drag.current = null; }}
     ><span className="educad-getting-started-count">{step + 1}/{text.cards.length}</span><button type="button" className="educad-getting-started-close" title={text.close} aria-label={text.close} onClick={dismiss}><X size={18} /></button></header>
-    <div aria-live="polite"><h2 id="educad-getting-started-title">{card.title}</h2>{card.lines.map((line) => <p key={line}>{line}</p>)}</div>
+    <div aria-live="polite"><h2 id="educad-getting-started-title">{card.title}</h2>{card.lines.map((line) => <p key={line}>{step === 0 ? <><strong>{line.slice(0, line.indexOf(":"))}</strong>{line.slice(line.indexOf(":"))}</> : line}</p>)}</div>
     <footer>{step > 0 && <button type="button" onClick={() => navigate(step - 1)}>{text.previous}</button>}<button type="button" className="primary" onClick={() => step === text.cards.length - 1 ? dismiss() : navigate(step + 1)}>{step === text.cards.length - 1 ? text.finish : text.next}</button></footer>
     </div>
   </section>, document.querySelector(".educad-reference-shell") ?? document.body);
