@@ -6,6 +6,31 @@ import { X } from "lucide-react";
 import type { EducadLocale } from "@/lib/educadI18n";
 
 const STORAGE_KEY = "educad.getting-started.v1.dismissed";
+const SKETCH_STORAGE_KEY = "educad.sketch-getting-started.v1.dismissed";
+
+export function resetStartupTutorials() {
+  try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(SKETCH_STORAGE_KEY); }
+  catch { /* The mounted tutorials can still be relaunched without storage. */ }
+}
+
+const sketchCards = {
+  en: [
+    { title: "Draw your sketch", lines: ["Use Draw to create lines, curves, rectangles, circles, slots and polygons.", "Buttons with a corner triangle open a group of tools. Close a contour to use it in a 3D operation."] },
+    { title: "Add constraints", lines: ["Select points or edges, then use this panel to apply constraints or dimensions.", "Horizontal, vertical, tangent and other relations preserve your design intent while you edit."] },
+    { title: "Edit your paths", lines: ["Use Edit to add or connect nodes, merge endpoints, trim geometry or smooth a path.", "Select the geometry you want to change before choosing the tool."] },
+    { title: "Import an SVG", lines: ["Import an SVG drawing from your computer to bring vector paths into this sketch.", "You can then edit the imported geometry and add constraints."] },
+    { title: "Explain with annotations", lines: ["Add text, dimensions, angles and circles without creating sketch geometry.", "These annotations are useful for teachers and exercise corrections. They stay in the sketch and do not appear in the 3D view."] },
+    { title: "Keep the view clear", lines: ["These three buttons independently show or hide length labels, annotations and constraint labels.", "Hide what you do not need while drawing. Your visibility preferences are remembered."] },
+  ],
+  es: [
+    { title: "Dibuja tu boceto", lines: ["Usa Dibujar para crear líneas, curvas, rectángulos, círculos, ranuras y polígonos.", "Los botones con un triángulo en la esquina abren un grupo de herramientas. Cierra un contorno para usarlo en una operación 3D."] },
+    { title: "Añade restricciones", lines: ["Selecciona puntos o aristas y usa este panel para aplicar restricciones o cotas.", "Las relaciones de horizontalidad, verticalidad, tangencia y otras mantienen la intención del diseño mientras lo editas."] },
+    { title: "Edita los trazados", lines: ["Usa Editar para añadir o conectar nodos, fusionar extremos, recortar geometría o suavizar un trazado.", "Selecciona la geometría que quieras modificar antes de elegir la herramienta."] },
+    { title: "Importa un SVG", lines: ["Importa un dibujo SVG desde tu ordenador para incorporar trazados vectoriales al boceto.", "Después podrás editar la geometría importada y añadir restricciones."] },
+    { title: "Explica con anotaciones", lines: ["Añade textos, dimensiones, ángulos y círculos sin crear geometría del boceto.", "Son útiles para profesores y para corregir ejercicios. Estas anotaciones se quedan en el boceto y no aparecen en la vista 3D."] },
+    { title: "Despeja la vista", lines: ["Estos tres botones muestran u ocultan, de forma independiente, las etiquetas de longitud, las anotaciones y las etiquetas de restricciones.", "Oculta lo que no necesites mientras dibujas. Se recuerdan tus preferencias de visibilidad."] },
+  ],
+};
 const copy = {
   en: {
     close: "Close and do not show again", previous: "Previous", next: "Next", finish: "Finish",
@@ -29,7 +54,7 @@ const copy = {
   },
 };
 
-export function EditorGettingStarted({ locale, active, launchRequest = 0, onShowProperties }: { locale: EducadLocale; active: boolean; launchRequest?: number; onShowProperties: () => void }) {
+export function EditorGettingStarted({ locale, active, mode = "3d", launchRequest = 0, onShowProperties }: { locale: EducadLocale; active: boolean; mode?: "3d" | "sketch"; launchRequest?: number; onShowProperties?: () => void }) {
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState(0);
   const [position, setPosition] = useState<{ left: number; top: number; arrowSide: "top" | "right" | "bottom" | "left"; arrowOffset: number } | null>(null);
@@ -37,11 +62,12 @@ export function EditorGettingStarted({ locale, active, launchRequest = 0, onShow
   const dragOffset = useRef({ x: 0, y: 0 });
   const drag = useRef<{ pointerId: number; x: number; y: number; offsetX: number; offsetY: number } | null>(null);
   const updatePosition = useRef<() => void>(() => {});
-  const text = copy[locale];
+  const text = { ...copy[locale], cards: mode === "sketch" ? sketchCards[locale] : copy[locale].cards };
+  const storageKey = mode === "sketch" ? SKETCH_STORAGE_KEY : STORAGE_KEY;
   useEffect(() => {
-    try { setVisible(localStorage.getItem(STORAGE_KEY) !== "true"); }
+    try { setVisible(localStorage.getItem(storageKey) !== "true"); }
     catch { setVisible(true); }
-  }, []);
+  }, [storageKey]);
   useEffect(() => {
     if (!launchRequest) return;
     dragOffset.current = { x: 0, y: 0 };
@@ -51,10 +77,10 @@ export function EditorGettingStarted({ locale, active, launchRequest = 0, onShow
   }, [launchRequest]);
   const dismiss = () => {
     setVisible(false);
-    try { localStorage.setItem(STORAGE_KEY, "true"); } catch { /* Storage may be unavailable. */ }
+    try { localStorage.setItem(storageKey, "true"); } catch { /* Storage may be unavailable. */ }
   };
   const navigate = (next: number) => {
-    if (next === 2) onShowProperties();
+    if (mode === "3d" && next === 2) onShowProperties?.();
     dragOffset.current = { x: 0, y: 0 };
     setPosition(null);
     setStep(next);
@@ -63,10 +89,12 @@ export function EditorGettingStarted({ locale, active, launchRequest = 0, onShow
     if (!visible || !active) return;
     const stage = document.querySelector(".educad-workplane-stage");
     const sidebar = document.querySelector(".educad-model-sidebar");
-    const anchor = step === 1 ? document.querySelector(".toolbar-shapes-section")
+    const sketchAnchors = [".sketch-draw-section", ".educad-sketch-constraints-panel", ".sketch-edit-section", ".sketch-import-section", ".sketch-annotations-section", '[data-tutorial="sketch-visibility"]'];
+    const sideAnchor = mode === "sketch" && (step === 1 || step === 5);
+    const anchor = mode === "sketch" ? document.querySelector(sketchAnchors[step]) : step === 1 ? document.querySelector(".toolbar-shapes-section")
       : step === 3 ? document.querySelector(".toolbar-modify-section")
       : step === 4 ? document.querySelector(".toolbar-annotations-section") : null;
-    if (anchor) anchor.scrollIntoView({ block: "nearest", inline: "nearest" });
+    if (anchor && !sideAnchor) anchor.scrollIntoView({ block: "nearest", inline: "nearest" });
     const update = () => {
       const card = panel.current;
       if (!card || !stage) return;
@@ -83,7 +111,12 @@ export function EditorGettingStarted({ locale, active, launchRequest = 0, onShow
         top = target.bottom + 10;
         targetX = target.left + target.width / 2;
         targetY = target.bottom;
-      } else if (step === 2 && side) {
+        if (sideAnchor) {
+          left = step === 1 ? target.left - card.offsetWidth - 12 : target.right + 12;
+          top = target.top + (target.height - card.offsetHeight) / 2;
+          targetY = target.top + target.height / 2;
+        }
+      } else if (mode === "3d" && step === 2 && side) {
         left = side.left - card.offsetWidth - 12;
         top = side.top + (side.height - card.offsetHeight) / 2;
         targetX = side.left + 20;
@@ -103,10 +136,10 @@ export function EditorGettingStarted({ locale, active, launchRequest = 0, onShow
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
     return () => { updatePosition.current = () => {}; observer.disconnect(); window.removeEventListener("resize", update); window.removeEventListener("scroll", update, true); };
-  }, [active, visible, step, locale]);
+  }, [active, visible, step, locale, mode]);
   if (!active || !visible) return null;
   const card = text.cards[step];
-  return createPortal(<section ref={panel} className="educad-getting-started" role="dialog" aria-modal="false" aria-labelledby="educad-getting-started-title" style={{ left: position?.left ?? 12, top: position?.top ?? 12, visibility: position ? "visible" : "hidden" }}>
+  return createPortal(<section ref={panel} className="educad-getting-started" role="dialog" aria-modal="false" aria-labelledby={`educad-getting-started-title-${mode}`} style={{ left: position?.left ?? 12, top: position?.top ?? 12, visibility: position ? "visible" : "hidden" }}>
     {position && <svg className={`educad-getting-started-pointer ${position.arrowSide}`} style={position.arrowSide === "top" || position.arrowSide === "bottom" ? { left: position.arrowOffset - 10 } : { top: position.arrowOffset - 10 }} width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M0 10 10 0 20 10" fill="white" stroke="#9ac2f4" strokeWidth="1" /></svg>}
     <div className="educad-getting-started-content">
     <header title={locale === "es" ? "Arrastra para mover esta tarjeta" : "Drag to move this card"}
@@ -126,10 +159,10 @@ export function EditorGettingStarted({ locale, active, launchRequest = 0, onShow
       onPointerCancel={() => { drag.current = null; }}
       onLostPointerCapture={() => { drag.current = null; }}
     ><span className="educad-getting-started-count">{step + 1}/{text.cards.length}</span><button type="button" className="educad-getting-started-close" title={text.close} aria-label={text.close} onClick={dismiss}><X size={18} /></button></header>
-    <div aria-live="polite"><h2 id="educad-getting-started-title">{card.title}</h2>{card.lines.map((line) => {
+    <div aria-live="polite"><h2 id={`educad-getting-started-title-${mode}`}>{card.title}</h2>{card.lines.map((line) => {
       const emphasis = locale === "es" ? "profesores" : "teachers";
-      const emphasisIndex = step === text.cards.length - 1 ? line.indexOf(emphasis) : -1;
-      return <p key={line}>{step === 0 ? <><strong>{line.slice(0, line.indexOf(":"))}</strong>{line.slice(line.indexOf(":"))}</> : emphasisIndex >= 0 ? <>{line.slice(0, emphasisIndex)}<strong>{emphasis}</strong>{line.slice(emphasisIndex + emphasis.length)}</> : line}</p>;
+      const emphasisIndex = line.indexOf(emphasis);
+      return <p key={line}>{mode === "3d" && step === 0 ? <><strong>{line.slice(0, line.indexOf(":"))}</strong>{line.slice(line.indexOf(":"))}</> : emphasisIndex >= 0 ? <>{line.slice(0, emphasisIndex)}<strong>{emphasis}</strong>{line.slice(emphasisIndex + emphasis.length)}</> : line}</p>;
     })}</div>
     <footer>{step > 0 && <button type="button" onClick={() => navigate(step - 1)}>{text.previous}</button>}<button type="button" className="primary" onClick={() => step === text.cards.length - 1 ? dismiss() : navigate(step + 1)}>{step === text.cards.length - 1 ? text.finish : text.next}</button></footer>
     </div>

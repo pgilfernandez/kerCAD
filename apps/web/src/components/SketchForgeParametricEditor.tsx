@@ -11,7 +11,7 @@ import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection 
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyEdgePick, type TopologyFacePick, type ViewportDisplayMode, type ViewportShadingMode } from "@/components/ParametricViewport";
 import { SketchWorkspace, type SketchMeasurement, type SketchSceneReference, type SketchSelection, type SketchTool } from "@/components/SketchWorkspace";
 import { SketchToolMenu } from "@/components/SketchToolMenu";
-import { EditorGettingStarted } from "@/components/EditorGettingStarted";
+import { EditorGettingStarted, resetStartupTutorials } from "@/components/EditorGettingStarted";
 import { nextAnnotationName } from "@/lib/annotationNames";
 import { SECTION_PLANE_ID, type VisualSection } from "@/lib/visualSection";
 import type { CaptureCrop } from "@/lib/viewportCapture";
@@ -3457,9 +3457,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   return (
     <main className={`educad-reference-shell sidebar-${modelSidebarMode} ${sketchSession && compactSketchToolbar ? "sketch-toolbar-compact" : ""}`}>
       {hydrated && <EditorGettingStarted locale={locale} active={!sketchSession && !challengeEditor} launchRequest={tutorialLaunchRequest} onShowProperties={() => setModelSidebarMode("normal")} />}
+      {hydrated && <EditorGettingStarted locale={locale} mode="sketch" active={Boolean(sketchSession) && !challengeEditor} launchRequest={tutorialLaunchRequest} />}
       <div className="secondary-toolbar">
         <div className="toolbar-workspace-tabs educad-toolbar-titlebar">
-          <EditorHeaderActions locale={locale} onLocaleChange={setLocale} onLaunchTutorial={!sketchSession && !challengeEditor ? () => setTutorialLaunchRequest((request) => request + 1) : undefined} />
+          <EditorHeaderActions locale={locale} onLocaleChange={setLocale} onLaunchTutorial={!challengeEditor ? () => { resetStartupTutorials(); setTutorialLaunchRequest((request) => request + 1); } : undefined} />
           {sketchSession ? <div className="educad-sketch-header-actions"><button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={acceptSketch}><ChevronLeft size={20} aria-hidden="true" />{t("sketch.accept")}</button><button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={cancelSketch}>{t("common.cancel")}</button></div> : onExitToProjects ? <button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={() => onExitToProjects(latestDocumentRef.current)} title={locale === "es" ? "Volver a proyectos" : "Back to projects"}><ChevronLeft size={20} aria-hidden="true" />{locale === "es" ? "Proyectos" : "Projects"}</button> : null}
           <span className="educad-project-name"><img src="/assets/educad/logo.svg" alt="eduCAD" /><strong>eduCAD</strong><span aria-hidden="true">-</span><button type="button" className="educad-project-rename-trigger" onClick={openProjectRename} title={locale === "es" ? "Cambiar nombre del proyecto" : "Rename project"}>{document.name}</button>{sketchSession ? <strong className="educad-sketcher-badge">SKETCHER</strong> : null}</span>
         </div>
@@ -3477,7 +3478,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           <ToolbarSection label={t("sketch.select")}>
             <Tool label={t("sketch.select")} active={sketchTool === "select"} onClick={() => chooseSketchTool("select")}><SketchToolbarIcon file="select" /></Tool>
           </ToolbarSection>
-          <ToolbarSection label={t("sketch.draw")}>
+          <ToolbarSection label={t("sketch.draw")} className="sketch-draw-section">
             <Tool label={t("sketch.line")} active={sketchTool === "line"} onClick={() => chooseSketchTool("line")}><SketchToolbarIcon file="line" /></Tool>
             <SketchToolMenu initialTool="rectangle" activeTool={sketchTool} onChoose={chooseSketchTool} options={[
               { tool: "rectangle", label: t("sketch.rectangle"), icon: "rectangle" },
@@ -3506,7 +3507,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("sketch.smooth")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("smooth")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "smooth")}><SketchToolbarIcon file="smooth-point" /></Tool>
             <Tool label={t("sketch.splitHandles")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("split")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "split")}><SketchToolbarIcon file="split-handles" /></Tool>
           </ToolbarSection>
-          <ToolbarSection label={t("sketch.edit")}>
+          <ToolbarSection label={t("sketch.edit")} className="sketch-edit-section">
             <Tool label={locale === "es" ? "Suavizar trazado" : "Smooth path"} enabled={Boolean(sketchCopyableSelection?.segments.length)} active={Boolean(sketchSmoothingSource)} onClick={() => {
               if (!sketchCopyableSelection || !sketchSession) return;
               const source = sketchCopyableSelection;
@@ -3524,12 +3525,12 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("sketch.mergePoints")} enabled={mergeableSketchPointIds.length === 2} onClick={mergeSelectedSketchPoints}><SketchToolbarIcon file="merge-points" /></Tool>
             <Tool label={t("sketch.trim")} active={sketchTool === "trim"} onClick={() => chooseSketchTool("trim")}><SketchToolbarIcon file="trim" /></Tool>
           </ToolbarSection>
-          <ToolbarSection label={t("annotation.group")}>
+          <ToolbarSection label={t("annotation.group")} className="sketch-annotations-section">
             <SketchToolMenu initialTool="dimension" activeTool={sketchAnnotationTool} renderIcon={(option) => <AnnotationIcon kind={option.tool} />} options={(["dimension", "arrow", "dashedLine"] as const).map((tool) => ({ tool, label: t(`annotation.${tool}`), icon: tool }))} onChoose={(kind) => { chooseSketchTool("select"); setSketchAnnotationTool(sketchAnnotationTool === kind ? null : kind); }} />
             {(["angle", "circle"] as const).map((kind) => <Tool key={kind} label={`${t("annotation.group")}: ${t(`annotation.${kind}`)}`} active={sketchAnnotationTool === kind} onClick={() => { chooseSketchTool("select"); setSketchAnnotationTool(sketchAnnotationTool === kind ? null : kind); }}><AnnotationIcon kind={kind} /></Tool>)}
             <Tool label={t("annotation.text")} active={sketchAnnotationTool === "text"} onClick={() => { chooseSketchTool("select"); setSketchAnnotationTool(sketchAnnotationTool === "text" ? null : "text"); }}><AnnotationIcon kind="text" /></Tool>
           </ToolbarSection>
-          <ToolbarSection label={t("sketch.import")}>
+          <ToolbarSection label={t("sketch.import")} className="sketch-import-section">
             <Tool label={t("sketch.importSvg")} onClick={() => sketchSvgImportRef.current?.click()}><SketchToolbarIcon file="import-svg" /></Tool>
           </ToolbarSection>
           <div className="toolbar-spacer" />
