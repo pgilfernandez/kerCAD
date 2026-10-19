@@ -126,7 +126,11 @@ export function EditorGettingStarted({ locale, active, launchRequest = 0, onShow
       onPointerCancel={() => { drag.current = null; }}
       onLostPointerCapture={() => { drag.current = null; }}
     ><span className="educad-getting-started-count">{step + 1}/{text.cards.length}</span><button type="button" className="educad-getting-started-close" title={text.close} aria-label={text.close} onClick={dismiss}><X size={18} /></button></header>
-    <div aria-live="polite"><h2 id="educad-getting-started-title">{card.title}</h2>{card.lines.map((line) => <p key={line}>{step === 0 ? <><strong>{line.slice(0, line.indexOf(":"))}</strong>{line.slice(line.indexOf(":"))}</> : line}</p>)}</div>
+    <div aria-live="polite"><h2 id="educad-getting-started-title">{card.title}</h2>{card.lines.map((line) => {
+      const emphasis = locale === "es" ? "profesores" : "teachers";
+      const emphasisIndex = step === text.cards.length - 1 ? line.indexOf(emphasis) : -1;
+      return <p key={line}>{step === 0 ? <><strong>{line.slice(0, line.indexOf(":"))}</strong>{line.slice(line.indexOf(":"))}</> : emphasisIndex >= 0 ? <>{line.slice(0, emphasisIndex)}<strong>{emphasis}</strong>{line.slice(emphasisIndex + emphasis.length)}</> : line}</p>;
+    })}</div>
     <footer>{step > 0 && <button type="button" onClick={() => navigate(step - 1)}>{text.previous}</button>}<button type="button" className="primary" onClick={() => step === text.cards.length - 1 ? dismiss() : navigate(step + 1)}>{step === text.cards.length - 1 ? text.finish : text.next}</button></footer>
     </div>
   </section>, document.querySelector(".educad-reference-shell") ?? document.body);
