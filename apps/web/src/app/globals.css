@@ -3722,7 +3722,8 @@ button {
 .educad-getting-started button { cursor: pointer; font: inherit; font-size: 13px; }
 .educad-getting-started-close { display: grid; place-items: center; width: 28px; height: 28px; padding: 4px; border: 0; border-radius: 5px; background: transparent; color: #617382; }
 .educad-getting-started-close:hover { color: #1269eb; background: #eaf3ff; }
-.educad-getting-started footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.educad-getting-started footer { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
+.educad-getting-started footer button.primary { grid-column: 2; }
 .educad-getting-started footer button { padding: 7px 12px; border: 1px solid #c5d6df; border-radius: 6px; color: #173b5a; background: #fff; }
 .educad-getting-started footer button:hover { background: #edf5ff; }
 .educad-getting-started footer button.primary { color: #fff; background: #1269eb; border-color: #1269eb; }
