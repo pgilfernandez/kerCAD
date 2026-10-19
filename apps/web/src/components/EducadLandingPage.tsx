@@ -20,8 +20,8 @@ const features = [
 
 export function EducadLandingPage({ projectCount, preview, onStart, onOpenChallenges }: Props) {
   return <main className="educad-landing" lang="es">
-    <header className="educad-landing-nav">
-      <a className="educad-landing-brand" href="#top" aria-label="eduCAD, inicio"><img src="/assets/educad/logo.svg" alt="" /><span>eduCAD</span></a>
+    <header className="educad-landing-nav educad-dashboard-topbar">
+      <a className="educad-dashboard-brand" href="#top" aria-label="eduCAD, inicio"><img className="educad-dashboard-logo" src="/assets/educad/logo.svg" alt="" /><strong>eduCAD</strong></a>
       <nav aria-label="Navegación principal"><a href="#features">Qué puedes hacer</a><a href="#challenges">Retos para el aula</a><a href="#workflow">Cómo empezar</a></nav>
       <button type="button" onClick={onStart}>{projectCount ? "Mis proyectos" : "Empezar"}<ArrowRight size={18} /></button>
     </header>

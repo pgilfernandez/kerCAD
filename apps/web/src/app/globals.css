@@ -10309,6 +10309,9 @@ html[data-theme="dark"] .grid-settings {
 .educad-landing { width: 100%; height: 100dvh; overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain; color: #17364e; background: #f7fafc; font-family: Inter, ui-sans-serif, system-ui, sans-serif; scroll-behavior: smooth; }
 .educad-landing button, .educad-landing a { font: inherit; }
 .educad-landing-nav { position: sticky; z-index: 30; top: 0; height: 74px; padding: 0 clamp(22px, 5vw, 76px); display: flex; align-items: center; gap: 34px; color: #fff; background: rgba(18,105,235,.96); box-shadow: 0 4px 20px rgba(18,63,121,.14); backdrop-filter: blur(12px); }
+.educad-landing-nav.educad-dashboard-topbar { box-sizing: border-box; width: 100%; height: 86px; padding: 0 28px; gap: 26px; background: #1269eb; }
+.educad-landing-nav .educad-dashboard-brand { color: white; text-decoration: none; flex-shrink: 0; }
+@media (max-width: 620px) { .educad-landing-nav.educad-dashboard-topbar { height: auto; min-height: 76px; padding: 12px 14px; gap: 12px; } }
 .educad-landing-brand { display: inline-flex; align-items: center; gap: 11px; color: inherit; text-decoration: none; font-size: 22px; font-weight: 850; }
 .educad-landing-brand img { width: 40px; height: 40px; object-fit: contain; }
 .educad-landing-nav nav { display: flex; gap: 28px; margin: 0 auto; }
