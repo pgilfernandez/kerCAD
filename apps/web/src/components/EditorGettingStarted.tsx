@@ -14,6 +14,7 @@ const copy = {
       { title: "Create simple shapes", lines: ["Open Create to add a box, cylinder, sphere or another simple shape. You can also create a sketch here.", "Select a shape to edit its dimensions and position."] },
       { title: "Edit properties", lines: ["This panel lists your objects and their operations. Select an entry to see its properties.", "Change dimensions, color and transformations here. You can also use the handles directly in the 3D view."] },
       { title: "Modify your model", lines: ["Use Modify to chamfer or round edges, extrude a face, revolve a profile or hollow out a solid.", "Choose a tool and follow its selection instructions. Each change becomes an editable operation in the panel."] },
+      { title: "Explain with annotations", lines: ["Add text, dimensions, angles and circles to explain your design without changing its geometry.", "Annotations are especially useful for teachers: highlight details, give feedback and correct students’ exercises directly on the model."] },
     ],
   },
   es: {
@@ -23,6 +24,7 @@ const copy = {
       { title: "Crea formas simples", lines: ["Abre Crear para añadir una caja, un cilindro, una esfera u otra forma simple. Aquí también puedes crear un boceto.", "Selecciona una forma para editar sus dimensiones y posición."] },
       { title: "Edita las propiedades", lines: ["Este panel muestra los objetos y sus operaciones. Selecciona una entrada para ver sus propiedades.", "Cambia aquí las dimensiones, el color y las transformaciones. También puedes usar los manipuladores de la vista 3D."] },
       { title: "Modifica tu modelo", lines: ["Usa Modificar para achaflanar o redondear aristas, extruir una cara, revolucionar un perfil o vaciar un sólido.", "Elige una herramienta y sigue sus indicaciones de selección. Cada cambio queda como una operación editable en el panel."] },
+      { title: "Explica con anotaciones", lines: ["Añade textos, dimensiones, ángulos y círculos para explicar tu diseño sin modificar su geometría.", "Las anotaciones son especialmente útiles para profesores: permiten destacar detalles, dar indicaciones y corregir ejercicios del alumnado directamente sobre el modelo."] },
     ],
   },
 };
@@ -57,7 +59,8 @@ export function EditorGettingStarted({ locale, active, launchRequest = 0, onShow
     const stage = document.querySelector(".educad-workplane-stage");
     const sidebar = document.querySelector(".educad-model-sidebar");
     const anchor = step === 1 ? document.querySelector(".toolbar-shapes-section")
-      : step === 3 ? document.querySelector(".toolbar-modify-section") : null;
+      : step === 3 ? document.querySelector(".toolbar-modify-section")
+      : step === 4 ? document.querySelector(".toolbar-annotations-section") : null;
     if (anchor) anchor.scrollIntoView({ block: "nearest", inline: "nearest" });
     const update = () => {
       const card = panel.current;

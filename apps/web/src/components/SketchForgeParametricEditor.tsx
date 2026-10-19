@@ -3602,7 +3602,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
                 </div> : null}
               </div>
             </ToolbarSection>
-            <ToolbarSection label={t("annotation.group")}>
+            <ToolbarSection label={t("annotation.group")} className="toolbar-annotations-section">
               <SketchToolMenu initialTool="dimension" activeTool={annotationTool} renderIcon={(option) => <AnnotationIcon kind={option.tool} />} options={(["dimension", "arrow", "dashedLine"] as const).map((tool) => ({ tool, label: t(`annotation.${tool}`), icon: tool }))} onChoose={chooseAnnotationTool} />
               {(["angle", "circle"] as const).map((kind) => <Tool key={kind} label={t(`annotation.${kind}`)} active={annotationTool === kind} onClick={() => chooseAnnotationTool(kind)}><AnnotationIcon kind={kind} /></Tool>)}
               <Tool label={t("annotation.text")} active={annotationTool === "text"} onClick={() => chooseAnnotationTool("text")}><AnnotationIcon kind="text" /></Tool>
