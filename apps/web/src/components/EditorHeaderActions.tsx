@@ -6,7 +6,7 @@ import { version, license } from "../../../../package.json";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { educadTranslate, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
 
-export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onLaunchTutorial }: { locale: EducadLocale; onLocaleChange: (locale: EducadLocale) => void; onShowLanding?: () => void; onLaunchTutorial?: () => void }) {
+export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onLaunchTutorial, showDocumentation = true }: { locale: EducadLocale; onLocaleChange: (locale: EducadLocale) => void; onShowLanding?: () => void; onLaunchTutorial?: () => void; showDocumentation?: boolean }) {
   const t = (key: EducadTranslationKey) => educadTranslate(locale, key);
   const [open, setOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -44,7 +44,7 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onL
   return <div ref={root} className={`educad-header-actions${onShowLanding ? " dashboard-header-actions" : ""}`}>
     {onShowLanding && <>
       <button type="button" aria-label={t("about.projectOverview")} title={t("about.projectOverview")} onClick={onShowLanding}><HeaderToolbarIcon file="project-overview" /><span>{t("about.projectOverview")}</span></button>
-      <a href={`/documentation?lang=${locale}`} target="_blank" rel="noopener noreferrer" title={t("about.documentation")}><HeaderToolbarIcon file="documentation" /><span>{locale === "es" ? "Documentación" : "Documentation"}</span></a>
+      {showDocumentation && <a href={`/documentation?lang=${locale}`} target="_blank" rel="noopener noreferrer" title={t("about.documentation")}><HeaderToolbarIcon file="documentation" /><span>{locale === "es" ? "Documentación" : "Documentation"}</span></a>}
     </>}
     <button ref={infoTriggerRef} type="button" aria-label={t("about.label")} title={t("about.title")} aria-expanded={infoOpen} aria-controls="educad-about-panel" onClick={() => { setOpen(false); setInfoOpen((value) => !value); }}><HeaderToolbarIcon file="information" />{onShowLanding && <span>{t("about.title")}</span>}</button>
     <button type="button" aria-label={t("settings.language")} title={t("settings.language")} aria-expanded={open} aria-controls="educad-header-language-menu" onClick={() => { setInfoOpen(false); setOpen((value) => !value); }}><HeaderToolbarIcon file="language" /></button>

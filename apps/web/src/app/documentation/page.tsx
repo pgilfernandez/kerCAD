@@ -49,7 +49,8 @@ export default function DocumentationPage() {
   return <main className="educad-documentation-page">
     <header className="educad-dashboard-topbar">
       <a className="educad-dashboard-brand" href="/"><img className="educad-dashboard-logo" src="/assets/educad/logo.svg" alt="" /><strong>eduCAD</strong></a>
-      <EditorHeaderActions locale={spanish ? "es" : "en"} onLocaleChange={changeLocale} onShowLanding={() => { window.location.href = "/?about=1"; }} />
+      <strong className="educad-documentation-header-title">{spanish ? "Documentación" : "Documentation"}</strong>
+      <EditorHeaderActions locale={spanish ? "es" : "en"} onLocaleChange={changeLocale} onShowLanding={() => { window.location.href = "/?about=1"; }} showDocumentation={false} />
     </header>
     <div className="educad-documentation-layout">
       <aside className="educad-documentation-sidebar">
