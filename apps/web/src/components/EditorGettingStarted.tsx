@@ -27,7 +27,7 @@ const copy = {
   },
 };
 
-export function EditorGettingStarted({ locale, active, onShowProperties }: { locale: EducadLocale; active: boolean; onShowProperties: () => void }) {
+export function EditorGettingStarted({ locale, active, launchRequest = 0, onShowProperties }: { locale: EducadLocale; active: boolean; launchRequest?: number; onShowProperties: () => void }) {
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState(0);
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
@@ -37,6 +37,12 @@ export function EditorGettingStarted({ locale, active, onShowProperties }: { loc
     try { setVisible(localStorage.getItem(STORAGE_KEY) !== "true"); }
     catch { setVisible(true); }
   }, []);
+  useEffect(() => {
+    if (!launchRequest) return;
+    setStep(0);
+    setPosition(null);
+    setVisible(true);
+  }, [launchRequest]);
   const dismiss = () => {
     setVisible(false);
     try { localStorage.setItem(STORAGE_KEY, "true"); } catch { /* Storage may be unavailable. */ }

@@ -6,7 +6,7 @@ import { version, license } from "../../../../package.json";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { educadTranslate, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
 
-export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding }: { locale: EducadLocale; onLocaleChange: (locale: EducadLocale) => void; onShowLanding?: () => void }) {
+export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onLaunchTutorial }: { locale: EducadLocale; onLocaleChange: (locale: EducadLocale) => void; onShowLanding?: () => void; onLaunchTutorial?: () => void }) {
   const t = (key: EducadTranslationKey) => educadTranslate(locale, key);
   const [open, setOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -62,6 +62,7 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding }: {
         <nav className="educad-about-links" aria-label={t("about.resources")}>
           <a href={`/documentation?lang=${locale}`} target="_blank" rel="noopener noreferrer"><HeaderToolbarIcon file="documentation" />{t("about.documentation")}</a>
           <a href="/?about=1" target="_blank" rel="noopener noreferrer"><HeaderToolbarIcon file="project-overview" />{t("about.projectOverview")}</a>
+          {onLaunchTutorial && <button type="button" onClick={() => { setInfoOpen(false); onLaunchTutorial(); }}><HeaderToolbarIcon file="documentation" />{t("about.launchTutorial")}</button>}
         </nav>
         <footer><p lang={locale}>{t("about.credit")}</p></footer>
       </section>

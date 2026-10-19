@@ -645,6 +645,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const newDocumentDialogRef = useAccessibleDialog(newDocumentOpen, () => setNewDocumentOpen(false));
   const importProjectDialogRef = useAccessibleDialog(Boolean(pendingProjectImport), () => setPendingProjectImport(null));
   const [hydrated, setHydrated] = useState(false);
+  const [tutorialLaunchRequest, setTutorialLaunchRequest] = useState(0);
   useEffect(() => {
     const toolbar = toolbarScrollRef.current;
     if (toolbar) return enableToolbarMouseScroll(toolbar);
@@ -3455,10 +3456,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
 
   return (
     <main className={`educad-reference-shell sidebar-${modelSidebarMode} ${sketchSession && compactSketchToolbar ? "sketch-toolbar-compact" : ""}`}>
-      {hydrated && <EditorGettingStarted locale={locale} active={!sketchSession && !challengeEditor} onShowProperties={() => setModelSidebarMode("normal")} />}
+      {hydrated && <EditorGettingStarted locale={locale} active={!sketchSession && !challengeEditor} launchRequest={tutorialLaunchRequest} onShowProperties={() => setModelSidebarMode("normal")} />}
       <div className="secondary-toolbar">
         <div className="toolbar-workspace-tabs educad-toolbar-titlebar">
-          <EditorHeaderActions locale={locale} onLocaleChange={setLocale} />
+          <EditorHeaderActions locale={locale} onLocaleChange={setLocale} onLaunchTutorial={!sketchSession && !challengeEditor ? () => setTutorialLaunchRequest((request) => request + 1) : undefined} />
           {sketchSession ? <div className="educad-sketch-header-actions"><button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={acceptSketch}><ChevronLeft size={20} aria-hidden="true" />{t("sketch.accept")}</button><button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={cancelSketch}>{t("common.cancel")}</button></div> : onExitToProjects ? <button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={() => onExitToProjects(latestDocumentRef.current)} title={locale === "es" ? "Volver a proyectos" : "Back to projects"}><ChevronLeft size={20} aria-hidden="true" />{locale === "es" ? "Proyectos" : "Projects"}</button> : null}
           <span className="educad-project-name"><img src="/assets/educad/logo.svg" alt="eduCAD" /><strong>eduCAD</strong><span aria-hidden="true">-</span><button type="button" className="educad-project-rename-trigger" onClick={openProjectRename} title={locale === "es" ? "Cambiar nombre del proyecto" : "Rename project"}>{document.name}</button>{sketchSession ? <strong className="educad-sketcher-badge">SKETCHER</strong> : null}</span>
         </div>
