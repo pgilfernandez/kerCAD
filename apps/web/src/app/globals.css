@@ -3712,7 +3712,7 @@ button {
 .educad-getting-started-pointer.right { right: -10px; transform: rotate(90deg); }
 .educad-getting-started-pointer.bottom { bottom: -10px; transform: rotate(180deg); }
 .educad-getting-started-pointer.left { left: -10px; transform: rotate(-90deg); }
-.educad-getting-started header { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: grab; touch-action: none; user-select: none; }
+.educad-getting-started header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -14px -16px 0; padding: 10px 16px; background: #f7f7f8; cursor: grab; touch-action: none; user-select: none; }
 .educad-getting-started header:active { cursor: grabbing; }
 .educad-getting-started-count { color: #1269eb; font-size: 12px; font-weight: 600; }
 .educad-getting-started h2 { margin: 8px 0 12px; font-size: 17px; line-height: 1.3; }
