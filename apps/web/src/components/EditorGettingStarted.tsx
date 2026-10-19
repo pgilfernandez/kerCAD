@@ -39,6 +39,7 @@ const copy = {
       { title: "Create simple shapes", lines: ["Open Create to add a box, cylinder, sphere or another simple shape. You can also create a sketch here."] },
       { title: "Edit properties", lines: ["This panel lists your objects and their operations. Select an entry to see its properties.", "Change dimensions, color and transformations here. You can also use the handles directly in the 3D view."] },
       { title: "Modify your model", lines: ["Use Modify to chamfer or round edges, extrude a face, revolve a profile or hollow out a solid.", "Choose a tool and follow its selection instructions. Each change becomes an editable operation in the panel."] },
+      { title: "Import and export", lines: ["Import eduCAD projects, STEP solids, SVG drawings, STL/OBJ reference meshes or JPG/PNG reference images.", "Export your editable project as .educad, or your model as STEP or STL for sharing and 3D printing."] },
       { title: "Explain with annotations", lines: ["Add text, dimensions, angles and circles to explain your design without changing its geometry.", "Annotations are especially useful for teachers: highlight details, give feedback and correct students’ exercises directly on the model."] },
     ],
   },
@@ -49,6 +50,7 @@ const copy = {
       { title: "Crea formas simples", lines: ["Abre Crear para añadir una caja, un cilindro, una esfera u otra forma simple. Aquí también puedes crear un boceto."] },
       { title: "Edita las propiedades", lines: ["Este panel muestra los objetos y sus operaciones. Selecciona una entrada para ver sus propiedades.", "Cambia aquí las dimensiones, el color y las transformaciones. También puedes usar los manipuladores de la vista 3D."] },
       { title: "Modifica tu modelo", lines: ["Usa Modificar para achaflanar o redondear aristas, extruir una cara, revolucionar un perfil o vaciar un sólido.", "Elige una herramienta y sigue sus indicaciones de selección. Cada cambio queda como una operación editable en el panel."] },
+      { title: "Importa y exporta", lines: ["Importa proyectos eduCAD, sólidos STEP, dibujos SVG, mallas de referencia STL/OBJ o imágenes de referencia JPG/PNG.", "Exporta el proyecto editable como .educad o el modelo como STEP o STL para compartirlo e imprimirlo en 3D."] },
       { title: "Explica con anotaciones", lines: ["Añade textos, dimensiones, ángulos y círculos para explicar tu diseño sin modificar su geometría.", "Las anotaciones son especialmente útiles para profesores: permiten destacar detalles, dar indicaciones y corregir ejercicios del alumnado directamente sobre el modelo."] },
     ],
   },
@@ -93,7 +95,8 @@ export function EditorGettingStarted({ locale, active, mode = "3d", launchReques
     const sideAnchor = mode === "sketch" && (step === 1 || step === 5);
     const anchor = mode === "sketch" ? document.querySelector(sketchAnchors[step]) : step === 1 ? document.querySelector(".toolbar-shapes-section")
       : step === 3 ? document.querySelector(".toolbar-modify-section")
-      : step === 4 ? document.querySelector(".toolbar-annotations-section") : null;
+      : step === 4 ? document.querySelector(".toolbar-actions-section")
+      : step === 5 ? document.querySelector(".toolbar-annotations-section") : null;
     if (anchor && !sideAnchor) anchor.scrollIntoView({ block: "nearest", inline: "nearest" });
     const update = () => {
       const card = panel.current;
