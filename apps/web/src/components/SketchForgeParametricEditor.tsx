@@ -11,6 +11,7 @@ import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection 
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyEdgePick, type TopologyFacePick, type ViewportDisplayMode, type ViewportShadingMode } from "@/components/ParametricViewport";
 import { SketchWorkspace, type SketchMeasurement, type SketchSceneReference, type SketchSelection, type SketchTool } from "@/components/SketchWorkspace";
 import { SketchToolMenu } from "@/components/SketchToolMenu";
+import { EditorGettingStarted } from "@/components/EditorGettingStarted";
 import { nextAnnotationName } from "@/lib/annotationNames";
 import { SECTION_PLANE_ID, type VisualSection } from "@/lib/visualSection";
 import type { CaptureCrop } from "@/lib/viewportCapture";
@@ -3454,6 +3455,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
 
   return (
     <main className={`educad-reference-shell sidebar-${modelSidebarMode} ${sketchSession && compactSketchToolbar ? "sketch-toolbar-compact" : ""}`}>
+      {hydrated && <EditorGettingStarted locale={locale} active={!sketchSession && !challengeEditor} onShowProperties={() => setModelSidebarMode("normal")} />}
       <div className="secondary-toolbar">
         <div className="toolbar-workspace-tabs educad-toolbar-titlebar">
           <EditorHeaderActions locale={locale} onLocaleChange={setLocale} />
