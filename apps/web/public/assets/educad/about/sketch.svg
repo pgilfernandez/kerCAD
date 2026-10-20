@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="760" viewBox="0 0 1000 760" fill="none">
+  <defs><pattern id="minor" width="25" height="25" patternUnits="userSpaceOnUse"><path d="M25 0H0V25" stroke="#d7e8ed"/></pattern><pattern id="major" width="125" height="125" patternUnits="userSpaceOnUse"><rect width="125" height="125" fill="url(#minor)"/><path d="M125 0H0V125" stroke="#a8c9d8" stroke-width="1.5"/></pattern></defs>
+  <rect width="1000" height="760" rx="28" fill="#f5fbfb"/><rect width="1000" height="760" rx="28" fill="url(#major)"/>
+  <path d="M80 640h840M120 90v590" stroke="#bbd0d8" stroke-width="2"/>
+  <path d="M120 640h90" stroke="#df8782" stroke-width="3"/><path d="M120 640v-90" stroke="#70b19a" stroke-width="3"/>
+  <rect x="240" y="220" width="520" height="320" rx="70" fill="#bfdef8" fill-opacity=".36" stroke="#174567" stroke-width="5"/>
+  <circle cx="355" cy="380" r="42" fill="#f5fbfb" stroke="#174567" stroke-width="4"/><circle cx="645" cy="380" r="42" fill="#f5fbfb" stroke="#174567" stroke-width="4"/>
+  <g stroke="#8095a5" stroke-width="2"><path d="M240 220V135m520 85V135M240 155h520m-505-7-15 7 15 7m490-14 15 7-15 7M760 220h96m-96 320h96m-19-320v320m-7-305 7-15 7 15m-14 290 7 15 7-15M645 380l140-80"/></g>
+  <g font-family="sans-serif" font-size="25" text-anchor="middle" fill="#174567"><rect x="427" y="133" width="146" height="44" rx="5" fill="#d8e9ff" stroke="#1269eb" stroke-width="2"/><text x="500" y="164">60.00</text><rect x="793" y="358" width="88" height="44" rx="5" fill="#d8e9ff" stroke="#1269eb" stroke-width="2"/><text x="837" y="389">35.00</text><rect x="759" y="270" width="110" height="44" rx="5" fill="#fff" stroke="#c9dce3"/><text x="814" y="301">R 5</text></g>
+  <g fill="#fff" stroke="#1269eb" stroke-width="3"><circle cx="310" cy="220" r="8"/><circle cx="690" cy="220" r="8"/><circle cx="240" cy="290" r="8"/><circle cx="760" cy="470" r="8"/><circle cx="310" cy="540" r="8"/><circle cx="690" cy="540" r="8"/></g>
+  <g stroke="#1269eb" stroke-width="2"><path d="M347 380h16m-8-8v16m282-8h16m-8-8v16"/></g>
+  <g font-family="sans-serif" font-size="20" font-weight="600" text-anchor="middle" fill="#1269eb"><rect x="480" y="194" width="40" height="35" rx="5" fill="#e5efff"/><text x="500" y="218">H</text><rect x="741" y="362" width="35" height="35" rx="5" fill="#e5efff"/><text x="758" y="387">V</text><text x="351" y="449">=</text><text x="645" y="449">=</text></g>
+  <circle cx="120" cy="640" r="6" fill="#fff" stroke="#6c8a9b" stroke-width="2"/>
+</svg>

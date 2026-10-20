@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="700" viewBox="0 0 1000 700" fill="none">
+  <defs><pattern id="grid" width="62" height="35" patternUnits="userSpaceOnUse" patternTransform="matrix(1 .4 -1 .6 500 60)"><path d="M62 0H0V35" stroke="#bed5e6"/></pattern><linearGradient id="top" x1="300" y1="200" x2="750" y2="500" gradientUnits="userSpaceOnUse"><stop stop-color="#ffd782"/><stop offset="1" stop-color="#f1ae3f"/></linearGradient></defs>
+  <rect width="1000" height="700" rx="28" fill="#f0f7fc"/><rect y="100" width="1000" height="600" fill="url(#grid)"/>
+  <ellipse cx="505" cy="477" rx="284" ry="49" fill="#9dbbd0" opacity=".22"/>
+  <path d="M253 330c-70 40-70 109 0 149l297 143c72 34 150 24 207-10l57-35c62-37 63-103-6-137L511 296c-74-35-166-19-226 16Z" transform="translate(0 -60)" fill="#c77b20" stroke="#ad6b20" stroke-width="2"/>
+  <path d="M253 330c-70 40-70 93 0 127l297 143c72 34 150 24 207-10l57-35c62-37 63-87-6-121L511 290c-74-35-166-19-226 16Z" transform="translate(0 -60)" fill="url(#top)" stroke="#d38c2a" stroke-width="3"/>
+  <ellipse cx="337" cy="319" rx="38" ry="22" fill="#b36b1a"/><path d="M301 325c14-20 56-23 72-3" stroke="#8e551b" stroke-width="5"/>
+  <path d="m466 305 223 108m-233-91 223 108" stroke="#c88a30" stroke-width="6" stroke-linecap="round" opacity=".4"/>
+  <g stroke="#2e76b7" stroke-width="2"><path d="m291 319-84-67M323 306l-55-72m-74 0h103m-92 0 8-14m54 14-8-14"/><ellipse cx="337" cy="319" rx="51" ry="30" stroke-dasharray="7 5"/></g>
+  <g fill="#fff" stroke="#caddeb"><rect x="149" y="180" width="164" height="48" rx="7"/></g><text x="231" y="212" fill="#244e73" text-anchor="middle" font-family="sans-serif" font-size="24">Ø 5 mm</text>
+</svg>
