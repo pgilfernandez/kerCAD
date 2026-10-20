@@ -10338,6 +10338,20 @@ html[data-theme="dark"] .grid-settings {
 .educad-landing-nav nav { display: flex; gap: 28px; margin: 0 auto; }
 .educad-landing-nav nav a { color: rgba(255,255,255,.84); text-decoration: none; font-size: 14px; font-weight: 650; }
 .educad-landing-nav nav a:hover { color: #fff; }
+.educad-landing-header-actions { position: relative; display: flex; align-items: center; justify-self: end; gap: 10px; }
+.educad-landing-section-control { display: none; }
+.educad-landing-menu-trigger { width: 38px; height: 38px; display: grid; place-items: center; padding: 7px; color: #fff; background: #ffffff33; border: 1px solid white; border-radius: 8px; cursor: pointer; }
+.educad-landing-menu-trigger:hover, .educad-landing-menu-trigger[aria-expanded="true"] { color: #1269eb; background: #ffffffcc; }
+.educad-landing-nav .educad-landing-section-menu { position: absolute; top: calc(100% + 10px); right: 0; z-index: 60; display: flex; flex-direction: column; gap: 4px; width: 220px; margin: 0; padding: 6px; border: 1px solid #c7d5de; border-radius: 8px; background: #fff; box-shadow: 0 6px 20px #173b5a26; }
+.educad-landing-nav .educad-landing-section-menu a { padding: 10px 12px; color: #173b5a; border-radius: 5px; font-size: 14px; }
+.educad-landing-nav .educad-landing-section-menu a:hover { color: #1269eb; background: #eaf3ff; }
+@media (max-width: 1200px) {
+  .educad-landing-nav.educad-dashboard-topbar { grid-template-columns: minmax(0, 1fr) auto; }
+  .educad-landing-nav > nav { display: none; }
+  .educad-landing-section-control { display: block; }
+}
+@media (max-width: 620px) { .educad-landing-header-actions { gap: 4px; } .educad-landing-menu-trigger { width: 36px; height: 36px; padding: 6px; background: transparent; border-color: transparent; } }
+@media (max-width: 420px) { .educad-landing-nav .educad-dashboard-brand strong { display: none; } }
 .educad-landing-nav > button, .educad-landing-footer button { min-height: 42px; padding: 0 17px; display: inline-flex; align-items: center; gap: 8px; color: #1269eb; background: #fff; border: 0; border-radius: 9px; font-size: 13px; font-weight: 800; box-shadow: 0 3px 12px rgba(18,55,105,.15); }
 .educad-landing-hero { min-height: 690px; padding: 90px clamp(24px, 7vw, 110px) 82px; display: grid; grid-template-columns: minmax(360px,.82fr) minmax(520px,1.18fr); align-items: center; gap: clamp(44px,6vw,100px); color: #fff; background: radial-gradient(circle at 72% 20%, rgba(100,204,239,.26), transparent 31%), linear-gradient(145deg,#1269eb 0%,#0953bd 61%,#073b87 100%); }
 .educad-landing-hero-copy { max-width: 630px; }

@@ -1,7 +1,8 @@
 "use client";
 
 import { ArrowRight, BookOpen, Box, Download, GraduationCap, History, MousePointer2, PencilRuler, ShieldCheck, Sparkles } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { HeaderToolbarIcon } from "@/components/icons";
 import { EditorHeaderActions } from "@/components/EditorHeaderActions";
 import { normalizeEducadLocale, type EducadLocale } from "@/lib/educadI18n";
 
@@ -23,6 +24,25 @@ const features = [
 
 export function EducadLandingPage({ preview, onStart, onOpenChallenges }: Props) {
   const [locale, setLocale] = useState<EducadLocale>("en");
+  const [sectionsOpen, setSectionsOpen] = useState(false);
+  const sectionsMenuRef = useRef<HTMLDivElement>(null);
+  const sectionsTriggerRef = useRef<HTMLButtonElement>(null);
+  const navigation = [
+    { id: "features", label: locale === "es" ? "Qué puedes hacer" : "Features" },
+    { id: "challenges", label: locale === "es" ? "Retos para el aula" : "Classroom challenges" },
+    { id: "workflow", label: locale === "es" ? "Cómo empezar" : "Getting started" },
+  ];
+  useEffect(() => {
+    if (!sectionsOpen) return;
+    const outside = (event: PointerEvent) => { if (!sectionsMenuRef.current?.contains(event.target as Node)) setSectionsOpen(false); };
+    const key = (event: KeyboardEvent) => { if (event.key === "Escape") { setSectionsOpen(false); sectionsTriggerRef.current?.focus(); } };
+    const breakpoint = window.matchMedia("(max-width: 1200px)");
+    const resize = () => { if (!breakpoint.matches) setSectionsOpen(false); };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", key);
+    breakpoint.addEventListener("change", resize);
+    return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", key); breakpoint.removeEventListener("change", resize); };
+  }, [sectionsOpen]);
   useEffect(() => {
     try { setLocale(normalizeEducadLocale(localStorage.getItem("educad.locale"))); } catch { /* Keep English when storage is unavailable. */ }
   }, []);
@@ -34,8 +54,14 @@ export function EducadLandingPage({ preview, onStart, onOpenChallenges }: Props)
   return <main className="educad-landing" lang="es">
     <header className="educad-landing-nav educad-dashboard-topbar">
       <a className="educad-dashboard-brand" href="#top" aria-label="eduCAD, inicio"><img className="educad-dashboard-logo" src="/assets/educad/logo.svg" alt="" /><strong>eduCAD</strong></a>
-      <nav lang={locale} aria-label={locale === "es" ? "Navegación principal" : "Main navigation"}><a href="#features">{locale === "es" ? "Qué puedes hacer" : "Features"}</a><a href="#challenges">{locale === "es" ? "Retos para el aula" : "Classroom challenges"}</a><a href="#workflow">{locale === "es" ? "Cómo empezar" : "Getting started"}</a></nav>
-      <EditorHeaderActions locale={locale} onLocaleChange={changeLocale} onShowLanding={onStart} showDocumentation={false} showDonation startDesigning compactInformation />
+      <nav lang={locale} aria-label={locale === "es" ? "Navegación principal" : "Main navigation"}>{navigation.map((item) => <a key={item.id} href={`#${item.id}`}>{item.label}</a>)}</nav>
+      <div className="educad-landing-header-actions">
+        <div ref={sectionsMenuRef} className="educad-landing-section-control">
+          <button ref={sectionsTriggerRef} type="button" className="educad-landing-menu-trigger" aria-label={locale === "es" ? "Secciones de la página" : "Page sections"} title={locale === "es" ? "Secciones de la página" : "Page sections"} aria-expanded={sectionsOpen} aria-controls="educad-landing-section-menu" onClick={() => setSectionsOpen((open) => !open)}><HeaderToolbarIcon file="menu" /></button>
+          {sectionsOpen && <nav id="educad-landing-section-menu" className="educad-landing-section-menu" lang={locale} aria-label={locale === "es" ? "Secciones de la página" : "Page sections"}>{navigation.map((item) => <a key={item.id} href={`#${item.id}`} onClick={() => setSectionsOpen(false)}>{item.label}</a>)}</nav>}
+        </div>
+        <EditorHeaderActions locale={locale} onLocaleChange={changeLocale} onShowLanding={onStart} showDocumentation={false} showDonation startDesigning compactInformation />
+      </div>
     </header>
 
     <section className="educad-landing-hero" id="top">
