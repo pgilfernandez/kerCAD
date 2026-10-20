@@ -64,6 +64,7 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onL
           <a href="/?about=1" target="_blank" rel="noopener noreferrer"><HeaderToolbarIcon file="project-overview" />{t("about.projectOverview")}</a>
           {onLaunchTutorial && <button type="button" onClick={() => { setInfoOpen(false); onLaunchTutorial(); }}><HeaderToolbarIcon file="documentation" />{t("about.launchTutorial")}</button>}
           <button type="button" disabled title={t("about.githubPending")}>GitHub</button>
+          <button type="button" disabled title={t("about.donatePending")}>{t("about.donate")}</button>
         </nav>
         <footer><p lang={locale}>{t("about.credit")}</p></footer>
       </section>
