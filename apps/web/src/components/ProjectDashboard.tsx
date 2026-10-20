@@ -165,7 +165,7 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
           {visible.map((project, index) => <article className="educad-dashboard-card" key={project.id}>
             <button className="card-open" type="button" onClick={() => onOpen(project)}>
               <span className={`card-preview accent-${index % 4}`}>{project.thumbnail ? <img src={project.thumbnail} alt="" /> : <><span className="preview-grid" /><strong>{project.document.objects.length ? t(project.document.objects.length === 1 ? "{count} object" : "{count} objects", { count: project.document.objects.length }) : t("Empty design")}</strong></>}</span>
-              <span className="card-copy"><strong>{project.name}</strong><small>{updatedLabel(project.updatedAt, locale)} · {t(project.document.features.length === 1 ? "{count} operation" : "{count} operations", { count: project.document.features.length })}</small></span>
+              <span className="card-copy"><strong>{project.name}</strong><small>{updatedLabel(project.updatedAt, locale)} · {project.document.author?.trim() || project.document.creator?.trim() || t("Author not provided")}</small></span>
             </button>
             <button className="card-rename" type="button" aria-label={t("Rename {name}", { name: project.name })} title={t("Rename project")} onClick={() => beginRename(project)}><ToolbarEditOperationIcon /></button>
             <button className="card-duplicate" type="button" disabled={busy} aria-label={t("Duplicate {name}", { name: project.name })} title={t("Duplicate project")} onClick={() => onDuplicate(project)}><Copy size={17} /></button>
