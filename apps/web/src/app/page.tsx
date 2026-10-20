@@ -12,6 +12,7 @@ import { thumbnailDocumentKey, uploadSharedThumbnail } from "@/lib/sharedProject
 import type { ParametricDocument } from "@/types/parametric";
 import { dashboardTranslate, type DashboardTranslationKey } from "@/lib/dashboardI18n";
 import { normalizeEducadLocale } from "@/lib/educadI18n";
+import { assertImportByteLimit } from "@/lib/parametricImportLimits";
 
 function libraryText(key: DashboardTranslationKey) {
   try { return dashboardTranslate(normalizeEducadLocale(localStorage.getItem("educad.locale")), key); }
@@ -235,15 +236,41 @@ export default function Home() {
   const importProject = async (file: File) => {
     setBusy(true);
     try {
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      const packaged = file.name.toLowerCase().endsWith(".educad") ? await importEducadProject(bytes) : null;
-      const document = packaged
-        ? packaged.document
-        : (() => { const parsed = JSON.parse(new TextDecoder().decode(bytes)) as unknown; if (!validateDocument(parsed)) throw new Error(libraryText("This is not a valid eduCAD project.")); return normalizeParametricDocument(parsed); })();
+      let packaged: Awaited<ReturnType<typeof importEducadProject>> | null = null;
+      let document: ParametricDocument;
+      if (/\.(?:educad|json)$/i.test(file.name)) {
+        if (/\.json$/i.test(file.name)) assertImportByteLimit("project", file.size);
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        packaged = /\.educad$/i.test(file.name) ? await importEducadProject(bytes) : null;
+        const parsed = packaged?.document ?? JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+        if (!validateDocument(parsed)) throw new Error(libraryText("This is not a valid eduCAD project."));
+        document = normalizeParametricDocument(parsed);
+      } else {
+        document = createEmptyDocument();
+        document.name = file.name.replace(/\.[^.]+$/, "").trim() || document.name;
+        if (/\.(?:jpe?g|png)$/i.test(file.name)) {
+          const { importReferenceImage } = await import("@/lib/parametricReferenceImport");
+          await importReferenceImage(document, file);
+        } else if (/\.(?:stl|obj)$/i.test(file.name)) {
+          assertImportByteLimit("reference", file.size);
+          const { importReferenceMesh } = await import("@/lib/parametricReferenceImport");
+          importReferenceMesh(document, file.name, await file.arrayBuffer());
+        } else if (/\.(?:step|stp)$/i.test(file.name)) {
+          assertImportByteLimit("STEP", file.size);
+          const { importStepAsParametricObject } = await import("@/lib/parametricStepImport");
+          await importStepAsParametricObject(document, file.name, await file.arrayBuffer());
+        } else if (/\.svg$/i.test(file.name)) {
+          assertImportByteLimit("SVG", file.size);
+          const { importSvgAsParametricExtrusion } = await import("@/lib/svgParametricImport");
+          importSvgAsParametricExtrusion(document, await file.text(), file.name, null);
+        } else throw new Error(libraryText("Unsupported file format."));
+      }
       const now = Date.now();
       const entry = { id: newProjectLibraryId(), name: document.name, createdAt: now, updatedAt: now, document, assets: packaged?.assets };
       await saveLibraryProject(entry);
       setProjects((current) => [entry, ...current]);
+      setActiveChallenge(null);
+      setEditingChallenge(null);
       openProject(entry);
     } catch (error) {
       window.alert(error instanceof Error ? error.message : libraryText("Could not open the project."));

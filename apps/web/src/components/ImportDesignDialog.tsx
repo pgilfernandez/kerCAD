@@ -6,11 +6,12 @@ import { ToolbarImportIcon } from "@/components/icons";
 import { useAccessibleDialog } from "@/components/useAccessibleDialog";
 import type { EducadLocale } from "@/lib/educadI18n";
 
-export function ImportDesignDialog({ locale, onClose, onBrowse, onFile }: {
+export function ImportDesignDialog({ locale, onClose, onBrowse, onFile, newProject = false }: {
   locale: EducadLocale;
   onClose: () => void;
   onBrowse: () => void;
   onFile: (file: File) => void;
+  newProject?: boolean;
 }) {
   const dialog = useAccessibleDialog<HTMLElement>(true, onClose);
   const depth = useRef(0);
@@ -19,7 +20,7 @@ export function ImportDesignDialog({ locale, onClose, onBrowse, onFile }: {
   const es = locale === "es";
   const formats = [
     [".jpg · .jpeg · .png", es ? "Imágenes de referencia" : "Reference images", es ? "Imágenes planas que puedes mover, rotar y escalar. No forman parte del sólido." : "Flat images you can move, rotate and scale. They do not become solid geometry."],
-    [".educad · .json", es ? "Proyectos eduCAD" : "eduCAD projects", es ? "Abre el proyecto o añade sus objetos al diseño actual." : "Open the project or add its objects to the current design."],
+    [".educad · .json", es ? "Proyectos eduCAD" : "eduCAD projects", newProject ? (es ? "Crea una nueva copia local del proyecto." : "Create a new local copy of the project.") : (es ? "Abre el proyecto o añade sus objetos al diseño actual." : "Open the project or add its objects to the current design.")],
     [".step · .stp", es ? "Geometría sólida" : "Solid geometry", es ? "Importa sólidos CAD para trabajar con ellos." : "Import CAD solids to work with them."],
     [".stl · .obj", es ? "Mallas de referencia" : "Reference meshes", es ? "Se incorporan como referencia, no como sólidos paramétricos." : "Added as references, not as parametric solids."],
     [".svg", es ? "Dibujo vectorial" : "Vector drawing", es ? "Crea un boceto con extrusión a partir del dibujo." : "Create a sketch with an extrusion from the drawing."],
@@ -28,6 +29,7 @@ export function ImportDesignDialog({ locale, onClose, onBrowse, onFile }: {
     <section ref={dialog} className="educad-new-document-dialog educad-import-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-import-title" aria-describedby="educad-import-description" tabIndex={-1} onPointerDown={(event) => event.stopPropagation()}>
       <header><strong id="educad-import-title">{es ? "Importar diseño" : "Import design"}</strong><button type="button" title={es ? "Cerrar" : "Close"} aria-label={es ? "Cerrar" : "Close"} onClick={onClose}><X size={18} /></button></header>
       <p id="educad-import-description">{es ? "Importa un proyecto, geometría 3D o un dibujo vectorial. Elige un archivo cada vez." : "Import a project, 3D geometry or a vector drawing. Choose one file at a time."}</p>
+      {newProject && <p>{es ? "El archivo se importará en un proyecto nuevo." : "The file will be imported into a new project."}</p>}
       <button type="button" className={`educad-import-dropzone ${dragging ? "dragging" : ""}`} onClick={onBrowse}
         onDragEnter={(event) => { event.preventDefault(); depth.current += 1; setDragging(true); }}
         onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; }}

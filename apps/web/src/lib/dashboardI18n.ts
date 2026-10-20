@@ -3,6 +3,8 @@ import type { EducadLocale } from "@/lib/educadI18n";
 // English is the source/fallback language. Project and challenge content is
 // user-authored and must never be translated as interface text.
 const es = {
+  "Import project or 3D file": "Importar proyecto o archivo 3D",
+  "Unsupported file format.": "Formato de archivo no compatible.",
   "Could not install the challenge.": "No se pudo importar el reto.", "Could not duplicate the challenge.": "No se pudo duplicar el reto.", "This is not a valid eduCAD project.": "Este archivo no es un proyecto eduCAD válido.", "Could not open the project.": "No se pudo abrir el proyecto.", "No local project is open.": "No hay ningún proyecto local abierto.", "Could not save the shared project.": "No se pudo guardar el proyecto compartido.", "The shared file has changed or this name is already in use. Your local work is safe. Save with another name, or open a fresh copy from Shared.": "El archivo compartido ha cambiado o ese nombre ya está en uso. Tu trabajo local está a salvo. Guarda con otro nombre o abre una copia nueva desde Compartidos.",
   "Dashboard sections": "Secciones", "Projects": "Proyectos", "Challenges": "Retos", "Shared": "Compartidos", "Settings": "Ajustes",
   "Just now": "Ahora mismo", "Today": "Hoy", "{count} visible": "{count} visibles", "{count} installed": "{count} instalados",

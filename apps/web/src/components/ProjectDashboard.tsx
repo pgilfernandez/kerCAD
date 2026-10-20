@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ToolbarEditOperationIcon } from "@/components/icons";
 import { SharedProjects } from "@/components/SharedProjects";
 import { EditorHeaderActions } from "@/components/EditorHeaderActions";
+import { ImportDesignDialog } from "@/components/ImportDesignDialog";
 import type { EducadLocale } from "@/lib/educadI18n";
 import { dashboardTranslate, type DashboardTranslationKey } from "@/lib/dashboardI18n";
 import type { EducadChallenge } from "@/lib/challengeLibrary";
@@ -43,6 +44,7 @@ function updatedLabel(timestamp: number, locale: EducadLocale) {
 
 export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSaved, busy = false, section, onSectionChange, onShowLanding, onCreate, onOpen, onImport, onDelete, onRename, challenges, onImportChallenge, onCreateChallenge, onStartChallenge, onEditChallenge, onDuplicateChallenge, onExportChallenge, onDeleteChallenge }: Props) {
   const [query, setQuery] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
   const [locale, setLocale] = useState<EducadLocale>("en");
   useEffect(() => {
     const saved = localStorage.getItem("educad.locale");
@@ -145,7 +147,7 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
         <header className="educad-dashboard-project-heading">
           <div><h1>{t("Projects")}</h1><span>{t("{count} visible", { count: visible.length })}</span></div>
           <div className="educad-dashboard-project-controls">
-            <button className="educad-import-project" type="button" onClick={() => inputRef.current?.click()}><Upload size={19} /> {t("Import project")}</button>
+            <button className="educad-import-project" type="button" disabled={busy} onClick={() => setImportOpen(true)}><Upload size={19} /> {t("Import project or 3D file")}</button>
             <label className="educad-dashboard-search"><Search size={20} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("Search projects")} /></label>
             <div className="educad-dashboard-sort-toggle" role="group" aria-label={t("Sort projects")}><button type="button" className={sort === "recent" ? "active" : ""} onClick={() => setSort("recent")} aria-label={t("Sort by recent")} title={t("Sort by recent")}><span aria-hidden="true" className="educad-dashboard-sort-icon" style={{ maskImage: 'url("/assets/educad/project-sort-recent.svg")', WebkitMaskImage: 'url("/assets/educad/project-sort-recent.svg")' }} /></button><button type="button" className={sort === "name" ? "active" : ""} onClick={() => setSort("name")} aria-label={t("Sort by name")} title={t("Sort by name")}><span aria-hidden="true" className="educad-dashboard-sort-icon" style={{ maskImage: 'url("/assets/educad/project-sort-name.svg")', WebkitMaskImage: 'url("/assets/educad/project-sort-name.svg")' }} /></button></div>
             <div className="educad-dashboard-view-toggle"><button className={view === "grid" ? "active" : ""} onClick={() => setView("grid")} aria-label={t("Card view")} title={t("Card view")}><Grid3X3 size={20} /></button><button className={view === "list" ? "active" : ""} onClick={() => setView("list")} aria-label={t("List view")} title={t("List view")}><List size={21} /></button></div>
@@ -185,7 +187,8 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
         <footer><button type="button" onClick={() => setDeleting(null)}>{t("Cancel")}</button><button className="danger" type="button" onClick={() => { onDelete(deleting); setDeleting(null); }}>{t("Delete")}</button></footer>
       </section>
     </div> : null}
-    <input ref={inputRef} hidden type="file" accept=".educad,.educad.json,.json,application/vnd.educad.project+zip,application/json" onChange={(event) => { const file = event.target.files?.[0]; if (file) onImport(file); event.target.value = ""; }} />
+    {importOpen && <ImportDesignDialog locale={locale} newProject onClose={() => setImportOpen(false)} onBrowse={() => inputRef.current?.click()} onFile={(file) => { setImportOpen(false); onImport(file); }} />}
+    <input ref={inputRef} hidden type="file" accept=".educad,.educad.json,.json,.svg,.step,.stp,.stl,.obj,.jpg,.jpeg,.png,application/vnd.educad.project+zip,application/json,image/svg+xml,model/step,model/stl,model/obj,image/jpeg,image/png" onChange={(event) => { const file = event.target.files?.[0]; if (file) { setImportOpen(false); onImport(file); } event.target.value = ""; }} />
     <input ref={challengeInputRef} hidden type="file" accept=".zip,application/zip" onChange={(event) => { const file = event.target.files?.[0]; if (file) onImportChallenge(file); event.target.value = ""; }} />
   </main>;
 }
