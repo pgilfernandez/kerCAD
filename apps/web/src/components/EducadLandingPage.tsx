@@ -35,7 +35,7 @@ export function EducadLandingPage({ preview, onStart, onOpenChallenges }: Props)
     <header className="educad-landing-nav educad-dashboard-topbar">
       <a className="educad-dashboard-brand" href="#top" aria-label="eduCAD, inicio"><img className="educad-dashboard-logo" src="/assets/educad/logo.svg" alt="" /><strong>eduCAD</strong></a>
       <nav lang={locale} aria-label={locale === "es" ? "Navegación principal" : "Main navigation"}><a href="#features">{locale === "es" ? "Qué puedes hacer" : "Features"}</a><a href="#challenges">{locale === "es" ? "Retos para el aula" : "Classroom challenges"}</a><a href="#workflow">{locale === "es" ? "Cómo empezar" : "Getting started"}</a></nav>
-      <EditorHeaderActions locale={locale} onLocaleChange={changeLocale} onShowLanding={onStart} showDocumentation={false} showDonation compactInformation />
+      <EditorHeaderActions locale={locale} onLocaleChange={changeLocale} onShowLanding={onStart} showDocumentation={false} showDonation startDesigning compactInformation />
     </header>
 
     <section className="educad-landing-hero" id="top">

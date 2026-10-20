@@ -43,6 +43,7 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onL
   }, [open, infoOpen]);
   return <div ref={root} className={`educad-header-actions${onShowLanding ? " dashboard-header-actions" : ""}`}>
     {onShowLanding && <>
+      {showDonation && startDesigning && <button type="button" className="educad-header-start-designing" aria-label={t("about.startDesigning")} title={t("about.startDesigning")} onClick={onShowLanding}><HeaderToolbarIcon file="square-pen" /><span>{t("about.startDesigning")}</span></button>}
       {showDonation ? <button type="button" disabled aria-label={t("about.donate")} title={t("about.donatePending")}><HeaderToolbarIcon file="donate" /><span>{t("about.donate")}</span></button> : <button type="button" className={startDesigning ? "educad-header-start-designing" : undefined} aria-label={t(startDesigning ? "about.startDesigning" : "about.projectOverview")} title={t(startDesigning ? "about.startDesigning" : "about.projectOverview")} onClick={onShowLanding}><HeaderToolbarIcon file={startDesigning ? "square-pen" : "project-overview"} /><span>{t(startDesigning ? "about.startDesigning" : "about.projectOverview")}</span></button>}
       {showDocumentation && <a href={`/documentation?lang=${locale}`} target="_blank" rel="noopener noreferrer" title={t("about.documentation")}><HeaderToolbarIcon file="documentation" /><span>{locale === "es" ? "Documentación" : "Documentation"}</span></a>}
     </>}
