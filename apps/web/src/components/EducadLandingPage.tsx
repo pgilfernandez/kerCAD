@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowRight, BookOpen, Box, Download, GraduationCap, History, MousePointer2, PencilRuler, ShieldCheck, Sparkles } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { HeaderToolbarIcon } from "@/components/icons";
 import { EditorHeaderActions } from "@/components/EditorHeaderActions";
 import { normalizeEducadLocale, type EducadLocale } from "@/lib/educadI18n";
@@ -27,6 +27,25 @@ export function EducadLandingPage({ preview, onStart, onOpenChallenges }: Props)
   const [sectionsOpen, setSectionsOpen] = useState(false);
   const sectionsMenuRef = useRef<HTMLDivElement>(null);
   const sectionsTriggerRef = useRef<HTMLButtonElement>(null);
+  const sectionLinksRef = useRef<HTMLElement>(null);
+  const [menuPosition, setMenuPosition] = useState({ left: 0, arrow: 20 });
+  useLayoutEffect(() => {
+    if (!sectionsOpen) return;
+    const trigger = sectionsTriggerRef.current, menu = sectionLinksRef.current;
+    const parent = trigger?.closest(".educad-landing-header-actions");
+    if (!trigger || !menu || !parent) return;
+    const update = () => {
+      const button = trigger.getBoundingClientRect();
+      const center = button.left + button.width / 2;
+      const left = Math.max(12, Math.min(center - 28, window.innerWidth - menu.offsetWidth - 12));
+      setMenuPosition({ left: left - parent.getBoundingClientRect().left, arrow: center - left });
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(parent);
+    window.addEventListener("resize", update);
+    return () => { observer.disconnect(); window.removeEventListener("resize", update); };
+  }, [sectionsOpen, locale]);
   const navigation = [
     { id: "features", label: locale === "es" ? "Qué puedes hacer" : "Features" },
     { id: "challenges", label: locale === "es" ? "Retos para el aula" : "Classroom challenges" },
@@ -58,7 +77,7 @@ export function EducadLandingPage({ preview, onStart, onOpenChallenges }: Props)
       <div className="educad-landing-header-actions">
         <div ref={sectionsMenuRef} className="educad-landing-section-control">
           <button ref={sectionsTriggerRef} type="button" className="educad-landing-menu-trigger" aria-label={locale === "es" ? "Secciones de la página" : "Page sections"} title={locale === "es" ? "Secciones de la página" : "Page sections"} aria-expanded={sectionsOpen} aria-controls="educad-landing-section-menu" onClick={() => setSectionsOpen((open) => !open)}><HeaderToolbarIcon file="menu" /></button>
-          {sectionsOpen && <nav id="educad-landing-section-menu" className="educad-landing-section-menu" lang={locale} aria-label={locale === "es" ? "Secciones de la página" : "Page sections"}>{navigation.map((item) => <a key={item.id} href={`#${item.id}`} onClick={() => setSectionsOpen(false)}>{item.label}</a>)}</nav>}
+          {sectionsOpen && <nav ref={sectionLinksRef} id="educad-landing-section-menu" className="educad-landing-section-menu" style={{ left: menuPosition.left }} lang={locale} aria-label={locale === "es" ? "Secciones de la página" : "Page sections"}><svg className="educad-landing-menu-pointer" style={{ left: menuPosition.arrow - 10 }} width="20" height="10" viewBox="0 0 20 10" aria-hidden="true"><path d="M0 10 10 0 20 10" fill="white" stroke="#c7d5de" strokeWidth="1" /></svg>{navigation.map((item) => <a key={item.id} href={`#${item.id}`} onClick={() => setSectionsOpen(false)}>{item.label}</a>)}</nav>}
         </div>
         <EditorHeaderActions locale={locale} onLocaleChange={changeLocale} onShowLanding={onStart} showDocumentation={false} showDonation startDesigning compactInformation />
       </div>

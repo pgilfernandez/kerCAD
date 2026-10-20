@@ -10342,7 +10342,8 @@ html[data-theme="dark"] .grid-settings {
 .educad-landing-section-control { display: none; }
 .educad-landing-menu-trigger { width: 38px; height: 38px; display: grid; place-items: center; padding: 7px; color: #fff; background: #ffffff33; border: 1px solid white; border-radius: 8px; cursor: pointer; }
 .educad-landing-menu-trigger:hover, .educad-landing-menu-trigger[aria-expanded="true"] { color: #1269eb; background: #ffffffcc; }
-.educad-landing-nav .educad-landing-section-menu { position: absolute; top: calc(100% + 10px); right: 0; z-index: 60; display: flex; flex-direction: column; gap: 4px; width: 220px; margin: 0; padding: 6px; border: 1px solid #c7d5de; border-radius: 8px; background: #fff; box-shadow: 0 6px 20px #173b5a26; }
+.educad-landing-nav .educad-landing-section-menu { position: absolute; top: calc(100% + 10px); right: auto; z-index: 60; display: flex; flex-direction: column; gap: 4px; width: 220px; margin: 0; padding: 6px; border: 1px solid #c7d5de; border-radius: 8px; background: #fff; box-shadow: 0 6px 20px #173b5a26; }
+.educad-landing-menu-pointer { position: absolute; top: -10px; overflow: visible; pointer-events: none; }
 .educad-landing-nav .educad-landing-section-menu a { padding: 10px 12px; color: #173b5a; border-radius: 5px; font-size: 14px; }
 .educad-landing-nav .educad-landing-section-menu a:hover { color: #1269eb; background: #eaf3ff; }
 @media (max-width: 1200px) {
