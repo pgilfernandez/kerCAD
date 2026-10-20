@@ -14,9 +14,9 @@ import { dashboardTranslate, type DashboardTranslationKey } from "@/lib/dashboar
 import { normalizeEducadLocale } from "@/lib/educadI18n";
 import { assertImportByteLimit } from "@/lib/parametricImportLimits";
 
-function libraryText(key: DashboardTranslationKey) {
-  try { return dashboardTranslate(normalizeEducadLocale(localStorage.getItem("educad.locale")), key); }
-  catch { return dashboardTranslate("en", key); }
+function libraryText(key: DashboardTranslationKey, values?: Record<string, string | number>) {
+  try { return dashboardTranslate(normalizeEducadLocale(localStorage.getItem("educad.locale")), key, values); }
+  catch { return dashboardTranslate("en", key, values); }
 }
 
 export default function Home() {
@@ -305,8 +305,47 @@ export default function Home() {
     await saveLibraryProject(updated);
     setProjects((current) => current.map((entry) => entry.id === updated.id ? updated : entry));
   };
+  const duplicateProject = async (project: ProjectLibraryEntry) => {
+    setBusy(true);
+    try {
+      await writeQueueRef.current.catch(() => undefined);
+      const source = await getLibraryProject(project.id) ?? project;
+      const names = new Set((await listLibraryProjects()).map((entry) => entry.name));
+      const base = libraryText("{name} (copy)", { name: source.name });
+      let name = base;
+      for (let suffix = 2; names.has(name); suffix += 1) name = `${base} ${suffix}`;
+      const now = Date.now();
+      const document = structuredClone(source.document);
+      document.id = createEmptyDocument(now).id;
+      document.name = name;
+      document.createdAt = document.updatedAt = now;
+      const entry: ProjectLibraryEntry = { id: newProjectLibraryId(), name, createdAt: now, updatedAt: now, document, thumbnail: source.thumbnail, assets: source.assets ? structuredClone(source.assets) : undefined };
+      await saveLibraryProject(entry);
+      setProjects((current) => [entry, ...current]);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : libraryText("Could not duplicate the project."));
+    } finally { setBusy(false); }
+  };
+  const downloadProject = async (project: ProjectLibraryEntry) => {
+    setBusy(true);
+    try {
+      await writeQueueRef.current.catch(() => undefined);
+      const source = await getLibraryProject(project.id) ?? project;
+      const bytes = await exportEducadProject(source.document, source.assets);
+      const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: EDUCAD_PACKAGE_MEDIA_TYPE }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${source.name.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-").trim() || "design"}.educad`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : libraryText("Could not export the project."));
+    } finally { setBusy(false); }
+  };
 
   if (active) return <SketchForgeParametricEditor key={`${active.id}:${editorSession}`} initialProject={active.document} sharedFileName={active.sharedSource?.fileName} onSaveShared={sharedEnabled && !editingChallenge ? saveActiveShared : undefined} challenge={activeChallenge} challengeEditor={editingChallenge} onSaveChallenge={(challenge, document) => void finishChallengeEdit(challenge, document)} onCancelChallengeEdit={cancelChallengeEdit} onProjectChange={persistActive} onProjectThumbnail={persistThumbnail} onExitToProjects={(document) => void leaveEditor(document)} />;
   if (showLanding) return <EducadLandingPage projectCount={projects.length} preview={projects.find((project) => project.thumbnail)?.thumbnail} onStart={() => { setDashboardSection("home"); setShowLanding(false); }} onOpenChallenges={() => { setDashboardSection("challenges"); setShowLanding(false); }} />;
-  return <ProjectDashboard sharedEnabled={sharedEnabled} onSharedSaved={() => void refresh()} projects={projects} challenges={challenges} busy={busy} section={dashboardSection} onSectionChange={setDashboardSection} onShowLanding={() => setShowLanding(true)} onCreate={() => void createProject()} onOpen={(project) => { setActiveChallenge(null); setEditingChallenge(null); void openStoredProject(project); }} onImport={(file) => void importProject(file)} onImportChallenge={(file) => void installChallenge(file)} onCreateChallenge={() => editChallenge()} onEditChallenge={editChallenge} onDuplicateChallenge={(challenge) => void duplicateInstalledChallenge(challenge)} onExportChallenge={downloadChallenge} onStartChallenge={(challenge) => void startChallenge(challenge)} onDeleteChallenge={(challenge) => void (async () => { await deleteInstalledChallenge(challenge.id); setChallenges(await listInstalledChallenges()); })()} onRename={(project, name) => void renameProject(project, name)} onDelete={(project) => void (async () => { await deleteLibraryProject(project.id); await refresh(); })()} />;
+  return <ProjectDashboard onDuplicate={(project) => void duplicateProject(project)} onExport={(project) => void downloadProject(project)} sharedEnabled={sharedEnabled} onSharedSaved={() => void refresh()} projects={projects} challenges={challenges} busy={busy} section={dashboardSection} onSectionChange={setDashboardSection} onShowLanding={() => setShowLanding(true)} onCreate={() => void createProject()} onOpen={(project) => { setActiveChallenge(null); setEditingChallenge(null); void openStoredProject(project); }} onImport={(file) => void importProject(file)} onImportChallenge={(file) => void installChallenge(file)} onCreateChallenge={() => editChallenge()} onEditChallenge={editChallenge} onDuplicateChallenge={(challenge) => void duplicateInstalledChallenge(challenge)} onExportChallenge={downloadChallenge} onStartChallenge={(challenge) => void startChallenge(challenge)} onDeleteChallenge={(challenge) => void (async () => { await deleteInstalledChallenge(challenge.id); setChallenges(await listInstalledChallenges()); })()} onRename={(project, name) => void renameProject(project, name)} onDelete={(project) => void (async () => { await deleteLibraryProject(project.id); await refresh(); })()} />;
 }

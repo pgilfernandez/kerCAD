@@ -24,6 +24,8 @@ type Props = {
   onImport: (file: File) => void;
   onDelete: (project: ProjectLibraryEntry) => void;
   onRename: (project: ProjectLibraryEntry, name: string) => void;
+  onDuplicate: (project: ProjectLibraryEntry) => void;
+  onExport: (project: ProjectLibraryEntry) => void;
   challenges: EducadChallenge[];
   onImportChallenge: (file: File) => void;
   onCreateChallenge: () => void;
@@ -42,7 +44,7 @@ function updatedLabel(timestamp: number, locale: EducadLocale) {
   return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(timestamp);
 }
 
-export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSaved, busy = false, section, onSectionChange, onShowLanding, onCreate, onOpen, onImport, onDelete, onRename, challenges, onImportChallenge, onCreateChallenge, onStartChallenge, onEditChallenge, onDuplicateChallenge, onExportChallenge, onDeleteChallenge }: Props) {
+export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSaved, busy = false, section, onSectionChange, onShowLanding, onCreate, onOpen, onImport, onDelete, onRename, onDuplicate, onExport, challenges, onImportChallenge, onCreateChallenge, onStartChallenge, onEditChallenge, onDuplicateChallenge, onExportChallenge, onDeleteChallenge }: Props) {
   const [query, setQuery] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const [locale, setLocale] = useState<EducadLocale>("en");
@@ -166,6 +168,8 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
               <span className="card-copy"><strong>{project.name}</strong><small>{updatedLabel(project.updatedAt, locale)} · {t(project.document.features.length === 1 ? "{count} operation" : "{count} operations", { count: project.document.features.length })}</small></span>
             </button>
             <button className="card-rename" type="button" aria-label={t("Rename {name}", { name: project.name })} title={t("Rename project")} onClick={() => beginRename(project)}><ToolbarEditOperationIcon /></button>
+            <button className="card-duplicate" type="button" disabled={busy} aria-label={t("Duplicate {name}", { name: project.name })} title={t("Duplicate project")} onClick={() => onDuplicate(project)}><Copy size={17} /></button>
+            <button className="card-export" type="button" disabled={busy} aria-label={t("Export {name}", { name: project.name })} title={t("Export project")} onClick={() => onExport(project)}><Download size={17} /></button>
             <button className="card-delete" type="button" aria-label={t("Delete {name}", { name: project.name })} title={t("Delete project")} onClick={() => setDeleting(project)}><Trash2 size={17} /></button>
           </article>)}
           {query.trim() && !visible.length ? <div className="educad-dashboard-empty"><strong>{t("No projects found")}</strong><span>{t("Try another project name.")}</span></div> : null}
