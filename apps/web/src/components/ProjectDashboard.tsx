@@ -102,7 +102,7 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
     <header className="educad-dashboard-topbar">
       <strong className="educad-dashboard-brand"><img className="educad-dashboard-logo" src="/assets/educad/logo.svg" alt="" /><span>eduCAD</span></strong>
       <nav className="educad-dashboard-mobile-nav" aria-label={t("Dashboard sections")}><button className={section === "home" ? "active" : ""} type="button" onClick={() => onSectionChange("home")}><Home size={18} /> {t("Projects")}</button><button className={section === "challenges" ? "active" : ""} type="button" onClick={() => onSectionChange("challenges")}><Grid3X3 size={18} /> {t("Challenges")}</button>{sharedEnabled ? <button type="button" onClick={() => onSectionChange("shared")}>{t("Shared")}</button> : null}</nav>
-      <EditorHeaderActions locale={locale} onLocaleChange={changeLocale} onShowLanding={onShowLanding} />
+      <EditorHeaderActions locale={locale} onLocaleChange={changeLocale} onShowLanding={onShowLanding} showDonation />
     </header>
     <div className="educad-dashboard-layout">
       <aside className="educad-dashboard-sidebar">

@@ -6,7 +6,7 @@ import { version, license } from "../../../../package.json";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { educadTranslate, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
 
-export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onLaunchTutorial, showDocumentation = true, startDesigning = false }: { locale: EducadLocale; onLocaleChange: (locale: EducadLocale) => void; onShowLanding?: () => void; onLaunchTutorial?: () => void; showDocumentation?: boolean; startDesigning?: boolean }) {
+export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onLaunchTutorial, showDocumentation = true, startDesigning = false, showDonation = false }: { locale: EducadLocale; onLocaleChange: (locale: EducadLocale) => void; onShowLanding?: () => void; onLaunchTutorial?: () => void; showDocumentation?: boolean; startDesigning?: boolean; showDonation?: boolean }) {
   const t = (key: EducadTranslationKey) => educadTranslate(locale, key);
   const [open, setOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -43,7 +43,7 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onL
   }, [open, infoOpen]);
   return <div ref={root} className={`educad-header-actions${onShowLanding ? " dashboard-header-actions" : ""}`}>
     {onShowLanding && <>
-      <button type="button" className={startDesigning ? "educad-header-start-designing" : undefined} aria-label={t(startDesigning ? "about.startDesigning" : "about.projectOverview")} title={t(startDesigning ? "about.startDesigning" : "about.projectOverview")} onClick={onShowLanding}><HeaderToolbarIcon file={startDesigning ? "square-pen" : "project-overview"} /><span>{t(startDesigning ? "about.startDesigning" : "about.projectOverview")}</span></button>
+      {showDonation ? <button type="button" disabled aria-label={t("about.donate")} title={t("about.donatePending")}><HeaderToolbarIcon file="donate" /><span>{t("about.donate")}</span></button> : <button type="button" className={startDesigning ? "educad-header-start-designing" : undefined} aria-label={t(startDesigning ? "about.startDesigning" : "about.projectOverview")} title={t(startDesigning ? "about.startDesigning" : "about.projectOverview")} onClick={onShowLanding}><HeaderToolbarIcon file={startDesigning ? "square-pen" : "project-overview"} /><span>{t(startDesigning ? "about.startDesigning" : "about.projectOverview")}</span></button>}
       {showDocumentation && <a href={`/documentation?lang=${locale}`} target="_blank" rel="noopener noreferrer" title={t("about.documentation")}><HeaderToolbarIcon file="documentation" /><span>{locale === "es" ? "Documentación" : "Documentation"}</span></a>}
     </>}
     <button ref={infoTriggerRef} type="button" aria-label={t("about.label")} title={t("about.title")} aria-expanded={infoOpen} aria-controls="educad-about-panel" onClick={() => { setOpen(false); setInfoOpen((value) => !value); }}><HeaderToolbarIcon file="information" />{onShowLanding && <span>{t("about.title")}</span>}</button>
