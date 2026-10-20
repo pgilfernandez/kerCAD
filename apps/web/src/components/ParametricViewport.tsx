@@ -652,6 +652,9 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
   const controlsRef = useRef<OrbitControls | null>(null);
   const projectBandRef = useRef<THREE.Mesh | null>(null);
   const projectRenameButtonRef = useRef<THREE.Mesh | null>(null);
+  const projectRenameCallbackRef = useRef(onProjectRename);
+  projectRenameCallbackRef.current = onProjectRename;
+  const canRenameProject = Boolean(onProjectRename);
   const projectionChangeRef = useRef<((projection: CameraProjection) => void) | null>(null);
   const cameraTransitionRef = useRef<number | null>(null);
   const referenceImageHandleRef = useRef<ReturnType<typeof attachReferenceImageHandle> | null>(null);
@@ -4577,10 +4580,11 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
   useEffect(() => {
     const host = hostRef.current;
     const controls = controlsRef.current;
-    if (!host || !onProjectRename) return;
+    if (!host || !canRenameProject) return;
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     let lastPointer: PointerEvent | null = null;
+    let pressed: { pointerId: number; x: number; y: number } | null = null;
     const hide = () => {
       const button = projectRenameButtonRef.current;
       button?.userData.setHovered?.(false);
@@ -4598,6 +4602,9 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
     };
     const hover = (event: PointerEvent) => {
       lastPointer = event;
+      // A small movement with the mouse held used to hide the button before
+      // pointerup, which then discarded an otherwise valid click.
+      if (pressed) return;
       const button = projectRenameButtonRef.current;
       const band = projectBandRef.current;
       if (!button || !band || event.buttons || !hit(event)) { hide(); return; }
@@ -4608,23 +4615,39 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
       button.userData.setHovered?.(buttonHovered);
       if (button.visible !== visible) { button.visible = visible; invalidateRef.current(); }
     };
-    let pressed = false;
     const down = (event: PointerEvent) => {
       const button = projectRenameButtonRef.current;
-      if (event.button !== 0 || !button?.visible || !hit(event) || !raycaster.intersectObject(button, false).length) return;
-      pressed = true;
+      if (event.button !== 0 || !button || !hit(event)) return;
+      button.updateWorldMatrix(true, false);
+      if (!raycaster.intersectObject(button, false).length) return;
+      pressed = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+      button.visible = true;
+      button.userData.setHovered?.(true);
+      invalidateRef.current();
+      rendererRef.current?.domElement.setPointerCapture(event.pointerId);
       event.preventDefault();
       event.stopPropagation();
     };
     const up = (event: PointerEvent) => {
       if (!pressed) { hover(event); return; }
-      pressed = false;
+      if (event.pointerId !== pressed.pointerId) return;
+      const click = Math.hypot(event.clientX - pressed.x, event.clientY - pressed.y) <= 8;
+      pressed = null;
       event.preventDefault();
       event.stopPropagation();
-      const button = projectRenameButtonRef.current;
-      if (button?.visible && hit(event) && raycaster.intersectObject(button, false).length) { hide(); onProjectRename(); }
+      const canvas = rendererRef.current?.domElement;
+      if (canvas?.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+      if (click) { hide(); projectRenameCallbackRef.current?.(); }
+      else hover(event);
     };
-    const leave = () => { lastPointer = null; pressed = false; hide(); };
+    const leave = () => {
+      const canvas = rendererRef.current?.domElement;
+      const pointerId = pressed?.pointerId;
+      pressed = null;
+      if (pointerId !== undefined && canvas?.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
+      lastPointer = null;
+      hide();
+    };
     // Re-evaluate the band under the stationary cursor as the camera moves,
     // instead of hiding the button on every damped OrbitControls update.
     const cameraChanged = () => { if (lastPointer) hover(lastPointer); };
@@ -4635,6 +4658,7 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
     host.addEventListener("pointerup", up, true);
     controls?.addEventListener("change", cameraChanged);
     return () => {
+      leave();
       host.removeEventListener("pointermove", hover);
       host.removeEventListener("pointerleave", leave);
       host.removeEventListener("pointercancel", leave);
@@ -4642,7 +4666,7 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
       host.removeEventListener("pointerup", up, true);
       controls?.removeEventListener("change", cameraChanged);
     };
-  }, [onProjectRename, projection, renderQuality, shadingMode]);
+  }, [canRenameProject, projection, renderQuality, shadingMode]);
   return <div className="parametric-viewport" ref={hostRef} aria-label={locale === "es" ? "Vista 3D de la pieza" : "3D model view"}>
     {captureFrameActive && <ChallengeCaptureFrame locale={locale} onCapture={(crop) => onCaptureFrame?.(crop)} onCancel={() => onCancelCaptureFrame?.()} />}
     <AnnotationInteraction host={hostRef} camera={cameraRef} model={modelRef} snapPoint={annotationSnapRef} positionHandleAtPointer={(event) => annotationPositionHandleRef.current(event)} pointHandleAtPointer={(event) => annotationPointHandleRef.current(event)} radiusHandleAtPointer={(event) => annotationRadiusHandleRef.current(event)} selectLabelAtPointer={(event) => annotationLabelSelectRef.current(event)} onCircleRadius={(id, radius) => onCircleAnnotationRadius?.(id, radius)} onCircleLineWidth={(id, width) => onUpdateAnnotation?.(id, (draft) => { if (draft.kind === "circle") draft.lineWidth = width; })} workplane={workplane} displayUnit={displayUnit} tool={annotationTool} selected={annotationInteractionSelection ? { ...annotationInteractionSelection, visible: annotationInteractionSelection.visible && annotationsVisible } : undefined} parameterHandlesVisible={parameterHandlesVisible} onSelectEndpoint={(endpoint) => onSelectAnnotationEndpoint?.(endpoint)} onMoveEndpoint={(id, endpoint, position) => onMoveAnnotationEndpoint?.(id, endpoint, position)} onMoveText={(id, position) => onObjectAxisMove?.(id, position)} editing={Boolean(editingAnnotationId && editingAnnotationId === selectedAnnotationId)} locale={locale} onPlace={(kind, start, end, center) => onPlaceAnnotation?.(kind, start, end, center)} onFinish={(id, text, size) => onFinishAnnotation?.(id, text, size)} onEdit={(id) => onEditAnnotation?.(id)} onCancelTool={() => onCancelAnnotationTool?.()} onPreview={setAnnotationPreview} />
