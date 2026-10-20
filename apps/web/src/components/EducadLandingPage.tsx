@@ -1,6 +1,9 @@
 "use client";
 
 import { ArrowRight, BookOpen, Box, Download, GraduationCap, History, MousePointer2, PencilRuler, ShieldCheck, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { EditorHeaderActions } from "@/components/EditorHeaderActions";
+import { normalizeEducadLocale, type EducadLocale } from "@/lib/educadI18n";
 
 type Props = {
   projectCount: number;
@@ -18,12 +21,21 @@ const features = [
   { icon: ShieldCheck, title: "Guarda tus proyectos", copy: "Tus diseños se guardan en este navegador. Exporta una copia para conservarlos o llevarlos a otro equipo." },
 ];
 
-export function EducadLandingPage({ projectCount, preview, onStart, onOpenChallenges }: Props) {
+export function EducadLandingPage({ preview, onStart, onOpenChallenges }: Props) {
+  const [locale, setLocale] = useState<EducadLocale>("en");
+  useEffect(() => {
+    try { setLocale(normalizeEducadLocale(localStorage.getItem("educad.locale"))); } catch { /* Keep English when storage is unavailable. */ }
+  }, []);
+  const changeLocale = (language: EducadLocale) => {
+    setLocale(language);
+    document.documentElement.lang = language;
+    try { localStorage.setItem("educad.locale", language); } catch { /* Language selection remains usable without storage. */ }
+  };
   return <main className="educad-landing" lang="es">
     <header className="educad-landing-nav educad-dashboard-topbar">
       <a className="educad-dashboard-brand" href="#top" aria-label="eduCAD, inicio"><img className="educad-dashboard-logo" src="/assets/educad/logo.svg" alt="" /><strong>eduCAD</strong></a>
-      <nav aria-label="Navegación principal"><a href="#features">Qué puedes hacer</a><a href="#challenges">Retos para el aula</a><a href="#workflow">Cómo empezar</a></nav>
-      <button type="button" onClick={onStart}>{projectCount ? "Mis proyectos" : "Empezar"}<ArrowRight size={18} /></button>
+      <nav lang={locale} aria-label={locale === "es" ? "Navegación principal" : "Main navigation"}><a href="#features">{locale === "es" ? "Qué puedes hacer" : "Features"}</a><a href="#challenges">{locale === "es" ? "Retos para el aula" : "Classroom challenges"}</a><a href="#workflow">{locale === "es" ? "Cómo empezar" : "Getting started"}</a></nav>
+      <EditorHeaderActions locale={locale} onLocaleChange={changeLocale} onShowLanding={onStart} showDocumentation={false} showDonation compactInformation />
     </header>
 
     <section className="educad-landing-hero" id="top">
