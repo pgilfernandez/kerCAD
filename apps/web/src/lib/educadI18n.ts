@@ -1,6 +1,7 @@
 export type EducadLocale = "es" | "en";
 
 const es = {
+  "settings.appearanceLanguage": "Tema e idioma", "settings.theme": "Tema", "settings.themeLight": "Claro", "settings.themeDark": "Oscuro",
   "project.cover": "Imagen del proyecto", "project.coverManual": "Captura manual guardada", "project.coverAutomatic": "Capturas automáticas activadas",
   "project.captureCover": "Capturar imagen", "project.resetCover": "Restablecer automática",
   "camera.sectionPickHint": "Selecciona un plano principal o una cara para definir el corte · Esc cancela",
@@ -156,6 +157,7 @@ const es = {
 export type EducadTranslationKey = keyof typeof es;
 
 const en: Record<EducadTranslationKey, string> = {
+  "settings.appearanceLanguage": "Theme and language", "settings.theme": "Theme", "settings.themeLight": "Light", "settings.themeDark": "Dark",
   "project.cover": "Project image", "project.coverManual": "Saved manual capture", "project.coverAutomatic": "Automatic captures enabled",
   "project.captureCover": "Capture image", "project.resetCover": "Reset to automatic",
   "camera.sectionPickHint": "Select a main plane or a face to define the section · Esc cancels",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useAppTheme } from "@/lib/useAppTheme";
 import * as THREE from "three";
 import type { AlignmentItem, AlignmentTarget } from "@/lib/parametricAlignment";
 import { createAlignmentOverlay, disposeAlignmentOverlay } from "@/lib/viewportAlignment";
@@ -643,6 +644,7 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
   const [distanceParameterPreview, setDistanceParameterPreview] = useState<number | null>(null);
   const shapeParameterPreviewRef = useRef<{ parameter: ShapeParameter; value: number } | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
+  const { theme } = useAppTheme();
   const cameraRef = useRef<THREE.PerspectiveCamera | THREE.OrthographicCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const thumbnailCallbackRef = useRef(onThumbnail);
@@ -715,6 +717,13 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
   const hasFittedRef = useRef(false);
   const objectRenderCacheRef = useRef(new Map<string, CachedObjectRender>());
   const batchedSolidEdgesRef = useRef<THREE.LineSegments | null>(null);
+
+  useEffect(() => {
+    if (sceneRef.current) {
+      sceneRef.current.background = new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue("--theme-canvas").trim());
+      invalidateRef.current();
+    }
+  }, [theme]);
 
   useEffect(() => {
     selectionRef.current = selection;
@@ -864,7 +873,7 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
     if (!host) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#edf4f7");
+    scene.background = new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue("--theme-canvas").trim() || "#edf4f7");
     hasFittedRef.current = false;
     let camera: THREE.PerspectiveCamera | THREE.OrthographicCamera = projection === "orthographic"
       ? new THREE.OrthographicCamera(-90, 90, 90, -90, -2000, 2000)
@@ -3617,11 +3626,13 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
     const width = Math.max(1, workplane.width);
     const depth = Math.max(1, workplane.depth);
     const requestedStep = Math.max(0.1, workplane.gridStep);
+    const themeStyles = getComputedStyle(document.documentElement);
+    const gridColor = (part: string) => themeStyles.getPropertyValue(`--theme-grid-${part}`).trim();
     const addGrid = (target: THREE.Group, gridWidth: number, gridDepth: number, yellow = false) => {
       const step = Math.max(requestedStep, Math.max(gridWidth, gridDepth) / 1000);
       const surface = new THREE.Mesh(
         new THREE.PlaneGeometry(gridWidth, gridDepth),
-        workplaneMaterial(renderQuality, shadingMode, yellow ? "#ffe99a" : "#ddf8ff", yellow ? 0.3 : 0.68),
+        workplaneMaterial(renderQuality, shadingMode, yellow ? "#ffe99a" : gridColor("surface"), yellow ? 0.3 : 0.68),
       );
       surface.rotation.x = -Math.PI / 2;
       surface.position.y = yellow ? 0.015 : -0.08;
@@ -3649,7 +3660,7 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
       pushLine(border, halfWidth, -halfDepth, halfWidth, halfDepth);
       pushLine(border, halfWidth, halfDepth, -halfWidth, halfDepth);
       pushLine(border, -halfWidth, halfDepth, -halfWidth, -halfDepth);
-      const palette = yellow ? ["#ffeaa0", "#efc83e", "#c38c00"] : ["#91dff0", "#4bbddf", "#58c5e6"];
+      const palette = yellow ? ["#ffeaa0", "#efc83e", "#c38c00"] : [gridColor("minor"), gridColor("major"), gridColor("border")];
       [minor, major, border].forEach((values, index) => {
         if (values.length === 0) return;
         const geometry = new THREE.BufferGeometry();
@@ -3788,7 +3799,7 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
     }
     groundOpacityDirtyRef.current = true;
     invalidateRef.current();
-  }, [projectName, projection, renderQuality, shadingMode, workplane.activeSizePercent, workplane.depth, workplane.gridStep, workplane.gridVisible, workplane.normal.x, workplane.normal.y, workplane.normal.z, workplane.origin.x, workplane.origin.y, workplane.origin.z, workplane.width, workplane.xAxis.x, workplane.xAxis.y, workplane.xAxis.z, workplane.yAxis.x, workplane.yAxis.y, workplane.yAxis.z]);
+  }, [theme, projectName, projection, renderQuality, shadingMode, workplane.activeSizePercent, workplane.depth, workplane.gridStep, workplane.gridVisible, workplane.normal.x, workplane.normal.y, workplane.normal.z, workplane.origin.x, workplane.origin.y, workplane.origin.z, workplane.width, workplane.xAxis.x, workplane.xAxis.y, workplane.xAxis.z, workplane.yAxis.x, workplane.yAxis.y, workplane.yAxis.z]);
 
   useEffect(() => {
     const layer = sketchLayerRef.current;

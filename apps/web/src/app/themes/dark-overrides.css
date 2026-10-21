@@ -1,0 +1,46 @@
+/* Shared appearance/language chooser, independent of its host header. */
+.educad-header-actions .educad-header-language-menu { width: 224px; color: var(--theme-menu-text); background: var(--theme-menu-surface); border-color: var(--theme-menu-line); }
+.educad-header-preference-group { padding: 4px; }
+.educad-header-preference-heading { display: block; padding: 5px 8px; font-size: 11px; font-weight: 600; color: var(--theme-text-muted); }
+.educad-header-theme-options { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.educad-header-actions .educad-header-language-menu button { display: flex; align-items: center; gap: 7px; width: 100%; min-height: 34px; margin: 2px 0; padding: 8px; color: var(--theme-menu-text); background: transparent; border: 0; border-radius: 4px; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.educad-header-actions .educad-header-language-menu button:hover,
+.educad-header-actions .educad-header-language-menu button[aria-pressed="true"] { background: var(--theme-menu-active); color: var(--theme-link); }
+.educad-header-actions .educad-header-language-menu button:focus-visible { outline: 2px solid var(--theme-link); outline-offset: -2px; }
+.educad-header-preference-separator { margin: 5px 4px; border: 0; border-top: 1px solid var(--theme-menu-line); }
+
+/* Only paint overrides belong here. Layout remains shared with light mode. */
+html[data-theme="dark"] .educad-about-page {
+  --about-ink: var(--theme-text);
+  --about-muted: var(--theme-text-muted);
+  --about-blue: var(--theme-link);
+  --about-line: var(--theme-border);
+}
+html[data-theme="dark"] :is(.about-history-note, .about-feature-panel, .about-school) { background: var(--theme-surface); border-color: var(--theme-border); }
+html[data-theme="dark"] :is(.about-essentials, .about-audience-card, .about-audience-card.teacher, .about-feature-section, .about-community, .about-sketch-figure, .about-challenge-demo > header) { background: var(--theme-page); border-color: var(--theme-border); }
+html[data-theme="dark"] :is(.about-model-image, .about-feature-tabs, .about-icon-tile, .about-school-icon, .about-feature-panel > img) { background: var(--theme-active); border-color: var(--theme-border); }
+html[data-theme="dark"] :is(.about-hero-copy > small, .about-essentials span, .about-feature-tabs button, .about-challenge-values > span, .about-school small) { color: var(--theme-text-muted); }
+html[data-theme="dark"] .educad-about-page .about-button.primary { color: #fff; background: var(--educad-primary-blue); }
+html[data-theme="dark"] .about-privacy-symbol { background: #203b32; border-color: #3c6857; color: #9bd7bb; }
+html[data-theme="dark"] .about-coming-soon { background: var(--theme-page); color: var(--theme-text-muted); }
+html[data-theme="dark"] .educad-getting-started-pointer path { fill: var(--theme-surface); }
+html[data-theme="dark"] .educad-getting-started:has(header:hover) .educad-getting-started-pointer.top path { fill: var(--theme-dark-surface); }
+
+/* SVG sketch paint is explicit: never invert geometry, images or axis colors. */
+html[data-theme="dark"] .sketch-plate-background { fill: var(--theme-grid-surface); }
+html[data-theme="dark"] .sketch-grid .minor { stroke: var(--theme-grid-minor); }
+html[data-theme="dark"] .sketch-grid .major { stroke: var(--theme-grid-major); }
+html[data-theme="dark"] .sketch-plate-border { stroke: var(--theme-grid-border); }
+html[data-theme="dark"] .sketch-segments :is(path, circle):not(.selected):not(:hover):not(.invalid):not(.construction) { stroke: #d4e5ef; }
+html[data-theme="dark"] .sketch-scene-reference .edges { stroke: rgba(185, 207, 223, .4); }
+html[data-theme="dark"] :is(.sketch-segment-dimensions, .sketch-circle-dimensions, .sketch-text-dimensions) rect { fill: #243544; stroke: #526b80; }
+html[data-theme="dark"] :is(.sketch-segment-dimensions, .sketch-circle-dimensions, .sketch-text-dimensions) text { fill: #e1ebf5; }
+html[data-theme="dark"] .sketch-dimension-editor-background { fill: #24466b !important; }
+html[data-theme="dark"] .sketch-dimension-editor-value { fill: #e1ebf5 !important; }
+html[data-theme="dark"] .sketch-dimension-editor-indicator { fill: #9ac6ff !important; }
+html[data-theme="dark"] .sketch-dimension-editor input { caret-color: #e1ebf5; }
+html[data-theme="dark"] .sketch-constraints rect { fill: #243544; }
+html[data-theme="dark"] .sketch-constraints text { fill: #9ac6ff; }
+
+/* Directional scroll fades must match the surface, not leave white strips. */
+html[data-theme="dark"] .educad-toolbar-scroll-indicator { background-color: var(--theme-surface); }
