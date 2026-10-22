@@ -192,6 +192,9 @@
   --theme-grid-minor: #91dff0;
   --theme-grid-major: #4bbddf;
   --theme-grid-border: #58c5e6;
+  --theme-grid-title-background: #dfebee;
+  --theme-grid-title-text: #afbfc3;
+  --theme-fps-background: rgba(255, 255, 255, 0.86);
   --theme-menu-surface: #fff;
   --theme-menu-text: #173b5a;
   --theme-menu-line: #c7d5de;
@@ -379,6 +382,9 @@ html[data-theme="dark"] {
   --theme-grid-minor: #31515f;
   --theme-grid-major: #447383;
   --theme-grid-border: #5a8b9c;
+  --theme-grid-title-background: #243e4b;
+  --theme-grid-title-text: #afc5d0;
+  --theme-fps-background: rgba(28, 40, 53, 0.86);
   /* Sparse component shades keep their exact light value as a var() fallback. */
   --theme-dark-surface: #1c2835;
   --theme-dark-active: #213b59;

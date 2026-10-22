@@ -1651,7 +1651,7 @@ button {
 .educad-settings-panel .educad-settings-toggle input { width: 18px; height: 18px; accent-color: var(--educad-primary-blue); }
 .educad-settings-panel p { margin: 11px 14px 0; color: var(--theme-dark-link, #7b8f9e); font-size: 9px; }
 
-.educad-fps-counter { position: absolute; bottom: 18px; right: calc(var(--educad-model-sidebar-width, 0px) + 12px); z-index: 35; display: flex; box-sizing: border-box; width: 82px; height: 42px; padding: 6px 9px; align-items: center; justify-content: center; color: var(--theme-dark-text, #16794c); background: rgba(255, 255, 255, 0.86); border: 1px solid rgba(22, 121, 76, 0.33); border-radius: 6px; box-shadow: 0 2px 8px rgba(28, 62, 78, 0.12); font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; pointer-events: none; }
+.educad-fps-counter { position: absolute; bottom: 18px; right: calc(var(--educad-model-sidebar-width, 0px) + 12px); z-index: 35; display: flex; box-sizing: border-box; width: 82px; height: 42px; padding: 6px 9px; align-items: center; justify-content: center; color: var(--theme-dark-text, #16794c); background: var(--theme-fps-background); border: 1px solid rgba(22, 121, 76, 0.33); border-radius: 6px; box-shadow: 0 2px 8px rgba(28, 62, 78, 0.12); font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; pointer-events: none; }
 .educad-workplane-stage:has(> .educad-fps-counter) { --educad-fps-space: 90px; }
 .educad-workplane-stage.sketch-active > .educad-fps-counter { right: 12px; }
 .educad-fps-counter.medium { color: var(--theme-dark-text, #9a6700); border-color: rgba(154, 103, 0, 0.33); }

@@ -3722,9 +3722,9 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
         labelCanvas.height = Math.max(128, Math.round(2048 * bandDepth / gridWidth));
         const context = labelCanvas.getContext("2d");
         if (context) {
-          context.fillStyle = "#dfebee";
+          context.fillStyle = gridColor("title-background");
           context.fillRect(0, 0, labelCanvas.width, labelCanvas.height);
-          context.fillStyle = "#afbfc3";
+          context.fillStyle = gridColor("title-text");
           context.font = `700 ${Math.round(labelCanvas.height * 0.42)}px Inter, Arial, sans-serif`;
           context.textAlign = "center";
           context.textBaseline = "middle";

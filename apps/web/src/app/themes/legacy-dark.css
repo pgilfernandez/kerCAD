@@ -625,9 +625,15 @@ html[data-theme="dark"] .shape-menu-trigger:hover .vector-toolbar-sprite-icon {
 
 html[data-theme="dark"] .action-buttons button {
   color: #c9d9e4;
-  background: #1d2b34;
-  border-color: #435661;
-  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.3);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .action-buttons button:hover {
+  background: var(--theme-active);
+  border-color: var(--theme-border);
+  box-shadow: none;
 }
 
 html[data-theme="dark"] .shape-menu-title,
