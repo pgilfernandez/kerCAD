@@ -4060,8 +4060,14 @@ export function ParametricViewport({ referenceImageSelection = null, onReference
     if (!model || !visualSection) return;
     const bodies = model.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh && child.visible && typeof child.userData.renderId === "string");
     const dispose = createVisualSection(model, bodies, visualSection);
-    invalidateRef.current();
-    return () => { dispose(); invalidateRef.current(); };
+    // Shadows are cached: clipping changes must invalidate them even when the
+    // underlying CAD mesh is unchanged. Keep idle frames free of shadow work.
+    const refreshShadows = () => {
+      if (rendererRef.current) rendererRef.current.shadowMap.needsUpdate = true;
+      invalidateRef.current();
+    };
+    refreshShadows();
+    return () => { dispose(); refreshShadows(); };
   }, [visualSection, mesh, objectRecords, displayMode, selectedObjectIds, operationContext, renderQuality, shadingMode]);
 
   useEffect(() => {

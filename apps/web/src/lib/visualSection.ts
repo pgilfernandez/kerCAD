@@ -69,6 +69,8 @@ export function createVisualSection(model: THREE.Group, bodies: THREE.Mesh[], po
     };
     material.customProgramCacheKey = () => "educad-section-hatch-v1";
     const cap = new THREE.Mesh(geometry, material);
+    // Close the retained solid for shadow rays as well as for the camera.
+    cap.castShadow = body.castShadow;
     cap.renderOrder = 2;
     group.add(cap); resources.push(geometry, material);
     // Coplanar triangulation edges are discarded: only outer and hole contours remain.
