@@ -6263,25 +6263,25 @@ circle.sketch-preview-line {
 }
 
 .educad-navicube-surface polygon {
-  fill: rgba(244, 248, 251, 0.97);
-  stroke: #bfd0db;
+  fill: var(--theme-navicube-face);
+  stroke: var(--theme-navicube-border);
   stroke-width: 1.15px;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
   transition: fill 100ms ease, stroke 100ms ease;
 }
 
-.educad-navicube-surface.edge polygon { fill: rgba(228, 238, 244, 0.98); }
-.educad-navicube-surface.corner polygon { fill: rgba(218, 231, 239, 0.98); }
+.educad-navicube-surface.edge polygon { fill: var(--theme-navicube-edge); }
+.educad-navicube-surface.corner polygon { fill: var(--theme-navicube-corner); }
 
 .educad-navicube-surface:hover polygon,
 .educad-navicube-surface.hovered polygon,
 .educad-navicube-surface:focus-visible polygon {
-  fill: #bfe7f4;
+  fill: var(--theme-navicube-hover);
 }
 
 .educad-navicube-surface text {
-  fill: #627b8d;
+  fill: var(--theme-navicube-text);
   font-size: 7.5px;
   font-weight: 800;
   dominant-baseline: central;
