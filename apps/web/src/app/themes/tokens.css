@@ -195,6 +195,7 @@
   --theme-grid-title-background: #dfebee;
   --theme-grid-title-text: #afbfc3;
   --theme-fps-background: rgba(255, 255, 255, 0.86);
+  --theme-status-warning-accent: #b18400;
   --theme-navicube-face: rgba(244, 248, 251, 0.97);
   --theme-navicube-edge: rgba(228, 238, 244, 0.98);
   --theme-navicube-corner: rgba(218, 231, 239, 0.98);
@@ -391,6 +392,7 @@ html[data-theme="dark"] {
   --theme-grid-title-background: #243e4b;
   --theme-grid-title-text: #afc5d0;
   --theme-fps-background: rgba(28, 40, 53, 0.86);
+  --theme-status-warning-accent: #d4b777;
   --theme-navicube-face: rgba(43, 60, 76, 0.97);
   --theme-navicube-edge: rgba(35, 50, 65, 0.98);
   --theme-navicube-corner: rgba(28, 42, 56, 0.98);

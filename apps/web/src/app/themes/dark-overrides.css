@@ -44,3 +44,28 @@ html[data-theme="dark"] .sketch-constraints text { fill: #9ac6ff; }
 
 /* Directional scroll fades must match the surface, not leave white strips. */
 html[data-theme="dark"] .educad-toolbar-scroll-indicator { background-color: var(--theme-surface); }
+
+/* Status messages use quiet dark surfaces, with color reserved for accents. */
+html[data-theme="dark"] :is(.educad-background-process.regenerating, .educad-topology-selection-status, .editor-toast) {
+  color: var(--theme-text);
+  background: var(--theme-surface);
+  border-color: var(--theme-border);
+  box-shadow: var(--shadow);
+}
+html[data-theme="dark"] .educad-background-process.regenerating > span {
+  border-color: var(--theme-border);
+  border-top-color: var(--theme-status-warning-accent);
+}
+html[data-theme="dark"] .educad-topology-selection-status { border-left-color: var(--theme-link); }
+html[data-theme="dark"] .sketch-profile-status {
+  color: var(--theme-text);
+  background: var(--theme-surface);
+  border-color: #579b7c;
+  box-shadow: var(--shadow);
+}
+html[data-theme="dark"] :is(.educad-rebuild-error, .pcad-build-warning, .sketch-profile-status.invalid) {
+  color: var(--theme-text-ba434c);
+  background: var(--theme-dark-danger-surface);
+  border-color: #965a64;
+  box-shadow: var(--shadow);
+}
