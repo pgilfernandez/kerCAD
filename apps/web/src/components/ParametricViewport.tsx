@@ -3787,6 +3787,23 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       }
     };
     if (workplane.gridVisible) addGrid(group, width, depth);
+    else {
+      // Keep the global XY reference without the floor, grid or title strip.
+      // These lines are overlays: neither geometry nor a below-floor view hides
+      // them, and the floor's below-Z opacity adjustment must not dim them.
+      const axes = [
+        { color: "#c67676", positions: [-width / 2, 0, 0, width / 2, 0, 0] },
+        { color: "#62946e", positions: [0, 0, -depth / 2, 0, 0, depth / 2] },
+      ];
+      for (const axis of axes) {
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute("position", new THREE.Float32BufferAttribute(axis.positions, 3));
+        const material = new THREE.LineBasicMaterial({ color: axis.color, transparent: true, opacity: 0.95, depthTest: false, depthWrite: false });
+        const line = new THREE.LineSegments(geometry, material);
+        line.renderOrder = 1;
+        group.add(line);
+      }
+    }
     if (!parametricWorkplaneIsGlobal(workplane)) {
       const active = new THREE.Group();
       const sceneVector = (value: { x: number; y: number; z: number }) => new THREE.Vector3(value.x, value.z, -value.y);
