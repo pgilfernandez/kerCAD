@@ -3789,8 +3789,8 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
     if (workplane.gridVisible) addGrid(group, width, depth);
     else {
       // Keep the global XY reference without the floor, grid or title strip.
-      // These lines are overlays: neither geometry nor a below-floor view hides
-      // them, and the floor's below-Z opacity adjustment must not dim them.
+      // Respect solid occlusion from either side of Z=0, without applying the
+      // floor's below-Z opacity adjustment to these standalone reference axes.
       const axes = [
         { color: "#c67676", positions: [-width / 2, 0, 0, width / 2, 0, 0] },
         { color: "#62946e", positions: [0, 0, -depth / 2, 0, 0, depth / 2] },
@@ -3798,7 +3798,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       for (const axis of axes) {
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute("position", new THREE.Float32BufferAttribute(axis.positions, 3));
-        const material = new THREE.LineBasicMaterial({ color: axis.color, transparent: true, opacity: 0.95, depthTest: false, depthWrite: false });
+        const material = new THREE.LineBasicMaterial({ color: axis.color, transparent: true, opacity: 0.95, depthTest: true, depthWrite: false });
         const line = new THREE.LineSegments(geometry, material);
         line.renderOrder = 1;
         group.add(line);
