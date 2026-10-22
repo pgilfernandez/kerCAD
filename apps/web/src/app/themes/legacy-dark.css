@@ -171,6 +171,7 @@ html[data-theme="dark"] .toolbar-section-label {
 html[data-theme="dark"] .nav-icon:hover,
 html[data-theme="dark"] .mode-tab:hover,
 html[data-theme="dark"] .toolbar-icon:not(.disabled):hover,
+html[data-theme="dark"] .action-buttons button:hover,
 html[data-theme="dark"] .shape-menu-trigger:hover,
 html[data-theme="dark"] .shape-menu-trigger.active,
 html[data-theme="dark"] .toolbar-workspace-tabs button:hover {
@@ -604,6 +605,7 @@ html[data-theme="dark"] .toolbar-icon:not(.disabled) .toolbar-user-art-icon,
 html[data-theme="dark"] .toolbar-icon:not(.disabled) .toolbar-sprite-icon,
 html[data-theme="dark"] .toolbar-icon:not(.disabled) .vector-toolbar-sprite-icon,
 html[data-theme="dark"] .shape-menu-trigger .vector-toolbar-sprite-icon,
+html[data-theme="dark"] .action-buttons button .toolbar-command-icon,
 html[data-theme="dark"] .action-buttons button .vector-toolbar-sprite-icon {
   filter: grayscale(0.72) brightness(1.65) contrast(0.92) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.55));
   opacity: 0.96;
@@ -619,6 +621,8 @@ html[data-theme="dark"] .toolbar-icon.disabled .vector-toolbar-sprite-icon {
 html[data-theme="dark"] .toolbar-icon:not(.disabled):hover .toolbar-command-icon,
 html[data-theme="dark"] .toolbar-icon:not(.disabled):hover .toolbar-sprite-icon,
 html[data-theme="dark"] .toolbar-icon:not(.disabled):hover .vector-toolbar-sprite-icon,
+html[data-theme="dark"] .action-buttons button:hover .toolbar-command-icon,
+html[data-theme="dark"] .action-buttons button:hover .vector-toolbar-sprite-icon,
 html[data-theme="dark"] .shape-menu-trigger:hover .vector-toolbar-sprite-icon {
   filter: grayscale(0.35) brightness(1.85) contrast(1) drop-shadow(0 0 5px rgba(62, 199, 235, 0.32));
 }
@@ -630,10 +634,9 @@ html[data-theme="dark"] .action-buttons button {
   box-shadow: none;
 }
 
+html[data-theme="dark"] .toolbar-icon:not(.disabled):hover,
 html[data-theme="dark"] .action-buttons button:hover {
-  background: var(--theme-active);
-  border-color: var(--theme-border);
-  box-shadow: none;
+  box-shadow: inset 0 0 0 1px rgba(185, 202, 216, 0.86);
 }
 
 html[data-theme="dark"] .shape-menu-title,
