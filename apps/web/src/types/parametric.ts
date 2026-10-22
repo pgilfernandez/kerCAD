@@ -275,7 +275,8 @@ export type ParametricDocument = {
     snapSpacing: number;
     snapToGrid: boolean;
     gridVisible: boolean;
-    activeSizePercent: number;
+    /** Legacy project setting, ignored: workplane size is now geometry-based. */
+    activeSizePercent?: number;
     origin: ParametricVector3;
     xAxis: ParametricVector3;
     yAxis: ParametricVector3;

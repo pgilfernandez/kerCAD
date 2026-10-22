@@ -6,6 +6,7 @@ import { ChallengePlayer } from "@/components/ChallengePlayer";
 import type { EducadChallenge } from "@/lib/challengeLibrary";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent as ReactFocusEvent } from "react";
 import * as THREE from "three";
+import { workplaneGeometryBounds } from "@/lib/workplaneGeometryBounds";
 import { alignmentGroupBounds, sameAlignmentItem, translateAlignmentTargets, type AlignmentTarget } from "@/lib/parametricAlignment";
 import { ParametricModelSidebar, type ModelSidebarMode, type ModelTreeSelection } from "@/components/ParametricModelSidebar";
 import { ParametricViewport, type CameraOrientation, type CameraProjection, type CameraView, type TopologyEdgePick, type TopologyFacePick, type ViewportDisplayMode, type ViewportShadingMode } from "@/components/ParametricViewport";
@@ -1070,6 +1071,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     rotationEditable: selectedAnnotation.kind === "circle" && selectedAnnotation.mode === "planar" && showRotationTriad,
   }] : [])], [document.objects, document.annotationGroup?.visible, selectedAnnotation, annotationEndpoint, originEditObjectId, selectedOriginObjectId, showPositionTriad, showRotationTriad]);
   const referenceObjectRecords = useMemo(() => parametricReferenceRenderRecords(document), [document]);
+  const projectWorkplaneBounds = useMemo(() => workplaneGeometryBounds([
+    ...build.objectRecords.map((record) => record.mesh),
+    ...referenceObjectRecords.map((record) => record.mesh),
+  ]), [build.objectRecords, referenceObjectRecords]);
   const viewportObjectRecords = useMemo(() => {
     const visibleObjectIds = new Set(document.objects.filter((object) => object.visible !== false).map((object) => object.id));
     return [
@@ -2599,16 +2604,16 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     setWorkplaneOpen(false);
     setNotice({ type: "info", text: placingWorkplane ? t("notice.placementCancelled") : t("notice.workplanePlaceHint") });
   };
-  const updateGridSettings = (patch: Partial<Pick<ParametricDocument["workplane"], "width" | "depth" | "gridStep" | "snapSpacing" | "gridVisible" | "activeSizePercent">>) => {
+  const updateGridSettings = (patch: Partial<Pick<ParametricDocument["workplane"], "width" | "depth" | "gridStep" | "snapSpacing" | "gridVisible">>) => {
     setWorkplaneDraft((current) => ({ ...current, ...patch }));
     mutate((draft) => { Object.assign(draft.workplane, patch); });
   };
-  const commitGridNumber = (event: ReactFocusEvent<HTMLInputElement>, key: "width" | "depth" | "gridStep" | "snapSpacing" | "activeSizePercent", minimum: number, maximum: number, fallback: number) => {
-    const parsed = parseNumericExpression(event.currentTarget.value, key === "activeSizePercent" ? "%" : displayUnit);
+  const commitGridNumber = (event: ReactFocusEvent<HTMLInputElement>, key: "width" | "depth" | "gridStep" | "snapSpacing", minimum: number, maximum: number, fallback: number) => {
+    const parsed = parseNumericExpression(event.currentTarget.value, displayUnit);
     if (!validateNumericExpression(event.currentTarget, parsed)) return;
-    const entered = key === "activeSizePercent" ? parsed : displayLengthToMillimeters(parsed, displayUnit);
+    const entered = displayLengthToMillimeters(parsed, displayUnit);
     const value = Math.min(maximum, Math.max(minimum, Number.isFinite(entered) ? entered : fallback));
-    event.currentTarget.value = String(key === "activeSizePercent" ? value : millimetersToDisplayLength(value, displayUnit));
+    event.currentTarget.value = String(millimetersToDisplayLength(value, displayUnit));
     updateGridSettings({ [key]: value });
   };
 
@@ -3936,6 +3941,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           thumbnailRequestOptions={{ includeOverlays: Boolean(challengeEditor) && !projectCaptureRequestRef.current, width: 1200, height: 750, quality: 0.92, crop: challengeCaptureCrop }}
           mesh={viewportObjectRecords.length > 0 ? ((editingEdgeTreatmentId || editingFaceExtrudeId || editingShellId || editingRevolveId) && topologySelectionBuild ? topologySelectionBuild : build).mesh : null}
           objectRecords={viewportObjectRecords}
+          workplaneGeometryBounds={projectWorkplaneBounds}
           objectColors={objectColors}
           visualSection={sectionEnabled ? sectionPose : null}
           onSectionPlaneSelect={() => { setModelSelection([]); setSelectedAnnotationId(null); setOriginEditObjectId(null); setSectionSelected(true); }}
@@ -4293,7 +4299,6 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         {workplaneOpen ? <div data-educad-popup="grid" className="educad-workplane-popover">
           <header><div><strong>{t("grid.title")}</strong></div><button type="button" aria-label={t("common.close")} onClick={() => setWorkplaneOpen(false)}><X size={17} /></button></header>
           <label><span>{t("grid.showFloor")}</span><input type="checkbox" checked={workplaneDraft.gridVisible} onChange={(event) => updateGridSettings({ gridVisible: event.target.checked })} /></label>
-          <label><span>{t("grid.activeSize")}</span><span className="educad-number-input"><input type="text" inputMode="text" min="2" max="100" step="1" defaultValue={workplaneDraft.activeSizePercent} onBlur={(event) => commitGridNumber(event, "activeSizePercent", 2, 100, workplaneDraft.activeSizePercent)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>%</small></span></label>
           <label><span>{t("grid.width")}</span><span className="educad-number-input"><input key={`width-${displayUnit}`} type="text" inputMode="text" min={millimetersToDisplayLength(1, displayUnit)} max={millimetersToDisplayLength(2000, displayUnit)} step={millimetersToDisplayLength(1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.width, displayUnit)} onBlur={(event) => commitGridNumber(event, "width", 1, 2000, workplaneDraft.width)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
           <label><span>{t("grid.depth")}</span><span className="educad-number-input"><input key={`depth-${displayUnit}`} type="text" inputMode="text" min={millimetersToDisplayLength(1, displayUnit)} max={millimetersToDisplayLength(2000, displayUnit)} step={millimetersToDisplayLength(1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.depth, displayUnit)} onBlur={(event) => commitGridNumber(event, "depth", 1, 2000, workplaneDraft.depth)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
           <label><span>{t("grid.step")}</span><span className="educad-number-input"><input key={`step-${displayUnit}`} type="text" inputMode="text" min={millimetersToDisplayLength(0.1, displayUnit)} max={millimetersToDisplayLength(200, displayUnit)} step={millimetersToDisplayLength(0.1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.gridStep, displayUnit)} onBlur={(event) => commitGridNumber(event, "gridStep", 0.1, 200, workplaneDraft.gridStep)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>

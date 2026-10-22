@@ -48,7 +48,7 @@ export function createEmptyDocument(now = Date.now()): ParametricDocument {
     name: "New design",
     units: "mm",
     color: "#d41721",
-    workplane: { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, ...globalParametricWorkplanePlacement() },
+    workplane: { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, ...globalParametricWorkplanePlacement() },
     objects: [],
     topologyReferences: [],
     createdAt: now,
@@ -415,14 +415,14 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
   if ((next.topologyReferences?.length ?? 0) > PARAMETRIC_IMPORT_LIMITS.topologyReferences) throw new Error("The project contains too many topological references.");
   const identifiers = [...next.objects.map((object) => object.id), ...next.features.map((feature) => feature.id), ...(next.topologyReferences ?? []).map((reference) => reference.id)];
   if (new Set(identifiers).size !== identifiers.length) throw new Error("The project contains duplicated identifiers.");
-  next.workplane ??= { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, activeSizePercent: 20, ...globalParametricWorkplanePlacement() };
+  next.workplane ??= { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, ...globalParametricWorkplanePlacement() };
   next.workplane.width = Math.min(2000, Math.max(1, Number.isFinite(next.workplane.width) ? next.workplane.width : 200));
   next.workplane.depth = Math.min(2000, Math.max(1, Number.isFinite(next.workplane.depth) ? next.workplane.depth : 200));
   next.workplane.gridStep = Math.min(200, Math.max(0.1, Number.isFinite(next.workplane.gridStep) ? next.workplane.gridStep : 5));
   next.workplane.snapSpacing = Math.min(10000, Math.max(0.1, Number.isFinite(next.workplane.snapSpacing) ? next.workplane.snapSpacing : next.workplane.gridStep));
   next.workplane.snapToGrid = typeof next.workplane.snapToGrid === "boolean" ? next.workplane.snapToGrid : true;
   next.workplane.gridVisible = typeof next.workplane.gridVisible === "boolean" ? next.workplane.gridVisible : true;
-  next.workplane.activeSizePercent = Math.min(100, Math.max(2, Number.isFinite(next.workplane.activeSizePercent) ? next.workplane.activeSizePercent : 20));
+  delete next.workplane.activeSizePercent;
   Object.assign(next.workplane, normalizeParametricWorkplanePlacement(next.workplane));
   next.objects ??= [];
   next.topologyReferences ??= [];
