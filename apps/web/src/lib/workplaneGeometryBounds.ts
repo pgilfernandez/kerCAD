@@ -28,5 +28,6 @@ export function automaticWorkplaneSize(bounds: Box3 | null, xAxis: ParametricVec
   const projected = (axis: ParametricVector3) => Math.abs(axis.x) * size.x + Math.abs(axis.y) * size.y + Math.abs(axis.z) * size.z;
   // A flat model still needs a usable plane when viewed edge-on.
   const minimum = Math.max(1, Math.max(size.x, size.y, size.z) * 0.05);
-  return { width: Math.max(minimum, projected(xAxis)) * 1.2, depth: Math.max(minimum, projected(yAxis)) * 1.2 };
+  const side = Math.max(minimum, projected(xAxis), projected(yAxis)) * 1.2;
+  return { width: side, depth: side };
 }
