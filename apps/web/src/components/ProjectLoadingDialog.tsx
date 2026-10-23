@@ -38,7 +38,7 @@ export function ProjectLoadingDialog({ projectName, locale, ready, onFinished }:
       <header><img src="/assets/educad/logo.svg" alt="" aria-hidden="true" /><strong>eduCAD</strong></header>
       <div className="educad-project-loading-status" role="status" aria-live="polite" aria-atomic="true">
         <h1 id="educad-project-loading-title">{t("loading.project")} <span>“{projectName}”</span></h1>
-        <div className="educad-project-loading-dots" aria-hidden="true"><i /><i /><i /></div>
+        <div className="educad-project-loading-bar" aria-hidden="true"><span /></div>
       </div>
       <figure className="educad-project-loading-campaign">
         {campaign.kind === "video"
