@@ -33,7 +33,7 @@ export function parseNumericExpression(input: string | number, defaultUnit: stri
   const same = (a: Quantity, b: Quantity) => a.length === b.length && a.angle === b.angle;
   const isScalar = (q: Quantity) => q.length === 0 && q.angle === 0;
   const promote = (q: Quantity): Quantity => ({ value: q.value * target.factor, length: target.length, angle: target.angle });
-  const fail = (): never => { throw new Error("Invalid or incompatible expression"); };
+  function fail(): never { throw new Error("Invalid or incompatible expression"); }
   function primary(): Quantity {
     skip();
     if (++depth > 64) fail();

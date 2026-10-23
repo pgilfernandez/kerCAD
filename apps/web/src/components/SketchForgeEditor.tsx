@@ -6267,6 +6267,8 @@ export function SketchForgeEditor({
     const messages: Record<SketchTool, string> = {
       line: "Line: click points to draw straight segments",
       rectangle: "Rectangle: click opposite corners to create a closed path",
+      centerRectangle: "Centered rectangle: choose the centre and a corner",
+      roundedRectangle: "Rounded rectangle: choose opposite corners, then the corner radius",
       polygon: "Polygon: choose the centre and circumcircle radius",
       connect: "Connect nodes: choose two existing nodes",
       slot: "Slot: choose both end centres, then the width",

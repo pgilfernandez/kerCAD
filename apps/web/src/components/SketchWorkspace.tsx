@@ -1850,7 +1850,7 @@ export function SketchWorkspace({
               const radialPosition = { x: circle.x + circle.radius + 12 * screenUnit, z: circle.z + 18 * screenUnit };
               const label = `R ${formatLength(circle.radius, workspace.accuracy)}`;
               const pill = dimensionPillSize(label, screenUnit, 18);
-              const labelWidth = constraint ? dimensionPillSize(formatDimension(constraint.value / millimetersPerUnit, workspace.accuracy + Math.max(0, Math.ceil(Math.log10(millimetersPerUnit)))), screenUnit, 60).width : pill.width;
+              const labelWidth = constraint?.kind === "radius" || constraint?.kind === "diameter" ? dimensionPillSize(formatDimension(constraint.value / millimetersPerUnit, workspace.accuracy + Math.max(0, Math.ceil(Math.log10(millimetersPerUnit)))), screenUnit, 60).width : pill.width;
               const leader = <SketchRadialLeader center={circle} label={{ x: radialPosition.x + labelWidth / 2, z: radialPosition.z }} radius={circle.radius} screenUnit={screenUnit} />;
               if (constraint?.kind === "radius" || constraint?.kind === "diameter") return <g key={`radius-${constraint.id}`}>
                 {leader}

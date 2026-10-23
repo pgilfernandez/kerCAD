@@ -2,7 +2,7 @@
 
 import { HeaderToolbarIcon } from "@/components/icons";
 import { createPortal } from "react-dom";
-import { license } from "../../../../package.json";
+import packageInfo from "../../../../package.json";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { educadTranslate, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
 import { useAppTheme } from "@/lib/useAppTheme";
@@ -61,7 +61,7 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onL
           <dt>{t("about.cadEngine")}</dt><dd>OpenCascade · WebAssembly (occt-wasm)</dd>
           <dt>{t("about.viewer")}</dt><dd>Three.js · WebGL</dd>
           <dt>{t("about.sketches")}</dt><dd>SVG · {t("about.constraints")}</dd>
-          <dt>{t("about.license")}</dt><dd>{license}</dd>
+          <dt>{t("about.license")}</dt><dd>{packageInfo.license}</dd>
         </dl>
         <nav className="educad-about-links" aria-label={t("about.resources")}>
           <a href={`/documentation?lang=${locale}`} target="_blank" rel="noopener noreferrer"><HeaderToolbarIcon file="documentation" />{t("about.documentation")}</a>
