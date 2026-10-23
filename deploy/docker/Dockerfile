@@ -12,6 +12,8 @@ COPY vendor/occt-wasm-shell/ ./vendor/occt-wasm-shell/
 RUN npm ci
 
 COPY . .
+ARG EDUCAD_COMMIT
+ENV EDUCAD_COMMIT=${EDUCAD_COMMIT}
 RUN mkdir -p apps/web/challenges && npm run build
 
 FROM node:24-alpine AS runner

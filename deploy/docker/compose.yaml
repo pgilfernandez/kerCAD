@@ -4,6 +4,8 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile
+      args:
+        EDUCAD_COMMIT: "${EDUCAD_COMMIT:-}"
     ports:
       - "${EDUCAD_PORT:-${SKETCHFORGE_PORT:-3000}}:3000"
     environment:

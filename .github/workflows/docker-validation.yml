@@ -31,6 +31,8 @@ jobs:
         with:
           context: .
           file: deploy/docker/Dockerfile
+          build-args: |
+            EDUCAD_COMMIT=${{ github.sha }}
           platforms: linux/${{ matrix.architecture }}
           load: true
           push: false

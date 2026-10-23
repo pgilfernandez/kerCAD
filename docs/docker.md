@@ -10,6 +10,24 @@ Desde la raíz del repositorio, con Docker y Compose disponibles:
 npm run docker:up
 ```
 
+`npm run docker:up` y `npm run docker:build` obtienen el commit del repositorio y lo
+pasan como argumento de construcción `EDUCAD_COMMIT`. El popup de información
+muestra `0.9 (abcdef1)` con la revisión de esa imagen, sin incluir `.git` ni instalar
+Git en el contenedor. Los workflows de publicación y validación pasan igualmente
+el SHA del checkout. Cambiar esta variable al arrancar una imagen ya construida no
+modifica su versión: el identificador se incorpora durante la compilación.
+
+Si usas Docker o Compose directamente, indica la revisión explícitamente:
+
+```sh
+docker build --build-arg EDUCAD_COMMIT="$(git rev-parse HEAD)" -f deploy/docker/Dockerfile -t educad:local .
+EDUCAD_COMMIT="$(git rev-parse HEAD)" docker compose -f deploy/docker/compose.yaml up --build -d
+```
+
+Para compilar desde una copia sin Git, define `EDUCAD_COMMIT` con el hash de origen
+antes de ejecutar los comandos npm. Sin una revisión disponible, se muestra `—`
+en lugar de inventar un identificador.
+
 Abre `http://IP_DEL_SERVIDOR:3000` desde el aula. `EDUCAD_PORT` permite cambiar el puerto externo; `SKETCHFORGE_PORT` sigue siendo un alias. Para servir en el puerto 80, usa `EDUCAD_PORT=80`; el contenedor escucha en 3000 y ya no arranca el proxy interno heredado. El proceso usa el usuario `node`, sin privilegios de root, y Compose configura reinicio automático.
 
 La imagen instala Node 24 y dependencias para la arquitectura de destino, genera los assets OCCT durante la construcción y ejecuta el servidor standalone. `/api/health` comprueba que responde el servidor, independientemente de las bibliotecas opcionales. No certifica que el núcleo CAD funcione en el navegador.
