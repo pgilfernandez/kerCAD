@@ -19,6 +19,12 @@ function libraryText(key: DashboardTranslationKey, values?: Record<string, strin
   catch { return dashboardTranslate("en", key, values); }
 }
 
+function projectContentKey(document: ParametricDocument) {
+  // Hydration normalizes defaults; neither that nor a timestamp is an edit.
+  const { updatedAt: _updatedAt, ...content } = normalizeParametricDocument(structuredClone(document));
+  return JSON.stringify(content);
+}
+
 export default function Home() {
   const [projects, setProjects] = useState<ProjectLibraryEntry[]>([]);
   const [active, setActive] = useState<ProjectLibraryEntry | null>(null);
@@ -46,6 +52,7 @@ export default function Home() {
   const changeVersionRef = useRef(0);
   const savedVersionRef = useRef(0);
   const transientEditorRef = useRef(false);
+  const newProjectDraftRef = useRef<{ baseline: string; changed: boolean } | null>(null);
 
   useEffect(() => { activeRef.current = active; }, [active]);
 
@@ -59,11 +66,13 @@ export default function Home() {
     const latest = activeRef.current;
     const version = changeVersionRef.current;
     if (!latest || transientEditorRef.current || version === savedVersionRef.current) return;
+    if (newProjectDraftRef.current && !newProjectDraftRef.current.changed) return;
     await enqueueLibraryWrite(() => saveLibraryProject(structuredClone(latest)));
     if (changeVersionRef.current === version) savedVersionRef.current = version;
   }, [enqueueLibraryWrite]);
-  const openProject = useCallback((entry: ProjectLibraryEntry, transient = false) => {
+  const openProject = useCallback((entry: ProjectLibraryEntry, transient = false, newDraft = false) => {
     transientEditorRef.current = transient;
+    newProjectDraftRef.current = newDraft ? { baseline: projectContentKey(entry.document), changed: false } : null;
     activeRef.current = entry;
     pendingDocumentRef.current = entry.document;
     changeVersionRef.current = 0;
@@ -118,13 +127,11 @@ export default function Home() {
     })();
   }, []);
 
-  const createProject = async () => {
+  const createProject = () => {
     const document = createEmptyDocument();
     const now = Date.now();
     const entry = { id: newProjectLibraryId(), name: document.name, createdAt: now, updatedAt: now, document };
-    await saveLibraryProject(entry);
-    setProjects((current) => [entry, ...current]);
-    openProject(entry);
+    openProject(entry, false, true);
   };
   const startChallenge = async (challenge: EducadChallenge) => {
     const document = createEmptyDocument();
@@ -161,6 +168,11 @@ export default function Home() {
     const pending = structuredClone(document);
     pendingDocumentRef.current = pending;
     activeRef.current = { ...current, name: pending.name, updatedAt: Date.now(), document: pending, thumbnail: pending.thumbnailOverride ?? current.thumbnail };
+    const draft = newProjectDraftRef.current;
+    if (draft && !draft.changed) {
+      draft.changed = projectContentKey(pending) !== draft.baseline;
+      if (!draft.changed) return;
+    }
     changeVersionRef.current += 1;
     if (transientEditorRef.current) return;
     if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
@@ -176,13 +188,17 @@ export default function Home() {
       if (activeRef.current?.id !== current.id) return;
       if (activeRef.current.document.thumbnailOverride && !manual) return;
       activeRef.current = { ...activeRef.current, thumbnail, thumbnailDocumentKey: key };
+      // Keep automatic previews in memory until the draft has actual edits.
+      if (newProjectDraftRef.current && !newProjectDraftRef.current.changed) return;
       await enqueueLibraryWrite(() => updateLibraryProjectThumbnail(current.id, thumbnail, key));
     })();
   }, [enqueueLibraryWrite]);
   const leaveEditor = async (document: ParametricDocument) => {
     if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
     const current = activeRef.current;
-    if (current && !transientEditorRef.current) {
+    const draft = newProjectDraftRef.current;
+    if (draft && !draft.changed) draft.changed = projectContentKey(document) !== draft.baseline;
+    if (current && !transientEditorRef.current && (!draft || draft.changed)) {
       const saved = { ...current, name: document.name, updatedAt: Date.now(), document: structuredClone(document) };
       activeRef.current = saved;
       await enqueueLibraryWrite(() => saveLibraryProject(saved));
@@ -191,6 +207,7 @@ export default function Home() {
     const updatedProjects = await listLibraryProjects();
     activeRef.current = null;
     pendingDocumentRef.current = null;
+    newProjectDraftRef.current = null;
     setProjects(updatedProjects);
     setActive(null);
     setActiveChallenge(null);
