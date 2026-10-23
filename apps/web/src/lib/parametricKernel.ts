@@ -1,4 +1,5 @@
 import { loadBrepWithOcct, type Brep, type BrepSolid } from "@/lib/brepKernel";
+import type { ParametricBuildProgress } from "@/lib/parametricBuildProgress";
 import { shellWithCorners } from "@/lib/shellKernel";
 import { orientedMeshNormals } from "@/lib/parametricMeshNormals";
 import type { AlignmentItem, AlignmentTarget } from "@/lib/parametricAlignment";
@@ -736,11 +737,20 @@ function applyObjectBooleanFeature(brep: Brep, current: AnySolid, source: AnySol
   return refinedBooleanSolid(brep, brep.intersect(current, source));
 }
 
-async function buildParametricModelInternal(document: ParametricDocument, contextFeatureId: string | null, stopAtContext: boolean, incrementalRender = false, meshOptions?: MeshShapeOptions, includeCombinedMesh = true, renderMeshes = true, outputObjectIds?: ReadonlySet<string>): Promise<BuildResult> {
+async function buildParametricModelInternal(document: ParametricDocument, contextFeatureId: string | null, stopAtContext: boolean, incrementalRender = false, meshOptions?: MeshShapeOptions, includeCombinedMesh = true, renderMeshes = true, outputObjectIds?: ReadonlySet<string>, onProgress?: (progress: ParametricBuildProgress) => void): Promise<BuildResult> {
+  const startedAt = performance.now();
+  const total = document.features.filter((feature) => !feature.suppressed).length + 2;
+  const reportProgress = (completed: number, stage: ParametricBuildProgress["stage"]) => onProgress?.({ completed, total, stage, elapsedMs: performance.now() - startedAt });
+  reportProgress(0, "initializing");
   const brep = await loadBrepWithOcct();
+  reportProgress(1, "operations");
   const sketches = new Map(document.features.filter((feature): feature is SketchFeature => feature.kind === "sketch" && !feature.suppressed).map((feature) => [feature.id, feature]));
   const objects = new Map(document.objects.map((object) => [object.id, object]));
   const completedFeatureIds: string[] = [];
+  const markFeatureCompleted = (id: string) => {
+    completedFeatureIds.push(id);
+    reportProgress(completedFeatureIds.length + 1, "operations");
+  };
   const solids = new Map<string, AnySolid>();
   const operationStates = new Map<string, OperationSolidState>();
   const featureSolidSnapshots = new Map<string, { objectId: string; solid: AnySolid }>();
@@ -809,16 +819,16 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
       activeFeatureId = feature.id;
       if (feature.objectId && reusableObjectIds.has(feature.objectId)) {
         if (feature.kind !== "sketch") lastObjectId = feature.objectId;
-        completedFeatureIds.push(feature.id);
+        markFeatureCompleted(feature.id);
         continue;
       }
       if (reusablePrefixFeatureIds.has(feature.id)) {
         if (feature.kind !== "sketch" && feature.objectId) lastObjectId = feature.objectId;
-        completedFeatureIds.push(feature.id);
+        markFeatureCompleted(feature.id);
         continue;
       }
       if (feature.kind === "sketch") {
-        completedFeatureIds.push(feature.id);
+        markFeatureCompleted(feature.id);
         continue;
       }
       if (feature.kind === "importedStep") {
@@ -829,7 +839,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         solids.set(objectId, result);
         operationStates.set(feature.id, { before: null, after: result });
         recordFeatureSolid(feature.id, objectId, result);
-        completedFeatureIds.push(feature.id);
+        markFeatureCompleted(feature.id);
         if (feature.id === contextFeatureId) {
           operationContext = {
             featureId: feature.id,
@@ -857,7 +867,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
           ...(feature.operation === "add" ? { added: tool, removed: null } : feature.operation === "cut" ? { added: null, removed: tool } : {}),
         });
         recordFeatureSolid(feature.id, objectId, result);
-        completedFeatureIds.push(feature.id);
+        markFeatureCompleted(feature.id);
         if (feature.id === contextFeatureId) {
           const selectedResult = solids.get(objectId);
           operationContext = selectedResult ? {
@@ -878,7 +888,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         solids.set(objectId, current);
         operationStates.set(feature.id, { before: null, after: current });
         recordFeatureSolid(feature.id, objectId, current);
-        completedFeatureIds.push(feature.id);
+        markFeatureCompleted(feature.id);
         if (feature.id === contextFeatureId) {
           operationContext = {
             featureId: feature.id,
@@ -903,47 +913,47 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         solids.set(objectId, current);
         operationStates.set(feature.id, { before: previousSolid, after: current, added: null, removed: cutter });
         recordFeatureSolid(feature.id, objectId, current);
-        completedFeatureIds.push(feature.id);
+        markFeatureCompleted(feature.id);
         continue;
       }
       if (feature.kind === "fillet") {
         if (feature.radius <= 0) throw new Error(`${feature.name}: radius must be greater than zero.`);
         current = applyFilletFeature(brep, document, current, feature);
         solids.set(objectId, current);
-        completedFeatureIds.push(feature.id);
+        markFeatureCompleted(feature.id);
       } else if (feature.kind === "faceExtrude") {
         if (feature.distance <= 0) throw new Error(`${feature.name}: length must be greater than zero.`);
         current = applyFaceExtrudeFeature(brep, document, current, feature);
         solids.set(objectId, current);
-        completedFeatureIds.push(feature.id);
+        markFeatureCompleted(feature.id);
       } else if (feature.kind === "shell") {
         if (feature.thickness <= 0) throw new Error(`${feature.name}: thickness must be greater than zero.`);
         current = applyShellFeature(brep, document, current, feature);
         solids.set(objectId, current);
-        completedFeatureIds.push(feature.id);
+        markFeatureCompleted(feature.id);
       } else if (feature.kind === "revolve") {
         if (Math.abs(feature.angle) < 1 || Math.abs(feature.angle) > 360) throw new Error(`${feature.name}: angle must be between -360 and 360 degrees and cannot be zero.`);
         current = applyRevolveFeature(brep, document, current, feature);
         solids.set(objectId, current);
-        completedFeatureIds.push(feature.id);
+        markFeatureCompleted(feature.id);
       } else if (feature.kind === "mirror") {
         current = applyMirrorFeature(brep, current, feature);
         solids.set(objectId, current);
-        completedFeatureIds.push(feature.id);
+        markFeatureCompleted(feature.id);
       } else if (feature.kind === "linearPattern") {
         if (feature.count < 2 || feature.count > 50) throw new Error(`${feature.name}: count must be between 2 and 50.`);
         if (Math.abs(feature.spacing) < 0.01) throw new Error(`${feature.name}: spacing cannot be zero.`);
         const sourceState = feature.source === "feature" && feature.sourceFeatureId ? operationStates.get(feature.sourceFeatureId) : undefined;
         current = applyLinearPatternFeature(brep, current, feature, sourceState);
         solids.set(objectId, current);
-        completedFeatureIds.push(feature.id);
+        markFeatureCompleted(feature.id);
       } else if (feature.kind === "polarPattern") {
         if (feature.count < 2 || feature.count > 50) throw new Error(`${feature.name}: count must be between 2 and 50.`);
         if (Math.abs(feature.angle) < 0.1 || Math.abs(feature.angle) > 360) throw new Error(`${feature.name}: angle must be between -360 and 360 degrees and cannot be zero.`);
         const sourceState = feature.source === "feature" && feature.sourceFeatureId ? operationStates.get(feature.sourceFeatureId) : undefined;
         current = applyPolarPatternFeature(brep, current, feature, sourceState);
         solids.set(objectId, current);
-        completedFeatureIds.push(feature.id);
+        markFeatureCompleted(feature.id);
       } else if (feature.kind === "objectBoolean") {
         const sourceSolid = solids.get(feature.sourceObjectId);
         const sourceObject = objects.get(feature.sourceObjectId);
@@ -958,7 +968,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
           after: current,
           ...(feature.operation === "add" ? { added: tool, removed: null } : feature.operation === "cut" ? { added: null, removed: tool } : {}),
         });
-        completedFeatureIds.push(feature.id);
+        markFeatureCompleted(feature.id);
       }
       if (!operationStates.has(feature.id)) operationStates.set(feature.id, { before: previousSolid, after: current });
       recordFeatureSolid(feature.id, objectId, current);
@@ -1016,11 +1026,14 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
     }
   }
 
-  return { ...buildRenderOutput(brep, document, solids, objects, reusableObjectIds, incrementalRender, meshOptions, includeCombinedMesh, renderMeshes, outputObjectIds), operationContext, completedFeatureIds, failedFeatureId: null, warning: null };
+  reportProgress(total - 1, "meshing");
+  const result = { ...buildRenderOutput(brep, document, solids, objects, reusableObjectIds, incrementalRender, meshOptions, includeCombinedMesh, renderMeshes, outputObjectIds), operationContext, completedFeatureIds, failedFeatureId: null, warning: null };
+  reportProgress(total, "ready");
+  return result;
 }
 
-export function buildParametricModel(document: ParametricDocument, incrementalRender = false): Promise<BuildResult> {
-  return buildParametricModelInternal(document, null, false, incrementalRender);
+export function buildParametricModel(document: ParametricDocument, incrementalRender = false, onProgress?: (progress: ParametricBuildProgress) => void): Promise<BuildResult> {
+  return buildParametricModelInternal(document, null, false, incrementalRender, undefined, true, true, undefined, onProgress);
 }
 
 export async function buildParametricStlMeshes(document: ParametricDocument, quality: StlTessellationQuality, objectIds?: readonly string[]): Promise<RenderMesh[]> {

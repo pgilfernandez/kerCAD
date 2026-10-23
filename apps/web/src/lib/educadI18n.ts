@@ -1,6 +1,10 @@
 export type EducadLocale = "es" | "en";
 
 const es = {
+  "loading.progress": "Progreso de carga", "loading.estimating": "Calculando estimación…",
+  "loading.remaining": "≈ {seconds} s restantes", "loading.openingIn": "Listo · abriendo en {seconds} s",
+  "loading.opening": "Abriendo proyecto…", "loading.initializing": "Inicializando motor CAD…",
+  "loading.operations": "Reconstruyendo operaciones…", "loading.meshing": "Preparando geometría 3D…",
   "loading.project": "Cargando", "loading.campaign": "Patrocinadores y campañas",
   "loading.freeOpenSource": "eduCAD es gratuito y de código abierto.", "loading.support": "Apoyar eduCAD",
   "settings.appearanceLanguage": "Tema e idioma", "settings.theme": "Tema", "settings.themeLight": "Claro", "settings.themeDark": "Oscuro",
@@ -159,6 +163,10 @@ const es = {
 export type EducadTranslationKey = keyof typeof es;
 
 const en: Record<EducadTranslationKey, string> = {
+  "loading.progress": "Loading progress", "loading.estimating": "Estimating remaining time…",
+  "loading.remaining": "≈ {seconds} s remaining", "loading.openingIn": "Ready · opening in {seconds} s",
+  "loading.opening": "Opening project…", "loading.initializing": "Initializing CAD engine…",
+  "loading.operations": "Rebuilding operations…", "loading.meshing": "Preparing 3D geometry…",
   "loading.project": "Loading", "loading.campaign": "Sponsors and campaigns",
   "loading.freeOpenSource": "eduCAD is free and open source.", "loading.support": "Support eduCAD",
   "settings.appearanceLanguage": "Theme and language", "settings.theme": "Theme", "settings.themeLight": "Light", "settings.themeDark": "Dark",

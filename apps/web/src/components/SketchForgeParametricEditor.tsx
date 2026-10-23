@@ -14,6 +14,7 @@ import { SketchWorkspace, type SketchMeasurement, type SketchSceneReference, typ
 import { SketchToolMenu } from "@/components/SketchToolMenu";
 import { EditorGettingStarted, resetStartupTutorials } from "@/components/EditorGettingStarted";
 import { ProjectLoadingDialog } from "@/components/ProjectLoadingDialog";
+import type { ParametricBuildProgress } from "@/lib/parametricBuildProgress";
 import { nextAnnotationName } from "@/lib/annotationNames";
 import { SECTION_PLANE_ID, type VisualSection } from "@/lib/visualSection";
 import type { CaptureCrop } from "@/lib/viewportCapture";
@@ -324,6 +325,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const renderedGeometryFingerprintRef = useRef<string | null>(null);
   const [kernelBusy, setKernelBusy] = useState(true);
   const [initialModelSettled, setInitialModelSettled] = useState(false);
+  const initialModelSettledRef = useRef(false);
+  const [initialLoadProgress, setInitialLoadProgress] = useState<ParametricBuildProgress | null>(null);
   const [showProjectLoading, setShowProjectLoading] = useState(true);
   const finishProjectLoading = useCallback(() => setShowProjectLoading(false), []);
   const [contextBusy, setContextBusy] = useState(false);
@@ -935,10 +938,13 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     setKernelBusy(true);
     const buildDocument = buildDocumentRef.current;
     const timeout = window.setTimeout(() => {
-      buildWorkerRef.current!.buildModel(buildDocument).then((result) => {
+      buildWorkerRef.current!.buildModel(buildDocument, !initialModelSettledRef.current ? (progress) => {
+        if (counter === buildCounter.current) setInitialLoadProgress(progress);
+      } : undefined).then((result) => {
         if (counter !== buildCounter.current) return;
         renderedGeometryFingerprintRef.current = geometryFingerprint;
         setBuild(result);
+        initialModelSettledRef.current = true;
         setInitialModelSettled(true);
         if (result.failedFeatureId && buildDocument.features.some((feature) => feature.id === result.failedFeatureId)) {
           setModelSelection([{ id: result.failedFeatureId, kind: "feature" }]);
@@ -948,6 +954,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       }).catch((error: unknown) => {
         if (counter !== buildCounter.current) return;
         setBuild((current) => ({ ...current, warning: error instanceof Error ? error.message : String(error) }));
+        initialModelSettledRef.current = true;
         setInitialModelSettled(true);
         setKernelBusy(false);
       });
@@ -3467,7 +3474,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
 
   return (
     <main inert={showProjectLoading || undefined} aria-busy={showProjectLoading || undefined} className={`educad-reference-shell sidebar-${modelSidebarMode} ${sketchSession && compactSketchToolbar ? "sketch-toolbar-compact" : ""}`}>
-      {showProjectLoading && <ProjectLoadingDialog projectName={document.name} locale={locale} ready={initialModelSettled} onFinished={finishProjectLoading} />}
+      {showProjectLoading && <ProjectLoadingDialog projectName={document.name} locale={locale} ready={initialModelSettled} progress={initialLoadProgress} onFinished={finishProjectLoading} />}
       {hydrated && <EditorGettingStarted locale={locale} active={!showProjectLoading && !sketchSession && !challengeEditor} launchRequest={tutorialLaunchRequest} onShowProperties={() => setModelSidebarMode("normal")} />}
       {hydrated && <EditorGettingStarted locale={locale} mode="sketch" active={Boolean(sketchSession) && !challengeEditor} launchRequest={tutorialLaunchRequest} />}
       <div className="secondary-toolbar">

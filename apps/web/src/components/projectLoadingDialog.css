@@ -29,8 +29,10 @@
 .educad-project-loading-status { padding: 26px 0 20px; }
 .educad-project-loading-status h1 { margin: 0; font-size: 16px; font-weight: 500; line-height: 1.5; overflow-wrap: anywhere; }
 .educad-project-loading-status h1 span { font-weight: 650; }
-.educad-project-loading-bar { width: min(180px, 100%); height: 3px; margin: 20px auto 9px; overflow: hidden; background: var(--theme-border); border-radius: 2px; }
-.educad-project-loading-bar > span { display: block; width: 40%; height: 100%; background: var(--theme-link); border-radius: inherit; animation: educad-project-loading-progress 1.4s ease-in-out infinite; }
+.educad-project-loading-bar { width: min(240px, 100%); height: 3px; margin: 20px auto 9px; overflow: hidden; background: var(--theme-border); border-radius: 2px; }
+.educad-project-loading-bar > span { display: block; height: 100%; background: var(--theme-link); border-radius: inherit; transition: width .2s linear; }
+.educad-project-loading-estimate { display: flex; justify-content: space-between; gap: 8px; width: min(240px, 100%); margin: 0 auto; color: var(--theme-text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.educad-project-loading-phase { display: block; margin-top: 8px; color: var(--theme-text-muted); font-size: 10px; }
 .educad-project-loading-campaign { margin: 0; overflow: hidden; background: var(--theme-page); border: 1px solid var(--theme-border); border-radius: 9px; }
 .educad-project-loading-campaign > :is(img, video) { display: block; width: 100%; aspect-ratio: 2 / 1; object-fit: cover; }
 .educad-project-loading-campaign figcaption { padding: 8px; color: var(--theme-text-muted); font-size: 10px; letter-spacing: .05em; }
@@ -41,6 +43,5 @@
 .educad-project-loading-dialog > footer a:focus-visible { outline: 2px solid var(--theme-link); outline-offset: 3px; }
 .educad-project-loading-dialog > footer button:disabled { cursor: default; }
 .educad-project-loading-dialog > footer small { color: var(--theme-text-muted); font-size: 10px; }
-@keyframes educad-project-loading-progress { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
-@media (prefers-reduced-motion: reduce) { .educad-project-loading-bar > span { animation: none; width: 100%; opacity: .6; } }
+@media (prefers-reduced-motion: reduce) { .educad-project-loading-bar > span { transition: none; } }
 @media (max-width: 480px) { .educad-project-loading-backdrop { padding: 12px; } .educad-project-loading-dialog { padding: 22px 18px; max-height: calc(100dvh - 24px); } }

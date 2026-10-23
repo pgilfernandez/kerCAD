@@ -1,13 +1,16 @@
 import type { BuildResult, ParametricDocument, ParametricObjectRenderRecord, RenderMesh } from "@/types/parametric";
+import type { ParametricBuildProgress } from "@/lib/parametricBuildProgress";
 
 export type ParametricBuildWorkerRequest = {
   type: "build-model" | "build-context";
   requestId: number;
   document: ParametricDocument;
   featureId?: string;
+  reportProgress?: boolean;
 };
 
 export type ParametricBuildWorkerResponse =
+  | { type: "build-progress"; requestId: number; progress: ParametricBuildProgress }
   | { type: "model-built"; requestId: number; result: BuildResult }
   | { type: "context-built"; requestId: number; result: BuildResult["operationContext"] }
   | { type: "build-error"; requestId: number; message: string };
@@ -19,6 +22,7 @@ type WorkerLike = Pick<Worker, "postMessage" | "terminate"> & {
 };
 
 type PendingBuild = {
+  onProgress?: (progress: ParametricBuildProgress) => void;
   requestId: number;
   resolve: (result: BuildResult | BuildResult["operationContext"]) => void;
   reject: (error: Error) => void;
@@ -127,8 +131,8 @@ export class ParametricBuildWorkerClient {
 
   constructor(private readonly createWorker: () => WorkerLike) {}
 
-  buildModel(document: ParametricDocument): Promise<BuildResult> {
-    return this.request({ type: "build-model", document }) as Promise<BuildResult>;
+  buildModel(document: ParametricDocument, onProgress?: (progress: ParametricBuildProgress) => void): Promise<BuildResult> {
+    return this.request({ type: "build-model", document, reportProgress: Boolean(onProgress) }, onProgress) as Promise<BuildResult>;
   }
 
   buildContext(document: ParametricDocument, featureId: string): Promise<BuildResult["operationContext"]> {
@@ -150,13 +154,13 @@ export class ParametricBuildWorkerClient {
     this.previousModelResult = null;
   }
 
-  private request(input: Omit<ParametricBuildWorkerRequest, "requestId">) {
+  private request(input: Omit<ParametricBuildWorkerRequest, "requestId">, onProgress?: (progress: ParametricBuildProgress) => void) {
     this.cancel();
     const worker = this.ensureWorker();
     const requestId = ++this.nextRequestId;
     const request = { ...input, requestId } as ParametricBuildWorkerRequest;
     return new Promise<BuildResult | BuildResult["operationContext"]>((resolve, reject) => {
-      this.pending = { requestId, resolve, reject };
+      this.pending = { requestId, resolve, reject, onProgress };
       worker.postMessage(request);
     });
   }
@@ -185,6 +189,10 @@ export class ParametricBuildWorkerClient {
   private handleMessage(response: ParametricBuildWorkerResponse) {
     const pending = this.pending;
     if (!pending || response.requestId !== pending.requestId) return;
+    if (response.type === "build-progress") {
+      pending.onProgress?.(response.progress);
+      return;
+    }
     this.pending = null;
     if (response.type === "build-error") pending.reject(new Error(response.message));
     else if (response.type === "model-built") {
