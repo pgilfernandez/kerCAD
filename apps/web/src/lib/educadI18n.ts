@@ -1,6 +1,8 @@
 export type EducadLocale = "es" | "en";
 
 const es = {
+  "loading.project": "Cargando", "loading.campaign": "Patrocinadores y campañas",
+  "loading.freeOpenSource": "eduCAD es gratuito y de código abierto.", "loading.support": "Apoyar eduCAD",
   "settings.appearanceLanguage": "Tema e idioma", "settings.theme": "Tema", "settings.themeLight": "Claro", "settings.themeDark": "Oscuro",
   "project.cover": "Imagen del proyecto", "project.coverManual": "Captura manual guardada", "project.coverAutomatic": "Capturas automáticas activadas",
   "project.captureCover": "Capturar imagen", "project.resetCover": "Restablecer automática",
@@ -157,6 +159,8 @@ const es = {
 export type EducadTranslationKey = keyof typeof es;
 
 const en: Record<EducadTranslationKey, string> = {
+  "loading.project": "Loading", "loading.campaign": "Sponsors and campaigns",
+  "loading.freeOpenSource": "eduCAD is free and open source.", "loading.support": "Support eduCAD",
   "settings.appearanceLanguage": "Theme and language", "settings.theme": "Theme", "settings.themeLight": "Light", "settings.themeDark": "Dark",
   "project.cover": "Project image", "project.coverManual": "Saved manual capture", "project.coverAutomatic": "Automatic captures enabled",
   "project.captureCover": "Capture image", "project.resetCover": "Reset to automatic",
