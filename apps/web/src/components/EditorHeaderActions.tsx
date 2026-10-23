@@ -2,7 +2,7 @@
 
 import { HeaderToolbarIcon } from "@/components/icons";
 import { createPortal } from "react-dom";
-import { version, license } from "../../../../package.json";
+import { license } from "../../../../package.json";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { educadTranslate, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
 import { useAppTheme } from "@/lib/useAppTheme";
@@ -57,7 +57,7 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onL
         <header><h2 id="educad-about-title">{t("about.title")}</h2><button type="button" aria-label={t("common.close")} onClick={() => setInfoOpen(false)}>×</button></header>
         <p>{t("about.description")}</p>
         <dl>
-          <dt>{t("about.version")}</dt><dd>{version}</dd>
+          <dt>{t("about.version")}</dt><dd>0.9 ({process.env.NEXT_PUBLIC_EDUCAD_COMMIT ?? "—"})</dd>
           <dt>{t("about.cadEngine")}</dt><dd>OpenCascade · WebAssembly (occt-wasm)</dd>
           <dt>{t("about.viewer")}</dt><dd>Three.js · WebGL</dd>
           <dt>{t("about.sketches")}</dt><dd>SVG · {t("about.constraints")}</dd>
