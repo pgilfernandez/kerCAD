@@ -8,7 +8,7 @@ import { educadTranslate, type EducadLocale } from "@/lib/educadI18n";
 import { projectLoadingCampaign as campaign } from "@/lib/projectLoadingCampaign";
 import "./projectLoadingDialog.css";
 
-const MINIMUM_LOADING_MS = 4_000;
+const MINIMUM_LOADING_MS = 3_000;
 
 export function ProjectLoadingDialog({ projectName, locale, ready, onFinished }: {
   projectName: string;
