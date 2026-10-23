@@ -34,10 +34,10 @@
     "@types/three": "^0.184.1",
     "brepjs": "^18.118.0",
     "clsx": "^2.1.1",
-    "fflate": "^0.8.2",
+    "fflate": "^0.8.3",
     "lucide-react": "^0.511.0",
     "manifold-3d": "^3.5.0",
-    "next": "^15.5.21",
+    "next": "^15.5.28",
     "occt-wasm": "file:vendor/occt-wasm-shell/occt-wasm-3.6.1+educad.1.tgz",
     "react": "^19.1.0",
     "react-colorful": "^5.8.0",
@@ -54,11 +54,11 @@
     "@types/react": "^19.1.4",
     "@types/react-dom": "^19.1.5",
     "typescript": "^5.8.3",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.12"
   },
   "overrides": {
     "nanoid": "3.3.18",
     "postcss": "8.5.26",
-    "sharp": "0.35.3"
+    "sharp": "0.35.5"
   }
 }
