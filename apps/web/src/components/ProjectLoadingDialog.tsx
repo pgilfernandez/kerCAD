@@ -52,12 +52,10 @@ export function ProjectLoadingDialog({ projectName, locale, ready, progress, onF
 
   return createPortal(<div className="educad-project-loading-backdrop">
     <section ref={dialogRef} className="educad-project-loading-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-project-loading-title" tabIndex={-1} onKeyDown={(event) => event.stopPropagation()} onKeyUp={(event) => event.stopPropagation()}>
-      <header><img src="/assets/educad/logo.svg" alt="" aria-hidden="true" /><strong>eduCAD</strong></header>
       <div className="educad-project-loading-status" role="status" aria-live="polite" aria-atomic="true">
         <h1 id="educad-project-loading-title">{t("loading.project")} <span>“{projectName}”</span></h1>
         <div className="educad-project-loading-bar" role="progressbar" aria-label={t("loading.progress")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress || ready ? percent : undefined} aria-valuetext={`${phaseText} · ${remainingText}`}><span style={{ width: `${percent}%` }} /></div>
-        <div className="educad-project-loading-estimate"><span>{percent}%</span><span>{remainingText}</span></div>
-        {!ready && <small className="educad-project-loading-phase">{phaseText}</small>}
+        <div className="educad-project-loading-estimate">{remainingText}</div>
       </div>
       <figure className="educad-project-loading-campaign">
         {campaign.kind === "video"
