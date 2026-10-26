@@ -38,7 +38,7 @@ export function ProjectLoadingDialog({ projectName, locale, ready, progress, onF
     return () => { window.cancelAnimationFrame(firstFrame); window.cancelAnimationFrame(secondFrame); };
   }, [ready, minimumElapsed, onFinished]);
 
-  const percent = ready ? 100 : progress ? Math.min(99, Math.round(100 * progress.completed / Math.max(1, progress.total))) : 0;
+  const percent = ready ? 100 : progress ? Math.max(10, Math.min(99, Math.round(10 + 90 * progress.completed / Math.max(1, progress.total)))) : 10;
   // Extrapolate observed throughput; CAD steps have different costs, so the ETA
   // deliberately remains approximate and is recalculated as each step finishes.
   const remainingModelMs = progress && progress.completed > 0
@@ -47,15 +47,15 @@ export function ProjectLoadingDialog({ projectName, locale, ready, progress, onF
   const remainingMinimumMs = Math.max(0, MINIMUM_LOADING_MS - elapsedMs);
   const remainingText = ready
     ? minimumElapsed ? t("loading.opening") : t("loading.openingIn").replace("{seconds}", String(Math.max(1, Math.ceil(remainingMinimumMs / 1000))))
-    : remainingModelMs === null ? t("loading.estimating") : t("loading.remaining").replace("{seconds}", String(Math.max(1, Math.ceil(Math.max(remainingMinimumMs, remainingModelMs) / 1000))));
+    : remainingModelMs === null ? "" : t("loading.remaining").replace("{seconds}", String(Math.max(1, Math.ceil(Math.max(remainingMinimumMs, remainingModelMs) / 1000))));
   const phaseText = ready ? t("loading.opening") : t(progress?.stage === "meshing" || progress?.stage === "ready" ? "loading.meshing" : progress?.stage === "operations" ? "loading.operations" : "loading.initializing");
 
   return createPortal(<div className="kercad-project-loading-backdrop">
     <section ref={dialogRef} className="kercad-project-loading-dialog" role="dialog" aria-modal="true" aria-labelledby="kercad-project-loading-title" tabIndex={-1} onKeyDown={(event) => event.stopPropagation()} onKeyUp={(event) => event.stopPropagation()}>
       <div className="kercad-project-loading-status" role="status" aria-live="polite" aria-atomic="true">
         <h1 id="kercad-project-loading-title">{t("loading.project")} <span>“{projectName}”</span></h1>
-        <div className="kercad-project-loading-bar" role="progressbar" aria-label={t("loading.progress")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress || ready ? percent : undefined} aria-valuetext={`${phaseText} · ${remainingText}`}><span style={{ width: `${percent}%` }} /></div>
-        <div className="kercad-project-loading-estimate">{remainingText}</div>
+        <div className="kercad-project-loading-bar" role="progressbar" aria-label={t("loading.progress")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-valuetext={[phaseText, remainingText].filter(Boolean).join(" · ")}><span style={{ width: `${percent}%` }} /></div>
+        {remainingText && <div className="kercad-project-loading-estimate">{remainingText}</div>}
       </div>
       <figure className="kercad-project-loading-campaign">
         {campaign.kind === "video"
