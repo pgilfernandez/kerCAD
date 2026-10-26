@@ -47,7 +47,6 @@ export function ProjectLoadingDialog({ projectName, locale, ready, progress, onF
         {campaign.kind === "video"
           ? <video src={campaign.src} poster={campaign.poster} muted autoPlay loop playsInline preload="metadata" aria-label={t("loading.campaign")} />
           : <img src={campaign.src} alt={t("loading.campaign")} />}
-        <figcaption>{t("loading.campaign")}</figcaption>
       </figure>
       <footer>
         <p>{t("loading.freeOpenSource")}</p>
