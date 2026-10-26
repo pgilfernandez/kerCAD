@@ -7,7 +7,7 @@ import { execFileSync } from "node:child_process";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const source = resolve(process.argv[2]);
-const temp = await mkdtemp(join(tmpdir(), "educad-occt-package-"));
+const temp = await mkdtemp(join(tmpdir(), "kercad-occt-package-"));
 execFileSync("npm", ["pack", "occt-wasm@3.6.1", "--pack-destination", temp], { stdio: "inherit" });
 execFileSync("tar", ["-xzf", join(temp, "occt-wasm-3.6.1.tgz"), "-C", temp]);
 const pkg = join(temp, "package");
@@ -16,7 +16,7 @@ for (const name of ["LICENSE", "LICENSE-APACHE", "LICENSE-MIT"]) await cp(join(s
 for (const name of ["LICENSE_LGPL_21.txt", "OCCT_LGPL_EXCEPTION.txt"]) await cp(join(source, "occt", name), join(pkg, name));
 const manifestPath = join(pkg, "package.json");
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-manifest.version = "3.6.1+educad.1";
+manifest.version = "3.6.1+kercad.1";
 manifest.files = [...manifest.files, "LICENSE*", "OCCT_LGPL_EXCEPTION.txt"];
 // The published base package has prepack paths that refer to its source checkout.
 delete manifest.scripts;

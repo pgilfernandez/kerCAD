@@ -1,7 +1,7 @@
-import type { EducadTranslationKey } from "@/lib/educadI18n";
+import type { KercadTranslationKey } from "@/lib/kercadI18n";
 import type { ParametricFeature } from "@/types/parametric";
 
-const FEATURE_SUGGESTIONS: Record<ParametricFeature["kind"], EducadTranslationKey> = {
+const FEATURE_SUGGESTIONS: Record<ParametricFeature["kind"], KercadTranslationKey> = {
   sketch: "rebuild.suggestion.sketch",
   extrude: "rebuild.suggestion.extrude",
   primitive: "rebuild.suggestion.primitive",
@@ -17,7 +17,7 @@ const FEATURE_SUGGESTIONS: Record<ParametricFeature["kind"], EducadTranslationKe
   objectBoolean: "rebuild.suggestion.objectBoolean",
 };
 
-export function parametricRebuildSuggestion(feature: ParametricFeature | null | undefined, warning: string | null): EducadTranslationKey {
+export function parametricRebuildSuggestion(feature: ParametricFeature | null | undefined, warning: string | null): KercadTranslationKey {
   const normalized = warning?.toLowerCase() ?? "";
   if (/no longer exist|reference|selected (?:face|edge|axis)/.test(normalized)) return "rebuild.suggestion.topology";
   if (/first operation|create a solid first/.test(normalized)) return "rebuild.suggestion.base";

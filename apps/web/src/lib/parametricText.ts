@@ -155,7 +155,7 @@ export function addParametricText(document: ParametricDocument, selectedObjectId
       object.name = "Text";
     }
   }
-  const profile = parametricTextProfile({ kind: "text", text: "eduCAD", font: "Sans", size: 20, spacing: 1, align: "center", verticalAlign: "center" });
+  const profile = parametricTextProfile({ kind: "text", text: "kerCAD", font: "Sans", size: 20, spacing: 1, align: "center", verticalAlign: "center" });
   const sketch = createDrawnSketchFeature(document.features.filter((feature) => feature.kind === "sketch" && feature.purpose === "user").length + 1, profile);
   sketch.objectId = objectId;
   sketch.name = "Text profile";

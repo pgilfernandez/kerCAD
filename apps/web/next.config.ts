@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 
 function applicationCommit() {
   // CI/archive builds can supply the revision without shipping .git or Git.
-  const revision = process.env.EDUCAD_COMMIT ?? process.env.GITHUB_SHA ?? process.env.VERCEL_GIT_COMMIT_SHA;
+  const revision = process.env.KERCAD_COMMIT ?? process.env.GITHUB_SHA ?? process.env.VERCEL_GIT_COMMIT_SHA;
   if (revision && /^[a-f0-9]{7,40}$/i.test(revision)) return revision.slice(0, 7);
   try {
     return execFileSync("git", ["rev-parse", "--short=7", "HEAD"], {
@@ -16,7 +16,7 @@ function applicationCommit() {
 }
 
 const isStaticExport = process.env.STATIC_EXPORT === "true";
-const isDockerBuild = (process.env.EDUCAD_DOCKER_BUILD ?? process.env.SKETCHFORGE_DOCKER_BUILD) === "true";
+const isDockerBuild = (process.env.KERCAD_DOCKER_BUILD ?? process.env.SKETCHFORGE_DOCKER_BUILD) === "true";
 const extraAllowedDevOrigins = (process.env.SKETCHFORGE_ALLOWED_DEV_ORIGINS ?? "")
   .split(",")
   .map((origin) => origin.trim())
@@ -31,7 +31,7 @@ const nextConfig: NextConfig = {
   distDir: isStaticExport ? ".next-export" : process.env.NODE_ENV === "development" ? ".next-dev" : ".next",
   allowedDevOrigins: ["localhost", "127.0.0.1", ...extraAllowedDevOrigins],
   env: {
-    NEXT_PUBLIC_EDUCAD_COMMIT: applicationCommit(),
+    NEXT_PUBLIC_KERCAD_COMMIT: applicationCommit(),
     NEXT_PUBLIC_STATIC_EXPORT: isStaticExport ? "true" : "false",
   },
   images: {

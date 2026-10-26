@@ -27,13 +27,14 @@ import { assertValidParametricTopology, isParametricTopologyReference } from "@/
 import { globalParametricWorkplanePlacement, normalizeParametricWorkplanePlacement } from "@/lib/parametricWorkplane";
 import { circleSketchPointId } from "@/lib/sketchConstraints";
 import { PARAMETRIC_IMPORT_LIMITS } from "@/lib/parametricImportLimits";
+import { legacyParametricVersion } from "@/lib/legacyBrand";
 
 let localCounter = 0;
-export const CURRENT_PARAMETRIC_SCHEMA = "educad-parametric/v2" as const;
+export const CURRENT_PARAMETRIC_SCHEMA = "kercad-parametric/v2" as const;
 type ParametricSchema = ParametricDocument["schema"];
 
 const documentMigrations: Partial<Record<ParametricSchema, (document: ParametricDocument) => ParametricDocument>> = {
-  "educad-parametric/v1": (document) => ({ ...document, schema: "educad-parametric/v2", topologyReferences: document.topologyReferences ?? [] }),
+  "kercad-parametric/v1": (document) => ({ ...document, schema: "kercad-parametric/v2", topologyReferences: document.topologyReferences ?? [] }),
 };
 
 export function createFeatureId(prefix: string) {
@@ -317,7 +318,7 @@ export function createObjectBooleanFeature(index: number, sourceObjectId: string
 export function validateDocument(value: unknown): value is ParametricDocument {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<ParametricDocument>;
-  return (candidate.schema === "educad-parametric/v1" || candidate.schema === CURRENT_PARAMETRIC_SCHEMA)
+  return (candidate.schema === "kercad-parametric/v1" || candidate.schema === CURRENT_PARAMETRIC_SCHEMA || legacyParametricVersion(candidate.schema) !== null)
     && typeof candidate.name === "string"
     && candidate.units === "mm"
     && (candidate.objects === undefined || Array.isArray(candidate.objects))
@@ -334,12 +335,15 @@ export function validateDocument(value: unknown): value is ParametricDocument {
 
 export function migrateParametricDocument(document: ParametricDocument): ParametricDocument {
   let next = structuredClone(document);
+  const legacyVersion = legacyParametricVersion(next.schema);
+  if (legacyVersion === 1) next.schema = "kercad-parametric/v1";
+  if (legacyVersion === 2) next.schema = CURRENT_PARAMETRIC_SCHEMA;
   const visited = new Set<ParametricSchema>();
   while (next.schema !== CURRENT_PARAMETRIC_SCHEMA) {
     if (visited.has(next.schema)) throw new Error(`A migration cycle was detected for ${next.schema}.`);
     visited.add(next.schema);
     const migration = documentMigrations[next.schema];
-    if (!migration) throw new Error(`Version ${next.schema} is not supported by this version of eduCAD.`);
+    if (!migration) throw new Error(`Version ${next.schema} is not supported by this version of kerCAD.`);
     next = migration(next);
   }
   return next;

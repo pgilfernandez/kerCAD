@@ -16,7 +16,7 @@ function writeNormal(view: DataView, offset: number, ax: number, ay: number, az:
   view.setFloat32(offset + 8, nz / length, true);
 }
 
-export function binaryStlFromRenderMeshes(meshes: RenderMesh[], name = "eduCAD model") {
+export function binaryStlFromRenderMeshes(meshes: RenderMesh[], name = "kerCAD model") {
   if (meshes.length === 0) throw new Error("There are no objects to export.");
   let triangleCount = 0;
   for (const mesh of meshes) {

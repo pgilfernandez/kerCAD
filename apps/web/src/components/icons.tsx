@@ -1,16 +1,16 @@
 import type { CSSProperties, SVGProps } from "react";
-import { operationIconPath } from "@/lib/educadIconPaths";
+import { operationIconPath } from "@/lib/kercadIconPaths";
 
 type IconProps = SVGProps<SVGSVGElement>;
 
 export function GridControlIcon({ snap = false, size = 22 }: { snap?: boolean; size?: number }) {
-  const mask = `url("/assets/educad/toolbar-vertical/${snap ? "snap-toggle" : "grid"}.svg")`;
+  const mask = `url("/assets/kercad/toolbar-vertical/${snap ? "snap-toggle" : "grid"}.svg")`;
   return <span aria-hidden="true" style={{ display: "inline-block", width: size, height: size, flexShrink: 0, backgroundColor: "currentColor", maskImage: mask, WebkitMaskImage: mask, maskSize: "contain", WebkitMaskSize: "contain", maskRepeat: "no-repeat", WebkitMaskRepeat: "no-repeat" }} />;
 }
 
 export function HeaderToolbarIcon({ file }: { file: "documentation" | "language" | "information" | "project-overview" | "square-pen" | "donate" | "github" | "menu" }) {
-  const mask = `url("/assets/educad/${file}.svg")`;
-  return <span aria-hidden="true" className="educad-header-svg-icon" style={{ maskImage: mask, WebkitMaskImage: mask }} />;
+  const mask = `url("/assets/kercad/${file}.svg")`;
+  return <span aria-hidden="true" className="kercad-header-svg-icon" style={{ maskImage: mask, WebkitMaskImage: mask }} />;
 }
 type SpriteRect = {
   x: number;
@@ -77,27 +77,27 @@ function ToolbarCommandImage({ file, className }: ToolbarCommandImageProps) {
   return <img aria-hidden="true" className={["toolbar-command-icon", assetClassName, className].filter(Boolean).join(" ")} src={"/assets/sketchforge/" + file} alt="" draggable={false} />;
 }
 
-type EducadOperationImageProps = { file: string; className?: string };
+type KercadOperationImageProps = { file: string; className?: string };
 
-function EducadOperationImage({ file, className }: EducadOperationImageProps) {
-  return <img aria-hidden="true" className={["toolbar-command-icon", "educad-toolbar-operation-icon", className].filter(Boolean).join(" ")} src={operationIconPath(file)} alt="" draggable={false} />;
+function KercadOperationImage({ file, className }: KercadOperationImageProps) {
+  return <img aria-hidden="true" className={["toolbar-command-icon", "kercad-toolbar-operation-icon", className].filter(Boolean).join(" ")} src={operationIconPath(file)} alt="" draggable={false} />;
 }
 
 export function SketchToolbarIcon({ file }: { file: string }) {
-  return <img aria-hidden="true" className="toolbar-command-icon educad-sketch-toolbar-icon" src={`/assets/educad/toolbar-sketch/${file}.svg`} alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon kercad-sketch-toolbar-icon" src={`/assets/kercad/toolbar-sketch/${file}.svg`} alt="" draggable={false} />;
 }
 
 export function ViewToolbarIcon({ file }: { file: string }) {
-  return <img aria-hidden="true" className="toolbar-command-icon educad-sketch-toolbar-icon" src={`/assets/educad/${file === "inverse" ? "toolbar-horizontal" : "toolbar-vertical"}/${file}.svg`} alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon kercad-sketch-toolbar-icon" src={`/assets/kercad/${file === "inverse" ? "toolbar-horizontal" : "toolbar-vertical"}/${file}.svg`} alt="" draggable={false} />;
 }
 
 export function SketchConstraintIcon({ file }: { file: string }) {
-  return <img aria-hidden="true" className="educad-sketch-constraint-icon" src={`/assets/educad/toolbar-vertical/constraints/${file}.svg`} alt="" draggable={false} />;
+  return <img aria-hidden="true" className="kercad-sketch-constraint-icon" src={`/assets/kercad/toolbar-vertical/constraints/${file}.svg`} alt="" draggable={false} />;
 }
 
 export function ToolbarHomeIcon() {
   // return <ToolbarCommandImage file="toolbar-home.png" className="toolbar-user-art-icon" />;
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/document_new.svg" alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/document_new.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarCopyIcon() {
@@ -126,13 +126,13 @@ export function ToolbarRedoIcon() {
 
 export function ToolbarImportIcon() {
   // return <ToolbarCommandImage file="toolbar-import.png" className="toolbar-user-art-icon" />;
-  // return <EducadOperationImage file="import.svg" />;
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar-3d/import.svg" alt="" draggable={false} />;
+  // return <KercadOperationImage file="import.svg" />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/import.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarVectorExportIcon() {
   // return <ToolbarCommandImage file="toolbar-export.png" className="toolbar-user-art-icon" />;
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar-3d/export.svg" alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/export.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarSettingsIcon() {
@@ -144,23 +144,23 @@ export function ToolbarShapeAddIcon(props: IconProps) {
 }
 
 export function ToolbarSketchIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar-3d/sketch.svg" alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/sketch.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarPositionManipulatorIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar-3d/manipulator-position.svg" alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/manipulator-position.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarRotationManipulatorIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar-3d/manipulator-rotation.svg" alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/manipulator-rotation.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarParameterManipulatorIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar-3d/manipulator-parameters.svg" alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/manipulator-parameters.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarBooleanModeIcon({ mode }: { mode: "add" | "hole" | "common" }) {
-  return <EducadOperationImage file={`boolean-${mode}.svg`} />;
+  return <KercadOperationImage file={`boolean-${mode}.svg`} />;
 }
 
 export function ToolbarHideSelectedIcon(props: IconProps) {
@@ -194,35 +194,35 @@ export function ToolbarIntersectionIcon(props: IconProps) {
 }
 
 export function ToolbarAlignIcon() {
-  return <EducadOperationImage file="alignment.svg" />;
+  return <KercadOperationImage file="alignment.svg" />;
 }
 
 export function ToolbarMirrorIcon() {
-  return <EducadOperationImage file="mirror.svg" />;
+  return <KercadOperationImage file="mirror.svg" />;
 }
 
 export function ToolbarLinearPatternIcon() {
-  return <EducadOperationImage file="linear-pattern.svg" />;
+  return <KercadOperationImage file="linear-pattern.svg" />;
 }
 
 export function ToolbarPolarPatternIcon() {
-  return <EducadOperationImage file="polar-pattern.svg" />;
+  return <KercadOperationImage file="polar-pattern.svg" />;
 }
 
 export function ToolbarObjectBooleanIcon() {
-  return <EducadOperationImage file="object-boolean.svg" />;
+  return <KercadOperationImage file="object-boolean.svg" />;
 }
 
 export function ToolbarChamferIcon() {
-  return <EducadOperationImage file="chamfer.svg" />;
+  return <KercadOperationImage file="chamfer.svg" />;
 }
 
 export function ToolbarFilletIcon() {
-  return <EducadOperationImage file="fillet.svg" />;
+  return <KercadOperationImage file="fillet.svg" />;
 }
 
 export function ToolbarEditOperationIcon() {
-  return <EducadOperationImage file="edit.svg" />;
+  return <KercadOperationImage file="edit.svg" />;
 }
 
 export function ToolbarPreserveEdgeIcon(props: IconProps) {
@@ -237,23 +237,23 @@ export function ToolbarPreserveEdgeIcon(props: IconProps) {
 }
 
 export function ToolbarSnapGridIcon() {
-  return <EducadOperationImage file="snap-grid.svg" />;
+  return <KercadOperationImage file="snap-grid.svg" />;
 }
 
 export function ToolbarExtrudeIcon() {
-  return <EducadOperationImage file="extrude.svg" />;
+  return <KercadOperationImage file="extrude.svg" />;
 }
 
 export function ToolbarSectionViewIcon() {
-  return <EducadOperationImage file="section-view.svg" />;
+  return <KercadOperationImage file="section-view.svg" />;
 }
 
 export function ToolbarRevolveIcon() {
-  return <EducadOperationImage file="revolve.svg" />;
+  return <KercadOperationImage file="revolve.svg" />;
 }
 
 export function ToolbarShellIcon() {
-  return <EducadOperationImage file="shell.svg" />;
+  return <KercadOperationImage file="shell.svg" />;
 }
 
 export function ToolbarExportIcon() {
@@ -261,21 +261,21 @@ export function ToolbarExportIcon() {
 }
 
 export function ToolbarWorkplaneIcon() {
-  return <EducadOperationImage file="workplane.svg" />;
+  return <KercadOperationImage file="workplane.svg" />;
 }
 
 export function ToolbarResetWorkplaneIcon() {
-  return <EducadOperationImage file="workplane-reset.svg" />;
+  return <KercadOperationImage file="workplane-reset.svg" />;
 }
 
 export function ToolbarDropToWorkplaneIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar-3d/drop-to-workplane.svg" alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/drop-to-workplane.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarPerspectiveIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar-vertical/perspective.svg" alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-vertical/perspective.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarOrthographicIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/educad/toolbar-vertical/orthographic.svg" alt="" draggable={false} />;
+  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-vertical/orthographic.svg" alt="" draggable={false} />;
 }

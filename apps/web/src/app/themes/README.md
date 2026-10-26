@@ -2,7 +2,7 @@
 
 The application offers explicit **Light** (default) and **Dark** themes in the
 appearance/language menu shared by the dashboard, documentation and editors.
-The preference is browser-local (`educad.theme`), synchronized between tabs and
+The preference is browser-local (`kercad.theme`), synchronized between tabs and
 applied before hydration to avoid a light flash when opening a dark workspace.
 The previous `sketchForge.theme` preference remains readable for migration.
 

@@ -48,7 +48,7 @@ export function SketchToolMenu<T extends string>({ options, initialTool, activeT
       const bounds = trigger.current?.getBoundingClientRect();
       setPosition(position || !bounds ? null : { top: bounds.bottom + 6, left: Math.max(8, Math.min(bounds.left, window.innerWidth - 208)) });
     }}>{renderIcon ? renderIcon(current) : <SketchToolbarIcon file={current.icon} />}</button>
-    {position && createPortal(<div ref={menu} id={id} className="educad-polygon-menu" style={position}>
+    {position && createPortal(<div ref={menu} id={id} className="kercad-polygon-menu" style={position}>
       {options.map((option) => <button key={option.tool} type="button" aria-pressed={activeTool === option.tool} onClick={() => {
         setLastTool(option.tool); onChoose(option.tool); setPosition(null);
       }}>{renderIcon ? renderIcon(option) : <SketchToolbarIcon file={option.icon} />}<span>{option.label}</span></button>)}

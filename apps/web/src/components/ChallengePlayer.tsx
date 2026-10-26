@@ -2,11 +2,11 @@
 
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, GripHorizontal, PanelLeft, PanelRight, PanelsTopLeft, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { EducadChallenge } from "@/lib/challengeLibrary";
+import type { KercadChallenge } from "@/lib/challengeLibrary";
 
 type Dock = "floating" | "left" | "right" | "compact-floating" | "compact-left" | "compact-right";
 
-export function ChallengePlayer({ challenge, dock, onDockChange, onClose }: { challenge: EducadChallenge; dock: Dock; onDockChange: (dock: Dock) => void; onClose: () => void }) {
+export function ChallengePlayer({ challenge, dock, onDockChange, onClose }: { challenge: KercadChallenge; dock: Dock; onDockChange: (dock: Dock) => void; onClose: () => void }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [position, setPosition] = useState({ x: 28, y: 96 });
   const dragRef = useRef<{ pointerId: number; x: number; y: number; left: number; top: number } | null>(null);
@@ -32,11 +32,11 @@ export function ChallengePlayer({ challenge, dock, onDockChange, onClose }: { ch
 
   if (dock.startsWith("compact-")) {
     const compactFrom = dock.replace("compact-", "") as "floating" | "left" | "right";
-    return <aside className={`educad-challenge-compact ${compactFrom}`} style={compactFrom === "floating" ? { left: position.x, top: position.y } : undefined} aria-label={`Collapsed challenge: ${challenge.title}`}><button type="button" title="Expand challenge" aria-label="Expand challenge" onClick={() => onDockChange(compactFrom)}><ChevronsRight size={19} /></button></aside>;
+    return <aside className={`kercad-challenge-compact ${compactFrom}`} style={compactFrom === "floating" ? { left: position.x, top: position.y } : undefined} aria-label={`Collapsed challenge: ${challenge.title}`}><button type="button" title="Expand challenge" aria-label="Expand challenge" onClick={() => onDockChange(compactFrom)}><ChevronsRight size={19} /></button></aside>;
   }
 
   return <aside
-    className={`educad-challenge-player ${dock}`}
+    className={`kercad-challenge-player ${dock}`}
     style={dock === "floating" ? { left: position.x, top: position.y } : undefined}
     aria-label={`Challenge: ${challenge.title}`}
   >
@@ -49,10 +49,10 @@ export function ChallengePlayer({ challenge, dock, onDockChange, onClose }: { ch
         <button type="button" title="Close challenge" aria-label="Close challenge" onClick={onClose}><X size={18} /></button>
       </nav>
       <div><small>CHALLENGE</small><strong>{challenge.title}</strong></div>
-      <span className="educad-challenge-progress">{stepIndex + 1} / {challenge.steps.length}</span>
-      {dock === "floating" ? <GripHorizontal className="educad-challenge-drag-hint" size={22} aria-hidden="true" /> : null}
+      <span className="kercad-challenge-progress">{stepIndex + 1} / {challenge.steps.length}</span>
+      {dock === "floating" ? <GripHorizontal className="kercad-challenge-drag-hint" size={22} aria-hidden="true" /> : null}
     </header>
-    <div className="educad-challenge-step">
+    <div className="kercad-challenge-step">
       <small>{step.label || (stepIndex === 0 ? "BEFORE YOU START" : `STEP ${stepIndex}`)}</small>
       <h2>{step.title}</h2>
       <p>{step.body}</p>

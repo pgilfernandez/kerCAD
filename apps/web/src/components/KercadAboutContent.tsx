@@ -3,13 +3,13 @@
 import { useState } from "react";
 import { ArrowRight, BookOpen, Box, Check, Code2, FolderOpen, Globe, GraduationCap, History, MessageCircle, PencilRuler, Ruler, School, Server, ShieldCheck, Sparkles, Tablet, UserRound } from "lucide-react";
 import { aboutContent } from "@/lib/aboutContent";
-import type { EducadLocale } from "@/lib/educadI18n";
+import type { KercadLocale } from "@/lib/kercadI18n";
 
 const featureIcons = [Box, PencilRuler, Ruler, FolderOpen];
 const essentialIcons = [Code2, UserRound, Globe, Tablet, FolderOpen, Server];
-const illustrationPath = "/assets/educad/about/";
+const illustrationPath = "/assets/kercad/about/";
 
-export function EducadAboutContent({ locale, preview, onStart, onOpenChallenges }: { locale: EducadLocale; preview?: string; onStart: () => void; onOpenChallenges: () => void }) {
+export function KercadAboutContent({ locale, preview, onStart, onOpenChallenges }: { locale: KercadLocale; preview?: string; onStart: () => void; onOpenChallenges: () => void }) {
   const [featureIndex, setFeatureIndex] = useState(0);
   const text = aboutContent[locale];
   const feature = text.featureGroups[featureIndex];
@@ -67,6 +67,6 @@ export function EducadAboutContent({ locale, preview, onStart, onOpenChallenges 
     <section id="stories" className="about-stories about-container about-section"><div className="about-story-graphic" aria-hidden="true"><span><MessageCircle size={44} strokeWidth={1.4} /></span><i /><i /><Sparkles size={26} /></div><div><span className="about-eyebrow">{text.storiesEyebrow}</span><h2>{text.storiesTitle}<br /><em>{text.storiesAccent}</em></h2><p>{text.storiesDescription}</p><span className="about-coming-soon">{text.comingSoon}</span></div></section>
 
     <section className="about-final"><div className="about-container"><div><h2>{text.finalTitle}</h2><p>{text.finalDescription}</p></div><button className="about-button light" type="button" onClick={onStart}>{text.start}<ArrowRight size={19} /></button></div></section>
-    <footer className="about-footer about-container"><div><strong><img src="/assets/educad/logo.svg" width="34" height="34" alt="" />eduCAD</strong><p>{text.footer}</p></div><div><a href={`/documentation?lang=${locale}`} target="_blank" rel="noopener noreferrer">{text.documentation}<ArrowRight size={14} /></a><small>{text.credit}</small></div></footer>
+    <footer className="about-footer about-container"><div><strong><img src="/assets/kercad/logo.svg" width="34" height="34" alt="" />kerCAD</strong><p>{text.footer}</p></div><div><a href={`/documentation?lang=${locale}`} target="_blank" rel="noopener noreferrer">{text.documentation}<ArrowRight size={14} /></a><small>{text.credit}</small></div></footer>
   </>;
 }

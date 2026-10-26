@@ -6,6 +6,6 @@ export const projectLoadingCampaign: {
   supportUrl: string | null;
 } = {
   kind: "image",
-  src: "/assets/educad/loading-campaign.svg",
+  src: "/assets/kercad/loading-campaign.svg",
   supportUrl: null,
 };

@@ -3,7 +3,7 @@ import type { ShellCornerType } from "@/types/parametric";
 
 type OcctKernelOwner = Parameters<Brep["OcctWasmAdapter"]["fromKernel"]>[0];
 
-const SHARP_SHELL_KERNEL = "educad-shell-sharp";
+const SHARP_SHELL_KERNEL = "kercad-shell-sharp";
 
 /** Both adapters share the same shape store; only shell joins differ. */
 export function registerShellKernels(brep: Brep, kernel: OcctKernelOwner) {

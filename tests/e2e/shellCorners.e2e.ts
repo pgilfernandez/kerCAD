@@ -24,7 +24,7 @@ describe("Shell corners with the real OpenCascade kernel", () => {
     const sharp = brep.unwrap(shellWithCorners(brep, solid, openFaces, 2, "sharp"));
     expect(brep.isValid(rounded)).toBe(true);
     expect(brep.isValid(sharp)).toBe(true);
-    const direct = brep.castShape(brep.getKernel("educad-shell-sharp").shell(solid.wrapped, openFaces.map((face) => face.wrapped), 2));
+    const direct = brep.castShape(brep.getKernel("kercad-shell-sharp").shell(solid.wrapped, openFaces.map((face) => face.wrapped), 2));
     expect(brep.unwrap(brep.measureVolume(direct))).toBeCloseTo(brep.unwrap(brep.measureVolume(sharp)), 6);
     expect(brep.faceFinder().ofSurfaceType("CYLINDRE").findAll(rounded).length).toBeGreaterThan(0);
     expect(brep.faceFinder().ofSurfaceType("CYLINDRE").findAll(sharp)).toHaveLength(0);

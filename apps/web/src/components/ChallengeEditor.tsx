@@ -2,18 +2,18 @@
 
 import { Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, GripHorizontal, ImageUp, PanelLeft, PanelRight, PanelsTopLeft, Plus, Star, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { EducadChallenge } from "@/lib/challengeLibrary";
+import type { KercadChallenge } from "@/lib/challengeLibrary";
 
 export type ChallengeDock = "floating" | "left" | "right" | "compact-floating" | "compact-left" | "compact-right";
 
 type Props = {
-  challenge: EducadChallenge;
+  challenge: KercadChallenge;
   dock: ChallengeDock;
   capture?: { stepId: string; dataUrl: string; token: number } | null;
   onDockChange: (dock: ChallengeDock) => void;
   onCapture: (stepId: string) => void;
   onCancel: () => void;
-  onSave: (challenge: EducadChallenge) => void;
+  onSave: (challenge: KercadChallenge) => void;
 };
 
 function nextStepId() {
@@ -85,10 +85,10 @@ export function ChallengeEditor({ challenge, dock, capture, onDockChange, onCapt
 
   if (dock.startsWith("compact-")) {
     const compactFrom = dock.replace("compact-", "") as "floating" | "left" | "right";
-    return <aside className={`educad-challenge-compact ${compactFrom}`} style={compactFrom === "floating" ? { left: position.x, top: position.y } : undefined} aria-label="Collapsed challenge editor"><button type="button" title="Expand challenge editor" aria-label="Expand challenge editor" onClick={() => onDockChange(compactFrom)}><ChevronsRight size={19} /></button></aside>;
+    return <aside className={`kercad-challenge-compact ${compactFrom}`} style={compactFrom === "floating" ? { left: position.x, top: position.y } : undefined} aria-label="Collapsed challenge editor"><button type="button" title="Expand challenge editor" aria-label="Expand challenge editor" onClick={() => onDockChange(compactFrom)}><ChevronsRight size={19} /></button></aside>;
   }
 
-  return <aside className={`educad-challenge-player educad-challenge-author ${dock}`} style={dock === "floating" ? { left: position.x, top: position.y } : undefined} aria-label="Challenge editor">
+  return <aside className={`kercad-challenge-player kercad-challenge-author ${dock}`} style={dock === "floating" ? { left: position.x, top: position.y } : undefined} aria-label="Challenge editor">
     <header onPointerDown={beginDrag} onPointerMove={drag} onPointerUp={endDrag} onPointerCancel={endDrag}>
       <nav aria-label="Challenge editor panel position">
         <button type="button" className={dock === "floating" ? "active" : ""} title="Float panel" aria-label="Float panel" onClick={() => onDockChange("floating")}><PanelsTopLeft size={17} /></button>
@@ -98,44 +98,44 @@ export function ChallengeEditor({ challenge, dock, capture, onDockChange, onCapt
         <button type="button" title="Cancel editing" aria-label="Cancel editing" onClick={onCancel}><X size={18} /></button>
       </nav>
       <div><small>CHALLENGE EDITOR</small><strong>{draft.title || "Untitled challenge"}</strong></div>
-      <span className="educad-challenge-progress">{editingMetadata ? "Details" : `${stepIndex + 1} / ${draft.steps.length}`}</span>
-      {dock === "floating" ? <GripHorizontal className="educad-challenge-drag-hint" size={22} aria-hidden="true" /> : null}
+      <span className="kercad-challenge-progress">{editingMetadata ? "Details" : `${stepIndex + 1} / ${draft.steps.length}`}</span>
+      {dock === "floating" ? <GripHorizontal className="kercad-challenge-drag-hint" size={22} aria-hidden="true" /> : null}
     </header>
-    {editingMetadata ? <div className="educad-challenge-step educad-challenge-form educad-challenge-metadata">
+    {editingMetadata ? <div className="kercad-challenge-step kercad-challenge-form kercad-challenge-metadata">
       <label><span>Challenge title</span><input value={draft.title} maxLength={100} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} /></label>
       <label><span>Author</span><input value={draft.author ?? ""} maxLength={100} placeholder="Teacher or organisation" onChange={(event) => setDraft((current) => ({ ...current, author: event.target.value }))} /></label>
-      <section className="educad-challenge-category-editor">
+      <section className="kercad-challenge-category-editor">
         <strong>Categories</strong>
-        <div className="educad-challenge-category-input"><input value={categoryDraft} maxLength={32} placeholder="Add a category" onChange={(event) => setCategoryDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === ",") { event.preventDefault(); addCategory(); } }} /><button type="button" disabled={!categoryDraft.trim()} onClick={addCategory}><Plus size={16} /> Add</button></div>
-        {(draft.categories?.length ?? 0) > 0 ? <div className="educad-challenge-categories">{draft.categories?.map((category) => <span key={category}>{category}<button type="button" title={`Remove ${category}`} aria-label={`Remove ${category}`} onClick={() => setDraft((current) => ({ ...current, categories: current.categories?.filter((candidate) => candidate !== category) }))}><X size={12} /></button></span>)}</div> : null}
+        <div className="kercad-challenge-category-input"><input value={categoryDraft} maxLength={32} placeholder="Add a category" onChange={(event) => setCategoryDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === ",") { event.preventDefault(); addCategory(); } }} /><button type="button" disabled={!categoryDraft.trim()} onClick={addCategory}><Plus size={16} /> Add</button></div>
+        {(draft.categories?.length ?? 0) > 0 ? <div className="kercad-challenge-categories">{draft.categories?.map((category) => <span key={category}>{category}<button type="button" title={`Remove ${category}`} aria-label={`Remove ${category}`} onClick={() => setDraft((current) => ({ ...current, categories: current.categories?.filter((candidate) => candidate !== category) }))}><X size={12} /></button></span>)}</div> : null}
       </section>
       <label><span>Challenge description</span><textarea rows={5} value={draft.description ?? ""} onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))} /></label>
-      <section className="educad-challenge-capture">
-        {draft.cover ? <img src={draft.cover} alt="Challenge thumbnail" /> : <div className="educad-challenge-capture-placeholder"><ImageUp size={35} /><span>Challenge thumbnail</span></div>}
-        <div className="educad-challenge-capture-actions"><button type="button" title="Capture 3D view" aria-label="Capture 3D view for thumbnail" onClick={() => onCapture("__cover__")}><Camera size={19} /></button><button type="button" title="Upload thumbnail" aria-label="Upload thumbnail" onClick={() => coverInputRef.current?.click()}><ImageUp size={19} /></button></div>
+      <section className="kercad-challenge-capture">
+        {draft.cover ? <img src={draft.cover} alt="Challenge thumbnail" /> : <div className="kercad-challenge-capture-placeholder"><ImageUp size={35} /><span>Challenge thumbnail</span></div>}
+        <div className="kercad-challenge-capture-actions"><button type="button" title="Capture 3D view" aria-label="Capture 3D view for thumbnail" onClick={() => onCapture("__cover__")}><Camera size={19} /></button><button type="button" title="Upload thumbnail" aria-label="Upload thumbnail" onClick={() => coverInputRef.current?.click()}><ImageUp size={19} /></button></div>
         <small>Recommended image size: 1200 × 750 px</small>
         <input ref={coverInputRef} hidden type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" onChange={(event) => { loadImage(event.target.files?.[0], "cover"); event.target.value = ""; }} />
       </section>
-    </div> : <div className="educad-challenge-step educad-challenge-form">
+    </div> : <div className="kercad-challenge-step kercad-challenge-form">
       <label><span>Step title</span><input value={step.title} maxLength={120} onChange={(event) => updateStep({ title: event.target.value })} /></label>
       <label><span>Description</span><textarea rows={4} value={step.body} onChange={(event) => updateStep({ body: event.target.value })} /></label>
       <label><span>Step subtitle</span><input value={step.label ?? ""} maxLength={80} placeholder={stepIndex === 0 ? "BEFORE YOU START" : `STEP ${stepIndex}`} onChange={(event) => updateStep({ label: event.target.value })} /></label>
-      <section className="educad-challenge-parameter-editor">
+      <section className="kercad-challenge-parameter-editor">
         <header><strong>Parameters</strong><button type="button" onClick={() => updateStep({ values: [...(step.values ?? []), { label: "Parameter", value: "1 mm" }] })}><Plus size={16} /> Add</button></header>
-        {(step.values ?? []).map((value, index) => <div className="educad-challenge-parameter-row" key={`${step.id}:value:${index}`}>
+        {(step.values ?? []).map((value, index) => <div className="kercad-challenge-parameter-row" key={`${step.id}:value:${index}`}>
           <input aria-label={`Parameter ${index + 1} name`} value={value.label} placeholder="Name" onChange={(event) => updateValue(index, { label: event.target.value })} />
           <input aria-label={`Parameter ${index + 1} value`} value={value.value} placeholder="Value" onChange={(event) => updateValue(index, { value: event.target.value })} />
           <span><button type="button" disabled={index === 0} title="Move up" aria-label="Move parameter up" onClick={() => moveValue(index, -1)}><ChevronUp size={15} /></button><button type="button" disabled={index === (step.values?.length ?? 0) - 1} title="Move down" aria-label="Move parameter down" onClick={() => moveValue(index, 1)}><ChevronDown size={15} /></button><button type="button" title="Delete parameter" aria-label="Delete parameter" onClick={() => updateStep({ values: (step.values ?? []).filter((_, valueIndex) => valueIndex !== index) })}><Trash2 size={15} /></button></span>
         </div>)}
       </section>
-      <section className="educad-challenge-capture">
-        {step.image ? <img src={step.image} alt="Current step capture" /> : <div className="educad-challenge-capture-placeholder"><Camera size={35} /><span>3D view capture</span></div>}
-        <div className="educad-challenge-capture-actions"><button type="button" title="Capture 3D view" aria-label="Capture 3D view" onClick={() => onCapture(step.id)}><Camera size={19} /></button><button type="button" title="Upload image" aria-label="Upload image" onClick={() => imageInputRef.current?.click()}><ImageUp size={19} /></button><button type="button" title="Use this image as the challenge cover" aria-label="Use this image as the challenge cover" disabled={!step.image} onClick={() => setDraft((current) => ({ ...current, cover: step.image }))}><Star size={19} /></button></div>
+      <section className="kercad-challenge-capture">
+        {step.image ? <img src={step.image} alt="Current step capture" /> : <div className="kercad-challenge-capture-placeholder"><Camera size={35} /><span>3D view capture</span></div>}
+        <div className="kercad-challenge-capture-actions"><button type="button" title="Capture 3D view" aria-label="Capture 3D view" onClick={() => onCapture(step.id)}><Camera size={19} /></button><button type="button" title="Upload image" aria-label="Upload image" onClick={() => imageInputRef.current?.click()}><ImageUp size={19} /></button><button type="button" title="Use this image as the challenge cover" aria-label="Use this image as the challenge cover" disabled={!step.image} onClick={() => setDraft((current) => ({ ...current, cover: step.image }))}><Star size={19} /></button></div>
         <small>Recommended image size: 1200 × 750 px</small>
         <input ref={imageInputRef} hidden type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" onChange={(event) => { loadImage(event.target.files?.[0], "step"); event.target.value = ""; }} />
       </section>
     </div>}
-    {editingMetadata ? <footer className="educad-challenge-metadata-footer"><button className="primary" type="button" disabled={!draft.title.trim()} onClick={() => setEditingMetadata(false)}>Next <ChevronRight size={20} /></button></footer> : <footer className="educad-challenge-author-footer">
+    {editingMetadata ? <footer className="kercad-challenge-metadata-footer"><button className="primary" type="button" disabled={!draft.title.trim()} onClick={() => setEditingMetadata(false)}>Next <ChevronRight size={20} /></button></footer> : <footer className="kercad-challenge-author-footer">
       <button type="button" onClick={() => { if (stepIndex === 0) setEditingMetadata(true); else setStepIndex((current) => current - 1); }}><ChevronLeft size={20} /> Previous</button>
       <button className="insert" type="button" title="Insert step after this one" aria-label="Insert step after this one" onClick={insertStep}><Plus size={22} /></button>
       {stepIndex < draft.steps.length - 1

@@ -7,12 +7,12 @@ import { AnnotationEndSelector } from "@/components/AnnotationEndSelector";
 import { annotationEnding, setAnnotationEnding } from "@/lib/annotationEndings";
 import { OBJECT_COLOR_PALETTE } from "@/lib/parametricObjects";
 import { enableToolbarMouseScroll } from "@/lib/toolbarScroll";
-import { educadTranslate, type EducadLocale } from "@/lib/educadI18n";
+import { kercadTranslate, type KercadLocale } from "@/lib/kercadI18n";
 import type { ParametricAnnotation } from "@/types/parametric";
 import type { ParametricDisplayUnit } from "@/lib/parametricUnits";
 
-export function AnnotationToolbar({ embedded = false, annotation, displayUnit, snap, locale, onUpdate }: { embedded?: boolean; annotation: ParametricAnnotation; displayUnit: ParametricDisplayUnit; snap: number; locale: EducadLocale; onUpdate: (update: (annotation: ParametricAnnotation) => void) => void }) {
-  const t = (key: Parameters<typeof educadTranslate>[1]) => educadTranslate(locale, key);
+export function AnnotationToolbar({ embedded = false, annotation, displayUnit, snap, locale, onUpdate }: { embedded?: boolean; annotation: ParametricAnnotation; displayUnit: ParametricDisplayUnit; snap: number; locale: KercadLocale; onUpdate: (update: (annotation: ParametricAnnotation) => void) => void }) {
+  const t = (key: Parameters<typeof kercadTranslate>[1]) => kercadTranslate(locale, key);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const toolbar = useRef<HTMLDivElement>(null);
   useEffect(() => { if (!embedded && toolbar.current) return enableToolbarMouseScroll(toolbar.current); }, [annotation.id, embedded]);
@@ -30,7 +30,7 @@ export function AnnotationToolbar({ embedded = false, annotation, displayUnit, s
   return <div ref={toolbar} className={`sketch-annotation-context-toolbar ${embedded ? "embedded" : ""}`} role="toolbar" aria-label={t("annotation.group")} onPointerDown={(event) => event.stopPropagation()}>
     {annotation.kind !== "circle" && number(annotation.size ?? 3, t("annotation.size"), "length", (draft, value) => { draft.size = value; })}
     {annotation.kind === "circle" && <>{number(annotation.radius, t("property.radius"), "length", (draft, value) => { if (draft.kind === "circle") draft.radius = value; }, .1, 10000)}{number(annotation.lineWidth, t("annotation.lineWidth"), "scalar", (draft, value) => { if (draft.kind === "circle") draft.lineWidth = value; }, .5, 20)}</>}
-    {embedded && annotation.kind === "circle" && <select className="educad-context-object-select educad-annotation-plane-select" aria-label={t("annotation.mode")} title={t("annotation.mode")} value={annotation.mode} onChange={(event) => onUpdate((draft) => { if (draft.kind === "circle") draft.mode = event.target.value as "billboard" | "planar"; })}><option value="billboard">{t("annotation.billboard")}</option><option value="planar">{t("annotation.planar")}</option></select>}
+    {embedded && annotation.kind === "circle" && <select className="kercad-context-object-select kercad-annotation-plane-select" aria-label={t("annotation.mode")} title={t("annotation.mode")} value={annotation.mode} onChange={(event) => onUpdate((draft) => { if (draft.kind === "circle") draft.mode = event.target.value as "billboard" | "planar"; })}><option value="billboard">{t("annotation.billboard")}</option><option value="planar">{t("annotation.planar")}</option></select>}
     {annotation.kind === "text" && (["left", "center", "right"] as const).map((alignment) => <button key={alignment} type="button" className={annotation.alignment === alignment ? "active" : ""} aria-pressed={annotation.alignment === alignment} title={`${t("annotation.alignment")}: ${t(`annotation.${alignment}`)}`} aria-label={`${t("annotation.alignment")}: ${t(`annotation.${alignment}`)}`} onClick={() => onUpdate((draft) => { if (draft.kind === "text") draft.alignment = alignment; })}><AnnotationIcon size={34} kind={`align-${alignment}`} /></button>)}
     {annotation.kind === "dimension" && <>
       <AnnotationEndSelector side="start" value={annotationEnding(annotation, "start")} locale={locale} onChange={(value) => onUpdate((draft) => setAnnotationEnding(draft, "start", value))} />
@@ -40,10 +40,10 @@ export function AnnotationToolbar({ embedded = false, annotation, displayUnit, s
     </>}
 
     <div className="sketch-annotation-color-control" ref={palette}>
-      <button type="button" title={t("property.color")} aria-label={t("property.color")} aria-expanded={paletteOpen} onClick={(event) => { const bounds = event.currentTarget.getBoundingClientRect(); setPalettePosition({ top: Math.max(8, Math.min(bounds.bottom + 8, window.innerHeight - 190)), left: Math.max(8, Math.min(bounds.left, window.innerWidth - 248)) }); setPaletteOpen(!paletteOpen); }}><span className="educad-color-preview" style={{ "--object-color": color } as CSSProperties} /></button>
-      {paletteOpen && createPortal(<div ref={popup} className="educad-color-palette sketch-annotation-color-popup" style={palettePosition}>
+      <button type="button" title={t("property.color")} aria-label={t("property.color")} aria-expanded={paletteOpen} onClick={(event) => { const bounds = event.currentTarget.getBoundingClientRect(); setPalettePosition({ top: Math.max(8, Math.min(bounds.bottom + 8, window.innerHeight - 190)), left: Math.max(8, Math.min(bounds.left, window.innerWidth - 248)) }); setPaletteOpen(!paletteOpen); }}><span className="kercad-color-preview" style={{ "--object-color": color } as CSSProperties} /></button>
+      {paletteOpen && createPortal(<div ref={popup} className="kercad-color-palette sketch-annotation-color-popup" style={palettePosition}>
         {OBJECT_COLOR_PALETTE.map((entry) => <button key={entry} type="button" title={entry} aria-label={`${t("property.color")} ${entry}`} style={{ "--object-color": entry } as CSSProperties} onClick={() => { onUpdate((draft) => { draft.color = entry; }); setPaletteOpen(false); }} />)}
-        <label className="educad-custom-color" title={t("property.customColor")}><input type="color" aria-label={t("property.customColor")} value={color} onChange={(event) => onUpdate((draft) => { draft.color = event.target.value; })} /><span>+</span></label>
+        <label className="kercad-custom-color" title={t("property.customColor")}><input type="color" aria-label={t("property.customColor")} value={color} onChange={(event) => onUpdate((draft) => { draft.color = event.target.value; })} /><span>+</span></label>
       </div>, document.body)}
     </div>
   </div>;

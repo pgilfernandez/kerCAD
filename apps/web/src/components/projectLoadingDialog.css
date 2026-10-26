@@ -1,4 +1,4 @@
-.educad-project-loading-backdrop {
+.kercad-project-loading-backdrop {
   position: fixed;
   inset: 0;
   z-index: 10000;
@@ -8,7 +8,7 @@
   background: rgb(10 24 40 / 40%);
   backdrop-filter: blur(3px);
 }
-.educad-project-loading-dialog {
+.kercad-project-loading-dialog {
   width: min(460px, 100%);
   max-height: calc(100dvh - 40px);
   overflow-y: auto;
@@ -23,21 +23,21 @@
   text-align: center;
   outline: none;
 }
-.educad-project-loading-status { padding: 0 0 20px; }
-.educad-project-loading-status h1 { margin: 0; font-size: 16px; font-weight: 500; line-height: 1.5; overflow-wrap: anywhere; }
-.educad-project-loading-status h1 span { font-weight: 650; }
-.educad-project-loading-bar { width: min(240px, 100%); height: 3px; margin: 20px auto 9px; overflow: hidden; background: var(--theme-border); border-radius: 2px; }
-.educad-project-loading-bar > span { display: block; height: 100%; background: var(--theme-link); border-radius: inherit; transition: width .2s linear; }
-.educad-project-loading-estimate { width: min(240px, 100%); margin: 0 auto; color: var(--theme-text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
-.educad-project-loading-campaign { margin: 0; overflow: hidden; background: var(--theme-page); border: 1px solid var(--theme-border); border-radius: 9px; }
-.educad-project-loading-campaign > :is(img, video) { display: block; width: 100%; aspect-ratio: 2 / 1; object-fit: cover; }
-.educad-project-loading-campaign figcaption { padding: 8px; color: var(--theme-text-muted); font-size: 10px; letter-spacing: .05em; }
-.educad-project-loading-dialog > footer { display: grid; justify-items: center; gap: 8px; margin-top: 24px; }
-.educad-project-loading-dialog > footer p { margin: 0; color: var(--theme-text-muted); font-size: 13px; }
-.educad-project-loading-dialog > footer :is(a, button) { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 18px; color: var(--theme-link); background: var(--theme-active); border: 1px solid var(--theme-border); border-radius: 7px; font: inherit; font-size: 14px; font-weight: 650; text-decoration: none; cursor: pointer; }
-.educad-project-loading-dialog > footer a:hover { border-color: var(--theme-link); }
-.educad-project-loading-dialog > footer a:focus-visible { outline: 2px solid var(--theme-link); outline-offset: 3px; }
-.educad-project-loading-dialog > footer button:disabled { cursor: default; }
-.educad-project-loading-dialog > footer small { color: var(--theme-text-muted); font-size: 10px; }
-@media (prefers-reduced-motion: reduce) { .educad-project-loading-bar > span { transition: none; } }
-@media (max-width: 480px) { .educad-project-loading-backdrop { padding: 12px; } .educad-project-loading-dialog { padding: 22px 18px; max-height: calc(100dvh - 24px); } }
+.kercad-project-loading-status { padding: 0 0 20px; }
+.kercad-project-loading-status h1 { margin: 0; font-size: 16px; font-weight: 500; line-height: 1.5; overflow-wrap: anywhere; }
+.kercad-project-loading-status h1 span { font-weight: 650; }
+.kercad-project-loading-bar { width: min(240px, 100%); height: 3px; margin: 20px auto 9px; overflow: hidden; background: var(--theme-border); border-radius: 2px; }
+.kercad-project-loading-bar > span { display: block; height: 100%; background: var(--theme-link); border-radius: inherit; transition: width .2s linear; }
+.kercad-project-loading-estimate { width: min(240px, 100%); margin: 0 auto; color: var(--theme-text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.kercad-project-loading-campaign { margin: 0; overflow: hidden; background: var(--theme-page); border: 1px solid var(--theme-border); border-radius: 9px; }
+.kercad-project-loading-campaign > :is(img, video) { display: block; width: 100%; aspect-ratio: 2 / 1; object-fit: cover; }
+.kercad-project-loading-campaign figcaption { padding: 8px; color: var(--theme-text-muted); font-size: 10px; letter-spacing: .05em; }
+.kercad-project-loading-dialog > footer { display: grid; justify-items: center; gap: 8px; margin-top: 24px; }
+.kercad-project-loading-dialog > footer p { margin: 0; color: var(--theme-text-muted); font-size: 13px; }
+.kercad-project-loading-dialog > footer :is(a, button) { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 18px; color: var(--theme-link); background: var(--theme-active); border: 1px solid var(--theme-border); border-radius: 7px; font: inherit; font-size: 14px; font-weight: 650; text-decoration: none; cursor: pointer; }
+.kercad-project-loading-dialog > footer a:hover { border-color: var(--theme-link); }
+.kercad-project-loading-dialog > footer a:focus-visible { outline: 2px solid var(--theme-link); outline-offset: 3px; }
+.kercad-project-loading-dialog > footer button:disabled { cursor: default; }
+.kercad-project-loading-dialog > footer small { color: var(--theme-text-muted); font-size: 10px; }
+@media (prefers-reduced-motion: reduce) { .kercad-project-loading-bar > span { transition: none; } }
+@media (max-width: 480px) { .kercad-project-loading-backdrop { padding: 12px; } .kercad-project-loading-dialog { padding: 22px 18px; max-height: calc(100dvh - 24px); } }

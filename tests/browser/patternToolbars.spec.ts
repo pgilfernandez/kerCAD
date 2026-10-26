@@ -5,7 +5,7 @@ import { createLinearPatternFeature, createPolarPatternFeature, createStarterDoc
 // Find the dense yellow disc, not the thin yellow guide, in the rendered view.
 async function yellowHandle(page: Page) {
   const viewport = await page.locator(".parametric-viewport").boundingBox();
-  const sidebar = await page.locator(".educad-model-sidebar").boundingBox();
+  const sidebar = await page.locator(".kercad-model-sidebar").boundingBox();
   const { data, info } = await sharp(await page.screenshot()).removeAlpha().raw().toBuffer({ resolveWithObject: true });
   const stride = info.width + 1;
   const sums = new Int32Array(stride * (info.height + 1));
@@ -42,17 +42,17 @@ test("Pattern controls and yellow distance/angle handles update the model", asyn
   polar.count = 3;
   polar.angle = 180;
   document.features.push(linear, polar);
-  await page.addInitScript((stored) => localStorage.setItem("educad.parametric.document.v1", JSON.stringify(stored)), document);
+  await page.addInitScript((stored) => localStorage.setItem("kercad.parametric.document.v1", JSON.stringify(stored)), document);
   await page.goto("/");
   await page.locator(".card-open").filter({ hasText: "Pattern controls" }).click();
   const idle = async () => {
-    await expect(page.locator(".educad-background-process")).toHaveCount(0, { timeout: 90_000 });
-    await expect(page.locator(".educad-rebuild-error")).toHaveCount(0);
+    await expect(page.locator(".kercad-background-process")).toHaveCount(0, { timeout: 90_000 });
+    await expect(page.locator(".kercad-rebuild-error")).toHaveCount(0);
   };
   await idle();
-  const toolbar = page.locator(".educad-viewport-context-toolbar");
-  const inspector = page.locator(".educad-sidebar-editor");
-  await page.locator(".educad-operation-select").filter({ hasText: "Linear pattern 1" }).click();
+  const toolbar = page.locator(".kercad-viewport-context-toolbar");
+  const inspector = page.locator(".kercad-sidebar-editor");
+  await page.locator(".kercad-operation-select").filter({ hasText: "Linear pattern 1" }).click();
   await toolbar.getByRole("textbox", { name: "Repetitions", exact: true }).fill("4");
   await toolbar.getByRole("textbox", { name: "Repetitions", exact: true }).press("Enter");
   await idle();
@@ -67,7 +67,7 @@ test("Pattern controls and yellow distance/angle handles update the model", asyn
   await idle();
   await page.screenshot({ path: test.info().outputPath("linear-pattern.png") });
 
-  await page.locator(".educad-operation-select").filter({ hasText: "Polar pattern 1" }).click();
+  await page.locator(".kercad-operation-select").filter({ hasText: "Polar pattern 1" }).click();
   for (const axis of ["X", "Y", "Z"]) {
     await toolbar.getByRole("button", { name: `Axis ${axis}`, exact: true }).click();
     await expect(toolbar.getByRole("button", { name: `Axis ${axis}`, exact: true })).toHaveAttribute("aria-pressed", "true");

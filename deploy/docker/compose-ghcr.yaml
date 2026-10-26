@@ -1,17 +1,17 @@
 services:
-  educad:
-    image: "${EDUCAD_IMAGE:?Set EDUCAD_IMAGE to a verified eduCAD image tag or digest}"
+  kercad:
+    image: "${KERCAD_IMAGE:?Set KERCAD_IMAGE to a verified kerCAD image tag or digest}"
     ports:
-      - "${EDUCAD_PORT:-${SKETCHFORGE_PORT:-3000}}:3000"
+      - "${KERCAD_PORT:-${SKETCHFORGE_PORT:-3000}}:3000"
     environment:
-      EDUCAD_SHARED_PROJECTS_DIR: /data/projects
-      EDUCAD_CHALLENGES_DIR: /data/challenges
+      KERCAD_SHARED_PROJECTS_DIR: /data/projects
+      KERCAD_CHALLENGES_DIR: /data/challenges
     volumes:
       - "sketchforge-shared-projects:/data/projects"
-      - "${EDUCAD_CHALLENGES_VOLUME:-educad-challenges}:/data/challenges:ro"
+      - "${KERCAD_CHALLENGES_VOLUME:-kercad-challenges}:/data/challenges:ro"
     restart: unless-stopped
 
 volumes:
   sketchforge-shared-projects:
-    name: "${EDUCAD_SHARED_PROJECTS_VOLUME:-${SKETCHFORGE_SHARED_PROJECTS_VOLUME:-${COMPOSE_PROJECT_NAME:-docker}_sketchforge-shared-projects}}"
-  educad-challenges:
+    name: "${KERCAD_SHARED_PROJECTS_VOLUME:-${SKETCHFORGE_SHARED_PROJECTS_VOLUME:-${COMPOSE_PROJECT_NAME:-docker}_sketchforge-shared-projects}}"
+  kercad-challenges:

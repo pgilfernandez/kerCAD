@@ -1,8 +1,8 @@
-# eduCAD
+# kerCAD
 
 CAD paramétrico en el navegador, local-first y open source, pensado para aprender diseño y fabricación digital.
 
-eduCAD conserva el flujo directo de SketchForge —formas sencillas, botones grandes, arrastre sobre el plano e inspector visual— pero el documento no es una colección de mallas. Cada objeto es un contenedor de transformación y su geometría procede de una secuencia de operaciones CAD reconstruida con un núcleo OpenCascade B-Rep.
+kerCAD conserva el flujo directo de SketchForge —formas sencillas, botones grandes, arrastre sobre el plano e inspector visual— pero el documento no es una colección de mallas. Cada objeto es un contenedor de transformación y su geometría procede de una secuencia de operaciones CAD reconstruida con un núcleo OpenCascade B-Rep.
 
 ## Qué puedes hacer
 
@@ -20,7 +20,7 @@ El editor permite:
 - suprimir, eliminar y reordenar operaciones del historial;
 - editar cualquier cota y reconstruir las operaciones posteriores;
 - guardar automáticamente en el almacenamiento local del navegador;
-- guardar y reabrir paquetes `.educad` con el documento paramétrico y sus recursos;
+- guardar y reabrir paquetes `.kercad` con el documento paramétrico y sus recursos;
 - exportar el resultado como STEP B-Rep o STL para fabricación;
 - trabajar con extrusión de caras, vaciado, revolución, simetría y patrones lineales o polares;
 - colocar un plano de trabajo, dejar caer piezas sobre él y alinear objetos u operaciones respecto a una referencia o al grupo;
@@ -56,7 +56,7 @@ Piezas principales:
 2. Crea un objeto y añade formas o un boceto que puedas extruir.
 3. Selecciona una operación en el árbol para cambiar sus dimensiones. Las operaciones posteriores se reconstruyen a partir de esos cambios.
 4. Coloca las piezas con los manipuladores, el plano de trabajo y la herramienta de alineación.
-5. Exporta `.educad` para continuar el diseño en otro equipo, STEP para intercambio CAD o STL para imprimir.
+5. Exporta `.kercad` para continuar el diseño en otro equipo, STEP para intercambio CAD o STL para imprimir.
 
 La interfaz principal mantiene la baja barrera de entrada del proyecto de referencia. Seleccionar el objeto permite editar únicamente posición, rotación y escala; seleccionar la primera operación permite cambiar las dimensiones de la caja o el cilindro. Los perfiles técnicos internos necesarios para construir el B-Rep no se duplican en el árbol del alumno.
 
@@ -65,13 +65,13 @@ La interfaz principal mantiene la baja barrera de entrada del proyecto de refere
 1. Crea una actividad en Retos y prepara sus instrucciones, imágenes y modelo inicial cuando proceda.
 2. Exporta el reto como ZIP y distribúyelo mediante el aula virtual, o coloca el paquete en la biblioteca del servidor.
 3. Los alumnos importan o abren el reto y trabajan en proyectos locales independientes.
-4. Para entregar su trabajo editable, exportan su proyecto `.educad`.
+4. Para entregar su trabajo editable, exportan su proyecto `.kercad`.
 
 El profesor sigue creando y editando localmente; el servidor distribuye los ZIP. Una actualización de un reto del servidor no sobrescribe automáticamente una actividad local con el mismo identificador. Consulta [configuración de la biblioteca y actualizaciones](docs/classroom-challenges.md).
 
 ## Dónde se guardan los proyectos
 
-**Mis proyectos** utiliza el almacenamiento del navegador. Cambiar de navegador o equipo no traslada esos datos; borrar los datos del sitio puede eliminarlos. Exporta regularmente los proyectos importantes como `.educad`, especialmente en equipos compartidos del aula.
+**Mis proyectos** utiliza el almacenamiento del navegador. Cambiar de navegador o equipo no traslada esos datos; borrar los datos del sitio puede eliminarlos. Exporta regularmente los proyectos importantes como `.kercad`, especialmente en equipos compartidos del aula.
 
 **Compartidos** aparece cuando el servidor dispone de una biblioteca configurada. Abrir un proyecto compartido crea una copia local; publicar los cambios es una acción explícita desde el dashboard o desde Exportar. El control de revisiones rechaza sobrescrituras si otra persona ha guardado entretanto y permite conservar el trabajo con otro nombre.
 
@@ -103,7 +103,7 @@ npm run dev -- --hostname 0.0.0.0
 Abre `http://IP_DEL_SERVIDOR:3000` desde esos equipos. Para habilitar bibliotecas persistentes en macOS/Linux, crea los directorios y arranca con rutas absolutas:
 
 ```sh
-EDUCAD_SHARED_PROJECTS_DIR=/ruta/absoluta/proyectos EDUCAD_CHALLENGES_DIR=/ruta/absoluta/retos npm run dev -- --hostname 0.0.0.0
+KERCAD_SHARED_PROJECTS_DIR=/ruta/absoluta/proyectos KERCAD_CHALLENGES_DIR=/ruta/absoluta/retos npm run dev -- --hostname 0.0.0.0
 ```
 
 El uso privado y la importación manual de Retos no requieren activar la biblioteca compartida.
@@ -125,11 +125,11 @@ El núcleo OpenCascade pesa aproximadamente 22 MB y se carga de forma diferida l
 
 ## Modelo de documento
 
-El archivo `.educad` es un paquete ZIP que contiene el documento paramétrico versionado y los recursos necesarios para reabrirlo. El JSON del historial sigue siendo la fuente de verdad; STL contiene geometría triangulada y no sustituye esa copia editable. El siguiente fragmento ilustra el documento interno, no un paquete completo importable:
+El archivo `.kercad` es un paquete ZIP que contiene el documento paramétrico versionado y los recursos necesarios para reabrirlo. El JSON del historial sigue siendo la fuente de verdad; STL contiene geometría triangulada y no sustituye esa copia editable. El siguiente fragmento ilustra el documento interno, no un paquete completo importable:
 
 ```json
 {
-  "schema": "educad-parametric/v1",
+  "schema": "kercad-parametric/v1",
   "name": "Mi primera pieza paramétrica",
   "units": "mm",
   "features": [
@@ -144,16 +144,16 @@ Los identificadores completos, nombres, estados de supresión y metadatos se inc
 
 ## Distribución y próximos pasos
 
-- Docker: configuración adaptada a eduCAD; pendientes construcción real, comprobación desde la LAN, restauración y validación amd64/arm64. El Compose precompilado requiere una imagen propia comprobada por el administrador.
-- macOS: existen herramientas heredadas de empaquetado, pero todavía no se ofrece una aplicación o DMG eduCAD validado y autocontenido.
-- Exportación de selección: en Exportar, elige «Proyecto completo / Selección» para STEP/STL. Las operaciones seleccionadas representan el cuerpo final de su objeto, sin duplicarlo si seleccionas varias operaciones del mismo. Se conservan las posiciones y dependencias del historial; `.educad` siempre guarda el proyecto completo. Implementación pendiente de validación funcional.
+- Docker: configuración adaptada a kerCAD; pendientes construcción real, comprobación desde la LAN, restauración y validación amd64/arm64. El Compose precompilado requiere una imagen propia comprobada por el administrador.
+- macOS: existen herramientas heredadas de empaquetado, pero todavía no se ofrece una aplicación o DMG kerCAD validado y autocontenido.
+- Exportación de selección: en Exportar, elige «Proyecto completo / Selección» para STEP/STL. Las operaciones seleccionadas representan el cuerpo final de su objeto, sin duplicarlo si seleccionas varias operaciones del mismo. Se conservan las posiciones y dependencias del historial; `.kercad` siempre guarda el proyecto completo. Implementación pendiente de validación funcional.
 - La exportación estática y la integración MCP heredada no son vías soportadas del editor paramétrico actual.
 
 No se incluyen cuentas, calificaciones, entregas centralizadas ni colaboración en directo. El aula virtual del centro puede seguir gestionando las entregas y la evaluación.
 
 ## Origen y licencias
 
-Este checkout procede del repositorio `Orbiter/SketchForge-3D-App`. Su historial local comienza en `0dbefbd` y el primer incremento paramétrico eduCAD está en `8e11cb9`; eso no identifica por sí solo un commit equivalente del upstream original. El archivo LICENSE de este checkout contiene la licencia MIT y conserva atribuciones a SketchForge y eduCAD. Antes de incorporar cambios de otro upstream, queda pendiente contrastar su revisión concreta y licencia; no se presupone que coincidan con las de este checkout.
+Este checkout procede del repositorio `Orbiter/SketchForge-3D-App`. Su historial local comienza en `0dbefbd` y el primer incremento paramétrico kerCAD está en `8e11cb9`; eso no identifica por sí solo un commit equivalente del upstream original. El archivo LICENSE de este checkout contiene la licencia MIT y conserva atribuciones a SketchForge y kerCAD. Antes de incorporar cambios de otro upstream, queda pendiente contrastar su revisión concreta y licencia; no se presupone que coincidan con las de este checkout.
 
 El núcleo paramétrico utiliza [brepjs](https://github.com/andymai/brepjs) y `occt-wasm`, basados en OpenCascade. Consulta las licencias de cada dependencia en sus respectivos paquetes.
 

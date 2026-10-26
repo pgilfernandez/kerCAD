@@ -18,7 +18,8 @@ if (!existsSync(src)) {
 
 // Version the entire module tree: index.js dynamically imports its glue, so
 // versioning only the top-level URL could mix old glue with a new WASM binary.
-const { version } = JSON.parse(await readFile(join(src, "..", "package.json"), "utf8"));
+const lock = JSON.parse(await readFile(join(root, "package-lock.json"), "utf8"));
+const { version } = lock.packages["node_modules/occt-wasm"];
 const dest = join(root, "apps", "web", "public", "occt", version);
 
 await mkdir(dest, { recursive: true });

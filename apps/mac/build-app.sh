@@ -12,12 +12,12 @@ usage() {
   sed -n '/^# Build a self-contained/,/^# The resulting app includes/p' "$0" | sed 's/^# \{0,1\}//'
 }
 
-# Build a self-contained eduCAD.app for the current Mac architecture.
+# Build a self-contained kerCAD.app for the current Mac architecture.
 #
 # Usage: apps/mac/build-app.sh [options]
 #
 # Options:
-#   --output DIR          Put eduCAD.app in DIR (default: apps/mac/dist).
+#   --output DIR          Put kerCAD.app in DIR (default: apps/mac/dist).
 #   --node-version VER    Bundle this official Node.js release (default: the
 #                         version of node used for the web build).
 #   --node-archive FILE   Use an already-downloaded official node-VER-darwin-ARCH
@@ -53,7 +53,7 @@ case "$(uname -m)" in
 esac
 
 APP_VERSION="$(node -p "require('$REPO_ROOT/package.json').version")"
-APP_PATH="$OUTPUT_DIR/eduCAD.app"
+APP_PATH="$OUTPUT_DIR/kerCAD.app"
 CONTENTS="$APP_PATH/Contents"
 CACHE_DIR="$SCRIPT_DIR/.cache"
 MAC_WEB_ROOT="$CACHE_DIR/web"
@@ -63,18 +63,18 @@ DOWNLOADED_ARCHIVE="$CACHE_DIR/node-$NODE_VERSION-darwin-$NODE_ARCH.tar.gz"
 
 mkdir -p "$CACHE_DIR" "$OUTPUT_DIR"
 if ! $SKIP_WEB_BUILD; then
-  echo "Preparing an isolated eduCAD web build..."
+  echo "Preparing an isolated kerCAD web build..."
   (cd "$REPO_ROOT" && npm run copy:occt)
   node "$SCRIPT_DIR/prepare-web-build.mjs" "$REPO_ROOT/apps/web" "$MAC_WEB_ROOT"
-  echo "Building the standalone eduCAD web server..."
-  rm -f "$MAC_WEB_ROOT/.educad-build-ready"
-  (cd "$REPO_ROOT" && EDUCAD_DOCKER_BUILD=true NEXT_TELEMETRY_DISABLED=1 \
+  echo "Building the standalone kerCAD web server..."
+  rm -f "$MAC_WEB_ROOT/.kercad-build-ready"
+  (cd "$REPO_ROOT" && KERCAD_DOCKER_BUILD=true NEXT_TELEMETRY_DISABLED=1 \
     "$REPO_ROOT/node_modules/.bin/next" build "$MAC_WEB_ROOT")
-  touch "$MAC_WEB_ROOT/.educad-build-ready"
+  touch "$MAC_WEB_ROOT/.kercad-build-ready"
 fi
 
-[[ -f "$MAC_WEB_ROOT/.educad-build-ready" ]] || {
-  echo "Rebuild without --skip-web-build: the cached server predates the eduCAD build without MCP." >&2
+[[ -f "$MAC_WEB_ROOT/.kercad-build-ready" ]] || {
+  echo "Rebuild without --skip-web-build: the cached server predates the kerCAD build without MCP." >&2
   exit 1
 }
 
@@ -117,7 +117,7 @@ CLANG_MODULE_CACHE_PATH="$CACHE_DIR/clang-module-cache" xcrun swiftc \
   -framework AppKit \
   -framework WebKit \
   "$SCRIPT_DIR/SketchForgeApp.swift" \
-  -o "$CONTENTS/MacOS/eduCAD"
+  -o "$CONTENTS/MacOS/kerCAD"
 
 cp "$RUNTIME_ROOT/bin/node" "$CONTENTS/Resources/runtime/node"
 chmod 755 "$CONTENTS/Resources/runtime/node"
@@ -148,4 +148,4 @@ echo
 echo "Created: $APP_PATH"
 echo "Architecture: $NODE_ARCH"
 echo "Node.js runtime: $NODE_VERSION"
-echo "Projects will be stored in: ~/Library/Application Support/eduCAD/SharedProjects"
+echo "Projects will be stored in: ~/Library/Application Support/kerCAD/SharedProjects"

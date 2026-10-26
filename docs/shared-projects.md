@@ -1,14 +1,14 @@
-# Shared eduCAD projects — first implementation
+# Shared kerCAD projects — first implementation
 
-The dashboard shows **Shared** when `/api/educad-shared-projects` reports configured storage. This is a common file library for users of the server, not live collaborative editing or private student storage.
+The dashboard shows **Shared** when `/api/kercad-shared-projects` reports configured storage. This is a common file library for users of the server, not live collaborative editing or private student storage.
 
 Run a development server with a persistent directory (macOS/Linux):
 
 ```sh
-EDUCAD_SHARED_PROJECTS_DIR=/absolute/path/to/projects npm run dev -- --hostname 0.0.0.0 --port 3000
+KERCAD_SHARED_PROJECTS_DIR=/absolute/path/to/projects npm run dev -- --hostname 0.0.0.0 --port 3000
 ```
 
-The existing Docker Compose environment variable `SKETCHFORGE_SHARED_PROJECTS_DIR` remains a fallback, preserving existing volume configuration. `.skf` files are left untouched; the separate eduCAD endpoint lists and validates only `.educad` packages.
+The existing Docker Compose environment variable `SKETCHFORGE_SHARED_PROJECTS_DIR` remains a fallback, preserving existing volume configuration. `.skf` files are left untouched; the separate kerCAD endpoint lists and validates only `.kercad` packages.
 
 1. Create or edit a local project and return to the dashboard.
 2. Open **Shared**, select the local project and choose **Save to shared**.
@@ -19,11 +19,11 @@ The server validates packages, bounds incoming data, uses atomic replacement and
 
 ## Verification and current limits
 
-`npm test -- tests/unit/educadSharedProjects.test.ts` checks round trips, stale revisions, concurrent writes, lock ownership and invalid inputs.
+`npm test -- tests/unit/kercadSharedProjects.test.ts` checks round trips, stale revisions, concurrent writes, lock ownership and invalid inputs.
 
-Projects can be shared from the dashboard or directly from the editor. Shared cards display optional revision-matched previews. The directory is suitable for a single application server. New locks record their process ID and hostname. On a later attempt, the server can recover a lock if its owner is on the same host and the operating system reports that the process no longer exists. Live processes, permission errors, reused process IDs, legacy empty locks and different hosts never trigger automatic recovery. In those cases, stop all application writers and remove only a confirmed abandoned `.educad.lock` file. A recreated Docker container may have a different hostname and therefore still require this manual procedure. Multiple replicas sharing the same directory are not supported. The listing caches content revisions using file identity, size and modification/change timestamps. Cache misses hash files in 64 KiB chunks, with four files processed per listing batch. The cache retains up to 512 entries; simultaneous requests for the same file reuse a pending hash. Thumbnail requests use the same cache. Saves and deletes still verify the current bytes under their lock. A changed or deleted file encountered mid-read is omitted from that listing and can appear on a subsequent refresh. Back up `.educad` files before administering the directory.
+Projects can be shared from the dashboard or directly from the editor. Shared cards display optional revision-matched previews. The directory is suitable for a single application server. New locks record their process ID and hostname. On a later attempt, the server can recover a lock if its owner is on the same host and the operating system reports that the process no longer exists. Live processes, permission errors, reused process IDs, legacy empty locks and different hosts never trigger automatic recovery. In those cases, stop all application writers and remove only a confirmed abandoned `.kercad.lock` file. A recreated Docker container may have a different hostname and therefore still require this manual procedure. Multiple replicas sharing the same directory are not supported. The listing caches content revisions using file identity, size and modification/change timestamps. Cache misses hash files in 64 KiB chunks, with four files processed per listing batch. The cache retains up to 512 entries; simultaneous requests for the same file reuse a pending hash. Thumbnail requests use the same cache. Saves and deletes still verify the current bytes under their lock. A changed or deleted file encountered mid-read is omitted from that listing and can appear on a subsequent refresh. Back up `.kercad` files before administering the directory.
 
-Docker's Node version now matches the application's Node 24 requirement. A successful Docker build has not yet been verified. The prebuilt Compose requires `EDUCAD_IMAGE` to identify an eduCAD image verified by the administrator; it no longer defaults to upstream SketchForge. See [deployment and backups](docker.md).
+Docker's Node version now matches the application's Node 24 requirement. A successful Docker build has not yet been verified. The prebuilt Compose requires `KERCAD_IMAGE` to identify an kerCAD image verified by the administrator; it no longer defaults to upstream SketchForge. See [deployment and backups](docker.md).
 
 ## Last modification
 

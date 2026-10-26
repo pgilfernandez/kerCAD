@@ -3,12 +3,13 @@ import { normalizeParametricDocument, validateDocument } from "@/lib/parametricD
 import { defaultMediaTypeForSource, normalizeProjectAsset, sha256Hex } from "@/lib/projectAssets";
 import type { ParametricDocument } from "@/types/parametric";
 import type { ProjectAsset, ProjectAssetSourceFormat } from "@/types/sketchforge";
+import { isLegacyProjectSchema } from "@/lib/legacyBrand";
 
-export const EDUCAD_PACKAGE_SCHEMA = "org.educad.project";
-export const EDUCAD_PACKAGE_VERSION = 1;
-export const EDUCAD_PACKAGE_MEDIA_TYPE = "application/vnd.educad.project+zip";
+export const KERCAD_PACKAGE_SCHEMA = "org.kercad.project";
+export const KERCAD_PACKAGE_VERSION = 1;
+export const KERCAD_PACKAGE_MEDIA_TYPE = "application/vnd.kercad.project+zip";
 
-export const EDUCAD_PACKAGE_LIMITS = {
+export const KERCAD_PACKAGE_LIMITS = {
   archiveBytes: 256 * 1024 * 1024,
   expandedBytes: 512 * 1024 * 1024,
   manifestBytes: 1024 * 1024,
@@ -27,8 +28,8 @@ type PackageAssetRecord = {
   sha256: string;
 };
 
-export type EducadPackageManifestV1 = {
-  schema: typeof EDUCAD_PACKAGE_SCHEMA;
+export type KercadPackageManifestV1 = {
+  schema: typeof KERCAD_PACKAGE_SCHEMA;
   formatVersion: 1;
   minimumReaderVersion: 1;
   createdWithVersion: string;
@@ -36,10 +37,10 @@ export type EducadPackageManifestV1 = {
   assets: PackageAssetRecord[];
 };
 
-export type EducadProjectPackage = {
+export type KercadProjectPackage = {
   document: ParametricDocument;
   assets: ProjectAsset[];
-  manifest: EducadPackageManifestV1;
+  manifest: KercadPackageManifestV1;
 };
 
 type ArchiveFiles = Record<string, Uint8Array>;
@@ -71,13 +72,13 @@ function extensionForSource(sourceFormat: ProjectAssetSourceFormat) {
 
 function inputBytes(input: ArrayBuffer | Uint8Array) {
   const bytes = input instanceof Uint8Array ? new Uint8Array(input) : new Uint8Array(input.slice(0));
-  if (!bytes.byteLength) throw new Error("The eduCAD project is empty.");
+  if (!bytes.byteLength) throw new Error("The kerCAD project is empty.");
   return bytes;
 }
 
 function inspectZip(bytes: Uint8Array) {
-  if (bytes.byteLength > EDUCAD_PACKAGE_LIMITS.archiveBytes) throw new Error("The compressed project exceeds the 256 MB limit.");
-  if (bytes.byteLength < 22) throw new Error("The file is not a valid eduCAD package.");
+  if (bytes.byteLength > KERCAD_PACKAGE_LIMITS.archiveBytes) throw new Error("The compressed project exceeds the 256 MB limit.");
+  if (bytes.byteLength < 22) throw new Error("The file is not a valid kerCAD package.");
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   let directoryEnd = -1;
   for (let offset = bytes.byteLength - 22, minimum = Math.max(0, bytes.byteLength - 65_557); offset >= minimum; offset -= 1) {
@@ -86,12 +87,12 @@ function inspectZip(bytes: Uint8Array) {
       break;
     }
   }
-  if (directoryEnd < 0) throw new Error("The eduCAD package does not contain a valid ZIP directory.");
+  if (directoryEnd < 0) throw new Error("The kerCAD package does not contain a valid ZIP directory.");
   const entryCount = view.getUint16(directoryEnd + 10, true);
   const directorySize = view.getUint32(directoryEnd + 12, true);
   const directoryOffset = view.getUint32(directoryEnd + 16, true);
   if (entryCount === 0xffff || directorySize === 0xffffffff || directoryOffset === 0xffffffff) throw new Error("ZIP64 packages are not supported.");
-  if (!entryCount || entryCount > EDUCAD_PACKAGE_LIMITS.entries) throw new Error("The package contains too many files.");
+  if (!entryCount || entryCount > KERCAD_PACKAGE_LIMITS.entries) throw new Error("The package contains too many files.");
   if (directoryOffset + directorySize > bytes.byteLength) throw new Error("The package directory is truncated.");
   const names = new Set<string>();
   let expandedBytes = 0;
@@ -106,11 +107,11 @@ function inspectZip(bytes: Uint8Array) {
     const commentLength = view.getUint16(offset + 32, true);
     const end = offset + 46 + nameLength + extraLength + commentLength;
     if (end > bytes.byteLength) throw new Error("A package entry is truncated.");
-    if (flags & 1) throw new Error("Encrypted eduCAD packages are not supported.");
+    if (flags & 1) throw new Error("Encrypted kerCAD packages are not supported.");
     if (method !== 0 && method !== 8) throw new Error("The package uses an unsupported compression method.");
     const name = strFromU8(bytes.subarray(offset + 46, offset + 46 + nameLength));
     if (!safeArchivePath(name) || names.has(name)) throw new Error("The package contains an unsafe or duplicated path.");
-    const entryLimit = name === "manifest.json" ? EDUCAD_PACKAGE_LIMITS.manifestBytes : name === "project.json" ? EDUCAD_PACKAGE_LIMITS.projectBytes : EDUCAD_PACKAGE_LIMITS.assetBytes;
+    const entryLimit = name === "manifest.json" ? KERCAD_PACKAGE_LIMITS.manifestBytes : name === "project.json" ? KERCAD_PACKAGE_LIMITS.projectBytes : KERCAD_PACKAGE_LIMITS.assetBytes;
     if (expanded === 0xffffffff) throw new Error("ZIP64 packages are not supported.");
     if (expanded > entryLimit) throw new Error(`File '${name}' exceeds the allowed limit.`);
     names.add(name);
@@ -118,44 +119,44 @@ function inspectZip(bytes: Uint8Array) {
     offset = end;
   }
   if (!names.has("manifest.json") || !names.has("project.json")) throw new Error("The package is missing manifest.json or project.json.");
-  if (expandedBytes > EDUCAD_PACKAGE_LIMITS.expandedBytes) throw new Error("The expanded project exceeds the 512 MB limit.");
+  if (expandedBytes > KERCAD_PACKAGE_LIMITS.expandedBytes) throw new Error("The expanded project exceeds the 512 MB limit.");
 }
 
 function isSourceFormat(value: unknown): value is ProjectAssetSourceFormat {
   return value === "svg" || value === "step" || value === "stl" || value === "obj";
 }
 
-function parseManifest(raw: unknown): EducadPackageManifestV1 {
+function parseManifest(raw: unknown): KercadPackageManifestV1 {
   if (!raw || typeof raw !== "object") throw new Error("manifest.json is invalid.");
-  const manifest = raw as Partial<EducadPackageManifestV1>;
-  if (manifest.schema !== EDUCAD_PACKAGE_SCHEMA || manifest.formatVersion !== EDUCAD_PACKAGE_VERSION || manifest.minimumReaderVersion !== 1 || typeof manifest.createdWithVersion !== "string") throw new Error("The eduCAD package version is not supported.");
-  if (!manifest.document || manifest.document.path !== "project.json" || !Number.isSafeInteger(manifest.document.byteLength) || manifest.document.byteLength < 0 || manifest.document.byteLength > EDUCAD_PACKAGE_LIMITS.projectBytes || typeof manifest.document.sha256 !== "string" || !/^[a-f0-9]{64}$/.test(manifest.document.sha256)) throw new Error("The document entry is invalid.");
+  const manifest = raw as Partial<KercadPackageManifestV1>;
+  if ((manifest.schema !== KERCAD_PACKAGE_SCHEMA && !isLegacyProjectSchema(manifest.schema)) || manifest.formatVersion !== KERCAD_PACKAGE_VERSION || manifest.minimumReaderVersion !== 1 || typeof manifest.createdWithVersion !== "string") throw new Error("The kerCAD package version is not supported.");
+  if (!manifest.document || manifest.document.path !== "project.json" || !Number.isSafeInteger(manifest.document.byteLength) || manifest.document.byteLength < 0 || manifest.document.byteLength > KERCAD_PACKAGE_LIMITS.projectBytes || typeof manifest.document.sha256 !== "string" || !/^[a-f0-9]{64}$/.test(manifest.document.sha256)) throw new Error("The document entry is invalid.");
   if (!Array.isArray(manifest.assets)) throw new Error("The asset list is invalid.");
   const ids = new Set<string>();
   const paths = new Set<string>();
   const hashes = new Set<string>();
   for (const asset of manifest.assets) {
     if (!asset || typeof asset.id !== "string" || !asset.id || ids.has(asset.id) || typeof asset.path !== "string" || !asset.path.startsWith("assets/") || !safeArchivePath(asset.path) || paths.has(asset.path)) throw new Error("The manifest contains a duplicated or invalid asset.");
-    if (typeof asset.name !== "string" || typeof asset.mediaType !== "string" || !isSourceFormat(asset.sourceFormat) || !Number.isSafeInteger(asset.byteLength) || asset.byteLength < 0 || asset.byteLength > EDUCAD_PACKAGE_LIMITS.assetBytes || !/^[a-f0-9]{64}$/.test(asset.sha256) || hashes.has(asset.sha256)) throw new Error(`Asset '${asset.id}' is invalid.`);
+    if (typeof asset.name !== "string" || typeof asset.mediaType !== "string" || !isSourceFormat(asset.sourceFormat) || !Number.isSafeInteger(asset.byteLength) || asset.byteLength < 0 || asset.byteLength > KERCAD_PACKAGE_LIMITS.assetBytes || !/^[a-f0-9]{64}$/.test(asset.sha256) || hashes.has(asset.sha256)) throw new Error(`Asset '${asset.id}' is invalid.`);
     if (asset.path !== `assets/${asset.sha256}.${extensionForSource(asset.sourceFormat)}`) throw new Error(`Path for asset '${asset.id}' does not match its content.`);
     ids.add(asset.id);
     paths.add(asset.path);
     hashes.add(asset.sha256);
   }
-  return manifest as EducadPackageManifestV1;
+  return { ...manifest, schema: KERCAD_PACKAGE_SCHEMA } as KercadPackageManifestV1;
 }
 
-export async function exportEducadProject(document: ParametricDocument, assets: ProjectAsset[] = [], compressionLevel: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 = 6) {
-  if (!validateDocument(document)) throw new Error("The eduCAD document is invalid.");
-  const projectBytes = strToU8(`${JSON.stringify(document, null, 2)}\n`);
-  if (projectBytes.byteLength > EDUCAD_PACKAGE_LIMITS.projectBytes) throw new Error("The document exceeds the 32 MB limit.");
+export async function exportKercadProject(document: ParametricDocument, assets: ProjectAsset[] = [], compressionLevel: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 = 6) {
+  if (!validateDocument(document)) throw new Error("The kerCAD document is invalid.");
+  const projectBytes = strToU8(`${JSON.stringify(normalizeParametricDocument(document), null, 2)}\n`);
+  if (projectBytes.byteLength > KERCAD_PACKAGE_LIMITS.projectBytes) throw new Error("The document exceeds the 32 MB limit.");
   const files: Record<string, Uint8Array> = { "project.json": projectBytes };
   const records: PackageAssetRecord[] = [];
   const hashes = new Set<string>();
   const ids = new Set<string>();
   for (const input of assets) {
     const asset = normalizeProjectAsset(input);
-    if (asset.bytes.byteLength > EDUCAD_PACKAGE_LIMITS.assetBytes) throw new Error(`Asset '${asset.name}' exceeds the 128 MB limit.`);
+    if (asset.bytes.byteLength > KERCAD_PACKAGE_LIMITS.assetBytes) throw new Error(`Asset '${asset.name}' exceeds the 128 MB limit.`);
     const sha256 = await sha256Hex(asset.bytes);
     if (hashes.has(sha256)) continue;
     if (!asset.id || ids.has(asset.id)) throw new Error(`Asset identifier '${asset.id}' is duplicated.`);
@@ -165,9 +166,9 @@ export async function exportEducadProject(document: ParametricDocument, assets: 
     hashes.add(sha256);
     ids.add(asset.id);
   }
-  const manifest: EducadPackageManifestV1 = {
-    schema: EDUCAD_PACKAGE_SCHEMA,
-    formatVersion: EDUCAD_PACKAGE_VERSION,
+  const manifest: KercadPackageManifestV1 = {
+    schema: KERCAD_PACKAGE_SCHEMA,
+    formatVersion: KERCAD_PACKAGE_VERSION,
     minimumReaderVersion: 1,
     createdWithVersion: "0.1.0",
     document: { path: "project.json", byteLength: projectBytes.byteLength, sha256: await sha256Hex(projectBytes) },
@@ -177,7 +178,7 @@ export async function exportEducadProject(document: ParametricDocument, assets: 
   return zipAsync(Object.fromEntries(Object.entries(files).sort(([left], [right]) => left.localeCompare(right))), compressionLevel);
 }
 
-export async function importEducadProject(input: ArrayBuffer | Uint8Array): Promise<EducadProjectPackage> {
+export async function importKercadProject(input: ArrayBuffer | Uint8Array): Promise<KercadProjectPackage> {
   const bytes = inputBytes(input);
   inspectZip(bytes);
   let files: ArchiveFiles;
@@ -199,7 +200,7 @@ export async function importEducadProject(input: ArrayBuffer | Uint8Array): Prom
   if (Object.keys(files).some((path) => !expectedPaths.has(path))) throw new Error("The package contains files that are not declared in the manifest.");
   const projectBytes = files[manifest.document.path];
   if (projectBytes.byteLength !== manifest.document.byteLength || await sha256Hex(projectBytes) !== manifest.document.sha256) throw new Error("The document failed its integrity check.");
-  if (!validateDocument(documentRaw)) throw new Error("project.json does not contain a compatible eduCAD document.");
+  if (!validateDocument(documentRaw)) throw new Error("project.json does not contain a compatible kerCAD document.");
   const assets: ProjectAsset[] = [];
   for (const record of manifest.assets) {
     const assetBytes = files[record.path];

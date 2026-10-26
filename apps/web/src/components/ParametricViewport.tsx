@@ -45,7 +45,7 @@ export type ParametricViewportPerformance = {
 
 declare global {
   interface Window {
-    educadParametricPerf?: { get: () => ParametricViewportPerformance };
+    kercadParametricPerf?: { get: () => ParametricViewportPerformance };
   }
 }
 
@@ -961,7 +961,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
     let pendingHoverEvent: PointerEvent | null = null;
     let processPendingHover: () => void = () => undefined;
     const performanceStats: ParametricViewportPerformance = { fps: 0, frameMs: 0, drawCalls: 0, triangles: 0 };
-    window.educadParametricPerf = { get: () => ({ ...performanceStats }) };
+    window.kercadParametricPerf = { get: () => ({ ...performanceStats }) };
     const updateDimensionLabels = () => {
       const root = selectionRootRef.current;
       const visualRoot = selectionVisualRootRef.current;
@@ -3281,7 +3281,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       renderer.domElement.removeEventListener("pointercancel", cancelDragging);
       for (const cached of objectRenderCacheRef.current.values()) disposeCachedObjectRender(modelGroup, cached);
       objectRenderCacheRef.current.clear();
-      delete window.educadParametricPerf;
+      delete window.kercadParametricPerf;
       renderer.dispose();
       renderer.domElement.remove();
       if (dimensionHoverTimerRef.current !== null) window.clearTimeout(dimensionHoverTimerRef.current);
@@ -3776,7 +3776,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
             hovered = value;
             redraw();
           };
-          new THREE.ImageLoader().load("/assets/educad/edit-project-ground.svg", (image) => {
+          new THREE.ImageLoader().load("/assets/kercad/edit-project-ground.svg", (image) => {
             if (projectRenameButtonRef.current !== button) return;
             icon = image;
             redraw();
@@ -4703,7 +4703,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
   return <div className="parametric-viewport" ref={hostRef} aria-label={locale === "es" ? "Vista 3D de la pieza" : "3D model view"}>
     {captureFrameActive && <ChallengeCaptureFrame locale={locale} onCapture={(crop) => onCaptureFrame?.(crop)} onCancel={() => onCancelCaptureFrame?.()} />}
     <AnnotationInteraction host={hostRef} camera={cameraRef} model={modelRef} snapPoint={annotationSnapRef} positionHandleAtPointer={(event) => annotationPositionHandleRef.current(event)} pointHandleAtPointer={(event) => annotationPointHandleRef.current(event)} radiusHandleAtPointer={(event) => annotationRadiusHandleRef.current(event)} selectLabelAtPointer={(event) => annotationLabelSelectRef.current(event)} onCircleRadius={(id, radius) => onCircleAnnotationRadius?.(id, radius)} onCircleLineWidth={(id, width) => onUpdateAnnotation?.(id, (draft) => { if (draft.kind === "circle") draft.lineWidth = width; })} workplane={workplane} displayUnit={displayUnit} tool={annotationTool} selected={annotationInteractionSelection ? { ...annotationInteractionSelection, visible: annotationInteractionSelection.visible && annotationsVisible } : undefined} parameterHandlesVisible={parameterHandlesVisible} onSelectEndpoint={(endpoint) => onSelectAnnotationEndpoint?.(endpoint)} onMoveEndpoint={(id, endpoint, position) => onMoveAnnotationEndpoint?.(id, endpoint, position)} onMoveText={(id, position) => onObjectAxisMove?.(id, position)} editing={Boolean(editingAnnotationId && editingAnnotationId === selectedAnnotationId)} locale={locale} onPlace={(kind, start, end, center) => onPlaceAnnotation?.(kind, start, end, center)} onFinish={(id, text, size) => onFinishAnnotation?.(id, text, size)} onEdit={(id) => onEditAnnotation?.(id)} onCancelTool={() => onCancelAnnotationTool?.()} onPreview={setAnnotationPreview} />
-    {alignmentActive ? <div ref={alignmentButtonsRef} className="educad-alignment-face-buttons" role="group" aria-label={locale === "es" ? "Alinear con la referencia" : "Align with reference"}>
+    {alignmentActive ? <div ref={alignmentButtonsRef} className="kercad-alignment-face-buttons" role="group" aria-label={locale === "es" ? "Alinear con la referencia" : "Align with reference"}>
       {(["x", "y", "z"] as const).flatMap(axis => (["min", "center", "max"] as const).map(anchor => {
         const label = locale === "es"
           ? `Alinear ${axis.toUpperCase()}: ${anchor === "min" ? "mínimo" : anchor === "center" ? "centro" : "máximo"}`
@@ -4713,22 +4713,22 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
           onClick={event => { event.stopPropagation(); if (!alignmentBusy && alignmentTargets.length) onAlign?.(axis, anchor); }}>
           {/* SVG assets remain editable outside the code. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`/assets/educad/alignment/${axis}-${anchor}.svg`} alt="" draggable={false} />
+          <img src={`/assets/kercad/alignment/${axis}-${anchor}.svg`} alt="" draggable={false} />
         </button>;
       }))}
     </div> : null}
     <div ref={selectionBoxRef} className="parametric-selection-box" aria-hidden="true" />
-    {showContextToolbar ? <div className="educad-viewport-context-toolbar" aria-label={locale === "es" ? "Herramientas de la selección" : "Selection tools"} onPointerDown={(event) => event.stopPropagation()}>
-      {manipulatorControls && !floatingBoolean ? <div className="educad-context-toolbar-group" aria-label={alignmentActive ? (locale === "es" ? "Modo de alineación" : "Alignment mode") : (locale === "es" ? "Manipuladores" : "Manipulators")}>{manipulatorControls}</div> : null}
+    {showContextToolbar ? <div className="kercad-viewport-context-toolbar" aria-label={locale === "es" ? "Herramientas de la selección" : "Selection tools"} onPointerDown={(event) => event.stopPropagation()}>
+      {manipulatorControls && !floatingBoolean ? <div className="kercad-context-toolbar-group" aria-label={alignmentActive ? (locale === "es" ? "Modo de alineación" : "Alignment mode") : (locale === "es" ? "Manipuladores" : "Manipulators")}>{manipulatorControls}</div> : null}
       {annotationsVisible && annotationInteractionSelection?.visible && <AnnotationToolbar embedded key={annotationInteractionSelection.id} annotation={annotationInteractionSelection} displayUnit={displayUnit} snap={snap} locale={locale} onUpdate={(update) => onUpdateAnnotation?.(annotationInteractionSelection.id, update)} />}
-      {showOperationModes ? <div className="educad-context-toolbar-group" aria-label={locale === "es" ? "Modo de la operación" : "Operation mode"}>
+      {showOperationModes ? <div className="kercad-context-toolbar-group" aria-label={locale === "es" ? "Modo de la operación" : "Operation mode"}>
         {(["add", "cut", "intersect"] as const).map((mode) => {
           const activeMode = floatingBoolean ? (booleanAddOnly ? "add" : floatingBoolean.operation) === mode : selection?.operationPreview?.mode === (mode === "cut" ? "hole" : mode === "intersect" ? "common" : "add");
           const label = locale === "es" ? mode === "add" ? "Añadir" : mode === "cut" ? "Hueco" : "Común" : mode === "add" ? "Add" : mode === "cut" ? "Hole" : "Common";
           return <button key={mode} type="button" className={`mode-${mode} ${activeMode ? "active" : ""}`} aria-label={label} title={label} aria-pressed={activeMode} disabled={Boolean(floatingBoolean && booleanAddOnly && mode !== "add")} onClick={() => floatingBoolean ? onFloatingFeatureChange?.(floatingBoolean.id, { operation: mode }) : onOperationModeChange?.(mode)}><ToolbarBooleanModeIcon mode={mode === "cut" ? "hole" : mode === "intersect" ? "common" : "add"} /></button>;
         })}
       </div> : null}
-      {faceExtrudeControls ? <div className="educad-context-toolbar-group" aria-label={locale === "es" ? "Extrusión de cara" : "Face extrusion"}>
+      {faceExtrudeControls ? <div className="kercad-context-toolbar-group" aria-label={locale === "es" ? "Extrusión de cara" : "Face extrusion"}>
         {(["add", "cut"] as const).map((mode) => {
           const label = locale === "es" ? mode === "add" ? "Añadir" : "Hueco" : mode === "add" ? "Add" : "Hole";
           return <button key={mode} type="button" className={`mode-${mode} ${faceExtrudeControls.operation === mode ? "active" : ""}`} aria-label={label} title={label} aria-pressed={faceExtrudeControls.operation === mode} onClick={() => onFaceExtrudeDistanceChange?.(faceExtrudeControls.distance, mode)}><ToolbarBooleanModeIcon mode={mode === "cut" ? "hole" : "add"} /></button>;
@@ -4736,7 +4736,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
         <ViewportFloatingNumberInput value={faceExtrudeControls.distance * (faceExtrudeControls.operation === "cut" ? -1 : 1)} unit="length" displayUnit={displayUnit} snap={snap} label={locale === "es" ? "Profundidad" : "Depth"} min={-200} max={200} onCommit={(distance) => onFaceExtrudeDistanceChange?.(Math.max(0.01, Math.abs(distance)), distance < 0 ? "cut" : "add")} />
         {onFaceExtrudeCancel && onFaceExtrudeAccept ? <><button type="button" className="cancel" aria-label={locale === "es" ? "Cancelar" : "Cancel"} title={locale === "es" ? "Cancelar" : "Cancel"} onClick={onFaceExtrudeCancel}><X /></button><button type="button" className="accept" disabled={!faceExtrudeCanAccept} aria-label={locale === "es" ? "Aceptar" : "Accept"} title={locale === "es" ? "Aceptar" : "Accept"} onClick={onFaceExtrudeAccept}><Check /></button></> : null}
       </div> : null}
-      {revolveDraft ? <div className="educad-context-toolbar-group" aria-label={locale === "es" ? "Revolución" : "Revolve"}>
+      {revolveDraft ? <div className="kercad-context-toolbar-group" aria-label={locale === "es" ? "Revolución" : "Revolve"}>
         {(["add", "cut", "intersect"] as const).map((mode) => {
           const label = locale === "es" ? mode === "add" ? "Añadir" : mode === "cut" ? "Hueco" : "Común" : mode === "add" ? "Add" : mode === "cut" ? "Hole" : "Common";
           return <button key={mode} type="button" className={`mode-${mode} ${revolveDraft.operation === mode ? "active" : ""}`} aria-label={label} title={label} aria-pressed={revolveDraft.operation === mode} onClick={() => onRevolveDraftChange?.({ operation: mode })}><ToolbarBooleanModeIcon mode={mode === "cut" ? "hole" : mode === "intersect" ? "common" : "add"} /></button>;
@@ -4744,28 +4744,28 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
         <ViewportFloatingNumberInput value={revolveDraft.angle} unit="angle" displayUnit={displayUnit} snap={snap} label={locale === "es" ? "Ángulo" : "Angle"} min={-360} max={360} onCommit={(angle) => onRevolveDraftChange?.({ angle: Math.abs(angle) < 1 ? (angle < 0 ? -1 : 1) : angle })} />
         {onRevolveCancel && onRevolveAccept ? <><button type="button" className="cancel" aria-label={locale === "es" ? "Cancelar" : "Cancel"} title={locale === "es" ? "Cancelar" : "Cancel"} onClick={onRevolveCancel}><X /></button><button type="button" className="accept" disabled={!revolveCanAccept} aria-label={locale === "es" ? "Aceptar" : "Accept"} title={locale === "es" ? "Aceptar" : "Accept"} onClick={onRevolveAccept}><Check /></button></> : null}
       </div> : null}
-      {shellDraft ? <div className="educad-context-toolbar-group" aria-label="Shell">
+      {shellDraft ? <div className="kercad-context-toolbar-group" aria-label="Shell">
         <ShellCornerButtons value={shellDraft.cornerType} locale={locale} onChange={(cornerType) => onShellCornerTypeChange?.(cornerType)} />
         <ViewportFloatingNumberInput value={shellDraft.thickness} unit="length" displayUnit={displayUnit} snap={snap} label={locale === "es" ? "Espesor" : "Thickness"} min={0.01} max={50} onCommit={(thickness) => onShellDraftChange?.(thickness)} />
         {onShellCancel && onShellAccept ? <><button type="button" className="cancel" aria-label={locale === "es" ? "Cancelar" : "Cancel"} title={locale === "es" ? "Cancelar" : "Cancel"} onClick={onShellCancel}><X /></button><button type="button" className="accept" disabled={!shellCanAccept} aria-label={locale === "es" ? "Aceptar" : "Accept"} title={locale === "es" ? "Aceptar" : "Accept"} onClick={onShellAccept}><Check /></button></> : null}
       </div> : null}
-      {showEdgeTreatmentControls ? <div className="educad-context-toolbar-group" aria-label={locale === "es" ? "Tratamiento de arista" : "Edge treatment"}>
+      {showEdgeTreatmentControls ? <div className="kercad-context-toolbar-group" aria-label={locale === "es" ? "Tratamiento de arista" : "Edge treatment"}>
         {floatingFeature?.kind === "fillet" ? <button type="button" aria-label={locale === "es" ? "Editar caras y aristas" : "Edit faces and edges"} title={locale === "es" ? "Editar caras y aristas" : "Edit faces and edges"} onClick={() => onEditEdgeTreatmentSelection?.(floatingFeature.id)}><ToolbarEditOperationIcon /></button> : null}
         <button type="button" className={edgeTreatmentHandle?.treatment === "fillet" ? "active" : ""} aria-label={locale === "es" ? "Redondeo" : "Fillet"} title={locale === "es" ? "Redondeo" : "Fillet"} aria-pressed={edgeTreatmentHandle?.treatment === "fillet"} onClick={() => onEdgeTreatmentTypeChange?.("fillet")}><ToolbarFilletIcon /></button>
         <button type="button" className={edgeTreatmentHandle?.treatment === "chamfer" ? "active" : ""} aria-label={locale === "es" ? "Chaflán" : "Chamfer"} title={locale === "es" ? "Chaflán" : "Chamfer"} aria-pressed={edgeTreatmentHandle?.treatment === "chamfer"} onClick={() => onEdgeTreatmentTypeChange?.("chamfer")}><ToolbarChamferIcon /></button>
         {onEdgeTreatmentRadiusChange ? <ViewportEdgeRadiusInput radius={edgeTreatmentRadiusPreview ?? edgeTreatmentHandle!.radius} displayUnit={displayUnit} snap={snap} locale={locale} onCommit={onEdgeTreatmentRadiusChange} /> : null}
         {onEdgeTreatmentCancel && onEdgeTreatmentAccept ? <><button type="button" className="cancel" aria-label={locale === "es" ? "Cancelar" : "Cancel"} title={locale === "es" ? "Cancelar" : "Cancel"} onClick={onEdgeTreatmentCancel}><X /></button><button type="button" className="accept" disabled={!edgeTreatmentCanAccept} aria-label={locale === "es" ? "Aceptar" : "Accept"} title={locale === "es" ? "Aceptar" : "Accept"} onClick={onEdgeTreatmentAccept}><Check /></button></> : null}
       </div> : null}
-      {showFeatureControls ? <div className="educad-context-toolbar-group">
+      {showFeatureControls ? <div className="kercad-context-toolbar-group">
         {floatingFeature?.kind === "linearPattern" || floatingFeature?.kind === "polarPattern" ? <ViewportFloatingNumberInput value={floatingFeature.count} unit="count" displayUnit={displayUnit} snap={1} label={locale === "es" ? "Repeticiones" : "Repetitions"} min={2} max={50} onCommit={(count) => onFloatingFeatureChange?.(floatingFeature.id, { count })} /> : null}
         {floatingFeature?.kind === "polarPattern" ? <>
           {(["x", "y", "z"] as const).map((axis) => <button key={axis} type="button" className={floatingFeature.axis === axis ? "active" : ""} aria-label={`${locale === "es" ? "Eje" : "Axis"} ${axis.toUpperCase()}`} title={`${locale === "es" ? "Eje" : "Axis"} ${axis.toUpperCase()}`} aria-pressed={floatingFeature.axis === axis} onClick={() => onFloatingFeatureChange?.(floatingFeature.id, { axis })}><strong>{axis.toUpperCase()}</strong></button>)}
-          <select className="educad-context-object-select" aria-label={locale === "es" ? "Fuente" : "Source"} value={floatingFeature.source === "feature" ? floatingFeature.sourceFeatureId ?? "body" : "body"} onChange={(event) => onFloatingFeatureChange?.(floatingFeature.id, { sourceFeatureId: event.target.value })}>
+          <select className="kercad-context-object-select" aria-label={locale === "es" ? "Fuente" : "Source"} value={floatingFeature.source === "feature" ? floatingFeature.sourceFeatureId ?? "body" : "body"} onChange={(event) => onFloatingFeatureChange?.(floatingFeature.id, { sourceFeatureId: event.target.value })}>
             <option value="body">{locale === "es" ? "Cuerpo completo" : "Full body"}</option>
             {patternSources.map((source) => <option key={source.id} value={source.id}>{source.name}</option>)}
           </select>
         </> : null}
-        {floatingBoolean ? <select className="educad-context-object-select" aria-label={locale === "es" ? "Objeto" : "Object"} value={floatingBoolean.sourceObjectId} onChange={(event) => onFloatingFeatureChange?.(floatingBoolean.id, { sourceObjectId: event.target.value })}>{booleanObjects.filter((object) => object.id !== floatingBoolean.objectId).map((object) => <option key={object.id} value={object.id}>{object.name}</option>)}</select> : null}
+        {floatingBoolean ? <select className="kercad-context-object-select" aria-label={locale === "es" ? "Objeto" : "Object"} value={floatingBoolean.sourceObjectId} onChange={(event) => onFloatingFeatureChange?.(floatingBoolean.id, { sourceObjectId: event.target.value })}>{booleanObjects.filter((object) => object.id !== floatingBoolean.objectId).map((object) => <option key={object.id} value={object.id}>{object.name}</option>)}</select> : null}
         {floatingFeature?.kind === "sketch" ? <button type="button" aria-label={locale === "es" ? "Editar boceto" : "Edit sketch"} title={locale === "es" ? "Editar boceto" : "Edit sketch"} onClick={() => onEditSketch?.(floatingFeature.id)}><ToolbarEditOperationIcon /></button> : null}
         {floatingFeature?.kind === "faceExtrude" ? <button type="button" aria-label={locale === "es" ? "Editar cara" : "Edit face"} title={locale === "es" ? "Editar cara" : "Edit face"} onClick={() => onEditFaceExtrudeSelection?.(floatingFeature.id)}><ToolbarEditOperationIcon /></button> : null}
         {floatingFeature?.kind === "extrude" ? <ViewportFloatingNumberInput value={floatingFeature.distance} unit="length" displayUnit={displayUnit} snap={snap} label={locale === "es" ? "Profundidad" : "Depth"} min={-200} max={200} onCommit={(distance) => onFloatingFeatureChange?.(floatingFeature.id, { distance })} /> : null}

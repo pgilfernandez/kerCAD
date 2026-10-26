@@ -1,4 +1,5 @@
 import type { ParametricDocument } from "@/types/parametric";
+import { createBrandMigrationStore, migrateLegacyLibrary } from "@/lib/libraryBrandMigration";
 
 export type ProjectLibraryEntry = {
   id: string;
@@ -12,7 +13,7 @@ export type ProjectLibraryEntry = {
   sharedSource?: { fileName: string; revision: string };
 };
 
-const DATABASE_NAME = "educad.project-library";
+const DATABASE_NAME = "kercad.project-library";
 const STORE_NAME = "projects";
 const DATABASE_VERSION = 1;
 
@@ -21,10 +22,15 @@ function openProjectLibrary() {
     const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
     request.onupgradeneeded = () => {
       const database = request.result;
+      createBrandMigrationStore(database);
       if (!database.objectStoreNames.contains(STORE_NAME)) database.createObjectStore(STORE_NAME, { keyPath: "id" });
     };
     request.onerror = () => reject(request.error ?? new Error("Could not open the project library."));
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      const database = request.result;
+      database.onversionchange = () => database.close();
+      void migrateLegacyLibrary(database, [STORE_NAME]).then(() => resolve(database), (error) => { database.close(); reject(error); });
+    };
   });
 }
 

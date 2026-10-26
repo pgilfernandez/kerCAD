@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("supports the core viewport and keyboard flow", async ({ page }) => {
-  await expect(page.locator("main.educad-reference-shell")).toBeVisible();
+  await expect(page.locator("main.kercad-reference-shell")).toBeVisible();
   await expect(page.locator(".parametric-viewport canvas")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("button", { name: "Add shape" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Home view" })).toBeVisible();

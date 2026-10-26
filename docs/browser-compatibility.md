@@ -1,6 +1,6 @@
 # Browser and device compatibility
 
-eduCAD targets current evergreen browsers with WebAssembly, Web Workers and WebGL 2. The exact CAD model remains independent of the display device; device differences affect interaction and viewport rendering only.
+kerCAD targets current evergreen browsers with WebAssembly, Web Workers and WebGL 2. The exact CAD model remains independent of the display device; device differences affect interaction and viewport rendering only.
 
 ## Automated smoke matrix
 

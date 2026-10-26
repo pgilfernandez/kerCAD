@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function challengesDirectory() {
-  const configured = process.env.EDUCAD_CHALLENGES_DIR?.trim();
+  const configured = process.env.KERCAD_CHALLENGES_DIR?.trim();
   if (configured) return path.resolve(configured);
   const cwd = process.cwd();
   // Next's standalone server runs from apps/web; development runs from the repo.

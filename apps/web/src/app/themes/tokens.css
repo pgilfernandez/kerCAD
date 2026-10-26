@@ -21,7 +21,7 @@
   --workplane-soft: rgba(154, 220, 240, 0.28);
   --shadow: 0 2px 6px rgba(35, 55, 75, 0.12);
   --font-ui: "Avenir Next", Avenir, "Helvetica Neue", Arial, sans-serif;
-  --educad-primary-blue: #1269eb;
+  --kercad-primary-blue: #1269eb;
 }
 
 :root, html[data-theme="light"] {

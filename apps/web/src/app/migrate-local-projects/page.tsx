@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { listLibraryProjects, newProjectLibraryId, saveLibraryProject, type ProjectLibraryEntry } from "@/lib/projectLibrary";
 
-const MESSAGE_TYPE = "educad-local-project-migration/v1";
+const MESSAGE_TYPE = "kercad-local-project-migration/v1";
 
 type MigrationMessage = {
   type: typeof MESSAGE_TYPE;
@@ -50,11 +50,11 @@ function legacyLocalProjects() {
       document,
     });
   };
-  for (const [key, label] of [["educad.parametric.document.v1", "Diseño local"], ["educad.parametric.document.recovery.v1", "Recuperación local"]] as const) {
+  for (const [key, label] of [["kercad.parametric.document.v1", "Diseño local"], ["kercad.parametric.document.recovery.v1", "Recuperación local"]] as const) {
     try { add(JSON.parse(localStorage.getItem(key) ?? "null"), label); } catch {}
   }
   try {
-    const snapshots = JSON.parse(localStorage.getItem("educad.parametric.snapshots.v1") ?? "[]") as unknown;
+    const snapshots = JSON.parse(localStorage.getItem("kercad.parametric.snapshots.v1") ?? "[]") as unknown;
     if (Array.isArray(snapshots)) for (const snapshot of snapshots) {
       if (!snapshot || typeof snapshot !== "object") continue;
       const value = snapshot as { document?: unknown; createdAt?: unknown };
@@ -144,7 +144,7 @@ export default function MigrateLocalProjectsPage() {
       <p role="status" style={{ margin: 0, lineHeight: 1.55 }}>{status}</p>
       {!finished && sourceWindowUrl ? <button type="button" onClick={() => {
         startedRef.current = false;
-        const sourceWindow = window.open(sourceWindowUrl, "educad-project-migration", "popup,width=560,height=420");
+        const sourceWindow = window.open(sourceWindowUrl, "kercad-project-migration", "popup,width=560,height=420");
         if (!sourceWindow) setStatus("El navegador bloqueó la ventana. Permite ventanas emergentes para esta página y vuelve a intentarlo.");
         else setStatus("Leyendo la biblioteca anterior…");
       }} style={{ marginTop: 20, padding: "10px 16px", border: 0, borderRadius: 7, color: "white", background: "#148eb8", fontWeight: 700, cursor: "pointer" }}>Copiar proyectos desde 172.23.7.18</button> : null}

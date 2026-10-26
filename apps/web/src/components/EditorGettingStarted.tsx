@@ -3,10 +3,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import type { EducadLocale } from "@/lib/educadI18n";
+import type { KercadLocale } from "@/lib/kercadI18n";
 
-const STORAGE_KEY = "educad.getting-started.v1.dismissed";
-const SKETCH_STORAGE_KEY = "educad.sketch-getting-started.v1.dismissed";
+const STORAGE_KEY = "kercad.getting-started.v1.dismissed";
+const SKETCH_STORAGE_KEY = "kercad.sketch-getting-started.v1.dismissed";
 
 export function resetStartupTutorials() {
   try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(SKETCH_STORAGE_KEY); }
@@ -39,7 +39,7 @@ const copy = {
       { title: "Create simple shapes", lines: ["Open Create to add a box, cylinder, sphere or another simple shape. You can also create a sketch here."] },
       { title: "Edit properties", lines: ["This panel lists your objects and their operations. Select an entry to see its properties.", "Change dimensions, color and transformations here. You can also use the handles directly in the 3D view."] },
       { title: "Modify your model", lines: ["Use Modify to chamfer or round edges, extrude a face, revolve a profile or hollow out a solid.", "Choose a tool and follow its selection instructions. Each change becomes an editable operation in the panel."] },
-      { title: "Import and export", lines: ["Import eduCAD projects, STEP solids, SVG drawings, STL/OBJ reference meshes or JPG/PNG reference images.", "Export your editable project as .educad, or your model as STEP or STL for sharing and 3D printing."] },
+      { title: "Import and export", lines: ["Import kerCAD projects, STEP solids, SVG drawings, STL/OBJ reference meshes or JPG/PNG reference images.", "Export your editable project as .kercad, or your model as STEP or STL for sharing and 3D printing."] },
       { title: "Explain with annotations", lines: ["Add text, dimensions, angles and circles to explain your design without changing its geometry.", "Annotations are especially useful for teachers: highlight details, give feedback and correct students’ exercises directly on the model."] },
     ],
   },
@@ -50,13 +50,13 @@ const copy = {
       { title: "Crea formas simples", lines: ["Abre Crear para añadir una caja, un cilindro, una esfera u otra forma simple. Aquí también puedes crear un boceto."] },
       { title: "Edita las propiedades", lines: ["Este panel muestra los objetos y sus operaciones. Selecciona una entrada para ver sus propiedades.", "Cambia aquí las dimensiones, el color y las transformaciones. También puedes usar los manipuladores de la vista 3D."] },
       { title: "Modifica tu modelo", lines: ["Usa Modificar para achaflanar o redondear aristas, extruir una cara, revolucionar un perfil o vaciar un sólido.", "Elige una herramienta y sigue sus indicaciones de selección. Cada cambio queda como una operación editable en el panel."] },
-      { title: "Importa y exporta", lines: ["Importa proyectos eduCAD, sólidos STEP, dibujos SVG, mallas de referencia STL/OBJ o imágenes de referencia JPG/PNG.", "Exporta el proyecto editable como .educad o el modelo como STEP o STL para compartirlo e imprimirlo en 3D."] },
+      { title: "Importa y exporta", lines: ["Importa proyectos kerCAD, sólidos STEP, dibujos SVG, mallas de referencia STL/OBJ o imágenes de referencia JPG/PNG.", "Exporta el proyecto editable como .kercad o el modelo como STEP o STL para compartirlo e imprimirlo en 3D."] },
       { title: "Explica con anotaciones", lines: ["Añade textos, dimensiones, ángulos y círculos para explicar tu diseño sin modificar su geometría.", "Las anotaciones son especialmente útiles para profesores: permiten destacar detalles, dar indicaciones y corregir ejercicios del alumnado directamente sobre el modelo."] },
     ],
   },
 };
 
-export function EditorGettingStarted({ locale, active, mode = "3d", launchRequest = 0, onShowProperties }: { locale: EducadLocale; active: boolean; mode?: "3d" | "sketch"; launchRequest?: number; onShowProperties?: () => void }) {
+export function EditorGettingStarted({ locale, active, mode = "3d", launchRequest = 0, onShowProperties }: { locale: KercadLocale; active: boolean; mode?: "3d" | "sketch"; launchRequest?: number; onShowProperties?: () => void }) {
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState(0);
   const [position, setPosition] = useState<{ left: number; top: number; arrowSide: "top" | "right" | "bottom" | "left"; arrowOffset: number } | null>(null);
@@ -89,9 +89,9 @@ export function EditorGettingStarted({ locale, active, mode = "3d", launchReques
   };
   useLayoutEffect(() => {
     if (!visible || !active) return;
-    const stage = document.querySelector(".educad-workplane-stage");
-    const sidebar = document.querySelector(".educad-model-sidebar");
-    const sketchAnchors = [".sketch-draw-section", ".educad-sketch-constraints-panel", ".sketch-edit-section", ".sketch-import-section", ".sketch-annotations-section", '[data-tutorial="sketch-visibility"]'];
+    const stage = document.querySelector(".kercad-workplane-stage");
+    const sidebar = document.querySelector(".kercad-model-sidebar");
+    const sketchAnchors = [".sketch-draw-section", ".kercad-sketch-constraints-panel", ".sketch-edit-section", ".sketch-import-section", ".sketch-annotations-section", '[data-tutorial="sketch-visibility"]'];
     const sideAnchor = mode === "sketch" && (step === 1 || step === 5);
     const anchor = mode === "sketch" ? document.querySelector(sketchAnchors[step]) : step === 1 ? document.querySelector(".toolbar-shapes-section")
       : step === 3 ? document.querySelector(".toolbar-modify-section")
@@ -142,9 +142,9 @@ export function EditorGettingStarted({ locale, active, mode = "3d", launchReques
   }, [active, visible, step, locale, mode]);
   if (!active || !visible) return null;
   const card = text.cards[step];
-  return createPortal(<section ref={panel} className="educad-getting-started" role="dialog" aria-modal="false" aria-labelledby={`educad-getting-started-title-${mode}`} style={{ left: position?.left ?? 12, top: position?.top ?? 12, visibility: position ? "visible" : "hidden" }}>
-    {position && <svg className={`educad-getting-started-pointer ${position.arrowSide}`} style={position.arrowSide === "top" || position.arrowSide === "bottom" ? { left: position.arrowOffset - 10 } : { top: position.arrowOffset - 10 }} width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M0 10 10 0 20 10" fill="white" stroke="#9ac2f4" strokeWidth="1" /></svg>}
-    <div className="educad-getting-started-content">
+  return createPortal(<section ref={panel} className="kercad-getting-started" role="dialog" aria-modal="false" aria-labelledby={`kercad-getting-started-title-${mode}`} style={{ left: position?.left ?? 12, top: position?.top ?? 12, visibility: position ? "visible" : "hidden" }}>
+    {position && <svg className={`kercad-getting-started-pointer ${position.arrowSide}`} style={position.arrowSide === "top" || position.arrowSide === "bottom" ? { left: position.arrowOffset - 10 } : { top: position.arrowOffset - 10 }} width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M0 10 10 0 20 10" fill="white" stroke="#9ac2f4" strokeWidth="1" /></svg>}
+    <div className="kercad-getting-started-content">
     <header title={locale === "es" ? "Arrastra para mover esta tarjeta" : "Drag to move this card"}
       onPointerDown={(event) => {
         if (event.button !== 0 || (event.target as HTMLElement).closest("button")) return;
@@ -161,13 +161,13 @@ export function EditorGettingStarted({ locale, active, mode = "3d", launchReques
       onPointerUp={(event) => { drag.current = null; if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); }}
       onPointerCancel={() => { drag.current = null; }}
       onLostPointerCapture={() => { drag.current = null; }}
-    ><span className="educad-getting-started-count">{step + 1}/{text.cards.length}</span><button type="button" className="educad-getting-started-close" title={text.close} aria-label={text.close} onClick={dismiss}><X size={18} /></button></header>
-    <div aria-live="polite"><h2 id={`educad-getting-started-title-${mode}`}>{card.title}</h2>{card.lines.map((line) => {
+    ><span className="kercad-getting-started-count">{step + 1}/{text.cards.length}</span><button type="button" className="kercad-getting-started-close" title={text.close} aria-label={text.close} onClick={dismiss}><X size={18} /></button></header>
+    <div aria-live="polite"><h2 id={`kercad-getting-started-title-${mode}`}>{card.title}</h2>{card.lines.map((line) => {
       const emphasis = locale === "es" ? "profesores" : "teachers";
       const emphasisIndex = line.indexOf(emphasis);
       return <p key={line}>{mode === "3d" && step === 0 ? <><strong>{line.slice(0, line.indexOf(":"))}</strong>{line.slice(line.indexOf(":"))}</> : emphasisIndex >= 0 ? <>{line.slice(0, emphasisIndex)}<strong>{emphasis}</strong>{line.slice(emphasisIndex + emphasis.length)}</> : line}</p>;
     })}</div>
     <footer>{step > 0 && <button type="button" onClick={() => navigate(step - 1)}>{text.previous}</button>}<button type="button" className="primary" onClick={() => step === text.cards.length - 1 ? dismiss() : navigate(step + 1)}>{step === text.cards.length - 1 ? text.finish : text.next}</button></footer>
     </div>
-  </section>, document.querySelector(".educad-reference-shell") ?? document.body);
+  </section>, document.querySelector(".kercad-reference-shell") ?? document.body);
 }

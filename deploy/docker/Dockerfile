@@ -5,15 +5,15 @@ FROM node:24-alpine AS builder
 WORKDIR /app
 
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV EDUCAD_DOCKER_BUILD=true
+ENV KERCAD_DOCKER_BUILD=true
 
 COPY package.json package-lock.json ./
 COPY vendor/occt-wasm-shell/ ./vendor/occt-wasm-shell/
 RUN npm ci
 
 COPY . .
-ARG EDUCAD_COMMIT
-ENV EDUCAD_COMMIT=${EDUCAD_COMMIT}
+ARG KERCAD_COMMIT
+ENV KERCAD_COMMIT=${KERCAD_COMMIT}
 RUN mkdir -p apps/web/challenges && npm run build
 
 FROM node:24-alpine AS runner
@@ -24,8 +24,8 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
-ENV EDUCAD_SHARED_PROJECTS_DIR=/data/projects
-ENV EDUCAD_CHALLENGES_DIR=/data/challenges
+ENV KERCAD_SHARED_PROJECTS_DIR=/data/projects
+ENV KERCAD_CHALLENGES_DIR=/data/challenges
 
 RUN mkdir -p /data/projects \
   && chown node:node /data/projects

@@ -1,17 +1,19 @@
 "use client";
 
+import { PROJECT_FILE_PATTERN } from "@/lib/legacyBrand";
+
 import { dashboardTranslate, type DashboardTranslationKey } from "@/lib/dashboardI18n";
-import type { EducadLocale } from "@/lib/educadI18n";
+import type { KercadLocale } from "@/lib/kercadI18n";
 import { uploadSharedThumbnail } from "@/lib/sharedProjectThumbnail";
 import { useEffect, useState } from "react";
-import { exportEducadProject, importEducadProject, EDUCAD_PACKAGE_MEDIA_TYPE } from "@/lib/educadProject";
+import { exportKercadProject, importKercadProject, KERCAD_PACKAGE_MEDIA_TYPE } from "@/lib/kercadProject";
 import { getLibraryProject, newProjectLibraryId, saveLibraryProject, type ProjectLibraryEntry } from "@/lib/projectLibrary";
 
 type SharedFile = { fileName: string; name: string; revision: string; updatedAt: number; updatedBy?: string; thumbnailUrl?: string };
-const endpoint = "/api/educad-shared-projects";
+const endpoint = "/api/kercad-shared-projects";
 
 export function SharedProjects({ projects, onOpen, onSaved, locale = "en" }: {
-  locale?: EducadLocale;
+  locale?: KercadLocale;
   projects: ProjectLibraryEntry[];
   onOpen: (entry: ProjectLibraryEntry) => void;
   onSaved: () => void;
@@ -24,7 +26,7 @@ export function SharedProjects({ projects, onOpen, onSaved, locale = "en" }: {
   const [name, setName] = useState("");
   const [author, setAuthor] = useState("");
   useEffect(() => {
-    try { setAuthor(localStorage.getItem("educad.shared-author") ?? ""); } catch {}
+    try { setAuthor(localStorage.getItem("kercad.shared-author") ?? ""); } catch {}
   }, []);
   const [conflict, setConflict] = useState(false);
   const refresh = async () => {
@@ -41,7 +43,7 @@ export function SharedProjects({ projects, onOpen, onSaved, locale = "en" }: {
       if (!response.ok) throw new Error(t("Could not open the shared project. Refresh the library and try again."));
       const revision = response.headers.get("etag");
       if (!revision) throw new Error(t("The server did not provide a project revision."));
-      const { document, assets } = await importEducadProject(await response.arrayBuffer());
+      const { document, assets } = await importKercadProject(await response.arrayBuffer());
       const now = Date.now();
       const entry: ProjectLibraryEntry = { id: newProjectLibraryId(), name: document.name, document, assets, createdAt: now, updatedAt: now, sharedSource: { fileName: file.fileName, revision } };
       await saveLibraryProject(entry);
@@ -72,12 +74,12 @@ export function SharedProjects({ projects, onOpen, onSaved, locale = "en" }: {
       if (!author.trim()) throw new Error(t("Enter your name before sharing."));
       const entry = await getLibraryProject(selected);
       if (!entry) throw new Error(t("Choose a local project first."));
-      const fileName = `${name.trim().replace(/\.educad$/i, "")}.educad`;
+      const fileName = `${name.trim().replace(PROJECT_FILE_PATTERN, "")}.kercad`;
       const revision = entry.sharedSource?.fileName === fileName ? entry.sharedSource.revision : undefined;
-      const bytes = await exportEducadProject(entry.document, entry.assets);
+      const bytes = await exportKercadProject(entry.document, entry.assets);
       const response = await fetch(`${endpoint}?fileName=${encodeURIComponent(fileName)}`, {
         method: "POST", body: new Uint8Array(bytes),
-        headers: { "Content-Type": EDUCAD_PACKAGE_MEDIA_TYPE, "X-Educad-Author": encodeURIComponent(author.trim()), ...(revision ? { "If-Match": revision } : { "If-None-Match": "*" }) },
+        headers: { "Content-Type": KERCAD_PACKAGE_MEDIA_TYPE, "X-Kercad-Author": encodeURIComponent(author.trim()), ...(revision ? { "If-Match": revision } : { "If-None-Match": "*" }) },
       });
       const payload = await response.json();
       if (response.status === 409) {
@@ -86,7 +88,7 @@ export function SharedProjects({ projects, onOpen, onSaved, locale = "en" }: {
       }
       if (!response.ok) throw new Error(payload.error || t("Could not share the project."));
       await saveLibraryProject({ ...entry, sharedSource: { fileName: payload.project.fileName, revision: payload.project.revision } });
-      try { localStorage.setItem("educad.shared-author", author.trim()); } catch {}
+      try { localStorage.setItem("kercad.shared-author", author.trim()); } catch {}
       await uploadSharedThumbnail(payload.project.fileName, payload.project.revision, entry.document, entry.thumbnail, entry.thumbnailDocumentKey);
       onSaved();
       setMessage(t("Project saved to the shared library."));
@@ -94,21 +96,21 @@ export function SharedProjects({ projects, onOpen, onSaved, locale = "en" }: {
     } catch (error) { setMessage(error instanceof Error ? error.message : t("Could not share project.")); }
     finally { setBusy(false); }
   };
-  return <div className="educad-shared-library" aria-busy={busy}>
+  return <div className="kercad-shared-library" aria-busy={busy}>
     <header><h1>{t("Shared projects")}</h1><p>{t("Files available to everyone using this server. Opening a file creates your own local copy; changes are shared only when you save them here.")}</p><button type="button" disabled={busy} onClick={() => { void refresh().catch(error => setMessage(error.message)); }}>{t("Refresh library")}</button></header>
     <form onSubmit={event => { event.preventDefault(); void save(); }}>
       <h2>{t("Save a local project to shared")}</h2>
       <label>{t("Local project")}<select value={selected} disabled={busy} onChange={event => {
         setSelected(event.target.value); setConflict(false); setMessage("");
         const entry = projects.find(project => project.id === event.target.value);
-        setName(entry?.sharedSource?.fileName.replace(/\.educad$/i, "") ?? entry?.name ?? "");
+        setName(entry?.sharedSource?.fileName.replace(PROJECT_FILE_PATTERN, "") ?? entry?.name ?? "");
       }}><option value="">{t("Choose a project")}</option>{projects.map(entry => <option value={entry.id} key={entry.id}>{entry.name}</option>)}</select></label>
       <label>{t("Shared file name")}<input value={name} maxLength={100} required pattern={'[^<>:"/\\\\|?*]+'} disabled={busy} onChange={event => setName(event.target.value)} /></label>
       <label>{t("Your name")}<input value={author} maxLength={80} required disabled={busy} autoComplete="nickname" onChange={event => setAuthor(event.target.value)} /><small>{t("Shown with your shared changes. Remembered in this browser; this is not a verified account.")}</small></label>
       <button type="submit" disabled={busy || !selected || !name.trim() || !author.trim()}>{t("Save to shared")}</button>
     </form>
     {message ? <p role={conflict ? "alert" : "status"}>{message}</p> : null}
-    <div className="educad-shared-files">{files.map(file => <article key={file.fileName}>{file.thumbnailUrl ? <img className="educad-shared-thumbnail" src={file.thumbnailUrl} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = "none"; }} /> : <span className="educad-shared-thumbnail placeholder" aria-hidden="true">3D</span>}<div className="educad-shared-file-details"><strong>{file.name}</strong><small>{t("Last modified")}: <time dateTime={new Date(file.updatedAt).toISOString()}>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(file.updatedAt)}</time> · {file.updatedBy || t("Author not provided")}</small></div><div className="educad-shared-file-actions"><button type="button" disabled={busy} onClick={() => void open(file)}>{t("Open local copy")}</button><button className="delete-shared" type="button" disabled={busy} aria-label={t("Delete shared project {name}", { name: file.name })} onClick={() => void remove(file)}>{t("Delete shared")}</button></div></article>)}</div>
+    <div className="kercad-shared-files">{files.map(file => <article key={file.fileName}>{file.thumbnailUrl ? <img className="kercad-shared-thumbnail" src={file.thumbnailUrl} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = "none"; }} /> : <span className="kercad-shared-thumbnail placeholder" aria-hidden="true">3D</span>}<div className="kercad-shared-file-details"><strong>{file.name}</strong><small>{t("Last modified")}: <time dateTime={new Date(file.updatedAt).toISOString()}>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(file.updatedAt)}</time> · {file.updatedBy || t("Author not provided")}</small></div><div className="kercad-shared-file-actions"><button type="button" disabled={busy} onClick={() => void open(file)}>{t("Open local copy")}</button><button className="delete-shared" type="button" disabled={busy} aria-label={t("Delete shared project {name}", { name: file.name })} onClick={() => void remove(file)}>{t("Delete shared")}</button></div></article>)}</div>
     {!files.length ? <p>{t("No shared projects yet. Choose a local project above to share the first one.")}</p> : null}
   </div>;
 }

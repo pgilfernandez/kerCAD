@@ -62,7 +62,7 @@ export function createParametricClassroomScene(objectCount = 12): ParametricDocu
   });
 
   return {
-    schema: "educad-parametric/v2",
+    schema: "kercad-parametric/v2",
     id: "classroom-performance-scene",
     name: "Classroom performance scene",
     units: "mm",

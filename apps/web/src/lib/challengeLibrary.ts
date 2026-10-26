@@ -1,8 +1,10 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { createEmptyDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import type { ParametricDocument } from "@/types/parametric";
+import { isLegacyChallengeFormat } from "@/lib/legacyBrand";
+import { createBrandMigrationStore, migrateLegacyLibrary } from "@/lib/libraryBrandMigration";
 
-export type EducadChallengeStep = {
+export type KercadChallengeStep = {
   id: string;
   label?: string;
   title: string;
@@ -11,7 +13,7 @@ export type EducadChallengeStep = {
   values?: Array<{ label: string; value: string }>;
 };
 
-export type EducadChallenge = {
+export type KercadChallenge = {
   id: string;
   title: string;
   description?: string;
@@ -20,13 +22,13 @@ export type EducadChallenge = {
   version: number;
   installedAt: number;
   cover?: string;
-  steps: EducadChallengeStep[];
+  steps: KercadChallengeStep[];
   workspaceDocument?: ParametricDocument;
   /** Only untouched server-installed challenges may be replaced automatically. */
   bundledSource?: { name: string; revision: string };
 };
 
-export function createEmptyChallenge(): EducadChallenge {
+export function createEmptyChallenge(): KercadChallenge {
   return {
     id: `challenge-${typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`}@1`,
     title: "New challenge",
@@ -39,7 +41,7 @@ export function createEmptyChallenge(): EducadChallenge {
   };
 }
 
-export function duplicateChallenge(challenge: EducadChallenge, existing: EducadChallenge[]): EducadChallenge {
+export function duplicateChallenge(challenge: KercadChallenge, existing: KercadChallenge[]): KercadChallenge {
   const copy = structuredClone(challenge);
   copy.id = createEmptyChallenge().id;
   copy.installedAt = Date.now();
@@ -52,7 +54,7 @@ export function duplicateChallenge(challenge: EducadChallenge, existing: EducadC
 }
 
 type ChallengeManifest = {
-  format: "educad-challenge";
+  format: "kercad-challenge";
   version: number;
   id?: string;
   title: string;
@@ -71,7 +73,7 @@ type ChallengeManifest = {
   workspace?: string;
 };
 
-const DATABASE_NAME = "educad.challenge-library";
+const DATABASE_NAME = "kercad.challenge-library";
 const STORE_NAME = "challenges";
 const DATABASE_VERSION = 2;
 const BUNDLE_STORE_NAME = "bundled-packages";
@@ -83,13 +85,15 @@ function openChallengeLibrary() {
   return new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
     request.onupgradeneeded = () => {
+      createBrandMigrationStore(request.result);
       if (!request.result.objectStoreNames.contains(STORE_NAME)) request.result.createObjectStore(STORE_NAME, { keyPath: "id" });
       if (!request.result.objectStoreNames.contains(BUNDLE_STORE_NAME)) request.result.createObjectStore(BUNDLE_STORE_NAME, { keyPath: "name" });
     };
     request.onerror = () => reject(request.error ?? new Error("Could not open the challenge library."));
     request.onsuccess = () => {
       request.result.onversionchange = () => request.result.close();
-      resolve(request.result);
+      const database = request.result;
+      void migrateLegacyLibrary(database, [STORE_NAME, BUNDLE_STORE_NAME]).then(() => resolve(database), (error) => { database.close(); reject(error); });
     };
   });
 }
@@ -126,7 +130,7 @@ function challengeId(manifest: ChallengeManifest) {
   return `${base}@${manifest.version}`;
 }
 
-export async function importChallengePackage(file: File): Promise<EducadChallenge> {
+export async function importChallengePackage(file: File): Promise<KercadChallenge> {
   if (!file.name.toLowerCase().endsWith(".zip")) throw new Error("Challenges must be installed from a .zip package.");
   if (file.size > MAX_PACKAGE_BYTES) throw new Error("The challenge package is larger than 40 MB.");
   const files = unzipSync(new Uint8Array(await file.arrayBuffer()));
@@ -137,7 +141,7 @@ export async function importChallengePackage(file: File): Promise<EducadChalleng
   let manifest: ChallengeManifest;
   try { manifest = JSON.parse(strFromU8(manifestBytes)) as ChallengeManifest; }
   catch { throw new Error("challenge.json is not valid JSON."); }
-  if (manifest.format !== "educad-challenge" || manifest.version !== 1) throw new Error("This challenge format is not supported.");
+  if ((manifest.format !== "kercad-challenge" && !isLegacyChallengeFormat(manifest.format)) || manifest.version !== 1) throw new Error("This challenge format is not supported.");
   if (!manifest.title?.trim() || !Array.isArray(manifest.steps) || manifest.steps.length === 0) throw new Error("The challenge needs a title and at least one step.");
   const steps = manifest.steps.map((step, index) => {
     if (!step?.title?.trim() || !step.body?.trim()) throw new Error(`Step ${index + 1} needs a title and instructions.`);
@@ -155,7 +159,7 @@ export async function importChallengePackage(file: File): Promise<EducadChalleng
     const normalizedPath = manifest.workspace.replace(/^\.\//, "");
     if (normalizedPath.includes("..") || normalizedPath.startsWith("/") || !files[normalizedPath]) throw new Error("The challenge workspace could not be found.");
     const parsed = JSON.parse(strFromU8(files[normalizedPath])) as unknown;
-    if (!validateDocument(parsed)) throw new Error("The challenge workspace is not a valid eduCAD document.");
+    if (!validateDocument(parsed)) throw new Error("The challenge workspace is not a valid kerCAD document.");
     workspaceDocument = normalizeParametricDocument(parsed);
   }
   return {
@@ -183,7 +187,7 @@ function bytesFromDataUrl(source: string) {
   return { bytes, extension };
 }
 
-export function exportChallengePackage(challenge: EducadChallenge) {
+export function exportChallengePackage(challenge: KercadChallenge) {
   const files: Record<string, Uint8Array> = {};
   const imagePath = (source: string | undefined, stem: string) => {
     if (!source) return undefined;
@@ -202,9 +206,9 @@ export function exportChallengePackage(challenge: EducadChallenge) {
     values: step.values?.length ? step.values : undefined,
   }));
   const workspace = challenge.workspaceDocument ? "workspace.json" : undefined;
-  if (workspace && challenge.workspaceDocument) files[workspace] = strToU8(JSON.stringify(challenge.workspaceDocument));
+  if (workspace && challenge.workspaceDocument) files[workspace] = strToU8(JSON.stringify(normalizeParametricDocument(challenge.workspaceDocument)));
   const manifest: ChallengeManifest = {
-    format: "educad-challenge",
+    format: "kercad-challenge",
     version: 1,
     id: challenge.id.replace(/@\d+$/, ""),
     title: challenge.title,
@@ -222,15 +226,15 @@ export function exportChallengePackage(challenge: EducadChallenge) {
 export async function listInstalledChallenges() {
   const database = await openChallengeLibrary();
   try {
-    return await new Promise<EducadChallenge[]>((resolve, reject) => {
+    return await new Promise<KercadChallenge[]>((resolve, reject) => {
       const request = database.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).getAll();
       request.onerror = () => reject(request.error ?? new Error("Could not read installed challenges."));
-      request.onsuccess = () => resolve((request.result as EducadChallenge[]).sort((a, b) => b.installedAt - a.installedAt));
+      request.onsuccess = () => resolve((request.result as KercadChallenge[]).sort((a, b) => b.installedAt - a.installedAt));
     });
   } finally { database.close(); }
 }
 
-export async function saveInstalledChallenge(challenge: EducadChallenge) {
+export async function saveInstalledChallenge(challenge: KercadChallenge) {
   const database = await openChallengeLibrary();
   try {
     await new Promise<void>((resolve, reject) => {
@@ -278,14 +282,14 @@ async function installedChallengeIds() {
   } finally { database.close(); }
 }
 
-function challengeContent(challenge: EducadChallenge) {
-  const content: Partial<EducadChallenge> = { ...challenge };
+function challengeContent(challenge: KercadChallenge) {
+  const content: Partial<KercadChallenge> = { ...challenge };
   delete content.installedAt;
   delete content.bundledSource;
   return JSON.stringify(content);
 }
 
-async function installBundledChallenge(name: string, revision: string, challenge: EducadChallenge) {
+async function installBundledChallenge(name: string, revision: string, challenge: KercadChallenge) {
   const database = await openChallengeLibrary();
   try {
     return await new Promise<boolean>((resolve, reject) => {
@@ -296,7 +300,7 @@ async function installBundledChallenge(name: string, revision: string, challenge
       const store = transaction.objectStore(STORE_NAME);
       const request = store.get(challenge.id);
       request.onsuccess = () => {
-        const existing = request.result as EducadChallenge | undefined;
+        const existing = request.result as KercadChallenge | undefined;
         if (!existing || existing.bundledSource?.name === name || challengeContent(existing) === challengeContent(challenge)) {
           store.put({ ...challenge, bundledSource: { name, revision } });
           updated = true;

@@ -255,7 +255,7 @@ export type ParametricAnnotation = {
   | { kind: "circle"; position: ParametricVector3; rotation: ParametricVector3; radius: number; mode: "billboard" | "planar"; color: string; lineWidth: number; size?: number });
 
 export type ParametricDocument = {
-  schema: "educad-parametric/v1" | "educad-parametric/v2";
+  schema: "kercad-parametric/v1" | "kercad-parametric/v2";
   id: string;
   name: string;
   creator?: string;

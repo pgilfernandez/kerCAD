@@ -1,13 +1,13 @@
 /* Existing dark styles retained for legacy editor compatibility. */
 
-html[data-theme="dark"] .educad-toolbar-scroll-edge img { filter: brightness(0) invert(1); }
-html[data-theme="dark"] .educad-toolbar-scroll-edge { color: #c9dbea; text-shadow: none; }
-html[data-theme="dark"] .educad-toolbar-scroll-edge.left { background: linear-gradient(to right, #243442 15%, rgba(36, 52, 66, 0)); }
-html[data-theme="dark"] .educad-toolbar-scroll-edge.right { background: linear-gradient(to left, #243442 15%, rgba(36, 52, 66, 0)); }
-html[data-theme="dark"] .educad-toolbar-scroll-edge.top { background: linear-gradient(to bottom, #243442 15%, rgba(36, 52, 66, 0)); }
-html[data-theme="dark"] .educad-toolbar-scroll-edge.bottom { background: linear-gradient(to top, #243442 15%, rgba(36, 52, 66, 0)); }
-html[data-theme="dark"] .educad-toolbar-scroll-indicators .educad-toolbar-scroll-edge:hover,
-html[data-theme="dark"] .educad-toolbar-scroll-indicators .educad-toolbar-scroll-edge:focus-visible { background: #34516f; }
+html[data-theme="dark"] .kercad-toolbar-scroll-edge img { filter: brightness(0) invert(1); }
+html[data-theme="dark"] .kercad-toolbar-scroll-edge { color: #c9dbea; text-shadow: none; }
+html[data-theme="dark"] .kercad-toolbar-scroll-edge.left { background: linear-gradient(to right, #243442 15%, rgba(36, 52, 66, 0)); }
+html[data-theme="dark"] .kercad-toolbar-scroll-edge.right { background: linear-gradient(to left, #243442 15%, rgba(36, 52, 66, 0)); }
+html[data-theme="dark"] .kercad-toolbar-scroll-edge.top { background: linear-gradient(to bottom, #243442 15%, rgba(36, 52, 66, 0)); }
+html[data-theme="dark"] .kercad-toolbar-scroll-edge.bottom { background: linear-gradient(to top, #243442 15%, rgba(36, 52, 66, 0)); }
+html[data-theme="dark"] .kercad-toolbar-scroll-indicators .kercad-toolbar-scroll-edge:hover,
+html[data-theme="dark"] .kercad-toolbar-scroll-indicators .kercad-toolbar-scroll-edge:focus-visible { background: #34516f; }
 
 html[data-theme="dark"] .move-dimension-line {
   stroke: #dceaf2;
@@ -185,7 +185,7 @@ html[data-theme="dark"] .top-action-panel,
 html[data-theme="dark"] .edge-modifier-panel,
 html[data-theme="dark"] .camera-controls,
 html[data-theme="dark"] .viewport-display-controls,
-html[data-theme="dark"] .educad-viewport-context-toolbar,
+html[data-theme="dark"] .kercad-viewport-context-toolbar,
 html[data-theme="dark"] .ruler-tool-popover,
 html[data-theme="dark"] .editor-toast,
 html[data-theme="dark"] .snap-menu {
@@ -195,26 +195,26 @@ html[data-theme="dark"] .snap-menu {
   box-shadow: 0 14px 38px rgba(0, 0, 0, 0.34);
 }
 
-html[data-theme="dark"] .educad-context-toolbar-group + .educad-context-toolbar-group {
+html[data-theme="dark"] .kercad-context-toolbar-group + .kercad-context-toolbar-group {
   border-color: #435867;
 }
 
-html[data-theme="dark"] .educad-viewport-context-toolbar button {
+html[data-theme="dark"] .kercad-viewport-context-toolbar button {
   color: #c7d8e4;
 }
 
-html[data-theme="dark"] .educad-viewport-context-toolbar button:hover {
+html[data-theme="dark"] .kercad-viewport-context-toolbar button:hover {
   color: #ecf9ff;
   background: #294653;
   border-color: #4b7385;
 }
 
-html[data-theme="dark"] .educad-viewport-context-toolbar .educad-viewport-edge-treatment-radius > div {
+html[data-theme="dark"] .kercad-viewport-context-toolbar .kercad-viewport-edge-treatment-radius > div {
   background: #182832;
   border-color: #415763;
 }
 
-html[data-theme="dark"] .educad-viewport-context-toolbar .educad-viewport-edge-treatment-radius input {
+html[data-theme="dark"] .kercad-viewport-context-toolbar .kercad-viewport-edge-treatment-radius input {
   color: #dceaf2;
 }
 

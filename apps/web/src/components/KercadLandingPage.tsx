@@ -3,10 +3,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { HeaderToolbarIcon } from "@/components/icons";
 import { EditorHeaderActions } from "@/components/EditorHeaderActions";
-import { EducadAboutContent } from "@/components/EducadAboutContent";
+import { KercadAboutContent } from "@/components/KercadAboutContent";
 import { aboutContent } from "@/lib/aboutContent";
-import "./educadLanding.css";
-import { normalizeEducadLocale, type EducadLocale } from "@/lib/educadI18n";
+import "./kercadLanding.css";
+import { normalizeKercadLocale, type KercadLocale } from "@/lib/kercadI18n";
 
 type Props = {
   projectCount: number;
@@ -15,8 +15,8 @@ type Props = {
   onOpenChallenges: () => void;
 };
 
-export function EducadLandingPage({ preview, onStart, onOpenChallenges }: Props) {
-  const [locale, setLocale] = useState<EducadLocale>("en");
+export function KercadLandingPage({ preview, onStart, onOpenChallenges }: Props) {
+  const [locale, setLocale] = useState<KercadLocale>("en");
   const [sectionsOpen, setSectionsOpen] = useState(false);
   const sectionsMenuRef = useRef<HTMLDivElement>(null);
   const sectionsTriggerRef = useRef<HTMLButtonElement>(null);
@@ -25,7 +25,7 @@ export function EducadLandingPage({ preview, onStart, onOpenChallenges }: Props)
   useLayoutEffect(() => {
     if (!sectionsOpen) return;
     const trigger = sectionsTriggerRef.current, menu = sectionLinksRef.current;
-    const parent = trigger?.closest(".educad-landing-header-actions");
+    const parent = trigger?.closest(".kercad-landing-header-actions");
     if (!trigger || !menu || !parent) return;
     const update = () => {
       const button = trigger.getBoundingClientRect();
@@ -53,26 +53,26 @@ export function EducadLandingPage({ preview, onStart, onOpenChallenges }: Props)
     return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", key); breakpoint.removeEventListener("change", resize); };
   }, [sectionsOpen]);
   useEffect(() => {
-    try { setLocale(normalizeEducadLocale(localStorage.getItem("educad.locale"))); } catch { /* Keep English when storage is unavailable. */ }
+    try { setLocale(normalizeKercadLocale(localStorage.getItem("kercad.locale"))); } catch { /* Keep English when storage is unavailable. */ }
   }, []);
-  const changeLocale = (language: EducadLocale) => {
+  const changeLocale = (language: KercadLocale) => {
     setLocale(language);
     document.documentElement.lang = language;
-    try { localStorage.setItem("educad.locale", language); } catch { /* Language selection remains usable without storage. */ }
+    try { localStorage.setItem("kercad.locale", language); } catch { /* Language selection remains usable without storage. */ }
   };
-  return <main className="educad-landing educad-about-page" lang={locale}>
-    <header className="educad-landing-nav educad-dashboard-topbar">
-      <strong className="educad-dashboard-brand"><img className="educad-dashboard-logo" src="/assets/educad/logo.svg" alt="" /><span>eduCAD</span></strong>
+  return <main className="kercad-landing kercad-about-page" lang={locale}>
+    <header className="kercad-landing-nav kercad-dashboard-topbar">
+      <strong className="kercad-dashboard-brand"><img className="kercad-dashboard-logo" src="/assets/kercad/logo.svg" alt="" /><span>kerCAD</span></strong>
       <nav lang={locale} aria-label={locale === "es" ? "Navegación principal" : "Main navigation"}>{navigation.map((item) => <a key={item.id} href={`#${item.id}`}>{item.label}</a>)}</nav>
-      <div className="educad-landing-header-actions">
-        <div ref={sectionsMenuRef} className="educad-landing-section-control">
-          <button ref={sectionsTriggerRef} type="button" className="educad-landing-menu-trigger" aria-label={locale === "es" ? "Secciones de la página" : "Page sections"} title={locale === "es" ? "Secciones de la página" : "Page sections"} aria-expanded={sectionsOpen} aria-controls="educad-landing-section-menu" onClick={() => setSectionsOpen((open) => !open)}><HeaderToolbarIcon file="menu" /></button>
-          {sectionsOpen && <nav ref={sectionLinksRef} id="educad-landing-section-menu" className="educad-landing-section-menu" style={{ left: menuPosition.left }} lang={locale} aria-label={locale === "es" ? "Secciones de la página" : "Page sections"}><svg className="educad-landing-menu-pointer" style={{ left: menuPosition.arrow - 10 }} width="20" height="10" viewBox="0 0 20 10" aria-hidden="true"><path d="M0 10 10 0 20 10" fill="white" stroke="#c7d5de" strokeWidth="1" /></svg>{navigation.map((item) => <a key={item.id} href={`#${item.id}`} onClick={() => setSectionsOpen(false)}>{item.label}</a>)}</nav>}
+      <div className="kercad-landing-header-actions">
+        <div ref={sectionsMenuRef} className="kercad-landing-section-control">
+          <button ref={sectionsTriggerRef} type="button" className="kercad-landing-menu-trigger" aria-label={locale === "es" ? "Secciones de la página" : "Page sections"} title={locale === "es" ? "Secciones de la página" : "Page sections"} aria-expanded={sectionsOpen} aria-controls="kercad-landing-section-menu" onClick={() => setSectionsOpen((open) => !open)}><HeaderToolbarIcon file="menu" /></button>
+          {sectionsOpen && <nav ref={sectionLinksRef} id="kercad-landing-section-menu" className="kercad-landing-section-menu" style={{ left: menuPosition.left }} lang={locale} aria-label={locale === "es" ? "Secciones de la página" : "Page sections"}><svg className="kercad-landing-menu-pointer" style={{ left: menuPosition.arrow - 10 }} width="20" height="10" viewBox="0 0 20 10" aria-hidden="true"><path d="M0 10 10 0 20 10" fill="white" stroke="#c7d5de" strokeWidth="1" /></svg>{navigation.map((item) => <a key={item.id} href={`#${item.id}`} onClick={() => setSectionsOpen(false)}>{item.label}</a>)}</nav>}
         </div>
         <EditorHeaderActions locale={locale} onLocaleChange={changeLocale} onShowLanding={onStart} showDocumentation={false} showDonation startDesigning compactInformation />
       </div>
     </header>
 
-    <EducadAboutContent locale={locale} preview={preview} onStart={onStart} onOpenChallenges={onOpenChallenges} />
+    <KercadAboutContent locale={locale} preview={preview} onStart={onStart} onOpenChallenges={onOpenChallenges} />
   </main>;
 }

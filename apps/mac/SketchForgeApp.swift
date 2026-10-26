@@ -22,7 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             try startServer()
         } catch {
             let message = error.localizedDescription
-            NSLog("eduCAD startup failed: %@", message)
+            NSLog("kerCAD startup failed: %@", message)
             if let bytes = "Native startup failed: \(message)\n".data(using: .utf8) {
                 try? serverLog?.write(contentsOf: bytes)
                 try? serverLog?.synchronize()
@@ -60,7 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             backing: .buffered,
             defer: false
         )
-        window.title = "eduCAD"
+        window.title = "kerCAD"
         window.tabbingMode = .disallowed
         window.minSize = NSSize(width: 900, height: 620)
         window.contentView = webView
@@ -81,7 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             throw AppError("The bundled Node.js runtime is missing or is not executable.")
         }
         guard FileManager.default.fileExists(atPath: serverScript.path) else {
-            throw AppError("The bundled eduCAD server is missing.")
+            throw AppError("The bundled kerCAD server is missing.")
         }
 
         let applicationSupport = try FileManager.default.url(
@@ -89,7 +89,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             in: .userDomainMask,
             appropriateFor: nil,
             create: true
-        ).appendingPathComponent("eduCAD", isDirectory: true)
+        ).appendingPathComponent("kerCAD", isDirectory: true)
         let projects = applicationSupport.appendingPathComponent("SharedProjects", isDirectory: true)
         let challenges = applicationSupport.appendingPathComponent("Challenges", isDirectory: true)
         let logs = applicationSupport.appendingPathComponent("Logs", isDirectory: true)
@@ -119,13 +119,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             "HOSTNAME": loopbackHost,
             "PORT": String(port),
             "SKETCHFORGE_ENABLE_MCP": "false",
-            "EDUCAD_SHARED_PROJECTS_DIR": projects.path,
-            "EDUCAD_CHALLENGES_DIR": challenges.path,
+            "KERCAD_SHARED_PROJECTS_DIR": projects.path,
+            "KERCAD_CHALLENGES_DIR": challenges.path,
         ]) { _, packagedValue in packagedValue }
         process.terminationHandler = { [weak self] process in
             DispatchQueue.main.async {
                 guard let self, !self.isTerminating else { return }
-                self.presentStartupFailure("The local eduCAD server stopped unexpectedly (exit code \(process.terminationStatus)). See \(logURL.path).")
+                self.presentStartupFailure("The local kerCAD server stopped unexpectedly (exit code \(process.terminationStatus)). See \(logURL.path).")
             }
         }
 
@@ -136,7 +136,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
 
     private func waitForServer(origin: URL, attemptsRemaining: Int) {
         guard attemptsRemaining > 0 else {
-            presentStartupFailure("The local eduCAD server did not become ready. See ~/Library/Application Support/eduCAD/Logs/server.log.")
+            presentStartupFailure("The local kerCAD server did not become ready. See ~/Library/Application Support/kerCAD/Logs/server.log.")
             return
         }
 
@@ -173,7 +173,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         }
         guard bound == 0 else {
             if requestedPort != 0 {
-                throw AppError("eduCAD's local port \(requestedPort) is already in use. Close the process using that port and reopen eduCAD.")
+                throw AppError("kerCAD's local port \(requestedPort) is already in use. Close the process using that port and reopen kerCAD.")
             }
             throw AppError("Could not reserve a local server port.")
         }
@@ -194,7 +194,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         <!doctype html><meta charset="utf-8"><style>
         body{font:16px -apple-system;padding:48px;background:#111827;color:#f9fafb}main{max-width:720px;margin:auto}
         h1{font-size:28px}.detail{white-space:pre-wrap;color:#d1d5db;line-height:1.5}
-        </style><main><h1>eduCAD could not start</h1><div class="detail">\(escapeHTML(message))</div></main>
+        </style><main><h1>kerCAD could not start</h1><div class="detail">\(escapeHTML(message))</div></main>
         """
         webView.loadHTMLString(html, baseURL: nil)
     }
@@ -251,9 +251,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         let appItem = NSMenuItem()
         mainMenu.addItem(appItem)
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "About eduCAD", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        appMenu.addItem(withTitle: "About kerCAD", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Quit eduCAD", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: "Quit kerCAD", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
 
         let editItem = NSMenuItem()
@@ -278,7 +278,7 @@ private struct AppError: LocalizedError {
 }
 
 @main
-private enum eduCADMain {
+private enum kerCADMain {
     static func main() {
         let application = NSApplication.shared
         let delegate = AppDelegate()

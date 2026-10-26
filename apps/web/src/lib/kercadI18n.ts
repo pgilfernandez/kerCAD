@@ -1,4 +1,4 @@
-export type EducadLocale = "es" | "en";
+export type KercadLocale = "es" | "en";
 
 const es = {
   "loading.progress": "Progreso de carga", "loading.estimating": "Calculando estimación…",
@@ -6,7 +6,7 @@ const es = {
   "loading.opening": "Abriendo proyecto…", "loading.initializing": "Inicializando motor CAD…",
   "loading.operations": "Reconstruyendo operaciones…", "loading.meshing": "Preparando geometría 3D…",
   "loading.project": "Cargando", "loading.campaign": "Patrocinadores y campañas",
-  "loading.freeOpenSource": "eduCAD es gratuito y de código abierto.", "loading.support": "Apoyar eduCAD",
+  "loading.freeOpenSource": "kerCAD es gratuito y de código abierto.", "loading.support": "Apoyar kerCAD",
   "settings.appearanceLanguage": "Tema e idioma", "settings.theme": "Tema", "settings.themeLight": "Claro", "settings.themeDark": "Oscuro",
   "project.cover": "Imagen del proyecto", "project.coverManual": "Captura manual guardada", "project.coverAutomatic": "Capturas automáticas activadas",
   "project.captureCover": "Capturar imagen", "project.resetCover": "Restablecer automática",
@@ -22,7 +22,7 @@ const es = {
   "annotation.dashedLine": "Línea rayada", "annotation.startArrow": "Extremo inicial", "annotation.endArrow": "Extremo final", "annotation.lineStyle": "Trazo", "annotation.solid": "Continuo", "annotation.dashed": "Rayado", "annotation.showLength": "Mostrar longitud",
   "annotation.group": "Anotaciones", "annotation.text": "Etiqueta de texto", "annotation.dimension": "Dimensión", "annotation.font": "Fuente", "annotation.size": "Tamaño del texto", "annotation.alignment": "Alineación", "annotation.left": "Izquierda", "annotation.center": "Centro", "annotation.right": "Derecha", "annotation.position": "Posición", "annotation.start": "Punto inicial", "annotation.end": "Punto final",
   "dialog.authorName": "Tu nombre", "dialog.creator": "Creador", "dialog.lastAuthor": "Autor de la última modificación",
-  "about.title": "acerca de eduCAD", "about.label": "Acerca de eduCAD", "about.startDesigning": "Empieza a diseñar", "about.githubPending": "Enlace al repositorio pendiente", "about.donate": "Donar", "about.donatePending": "Donaciones disponibles próximamente",
+  "about.title": "acerca de kerCAD", "about.label": "Acerca de kerCAD", "about.startDesigning": "Empieza a diseñar", "about.githubPending": "Enlace al repositorio pendiente", "about.donate": "Donar", "about.donatePending": "Donaciones disponibles próximamente",
   "about.description": "CAD paramétrico de código abierto para educación.",
   "about.version": "Versión", "about.cadEngine": "Motor CAD", "about.viewer": "Visor 3D",
   "about.sketches": "Bocetos", "about.constraints": "Restricciones paramétricas", "about.license": "Licencia",
@@ -67,10 +67,10 @@ const es = {
   "mirror.selectedFace": "Cara seleccionada", "mirror.choosePlane": "Elegir plano o cara",
   "dialog.newTitle": "Nuevo diseño", "dialog.newWarning": "El proyecto actual se cerrará. Guarda antes si quieres conservar los últimos cambios.",
   "dialog.save": "Guardar", "dialog.createNew": "Nuevo", "dialog.exportTitle": "Exportar diseño",
-  "dialog.importProject": "Importar proyecto eduCAD", "dialog.addToCurrent": "Añadir al actual",
+  "dialog.importProject": "Importar proyecto kerCAD", "dialog.addToCurrent": "Añadir al actual",
   "dialog.contains": "contiene", "dialog.object": "objeto", "dialog.objects": "objetos", "dialog.importChoice": "Puedes abrirlo como proyecto independiente o añadir sus objetos al diseño actual.",
   "dialog.exportSubtitle": "Conserva los parámetros o fabrica la pieza", "dialog.fileName": "Nombre del archivo", "dialog.saving": "Guardando…", "dialog.exporting": "Exportando…",
-  "dialog.projectFormat": "Proyecto eduCAD", "dialog.projectFormatHint": "Paquete editable con historial y recursos", "dialog.stepFormat": "Modelo STEP", "dialog.stepFormatHint": "B-Rep exacto para fabricación", "dialog.stlFormat": "Modelo STL", "dialog.stlFormatHint": "Binario, en milímetros y listo para imprimir", "dialog.stlQuality": "Resolución STL", "dialog.qualityLow": "Baja", "dialog.qualityMedium": "Media", "dialog.qualityHigh": "Alta", "dialog.qualityVeryHigh": "Muy alta",
+  "dialog.projectFormat": "Proyecto kerCAD", "dialog.projectFormatHint": "Paquete editable con historial y recursos", "dialog.stepFormat": "Modelo STEP", "dialog.stepFormatHint": "B-Rep exacto para fabricación", "dialog.stlFormat": "Modelo STL", "dialog.stlFormatHint": "Binario, en milímetros y listo para imprimir", "dialog.stlQuality": "Resolución STL", "dialog.qualityLow": "Baja", "dialog.qualityMedium": "Media", "dialog.qualityHigh": "Alta", "dialog.qualityVeryHigh": "Muy alta",
   "align.title": "Alinear selección", "align.action": "Alinear", "align.referenceLast": "Referencia: último seleccionado", "align.minimum": "Mín.", "align.center": "Centro", "align.maximum": "Máx.",
   "sidebar.simplify": "Simplificar jerarquía", "sidebar.hide": "Ocultar jerarquía", "sidebar.show": "Mostrar jerarquía", "sidebar.visible": "Panel visible", "sidebar.simplified": "Panel simplificado", "sidebar.hidden": "Panel oculto", "camera.controls": "Controles de cámara", "history.stopped": "El historial se detuvo aquí",
   "rebuild.suggestionLabel": "Sugerencia", "rebuild.suggestion.generic": "Revisa los parámetros de la operación resaltada o restáurala a sus valores iniciales.",
@@ -145,14 +145,14 @@ const es = {
   "notice.selectPlanarFaceRevolve": "Selecciona una cara plana para revolucionar", "notice.selectPlanarFaceAndAxis": "Selecciona una cara plana y una arista recta como eje.",
   "notice.selectRevolveAxis": "Selecciona una arista recta como eje de rotación.", "notice.revolveReady": "Ajusta el ángulo y acepta para crear la revolución.",
   "notice.saveFailed": "No se pudo guardar el proyecto", "notice.exportFailed": "No se pudo exportar", "notice.stlExportFailed": "No se pudo exportar el STL", "notice.noObjectsToExport": "No hay objetos que exportar.",
-  "notice.archiveTooLarge": "El proyecto supera el límite comprimido de 256 MB.", "notice.documentTooLarge": "El documento supera el límite de 32 MB.", "notice.incompatibleProject": "Este no es un proyecto eduCAD compatible.", "notice.openFailed": "No se pudo abrir",
+  "notice.archiveTooLarge": "El proyecto supera el límite comprimido de 256 MB.", "notice.documentTooLarge": "El documento supera el límite de 32 MB.", "notice.incompatibleProject": "Este no es un proyecto kerCAD compatible.", "notice.openFailed": "No se pudo abrir",
   "notice.projectAdded": "añadidos al proyecto", "notice.projectAddedSingle": "añadido al proyecto", "notice.addProjectFailed": "No se pudo añadir el proyecto",
   "notice.referenceImported": "importado como referencia", "notice.referenceImportFailed": "No se pudo importar la referencia.", "notice.importingStep": "Importando B-Rep STEP…", "notice.stepImported": "STEP importado como geometría base editable", "notice.stepImportFailed": "No se pudo importar el STEP.",
   "notice.svgImported": "SVG importado como extrusión paramétrica", "notice.segments": "segmentos", "notice.circles": "círculos", "notice.svgImportFailed": "No se pudo importar el SVG.",
   "notice.objectCopied": "Objeto copiado", "notice.workplaneRestored": "Plano de trabajo global restaurado", "notice.freehandFailed": "No se pudo crear el contorno libre.", "notice.workplanePlaced": "Plano de trabajo colocado sobre la cara",
   "notice.linearPatternCreated": "Matriz lineal creada", "notice.polarPatternCreated": "Matriz polar creada", "notice.objectBooleanCreated": "Booleana entre objetos creada", "notice.shapeDuplicated": "Forma duplicada",
   "notice.itemsDeleted": "elementos eliminados", "notice.selectTopologySameObject": "Selecciona una o varias caras o aristas del mismo objeto.", "notice.selectFacesSameObject": "Selecciona una o varias caras del mismo objeto.",
-  "notice.projectSaved": "Proyecto eduCAD guardado", "notice.stepExported": "STEP B-Rep exportado", "notice.binaryStlExported": "STL binario exportado", "notice.projectOpened": "Proyecto abierto", "notice.resources": "recursos", "notice.resource": "recurso",
+  "notice.projectSaved": "Proyecto kerCAD guardado", "notice.stepExported": "STEP B-Rep exportado", "notice.binaryStlExported": "STL binario exportado", "notice.projectOpened": "Proyecto abierto", "notice.resources": "recursos", "notice.resource": "recurso",
   "display.solidEdges": "Color y aristas", "display.solid": "Color", "display.wireframe": "Sólo aristas", "input.increment": "Aumentar valor", "input.decrement": "Disminuir valor",
   "notice.invalidArcAngle": "El ángulo del arco debe estar entre 0° y 360°.", "notice.invalidAngle": "El ángulo debe ser un número válido.",
   "notice.positiveDimension": "La cota debe ser un número mayor que cero.", "notice.sketchExtruded": "Extrusión creada desde el boceto",
@@ -160,15 +160,15 @@ const es = {
   "notice.selectMirrorPlane": "Selecciona una cara o uno de los planos principales", "notice.mirrorPlaneSet": "Plano de espejo definido",
 } as const;
 
-export type EducadTranslationKey = keyof typeof es;
+export type KercadTranslationKey = keyof typeof es;
 
-const en: Record<EducadTranslationKey, string> = {
+const en: Record<KercadTranslationKey, string> = {
   "loading.progress": "Loading progress", "loading.estimating": "Estimating remaining time…",
   "loading.remaining": "≈ {seconds} s remaining", "loading.openingIn": "Ready · opening in {seconds} s",
   "loading.opening": "Opening project…", "loading.initializing": "Initializing CAD engine…",
   "loading.operations": "Rebuilding operations…", "loading.meshing": "Preparing 3D geometry…",
   "loading.project": "Loading", "loading.campaign": "Sponsors and campaigns",
-  "loading.freeOpenSource": "eduCAD is free and open source.", "loading.support": "Support eduCAD",
+  "loading.freeOpenSource": "kerCAD is free and open source.", "loading.support": "Support kerCAD",
   "settings.appearanceLanguage": "Theme and language", "settings.theme": "Theme", "settings.themeLight": "Light", "settings.themeDark": "Dark",
   "project.cover": "Project image", "project.coverManual": "Saved manual capture", "project.coverAutomatic": "Automatic captures enabled",
   "project.captureCover": "Capture image", "project.resetCover": "Reset to automatic",
@@ -184,7 +184,7 @@ const en: Record<EducadTranslationKey, string> = {
   "annotation.dashedLine": "Dashed line", "annotation.startArrow": "Start ending", "annotation.endArrow": "End ending", "annotation.lineStyle": "Line style", "annotation.solid": "Solid", "annotation.dashed": "Dashed", "annotation.showLength": "Show length",
   "annotation.group": "Annotations", "annotation.text": "Text label", "annotation.dimension": "Dimension", "annotation.font": "Font", "annotation.size": "Text size", "annotation.alignment": "Alignment", "annotation.left": "Left", "annotation.center": "Center", "annotation.right": "Right", "annotation.position": "Position", "annotation.start": "Start point", "annotation.end": "End point",
   "dialog.authorName": "Your name", "dialog.creator": "Creator", "dialog.lastAuthor": "Last modified by",
-  "about.title": "about eduCAD", "about.label": "about eduCAD", "about.startDesigning": "Start designing", "about.githubPending": "Repository link coming soon", "about.donate": "Donate", "about.donatePending": "Donations coming soon",
+  "about.title": "about kerCAD", "about.label": "about kerCAD", "about.startDesigning": "Start designing", "about.githubPending": "Repository link coming soon", "about.donate": "Donate", "about.donatePending": "Donations coming soon",
   "about.description": "Open-source parametric CAD for education.",
   "about.version": "Version", "about.cadEngine": "CAD engine", "about.viewer": "3D viewer",
   "about.sketches": "Sketches", "about.constraints": "Parametric constraints", "about.license": "License",
@@ -229,10 +229,10 @@ const en: Record<EducadTranslationKey, string> = {
   "mirror.selectedFace": "Selected face", "mirror.choosePlane": "Choose plane or face",
   "dialog.newTitle": "New design", "dialog.newWarning": "The current project will be closed. Save first if you want to keep the latest changes.",
   "dialog.save": "Save", "dialog.createNew": "New", "dialog.exportTitle": "Export design",
-  "dialog.importProject": "Import eduCAD project", "dialog.addToCurrent": "Add to current project",
+  "dialog.importProject": "Import kerCAD project", "dialog.addToCurrent": "Add to current project",
   "dialog.contains": "contains", "dialog.object": "object", "dialog.objects": "objects", "dialog.importChoice": "You can open it as a separate project or add its objects to the current design.",
   "dialog.exportSubtitle": "Preserve parameters or manufacture the part", "dialog.fileName": "File name", "dialog.saving": "Saving…", "dialog.exporting": "Exporting…",
-  "dialog.projectFormat": "eduCAD project", "dialog.projectFormatHint": "Editable package with history and assets", "dialog.stepFormat": "STEP model", "dialog.stepFormatHint": "Exact B-Rep for manufacturing", "dialog.stlFormat": "STL model", "dialog.stlFormatHint": "Binary, in millimeters, and ready to print", "dialog.stlQuality": "STL resolution", "dialog.qualityLow": "Low", "dialog.qualityMedium": "Medium", "dialog.qualityHigh": "High", "dialog.qualityVeryHigh": "Very high",
+  "dialog.projectFormat": "kerCAD project", "dialog.projectFormatHint": "Editable package with history and assets", "dialog.stepFormat": "STEP model", "dialog.stepFormatHint": "Exact B-Rep for manufacturing", "dialog.stlFormat": "STL model", "dialog.stlFormatHint": "Binary, in millimeters, and ready to print", "dialog.stlQuality": "STL resolution", "dialog.qualityLow": "Low", "dialog.qualityMedium": "Medium", "dialog.qualityHigh": "High", "dialog.qualityVeryHigh": "Very high",
   "align.title": "Align selection", "align.action": "Align", "align.referenceLast": "Reference: last selected", "align.minimum": "Min.", "align.center": "Center", "align.maximum": "Max.",
   "sidebar.simplify": "Simplify hierarchy", "sidebar.hide": "Hide hierarchy", "sidebar.show": "Show hierarchy", "sidebar.visible": "Panel visible", "sidebar.simplified": "Simplified panel", "sidebar.hidden": "Panel hidden", "camera.controls": "Camera controls", "history.stopped": "History stopped here",
   "rebuild.suggestionLabel": "Suggestion", "rebuild.suggestion.generic": "Review the highlighted operation parameters or reset it to its initial values.",
@@ -307,14 +307,14 @@ const en: Record<EducadTranslationKey, string> = {
   "notice.selectPlanarFaceRevolve": "Select a planar face to revolve", "notice.selectPlanarFaceAndAxis": "Select a planar face and a straight edge as the axis.",
   "notice.selectRevolveAxis": "Select a straight edge as the rotation axis.", "notice.revolveReady": "Adjust the angle and accept to create the revolution.",
   "notice.saveFailed": "Could not save the project", "notice.exportFailed": "Could not export", "notice.stlExportFailed": "Could not export the STL", "notice.noObjectsToExport": "There are no objects to export.",
-  "notice.archiveTooLarge": "The compressed project exceeds the 256 MB limit.", "notice.documentTooLarge": "The document exceeds the 32 MB limit.", "notice.incompatibleProject": "This is not a compatible eduCAD project.", "notice.openFailed": "Could not open the project",
+  "notice.archiveTooLarge": "The compressed project exceeds the 256 MB limit.", "notice.documentTooLarge": "The document exceeds the 32 MB limit.", "notice.incompatibleProject": "This is not a compatible kerCAD project.", "notice.openFailed": "Could not open the project",
   "notice.projectAdded": "objects added to the project", "notice.projectAddedSingle": "object added to the project", "notice.addProjectFailed": "Could not add the project",
   "notice.referenceImported": "imported as a reference", "notice.referenceImportFailed": "Could not import the reference.", "notice.importingStep": "Importing STEP B-Rep…", "notice.stepImported": "STEP imported as editable base geometry", "notice.stepImportFailed": "Could not import the STEP file.",
   "notice.svgImported": "SVG imported as a parametric extrusion", "notice.segments": "segments", "notice.circles": "circles", "notice.svgImportFailed": "Could not import the SVG file.",
   "notice.objectCopied": "Object copied", "notice.workplaneRestored": "Global workplane restored", "notice.freehandFailed": "Could not create the freehand contour.", "notice.workplanePlaced": "Workplane placed on the face",
   "notice.linearPatternCreated": "Linear pattern created", "notice.polarPatternCreated": "Polar pattern created", "notice.objectBooleanCreated": "Boolean operation between objects created", "notice.shapeDuplicated": "Shape duplicated",
   "notice.itemsDeleted": "items deleted", "notice.selectTopologySameObject": "Select one or more faces or edges from the same object.", "notice.selectFacesSameObject": "Select one or more faces from the same object.",
-  "notice.projectSaved": "eduCAD project saved", "notice.stepExported": "STEP B-Rep exported", "notice.binaryStlExported": "Binary STL exported", "notice.projectOpened": "Project opened", "notice.resources": "resources", "notice.resource": "resource",
+  "notice.projectSaved": "kerCAD project saved", "notice.stepExported": "STEP B-Rep exported", "notice.binaryStlExported": "Binary STL exported", "notice.projectOpened": "Project opened", "notice.resources": "resources", "notice.resource": "resource",
   "display.solidEdges": "Color and edges", "display.solid": "Color", "display.wireframe": "Only edges", "input.increment": "Increase value", "input.decrement": "Decrease value",
   "notice.invalidArcAngle": "The arc angle must be between 0° and 360°.", "notice.invalidAngle": "The angle must be a valid number.",
   "notice.positiveDimension": "The dimension must be greater than zero.", "notice.sketchExtruded": "Extrusion created from sketch",
@@ -322,12 +322,12 @@ const en: Record<EducadTranslationKey, string> = {
   "notice.selectMirrorPlane": "Select a face or one of the principal planes", "notice.mirrorPlaneSet": "Mirror plane set",
 };
 
-const translations: Record<EducadLocale, Record<EducadTranslationKey, string>> = { es, en };
+const translations: Record<KercadLocale, Record<KercadTranslationKey, string>> = { es, en };
 
-export function educadTranslate(locale: EducadLocale, key: EducadTranslationKey) {
+export function kercadTranslate(locale: KercadLocale, key: KercadTranslationKey) {
   return translations[locale]?.[key] ?? translations.en[key];
 }
 
-export function normalizeEducadLocale(value: unknown): EducadLocale {
+export function normalizeKercadLocale(value: unknown): KercadLocale {
   return value === "es" ? "es" : "en";
 }

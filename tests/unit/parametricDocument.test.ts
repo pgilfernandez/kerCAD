@@ -30,7 +30,7 @@ describe("parametric document", () => {
   });
   it("creates a reconstructable educational starter part", () => {
     const document = createStarterDocument(123);
-    expect(document.schema).toBe("educad-parametric/v2");
+    expect(document.schema).toBe("kercad-parametric/v2");
     expect(document.createdAt).toBe(123);
     expect(document.workplane).toEqual({
       width: 200,
@@ -136,23 +136,23 @@ describe("parametric document", () => {
 
   it("rejects unrelated JSON documents", () => {
     expect(validateDocument({ schema: "mesh-scene/v1", features: [] })).toBe(false);
-    expect(validateDocument({ schema: "educad-parametric/v3", name: "Future", units: "mm", features: [] })).toBe(false);
+    expect(validateDocument({ schema: "kercad-parametric/v3", name: "Future", units: "mm", features: [] })).toBe(false);
     expect(validateDocument(createStarterDocument())).toBe(true);
   });
 
   it("migrates v1 documents through the versioned pipeline", () => {
     const legacy = createStarterDocument(123);
-    legacy.schema = "educad-parametric/v1";
+    legacy.schema = "kercad-parametric/v1";
 
     const migrated = migrateParametricDocument(legacy);
-    expect(migrated.schema).toBe("educad-parametric/v2");
-    expect(legacy.schema).toBe("educad-parametric/v1");
+    expect(migrated.schema).toBe("kercad-parametric/v2");
+    expect(legacy.schema).toBe("kercad-parametric/v1");
     expect(migrated.features).toEqual(legacy.features);
   });
 
   it("migrates legacy feature positions into object transforms", () => {
     const legacy = createStarterDocument(123);
-    legacy.schema = "educad-parametric/v1";
+    legacy.schema = "kercad-parametric/v1";
     const sketch = legacy.features[0];
     if (sketch.kind !== "sketch") throw new Error("expected sketch");
     sketch.x = 12;
@@ -163,7 +163,7 @@ describe("parametric document", () => {
     delete (legacy as Partial<typeof legacy>).objects;
 
     const migrated = normalizeParametricDocument(legacy);
-    expect(migrated.schema).toBe("educad-parametric/v2");
+    expect(migrated.schema).toBe("kercad-parametric/v2");
     expect(migrated.objects[0].transform.position).toEqual({ x: 12, y: -4, z: 3 });
     expect(migrated.features[0]).toMatchObject({ objectId: migrated.objects[0].id, x: 0, y: 0, offset: 0 });
     expect(migrated.features[1].objectId).toBe(migrated.objects[0].id);

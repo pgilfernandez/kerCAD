@@ -1,4 +1,4 @@
-# eduCAD Challenges roadmap
+# kerCAD Challenges roadmap
 
 ## Package format (v1)
 
@@ -6,7 +6,7 @@ A challenge is one portable ZIP file. Its root contains `challenge.json`; refere
 
 ```json
 {
-  "format": "educad-challenge",
+  "format": "kercad-challenge",
   "version": 1,
   "id": "key-tag",
   "title": "Key Tag",

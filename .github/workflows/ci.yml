@@ -47,7 +47,7 @@ jobs:
     timeout-minutes: 25
     env:
       NEXT_TELEMETRY_DISABLED: "1"
-      EDUCAD_DOCKER_BUILD: "true"
+      KERCAD_DOCKER_BUILD: "true"
 
     steps:
       - name: Checkout
@@ -67,18 +67,18 @@ jobs:
 
       - name: Assemble server and browser assets
         run: |
-          mkdir -p dist/educad-server/apps/web/.next
-          cp -a apps/web/.next/standalone/. dist/educad-server/
-          cp -a apps/web/.next/static dist/educad-server/apps/web/.next/static
-          cp -a apps/web/public dist/educad-server/apps/web/public
-          mkdir -p dist/educad-server/apps/web/challenges
+          mkdir -p dist/kercad-server/apps/web/.next
+          cp -a apps/web/.next/standalone/. dist/kercad-server/
+          cp -a apps/web/.next/static dist/kercad-server/apps/web/.next/static
+          cp -a apps/web/public dist/kercad-server/apps/web/public
+          mkdir -p dist/kercad-server/apps/web/challenges
           if [ -d apps/web/challenges ]; then
-            cp -a apps/web/challenges/. dist/educad-server/apps/web/challenges/
+            cp -a apps/web/challenges/. dist/kercad-server/apps/web/challenges/
           fi
           node --input-type=module <<'NODE'
           import { writeFileSync } from 'node:fs';
-          writeFileSync('dist/educad-server/build-info.json', JSON.stringify({
-            application: 'eduCAD',
+          writeFileSync('dist/kercad-server/build-info.json', JSON.stringify({
+            application: 'kerCAD',
             commit: process.env.GITHUB_SHA,
             repository: process.env.GITHUB_REPOSITORY,
             run: process.env.GITHUB_RUN_ID,
@@ -90,12 +90,12 @@ jobs:
 
       - name: Check packaged server starts outside checkout
         run: |
-          mkdir -p "$RUNNER_TEMP/educad-production"
-          cp -a dist/educad-server/. "$RUNNER_TEMP/educad-production/"
-          cd "$RUNNER_TEMP/educad-production"
-          HOSTNAME=127.0.0.1 PORT=3100 node apps/web/server.js > "$RUNNER_TEMP/educad-production.log" 2>&1 &
-          educad_server_pid=$!
-          trap 'kill "$educad_server_pid" 2>/dev/null || true' EXIT
+          mkdir -p "$RUNNER_TEMP/kercad-production"
+          cp -a dist/kercad-server/. "$RUNNER_TEMP/kercad-production/"
+          cd "$RUNNER_TEMP/kercad-production"
+          HOSTNAME=127.0.0.1 PORT=3100 node apps/web/server.js > "$RUNNER_TEMP/kercad-production.log" 2>&1 &
+          kercad_server_pid=$!
+          trap 'kill "$kercad_server_pid" 2>/dev/null || true' EXIT
           node --input-type=module <<'NODE'
           import { setTimeout } from 'node:timers/promises';
           let ready = false;
@@ -103,28 +103,28 @@ jobs:
             try {
               const response = await fetch('http://127.0.0.1:3100/api/health', { signal: AbortSignal.timeout(2000) });
               const status = await response.json();
-              if (response.ok && status.application === 'eduCAD' && status.status === 'ok') { ready = true; break; }
+              if (response.ok && status.application === 'kerCAD' && status.status === 'ok') { ready = true; break; }
             } catch {}
             await setTimeout(1000);
           }
-          if (!ready) throw new Error('Packaged eduCAD server did not become ready.');
+          if (!ready) throw new Error('Packaged kerCAD server did not become ready.');
           const page = await fetch('http://127.0.0.1:3100/', { signal: AbortSignal.timeout(10000) });
           if (!page.ok) throw new Error(`Homepage returned ${page.status}`);
           NODE
 
       - name: Archive production artifact
         run: |
-          tar -czf dist/educad-server-linux-x64.tar.gz -C dist educad-server
+          tar -czf dist/kercad-server-linux-x64.tar.gz -C dist kercad-server
           cd dist
-          sha256sum educad-server-linux-x64.tar.gz > educad-server-linux-x64.tar.gz.sha256
+          sha256sum kercad-server-linux-x64.tar.gz > kercad-server-linux-x64.tar.gz.sha256
 
       - name: Upload production artifact
         uses: actions/upload-artifact@v4
         with:
-          name: educad-server-linux-x64-${{ github.sha }}
+          name: kercad-server-linux-x64-${{ github.sha }}
           path: |
-            dist/educad-server-linux-x64.tar.gz
-            dist/educad-server-linux-x64.tar.gz.sha256
+            dist/kercad-server-linux-x64.tar.gz
+            dist/kercad-server-linux-x64.tar.gz.sha256
           if-no-files-found: error
           retention-days: 14
 
@@ -132,7 +132,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: educad-production-log-${{ github.sha }}
-          path: ${{ runner.temp }}/educad-production.log
+          name: kercad-production-log-${{ github.sha }}
+          path: ${{ runner.temp }}/kercad-production.log
           if-no-files-found: ignore
           retention-days: 7

@@ -6,8 +6,8 @@ import { validateDrawnSketchProfile } from "@/lib/sketchProfileValidation";
 
 describe("parametric text", () => {
   it("creates a valid profile from bundled web-font outlines", () => {
-    const profile = parametricTextProfile({ kind: "text", text: "eduCAD 3D á", font: "Sans", size: 20, spacing: 1, align: "center", verticalAlign: "center" });
-    expect(profile.generator).toMatchObject({ kind: "text", text: "eduCAD 3D á", font: "Sans", align: "center", verticalAlign: "center" });
+    const profile = parametricTextProfile({ kind: "text", text: "kerCAD 3D á", font: "Sans", size: 20, spacing: 1, align: "center", verticalAlign: "center" });
+    expect(profile.generator).toMatchObject({ kind: "text", text: "kerCAD 3D á", font: "Sans", align: "center", verticalAlign: "center" });
     expect(profile.segments.length).toBeGreaterThan(20);
     expect(profile.segments.some((segment) => segment.kind === "bezier")).toBe(true);
     expect(validateDrawnSketchProfile(profile).valid).toBe(true);

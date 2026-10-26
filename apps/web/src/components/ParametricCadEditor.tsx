@@ -1,4 +1,6 @@
 "use client";
+
+import { LEGACY_PROJECT_ACCEPT } from "@/lib/legacyBrand";
 import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
 
 import {
@@ -46,7 +48,7 @@ import { buildParametricModel, exportParametricStep } from "@/lib/parametricKern
 import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint } from "@/lib/parametricBuildState";
 import type { BuildResult, ParametricDocument, ParametricFeature } from "@/types/parametric";
 
-const STORAGE_KEY = "educad.parametric.document.v1";
+const STORAGE_KEY = "kercad.parametric.document.v1";
 
 type HistoryState = { entries: ParametricDocument[]; index: number };
 type Notice = { tone: "success" | "error" | "info"; text: string } | null;
@@ -269,7 +271,7 @@ export function ParametricCadEditor() {
   const redo = () => setHistory((current) => ({ ...current, index: Math.min(current.entries.length - 1, current.index + 1) }));
 
   const exportDocument = () => {
-    downloadBlob(new Blob([JSON.stringify(document, null, 2)], { type: "application/json" }), `${safeFileName(document.name)}.educad.json`);
+    downloadBlob(new Blob([JSON.stringify(document, null, 2)], { type: "application/json" }), `${safeFileName(document.name)}.kercad.json`);
     setNotice({ tone: "success", text: "Documento paramétrico exportado." });
   };
 
@@ -289,7 +291,7 @@ export function ParametricCadEditor() {
   const importDocument = async (file: File) => {
     try {
       const parsed = JSON.parse(await file.text()) as unknown;
-      if (!validateDocument(parsed)) throw new Error("El archivo no es un documento eduCAD v1 válido.");
+      if (!validateDocument(parsed)) throw new Error("El archivo no es un documento kerCAD v1 válido.");
       setHistory({ entries: [parsed], index: 0 });
       setSelectedId(parsed.features[0]?.id ?? null);
       setNotice({ tone: "success", text: "Documento paramétrico abierto." });
@@ -311,7 +313,7 @@ export function ParametricCadEditor() {
     <main className="pcad-app">
       <header className="pcad-header">
         <button className="pcad-icon-button pcad-mobile-menu" aria-label="Abrir menú"><Menu size={20} /></button>
-        <div className="pcad-brand" aria-label="eduCAD">
+        <div className="pcad-brand" aria-label="kerCAD">
           <span className="pcad-logo"><Hexagon size={25} strokeWidth={2.4} /><span>e</span></span>
           <strong>edu<span>CAD</span></strong>
           <small>parametric</small>
@@ -435,7 +437,7 @@ export function ParametricCadEditor() {
       <input
         ref={importRef}
         type="file"
-        accept=".json,.educad"
+        accept={".json,.kercad ," + LEGACY_PROJECT_ACCEPT}
         hidden
         onChange={(event) => { const file = event.target.files?.[0]; if (file) void importDocument(file); event.target.value = ""; }}
       />

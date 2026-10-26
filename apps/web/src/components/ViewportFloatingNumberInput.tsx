@@ -48,7 +48,7 @@ export function ViewportFloatingNumberInput({ value, unit, displayUnit, snap, la
     field.addEventListener("wheel", wheel, { passive: false });
     return () => field.removeEventListener("wheel", wheel);
   }, []);
-  return <div className="educad-viewport-edge-treatment-radius"><div ref={fieldRef}>
+  return <div className="kercad-viewport-edge-treatment-radius"><div ref={fieldRef}>
     <input type="text" inputMode="text" aria-label={label} value={draft}
       onFocus={(event) => { editingRef.current = true; event.currentTarget.select(); }}
       onChange={(event) => updateDraft(event.currentTarget.value)} onBlur={commit}
@@ -58,7 +58,7 @@ export function ViewportFloatingNumberInput({ value, unit, displayUnit, snap, la
         if (event.key === "ArrowUp" || event.key === "ArrowDown") { event.preventDefault(); increment(event.key === "ArrowUp" ? 1 : -1); }
       }} />
     <span>{unit === "length" ? displayUnitLabel(displayUnit) : unit === "angle" ? "°" : unit === "percent" ? "%" : unit === "scalar" ? "px" : "×"}</span>
-    <div className="educad-viewport-number-steppers">
+    <div className="kercad-viewport-number-steppers">
       <button type="button" aria-label={`${label} +`} onPointerDown={(event) => event.preventDefault()} onClick={() => increment(1)}>▴</button>
       <button type="button" aria-label={`${label} −`} onPointerDown={(event) => event.preventDefault()} onClick={() => increment(-1)}>▾</button>
     </div>

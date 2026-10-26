@@ -9,8 +9,8 @@
 // dynamic import as runtime-resolved rather than a module to resolve.
 import { registerShellKernels } from "@/lib/shellKernel";
 
-const OCCT_INDEX_URL: string = "/occt/3.6.1+educad.1/index.js";
-const OCCT_WASM_URL = "/occt/3.6.1+educad.1/occt-wasm.wasm";
+const OCCT_INDEX_URL: string = "/occt/3.6.1+kercad.1/index.js";
+const OCCT_WASM_URL = "/occt/3.6.1+kercad.1/occt-wasm.wasm";
 
 export type Brep = typeof import("brepjs");
 export type BrepSolid = ReturnType<Brep["box"]>;

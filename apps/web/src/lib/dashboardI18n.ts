@@ -1,4 +1,4 @@
-import type { EducadLocale } from "@/lib/educadI18n";
+import type { KercadLocale } from "@/lib/kercadI18n";
 
 // English is the source/fallback language. Project and challenge content is
 // user-authored and must never be translated as interface text.
@@ -7,14 +7,14 @@ const es = {
   "{name} (copy)": "{name} (copia)", "Could not duplicate the project.": "No se pudo duplicar el proyecto.", "Could not export the project.": "No se pudo exportar el proyecto.",
   "Import project or 3D file": "Importar proyecto o archivo 3D",
   "Unsupported file format.": "Formato de archivo no compatible.",
-  "Could not install the challenge.": "No se pudo importar el reto.", "Could not duplicate the challenge.": "No se pudo duplicar el reto.", "This is not a valid eduCAD project.": "Este archivo no es un proyecto eduCAD válido.", "Could not open the project.": "No se pudo abrir el proyecto.", "No local project is open.": "No hay ningún proyecto local abierto.", "Could not save the shared project.": "No se pudo guardar el proyecto compartido.", "The shared file has changed or this name is already in use. Your local work is safe. Save with another name, or open a fresh copy from Shared.": "El archivo compartido ha cambiado o ese nombre ya está en uso. Tu trabajo local está a salvo. Guarda con otro nombre o abre una copia nueva desde Compartidos.",
+  "Could not install the challenge.": "No se pudo importar el reto.", "Could not duplicate the challenge.": "No se pudo duplicar el reto.", "This is not a valid kerCAD project.": "Este archivo no es un proyecto kerCAD válido.", "Could not open the project.": "No se pudo abrir el proyecto.", "No local project is open.": "No hay ningún proyecto local abierto.", "Could not save the shared project.": "No se pudo guardar el proyecto compartido.", "The shared file has changed or this name is already in use. Your local work is safe. Save with another name, or open a fresh copy from Shared.": "El archivo compartido ha cambiado o ese nombre ya está en uso. Tu trabajo local está a salvo. Guarda con otro nombre o abre una copia nueva desde Compartidos.",
   "Dashboard sections": "Secciones", "Projects": "Proyectos", "Challenges": "Retos", "Shared": "Compartidos", "Settings": "Ajustes",
   "Just now": "Ahora mismo", "Today": "Hoy", "{count} visible": "{count} visibles", "{count} installed": "{count} instalados",
   "Import challenge": "Importar reto", "Search challenges": "Buscar retos", "Sort challenges": "Ordenar retos",
   "Sort by recent": "Ordenar por recientes", "Sort by name": "Ordenar por nombre", "Card view": "Vista de tarjetas", "List view": "Vista de lista",
-  "Create new challenge": "Crear nuevo reto", "Build a guided eduCAD activity": "Crea una actividad guiada de eduCAD", "Guided eduCAD activity": "Actividad guiada de eduCAD", "By {name}": "Por {name}",
+  "Create new challenge": "Crear nuevo reto", "Build a guided kerCAD activity": "Crea una actividad guiada de kerCAD", "Guided kerCAD activity": "Actividad guiada de kerCAD", "By {name}": "Por {name}",
   "Actions for {name}": "Acciones de {name}", "Edit challenge": "Editar reto", "Edit {name}": "Editar {name}", "Duplicate challenge": "Duplicar reto", "Duplicate {name}": "Duplicar {name}", "Export challenge": "Exportar reto", "Export {name}": "Exportar {name}", "Remove challenge": "Eliminar reto", "Remove {name}": "Eliminar {name}",
-  "Install your first challenge": "Importa tu primer reto", "Choose an eduCAD challenge ZIP from your computer.": "Elige un archivo ZIP de reto eduCAD desde tu ordenador.", "No matching challenges": "No hay retos que coincidan", "Try another search.": "Prueba otra búsqueda.",
+  "Install your first challenge": "Importa tu primer reto", "Choose an kerCAD challenge ZIP from your computer.": "Elige un archivo ZIP de reto kerCAD desde tu ordenador.", "No matching challenges": "No hay retos que coincidan", "Try another search.": "Prueba otra búsqueda.",
   "Import project": "Importar proyecto", "Search projects": "Buscar proyectos", "Sort projects": "Ordenar proyectos", "Create new 3D design": "Crear nuevo diseño 3D", "Start with an empty workplane": "Empieza con un plano de trabajo vacío", "Empty design": "Diseño vacío",
   "{count} object": "{count} objeto", "{count} objects": "{count} objetos", "{count} operation": "{count} operación", "{count} operations": "{count} operaciones",
   "Rename {name}": "Cambiar nombre de {name}", "Rename project": "Cambiar nombre del proyecto", "Delete {name}": "Eliminar {name}", "Delete project": "Eliminar proyecto", "Delete project?": "¿Eliminar proyecto?", "Delete": "Eliminar", "Cancel": "Cancelar", "Name": "Nombre", "OK": "Aceptar",
@@ -27,7 +27,7 @@ const es = {
 } as const;
 
 export type DashboardTranslationKey = keyof typeof es;
-export function dashboardTranslate(locale: EducadLocale, key: DashboardTranslationKey, values: Record<string, string | number> = {}) {
+export function dashboardTranslate(locale: KercadLocale, key: DashboardTranslationKey, values: Record<string, string | number> = {}) {
   const text = locale === "es" ? es[key] : key;
   return text.replace(/\{(\w+)\}/g, (placeholder, name: string) => String(values[name] ?? placeholder));
 }

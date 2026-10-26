@@ -5,17 +5,17 @@
   <key>CFBundleDevelopmentRegion</key>
   <string>en</string>
   <key>CFBundleDisplayName</key>
-  <string>eduCAD</string>
+  <string>kerCAD</string>
   <key>CFBundleExecutable</key>
-  <string>eduCAD</string>
+  <string>kerCAD</string>
   <key>CFBundleIconFile</key>
   <string>AppIcon.icns</string>
   <key>CFBundleIdentifier</key>
-  <string>org.educad.desktop</string>
+  <string>org.kercad.desktop</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundleName</key>
-  <string>eduCAD</string>
+  <string>kerCAD</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>

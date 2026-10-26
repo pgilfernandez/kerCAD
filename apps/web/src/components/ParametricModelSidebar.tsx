@@ -29,7 +29,7 @@ import { ToolbarBooleanModeIcon, ToolbarChamferIcon, ToolbarFilletIcon } from "@
 import { useAccessibleDialog } from "@/components/useAccessibleDialog";
 import { displayLengthToMillimeters, displayUnitLabel, millimetersToDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
 import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
-import { educadTranslate, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
+import { kercadTranslate, type KercadLocale, type KercadTranslationKey } from "@/lib/kercadI18n";
 import type { ParametricAnnotation, ParametricDocument, ParametricFeature, ParametricObject } from "@/types/parametric";
 import { annotationAngleGeometry, annotationPosition, type AnnotationPoint } from "@/lib/annotationGeometry";
 
@@ -38,10 +38,10 @@ export type ModelSidebarMode = "normal" | "simplified";
 export type ModelTreeSelection = ParametricTreeSelection;
 
 const NumericStepContext = createContext({ input: 0.5, slider: 0.1, displayUnit: "mm" as ParametricDisplayUnit });
-const LocaleContext = createContext<EducadLocale>("en");
+const LocaleContext = createContext<KercadLocale>("en");
 const useSidebarTranslation = () => {
   const locale = useContext(LocaleContext);
-  return (key: EducadTranslationKey) => educadTranslate(locale, key);
+  return (key: KercadTranslationKey) => kercadTranslate(locale, key);
 };
 
 const englishSidebarLiterals: Record<string, string> = {
@@ -59,7 +59,7 @@ const englishSidebarLiterals: Record<string, string> = {
   "Opacidad": "Opacity", "Visualización": "Display", "Seleccionable": "Selectable", "Color": "Color",
 };
 
-function localizedSidebarLiteral(locale: EducadLocale, text: string) {
+function localizedSidebarLiteral(locale: KercadLocale, text: string) {
   return locale === "en" ? englishSidebarLiterals[text] ?? text : text;
 }
 
@@ -79,7 +79,7 @@ type Props = {
   failedFeatureId?: string | null;
   gridStep: number;
   displayUnit?: ParametricDisplayUnit;
-  locale?: EducadLocale;
+  locale?: KercadLocale;
   onSelectionChange: (selection: ModelTreeSelection[]) => void;
   alignmentReference?: ModelTreeSelection | null;
   onAlignmentSelect?: (node: ModelTreeSelection) => void;
@@ -184,7 +184,7 @@ export function ParametricModelSidebar({
   const primarySelection = selection.at(-1) ?? null;
   const selectedId = primarySelection?.id ?? null;
   const selectionKind = primarySelection?.kind ?? "object";
-  const t = (key: EducadTranslationKey) => educadTranslate(locale, key);
+  const t = (key: KercadTranslationKey) => kercadTranslate(locale, key);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -258,21 +258,21 @@ export function ParametricModelSidebar({
 
   return (
     <LocaleContext.Provider value={locale}><NumericStepContext.Provider value={{ input: Math.max(0.0001, gridStep / 2), slider: Math.max(0.0001, gridStep / 10), displayUnit }}><>
-    <aside className={`educad-model-sidebar ${mode}`} aria-label={educadTranslate(locale, "model.label")}>
-        <section className="educad-model-tree">
-          <div ref={objectListRef} className="educad-object-list">
+    <aside className={`kercad-model-sidebar ${mode}`} aria-label={kercadTranslate(locale, "model.label")}>
+        <section className="kercad-model-tree">
+          <div ref={objectListRef} className="kercad-object-list">
             {rootNodes.map((object) => {
               if (!object) return (
-                <div className="educad-object-node" key={ANNOTATIONS_GROUP_ID}>
-                  <div className={`educad-object-row ${annotationGroupSelected ? "selected" : ""} ${annotationsVisible ? "" : "hidden"}`}>
-                    <button className="educad-tree-toggle" aria-label={t("annotation.group")} aria-expanded={annotationsExpanded} onClick={() => onUpdateAnnotationGroup?.({ expanded: !annotationsExpanded })}><OperationTreeIcon file={annotationsExpanded ? "expanded" : "collapsed"} size={16} /></button>
-                    <button className="educad-object-select" title={t("annotation.group")} aria-pressed={annotationGroupSelected} onClick={() => onSelectAnnotation?.(ANNOTATIONS_GROUP_ID)}><AnnotationIcon kind="group" /><span><strong>{t("annotation.group")}</strong></span></button>
-                    <div className="educad-tree-actions"><button title={annotationsVisible ? t("model.hide") : t("model.show")} aria-label={`${annotationsVisible ? t("model.hide") : t("model.show")} ${t("annotation.group")}`} aria-pressed={!annotationsVisible} onClick={() => onUpdateAnnotationGroup?.({ visible: !annotationsVisible })}><OperationTreeIcon file={annotationsVisible ? "visible" : "hidden"} size={15} /></button></div>
+                <div className="kercad-object-node" key={ANNOTATIONS_GROUP_ID}>
+                  <div className={`kercad-object-row ${annotationGroupSelected ? "selected" : ""} ${annotationsVisible ? "" : "hidden"}`}>
+                    <button className="kercad-tree-toggle" aria-label={t("annotation.group")} aria-expanded={annotationsExpanded} onClick={() => onUpdateAnnotationGroup?.({ expanded: !annotationsExpanded })}><OperationTreeIcon file={annotationsExpanded ? "expanded" : "collapsed"} size={16} /></button>
+                    <button className="kercad-object-select" title={t("annotation.group")} aria-pressed={annotationGroupSelected} onClick={() => onSelectAnnotation?.(ANNOTATIONS_GROUP_ID)}><AnnotationIcon kind="group" /><span><strong>{t("annotation.group")}</strong></span></button>
+                    <div className="kercad-tree-actions"><button title={annotationsVisible ? t("model.hide") : t("model.show")} aria-label={`${annotationsVisible ? t("model.hide") : t("model.show")} ${t("annotation.group")}`} aria-pressed={!annotationsVisible} onClick={() => onUpdateAnnotationGroup?.({ visible: !annotationsVisible })}><OperationTreeIcon file={annotationsVisible ? "visible" : "hidden"} size={15} /></button></div>
                   </div>
-                  {annotationsExpanded && <div className="educad-operation-list" role="group" aria-label={t("annotation.group")}>
-                    {document.annotations?.map((annotation) => <div key={annotation.id} className={`educad-operation-row ${selectedAnnotationId === annotation.id ? "selected" : ""} ${annotation.visible ? "" : "hidden"}`}>
-                      <button className="educad-operation-select" title={annotation.name} aria-pressed={selectedAnnotationId === annotation.id} onClick={() => onSelectAnnotation?.(annotation.id)}><span className="educad-tree-branch" aria-hidden="true" /><AnnotationIcon kind={annotation.kind} /><span className="educad-operation-name"><strong>{annotation.name}</strong></span></button>
-                      <div className="educad-tree-actions"><button aria-pressed={!annotation.visible} title={annotation.visible ? t("model.hide") : t("model.show")} aria-label={annotation.visible ? t("model.hide") : t("model.show")} onClick={() => onUpdateAnnotation?.(annotation.id, (draft) => { draft.visible = !draft.visible; })}><OperationTreeIcon file={annotation.visible ? "visible" : "hidden"} size={15} /></button></div>
+                  {annotationsExpanded && <div className="kercad-operation-list" role="group" aria-label={t("annotation.group")}>
+                    {document.annotations?.map((annotation) => <div key={annotation.id} className={`kercad-operation-row ${selectedAnnotationId === annotation.id ? "selected" : ""} ${annotation.visible ? "" : "hidden"}`}>
+                      <button className="kercad-operation-select" title={annotation.name} aria-pressed={selectedAnnotationId === annotation.id} onClick={() => onSelectAnnotation?.(annotation.id)}><span className="kercad-tree-branch" aria-hidden="true" /><AnnotationIcon kind={annotation.kind} /><span className="kercad-operation-name"><strong>{annotation.name}</strong></span></button>
+                      <div className="kercad-tree-actions"><button aria-pressed={!annotation.visible} title={annotation.visible ? t("model.hide") : t("model.show")} aria-label={annotation.visible ? t("model.hide") : t("model.show")} onClick={() => onUpdateAnnotation?.(annotation.id, (draft) => { draft.visible = !draft.visible; })}><OperationTreeIcon file={annotation.visible ? "visible" : "hidden"} size={15} /></button></div>
                     </div>)}
                   </div>}
                 </div>
@@ -281,35 +281,35 @@ export function ParametricModelSidebar({
               const isExpanded = !isImage && object.object.expanded;
               const objectSelected = selection.some((candidate) => candidate.kind === "object" && candidate.id === object.id);
               return (
-                <div className="educad-object-node" key={object.id}>
-                  <div className={`educad-object-row ${alignmentClass(object.id, "object")} ${objectSelected ? "selected" : ""} ${object.object.visible ? "" : "hidden"} ${object.object.locked ? "locked" : ""}`} style={{ "--object-color": object.object.color } as CSSProperties}>
-                    {isImage ? <span className="educad-tree-toggle-spacer" aria-hidden="true" /> : <button
-                      className="educad-tree-toggle"
+                <div className="kercad-object-node" key={object.id}>
+                  <div className={`kercad-object-row ${alignmentClass(object.id, "object")} ${objectSelected ? "selected" : ""} ${object.object.visible ? "" : "hidden"} ${object.object.locked ? "locked" : ""}`} style={{ "--object-color": object.object.color } as CSSProperties}>
+                    {isImage ? <span className="kercad-tree-toggle-spacer" aria-hidden="true" /> : <button
+                      className="kercad-tree-toggle"
                       aria-label={`${isExpanded ? t("model.collapse") : t("model.expand")} ${object.name}`}
                       aria-expanded={isExpanded}
                       onClick={() => onUpdateObject(object.id, (draft) => { draft.expanded = !draft.expanded; })}
                     >
                       {isExpanded ? <OperationTreeIcon file="expanded" size={16} /> : <OperationTreeIcon file="collapsed" size={16} />}
                     </button>}
-                    <button className="educad-object-select" title={object.name} aria-pressed={objectSelected} onClick={(event) => selectNode({ id: object.id, kind: "object" }, event)}>
-                      {isImage ? <OperationTreeIcon file="imported-img" size={17} /> : object.object.referenceMesh ? <OperationTreeIcon file="imported-step" size={17} /> : <OperationTreeIcon file="box" className="educad-object-color-icon" size={17} />}
+                    <button className="kercad-object-select" title={object.name} aria-pressed={objectSelected} onClick={(event) => selectNode({ id: object.id, kind: "object" }, event)}>
+                      {isImage ? <OperationTreeIcon file="imported-img" size={17} /> : object.object.referenceMesh ? <OperationTreeIcon file="imported-step" size={17} /> : <OperationTreeIcon file="box" className="kercad-object-color-icon" size={17} />}
                       <span><strong>{object.name}</strong></span>
                     </button>
-                    <div className="educad-tree-actions">
+                    <div className="kercad-tree-actions">
                       <button aria-label={`${object.object.visible ? t("model.hide") : t("model.show")} ${object.name}`} title={object.object.visible ? t("model.hide") : t("model.show")} aria-pressed={!object.object.visible} onClick={() => onUpdateObject(object.id, (draft) => { draft.visible = !draft.visible; })}>{object.object.visible ? <OperationTreeIcon file="visible" size={15} /> : <OperationTreeIcon file="hidden" size={15} />}</button>
                       <button aria-label={`${object.object.locked ? t("model.unlock") : t("model.lock")} ${object.name}`} title={object.object.locked ? t("model.unlock") : t("model.lock")} aria-pressed={object.object.locked} onClick={() => onUpdateObject(object.id, (draft) => { draft.locked = !draft.locked; })}>{object.object.locked ? <OperationTreeIcon file="locked" size={15} /> : <OperationTreeIcon file="unlocked" size={15} />}</button>
                     </div>
                   </div>
                   {isExpanded ? (
-                    <div className="educad-operation-list" role="group" aria-label={`${t("model.operationsFor")} ${object.name}`}>
+                    <div className="kercad-operation-list" role="group" aria-label={`${t("model.operationsFor")} ${object.name}`}>
                       {object.operations.map((feature) => (
-                        <div key={feature.id} aria-invalid={feature.id === failedFeatureId || undefined} className={`educad-operation-row ${alignmentClass(feature.id, "feature")} ${selection.some((candidate) => candidate.kind === "feature" && candidate.id === feature.id) ? "selected" : ""} ${feature.id === failedFeatureId ? "rebuild-failed" : ""} ${feature.suppressed ? "suppressed" : ""} ${feature.kind === "sketch" && !feature.visible ? "hidden" : ""} ${operationClass(feature)}`}>
-                          <button className="educad-operation-select" title={feature.name} aria-pressed={selection.some((candidate) => candidate.kind === "feature" && candidate.id === feature.id)} onClick={(event) => selectNode({ id: feature.id, kind: "feature" }, event)}>
-                            <span className="educad-tree-branch" aria-hidden="true" />
+                        <div key={feature.id} aria-invalid={feature.id === failedFeatureId || undefined} className={`kercad-operation-row ${alignmentClass(feature.id, "feature")} ${selection.some((candidate) => candidate.kind === "feature" && candidate.id === feature.id) ? "selected" : ""} ${feature.id === failedFeatureId ? "rebuild-failed" : ""} ${feature.suppressed ? "suppressed" : ""} ${feature.kind === "sketch" && !feature.visible ? "hidden" : ""} ${operationClass(feature)}`}>
+                          <button className="kercad-operation-select" title={feature.name} aria-pressed={selection.some((candidate) => candidate.kind === "feature" && candidate.id === feature.id)} onClick={(event) => selectNode({ id: feature.id, kind: "feature" }, event)}>
+                            <span className="kercad-tree-branch" aria-hidden="true" />
                             <FeatureIcon document={document} feature={feature} />
-                            <span className="educad-operation-name"><strong>{feature.name}</strong></span>
+                            <span className="kercad-operation-name"><strong>{feature.name}</strong></span>
                           </button>
-                          <div className="educad-tree-actions">
+                          <div className="kercad-tree-actions">
                             {feature.kind === "sketch" ? <button aria-label={`${feature.visible ? t("model.hide") : t("model.show")} ${feature.name}`} title={feature.visible ? t("model.hideSketch") : t("model.showSketch")} aria-pressed={!feature.visible} onClick={() => onUpdateFeature(feature.id, (draft) => { if (draft.kind === "sketch") draft.visible = !draft.visible; })}>{feature.visible ? <OperationTreeIcon file="visible" size={15} /> : <OperationTreeIcon file="hidden" size={15} />}</button> : null}
                             <button aria-label={`${feature.suppressed ? t("model.activate") : t("model.suppress")} ${feature.name}`} title={feature.suppressed ? t("model.activate") : t("model.suppress")} aria-pressed={feature.suppressed} onClick={() => onUpdateFeature(feature.id, (draft) => { draft.suppressed = !draft.suppressed; })}><OperationTreeIcon file="suppressed" size={15} /></button>
                           </div>
@@ -323,42 +323,42 @@ export function ParametricModelSidebar({
           </div>
         </section>
 
-      {mode === "normal" ? <div className="educad-tree-toolbar" role="toolbar" aria-label={t("model.treeActions")}>
+      {mode === "normal" ? <div className="kercad-tree-toolbar" role="toolbar" aria-label={t("model.treeActions")}>
         <button disabled={!(selectedAnnotation ? canReorderAnnotation(document, selectedAnnotation.id, "up") : canReorderParametricSelection(document, reorderSelection, "up"))} aria-label={t("model.moveUp")} title={t("model.moveUp")} onClick={() => onReorderSelection("up")}><ArrowUp size={16} /></button>
         <button disabled={!(selectedAnnotation ? canReorderAnnotation(document, selectedAnnotation.id, "down") : canReorderParametricSelection(document, reorderSelection, "down"))} aria-label={t("model.moveDown")} title={t("model.moveDown")} onClick={() => onReorderSelection("down")}><ArrowDown size={16} /></button>
-        <span className="educad-tree-toolbar-separator" aria-hidden="true" />
+        <span className="kercad-tree-toolbar-separator" aria-hidden="true" />
         <button disabled={selection.length === 0 && !selectedAnnotation} aria-label={t("common.rename")} title={t("common.rename")} onClick={beginRename}><Pencil size={15} /></button>
         <button disabled={!selectedFeature || !canResetParametricFeature(selectedFeature)} aria-label={t("operation.reset")} title={t("operation.reset")} onClick={() => selectedFeature && onResetFeature(selectedFeature.id)}><RotateCcw size={16} /></button>
-        <button className="educad-origin-tree-button" disabled={!selectedObject || selectedObject.locked} aria-label={t("model.editOrigin")} title={t("model.editOrigin")} aria-pressed={Boolean(selectedObject && editingOriginObjectId === selectedObject.id)} onClick={() => selectedObject && onToggleOriginEdit(selectedObject.id)}><Crosshair size={16} /></button>
-        <span className="educad-tree-toolbar-separator" aria-hidden="true" />
+        <button className="kercad-origin-tree-button" disabled={!selectedObject || selectedObject.locked} aria-label={t("model.editOrigin")} title={t("model.editOrigin")} aria-pressed={Boolean(selectedObject && editingOriginObjectId === selectedObject.id)} onClick={() => selectedObject && onToggleOriginEdit(selectedObject.id)}><Crosshair size={16} /></button>
+        <span className="kercad-tree-toolbar-separator" aria-hidden="true" />
         <button className="danger" disabled={selection.length === 0 && !selectedAnnotation && !annotationGroupSelected} aria-label={t("common.delete")} title={t("common.delete")} onClick={onDeleteSelection}><Trash2 size={16} /></button>
       </div> : null}
 
-      {mode === "normal" ? <section className="educad-sidebar-editor">
+      {mode === "normal" ? <section className="kercad-sidebar-editor">
         {selectedAnnotation ? <AnnotationProperties annotation={selectedAnnotation} onUpdate={(update) => onUpdateAnnotation?.(selectedAnnotation.id, update)} /> : revolveDraft ? (
-          <div className="educad-feature-inspector educad-edge-treatment-draft" aria-label={t("operation.previewRevolve")}>
-            <div className="educad-feature-card"><h3>{revolveDraft.editing ? t("operation.edit") : t("operation.new")}</h3><label><span>{t("property.type")}</span><select value={revolveDraft.operation} onChange={(event) => onRevolveDraftChange({ operation: event.target.value as typeof revolveDraft.operation })}><option value="add">{t("model.add")}</option><option value="cut">{t("model.hole")}</option><option value="intersect">{t("model.common")}</option></select></label><label><span>{t("property.axis")}</span><select value={revolveDraft.axis} onChange={(event) => onRevolveDraftChange({ axis: event.target.value as typeof revolveDraft.axis })}><option value="x">{t("value.localX")}</option><option value="y">{t("value.localY")}</option><option value="z">{t("value.localZ")}</option><option value="edge" disabled={revolveDraft.edgeCount !== 1}>{t("operation.selectedEdge")}</option></select></label><BoundedNumberField label={t("property.angle")} value={revolveDraft.angle} min={-360} max={360} step={1} unit="°" onChange={(angle) => onRevolveDraftChange({ angle: Math.abs(angle) < 1 ? (angle < 0 ? -1 : 1) : angle })} /></div>
-            <div className="educad-topology-selection-actions"><button type="button" onClick={onCancelRevolve}>{t("common.cancel")}</button><button type="button" className="primary" disabled={revolveDraft.faceCount !== 1 || (revolveDraft.axis === "edge" && revolveDraft.edgeCount !== 1)} onClick={onAcceptRevolve}>{t("common.accept")}</button></div><p className="educad-topology-selection-count">{t("operation.faceAxis")}: {revolveDraft.faceCount} / {revolveDraft.edgeCount}</p>
+          <div className="kercad-feature-inspector kercad-edge-treatment-draft" aria-label={t("operation.previewRevolve")}>
+            <div className="kercad-feature-card"><h3>{revolveDraft.editing ? t("operation.edit") : t("operation.new")}</h3><label><span>{t("property.type")}</span><select value={revolveDraft.operation} onChange={(event) => onRevolveDraftChange({ operation: event.target.value as typeof revolveDraft.operation })}><option value="add">{t("model.add")}</option><option value="cut">{t("model.hole")}</option><option value="intersect">{t("model.common")}</option></select></label><label><span>{t("property.axis")}</span><select value={revolveDraft.axis} onChange={(event) => onRevolveDraftChange({ axis: event.target.value as typeof revolveDraft.axis })}><option value="x">{t("value.localX")}</option><option value="y">{t("value.localY")}</option><option value="z">{t("value.localZ")}</option><option value="edge" disabled={revolveDraft.edgeCount !== 1}>{t("operation.selectedEdge")}</option></select></label><BoundedNumberField label={t("property.angle")} value={revolveDraft.angle} min={-360} max={360} step={1} unit="°" onChange={(angle) => onRevolveDraftChange({ angle: Math.abs(angle) < 1 ? (angle < 0 ? -1 : 1) : angle })} /></div>
+            <div className="kercad-topology-selection-actions"><button type="button" onClick={onCancelRevolve}>{t("common.cancel")}</button><button type="button" className="primary" disabled={revolveDraft.faceCount !== 1 || (revolveDraft.axis === "edge" && revolveDraft.edgeCount !== 1)} onClick={onAcceptRevolve}>{t("common.accept")}</button></div><p className="kercad-topology-selection-count">{t("operation.faceAxis")}: {revolveDraft.faceCount} / {revolveDraft.edgeCount}</p>
           </div>
         ) : shellDraft ? (
-          <div className="educad-feature-inspector educad-edge-treatment-draft" aria-label={t("operation.previewShell")}>
-            <div className="educad-feature-card"><h3>{shellDraft.editing ? t("operation.edit") : t("operation.new")}</h3><div className="educad-operation-mode-property"><div className="educad-operation-mode-buttons"><ShellCornerButtons value={shellDraft.cornerType} locale={locale} onChange={onShellCornerTypeChange} /></div></div><BoundedNumberField label={t("property.thickness")} value={shellDraft.thickness} min={0.01} max={50} onChange={onShellDraftChange} /></div>
-            <div className="educad-topology-selection-actions"><button type="button" onClick={onCancelShell}>{t("common.cancel")}</button><button type="button" className="primary" disabled={shellDraft.faceCount === 0} onClick={onAcceptShell}>{t("common.accept")}</button></div>
-            <p className="educad-topology-selection-count">{t("operation.openFaces")}: {shellDraft.faceCount}</p>
+          <div className="kercad-feature-inspector kercad-edge-treatment-draft" aria-label={t("operation.previewShell")}>
+            <div className="kercad-feature-card"><h3>{shellDraft.editing ? t("operation.edit") : t("operation.new")}</h3><div className="kercad-operation-mode-property"><div className="kercad-operation-mode-buttons"><ShellCornerButtons value={shellDraft.cornerType} locale={locale} onChange={onShellCornerTypeChange} /></div></div><BoundedNumberField label={t("property.thickness")} value={shellDraft.thickness} min={0.01} max={50} onChange={onShellDraftChange} /></div>
+            <div className="kercad-topology-selection-actions"><button type="button" onClick={onCancelShell}>{t("common.cancel")}</button><button type="button" className="primary" disabled={shellDraft.faceCount === 0} onClick={onAcceptShell}>{t("common.accept")}</button></div>
+            <p className="kercad-topology-selection-count">{t("operation.openFaces")}: {shellDraft.faceCount}</p>
           </div>
         ) : faceExtrudeDraft ? (
-          <div className="educad-feature-inspector educad-edge-treatment-draft" aria-label={t("operation.previewFaceExtrude")}>
-            <div className="educad-feature-card"><h3>{faceExtrudeDraft.editing ? t("operation.edit") : t("operation.new")}</h3><label><span>{t("property.type")}</span><select value={faceExtrudeDraft.operation} onChange={(event) => onFaceExtrudeDraftChange({ operation: event.target.value as "add" | "cut" })}><option value="add">{t("model.add")}</option><option value="cut">{t("model.hole")}</option></select></label><BoundedNumberField label={t("property.length")} value={faceExtrudeDraft.distance} min={0.01} max={200} onChange={(distance) => onFaceExtrudeDraftChange({ distance })} /></div>
-            <div className="educad-topology-selection-actions"><button type="button" onClick={onCancelFaceExtrude}>{t("common.cancel")}</button><button type="button" className="primary" disabled={faceExtrudeDraft.faceCount !== 1} onClick={onAcceptFaceExtrude}>{t("common.accept")}</button></div>
+          <div className="kercad-feature-inspector kercad-edge-treatment-draft" aria-label={t("operation.previewFaceExtrude")}>
+            <div className="kercad-feature-card"><h3>{faceExtrudeDraft.editing ? t("operation.edit") : t("operation.new")}</h3><label><span>{t("property.type")}</span><select value={faceExtrudeDraft.operation} onChange={(event) => onFaceExtrudeDraftChange({ operation: event.target.value as "add" | "cut" })}><option value="add">{t("model.add")}</option><option value="cut">{t("model.hole")}</option></select></label><BoundedNumberField label={t("property.length")} value={faceExtrudeDraft.distance} min={0.01} max={200} onChange={(distance) => onFaceExtrudeDraftChange({ distance })} /></div>
+            <div className="kercad-topology-selection-actions"><button type="button" onClick={onCancelFaceExtrude}>{t("common.cancel")}</button><button type="button" className="primary" disabled={faceExtrudeDraft.faceCount !== 1} onClick={onAcceptFaceExtrude}>{t("common.accept")}</button></div>
           </div>
         ) : edgeTreatmentDraft ? (
-          <div className="educad-feature-inspector educad-edge-treatment-draft" aria-label={t("operation.previewTopology")}>
-            <div className="educad-feature-card"><h3>{edgeTreatmentDraft.editing ? t("operation.edit") : t("operation.new")}</h3><EdgeTreatmentButtons value={edgeTreatmentDraft.treatment} onChange={(treatment) => onEdgeTreatmentDraftChange({ treatment })} /><BoundedNumberField label={edgeTreatmentDraft.treatment === "chamfer" ? t("property.distance") : t("property.radius")} value={edgeTreatmentDraft.radius} min={0.01} max={50} onChange={(radius) => onEdgeTreatmentDraftChange({ radius })} /></div>
-            <div className="educad-topology-selection-actions"><button type="button" onClick={onCancelEdgeTreatment}>{t("common.cancel")}</button><button type="button" className="primary" disabled={edgeTreatmentDraft.faceCount + edgeTreatmentDraft.edgeCount === 0} onClick={onAcceptEdgeTreatment}>{t("common.accept")}</button></div>
-            <p className="educad-topology-selection-count">{t("operation.facesEdges")}: {edgeTreatmentDraft.faceCount} / {edgeTreatmentDraft.edgeCount}</p>
+          <div className="kercad-feature-inspector kercad-edge-treatment-draft" aria-label={t("operation.previewTopology")}>
+            <div className="kercad-feature-card"><h3>{edgeTreatmentDraft.editing ? t("operation.edit") : t("operation.new")}</h3><EdgeTreatmentButtons value={edgeTreatmentDraft.treatment} onChange={(treatment) => onEdgeTreatmentDraftChange({ treatment })} /><BoundedNumberField label={edgeTreatmentDraft.treatment === "chamfer" ? t("property.distance") : t("property.radius")} value={edgeTreatmentDraft.radius} min={0.01} max={50} onChange={(radius) => onEdgeTreatmentDraftChange({ radius })} /></div>
+            <div className="kercad-topology-selection-actions"><button type="button" onClick={onCancelEdgeTreatment}>{t("common.cancel")}</button><button type="button" className="primary" disabled={edgeTreatmentDraft.faceCount + edgeTreatmentDraft.edgeCount === 0} onClick={onAcceptEdgeTreatment}>{t("common.accept")}</button></div>
+            <p className="kercad-topology-selection-count">{t("operation.facesEdges")}: {edgeTreatmentDraft.faceCount} / {edgeTreatmentDraft.edgeCount}</p>
           </div>
         ) : selection.length > 1 ? (
-          <div className="educad-no-selection educad-multi-selection"><Layers3 size={28} /><strong>{selection.length} {t("model.selected")}</strong><span>{selection.filter((item) => item.kind === "object").length} {t("model.objects")} · {selection.filter((item) => item.kind === "feature").length} {t("model.operations")}</span><small>{t("model.multiSelectionHint")}</small></div>
+          <div className="kercad-no-selection kercad-multi-selection"><Layers3 size={28} /><strong>{selection.length} {t("model.selected")}</strong><span>{selection.filter((item) => item.kind === "object").length} {t("model.objects")} · {selection.filter((item) => item.kind === "feature").length} {t("model.operations")}</span><small>{t("model.multiSelectionHint")}</small></div>
         ) : selectedObject ? (
           <ParametricObjectInspector object={selectedObject} onUpdate={(update) => onUpdateObject(selectedObject.id, update)} />
         ) : selectedFeature ? (
@@ -375,14 +375,14 @@ export function ParametricModelSidebar({
             onEditMirrorPlane={onEditMirrorPlane}
           />
         ) : (
-          <div className="educad-no-selection"><Layers3 size={28} /><strong>{t("model.noSelection")}</strong><span>{t("model.noSelectionHint")}</span></div>
+          <div className="kercad-no-selection"><Layers3 size={28} /><strong>{t("model.noSelection")}</strong><span>{t("model.noSelectionHint")}</span></div>
         )}
       </section> : null}
     </aside>
     {renameOpen ? (
-      <div className="educad-dialog-backdrop" role="presentation" onPointerDown={closeRename}>
-        <form ref={renameDialogRef} className="educad-rename-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-rename-title" tabIndex={-1} onPointerDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); commitRename(); }}>
-          <header><strong id="educad-rename-title">{t("model.renameTitle")}</strong><button type="button" aria-label={t("common.cancel")} onClick={closeRename}><X size={18} /></button></header>
+      <div className="kercad-dialog-backdrop" role="presentation" onPointerDown={closeRename}>
+        <form ref={renameDialogRef} className="kercad-rename-dialog" role="dialog" aria-modal="true" aria-labelledby="kercad-rename-title" tabIndex={-1} onPointerDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); commitRename(); }}>
+          <header><strong id="kercad-rename-title">{t("model.renameTitle")}</strong><button type="button" aria-label={t("common.cancel")} onClick={closeRename}><X size={18} /></button></header>
           <label><span>{selection.length > 1 ? t("model.commonName") : t("model.name")}</span><input ref={renameInputRef} autoFocus value={renameDraft} maxLength={80} placeholder={selection.length > 1 ? t("model.applyCommonName") : undefined} onChange={(event) => setRenameDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") closeRename(); }} /></label>
           <footer><button type="button" onClick={closeRename}>{t("common.cancel")}</button><button className="primary" type="submit" disabled={!renameDraft.trim()}>{t("common.accept")}</button></footer>
         </form>
@@ -399,11 +399,11 @@ function AnnotationProperties({ annotation, onUpdate }: { annotation: Parametric
   const position = (key: "position" | AnnotationPoint, title: string) => {
     const point = annotationPosition(annotation, key === "position" ? null : key);
     if (!point) return null;
-    return <details className="educad-transform-section"><summary><ChevronRight size={16} /><span>{title}</span></summary><div><TransformGroup label={title} showHeading={false} values={point} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { const target = annotationPosition(draft, key === "position" ? null : key); if (target) target[axis] = value; })} /></div></details>;
+    return <details className="kercad-transform-section"><summary><ChevronRight size={16} /><span>{title}</span></summary><div><TransformGroup label={title} showHeading={false} values={point} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { const target = annotationPosition(draft, key === "position" ? null : key); if (target) target[axis] = value; })} /></div></details>;
   };
-  return <div className="educad-feature-inspector educad-annotation-properties">
+  return <div className="kercad-feature-inspector kercad-annotation-properties">
     {annotation.kind === "dimension" && <AnnotationColorPicker color={annotation.color ?? "#233c52"} onChange={(color) => onUpdate((draft) => { if (draft.kind === "dimension") draft.color = color; })} />}
-    <div className="educad-feature-card">
+    <div className="kercad-feature-card">
     {annotation.kind !== "text" && annotation.kind !== "circle" && <label><span>{t("annotation.size")}</span><DeferredNumberInput value={annotation.size ?? 3} min={0.1} max={1000} step={steps.input} unit="mm" onCommit={(value) => onUpdate((draft) => { if (draft.kind !== "text" && draft.kind !== "circle") draft.size = value; })} /></label>}
     {annotation.kind === "circle" && <>
       <AnnotationColorPicker color={annotation.color} onChange={(color) => onUpdate((draft) => { if (draft.kind === "circle") draft.color = color; })} />
@@ -413,7 +413,7 @@ function AnnotationProperties({ annotation, onUpdate }: { annotation: Parametric
     </>}
     {annotation.kind === "angle" && <AnnotationColorPicker color={annotation.color ?? "#233c52"} onChange={(color) => onUpdate((draft) => { if (draft.kind === "angle") draft.color = color; })} />}
     {annotation.kind === "dimension" && <>
-      <div className="sketch-annotation-context-toolbar embedded educad-annotation-dimension-controls" role="group" aria-label={t("annotation.dimension")}>
+      <div className="sketch-annotation-context-toolbar embedded kercad-annotation-dimension-controls" role="group" aria-label={t("annotation.dimension")}>
         <AnnotationEndSelector side="start" value={annotationEnding(annotation, "start")} locale={locale} onChange={(value) => onUpdate((draft) => setAnnotationEnding(draft, "start", value))} />
         <AnnotationEndSelector side="end" value={annotationEnding(annotation, "end")} locale={locale} onChange={(value) => onUpdate((draft) => setAnnotationEnding(draft, "end", value))} />
         <button type="button" className={annotation.lineStyle === "dashed" ? "active" : ""} aria-pressed={annotation.lineStyle === "dashed"} title={t("annotation.dashed")} aria-label={t("annotation.dashed")} onClick={() => onUpdate((draft) => { if (draft.kind === "dimension") draft.lineStyle = draft.lineStyle === "dashed" ? "solid" : "dashed"; })}><AnnotationIcon size={34} kind="dashedLine" /></button>
@@ -450,18 +450,18 @@ function AnnotationColorPicker({ color, onChange }: { color: string; onChange: (
     window.document.addEventListener("keydown", closeOnEscape);
     return () => { window.document.removeEventListener("pointerdown", closeOutside); window.document.removeEventListener("keydown", closeOnEscape); };
   }, [open]);
-  return <div ref={panel} className="educad-feature-card educad-object-appearance">
-    <button className="educad-color-trigger" aria-label={t("property.color")} aria-expanded={open} title={t("property.color")} onClick={() => setOpen(!open)}><span>{t("property.color")}</span><span className="educad-color-preview" style={{ "--object-color": color } as CSSProperties} /><strong>{color.toUpperCase()}</strong><ChevronDown size={15} /></button>
-    {open && <div className="educad-color-palette">
+  return <div ref={panel} className="kercad-feature-card kercad-object-appearance">
+    <button className="kercad-color-trigger" aria-label={t("property.color")} aria-expanded={open} title={t("property.color")} onClick={() => setOpen(!open)}><span>{t("property.color")}</span><span className="kercad-color-preview" style={{ "--object-color": color } as CSSProperties} /><strong>{color.toUpperCase()}</strong><ChevronDown size={15} /></button>
+    {open && <div className="kercad-color-palette">
       {OBJECT_COLOR_PALETTE.map((entry) => <button key={entry} className={color.toLowerCase() === entry ? "selected" : ""} aria-label={`${t("property.color")} ${entry}`} title={entry.toUpperCase()} style={{ "--object-color": entry } as CSSProperties} onClick={() => { onChange(entry); setOpen(false); }} />)}
-      <label className="educad-custom-color" title={t("property.customColor")}><input type="color" aria-label={t("property.customColor")} value={color} onChange={(event) => onChange(event.target.value)} /><span aria-hidden="true">+</span></label>
+      <label className="kercad-custom-color" title={t("property.customColor")}><input type="color" aria-label={t("property.customColor")} value={color} onChange={(event) => onChange(event.target.value)} /><span aria-hidden="true">+</span></label>
     </div>}
   </div>;
 }
 
 function FeatureIcon({ document, feature }: { document: ParametricDocument; feature: ParametricFeature }) {
   const locale = useContext(LocaleContext);
-  const t = (key: EducadTranslationKey) => educadTranslate(locale, key);
+  const t = (key: KercadTranslationKey) => kercadTranslate(locale, key);
   if (feature.kind === "sketch") return <OperationTreeIcon file="sketch" className="sketch" size={16} role="img" aria-label={t("operation.sketch")} />;
   if (feature.kind === "extrude") {
     const sketch = sketchForExtrude(document, feature);
@@ -469,18 +469,18 @@ function FeatureIcon({ document, feature }: { document: ParametricDocument; feat
     const label = feature.operation === "cut" ? t("model.hole") : feature.operation === "intersect" ? t("model.common") : t("model.add");
     const generatedText = sketch?.profile.shape === "drawn" && sketch.profile.geometry.generator?.kind === "text";
     const shapeName = generatedText ? t("sketch.text") : localizedParametricOperationDefinition(sketch?.profile.shape === "circle" ? "cylinder" : "box", locale).name;
-    return <span className={`educad-operation-icon ${role}`} role="img" aria-label={`${shapeName}: ${label}`}>{generatedText ? <OperationTreeIcon file="text" size={17} /> : sketch?.profile.shape === "circle" ? <OperationTreeIcon file="cylinder" size={17} /> : <OperationTreeIcon file="box" size={17} />}<small aria-hidden="true"><OperationTreeIcon file={role === "add" ? "add" : role === "hole" ? "cut" : "common"} size={8} /></small></span>;
+    return <span className={`kercad-operation-icon ${role}`} role="img" aria-label={`${shapeName}: ${label}`}>{generatedText ? <OperationTreeIcon file="text" size={17} /> : sketch?.profile.shape === "circle" ? <OperationTreeIcon file="cylinder" size={17} /> : <OperationTreeIcon file="box" size={17} />}<small aria-hidden="true"><OperationTreeIcon file={role === "add" ? "add" : role === "hole" ? "cut" : "common"} size={8} /></small></span>;
   }
   if (feature.kind === "primitive") {
     const definition = localizedParametricOperationDefinition(feature.primitive, locale);
     const role = feature.operation === "cut" ? "hole" : feature.operation === "intersect" ? "common" : "add";
-    return <span className={`educad-operation-icon ${role}`} role="img" aria-label={`${definition.name}: ${definition.roles[feature.operation].label}`}><OperationTreeIcon file="circle" size={17} /><small aria-hidden="true"><OperationTreeIcon file={role === "add" ? "add" : role === "hole" ? "cut" : "common"} size={8} /></small></span>;
+    return <span className={`kercad-operation-icon ${role}`} role="img" aria-label={`${definition.name}: ${definition.roles[feature.operation].label}`}><OperationTreeIcon file="circle" size={17} /><small aria-hidden="true"><OperationTreeIcon file={role === "add" ? "add" : role === "hole" ? "cut" : "common"} size={8} /></small></span>;
   }
   if (feature.kind === "importedStep") return <OperationTreeIcon file="imported-step" className="imported-step" size={16} role="img" aria-label={t("operation.importedStep")} />;
   if (feature.kind === "hole") return <OperationTreeIcon file="hole" className="drill-hole" size={16} role="img" aria-label={t("operation.hole")} />;
-  if (feature.kind === "faceExtrude") return <span className={`educad-operation-icon ${feature.operation === "cut" ? "hole" : "add"}`} role="img" aria-label={feature.operation === "cut" ? t("operation.facePocket") : t("operation.faceExtrude")}><OperationTreeIcon file="box" size={17} /><small aria-hidden="true"><OperationTreeIcon file={feature.operation === "cut" ? "cut" : "add"} size={8} /></small></span>;
-  if (feature.kind === "shell") return <img className="educad-operation-asset-icon" src="/assets/educad/operations-tree/shell.svg" alt={t("toolbar.shell")} />;
-  if (feature.kind === "revolve") return <img className="educad-operation-asset-icon" src="/assets/educad/operations-tree/revolve.svg" alt={t("operation.revolve")} />;
+  if (feature.kind === "faceExtrude") return <span className={`kercad-operation-icon ${feature.operation === "cut" ? "hole" : "add"}`} role="img" aria-label={feature.operation === "cut" ? t("operation.facePocket") : t("operation.faceExtrude")}><OperationTreeIcon file="box" size={17} /><small aria-hidden="true"><OperationTreeIcon file={feature.operation === "cut" ? "cut" : "add"} size={8} /></small></span>;
+  if (feature.kind === "shell") return <img className="kercad-operation-asset-icon" src="/assets/kercad/operations-tree/shell.svg" alt={t("toolbar.shell")} />;
+  if (feature.kind === "revolve") return <img className="kercad-operation-asset-icon" src="/assets/kercad/operations-tree/revolve.svg" alt={t("operation.revolve")} />;
   if (feature.kind === "mirror") return <OperationTreeIcon file="mirror" className="mirror" size={16} role="img" aria-label={t("operation.mirror")} />;
   if (feature.kind === "linearPattern") return <OperationTreeIcon file="linear-pattern" className="linear-pattern" size={16} role="img" aria-label={t("operation.linearPattern")} />;
   if (feature.kind === "polarPattern") return <OperationTreeIcon file="polar-pattern" className="polar-pattern" size={16} role="img" aria-label={t("operation.polarPattern")} />;
@@ -513,18 +513,18 @@ function ParametricObjectInspector({
     return () => window.document.removeEventListener("pointerdown", closeOutside);
   }, [colorOpen]);
   return (
-    <div className="educad-feature-inspector educad-object-inspector">
-      {object.referenceMesh ? <div className="educad-feature-card">
-        <div className="educad-reference-display-controls" role="group" aria-label={t("property.display")}><ReferenceDisplayButtons value={object.referenceMesh.displayMode} locale={locale} onChange={(mode) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.displayMode = mode; })} /></div>
+    <div className="kercad-feature-inspector kercad-object-inspector">
+      {object.referenceMesh ? <div className="kercad-feature-card">
+        <div className="kercad-reference-display-controls" role="group" aria-label={t("property.display")}><ReferenceDisplayButtons value={object.referenceMesh.displayMode} locale={locale} onChange={(mode) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.displayMode = mode; })} /></div>
         <label><span>{t("property.opacity")}</span><DeferredNumberInput value={object.referenceMesh.opacity * 100} min={5} max={100} step={1} unit="%" onCommit={(value) => onUpdate((draft) => { if (draft.referenceMesh) draft.referenceMesh.opacity = value / 100; })} /></label>
       </div> : null}
-      {!object.referenceMesh?.image && <div ref={colorPanelRef} className="educad-feature-card educad-object-appearance">
-        <button className="educad-color-trigger" aria-label={t("property.objectColor")} aria-expanded={colorOpen} onClick={() => setColorOpen((value) => !value)}>
-          <span>{t("property.color")}</span><span className="educad-color-preview" style={{ "--object-color": object.color } as CSSProperties} /><strong>{object.color.toUpperCase()}</strong><ChevronDown size={15} />
+      {!object.referenceMesh?.image && <div ref={colorPanelRef} className="kercad-feature-card kercad-object-appearance">
+        <button className="kercad-color-trigger" aria-label={t("property.objectColor")} aria-expanded={colorOpen} onClick={() => setColorOpen((value) => !value)}>
+          <span>{t("property.color")}</span><span className="kercad-color-preview" style={{ "--object-color": object.color } as CSSProperties} /><strong>{object.color.toUpperCase()}</strong><ChevronDown size={15} />
         </button>
-        {colorOpen ? <div className="educad-color-palette" role="group" aria-label={t("property.objectColor")}>
+        {colorOpen ? <div className="kercad-color-palette" role="group" aria-label={t("property.objectColor")}>
           {OBJECT_COLOR_PALETTE.map((color) => <button key={color} className={object.color.toLowerCase() === color ? "selected" : ""} aria-label={`${t("property.color")} ${color}`} title={color.toUpperCase()} style={{ "--object-color": color } as CSSProperties} onClick={() => { onUpdate((draft) => { draft.color = color; }); setColorOpen(false); }} />)}
-          <label className="educad-custom-color" title={t("property.customColor")}><input type="color" aria-label={t("property.customColor")} value={object.color} onChange={(event) => onUpdate((draft) => { draft.color = event.target.value; })} /><span aria-hidden="true">+</span></label>
+          <label className="kercad-custom-color" title={t("property.customColor")}><input type="color" aria-label={t("property.customColor")} value={object.color} onChange={(event) => onUpdate((draft) => { draft.color = event.target.value; })} /><span aria-hidden="true">+</span></label>
         </div> : null}
       </div>}
       <TransformSection>
@@ -540,7 +540,7 @@ function TransformSection({ children, description = "Posición · rotación · e
   const t = useSidebarTranslation();
   const localizedDescription = useLocalizedSidebarLiteral(description);
   return (
-    <details className="educad-transform-section">
+    <details className="kercad-transform-section">
       <summary><ChevronRight size={16} /><span>{t("model.transform")}</span><small>{localizedDescription}</small></summary>
       <div>{children}</div>
     </details>
@@ -549,7 +549,7 @@ function TransformSection({ children, description = "Posición · rotación · e
 
 function ShapeParametersSection({ children }: { children: ReactNode }) {
   const t = useSidebarTranslation();
-  return <details className="educad-transform-section educad-shape-parameters" open><summary><ChevronRight size={16} /><span>{t("model.shapeParameters")}</span></summary><div><div className="educad-feature-card">{children}</div></div></details>;
+  return <details className="kercad-transform-section kercad-shape-parameters" open><summary><ChevronRight size={16} /><span>{t("model.shapeParameters")}</span></summary><div><div className="kercad-feature-card">{children}</div></div></details>;
 }
 
 function TransformGroup({
@@ -570,11 +570,11 @@ function TransformGroup({
   const { input: inputStep } = useContext(NumericStepContext);
   const localizedLabel = useLocalizedSidebarLiteral(label);
   return (
-    <div className="educad-feature-card educad-transform-card">
+    <div className="kercad-feature-card kercad-transform-card">
       {showHeading && <h3>{localizedLabel}</h3>}
       {(["x", "y", "z"] as const).map((axis) => (
         <label key={axis}>
-          <span className={`educad-axis-label ${axis}`}>{axis.toUpperCase()}</span>
+          <span className={`kercad-axis-label ${axis}`}>{axis.toUpperCase()}</span>
           <DeferredNumberInput value={values[axis]} min={min} step={inputStep} unit={unit} onCommit={(value) => onUpdate(axis, value)} />
         </label>
       ))}
@@ -627,11 +627,11 @@ function ParametricFeatureInspector({
   const treatmentFaceCount = treatmentReferences.filter((reference) => reference?.reference.hint.entityType === "face").length;
   const treatmentEdgeCount = treatmentReferences.filter((reference) => reference?.reference.hint.entityType === "edge").length;
   return (
-    <div className="educad-feature-inspector" aria-label={`${locale === "en" ? "Properties of" : "Propiedades de"} ${feature.name}`}>
+    <div className="kercad-feature-inspector" aria-label={`${locale === "en" ? "Properties of" : "Propiedades de"} ${feature.name}`}>
 
       {feature.kind === "sketch" ? (
         <>
-          <div className="educad-feature-card"><button className="educad-edit-topology-selection" type="button" onClick={() => onEditSketch(feature.id)}>{t("operation.editSketch")}</button></div>
+          <div className="kercad-feature-card"><button className="kercad-edit-topology-selection" type="button" onClick={() => onEditSketch(feature.id)}>{t("operation.editSketch")}</button></div>
           {feature.profile.shape === "drawn" ? <>
             
           </> : <ShapeParametersSection>
@@ -647,7 +647,7 @@ function ParametricFeatureInspector({
 
       {feature.kind === "extrude" ? (
         <>
-          <div className="educad-feature-card">
+          <div className="kercad-feature-card">
             <h3>{t("model.operation")}</h3>
             <OperationModeButtons addOnly={requiresAddOperation(document, feature)} value={feature.operation} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "extrude") draft.operation = operation; })} />
           </div>
@@ -659,7 +659,7 @@ function ParametricFeatureInspector({
               <BoundedNumberField label={t("property.spacing")} value={textGenerator.spacing} min={0} max={100} unit="mm" onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { spacing: value }); })} />
               <label><span>{localizedSidebarLiteral(locale, "Alineación")}</span><select value={textGenerator.align} onChange={(event) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { align: event.target.value as typeof textGenerator.align }); })}><option value="left">{locale === "en" ? "Left" : "Izquierda"}</option><option value="center">{locale === "en" ? "Center" : "Centro"}</option><option value="right">{locale === "en" ? "Right" : "Derecha"}</option></select></label>
               <label><span>{localizedSidebarLiteral(locale, "Alineación vertical")}</span><select value={textGenerator.verticalAlign ?? "center"} onChange={(event) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { verticalAlign: event.target.value as typeof textGenerator.verticalAlign }); })}><option value="bottom">{locale === "en" ? "Bottom" : "Inferior"}</option><option value="center">{locale === "en" ? "Center" : "Centro"}</option><option value="top">{locale === "en" ? "Top" : "Superior"}</option></select></label>
-            </> : scribbleGenerator && primitiveSketch ? <button className="educad-edit-topology-selection" type="button" onClick={() => onEditSketch(primitiveSketch.id)}>{t("operation.editScribble")}</button> : primitiveSketch?.profile.shape === "rectangle" ? (
+            </> : scribbleGenerator && primitiveSketch ? <button className="kercad-edit-topology-selection" type="button" onClick={() => onEditSketch(primitiveSketch.id)}>{t("operation.editScribble")}</button> : primitiveSketch?.profile.shape === "rectangle" ? (
               <>
                 <BoundedNumberField label={t("property.width")} value={primitiveSketch.profile.width} min={0.01} max={200} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} />
                 <BoundedNumberField label={t("property.depth")} value={primitiveSketch.profile.depth} min={0.01} max={200} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} />
@@ -678,7 +678,7 @@ function ParametricFeatureInspector({
 
       {feature.kind === "primitive" ? (
         <>
-          <div className="educad-feature-card">
+          <div className="kercad-feature-card">
             <h3>{t("model.operation")}</h3>
             <OperationModeButtons addOnly={requiresAddOperation(document, feature)} value={feature.operation} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "primitive") draft.operation = operation; })} />
           </div>
@@ -777,69 +777,69 @@ function ParametricFeatureInspector({
 
       {feature.kind === "importedStep" ? (
         <>
-          <div className="educad-feature-card"><h3>{t("model.operation")}</h3><ReadOnlyField label={t("property.type")} value={t("operation.importedStep")} /><ReadOnlyField label={t("property.file")} value={feature.sourceName} /><ReadOnlyField label={t("property.geometry")} value={t("operation.exactBrep")} /></div>
-          <TransformSection description="Transformación del objeto contenedor"><p className="educad-transform-empty">{t("help.importedBase")}</p></TransformSection>
+          <div className="kercad-feature-card"><h3>{t("model.operation")}</h3><ReadOnlyField label={t("property.type")} value={t("operation.importedStep")} /><ReadOnlyField label={t("property.file")} value={feature.sourceName} /><ReadOnlyField label={t("property.geometry")} value={t("operation.exactBrep")} /></div>
+          <TransformSection description="Transformación del objeto contenedor"><p className="kercad-transform-empty">{t("help.importedBase")}</p></TransformSection>
         </>
       ) : null}
 
       {feature.kind === "hole" ? (
         <>
-          <div className="educad-feature-card"><h3>{t("model.operation")}</h3><ReadOnlyField label={t("property.type")} value={t("operation.hole")} /><label><span>{t("property.termination")}</span><select value={feature.termination} onChange={(event) => onUpdate((draft) => { if (draft.kind === "hole") draft.termination = event.target.value as typeof draft.termination; })}><option value="through-all">{t("value.throughAll")}</option><option value="blind">{t("value.blind")}</option></select></label></div>
+          <div className="kercad-feature-card"><h3>{t("model.operation")}</h3><ReadOnlyField label={t("property.type")} value={t("operation.hole")} /><label><span>{t("property.termination")}</span><select value={feature.termination} onChange={(event) => onUpdate((draft) => { if (draft.kind === "hole") draft.termination = event.target.value as typeof draft.termination; })}><option value="through-all">{t("value.throughAll")}</option><option value="blind">{t("value.blind")}</option></select></label></div>
           <ShapeParametersSection><BoundedNumberField label={t("property.diameter")} value={feature.diameter} min={0.01} max={100} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.diameter = Math.max(0.01, value); })} />{feature.termination === "blind" ? <BoundedNumberField label={t("property.depth")} value={feature.depth} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.depth = Math.max(0.01, value); })} /> : null}</ShapeParametersSection>
           <TransformSection description="Posición">
-            <div className="educad-feature-card educad-transform-card"><h3>{t("property.position")}</h3><NumberField label="X" value={feature.x} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.x = value; })} /><NumberField label="Y" value={feature.y} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.y = value; })} /></div>
+            <div className="kercad-feature-card kercad-transform-card"><h3>{t("property.position")}</h3><NumberField label="X" value={feature.x} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.x = value; })} /><NumberField label="Y" value={feature.y} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.y = value; })} /></div>
           </TransformSection>
         </>
       ) : null}
 
       {feature.kind === "fillet" ? (
         <>
-          <div className="educad-feature-card"><h3>{t("model.operation")}</h3><EdgeTreatmentButtons value={feature.treatment} onChange={(treatment) => onUpdate((draft) => { if (draft.kind === "fillet") draft.treatment = treatment; })} /><BoundedNumberField label={feature.treatment === "chamfer" ? t("property.distance") : t("property.radius")} value={feature.radius} min={0.01} max={50} onChange={(value) => onUpdate((draft) => { if (draft.kind === "fillet") draft.radius = Math.max(0.01, value); })} />{!(feature.selectionReferenceIds?.length ?? feature.edgeReferenceIds?.length) ? <label><span>{t("property.edges")}</span><select value={feature.edges} onChange={(event) => onUpdate((draft) => { if (draft.kind === "fillet") draft.edges = event.target.value as typeof draft.edges; })}><option value="vertical">{t("value.vertical")}</option><option value="all">{t("value.all")}</option></select></label> : null}</div>
-          {(feature.selectionReferenceIds?.length ?? feature.edgeReferenceIds?.length) ? <><button className="educad-edit-topology-selection" type="button" onClick={() => onEditSelection(feature.id)}>{t("operation.editSelection")}</button></> : null}
-          <TransformSection description="Sin transformación propia"><p className="educad-transform-empty">{t("help.previousResult")}</p></TransformSection>
+          <div className="kercad-feature-card"><h3>{t("model.operation")}</h3><EdgeTreatmentButtons value={feature.treatment} onChange={(treatment) => onUpdate((draft) => { if (draft.kind === "fillet") draft.treatment = treatment; })} /><BoundedNumberField label={feature.treatment === "chamfer" ? t("property.distance") : t("property.radius")} value={feature.radius} min={0.01} max={50} onChange={(value) => onUpdate((draft) => { if (draft.kind === "fillet") draft.radius = Math.max(0.01, value); })} />{!(feature.selectionReferenceIds?.length ?? feature.edgeReferenceIds?.length) ? <label><span>{t("property.edges")}</span><select value={feature.edges} onChange={(event) => onUpdate((draft) => { if (draft.kind === "fillet") draft.edges = event.target.value as typeof draft.edges; })}><option value="vertical">{t("value.vertical")}</option><option value="all">{t("value.all")}</option></select></label> : null}</div>
+          {(feature.selectionReferenceIds?.length ?? feature.edgeReferenceIds?.length) ? <><button className="kercad-edit-topology-selection" type="button" onClick={() => onEditSelection(feature.id)}>{t("operation.editSelection")}</button></> : null}
+          <TransformSection description="Sin transformación propia"><p className="kercad-transform-empty">{t("help.previousResult")}</p></TransformSection>
         </>
       ) : null}
 
       {feature.kind === "faceExtrude" ? (
         <>
-          <div className="educad-feature-card"><h3>{t("model.operation")}</h3><OperationModeButtons addOnly={requiresAddOperation(document, feature)} value={feature.operation} includeCommon={false} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "faceExtrude" && operation !== "intersect") draft.operation = operation; })} /><BoundedNumberField label={t("property.length")} value={feature.distance} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "faceExtrude") draft.distance = Math.max(0.01, value); })} /></div>
-          <button className="educad-edit-topology-selection" type="button" onClick={() => onEditFaceExtrudeSelection(feature.id)}>{t("operation.editFace")}</button>
-          <TransformSection description="Dirección normal a la cara"><p className="educad-transform-empty">{t("help.faceExtrude")}</p></TransformSection>
+          <div className="kercad-feature-card"><h3>{t("model.operation")}</h3><OperationModeButtons addOnly={requiresAddOperation(document, feature)} value={feature.operation} includeCommon={false} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "faceExtrude" && operation !== "intersect") draft.operation = operation; })} /><BoundedNumberField label={t("property.length")} value={feature.distance} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "faceExtrude") draft.distance = Math.max(0.01, value); })} /></div>
+          <button className="kercad-edit-topology-selection" type="button" onClick={() => onEditFaceExtrudeSelection(feature.id)}>{t("operation.editFace")}</button>
+          <TransformSection description="Dirección normal a la cara"><p className="kercad-transform-empty">{t("help.faceExtrude")}</p></TransformSection>
         </>
       ) : null}
 
       {feature.kind === "shell" ? (
         <>
-          <div className="educad-feature-card"><h3>{t("model.operation")}</h3><ReadOnlyField label={t("property.type")} value={t("toolbar.shell")} /><div className="educad-operation-mode-property"><div className="educad-operation-mode-buttons"><ShellCornerButtons value={feature.cornerType} locale={locale} onChange={(cornerType) => onUpdate((draft) => { if (draft.kind === "shell") draft.cornerType = cornerType; })} /></div></div><BoundedNumberField label={t("property.thickness")} value={feature.thickness} min={0.01} max={50} onChange={(value) => onUpdate((draft) => { if (draft.kind === "shell") draft.thickness = Math.max(0.01, value); })} /></div>
-          <button className="educad-edit-topology-selection" type="button" onClick={() => onEditShellSelection(feature.id)}>{t("operation.editOpenFaces")}</button>
+          <div className="kercad-feature-card"><h3>{t("model.operation")}</h3><ReadOnlyField label={t("property.type")} value={t("toolbar.shell")} /><div className="kercad-operation-mode-property"><div className="kercad-operation-mode-buttons"><ShellCornerButtons value={feature.cornerType} locale={locale} onChange={(cornerType) => onUpdate((draft) => { if (draft.kind === "shell") draft.cornerType = cornerType; })} /></div></div><BoundedNumberField label={t("property.thickness")} value={feature.thickness} min={0.01} max={50} onChange={(value) => onUpdate((draft) => { if (draft.kind === "shell") draft.thickness = Math.max(0.01, value); })} /></div>
+          <button className="kercad-edit-topology-selection" type="button" onClick={() => onEditShellSelection(feature.id)}>{t("operation.editOpenFaces")}</button>
         </>
       ) : null}
 
       {feature.kind === "revolve" ? (
         <>
-          <div className="educad-feature-card"><h3>{t("model.operation")}</h3><OperationModeButtons addOnly={requiresAddOperation(document, feature)} value={feature.operation} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "revolve") draft.operation = operation; })} /><label><span>{t("property.axis")}</span><select value={feature.axis === "edge" && feature.source === "sketch" ? `sketch-edge:${feature.sketchAxisSegmentId ?? ""}` : feature.axis} onChange={(event) => onUpdate((draft) => { if (draft.kind !== "revolve") return; const value = event.target.value; if (value.startsWith("sketch-edge:")) { draft.axis = "edge"; draft.sketchAxisSegmentId = value.slice("sketch-edge:".length); draft.axisReferenceId = undefined; } else { draft.axis = value as "x" | "y" | "z" | "edge"; draft.sketchAxisSegmentId = undefined; } })}><option value="x">{t("value.localX")}</option><option value="y">{t("value.localY")}</option><option value="z">{t("value.localZ")}</option>{feature.source === "sketch" ? revolveSketchAxes.map((segment, index) => <option key={segment.id} value={`sketch-edge:${segment.id}`}>{t("operation.selectedEdge")} {index + 1}</option>) : feature.axis === "edge" ? <option value="edge">{t("operation.selectedEdge")}</option> : null}</select></label><BoundedNumberField label={t("property.angle")} value={feature.angle} min={-360} max={360} step={1} unit="°" onChange={(value) => onUpdate((draft) => { if (draft.kind === "revolve") draft.angle = Math.abs(value) < 1 ? (value < 0 ? -1 : 1) : Math.min(360, Math.max(-360, value)); })} /></div>
-          {revolveSketch && revolveSketch.profile.shape !== "drawn" ? <div className="educad-feature-card"><h3>{t("operation.sketchProfile")}</h3><ReadOnlyField label={t("property.shape")} value={revolveSketch.profile.shape === "rectangle" ? t("value.rectangle") : t("value.circle")} />{revolveSketch.profile.shape === "rectangle" ? <><BoundedNumberField label={t("property.width")} value={revolveSketch.profile.width} min={0.01} max={200} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} /><BoundedNumberField label={t("property.depth")} value={revolveSketch.profile.depth} min={0.01} max={200} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} /></> : <BoundedNumberField label={t("property.radius")} value={revolveSketch.profile.diameter / 2} min={0.01} max={100} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value * 2); })} />}</div> : null}
-          {feature.source === "face" ? <div className="educad-topology-selection-actions"><button className="educad-edit-topology-selection" type="button" onClick={() => onEditRevolveFace(feature.id)}>{t("operation.editFace")}</button><button className="educad-edit-topology-selection" type="button" onClick={() => onEditRevolveAxis(feature.id)}>{t("operation.editAxis")}</button></div> : <button className="educad-edit-topology-selection" type="button" onClick={() => onEditRevolveAxis(feature.id)}>{t("operation.editAxis")}</button>}
-          <TransformSection description="Eje local del objeto"><p className="educad-transform-empty">{t("help.revolve")}</p></TransformSection>
+          <div className="kercad-feature-card"><h3>{t("model.operation")}</h3><OperationModeButtons addOnly={requiresAddOperation(document, feature)} value={feature.operation} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "revolve") draft.operation = operation; })} /><label><span>{t("property.axis")}</span><select value={feature.axis === "edge" && feature.source === "sketch" ? `sketch-edge:${feature.sketchAxisSegmentId ?? ""}` : feature.axis} onChange={(event) => onUpdate((draft) => { if (draft.kind !== "revolve") return; const value = event.target.value; if (value.startsWith("sketch-edge:")) { draft.axis = "edge"; draft.sketchAxisSegmentId = value.slice("sketch-edge:".length); draft.axisReferenceId = undefined; } else { draft.axis = value as "x" | "y" | "z" | "edge"; draft.sketchAxisSegmentId = undefined; } })}><option value="x">{t("value.localX")}</option><option value="y">{t("value.localY")}</option><option value="z">{t("value.localZ")}</option>{feature.source === "sketch" ? revolveSketchAxes.map((segment, index) => <option key={segment.id} value={`sketch-edge:${segment.id}`}>{t("operation.selectedEdge")} {index + 1}</option>) : feature.axis === "edge" ? <option value="edge">{t("operation.selectedEdge")}</option> : null}</select></label><BoundedNumberField label={t("property.angle")} value={feature.angle} min={-360} max={360} step={1} unit="°" onChange={(value) => onUpdate((draft) => { if (draft.kind === "revolve") draft.angle = Math.abs(value) < 1 ? (value < 0 ? -1 : 1) : Math.min(360, Math.max(-360, value)); })} /></div>
+          {revolveSketch && revolveSketch.profile.shape !== "drawn" ? <div className="kercad-feature-card"><h3>{t("operation.sketchProfile")}</h3><ReadOnlyField label={t("property.shape")} value={revolveSketch.profile.shape === "rectangle" ? t("value.rectangle") : t("value.circle")} />{revolveSketch.profile.shape === "rectangle" ? <><BoundedNumberField label={t("property.width")} value={revolveSketch.profile.width} min={0.01} max={200} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} /><BoundedNumberField label={t("property.depth")} value={revolveSketch.profile.depth} min={0.01} max={200} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} /></> : <BoundedNumberField label={t("property.radius")} value={revolveSketch.profile.diameter / 2} min={0.01} max={100} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value * 2); })} />}</div> : null}
+          {feature.source === "face" ? <div className="kercad-topology-selection-actions"><button className="kercad-edit-topology-selection" type="button" onClick={() => onEditRevolveFace(feature.id)}>{t("operation.editFace")}</button><button className="kercad-edit-topology-selection" type="button" onClick={() => onEditRevolveAxis(feature.id)}>{t("operation.editAxis")}</button></div> : <button className="kercad-edit-topology-selection" type="button" onClick={() => onEditRevolveAxis(feature.id)}>{t("operation.editAxis")}</button>}
+          <TransformSection description="Eje local del objeto"><p className="kercad-transform-empty">{t("help.revolve")}</p></TransformSection>
         </>
       ) : null}
 
       {feature.kind === "mirror" ? (
         <>
-          <div className="educad-feature-card">
+          <div className="kercad-feature-card">
             <h3>{t("model.operation")}</h3>
-            <div className="educad-operation-mode-buttons educad-mirror-result-buttons">
+            <div className="kercad-operation-mode-buttons kercad-mirror-result-buttons">
               <button type="button" className={feature.duplicate ? "active" : ""} aria-pressed={feature.duplicate} onClick={() => onUpdate((draft) => { if (draft.kind === "mirror") draft.duplicate = true; })}>{t("value.duplicate")}</button>
               <button type="button" className={!feature.duplicate ? "active" : ""} aria-pressed={!feature.duplicate} onClick={() => onUpdate((draft) => { if (draft.kind === "mirror") draft.duplicate = false; })}>{t("value.transformOnly")}</button>
             </div>
           </div>
-          <button className="educad-edit-topology-selection" type="button" onClick={() => onEditMirrorPlane(feature.id)}>{t("mirror.choosePlane")}</button>
+          <button className="kercad-edit-topology-selection" type="button" onClick={() => onEditMirrorPlane(feature.id)}>{t("mirror.choosePlane")}</button>
         </>
       ) : null}
 
       {feature.kind === "linearPattern" ? (
         <>
-          <div className="educad-feature-card">
+          <div className="kercad-feature-card">
             <h3>{t("model.operation")}</h3>
             <label><span>{t("property.source")}</span><select value={feature.source === "feature" ? feature.sourceFeatureId ?? "body" : "body"} onChange={(event) => onUpdate((draft) => {
               if (draft.kind !== "linearPattern") return;
@@ -855,7 +855,7 @@ function ParametricFeatureInspector({
             })}><option value="body">{t("value.fullBody")}</option>{linearPatternSources.map((source) => <option key={source.id} value={source.id}>{t("value.previousOperation")} · {source.name}</option>)}</select></label>
             <label><span>{t("property.axis")}</span><select value={feature.axis} onChange={(event) => onUpdate((draft) => { if (draft.kind === "linearPattern") draft.axis = event.target.value as typeof draft.axis; })}><option value="x">{t("value.localX")}</option><option value="y">{t("value.localY")}</option><option value="z">{t("value.localZ")}</option></select></label>
           </div>
-          <div className="educad-feature-card">
+          <div className="kercad-feature-card">
             <h3>{t("operation.parameters")}</h3>
             <BoundedNumberField label={t("property.count")} value={feature.count} min={2} max={50} step={1} onChange={(value) => onUpdate((draft) => { if (draft.kind === "linearPattern") draft.count = Math.min(50, Math.max(2, Math.round(value))); })} />
             <BoundedNumberField label={t("property.spacing")} value={feature.spacing} min={-1000} max={1000} unit="mm" onChange={(value) => onUpdate((draft) => { if (draft.kind === "linearPattern") draft.spacing = Math.abs(value) < 0.01 ? (value < 0 ? -0.01 : 0.01) : value; })} />
@@ -865,7 +865,7 @@ function ParametricFeatureInspector({
 
       {feature.kind === "polarPattern" ? (
         <>
-          <div className="educad-feature-card">
+          <div className="kercad-feature-card">
             <h3>{t("model.operation")}</h3>
             <label><span>{t("property.source")}</span><select value={feature.source === "feature" ? feature.sourceFeatureId ?? "body" : "body"} onChange={(event) => onUpdate((draft) => {
               if (draft.kind !== "polarPattern") return;
@@ -882,7 +882,7 @@ function ParametricFeatureInspector({
             <label><span>{t("property.axis")}</span><select value={feature.axis} onChange={(event) => onUpdate((draft) => { if (draft.kind === "polarPattern") draft.axis = event.target.value as typeof draft.axis; })}><option value="x">{t("value.localX")}</option><option value="y">{t("value.localY")}</option><option value="z">{t("value.localZ")}</option></select></label>
             <label><span>{t("property.uniformDistribution")}</span><input type="checkbox" checked={feature.equalSpacing} onChange={(event) => onUpdate((draft) => { if (draft.kind === "polarPattern") draft.equalSpacing = event.target.checked; })} /></label>
           </div>
-          <div className="educad-feature-card">
+          <div className="kercad-feature-card">
             <h3>{t("operation.parameters")}</h3>
             <BoundedNumberField label={t("property.count")} value={feature.count} min={2} max={50} step={1} onChange={(value) => onUpdate((draft) => { if (draft.kind === "polarPattern") draft.count = Math.min(50, Math.max(2, Math.round(value))); })} />
             <BoundedNumberField label={feature.equalSpacing ? t("property.totalAngle") : t("property.angularStep")} value={feature.angle} min={-360} max={360} step={1} unit="°" onChange={(value) => onUpdate((draft) => { if (draft.kind === "polarPattern") draft.angle = Math.abs(value) < 0.1 ? (value < 0 ? -0.1 : 0.1) : value; })} />
@@ -892,7 +892,7 @@ function ParametricFeatureInspector({
 
       {feature.kind === "objectBoolean" ? (
         <>
-          <div className="educad-feature-card">
+          <div className="kercad-feature-card">
             <h3>{t("model.operation")}</h3>
             <OperationModeButtons addOnly={requiresAddOperation(document, feature)} value={feature.operation} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "objectBoolean") draft.operation = operation; })} />
             <label><span>{t("property.object")}</span><select value={feature.sourceObjectId} onChange={(event) => onUpdate((draft) => { if (draft.kind !== "objectBoolean") return; draft.sourceObjectId = event.target.value; draft.dependencies = [{ type: "object", id: event.target.value }]; })}>{document.objects.filter((object) => object.id !== feature.objectId).map((object) => <option key={object.id} value={object.id}>{object.name}</option>)}</select></label>
@@ -914,8 +914,8 @@ function OperationModeButtons({ value: storedValue, addOnly = false, includeComm
   const value = addOnly ? "add" : storedValue;
   const t = useSidebarTranslation();
   const modes = includeCommon ? (["add", "cut", "intersect"] as const) : (["add", "cut"] as const);
-  return <div className="educad-operation-mode-property">
-    <div className="educad-operation-mode-buttons">
+  return <div className="kercad-operation-mode-property">
+    <div className="kercad-operation-mode-buttons">
       {modes.map((mode) => {
         const label = mode === "add" ? t("model.add") : mode === "cut" ? t("model.hole") : t("model.common");
         return <button key={mode} type="button" disabled={addOnly && mode !== "add"} className={`mode-${mode} ${value === mode ? "active" : ""}`} title={label} aria-label={label} aria-pressed={value === mode} onClick={() => onChange(mode)}><ToolbarBooleanModeIcon mode={mode === "cut" ? "hole" : mode === "intersect" ? "common" : "add"} /></button>;
@@ -926,8 +926,8 @@ function OperationModeButtons({ value: storedValue, addOnly = false, includeComm
 
 function EdgeTreatmentButtons({ value, onChange }: { value: "fillet" | "chamfer"; onChange: (value: "fillet" | "chamfer") => void }) {
   const t = useSidebarTranslation();
-  return <div className="educad-operation-mode-property">
-    <div className="educad-operation-mode-buttons educad-edge-treatment-mode-buttons">
+  return <div className="kercad-operation-mode-property">
+    <div className="kercad-operation-mode-buttons kercad-edge-treatment-mode-buttons">
       <button type="button" className={`mode-fillet ${value === "fillet" ? "active" : ""}`} title={t("operation.fillet")} aria-label={t("operation.fillet")} aria-pressed={value === "fillet"} onClick={() => onChange("fillet")}><ToolbarFilletIcon /></button>
       <button type="button" className={`mode-chamfer ${value === "chamfer" ? "active" : ""}`} title={t("operation.chamfer")} aria-label={t("operation.chamfer")} aria-pressed={value === "chamfer"} onClick={() => onChange("chamfer")}><ToolbarChamferIcon /></button>
     </div>
@@ -992,7 +992,7 @@ function DeferredNumberInput({ value, min, max, step, unit, onCommit }: { value:
     }
   };
   const visibleUnit = isLength ? displayUnitLabel(displayUnit) : unit;
-  return <span className="educad-number-input" onWheel={(event) => { event.preventDefault(); nudge(event.deltaY < 0 ? 1 : -1); }}><input ref={inputRef} type="text" inputMode="text" value={draft} onFocus={() => setEditing(true)} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={handleKeyDown} />{visibleUnit ? <small>{visibleUnit}</small> : null}<span className="educad-number-steppers"><button type="button" tabIndex={-1} aria-label={t("input.increment")} title={t("input.increment")} onPointerDown={(event) => { event.preventDefault(); nudge(1); }}>▲</button><button type="button" tabIndex={-1} aria-label={t("input.decrement")} title={t("input.decrement")} onPointerDown={(event) => { event.preventDefault(); nudge(-1); }}>▼</button></span></span>;
+  return <span className="kercad-number-input" onWheel={(event) => { event.preventDefault(); nudge(event.deltaY < 0 ? 1 : -1); }}><input ref={inputRef} type="text" inputMode="text" value={draft} onFocus={() => setEditing(true)} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={handleKeyDown} />{visibleUnit ? <small>{visibleUnit}</small> : null}<span className="kercad-number-steppers"><button type="button" tabIndex={-1} aria-label={t("input.increment")} title={t("input.increment")} onPointerDown={(event) => { event.preventDefault(); nudge(1); }}>▲</button><button type="button" tabIndex={-1} aria-label={t("input.decrement")} title={t("input.decrement")} onPointerDown={(event) => { event.preventDefault(); nudge(-1); }}>▼</button></span></span>;
 }
 
 function BoundedNumberField({ label, value, min, max, step, unit = step === undefined ? "mm" : "", onChange }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (value: number) => void }) {
@@ -1000,7 +1000,7 @@ function BoundedNumberField({ label, value, min, max, step, unit = step === unde
   const localizedLabel = useLocalizedSidebarLiteral(label);
   const clampedValue = Math.min(max, Math.max(min, value));
   return (
-    <label className="educad-compact-number-property">
+    <label className="kercad-compact-number-property">
       <span>{localizedLabel}</span><DeferredNumberInput value={clampedValue} min={min} max={max} step={step ?? steps.input} unit={unit} onCommit={(next) => onChange(Math.min(max, Math.max(min, next)))} />
     </label>
   );

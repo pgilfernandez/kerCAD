@@ -1,15 +1,16 @@
+import { PROJECT_FILE_PATTERN } from "@/lib/legacyBrand";
 import { forgetSharedRevision, rememberSharedRevision, sharedProjectRevision } from "@/lib/sharedProjectRevision";
 import { acquireSharedProjectLock } from "@/lib/sharedProjectLock";
 import { createHash, randomUUID } from "crypto";
 import { promises as fs } from "fs";
 import path from "path";
 import { NextResponse } from "next/server";
-import { importEducadProject, EDUCAD_PACKAGE_LIMITS, EDUCAD_PACKAGE_MEDIA_TYPE } from "@/lib/educadProject";
+import { importKercadProject, KERCAD_PACKAGE_LIMITS, KERCAD_PACKAGE_MEDIA_TYPE } from "@/lib/kercadProject";
 
 export const runtime = "nodejs";
 export const revalidate = false;
 
-const SHARED_PROJECTS_ENV = "EDUCAD_SHARED_PROJECTS_DIR";
+const SHARED_PROJECTS_ENV = "KERCAD_SHARED_PROJECTS_DIR";
 
 type SharedProjectFile = {
   fileName: string;
@@ -27,13 +28,14 @@ function sharedProjectsDirectory() {
 }
 
 function safeProjectFileName(requestedName: string) {
-  const withoutExtension = requestedName.replace(/\.educad$/i, "");
+  const extension = requestedName.match(PROJECT_FILE_PATTERN)?.[0].toLowerCase() ?? ".kercad";
+  const withoutExtension = requestedName.replace(PROJECT_FILE_PATTERN, "");
   const stem = path.basename(withoutExtension)
     .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 115);
-  return `${stem || "Untitled project"}.educad`;
+  return `${stem || "Untitled project"}${extension}`;
 }
 
 function revisionForBytes(bytes: Uint8Array) {
@@ -43,7 +45,7 @@ function revisionForBytes(bytes: Uint8Array) {
 function projectRecord(fileName: string, stat: { size: number; mtimeMs: number }, revision: string): SharedProjectFile {
   return {
     fileName,
-    name: fileName.replace(/\.educad$/i, ""),
+    name: fileName.replace(PROJECT_FILE_PATTERN, ""),
     updatedAt: stat.mtimeMs,
     size: stat.size,
     revision,
@@ -132,14 +134,14 @@ export async function GET(request: Request) {
           "Cache-Control": "no-store",
           "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
           "Content-Length": String(bytes.byteLength),
-          "Content-Type": EDUCAD_PACKAGE_MEDIA_TYPE,
+          "Content-Type": KERCAD_PACKAGE_MEDIA_TYPE,
           ETag: `"${revisionForBytes(bytes)}"`,
         },
       });
     }
 
     const entries = await fs.readdir(root, { withFileTypes: true });
-    const names = entries.filter(entry => entry.isFile() && /\.educad$/i.test(entry.name)).map(entry => entry.name);
+    const names = entries.filter(entry => entry.isFile() && PROJECT_FILE_PATTERN.test(entry.name)).map(entry => entry.name);
     const projects: SharedProjectFile[] = [];
     // Bound cold-cache disk reads instead of hashing the whole library at once.
     for (let offset = 0; offset < names.length; offset += 4) {
@@ -148,7 +150,7 @@ export async function GET(request: Request) {
         if (!current) return null;
         const { stat, revision } = current;
         return { ...projectRecord(fileName, stat, revision), updatedBy: await readAuthor(root, fileName, revision),
-          thumbnailUrl: await regularFileStat(thumbnailPath(root, fileName, revision)) ? `/api/educad-shared-projects?fileName=${encodeURIComponent(fileName)}&thumbnail=${revision}` : undefined };
+          thumbnailUrl: await regularFileStat(thumbnailPath(root, fileName, revision)) ? `/api/kercad-shared-projects?fileName=${encodeURIComponent(fileName)}&thumbnail=${revision}` : undefined };
       }));
       projects.push(...batch.filter((entry): entry is SharedProjectFile => entry !== null));
     }
@@ -167,8 +169,8 @@ export async function POST(request: Request) {
   if (!sameOriginRequest(request)) return NextResponse.json({ error: "Shared projects only accept same-origin saves" }, { status: 403 });
 
   const declaredLength = Number(request.headers.get("content-length") ?? 0);
-  if (Number.isFinite(declaredLength) && declaredLength > EDUCAD_PACKAGE_LIMITS.archiveBytes) {
-    return NextResponse.json({ error: ".educad file exceeds the shared storage size limit" }, { status: 413 });
+  if (Number.isFinite(declaredLength) && declaredLength > KERCAD_PACKAGE_LIMITS.archiveBytes) {
+    return NextResponse.json({ error: ".kercad file exceeds the shared storage size limit" }, { status: 413 });
   }
 
   let lockHandle: Awaited<ReturnType<typeof acquireSharedProjectLock>> | null = null;
@@ -184,7 +186,7 @@ export async function POST(request: Request) {
           const { done, value } = await reader.read();
           if (done) break;
           length += value.byteLength;
-          if (length > EDUCAD_PACKAGE_LIMITS.archiveBytes) {
+          if (length > KERCAD_PACKAGE_LIMITS.archiveBytes) {
             await reader.cancel();
             return NextResponse.json({ error: "Project exceeds the shared storage size limit" }, { status: 413 });
           }
@@ -195,13 +197,13 @@ export async function POST(request: Request) {
     const bytes = new Uint8Array(length);
     let offset = 0;
     for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
-    if (bytes.byteLength > EDUCAD_PACKAGE_LIMITS.archiveBytes) return NextResponse.json({ error: ".educad file exceeds the shared storage size limit" }, { status: 413 });
-    const rawAuthor = decodeURIComponent(request.headers.get("x-educad-author") ?? "");
+    if (bytes.byteLength > KERCAD_PACKAGE_LIMITS.archiveBytes) return NextResponse.json({ error: ".kercad file exceeds the shared storage size limit" }, { status: 413 });
+    const rawAuthor = decodeURIComponent(request.headers.get("x-kercad-author") ?? "");
     const updatedBy = rawAuthor.trim();
     if (updatedBy.length > 80 || /[\u0000-\u001f\u007f]/.test(updatedBy)) {
       return NextResponse.json({ error: "Author name must contain at most 80 characters and no control characters" }, { status: 400 });
     }
-    const summary = await importEducadProject(bytes);
+    const summary = await importKercadProject(bytes);
     const requestUrl = new URL(request.url);
     const requestedName = requestUrl.searchParams.get("fileName");
     const fileName = safeProjectFileName(requestedName ?? summary.document.name);

@@ -1,9 +1,11 @@
 "use client";
 
+import { PROJECT_FILE_PATTERN, LEGACY_PROJECT_ACCEPT } from "@/lib/legacyBrand";
+
 import { Camera, RotateCcw, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, Focus, Grid3X3, Home, Maximize2, Minus, Plus, Trash2, X } from "lucide-react";
 import { ChallengeEditor, type ChallengeDock } from "@/components/ChallengeEditor";
 import { ChallengePlayer } from "@/components/ChallengePlayer";
-import type { EducadChallenge } from "@/lib/challengeLibrary";
+import type { KercadChallenge } from "@/lib/challengeLibrary";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent as ReactFocusEvent } from "react";
 import * as THREE from "three";
 import { workplaneGeometryBounds } from "@/lib/workplaneGeometryBounds";
@@ -71,7 +73,7 @@ import { sketchProfileFromSvg } from "@/lib/svgImport";
 import { importSvgAsParametricExtrusion } from "@/lib/svgParametricImport";
 import { addParametricText } from "@/lib/parametricText";
 import { appendScribbleContour, simplify } from "@/lib/parametricScribble";
-import { EDUCAD_PACKAGE_LIMITS, EDUCAD_PACKAGE_MEDIA_TYPE, exportEducadProject, importEducadProject } from "@/lib/educadProject";
+import { KERCAD_PACKAGE_LIMITS, KERCAD_PACKAGE_MEDIA_TYPE, exportKercadProject, importKercadProject } from "@/lib/kercadProject";
 import { mergeParametricProjects } from "@/lib/parametricProjectMerge";
 import { importStepAsParametricObject } from "@/lib/parametricStepImport";
 import { importReferenceImage, importReferenceMesh, parametricReferenceRenderRecords } from "@/lib/parametricReferenceImport";
@@ -82,7 +84,7 @@ import { AnnotationIcon } from "@/components/AnnotationIcon";
 import { SketchAnnotationToolbar } from "@/components/SketchAnnotationToolbar";
 import { annotationDimensionPreset, type AnnotationTool } from "@/lib/annotationPresets";
 import { annotationPosition, rotatedCircleAnnotation, setAnnotationPosition, type AnnotationPoint } from "@/lib/annotationGeometry";
-import { educadTranslate, normalizeEducadLocale, type EducadLocale, type EducadTranslationKey } from "@/lib/educadI18n";
+import { kercadTranslate, normalizeKercadLocale, type KercadLocale, type KercadTranslationKey } from "@/lib/kercadI18n";
 import { parametricRebuildSuggestion } from "@/lib/parametricRebuildDiagnostics";
 import { hasPreviousSolidOperation } from "@/lib/parametricOperationModes";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
@@ -143,15 +145,15 @@ import type { ViewportRenderQuality } from "@/lib/viewportPerformance";
 import type { BuildResult, ExtrudeFeature, ParametricAnnotation, ParametricDocument, ParametricFeature, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, PrimitiveFeature, RevolveFeature, SketchFeature } from "@/types/parametric";
 import type { GridSize, SketchConstraint, SketchPoint, SketchProfile, WorkplaneShape } from "@/types/sketchforge";
 
-const RENDER_QUALITY_STORAGE_KEY = "educad.viewport.render-mode";
-const FPS_VISIBLE_STORAGE_KEY = "educad.viewport.show-fps";
-const POSITION_TRIAD_VISIBLE_STORAGE_KEY = "educad.viewport.position-triad";
-const ROTATION_TRIAD_VISIBLE_STORAGE_KEY = "educad.viewport.rotation-triad";
-const PARAMETER_HANDLES_VISIBLE_STORAGE_KEY = "educad.viewport.parameter-handles";
-const DISPLAY_MODE_STORAGE_KEY = "educad.viewport.display-mode";
-const SHADING_MODE_STORAGE_KEY = "educad.viewport.shading-mode";
+const RENDER_QUALITY_STORAGE_KEY = "kercad.viewport.render-mode";
+const FPS_VISIBLE_STORAGE_KEY = "kercad.viewport.show-fps";
+const POSITION_TRIAD_VISIBLE_STORAGE_KEY = "kercad.viewport.position-triad";
+const ROTATION_TRIAD_VISIBLE_STORAGE_KEY = "kercad.viewport.rotation-triad";
+const PARAMETER_HANDLES_VISIBLE_STORAGE_KEY = "kercad.viewport.parameter-handles";
+const DISPLAY_MODE_STORAGE_KEY = "kercad.viewport.display-mode";
+const SHADING_MODE_STORAGE_KEY = "kercad.viewport.shading-mode";
 
-function localizeNewDocumentEntries(previous: ParametricDocument, next: ParametricDocument, locale: EducadLocale) {
+function localizeNewDocumentEntries(previous: ParametricDocument, next: ParametricDocument, locale: KercadLocale) {
   const previousObjectIds = new Set(previous.objects.map((object) => object.id));
   next.objects.filter((object) => !previousObjectIds.has(object.id)).forEach((object, index) => { object.name = `${locale === "es" ? "Objeto" : "Object"} ${previous.objects.length + index + 1}`; });
   const previousFeatureIds = new Set(previous.features.map((feature) => feature.id));
@@ -178,7 +180,7 @@ function localizeNewDocumentEntries(previous: ParametricDocument, next: Parametr
     else if (feature.kind === "objectBoolean") feature.name = `${en ? "Object boolean" : "Booleana de objeto"} ${index}`;
   });
 }
-const LOCALE_STORAGE_KEY = "educad.locale";
+const LOCALE_STORAGE_KEY = "kercad.locale";
 type Notice = { type: "ok" | "info" | "error"; text: string } | null;
 
 function downloadBlob(blob: Blob, name: string) {
@@ -191,7 +193,7 @@ function downloadBlob(blob: Blob, name: string) {
 }
 
 function fileName(value: string) {
-  return value.trim().replace(/\.(?:educad\.json|json|step|stp|stl)$/i, "").toLowerCase().replace(/[^a-z0-9áéíóúüñ]+/gi, "-").replace(/^-|-$/g, "") || "model";
+  return value.trim().replace(/\.(?:kercad\.json|json|step|stp|stl)$/i, "").toLowerCase().replace(/[^a-z0-9áéíóúüñ]+/gi, "-").replace(/^-|-$/g, "") || "model";
 }
 
 function emptySketchProfile(): SketchProfile {
@@ -291,9 +293,9 @@ type SketchForgeParametricEditorProps = {
   onProjectChange?: (document: ParametricDocument) => void;
   onProjectThumbnail?: (dataUrl: string, document?: ParametricDocument) => void;
   onExitToProjects?: (document: ParametricDocument) => void;
-  challenge?: EducadChallenge | null;
-  challengeEditor?: EducadChallenge | null;
-  onSaveChallenge?: (challenge: EducadChallenge, document: ParametricDocument) => void;
+  challenge?: KercadChallenge | null;
+  challengeEditor?: KercadChallenge | null;
+  onSaveChallenge?: (challenge: KercadChallenge, document: ParametricDocument) => void;
   onCancelChallengeEdit?: () => void;
 };
 
@@ -391,7 +393,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [displayMode, setDisplayMode] = useState<ViewportDisplayMode>("solid");
   const [shadingMode, setShadingMode] = useState<ViewportShadingMode>("shadows");
   const displayUnit = normalizeDisplayUnit(document.displayUnit);
-  const [locale, setLocale] = useState<EducadLocale>("en");
+  const [locale, setLocale] = useState<KercadLocale>("en");
   const [showFps, setShowFps] = useState(false);
   const [showPositionTriad, setShowPositionTriad] = useState(true);
   const [showRotationTriad, setShowRotationTriad] = useState(false);
@@ -399,7 +401,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [challengeOpen, setChallengeOpen] = useState(Boolean(challenge || challengeEditor));
   const [challengeDock, setChallengeDock] = useState<ChallengeDock>(() => {
     if (typeof window === "undefined") return "left";
-    const saved = window.localStorage.getItem("educad.challenge-dock");
+    const saved = window.localStorage.getItem("kercad.challenge-dock");
     return saved === "floating" || saved === "left" || saved === "right" ? saved : "left";
   });
   const [challengeCaptureToken, setChallengeCaptureToken] = useState(0);
@@ -550,22 +552,22 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       || (profile.images?.length ?? 0) > 0;
     return hasGeometry ? validateDrawnSketchProfile(profile) : null;
   }, [sketchSession]);
-  const t = useCallback((key: EducadTranslationKey) => educadTranslate(locale, key), [locale]);
+  const t = useCallback((key: KercadTranslationKey) => kercadTranslate(locale, key), [locale]);
 
   useEffect(() => {
     const preferredDock = challengeDock.startsWith("compact-") ? challengeDock.replace("compact-", "") : challengeDock;
-    if (preferredDock === "floating" || preferredDock === "left" || preferredDock === "right") window.localStorage.setItem("educad.challenge-dock", preferredDock);
+    if (preferredDock === "floating" || preferredDock === "left" || preferredDock === "right") window.localStorage.setItem("kercad.challenge-dock", preferredDock);
   }, [challengeDock]);
 
   useEffect(() => {
     const closePopoversOutside = (event: PointerEvent) => {
       const target = event.target instanceof Element ? event.target : null;
-      const popup = target?.closest<HTMLElement>("[data-educad-popup]")?.dataset.educadPopup ?? null;
+      const popup = target?.closest<HTMLElement>("[data-kercad-popup]")?.dataset.kercadPopup ?? null;
       if (popup !== "shapes") setShapesOpen(false);
       if (popup !== "snap-spacing") setSnapSpacingOpen(false);
       if (popup !== "grid") {
         const activeElement = window.document.activeElement;
-        if (activeElement instanceof HTMLInputElement && activeElement.closest('[data-educad-popup="grid"]')) activeElement.blur();
+        if (activeElement instanceof HTMLInputElement && activeElement.closest('[data-kercad-popup="grid"]')) activeElement.blur();
         setWorkplaneOpen(false);
       }
       if (popup !== "export") setExportOpen(false);
@@ -623,17 +625,17 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [projectExporting, setProjectExporting] = useState(false);
   const [sharedSaveOpen, setSharedSaveOpen] = useState(false);
   const [sharedSaving, setSharedSaving] = useState(false);
-  const [sharedName, setSharedName] = useState(sharedFileName?.replace(/\.educad$/i, "") ?? initialDocument.name);
+  const [sharedName, setSharedName] = useState(sharedFileName?.replace(PROJECT_FILE_PATTERN, "") ?? initialDocument.name);
   const [sharedAuthor, setSharedAuthor] = useState("");
   const [authorPreferenceLoaded, setAuthorPreferenceLoaded] = useState(false);
   const [sharedSaveMessage, setSharedSaveMessage] = useState("");
   useEffect(() => {
-    try { setSharedAuthor(localStorage.getItem("educad.shared-author") ?? ""); } catch {}
+    try { setSharedAuthor(localStorage.getItem("kercad.shared-author") ?? ""); } catch {}
     setAuthorPreferenceLoaded(true);
   }, []);
   useEffect(() => {
     if (!authorPreferenceLoaded) return;
-    try { localStorage.setItem("educad.shared-author", sharedAuthor.trim()); } catch {}
+    try { localStorage.setItem("kercad.shared-author", sharedAuthor.trim()); } catch {}
   }, [sharedAuthor, authorPreferenceLoaded]);
   const publishShared = async () => {
     if (!onSaveShared || sharedSaving || !sharedName.trim() || !sharedAuthor.trim()) return;
@@ -642,9 +644,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       const saved = structuredClone(latestDocumentRef.current);
       saved.creator = saved.creator || saved.author || sharedAuthor.trim();
       saved.author = sharedAuthor.trim();
-      await onSaveShared(saved, `${sharedName.trim().replace(/\.educad$/i, "")}.educad`, sharedAuthor.trim());
+      await onSaveShared(saved, `${sharedName.trim().replace(PROJECT_FILE_PATTERN, "")}.kercad`, sharedAuthor.trim());
       commit(saved);
-      try { localStorage.setItem("educad.shared-author", sharedAuthor.trim()); } catch {}
+      try { localStorage.setItem("kercad.shared-author", sharedAuthor.trim()); } catch {}
       setSharedSaveMessage(locale === "es" ? "Proyecto guardado en compartidos." : "Project saved to shared.");
     } catch (error) { setSharedSaveMessage(error instanceof Error ? error.message : "Could not save shared project."); }
     finally { setSharedSaving(false); }
@@ -725,7 +727,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       const storedShadingMode = localStorage.getItem(SHADING_MODE_STORAGE_KEY);
       if (storedShadingMode === "shadows" || storedShadingMode === "basic" || storedShadingMode === "noShadows") setShadingMode(storedShadingMode);
       else if (storedShadingMode === "unlit") setShadingMode("noShadows");
-      setLocale(normalizeEducadLocale(localStorage.getItem(LOCALE_STORAGE_KEY)));
+      setLocale(normalizeKercadLocale(localStorage.getItem(LOCALE_STORAGE_KEY)));
       setShowFps(localStorage.getItem(FPS_VISIBLE_STORAGE_KEY) === "true");
       setShowPositionTriad(localStorage.getItem(POSITION_TRIAD_VISIBLE_STORAGE_KEY) !== "false");
       setShowRotationTriad(localStorage.getItem(ROTATION_TRIAD_VISIBLE_STORAGE_KEY) === "true");
@@ -3316,9 +3318,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         saved.creator = saved.creator || saved.author || sharedAuthor.trim();
         saved.author = sharedAuthor.trim();
       }
-      const bytes = await exportEducadProject(saved);
+      const bytes = await exportKercadProject(saved);
       const archive = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
-      downloadBlob(new Blob([archive], { type: EDUCAD_PACKAGE_MEDIA_TYPE }), `${fileName(exportFileName)}.educad`);
+      downloadBlob(new Blob([archive], { type: KERCAD_PACKAGE_MEDIA_TYPE }), `${fileName(exportFileName)}.kercad`);
       commit(saved);
       setNotice({ type: "ok", text: t("notice.projectSaved") });
       setExportOpen(false);
@@ -3363,14 +3365,14 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
 
   const importProject = async (file: File) => {
     try {
-      const packagedByName = file.name.toLowerCase().endsWith(".educad");
-      if (packagedByName ? file.size > EDUCAD_PACKAGE_LIMITS.archiveBytes : file.size > EDUCAD_PACKAGE_LIMITS.projectBytes) throw new Error(t(packagedByName ? "notice.archiveTooLarge" : "notice.documentTooLarge"));
+      const packagedByName = PROJECT_FILE_PATTERN.test(file.name);
+      if (packagedByName ? file.size > KERCAD_PACKAGE_LIMITS.archiveBytes : file.size > KERCAD_PACKAGE_LIMITS.projectBytes) throw new Error(t(packagedByName ? "notice.archiveTooLarge" : "notice.documentTooLarge"));
       const bytes = new Uint8Array(await file.arrayBuffer());
-      const packaged = file.name.toLowerCase().endsWith(".educad") || bytes[0] === 0x50 && bytes[1] === 0x4b;
+      const packaged = PROJECT_FILE_PATTERN.test(file.name) || bytes[0] === 0x50 && bytes[1] === 0x4b;
       let normalized: ParametricDocument;
       let assetCount = 0;
       if (packaged) {
-        const restored = await importEducadProject(bytes);
+        const restored = await importKercadProject(bytes);
         normalized = restored.document;
         assetCount = restored.assets.length;
       } else {
@@ -3469,21 +3471,21 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   };
 
   if (!hydrated) {
-    return <main className="educad-reference-shell" aria-busy="true"><div className="editor-loading-screen"><div className="editor-loading-toolbar" /><div className="educad-initial-loading" role="status" aria-live="polite" aria-atomic="true">{t("status.loadingWorkspace")}</div></div></main>;
+    return <main className="kercad-reference-shell" aria-busy="true"><div className="editor-loading-screen"><div className="editor-loading-toolbar" /><div className="kercad-initial-loading" role="status" aria-live="polite" aria-atomic="true">{t("status.loadingWorkspace")}</div></div></main>;
   }
 
   return (
-    <main inert={showProjectLoading || undefined} aria-busy={showProjectLoading || undefined} className={`educad-reference-shell sidebar-${modelSidebarMode} ${sketchSession && compactSketchToolbar ? "sketch-toolbar-compact" : ""}`}>
+    <main inert={showProjectLoading || undefined} aria-busy={showProjectLoading || undefined} className={`kercad-reference-shell sidebar-${modelSidebarMode} ${sketchSession && compactSketchToolbar ? "sketch-toolbar-compact" : ""}`}>
       {showProjectLoading && <ProjectLoadingDialog projectName={document.name} locale={locale} ready={initialModelSettled} progress={initialLoadProgress} onFinished={finishProjectLoading} />}
       {hydrated && <EditorGettingStarted locale={locale} active={!showProjectLoading && !sketchSession && !challengeEditor} launchRequest={tutorialLaunchRequest} onShowProperties={() => setModelSidebarMode("normal")} />}
       {hydrated && <EditorGettingStarted locale={locale} mode="sketch" active={Boolean(sketchSession) && !challengeEditor} launchRequest={tutorialLaunchRequest} />}
       <div className="secondary-toolbar">
-        <div className="toolbar-workspace-tabs educad-toolbar-titlebar">
+        <div className="toolbar-workspace-tabs kercad-toolbar-titlebar">
           <EditorHeaderActions locale={locale} onLocaleChange={setLocale} onLaunchTutorial={!challengeEditor ? () => { resetStartupTutorials(); setTutorialLaunchRequest((request) => request + 1); } : undefined} />
-          {sketchSession ? <div className="educad-sketch-header-actions"><button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={acceptSketch}><ChevronLeft size={20} aria-hidden="true" />{t("sketch.accept")}</button><button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={cancelSketch}>{t("common.cancel")}</button></div> : onExitToProjects ? <button className="educad-toolbar-brand educad-toolbar-brand-button" type="button" onClick={() => onExitToProjects(latestDocumentRef.current)} title={locale === "es" ? "Volver a proyectos" : "Back to projects"}><ChevronLeft size={20} aria-hidden="true" />{locale === "es" ? "Proyectos" : "Projects"}</button> : null}
-          <span className="educad-project-name"><img src="/assets/educad/logo.svg" alt="eduCAD" /><strong>eduCAD</strong><span aria-hidden="true">-</span><button type="button" className="educad-project-rename-trigger" onClick={openProjectRename} title={locale === "es" ? "Cambiar nombre del proyecto" : "Rename project"}>{document.name}</button>{sketchSession ? <strong className="educad-sketcher-badge">SKETCHER</strong> : null}</span>
+          {sketchSession ? <div className="kercad-sketch-header-actions"><button className="kercad-toolbar-brand kercad-toolbar-brand-button" type="button" onClick={acceptSketch}><ChevronLeft size={20} aria-hidden="true" />{t("sketch.accept")}</button><button className="kercad-toolbar-brand kercad-toolbar-brand-button" type="button" onClick={cancelSketch}>{t("common.cancel")}</button></div> : onExitToProjects ? <button className="kercad-toolbar-brand kercad-toolbar-brand-button" type="button" onClick={() => onExitToProjects(latestDocumentRef.current)} title={locale === "es" ? "Volver a proyectos" : "Back to projects"}><ChevronLeft size={20} aria-hidden="true" />{locale === "es" ? "Proyectos" : "Projects"}</button> : null}
+          <span className="kercad-project-name"><img src="/assets/kercad/logo.svg" alt="kerCAD" /><strong>kerCAD</strong><span aria-hidden="true">-</span><button type="button" className="kercad-project-rename-trigger" onClick={openProjectRename} title={locale === "es" ? "Cambiar nombre del proyecto" : "Rename project"}>{document.name}</button>{sketchSession ? <strong className="kercad-sketcher-badge">SKETCHER</strong> : null}</span>
         </div>
-        {sketchSession ? <div ref={toolbarScrollRef} className="sketch-toolbar-ribbon educad-parametric-sketch-toolbar" aria-label={t("sketch.tools")}>
+        {sketchSession ? <div ref={toolbarScrollRef} className="sketch-toolbar-ribbon kercad-parametric-sketch-toolbar" aria-label={t("sketch.tools")}>
           <ToolbarSection label={t("sketch.history")}>
             <Tool label={t("sketch.undo")} enabled={sketchHistoryIndex > 0} onClick={sketchUndo}><ToolbarUndoIcon /></Tool>
             <Tool label={t("sketch.redo")} enabled={sketchHistoryIndex >= 0 && sketchHistoryIndex < sketchHistoryRef.current.length - 1} onClick={sketchRedo}><ToolbarRedoIcon /></Tool>
@@ -3567,7 +3569,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               <Tool label={modelSelection.length > 1 ? t("toolbar.deleteSelection") : selectionKind === "feature" ? t("toolbar.deleteOperation") : t("toolbar.deleteObject")} enabled={modelSelection.length > 0 || Boolean(selectedAnnotation) || selectedAnnotationId === ANNOTATIONS_GROUP_ID} onClick={deleteCurrentSelection}><ToolbarTrashIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label={t("toolbar.shapes")} className="toolbar-shapes-section">
-              <button ref={shapeMenuTriggerRef} data-educad-popup="shapes" className={`shape-menu-trigger ${shapesOpen ? "active" : ""}`} aria-label={t("toolbar.addShape")} title={t("toolbar.addShape")} aria-expanded={shapesOpen} aria-controls="educad-shape-menu" onClick={toggleShapeMenu}><ToolbarShapeAddIcon /></button>
+              <button ref={shapeMenuTriggerRef} data-kercad-popup="shapes" className={`shape-menu-trigger ${shapesOpen ? "active" : ""}`} aria-label={t("toolbar.addShape")} title={t("toolbar.addShape")} aria-expanded={shapesOpen} aria-controls="kercad-shape-menu" onClick={toggleShapeMenu}><ToolbarShapeAddIcon /></button>
               <Tool label={t("toolbar.createSketch")} onClick={() => { setShapesOpen(false); beginSketch(null); }}><ToolbarSketchIcon /></Tool>
             </ToolbarSection>
           </div>
@@ -3599,7 +3601,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
                 const object = document.objects.find(candidate => candidate.id === (item.kind === "object" ? item.id : feature?.objectId));
                 return object && !object.locked && (item.kind === "object" || feature && !feature.suppressed && (feature.kind === "primitive" || feature.kind === "extrude" || feature.kind === "sketch" && feature.purpose === "user"));
               }) && !kernelBusy && !droppingToWorkplane} onClick={() => void dropToWorkplane()}><ToolbarDropToWorkplaneIcon /></Tool>
-              <div data-educad-popup="align" className="educad-align-tool" onPointerEnter={() => setAlignmentHelpHovered(true)} onPointerLeave={() => setAlignmentHelpHovered(false)}>
+              <div data-kercad-popup="align" className="kercad-align-tool" onPointerEnter={() => setAlignmentHelpHovered(true)} onPointerLeave={() => setAlignmentHelpHovered(false)}>
                 <Tool label={t("toolbar.align")} enabled={modelSelection.length > 1} active={alignOpen} onClick={() => {
                   if (alignOpen) { setAlignOpen(false); return; }
                   const objects = new Set(modelSelection.filter(item => item.kind === "object").map(item => item.id));
@@ -3613,7 +3615,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
                   setOriginEditObjectId(null);
                   setAlignOpen(true);
                 }}><ToolbarAlignIcon /></Tool>
-                {alignmentHelpHovered ? <div className="educad-align-popover" role="tooltip" aria-label={t("align.title")}>
+                {alignmentHelpHovered ? <div className="kercad-align-popover" role="tooltip" aria-label={t("align.title")}>
                   <header><strong>{t("align.action")}</strong><span>{alignmentMode === "group"
                     ? (locale === "es" ? "El recuadro azul engloba toda la selección. Los elementos verdes se alinean con los límites o el centro del grupo." : "The blue box encloses the entire selection. Green items align to the group bounds or center.")
                     : (locale === "es" ? "Azul: referencia · Verde: selección a mover. Pulsa una geometría o su nombre para cambiar la referencia." : "Blue: reference · Green: moving selection. Click geometry or its name to change the reference.")}</span></header>
@@ -3632,15 +3634,15 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           <ToolbarSection label={t("toolbar.manage")} className="toolbar-actions-section">
             <div className="action-buttons">
               <button className="action-icon-button" aria-label={t("toolbar.import")} title={t("toolbar.import")} onClick={() => setImportOpen(true)}><ToolbarImportIcon /></button>
-              <button data-educad-popup="export" className="action-icon-button" aria-label={t("toolbar.export")} title={t("toolbar.export")} onClick={() => { if (!exportOpen) { setExportFileName(document.name); setExportScope(exportSelectedObjectIds.length ? "selection" : "project"); } setExportOpen((value) => !value); }}><ToolbarVectorExportIcon /></button>
-              <button data-educad-popup="settings" className="action-icon-button" aria-label={t("toolbar.settings")} title={t("toolbar.settings")} onClick={() => setSettingsOpen((value) => !value)}><ToolbarSettingsIcon /></button>
+              <button data-kercad-popup="export" className="action-icon-button" aria-label={t("toolbar.export")} title={t("toolbar.export")} onClick={() => { if (!exportOpen) { setExportFileName(document.name); setExportScope(exportSelectedObjectIds.length ? "selection" : "project"); } setExportOpen((value) => !value); }}><ToolbarVectorExportIcon /></button>
+              <button data-kercad-popup="settings" className="action-icon-button" aria-label={t("toolbar.settings")} title={t("toolbar.settings")} onClick={() => setSettingsOpen((value) => !value)}><ToolbarSettingsIcon /></button>
             </div>
           </ToolbarSection>
         </div>}
       </div>
 
-      {sketchSession && sketchSmoothingSource && sketchSmoothingPreview ? <div className="educad-sketch-smoothing-overlay">
-        <section className="educad-sketch-smoothing-panel" role="dialog" aria-modal="true" aria-label={locale === "es" ? "Suavizar trazado" : "Smooth path"}>
+      {sketchSession && sketchSmoothingSource && sketchSmoothingPreview ? <div className="kercad-sketch-smoothing-overlay">
+        <section className="kercad-sketch-smoothing-panel" role="dialog" aria-modal="true" aria-label={locale === "es" ? "Suavizar trazado" : "Smooth path"}>
           <strong>{locale === "es" ? "Suavizar trazado" : "Smooth path"}</strong>
           <label>{locale === "es" ? "Suavidad y simplificación" : "Smoothing and simplification"} <output>{Math.round(sketchSmoothing * 100)}%</output><input type="range" min="0" max="1" step="0.01" value={sketchSmoothing} onChange={(event) => setSketchSmoothing(Number(event.target.value))} /></label>
           <small>{locale === "es" ? "Las restricciones del trazado reemplazado se eliminarán." : "Constraints on the replaced path will be removed."}</small>
@@ -3655,13 +3657,13 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           }}>{t("sketch.accept")}</button></div>
         </section>
       </div> : null}
-      {sketchSession && polygonMenuPosition ? <div ref={polygonMenuRef} id="sketch-polygon-menu" className="educad-polygon-menu" style={polygonMenuPosition}>
+      {sketchSession && polygonMenuPosition ? <div ref={polygonMenuRef} id="sketch-polygon-menu" className="kercad-polygon-menu" style={polygonMenuPosition}>
         {[3, 4, 5, 6, 7, 8].map((sides) => {
           const names = locale === "es" ? ["Triángulo", "Rombo", "Pentágono", "Hexágono", "Heptágono", "Octógono"] : ["Triangle", "Rhombus", "Pentagon", "Hexagon", "Heptagon", "Octagon"];
           return <button key={sides} type="button" aria-pressed={sketchTool === "polygon" && sketchPolygonSides === sides} onClick={() => { setSketchPolygonSides(sides); chooseSketchTool("polygon"); setPolygonMenuPosition(null); }}><SketchToolbarIcon file={`polygon-${sides}`} /><span>{names[sides - 3]}</span></button>;
         })}
       </div> : null}
-      {shapesOpen ? <div id="educad-shape-menu" data-educad-popup="shapes" className="shape-menu-dropdown detached" style={{ top: shapeMenuPosition.top, left: shapeMenuPosition.left }}>
+      {shapesOpen ? <div id="kercad-shape-menu" data-kercad-popup="shapes" className="shape-menu-dropdown detached" style={{ top: shapeMenuPosition.top, left: shapeMenuPosition.left }}>
         <div className="shape-menu-title">{t("toolbar.shapes")}</div>
         <div className="shape-menu-list">
           {parametricOperationCatalog.map((asset) => { const localized = localizedParametricOperationDefinition(asset.kind, locale); return <button className="shape-menu-item" key={asset.kind} onClick={() => addShape(asset.kind)}><img src={asset.menuIcon} alt="" /><span>{localized.name}<small>{selectedObjectId ? t("notice.newOperationInObject") : localized.description}</small></span></button>; })}
@@ -3669,7 +3671,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         </div>
       </div> : null}
 
-      <section className={`educad-workplane-stage ${sketchSession ? "sketch-active" : ""} ${challengeEditor ? "challenge-authoring" : ""} ${(challenge || challengeEditor) && challengeOpen && !sketchSession ? `challenge-docked-${challengeDock}` : ""}`}>
+      <section className={`kercad-workplane-stage ${sketchSession ? "sketch-active" : ""} ${challengeEditor ? "challenge-authoring" : ""} ${(challenge || challengeEditor) && challengeOpen && !sketchSession ? `challenge-docked-${challengeDock}` : ""}`}>
         {showFps ? <FpsCounter sketchMode={Boolean(sketchSession)} /> : null}
         {backgroundProcessLabel ? <BackgroundProcessIndicator label={backgroundProcessLabel} rightOffset={viewportOverlayRightOffset + (showFps ? 90 : 0)} regenerating={!stlExporting && !exporting && !alignmentCalculating && kernelBusy} /> : null}
         {sketchSession ? <SketchWorkspace
@@ -3915,7 +3917,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               draft.annotations ??= [];
               const common = { id, name: nextAnnotationName(draft.annotations, t(`annotation.${kind}`)), visible: true };
               draft.annotations.push(kind === "text"
-                ? { ...common, kind, position: start, alignment: "center", size: 6, font: "Sans", text: "eduCAD" }
+                ? { ...common, kind, position: start, alignment: "center", size: 6, font: "Sans", text: "kerCAD" }
                 : kind === "circle" ? { ...common, kind, position: start, rotation: { x: 0, y: 0, z: 0 }, radius: Math.max(0.1, Math.hypot((end?.x ?? start.x) - start.x, (end?.y ?? start.y) - start.y, (end?.z ?? start.z) - start.z)), mode: "billboard", color: "#233c52", lineWidth: 2 }
                 : kind === "angle" ? { ...common, kind, start, center: center ?? start, end: end ?? start, color: "#233c52" }
                 : { ...common, kind: "dimension", start, end: end ?? start, ...annotationDimensionPreset(kind) });
@@ -4002,18 +4004,18 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               <Tool label={t("operation.edit")} active={editingAnnotationId === selectedAnnotation.id} onClick={() => setEditingAnnotationId(selectedAnnotation.id)}><ToolbarEditOperationIcon /></Tool>
             </>}
           </> : alignOpen ? <>
-            <button type="button" className={`educad-alignment-mode ${alignmentMode === "reference" ? "active" : ""}`} aria-label={locale === "es" ? "Alinear a referencia" : "Align to reference"} title={locale === "es" ? "Alinear a referencia" : "Align to reference"} aria-pressed={alignmentMode === "reference"} onClick={() => setAlignmentMode("reference")}>
+            <button type="button" className={`kercad-alignment-mode ${alignmentMode === "reference" ? "active" : ""}`} aria-label={locale === "es" ? "Alinear a referencia" : "Align to reference"} title={locale === "es" ? "Alinear a referencia" : "Align to reference"} aria-pressed={alignmentMode === "reference"} onClick={() => setAlignmentMode("reference")}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/assets/educad/alignment/mode-reference.svg" alt="" draggable={false} />
+              <img src="/assets/kercad/alignment/mode-reference.svg" alt="" draggable={false} />
             </button>
-            <button type="button" className={`educad-alignment-mode ${alignmentMode === "group" ? "active" : ""}`} aria-label={locale === "es" ? "Alinear al grupo" : "Align to group"} title={locale === "es" ? "Alinear al grupo" : "Align to group"} aria-pressed={alignmentMode === "group"} onClick={() => setAlignmentMode("group")}>
+            <button type="button" className={`kercad-alignment-mode ${alignmentMode === "group" ? "active" : ""}`} aria-label={locale === "es" ? "Alinear al grupo" : "Align to group"} title={locale === "es" ? "Alinear al grupo" : "Align to group"} aria-pressed={alignmentMode === "group"} onClick={() => setAlignmentMode("group")}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/assets/educad/alignment/mode-group.svg" alt="" draggable={false} />
+              <img src="/assets/kercad/alignment/mode-group.svg" alt="" draggable={false} />
             </button>
           </> : selectedEdgeTreatmentFeature || pendingEdgeTreatment || pendingShell || editingMirrorPlaneId || selectedFeature?.kind === "shell" || selectedFeature?.kind === "mirror" || selectedFeature?.kind === "linearPattern" || selectedFeature?.kind === "polarPattern" ? null : <>
             <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
             <Tool label={t("camera.rotationTriad")} active={showRotationTriad} onClick={() => setShowRotationTriad((visible) => !visible)}><ToolbarRotationManipulatorIcon /></Tool>
-            {selectionKind === "feature" && <Tool className="educad-parameter-handles-toggle" label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>}
+            {selectionKind === "feature" && <Tool className="kercad-parameter-handles-toggle" label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>}
             {selectedReferenceObject?.referenceMesh && <>
               <ViewportFloatingNumberInput value={selectedReferenceObject.referenceMesh.opacity * 100} unit="percent" displayUnit={displayUnit} snap={1} label={t("property.opacity")} min={5} max={100} onCommit={(value) => updateObject(selectedReferenceObject.id, (object) => { if (object.referenceMesh) object.referenceMesh.opacity = value / 100; })} />
               <ReferenceDisplayButtons value={selectedReferenceObject.referenceMesh.displayMode} locale={locale} onChange={(mode) => updateObject(selectedReferenceObject.id, (object) => { if (object.referenceMesh) object.referenceMesh.displayMode = mode; })} />
@@ -4239,14 +4241,14 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             if (feature.kind === "mirror" && update.duplicate !== undefined) feature.duplicate = update.duplicate;
           })}
         />}
-        {sketchSession ? <aside ref={constraintsScrollRef} className="educad-sketch-constraints-panel" aria-label={t("sketch.constraints")}>
+        {sketchSession ? <aside ref={constraintsScrollRef} className="kercad-sketch-constraints-panel" aria-label={t("sketch.constraints")}>
           <header>
             <div><strong>{t("sketch.constraints")}</strong><span>{t("sketch.constraintHint")}</span></div>
-            <output className={`educad-sketch-constraint-status ${sketchConstraintStatus.kind}`} role="status" aria-live="polite" aria-atomic="true">{sketchConstraintStatus.label}</output>
+            <output className={`kercad-sketch-constraint-status ${sketchConstraintStatus.kind}`} role="status" aria-live="polite" aria-atomic="true">{sketchConstraintStatus.label}</output>
           </header>
           <section>
             <h2>{t("sketch.geometric")}</h2>
-            <div className="educad-sketch-side-tool-grid">
+            <div className="kercad-sketch-side-tool-grid">
               <SketchSideTool label={t("sketch.horizontal")} enabled={selectedConstraintSegments.length > 0} active={selectedConstraintKind("horizontal")} onClick={() => toggleSketchConstraint("horizontal")}><SketchConstraintIcon file="horizontal" /></SketchSideTool>
               <SketchSideTool label={t("sketch.vertical")} enabled={selectedConstraintSegments.length > 0} active={selectedConstraintKind("vertical")} onClick={() => toggleSketchConstraint("vertical")}><SketchConstraintIcon file="vertical" /></SketchSideTool>
               <SketchSideTool label={t("sketch.parallel")} enabled={Boolean(selectedLinePair)} active={selectedPairConstraintKind("parallel")} onClick={() => toggleSketchPairConstraint("parallel")}><SketchConstraintIcon file="parallel" /></SketchSideTool>
@@ -4263,7 +4265,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           </section>
           <section>
             <h2>{t("sketch.dimensions")}</h2>
-            <div className="educad-sketch-side-tool-grid">
+            <div className="kercad-sketch-side-tool-grid">
               <SketchSideTool label={t("sketch.distanceX")} enabled={Boolean(selectedDimensionSegment)} active={selectedDimensionActive("x")} onClick={() => toggleSketchDimension("x")}><SketchConstraintIcon file="distance-x" /></SketchSideTool>
               <SketchSideTool label={t("sketch.distanceY")} enabled={Boolean(selectedDimensionSegment)} active={selectedDimensionActive("z")} onClick={() => toggleSketchDimension("z")}><SketchConstraintIcon file="distance-y" /></SketchSideTool>
               <SketchSideTool label={t("sketch.dimensionLength")} enabled={Boolean(selectedDimensionSegment)} active={selectedDimensionActive("aligned")} onClick={() => toggleSketchDimension("aligned")}><SketchConstraintIcon file="length" /></SketchSideTool>
@@ -4286,10 +4288,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           onSave={(edited) => onSaveChallenge?.(edited, structuredClone(latestDocumentRef.current))}
         /> : null}
         {challenge && challengeOpen && !sketchSession ? <ChallengePlayer challenge={challenge} dock={challengeDock} onDockChange={setChallengeDock} onClose={() => { setChallengeOpen(false); setChallengeDock("left"); }} /> : null}
-        {challenge && !challengeOpen && !sketchSession ? <button className="educad-challenge-reopen" type="button" onClick={() => { setChallengeDock("left"); setChallengeOpen(true); }}><Grid3X3 size={19} /> Challenge</button> : null}
-        <button data-educad-popup="grid" className={`educad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label={t("grid.settings")} title={t("grid.title")} onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><GridControlIcon size={22} /></button>
+        {challenge && !challengeOpen && !sketchSession ? <button className="kercad-challenge-reopen" type="button" onClick={() => { setChallengeDock("left"); setChallengeOpen(true); }}><Grid3X3 size={19} /> Challenge</button> : null}
+        <button data-kercad-popup="grid" className={`kercad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label={t("grid.settings")} title={t("grid.title")} onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><GridControlIcon size={22} /></button>
         <button
-          className={`educad-workplane-snap-button ${document.workplane.snapToGrid ? "active" : ""}`}
+          className={`kercad-workplane-snap-button ${document.workplane.snapToGrid ? "active" : ""}`}
           aria-label={document.workplane.snapToGrid ? t("grid.disableSnap") : t("grid.enableSnap")}
           aria-pressed={document.workplane.snapToGrid}
           title={document.workplane.snapToGrid ? t("grid.snapEnabled") : t("grid.snapDisabled")}
@@ -4299,29 +4301,29 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             setWorkplaneDraft((current) => ({ ...current, snapToGrid: enabled }));
           }}
         ><GridControlIcon snap size={21} /></button>
-        <div className="educad-snap-spacing-control" data-educad-popup="snap-spacing" onKeyDown={(event) => { if (event.key === "Escape") setSnapSpacingOpen(false); }}>
-          <button type="button" className="educad-snap-spacing-trigger" aria-label={t("grid.snapSpacing")} title={t("grid.snapSpacing")} aria-expanded={snapSpacingOpen} aria-controls="educad-snap-spacing-options" onClick={() => setSnapSpacingOpen((open) => !open)}>
+        <div className="kercad-snap-spacing-control" data-kercad-popup="snap-spacing" onKeyDown={(event) => { if (event.key === "Escape") setSnapSpacingOpen(false); }}>
+          <button type="button" className="kercad-snap-spacing-trigger" aria-label={t("grid.snapSpacing")} title={t("grid.snapSpacing")} aria-expanded={snapSpacingOpen} aria-controls="kercad-snap-spacing-options" onClick={() => setSnapSpacingOpen((open) => !open)}>
             <span>{Number(millimetersToDisplayLength(document.workplane.snapSpacing, displayUnit).toFixed(4))} {displayUnitLabel(displayUnit)}</span><ChevronUp size={15} />
           </button>
-          {snapSpacingOpen && <div id="educad-snap-spacing-options" className="educad-snap-spacing-options" role="group" aria-label={t("grid.snapSpacing")}>
+          {snapSpacingOpen && <div id="kercad-snap-spacing-options" className="kercad-snap-spacing-options" role="group" aria-label={t("grid.snapSpacing")}>
             {[0.5, 1, 2, 5, 10].map((value) => {
               const active = Math.abs(document.workplane.snapSpacing - displayLengthToMillimeters(value, displayUnit)) < 0.000001;
               return <button type="button" key={value} className={active ? "active" : ""} aria-pressed={active} onClick={() => { updateGridSettings({ snapSpacing: displayLengthToMillimeters(value, displayUnit) }); setSnapSpacingOpen(false); }}>{value} {displayUnitLabel(displayUnit)}{active && <Check size={15} />}</button>;
             })}
           </div>}
         </div>
-        {workplaneOpen ? <div data-educad-popup="grid" className="educad-workplane-popover">
+        {workplaneOpen ? <div data-kercad-popup="grid" className="kercad-workplane-popover">
           <header><div><strong>{t("grid.title")}</strong></div><button type="button" aria-label={t("common.close")} onClick={() => setWorkplaneOpen(false)}><X size={17} /></button></header>
           <label><span>{t("grid.showFloor")}</span><input type="checkbox" checked={workplaneDraft.gridVisible} onChange={(event) => updateGridSettings({ gridVisible: event.target.checked })} /></label>
-          <div className="educad-grid-size-row" role="group" aria-labelledby="educad-grid-size-label">
-            <span id="educad-grid-size-label">{t("grid.size")}</span>
-            {(["width", "depth"] as const).map((axis) => <span key={`${axis}-${displayUnit}`} className="educad-number-input"><input aria-label={t(axis === "width" ? "grid.width" : "grid.depth")} type="text" inputMode="text" min={millimetersToDisplayLength(1, displayUnit)} max={millimetersToDisplayLength(2000, displayUnit)} step={millimetersToDisplayLength(1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft[axis], displayUnit)} onBlur={(event) => commitGridNumber(event, axis, 1, 2000, workplaneDraft[axis])} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span>)}
+          <div className="kercad-grid-size-row" role="group" aria-labelledby="kercad-grid-size-label">
+            <span id="kercad-grid-size-label">{t("grid.size")}</span>
+            {(["width", "depth"] as const).map((axis) => <span key={`${axis}-${displayUnit}`} className="kercad-number-input"><input aria-label={t(axis === "width" ? "grid.width" : "grid.depth")} type="text" inputMode="text" min={millimetersToDisplayLength(1, displayUnit)} max={millimetersToDisplayLength(2000, displayUnit)} step={millimetersToDisplayLength(1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft[axis], displayUnit)} onBlur={(event) => commitGridNumber(event, axis, 1, 2000, workplaneDraft[axis])} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span>)}
           </div>
-          <label><span>{t("grid.step")}</span><span className="educad-number-input"><input key={`step-${displayUnit}`} type="text" inputMode="text" min={millimetersToDisplayLength(0.1, displayUnit)} max={millimetersToDisplayLength(200, displayUnit)} step={millimetersToDisplayLength(0.1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.gridStep, displayUnit)} onBlur={(event) => commitGridNumber(event, "gridStep", 0.1, 200, workplaneDraft.gridStep)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
-          <label><span>{t("grid.snapSpacing")}</span><span className="educad-number-input"><input key={`snap-spacing-${displayUnit}`} type="text" inputMode="text" min={millimetersToDisplayLength(0.1, displayUnit)} max={millimetersToDisplayLength(10000, displayUnit)} step={millimetersToDisplayLength(0.1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.snapSpacing, displayUnit)} onBlur={(event) => commitGridNumber(event, "snapSpacing", 0.1, 10000, workplaneDraft.snapSpacing)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
+          <label><span>{t("grid.step")}</span><span className="kercad-number-input"><input key={`step-${displayUnit}`} type="text" inputMode="text" min={millimetersToDisplayLength(0.1, displayUnit)} max={millimetersToDisplayLength(200, displayUnit)} step={millimetersToDisplayLength(0.1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.gridStep, displayUnit)} onBlur={(event) => commitGridNumber(event, "gridStep", 0.1, 200, workplaneDraft.gridStep)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
+          <label><span>{t("grid.snapSpacing")}</span><span className="kercad-number-input"><input key={`snap-spacing-${displayUnit}`} type="text" inputMode="text" min={millimetersToDisplayLength(0.1, displayUnit)} max={millimetersToDisplayLength(10000, displayUnit)} step={millimetersToDisplayLength(0.1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.snapSpacing, displayUnit)} onBlur={(event) => commitGridNumber(event, "snapSpacing", 0.1, 10000, workplaneDraft.snapSpacing)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
         </div> : null}
         <button
-          className={`educad-sidebar-mode-control ${modelSidebarMode}`}
+          className={`kercad-sidebar-mode-control ${modelSidebarMode}`}
           aria-label={modelSidebarMode === "normal" ? t("sidebar.simplify") : modelSidebarMode === "simplified" ? t("sidebar.hide") : t("sidebar.show")}
           title={modelSidebarMode === "normal" ? t("sidebar.visible") : modelSidebarMode === "simplified" ? t("sidebar.simplified") : t("sidebar.hidden")}
           onClick={() => setModelSidebarMode((current) => current === "normal" ? "simplified" : current === "simplified" ? "hidden" : "normal")}
@@ -4343,8 +4345,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           <button aria-label={t("camera.zoomIn")} title={t("camera.zoomIn")} onClick={() => setCamera("zoom-in")}><Plus size={28} /></button>
           <button aria-label={t("camera.zoomOut")} title={t("camera.zoomOut")} onClick={() => setCamera("zoom-out")}><Minus size={28} /></button>
         </div>
-        {build.warning && <div className="educad-rebuild-error" role="alert" aria-live="assertive" aria-atomic="true"><strong>{t("history.stopped")}</strong><span>{build.warning}</span>{rebuildSuggestion ? <small><b>{t("rebuild.suggestionLabel")}:</b> {rebuildSuggestion}</small> : null}</div>}
-        {notice && <div className={`educad-reference-toast ${notice.type}`} role={notice.type === "error" ? "alert" : "status"} aria-live={notice.type === "error" ? "assertive" : "polite"} aria-atomic="true">{notice.text}</div>}
+        {build.warning && <div className="kercad-rebuild-error" role="alert" aria-live="assertive" aria-atomic="true"><strong>{t("history.stopped")}</strong><span>{build.warning}</span>{rebuildSuggestion ? <small><b>{t("rebuild.suggestionLabel")}:</b> {rebuildSuggestion}</small> : null}</div>}
+        {notice && <div className={`kercad-reference-toast ${notice.type}`} role={notice.type === "error" ? "alert" : "status"} aria-live={notice.type === "error" ? "assertive" : "polite"} aria-atomic="true">{notice.text}</div>}
         {modelSidebarMode !== "hidden" ? <ParametricModelSidebar
           selectedAnnotationId={selectedAnnotationId}
           onSelectAnnotation={(id) => { setAnnotationTool(null); setEditingAnnotationId(null); setModelSelection([]); setSelectedAnnotationId(id); }}
@@ -4406,13 +4408,13 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
 
       {importOpen && <ImportDesignDialog locale={locale} onClose={() => setImportOpen(false)} onBrowse={() => importRef.current?.click()} onFile={(file) => { setImportOpen(false); void importManagedFile(file); }} />}
       {exportOpen && (
-        <aside data-educad-popup="export" className="top-action-panel export-action-panel educad-export-panel">
+        <aside data-kercad-popup="export" className="top-action-panel export-action-panel kercad-export-panel">
           <header><div className="top-action-heading"><strong>{t("dialog.exportTitle")}</strong></div><button aria-label={t("common.close")} onClick={() => setExportOpen(false)}><X /></button></header>
-          <label className="educad-export-name"><span>{t("dialog.fileName")}</span><input type="text" value={exportFileName} maxLength={120} placeholder="model" onChange={(event) => setExportFileName(event.target.value)} /></label>
-          <label className="educad-export-name"><span>{t("dialog.authorName")}</span><input type="text" value={sharedAuthor} maxLength={160} autoComplete="name" placeholder={t("dialog.authorName")} onChange={(event) => setSharedAuthor(event.target.value)} disabled={projectExporting || sharedSaving} /></label>
+          <label className="kercad-export-name"><span>{t("dialog.fileName")}</span><input type="text" value={exportFileName} maxLength={120} placeholder="model" onChange={(event) => setExportFileName(event.target.value)} /></label>
+          <label className="kercad-export-name"><span>{t("dialog.authorName")}</span><input type="text" value={sharedAuthor} maxLength={160} autoComplete="name" placeholder={t("dialog.authorName")} onChange={(event) => setSharedAuthor(event.target.value)} disabled={projectExporting || sharedSaving} /></label>
           {onSaveShared ? <>
             <button type="button" onClick={() => setSharedSaveOpen(current => !current)} aria-expanded={sharedSaveOpen}>{locale === "es" ? "Guardar en compartidos" : "Save to shared"}</button>
-            {sharedSaveOpen ? <form className="educad-editor-share-form" onSubmit={event => { event.preventDefault(); void publishShared(); }}>
+            {sharedSaveOpen ? <form className="kercad-editor-share-form" onSubmit={event => { event.preventDefault(); void publishShared(); }}>
               <p>{locale === "es" ? "Guarda una copia en el servidor accesible para todos. Tus cambios locales no se publican automáticamente." : "Save a copy on the server for everyone. Local changes are not published automatically."}</p>
               <label>{locale === "es" ? "Nombre compartido" : "Shared file name"}<input autoFocus value={sharedName} required maxLength={100} pattern={'[^<>:"/\\\\|?*]+'} disabled={sharedSaving} onChange={event => setSharedName(event.target.value)} /></label>
               <label>{locale === "es" ? "Tu nombre" : "Your name"}<input value={sharedAuthor} required maxLength={80} disabled={sharedSaving} onChange={event => setSharedAuthor(event.target.value)} /></label>
@@ -4420,35 +4422,35 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               {sharedSaveMessage ? <p role="status">{sharedSaveMessage}</p> : null}
             </form> : null}
           </> : null}
-          <div className="educad-export-options">
-            <div className="educad-project-export-option">
+          <div className="kercad-export-options">
+            <div className="kercad-project-export-option">
               <button onClick={() => void exportProject()} disabled={projectExporting}><span className="export-format-icon">edu</span><strong>{projectExporting ? t("dialog.saving") : t("dialog.projectFormat")}</strong><small>{t("dialog.projectFormatHint")}</small></button>
-              <div className="educad-project-credits"><span>{t("dialog.creator")}: {document.creator || document.author || sharedAuthor.trim() || "—"}</span><span>{t("dialog.lastAuthor")}: {sharedAuthor.trim() || document.author || "—"}</span></div>
+              <div className="kercad-project-credits"><span>{t("dialog.creator")}: {document.creator || document.author || sharedAuthor.trim() || "—"}</span><span>{t("dialog.lastAuthor")}: {sharedAuthor.trim() || document.author || "—"}</span></div>
             </div>
             <button onClick={() => void exportStep()} disabled={exporting || kernelBusy || !build.mesh || (exportScope === "selection" && !exportSelectedObjectIds.length)}><span className="export-format-icon step">STEP</span><strong>{exporting ? t("dialog.exporting") : t("dialog.stepFormat")}</strong><small>{t("dialog.stepFormatHint")}</small></button>
-            <div className="educad-stl-export-option">
+            <div className="kercad-stl-export-option">
               <button onClick={() => void exportStl()} disabled={stlExporting || kernelBusy || build.objectRecords.length === 0 || (stlExportScope === "selection" && !exportSelectedObjectIds.length)}><span className="export-format-icon">STL</span><strong>{stlExporting ? t("dialog.exporting") : t("dialog.stlFormat")}</strong><small>{t("dialog.stlFormatHint")}</small></button>
-              <div className="educad-stl-scope-buttons" role="group" aria-label={locale === "es" ? "Alcance de exportación STL" : "STL export scope"}>
+              <div className="kercad-stl-scope-buttons" role="group" aria-label={locale === "es" ? "Alcance de exportación STL" : "STL export scope"}>
                 <button type="button" aria-pressed={stlExportScope === "project"} disabled={stlExporting} onClick={() => setStlExportScope("project")}>{locale === "es" ? "Proyecto completo" : "Whole project"}</button>
                 <button type="button" aria-pressed={stlExportScope === "selection"} disabled={stlExporting || !exportSelectedObjectIds.length} onClick={() => setStlExportScope("selection")}>{locale === "es" ? "Sólo selección" : "Selection only"} ({exportSelectedObjectIds.length})</button>
               </div>
-              <label className="educad-stl-quality"><span>{t("dialog.stlQuality")}: <strong>{t(stlQuality === "low" ? "dialog.qualityLow" : stlQuality === "medium" ? "dialog.qualityMedium" : stlQuality === "high" ? "dialog.qualityHigh" : "dialog.qualityVeryHigh")}</strong></span><input type="range" min={0} max={3} step={1} value={(["low", "medium", "high", "veryHigh"] as const).indexOf(stlQuality)} aria-valuetext={t(stlQuality === "low" ? "dialog.qualityLow" : stlQuality === "medium" ? "dialog.qualityMedium" : stlQuality === "high" ? "dialog.qualityHigh" : "dialog.qualityVeryHigh")} onChange={(event) => setStlQuality((["low", "medium", "high", "veryHigh"] as const)[Number(event.target.value)])} /><span className="educad-stl-quality-labels" aria-hidden="true"><small>{t("dialog.qualityLow")}</small><small>{t("dialog.qualityMedium")}</small><small>{t("dialog.qualityHigh")}</small><small>{t("dialog.qualityVeryHigh")}</small></span></label>
+              <label className="kercad-stl-quality"><span>{t("dialog.stlQuality")}: <strong>{t(stlQuality === "low" ? "dialog.qualityLow" : stlQuality === "medium" ? "dialog.qualityMedium" : stlQuality === "high" ? "dialog.qualityHigh" : "dialog.qualityVeryHigh")}</strong></span><input type="range" min={0} max={3} step={1} value={(["low", "medium", "high", "veryHigh"] as const).indexOf(stlQuality)} aria-valuetext={t(stlQuality === "low" ? "dialog.qualityLow" : stlQuality === "medium" ? "dialog.qualityMedium" : stlQuality === "high" ? "dialog.qualityHigh" : "dialog.qualityVeryHigh")} onChange={(event) => setStlQuality((["low", "medium", "high", "veryHigh"] as const)[Number(event.target.value)])} /><span className="kercad-stl-quality-labels" aria-hidden="true"><small>{t("dialog.qualityLow")}</small><small>{t("dialog.qualityMedium")}</small><small>{t("dialog.qualityHigh")}</small><small>{t("dialog.qualityVeryHigh")}</small></span></label>
             </div>
           </div>
         </aside>
       )}
 
       {projectRenameOpen ? (
-        <div className="educad-dialog-backdrop" onPointerDown={() => setProjectRenameOpen(false)}>
-          <form ref={projectRenameDialogRef} className="educad-new-document-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-project-rename-title" tabIndex={-1} onPointerDown={(event) => event.stopPropagation()} onSubmit={(event) => {
+        <div className="kercad-dialog-backdrop" onPointerDown={() => setProjectRenameOpen(false)}>
+          <form ref={projectRenameDialogRef} className="kercad-new-document-dialog" role="dialog" aria-modal="true" aria-labelledby="kercad-project-rename-title" tabIndex={-1} onPointerDown={(event) => event.stopPropagation()} onSubmit={(event) => {
             event.preventDefault();
             const name = projectRenameDraft.trim();
             if (!name) return;
             if (name === document.name || mutate((draft) => { draft.name = name; })) setProjectRenameOpen(false);
           }}>
-            <header><strong id="educad-project-rename-title">{locale === "es" ? "Cambiar nombre del proyecto" : "Rename project"}</strong><button type="button" aria-label={t("common.close")} onClick={() => setProjectRenameOpen(false)}><X /></button></header>
-            <label className="educad-project-rename-field"><span>{t("settings.name")}</span><input autoFocus value={projectRenameDraft} maxLength={120} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setProjectRenameDraft(event.target.value)} /></label>
-            <section className="educad-project-cover-controls">
+            <header><strong id="kercad-project-rename-title">{locale === "es" ? "Cambiar nombre del proyecto" : "Rename project"}</strong><button type="button" aria-label={t("common.close")} onClick={() => setProjectRenameOpen(false)}><X /></button></header>
+            <label className="kercad-project-rename-field"><span>{t("settings.name")}</span><input autoFocus value={projectRenameDraft} maxLength={120} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setProjectRenameDraft(event.target.value)} /></label>
+            <section className="kercad-project-cover-controls">
               <strong>{t("project.cover")}</strong>
               {document.thumbnailOverride && <img src={document.thumbnailOverride} alt={t("project.cover")} />}
               <small>{t(document.thumbnailOverride ? "project.coverManual" : "project.coverAutomatic")}</small>
@@ -4469,38 +4471,38 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         </div>
       ) : null}
       {newDocumentOpen ? (
-        <div className="educad-dialog-backdrop" role="presentation" onPointerDown={() => setNewDocumentOpen(false)}>
-          <section ref={newDocumentDialogRef} className="educad-new-document-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-new-document-title" aria-describedby="educad-new-document-description" tabIndex={-1} onPointerDown={(event) => event.stopPropagation()}>
-            <header><strong id="educad-new-document-title">{t("dialog.newTitle")}</strong><button type="button" aria-label={t("common.cancel")} onClick={() => setNewDocumentOpen(false)}><X size={18} /></button></header>
-            <p id="educad-new-document-description">{t("dialog.newWarning")}</p>
+        <div className="kercad-dialog-backdrop" role="presentation" onPointerDown={() => setNewDocumentOpen(false)}>
+          <section ref={newDocumentDialogRef} className="kercad-new-document-dialog" role="dialog" aria-modal="true" aria-labelledby="kercad-new-document-title" aria-describedby="kercad-new-document-description" tabIndex={-1} onPointerDown={(event) => event.stopPropagation()}>
+            <header><strong id="kercad-new-document-title">{t("dialog.newTitle")}</strong><button type="button" aria-label={t("common.cancel")} onClick={() => setNewDocumentOpen(false)}><X size={18} /></button></header>
+            <p id="kercad-new-document-description">{t("dialog.newWarning")}</p>
             <footer><button type="button" onClick={() => setNewDocumentOpen(false)}>{t("common.cancel")}</button><button type="button" className="danger" onClick={newDocument}>{t("dialog.createNew")}</button><button type="button" className="primary" onClick={openExportFromNewDocumentWarning}>{t("dialog.save")}</button></footer>
           </section>
         </div>
       ) : null}
 
       {pendingProjectImport ? (
-        <div className="educad-dialog-backdrop" role="presentation" onPointerDown={() => setPendingProjectImport(null)}>
-          <section ref={importProjectDialogRef} className="educad-new-document-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-import-project-title" aria-describedby="educad-import-project-description" tabIndex={-1} onPointerDown={(event) => event.stopPropagation()}>
-            <header><strong id="educad-import-project-title">{t("dialog.importProject")}</strong><button type="button" aria-label={t("common.cancel")} onClick={() => setPendingProjectImport(null)}><X size={18} /></button></header>
-            <p id="educad-import-project-description"><strong>{pendingProjectImport.document.name || pendingProjectImport.fileName}</strong> {t("dialog.contains")} {pendingProjectImport.document.objects.length} {t(pendingProjectImport.document.objects.length === 1 ? "dialog.object" : "dialog.objects")}. {t("dialog.importChoice")}</p>
+        <div className="kercad-dialog-backdrop" role="presentation" onPointerDown={() => setPendingProjectImport(null)}>
+          <section ref={importProjectDialogRef} className="kercad-new-document-dialog" role="dialog" aria-modal="true" aria-labelledby="kercad-import-project-title" aria-describedby="kercad-import-project-description" tabIndex={-1} onPointerDown={(event) => event.stopPropagation()}>
+            <header><strong id="kercad-import-project-title">{t("dialog.importProject")}</strong><button type="button" aria-label={t("common.cancel")} onClick={() => setPendingProjectImport(null)}><X size={18} /></button></header>
+            <p id="kercad-import-project-description"><strong>{pendingProjectImport.document.name || pendingProjectImport.fileName}</strong> {t("dialog.contains")} {pendingProjectImport.document.objects.length} {t(pendingProjectImport.document.objects.length === 1 ? "dialog.object" : "dialog.objects")}. {t("dialog.importChoice")}</p>
             <footer><button type="button" onClick={() => setPendingProjectImport(null)}>{t("common.cancel")}</button><button type="button" onClick={openPendingProject}>{t("common.open")}</button><button type="button" className="primary" onClick={mergePendingProject}>{t("dialog.addToCurrent")}</button></footer>
           </section>
         </div>
       ) : null}
 
       {settingsOpen && (
-        <aside data-educad-popup="settings" className="top-action-panel educad-settings-panel">
+        <aside data-kercad-popup="settings" className="top-action-panel kercad-settings-panel">
           <header><strong>{t("settings.title")}</strong><button aria-label={t("common.close")} onClick={() => setSettingsOpen(false)}><X /></button></header>
           <label><span>{t("settings.rendering")}</span><select value={renderQuality} onChange={(event) => setRenderQuality(event.target.value as ViewportRenderQuality)}><option value="normal">{t("settings.renderNormal")}</option><option value="optimized">{t("settings.renderOptimized")}</option></select></label>
           <label><span>{t("settings.shading")}</span><select value={shadingMode} onChange={(event) => setShadingMode(event.target.value as ViewportShadingMode)}><option value="shadows">{t("settings.shadows")}</option><option value="basic">{t("settings.basicShadows")}</option><option value="noShadows">{t("settings.noShadows")}</option></select></label>
           <label><span>{t("settings.units")}</span><select value={displayUnit} onChange={(event) => { const next = cloneDocument(latestDocumentRef.current); next.displayUnit = normalizeDisplayUnit(event.target.value); commit(next); }}><option value="mm">{t("settings.millimeters")}</option><option value="cm">{t("settings.centimeters")}</option><option value="m">{t("settings.meters")}</option><option value="in">{t("settings.inches")}</option><option value="ft">{t("settings.feet")}</option></select></label>
           {/* <p>{t("settings.unitsHint")}</p> */}
-          <label className="educad-settings-toggle"><span>{t("settings.showFps")}</span><input type="checkbox" checked={showFps} onChange={(event) => setShowFps(event.target.checked)} /></label>
+          <label className="kercad-settings-toggle"><span>{t("settings.showFps")}</span><input type="checkbox" checked={showFps} onChange={(event) => setShowFps(event.target.checked)} /></label>
           {/* <p>{t("settings.autosave")}</p> */}
         </aside>
       )}
 
-      <input ref={importRef} hidden type="file" accept=".educad,.educad.json,.json,.svg,.step,.stp,.stl,.obj,.jpg,.jpeg,.png,image/jpeg,image/png,application/vnd.educad.project+zip,application/json,image/svg+xml,model/step,model/stl,model/obj" onChange={(event) => { const file = event.target.files?.[0]; if (file) { setImportOpen(false); void importManagedFile(file); } event.target.value = ""; }} />
+      <input ref={importRef} hidden type="file" accept={".kercad,.kercad.json,.json,.svg,.step,.stp,.stl,.obj,.jpg,.jpeg,.png,image/jpeg,image/png,application/vnd.kercad.project+zip,application/json,image/svg+xml,model/step,model/stl,model/obj ," + LEGACY_PROJECT_ACCEPT} onChange={(event) => { const file = event.target.files?.[0]; if (file) { setImportOpen(false); void importManagedFile(file); } event.target.value = ""; }} />
       <input ref={sketchSvgImportRef} hidden type="file" accept=".svg,image/svg+xml" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importSvgIntoSketch(file); event.target.value = ""; }} />
     </main>
   );
@@ -4526,17 +4528,17 @@ function FpsCounter({ sketchMode = false }: { sketchMode?: boolean }) {
       frame = requestAnimationFrame(sample);
       return () => cancelAnimationFrame(frame);
     }
-    const update = () => setFps(Math.round(window.educadParametricPerf?.get().fps ?? 0));
+    const update = () => setFps(Math.round(window.kercadParametricPerf?.get().fps ?? 0));
     update();
     const timer = window.setInterval(update, 500);
     return () => window.clearInterval(timer);
   }, [sketchMode]);
   const tone = fps > 0 && fps < 20 ? "low" : fps < 40 ? "medium" : "high";
-  return <output className={`educad-fps-counter ${tone}`} aria-label={`${fps} frames per second`}>{fps} FPS</output>;
+  return <output className={`kercad-fps-counter ${tone}`} aria-label={`${fps} frames per second`}>{fps} FPS</output>;
 }
 
 function BackgroundProcessIndicator({ label, rightOffset, regenerating = false }: { label: string; rightOffset: number; regenerating?: boolean }) {
-  return <output className={`educad-background-process ${regenerating ? "regenerating" : ""}`} role="status" aria-live="polite" aria-atomic="true" aria-busy="true" aria-label={label} style={{ right: rightOffset }}><span aria-hidden="true" />{label}</output>;
+  return <output className={`kercad-background-process ${regenerating ? "regenerating" : ""}`} role="status" aria-live="polite" aria-atomic="true" aria-busy="true" aria-label={label} style={{ right: rightOffset }}><span aria-hidden="true" />{label}</output>;
 }
 
 function ToolbarSection({ label, className = "", children }: { label: string; className?: string; children: React.ReactNode }) {
@@ -4548,7 +4550,7 @@ function Tool({ label, className = "", enabled = true, active, onClick, children
 }
 
 function SketchSideTool({ label, enabled = true, active, onClick, children }: { label: string; enabled?: boolean; active?: boolean; onClick?: () => void; children: React.ReactNode }) {
-  return <button className={`educad-sketch-side-tool ${active ? "active" : ""}`} type="button" aria-label={label} aria-pressed={active} disabled={!enabled} title={label} onClick={onClick}><span className="educad-sketch-side-tool-icon">{children}</span></button>;
+  return <button className={`kercad-sketch-side-tool ${active ? "active" : ""}`} type="button" aria-label={label} aria-pressed={active} disabled={!enabled} title={label} onClick={onClick}><span className="kercad-sketch-side-tool-icon">{children}</span></button>;
 }
 
 function ViewCube({ orientation, onDirection }: { orientation: CameraOrientation; onDirection: (direction: [number, number, number], smooth?: boolean) => void }) {
@@ -4702,8 +4704,8 @@ function ViewCube({ orientation, onDirection }: { orientation: CameraOrientation
       const surface = projected.find((candidate) => candidate.id === hoveredSurfaceId);
       if (surface) chooseDirection(surface.direction);
     }}
-  ><svg className="educad-navicube" viewBox="0 0 82 82" role="group" aria-label="View directions">
-    {projected.map((surface) => <g key={surface.id} className={`educad-navicube-surface ${surface.kind} ${hoveredSurfaceId === surface.id ? "hovered" : ""}`} pointerEvents="none" role="button" tabIndex={0} aria-label={surface.label ? `${surface.label} view` : `${surface.kind} view ${surface.direction.join(", ")}`} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); chooseDirection(surface.direction); } }}>
+  ><svg className="kercad-navicube" viewBox="0 0 82 82" role="group" aria-label="View directions">
+    {projected.map((surface) => <g key={surface.id} className={`kercad-navicube-surface ${surface.kind} ${hoveredSurfaceId === surface.id ? "hovered" : ""}`} pointerEvents="none" role="button" tabIndex={0} aria-label={surface.label ? `${surface.label} view` : `${surface.kind} view ${surface.direction.join(", ")}`} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); chooseDirection(surface.direction); } }}>
       <polygon points={surface.points.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(" ")} />
       {surface.label && surface.textTransform ? <text x={0} y={0} transform={surface.textTransform}>{surface.label}</text> : null}
     </g>)}

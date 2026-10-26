@@ -1,21 +1,23 @@
 "use client";
 
+import { LEGACY_DEMO_CHALLENGE_ID, PROJECT_FILE_PATTERN } from "@/lib/legacyBrand";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ProjectDashboard } from "@/components/ProjectDashboard";
-import { EducadLandingPage } from "@/components/EducadLandingPage";
+import { KercadLandingPage } from "@/components/KercadLandingPage";
 import { SketchForgeParametricEditor } from "@/components/SketchForgeParametricEditor";
-import { createEmptyChallenge, deleteInstalledChallenge, duplicateChallenge, exportChallengePackage, importChallengePackage, listInstalledChallenges, saveInstalledChallenge, syncBundledChallenges, type EducadChallenge } from "@/lib/challengeLibrary";
-import { exportEducadProject, importEducadProject, EDUCAD_PACKAGE_MEDIA_TYPE } from "@/lib/educadProject";
+import { createEmptyChallenge, deleteInstalledChallenge, duplicateChallenge, exportChallengePackage, importChallengePackage, listInstalledChallenges, saveInstalledChallenge, syncBundledChallenges, type KercadChallenge } from "@/lib/challengeLibrary";
+import { exportKercadProject, importKercadProject, KERCAD_PACKAGE_MEDIA_TYPE } from "@/lib/kercadProject";
 import { createEmptyDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { deleteLibraryProject, getLibraryProject, listLibraryProjects, newProjectLibraryId, saveLibraryProject, updateLibraryProjectThumbnail, type ProjectLibraryEntry } from "@/lib/projectLibrary";
 import { thumbnailDocumentKey, uploadSharedThumbnail } from "@/lib/sharedProjectThumbnail";
 import type { ParametricDocument } from "@/types/parametric";
 import { dashboardTranslate, type DashboardTranslationKey } from "@/lib/dashboardI18n";
-import { normalizeEducadLocale } from "@/lib/educadI18n";
+import { normalizeKercadLocale } from "@/lib/kercadI18n";
 import { assertImportByteLimit } from "@/lib/parametricImportLimits";
 
 function libraryText(key: DashboardTranslationKey, values?: Record<string, string | number>) {
-  try { return dashboardTranslate(normalizeEducadLocale(localStorage.getItem("educad.locale")), key, values); }
+  try { return dashboardTranslate(normalizeKercadLocale(localStorage.getItem("kercad.locale")), key, values); }
   catch { return dashboardTranslate("en", key, values); }
 }
 
@@ -37,14 +39,14 @@ export default function Home() {
   const [dashboardSection, setDashboardSection] = useState<"home" | "challenges" | "shared">("home");
   const [sharedEnabled, setSharedEnabled] = useState(false);
   useEffect(() => {
-    void fetch("/api/educad-shared-projects", { cache: "no-store" })
+    void fetch("/api/kercad-shared-projects", { cache: "no-store" })
       .then(response => response.ok ? response.json() : null)
       .then(payload => setSharedEnabled(payload?.enabled === true))
       .catch(() => setSharedEnabled(false));
   }, []);
-  const [challenges, setChallenges] = useState<EducadChallenge[]>([]);
-  const [activeChallenge, setActiveChallenge] = useState<EducadChallenge | null>(null);
-  const [editingChallenge, setEditingChallenge] = useState<EducadChallenge | null>(null);
+  const [challenges, setChallenges] = useState<KercadChallenge[]>([]);
+  const [activeChallenge, setActiveChallenge] = useState<KercadChallenge | null>(null);
+  const [editingChallenge, setEditingChallenge] = useState<KercadChallenge | null>(null);
   const saveTimer = useRef<number | null>(null);
   const writeQueueRef = useRef<Promise<void>>(Promise.resolve());
   const activeRef = useRef<ProjectLibraryEntry | null>(null);
@@ -104,7 +106,7 @@ export default function Home() {
       let entries = await listLibraryProjects();
       if (!entries.length) {
         try {
-          const legacy = JSON.parse(localStorage.getItem("educad.parametric.document.v1") ?? "null") as unknown;
+          const legacy = JSON.parse(localStorage.getItem("kercad.parametric.document.v1") ?? "null") as unknown;
           if (validateDocument(legacy)) {
             const document = normalizeParametricDocument(legacy);
             const now = Date.now();
@@ -113,11 +115,12 @@ export default function Home() {
           }
         } catch {}
       }
-      localStorage.removeItem("educad.parametric.document.v1");
-      localStorage.removeItem("educad.parametric.document.recovery.v1");
-      localStorage.removeItem("educad.parametric.snapshots.v1");
+      localStorage.removeItem("kercad.parametric.document.v1");
+      localStorage.removeItem("kercad.parametric.document.recovery.v1");
+      localStorage.removeItem("kercad.parametric.snapshots.v1");
       setProjects(entries);
-      await deleteInstalledChallenge("educad-demo-key-tag@1");
+      await deleteInstalledChallenge("kercad-demo-key-tag@1");
+      await deleteInstalledChallenge(LEGACY_DEMO_CHALLENGE_ID);
       setChallenges(await listInstalledChallenges());
       setBusy(false);
       // The local library is usable immediately, including without a network.
@@ -133,7 +136,7 @@ export default function Home() {
     const entry = { id: newProjectLibraryId(), name: document.name, createdAt: now, updatedAt: now, document };
     openProject(entry, false, true);
   };
-  const startChallenge = async (challenge: EducadChallenge) => {
+  const startChallenge = async (challenge: KercadChallenge) => {
     const document = createEmptyDocument();
     document.name = challenge.title;
     const now = Date.now();
@@ -214,7 +217,7 @@ export default function Home() {
     setEditingChallenge(null);
     transientEditorRef.current = false;
   };
-  const finishChallengeEdit = async (challenge: EducadChallenge, workspaceDocument: ParametricDocument) => {
+  const finishChallengeEdit = async (challenge: KercadChallenge, workspaceDocument: ParametricDocument) => {
     const saved = { ...challenge, title: challenge.title.trim(), workspaceDocument: structuredClone(workspaceDocument), installedAt: Date.now() };
     await saveInstalledChallenge(saved);
     setChallenges(await listInstalledChallenges());
@@ -232,7 +235,7 @@ export default function Home() {
     setActive(null);
     setEditingChallenge(null);
   };
-  const downloadChallenge = (challenge: EducadChallenge) => {
+  const downloadChallenge = (challenge: KercadChallenge) => {
     const blob = exportChallengePackage(challenge);
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -240,7 +243,7 @@ export default function Home() {
     link.click();
     window.setTimeout(() => URL.revokeObjectURL(link.href), 1_000);
   };
-  const duplicateInstalledChallenge = async (challenge: EducadChallenge) => {
+  const duplicateInstalledChallenge = async (challenge: KercadChallenge) => {
     setBusy(true);
     try {
       const copy = duplicateChallenge(challenge, await listInstalledChallenges());
@@ -253,14 +256,14 @@ export default function Home() {
   const importProject = async (file: File) => {
     setBusy(true);
     try {
-      let packaged: Awaited<ReturnType<typeof importEducadProject>> | null = null;
+      let packaged: Awaited<ReturnType<typeof importKercadProject>> | null = null;
       let document: ParametricDocument;
-      if (/\.(?:educad|json)$/i.test(file.name)) {
+      if (PROJECT_FILE_PATTERN.test(file.name) || /\.json$/i.test(file.name)) {
         if (/\.json$/i.test(file.name)) assertImportByteLimit("project", file.size);
         const bytes = new Uint8Array(await file.arrayBuffer());
-        packaged = /\.educad$/i.test(file.name) ? await importEducadProject(bytes) : null;
+        packaged = PROJECT_FILE_PATTERN.test(file.name) ? await importKercadProject(bytes) : null;
         const parsed = packaged?.document ?? JSON.parse(new TextDecoder().decode(bytes)) as unknown;
-        if (!validateDocument(parsed)) throw new Error(libraryText("This is not a valid eduCAD project."));
+        if (!validateDocument(parsed)) throw new Error(libraryText("This is not a valid kerCAD project."));
         document = normalizeParametricDocument(parsed);
       } else {
         document = createEmptyDocument();
@@ -299,11 +302,11 @@ export default function Home() {
     // Keep the editable local copy even if publishing fails or conflicts.
     persistActive(document);
     await saveLatestActive();
-    const bytes = await exportEducadProject(document, current.assets);
+    const bytes = await exportKercadProject(document, current.assets);
     const revision = current.sharedSource?.fileName === fileName ? current.sharedSource.revision : undefined;
-    const response = await fetch(`/api/educad-shared-projects?fileName=${encodeURIComponent(fileName)}`, {
+    const response = await fetch(`/api/kercad-shared-projects?fileName=${encodeURIComponent(fileName)}`, {
       method: "POST", body: new Uint8Array(bytes),
-      headers: { "Content-Type": EDUCAD_PACKAGE_MEDIA_TYPE, "X-Educad-Author": encodeURIComponent(author), ...(revision ? { "If-Match": revision } : { "If-None-Match": "*" }) },
+      headers: { "Content-Type": KERCAD_PACKAGE_MEDIA_TYPE, "X-Kercad-Author": encodeURIComponent(author), ...(revision ? { "If-Match": revision } : { "If-None-Match": "*" }) },
     });
     const payload = await response.json();
     if (response.status === 409) throw new Error(libraryText("The shared file has changed or this name is already in use. Your local work is safe. Save with another name, or open a fresh copy from Shared."));
@@ -348,11 +351,11 @@ export default function Home() {
     try {
       await writeQueueRef.current.catch(() => undefined);
       const source = await getLibraryProject(project.id) ?? project;
-      const bytes = await exportEducadProject(source.document, source.assets);
-      const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: EDUCAD_PACKAGE_MEDIA_TYPE }));
+      const bytes = await exportKercadProject(source.document, source.assets);
+      const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: KERCAD_PACKAGE_MEDIA_TYPE }));
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${source.name.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-").trim() || "design"}.educad`;
+      link.download = `${source.name.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-").trim() || "design"}.kercad`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -363,6 +366,6 @@ export default function Home() {
   };
 
   if (active) return <SketchForgeParametricEditor key={`${active.id}:${editorSession}`} initialProject={active.document} sharedFileName={active.sharedSource?.fileName} onSaveShared={sharedEnabled && !editingChallenge ? saveActiveShared : undefined} challenge={activeChallenge} challengeEditor={editingChallenge} onSaveChallenge={(challenge, document) => void finishChallengeEdit(challenge, document)} onCancelChallengeEdit={cancelChallengeEdit} onProjectChange={persistActive} onProjectThumbnail={persistThumbnail} onExitToProjects={(document) => void leaveEditor(document)} />;
-  if (showLanding) return <EducadLandingPage projectCount={projects.length} preview={projects.find((project) => project.thumbnail)?.thumbnail} onStart={() => { setDashboardSection("home"); setShowLanding(false); }} onOpenChallenges={() => { setDashboardSection("challenges"); setShowLanding(false); }} />;
+  if (showLanding) return <KercadLandingPage projectCount={projects.length} preview={projects.find((project) => project.thumbnail)?.thumbnail} onStart={() => { setDashboardSection("home"); setShowLanding(false); }} onOpenChallenges={() => { setDashboardSection("challenges"); setShowLanding(false); }} />;
   return <ProjectDashboard onDuplicate={(project) => void duplicateProject(project)} onExport={(project) => void downloadProject(project)} sharedEnabled={sharedEnabled} onSharedSaved={() => void refresh()} projects={projects} challenges={challenges} busy={busy} section={dashboardSection} onSectionChange={setDashboardSection} onShowLanding={() => setShowLanding(true)} onCreate={() => void createProject()} onOpen={(project) => { setActiveChallenge(null); setEditingChallenge(null); void openStoredProject(project); }} onImport={(file) => void importProject(file)} onImportChallenge={(file) => void installChallenge(file)} onCreateChallenge={() => editChallenge()} onEditChallenge={editChallenge} onDuplicateChallenge={(challenge) => void duplicateInstalledChallenge(challenge)} onExportChallenge={downloadChallenge} onStartChallenge={(challenge) => void startChallenge(challenge)} onDeleteChallenge={(challenge) => void (async () => { await deleteInstalledChallenge(challenge.id); setChallenges(await listInstalledChallenges()); })()} onRename={(project, name) => void renameProject(project, name)} onDelete={(project) => void (async () => { await deleteLibraryProject(project.id); await refresh(); })()} />;
 }

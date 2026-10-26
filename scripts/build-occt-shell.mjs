@@ -6,8 +6,8 @@ import { resolve, join } from "node:path";
 
 const source = resolve(process.argv[2] ?? ".");
 const linkOnly = process.argv.includes("--link-only");
-const jobs = process.env.EDUCAD_BUILD_JOBS ?? "4";
-const prebuiltLibDir = process.env.EDUCAD_OCCT_LIB_DIR;
+const jobs = process.env.KERCAD_BUILD_JOBS ?? "4";
+const prebuiltLibDir = process.env.KERCAD_OCCT_LIB_DIR;
 function run(command, args, cwd = source) {
   const result = spawnSync(command, args, { cwd, stdio: "inherit" });
   if (result.error) throw result.error;

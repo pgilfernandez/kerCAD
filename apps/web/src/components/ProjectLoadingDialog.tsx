@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { HeaderToolbarIcon } from "@/components/icons";
 import { useAccessibleDialog } from "@/components/useAccessibleDialog";
-import { educadTranslate, type EducadLocale } from "@/lib/educadI18n";
+import { kercadTranslate, type KercadLocale } from "@/lib/kercadI18n";
 import { projectLoadingCampaign as campaign } from "@/lib/projectLoadingCampaign";
 import type { ParametricBuildProgress } from "@/lib/parametricBuildProgress";
 import "./projectLoadingDialog.css";
@@ -13,12 +13,12 @@ const MINIMUM_LOADING_MS = 3_000;
 
 export function ProjectLoadingDialog({ projectName, locale, ready, progress, onFinished }: {
   projectName: string;
-  locale: EducadLocale;
+  locale: KercadLocale;
   ready: boolean;
   progress: ParametricBuildProgress | null;
   onFinished: () => void;
 }) {
-  const t = (key: Parameters<typeof educadTranslate>[1]) => educadTranslate(locale, key);
+  const t = (key: Parameters<typeof kercadTranslate>[1]) => kercadTranslate(locale, key);
   const [minimumElapsed, setMinimumElapsed] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const dialogRef = useAccessibleDialog<HTMLElement>(true, () => {});
@@ -50,14 +50,14 @@ export function ProjectLoadingDialog({ projectName, locale, ready, progress, onF
     : remainingModelMs === null ? t("loading.estimating") : t("loading.remaining").replace("{seconds}", String(Math.max(1, Math.ceil(Math.max(remainingMinimumMs, remainingModelMs) / 1000))));
   const phaseText = ready ? t("loading.opening") : t(progress?.stage === "meshing" || progress?.stage === "ready" ? "loading.meshing" : progress?.stage === "operations" ? "loading.operations" : "loading.initializing");
 
-  return createPortal(<div className="educad-project-loading-backdrop">
-    <section ref={dialogRef} className="educad-project-loading-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-project-loading-title" tabIndex={-1} onKeyDown={(event) => event.stopPropagation()} onKeyUp={(event) => event.stopPropagation()}>
-      <div className="educad-project-loading-status" role="status" aria-live="polite" aria-atomic="true">
-        <h1 id="educad-project-loading-title">{t("loading.project")} <span>“{projectName}”</span></h1>
-        <div className="educad-project-loading-bar" role="progressbar" aria-label={t("loading.progress")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress || ready ? percent : undefined} aria-valuetext={`${phaseText} · ${remainingText}`}><span style={{ width: `${percent}%` }} /></div>
-        <div className="educad-project-loading-estimate">{remainingText}</div>
+  return createPortal(<div className="kercad-project-loading-backdrop">
+    <section ref={dialogRef} className="kercad-project-loading-dialog" role="dialog" aria-modal="true" aria-labelledby="kercad-project-loading-title" tabIndex={-1} onKeyDown={(event) => event.stopPropagation()} onKeyUp={(event) => event.stopPropagation()}>
+      <div className="kercad-project-loading-status" role="status" aria-live="polite" aria-atomic="true">
+        <h1 id="kercad-project-loading-title">{t("loading.project")} <span>“{projectName}”</span></h1>
+        <div className="kercad-project-loading-bar" role="progressbar" aria-label={t("loading.progress")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress || ready ? percent : undefined} aria-valuetext={`${phaseText} · ${remainingText}`}><span style={{ width: `${percent}%` }} /></div>
+        <div className="kercad-project-loading-estimate">{remainingText}</div>
       </div>
-      <figure className="educad-project-loading-campaign">
+      <figure className="kercad-project-loading-campaign">
         {campaign.kind === "video"
           ? <video src={campaign.src} poster={campaign.poster} muted autoPlay loop playsInline preload="metadata" aria-label={t("loading.campaign")} />
           : <img src={campaign.src} alt={t("loading.campaign")} />}

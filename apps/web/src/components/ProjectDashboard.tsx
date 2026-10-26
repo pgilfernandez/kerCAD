@@ -1,14 +1,16 @@
 "use client";
 
+import { LEGACY_PROJECT_ACCEPT } from "@/lib/legacyBrand";
+
 import { Copy, Download, FileArchive, Grid3X3, Home, List, Search, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ToolbarEditOperationIcon } from "@/components/icons";
 import { SharedProjects } from "@/components/SharedProjects";
 import { EditorHeaderActions } from "@/components/EditorHeaderActions";
 import { ImportDesignDialog } from "@/components/ImportDesignDialog";
-import type { EducadLocale } from "@/lib/educadI18n";
+import type { KercadLocale } from "@/lib/kercadI18n";
 import { dashboardTranslate, type DashboardTranslationKey } from "@/lib/dashboardI18n";
-import type { EducadChallenge } from "@/lib/challengeLibrary";
+import type { KercadChallenge } from "@/lib/challengeLibrary";
 import type { ProjectLibraryEntry } from "@/lib/projectLibrary";
 
 type Props = {
@@ -26,17 +28,17 @@ type Props = {
   onRename: (project: ProjectLibraryEntry, name: string) => void;
   onDuplicate: (project: ProjectLibraryEntry) => void;
   onExport: (project: ProjectLibraryEntry) => void;
-  challenges: EducadChallenge[];
+  challenges: KercadChallenge[];
   onImportChallenge: (file: File) => void;
   onCreateChallenge: () => void;
-  onStartChallenge: (challenge: EducadChallenge) => void;
-  onEditChallenge: (challenge: EducadChallenge) => void;
-  onDuplicateChallenge: (challenge: EducadChallenge) => void;
-  onExportChallenge: (challenge: EducadChallenge) => void;
-  onDeleteChallenge: (challenge: EducadChallenge) => void;
+  onStartChallenge: (challenge: KercadChallenge) => void;
+  onEditChallenge: (challenge: KercadChallenge) => void;
+  onDuplicateChallenge: (challenge: KercadChallenge) => void;
+  onExportChallenge: (challenge: KercadChallenge) => void;
+  onDeleteChallenge: (challenge: KercadChallenge) => void;
 };
 
-function updatedLabel(timestamp: number, locale: EducadLocale) {
+function updatedLabel(timestamp: number, locale: KercadLocale) {
   const age = Date.now() - timestamp;
   if (age < 60_000) return dashboardTranslate(locale, "Just now");
   if (age < 3_600_000) return new Intl.RelativeTimeFormat(locale, { numeric: "always" }).format(-Math.max(1, Math.round(age / 60_000)), "minute");
@@ -47,16 +49,16 @@ function updatedLabel(timestamp: number, locale: EducadLocale) {
 export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSaved, busy = false, section, onSectionChange, onShowLanding, onCreate, onOpen, onImport, onDelete, onRename, onDuplicate, onExport, challenges, onImportChallenge, onCreateChallenge, onStartChallenge, onEditChallenge, onDuplicateChallenge, onExportChallenge, onDeleteChallenge }: Props) {
   const [query, setQuery] = useState("");
   const [importOpen, setImportOpen] = useState(false);
-  const [locale, setLocale] = useState<EducadLocale>("en");
+  const [locale, setLocale] = useState<KercadLocale>("en");
   useEffect(() => {
-    const saved = localStorage.getItem("educad.locale");
+    const saved = localStorage.getItem("kercad.locale");
     const language = saved === "es" ? "es" : "en";
     setLocale(language);
     document.documentElement.lang = language;
   }, []);
-  const changeLocale = (language: EducadLocale) => {
+  const changeLocale = (language: KercadLocale) => {
     setLocale(language);
-    localStorage.setItem("educad.locale", language);
+    localStorage.setItem("kercad.locale", language);
     document.documentElement.lang = language;
   };
   const t = (key: DashboardTranslationKey, values?: Record<string, string | number>) => dashboardTranslate(locale, key, values);
@@ -100,40 +102,40 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
     onRename(renaming, renameDraft.trim());
     setRenaming(null);
   };
-  return <main className="educad-dashboard-shell" aria-busy={busy}>
-    <header className="educad-dashboard-topbar">
-      <strong className="educad-dashboard-brand"><img className="educad-dashboard-logo" src="/assets/educad/logo.svg" alt="" /><span>eduCAD</span></strong>
-      <nav className="educad-dashboard-mobile-nav" aria-label={t("Dashboard sections")}><button className={section === "home" ? "active" : ""} type="button" onClick={() => onSectionChange("home")}><Home size={18} /> {t("Projects")}</button><button className={section === "challenges" ? "active" : ""} type="button" onClick={() => onSectionChange("challenges")}><Grid3X3 size={18} /> {t("Challenges")}</button>{sharedEnabled ? <button type="button" onClick={() => onSectionChange("shared")}>{t("Shared")}</button> : null}</nav>
+  return <main className="kercad-dashboard-shell" aria-busy={busy}>
+    <header className="kercad-dashboard-topbar">
+      <strong className="kercad-dashboard-brand"><img className="kercad-dashboard-logo" src="/assets/kercad/logo.svg" alt="" /><span>kerCAD</span></strong>
+      <nav className="kercad-dashboard-mobile-nav" aria-label={t("Dashboard sections")}><button className={section === "home" ? "active" : ""} type="button" onClick={() => onSectionChange("home")}><Home size={18} /> {t("Projects")}</button><button className={section === "challenges" ? "active" : ""} type="button" onClick={() => onSectionChange("challenges")}><Grid3X3 size={18} /> {t("Challenges")}</button>{sharedEnabled ? <button type="button" onClick={() => onSectionChange("shared")}>{t("Shared")}</button> : null}</nav>
       <EditorHeaderActions locale={locale} onLocaleChange={changeLocale} onShowLanding={onShowLanding} showDonation />
     </header>
-    <div className="educad-dashboard-layout">
-      <aside className="educad-dashboard-sidebar">
+    <div className="kercad-dashboard-layout">
+      <aside className="kercad-dashboard-sidebar">
         <button className={section === "home" ? "active" : ""} type="button" onClick={() => onSectionChange("home")}><Home size={23} /><span>{t("Projects")}</span></button>
         <button className={section === "challenges" ? "active" : ""} type="button" onClick={() => onSectionChange("challenges")}><Grid3X3 size={23} /><span>{t("Challenges")}</span></button>
         {sharedEnabled ? <button className={section === "shared" ? "active" : ""} type="button" onClick={() => onSectionChange("shared")}><Upload size={23} /><span>{t("Shared")}</span></button> : null}
       </aside>
-      <section className="educad-dashboard-main">
+      <section className="kercad-dashboard-main">
         {section === "shared" ? <SharedProjects locale={locale} projects={projects} onOpen={onOpen} onSaved={onSharedSaved} /> : section === "challenges" ? <>
-          <header className="educad-dashboard-project-heading educad-challenges-heading">
+          <header className="kercad-dashboard-project-heading kercad-challenges-heading">
             <div><h1>{t("Challenges")}</h1><span>{t("{count} visible", { count: visibleChallenges.length })} · {t("{count} installed", { count: challenges.length })}</span></div>
-            <div className="educad-dashboard-project-controls">
-              <button className="educad-install-challenge" type="button" onClick={() => challengeInputRef.current?.click()}><Upload size={19} /> {t("Import challenge")}</button>
-              <label className="educad-dashboard-search"><Search size={20} /><input value={challengeQuery} onChange={(event) => setChallengeQuery(event.target.value)} placeholder={t("Search challenges")} /></label>
-              <div className="educad-dashboard-sort-toggle" role="group" aria-label={t("Sort challenges")}><button type="button" className={challengeSort === "recent" ? "active" : ""} onClick={() => setChallengeSort("recent")} aria-label={t("Sort by recent")} title={t("Sort by recent")}><span aria-hidden="true" className="educad-dashboard-sort-icon" style={{ maskImage: 'url("/assets/educad/project-sort-recent.svg")', WebkitMaskImage: 'url("/assets/educad/project-sort-recent.svg")' }} /></button><button type="button" className={challengeSort === "name" ? "active" : ""} onClick={() => setChallengeSort("name")} aria-label={t("Sort by name")} title={t("Sort by name")}><span aria-hidden="true" className="educad-dashboard-sort-icon" style={{ maskImage: 'url("/assets/educad/project-sort-name.svg")', WebkitMaskImage: 'url("/assets/educad/project-sort-name.svg")' }} /></button></div>
-              <div className="educad-dashboard-view-toggle"><button className={challengeView === "grid" ? "active" : ""} onClick={() => setChallengeView("grid")} aria-label={t("Card view")} title={t("Card view")}><Grid3X3 size={20} /></button><button className={challengeView === "list" ? "active" : ""} onClick={() => setChallengeView("list")} aria-label={t("List view")} title={t("List view")}><List size={21} /></button></div>
+            <div className="kercad-dashboard-project-controls">
+              <button className="kercad-install-challenge" type="button" onClick={() => challengeInputRef.current?.click()}><Upload size={19} /> {t("Import challenge")}</button>
+              <label className="kercad-dashboard-search"><Search size={20} /><input value={challengeQuery} onChange={(event) => setChallengeQuery(event.target.value)} placeholder={t("Search challenges")} /></label>
+              <div className="kercad-dashboard-sort-toggle" role="group" aria-label={t("Sort challenges")}><button type="button" className={challengeSort === "recent" ? "active" : ""} onClick={() => setChallengeSort("recent")} aria-label={t("Sort by recent")} title={t("Sort by recent")}><span aria-hidden="true" className="kercad-dashboard-sort-icon" style={{ maskImage: 'url("/assets/kercad/project-sort-recent.svg")', WebkitMaskImage: 'url("/assets/kercad/project-sort-recent.svg")' }} /></button><button type="button" className={challengeSort === "name" ? "active" : ""} onClick={() => setChallengeSort("name")} aria-label={t("Sort by name")} title={t("Sort by name")}><span aria-hidden="true" className="kercad-dashboard-sort-icon" style={{ maskImage: 'url("/assets/kercad/project-sort-name.svg")', WebkitMaskImage: 'url("/assets/kercad/project-sort-name.svg")' }} /></button></div>
+              <div className="kercad-dashboard-view-toggle"><button className={challengeView === "grid" ? "active" : ""} onClick={() => setChallengeView("grid")} aria-label={t("Card view")} title={t("Card view")}><Grid3X3 size={20} /></button><button className={challengeView === "list" ? "active" : ""} onClick={() => setChallengeView("list")} aria-label={t("List view")} title={t("List view")}><List size={21} /></button></div>
             </div>
           </header>
-          <div className={`educad-challenge-library ${challengeView}`}>
-            {!challengeQuery.trim() ? <article className="educad-challenge-card educad-challenge-new-card">
+          <div className={`kercad-challenge-library ${challengeView}`}>
+            {!challengeQuery.trim() ? <article className="kercad-challenge-card kercad-challenge-new-card">
               <button className="challenge-open" type="button" onClick={onCreateChallenge}>
-                <span className="challenge-cover"><img src="/assets/educad/create-new-3d-design.svg" alt="" draggable={false} /></span>
-                <span className="challenge-copy"><strong>{t("Create new challenge")}</strong><span>{t("Build a guided eduCAD activity")}</span></span>
+                <span className="challenge-cover"><img src="/assets/kercad/create-new-3d-design.svg" alt="" draggable={false} /></span>
+                <span className="challenge-copy"><strong>{t("Create new challenge")}</strong><span>{t("Build a guided kerCAD activity")}</span></span>
               </button>
             </article> : null}
-            {visibleChallenges.map((challenge) => <article className="educad-challenge-card" key={challenge.id}>
+            {visibleChallenges.map((challenge) => <article className="kercad-challenge-card" key={challenge.id}>
               <button className="challenge-open" type="button" onClick={() => onStartChallenge(challenge)}>
                 <span className="challenge-cover">{challenge.cover ? <img src={challenge.cover} alt="" /> : <FileArchive size={52} />}</span>
-                <span className="challenge-copy"><strong>{challenge.title}</strong><span>{challenge.description || t("Guided eduCAD activity")}</span>{challenge.categories?.length ? <span className="challenge-categories">{challenge.categories.map((category) => <i key={category}>{category}</i>)}</span> : null}{challenge.author ? <em>{t("By {name}", { name: challenge.author })}</em> : null}</span>
+                <span className="challenge-copy"><strong>{challenge.title}</strong><span>{challenge.description || t("Guided kerCAD activity")}</span>{challenge.categories?.length ? <span className="challenge-categories">{challenge.categories.map((category) => <i key={category}>{category}</i>)}</span> : null}{challenge.author ? <em>{t("By {name}", { name: challenge.author })}</em> : null}</span>
               </button>
               <nav className="challenge-actions" aria-label={t("Actions for {name}", { name: challenge.title })}>
                 <button type="button" title={t("Edit challenge")} aria-label={t("Edit {name}", { name: challenge.title })} onClick={() => onEditChallenge(challenge)}><ToolbarEditOperationIcon /></button>
@@ -142,27 +144,27 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
                 <button className="challenge-delete" type="button" title={t("Remove challenge")} aria-label={t("Remove {name}", { name: challenge.title })} onClick={() => onDeleteChallenge(challenge)}><Trash2 size={17} /></button>
               </nav>
             </article>)}
-            {!challenges.length ? <button className="educad-challenge-empty" type="button" onClick={() => challengeInputRef.current?.click()}><Upload size={34} /><strong>{t("Install your first challenge")}</strong><span>{t("Choose an eduCAD challenge ZIP from your computer.")}</span></button> : null}
-            {challenges.length > 0 && !visibleChallenges.length ? <div className="educad-dashboard-empty"><strong>{t("No matching challenges")}</strong><span>{t("Try another search.")}</span></div> : null}
+            {!challenges.length ? <button className="kercad-challenge-empty" type="button" onClick={() => challengeInputRef.current?.click()}><Upload size={34} /><strong>{t("Install your first challenge")}</strong><span>{t("Choose an kerCAD challenge ZIP from your computer.")}</span></button> : null}
+            {challenges.length > 0 && !visibleChallenges.length ? <div className="kercad-dashboard-empty"><strong>{t("No matching challenges")}</strong><span>{t("Try another search.")}</span></div> : null}
           </div>
         </> : <>
-        <header className="educad-dashboard-project-heading">
+        <header className="kercad-dashboard-project-heading">
           <div><h1>{t("Projects")}</h1><span>{t("{count} visible", { count: visible.length })}</span></div>
-          <div className="educad-dashboard-project-controls">
-            <button className="educad-import-project" type="button" disabled={busy} onClick={() => setImportOpen(true)}><Upload size={19} /> {t("Import project or 3D file")}</button>
-            <label className="educad-dashboard-search"><Search size={20} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("Search projects")} /></label>
-            <div className="educad-dashboard-sort-toggle" role="group" aria-label={t("Sort projects")}><button type="button" className={sort === "recent" ? "active" : ""} onClick={() => setSort("recent")} aria-label={t("Sort by recent")} title={t("Sort by recent")}><span aria-hidden="true" className="educad-dashboard-sort-icon" style={{ maskImage: 'url("/assets/educad/project-sort-recent.svg")', WebkitMaskImage: 'url("/assets/educad/project-sort-recent.svg")' }} /></button><button type="button" className={sort === "name" ? "active" : ""} onClick={() => setSort("name")} aria-label={t("Sort by name")} title={t("Sort by name")}><span aria-hidden="true" className="educad-dashboard-sort-icon" style={{ maskImage: 'url("/assets/educad/project-sort-name.svg")', WebkitMaskImage: 'url("/assets/educad/project-sort-name.svg")' }} /></button></div>
-            <div className="educad-dashboard-view-toggle"><button className={view === "grid" ? "active" : ""} onClick={() => setView("grid")} aria-label={t("Card view")} title={t("Card view")}><Grid3X3 size={20} /></button><button className={view === "list" ? "active" : ""} onClick={() => setView("list")} aria-label={t("List view")} title={t("List view")}><List size={21} /></button></div>
+          <div className="kercad-dashboard-project-controls">
+            <button className="kercad-import-project" type="button" disabled={busy} onClick={() => setImportOpen(true)}><Upload size={19} /> {t("Import project or 3D file")}</button>
+            <label className="kercad-dashboard-search"><Search size={20} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("Search projects")} /></label>
+            <div className="kercad-dashboard-sort-toggle" role="group" aria-label={t("Sort projects")}><button type="button" className={sort === "recent" ? "active" : ""} onClick={() => setSort("recent")} aria-label={t("Sort by recent")} title={t("Sort by recent")}><span aria-hidden="true" className="kercad-dashboard-sort-icon" style={{ maskImage: 'url("/assets/kercad/project-sort-recent.svg")', WebkitMaskImage: 'url("/assets/kercad/project-sort-recent.svg")' }} /></button><button type="button" className={sort === "name" ? "active" : ""} onClick={() => setSort("name")} aria-label={t("Sort by name")} title={t("Sort by name")}><span aria-hidden="true" className="kercad-dashboard-sort-icon" style={{ maskImage: 'url("/assets/kercad/project-sort-name.svg")', WebkitMaskImage: 'url("/assets/kercad/project-sort-name.svg")' }} /></button></div>
+            <div className="kercad-dashboard-view-toggle"><button className={view === "grid" ? "active" : ""} onClick={() => setView("grid")} aria-label={t("Card view")} title={t("Card view")}><Grid3X3 size={20} /></button><button className={view === "list" ? "active" : ""} onClick={() => setView("list")} aria-label={t("List view")} title={t("List view")}><List size={21} /></button></div>
           </div>
         </header>
-        <div className={`educad-dashboard-projects ${view}`}>
-          {!query.trim() ? <article className="educad-dashboard-card educad-dashboard-new-card">
+        <div className={`kercad-dashboard-projects ${view}`}>
+          {!query.trim() ? <article className="kercad-dashboard-card kercad-dashboard-new-card">
             <button className="card-open" type="button" onClick={onCreate}>
-              <span className="card-preview"><img src="/assets/educad/create-new-3d-design.svg" alt="" draggable={false} /></span>
+              <span className="card-preview"><img src="/assets/kercad/create-new-3d-design.svg" alt="" draggable={false} /></span>
               <span className="card-copy"><strong>{t("Create new 3D design")}</strong><small>{t("Start with an empty workplane")}</small></span>
             </button>
           </article> : null}
-          {visible.map((project, index) => <article className="educad-dashboard-card" key={project.id}>
+          {visible.map((project, index) => <article className="kercad-dashboard-card" key={project.id}>
             <button className="card-open" type="button" onClick={() => onOpen(project)}>
               <span className={`card-preview accent-${index % 4}`}>{project.thumbnail ? <img src={project.thumbnail} alt="" /> : <><span className="preview-grid" /><strong>{project.document.objects.length ? t(project.document.objects.length === 1 ? "{count} object" : "{count} objects", { count: project.document.objects.length }) : t("Empty design")}</strong></>}</span>
               <span className="card-copy"><strong>{project.name}</strong><small>{updatedLabel(project.updatedAt, locale)} · {project.document.author?.trim() || project.document.creator?.trim() || t("Author not provided")}</small></span>
@@ -172,27 +174,27 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
             <button className="card-export" type="button" disabled={busy} aria-label={t("Export {name}", { name: project.name })} title={t("Export project")} onClick={() => onExport(project)}><Download size={17} /></button>
             <button className="card-delete" type="button" aria-label={t("Delete {name}", { name: project.name })} title={t("Delete project")} onClick={() => setDeleting(project)}><Trash2 size={17} /></button>
           </article>)}
-          {query.trim() && !visible.length ? <div className="educad-dashboard-empty"><strong>{t("No projects found")}</strong><span>{t("Try another project name.")}</span></div> : null}
+          {query.trim() && !visible.length ? <div className="kercad-dashboard-empty"><strong>{t("No projects found")}</strong><span>{t("Try another project name.")}</span></div> : null}
         </div>
         </>}
       </section>
     </div>
-    {renaming ? <div className="educad-dialog-backdrop" role="presentation" onPointerDown={() => setRenaming(null)}>
-      <form className="educad-rename-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-project-rename-title" onPointerDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); commitRename(); }}>
-        <header><strong id="educad-project-rename-title">{t("Rename project")}</strong><button type="button" aria-label={t("Cancel")} onClick={() => setRenaming(null)}><X size={18} /></button></header>
+    {renaming ? <div className="kercad-dialog-backdrop" role="presentation" onPointerDown={() => setRenaming(null)}>
+      <form className="kercad-rename-dialog" role="dialog" aria-modal="true" aria-labelledby="kercad-project-rename-title" onPointerDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); commitRename(); }}>
+        <header><strong id="kercad-project-rename-title">{t("Rename project")}</strong><button type="button" aria-label={t("Cancel")} onClick={() => setRenaming(null)}><X size={18} /></button></header>
         <label><span>{t("Name")}</span><input ref={renameInputRef} value={renameDraft} maxLength={80} onChange={(event) => setRenameDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") setRenaming(null); }} /></label>
         <footer><button type="button" onClick={() => setRenaming(null)}>{t("Cancel")}</button><button className="primary" type="submit" disabled={!renameDraft.trim()}>{t("OK")}</button></footer>
       </form>
     </div> : null}
-    {deleting ? <div className="educad-dialog-backdrop" role="presentation" onPointerDown={() => setDeleting(null)}>
-      <section className="educad-rename-dialog educad-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="educad-project-delete-title" onPointerDown={(event) => event.stopPropagation()}>
-        <header><strong id="educad-project-delete-title">{t("Delete project?")}</strong><button type="button" aria-label={t("Cancel")} onClick={() => setDeleting(null)}><X size={18} /></button></header>
+    {deleting ? <div className="kercad-dialog-backdrop" role="presentation" onPointerDown={() => setDeleting(null)}>
+      <section className="kercad-rename-dialog kercad-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="kercad-project-delete-title" onPointerDown={(event) => event.stopPropagation()}>
+        <header><strong id="kercad-project-delete-title">{t("Delete project?")}</strong><button type="button" aria-label={t("Cancel")} onClick={() => setDeleting(null)}><X size={18} /></button></header>
         <p>{t("Delete project “{name}”? This cannot be undone.", { name: deleting.name })}</p>
         <footer><button type="button" onClick={() => setDeleting(null)}>{t("Cancel")}</button><button className="danger" type="button" onClick={() => { onDelete(deleting); setDeleting(null); }}>{t("Delete")}</button></footer>
       </section>
     </div> : null}
     {importOpen && <ImportDesignDialog locale={locale} newProject onClose={() => setImportOpen(false)} onBrowse={() => inputRef.current?.click()} onFile={(file) => { setImportOpen(false); onImport(file); }} />}
-    <input ref={inputRef} hidden type="file" accept=".educad,.educad.json,.json,.svg,.step,.stp,.stl,.obj,.jpg,.jpeg,.png,application/vnd.educad.project+zip,application/json,image/svg+xml,model/step,model/stl,model/obj,image/jpeg,image/png" onChange={(event) => { const file = event.target.files?.[0]; if (file) { setImportOpen(false); onImport(file); } event.target.value = ""; }} />
+    <input ref={inputRef} hidden type="file" accept={".kercad,.kercad.json,.json,.svg,.step,.stp,.stl,.obj,.jpg,.jpeg,.png,application/vnd.kercad.project+zip,application/json,image/svg+xml,model/step,model/stl,model/obj,image/jpeg,image/png ," + LEGACY_PROJECT_ACCEPT} onChange={(event) => { const file = event.target.files?.[0]; if (file) { setImportOpen(false); onImport(file); } event.target.value = ""; }} />
     <input ref={challengeInputRef} hidden type="file" accept=".zip,application/zip" onChange={(event) => { const file = event.target.files?.[0]; if (file) onImportChallenge(file); event.target.value = ""; }} />
   </main>;
 }

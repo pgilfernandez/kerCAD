@@ -1,4 +1,4 @@
-# Editable eduCAD icons
+# Editable kerCAD icons
 
 - `toolbar-3d/`: main 3D tools, including shapes and annotation creation.
 - `toolbar-sketch/`: sketch drawing and editing tools.
@@ -7,4 +7,4 @@
 - `operations-tree/`: hierarchy entries and their state controls.
 - `alignment/`: alignment picker artwork, kept unchanged.
 
-Shared icons have one location according to their primary role. Header, project library, branding and ground-label artwork remain in this directory. Dynamic operation and annotation paths are centralized in `src/lib/educadIconPaths.ts`.
+Shared icons have one location according to their primary role. Header, project library, branding and ground-label artwork remain in this directory. Dynamic operation and annotation paths are centralized in `src/lib/kercadIconPaths.ts`.

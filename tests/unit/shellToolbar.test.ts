@@ -21,8 +21,8 @@ describe("shell context toolbar", () => {
     expect(markup).toContain('value="2.5"');
     expect(markup.includes('class="accept" disabled=""')).toBe(!canAccept);
     expect(markup).not.toContain('aria-label="Añadir"');
-    expect(markup).toContain('/assets/educad/toolbar-horizontal/sharp.svg');
-    expect(markup).toContain('/assets/educad/toolbar-3d/fillet.svg');
+    expect(markup).toContain('/assets/kercad/toolbar-horizontal/sharp.svg');
+    expect(markup).toContain('/assets/kercad/toolbar-3d/fillet.svg');
     expect(markup).toContain('aria-label="Aristas vivas" aria-pressed="true"');
   });
 });

@@ -1,5 +1,5 @@
-export const APP_THEME_STORAGE_KEY = "educad.theme";
-export const APP_THEME_CHANGE_EVENT = "educad:theme-change";
+export const APP_THEME_STORAGE_KEY = "kercad.theme";
+export const APP_THEME_CHANGE_EVENT = "kercad:theme-change";
 const LEGACY_THEME_STORAGE_KEY = "sketchForge.theme";
 
 export const APP_THEME_OPTIONS = [

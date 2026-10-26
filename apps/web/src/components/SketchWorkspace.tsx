@@ -19,7 +19,7 @@ import { mirrorSign, resizedImportedMeshPositions } from "@/lib/workplaneShapes"
 import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE, normalizeSnapGrid, normalizeWorkspaceSettings } from "@/lib/workplaneSettings";
 import { SKETCH_ORIGIN_POINT_ID, SKETCH_X_AXIS_ID, SKETCH_Y_AXIS_ID, solveSketchConstraints } from "@/lib/sketchConstraints";
 import type { SketchProfileValidation } from "@/lib/sketchProfileValidation";
-import type { EducadLocale } from "@/lib/educadI18n";
+import type { KercadLocale } from "@/lib/kercadI18n";
 import type { GridSize, SketchCircle, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchSegment, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
 
 export type SketchTool = "line" | "connect" | "rectangle" | "centerRectangle" | "roundedRectangle" | "polygon" | "slot" | "arcSlot" | "bezier" | "smooth" | "freehand" | "freehandSmooth" | "circle" | "arc" | "select" | "refine" | "trim" | "erase" | "measure";
@@ -69,7 +69,7 @@ type SketchWorkspaceProps = {
   onAddAnnotation?: (annotation: ParametricAnnotation) => void;
   onSelectAnnotation?: (id: string | null) => void;
   onCommitAnnotation?: (annotation: ParametricAnnotation) => void;
-  locale?: EducadLocale;
+  locale?: KercadLocale;
   profile: SketchProfile;
   profileValidation?: SketchProfileValidation | null;
   operation?: SketchOperation;
@@ -274,7 +274,7 @@ function SketchRadialLeader({ center, label, radius, screenUnit }: { center: { x
   </g>;
 }
 
-function SketchDimensionInput({ id, label, indicator, value: storedValue, millimetersPerUnit = 1, accuracy, screenUnit, locale, align = "center", allowSigned = false, onCommit: commitStoredValue, onDelete }: { id: string; label: string; indicator: string; value: number; millimetersPerUnit?: number; accuracy: 1 | 2 | 3; screenUnit: number; locale: EducadLocale; align?: "center" | "start"; allowSigned?: boolean; onCommit?: (id: string, value: number) => void; onDelete?: (id: string) => void }) {
+function SketchDimensionInput({ id, label, indicator, value: storedValue, millimetersPerUnit = 1, accuracy, screenUnit, locale, align = "center", allowSigned = false, onCommit: commitStoredValue, onDelete }: { id: string; label: string; indicator: string; value: number; millimetersPerUnit?: number; accuracy: 1 | 2 | 3; screenUnit: number; locale: KercadLocale; align?: "center" | "start"; allowSigned?: boolean; onCommit?: (id: string, value: number) => void; onDelete?: (id: string) => void }) {
   const value = storedValue / millimetersPerUnit;
   const onCommit = commitStoredValue ? (key: string, next: number) => commitStoredValue(key, next * millimetersPerUnit) : undefined;
   const formatted = formatDimension(value, accuracy + Math.max(0, Math.ceil(Math.log10(millimetersPerUnit))));
@@ -337,7 +337,7 @@ function SketchDimensionInput({ id, label, indicator, value: storedValue, millim
   </g>;
 }
 
-function SketchConstraintBadge({ id, label, x, z, screenUnit, locale, onDelete }: { id: string; label: string; x: number; z: number; screenUnit: number; locale: EducadLocale; onDelete?: (id: string) => void }) {
+function SketchConstraintBadge({ id, label, x, z, screenUnit, locale, onDelete }: { id: string; label: string; x: number; z: number; screenUnit: number; locale: KercadLocale; onDelete?: (id: string) => void }) {
   const width = 34 * screenUnit;
   const height = 18 * screenUnit;
   const removeWidth = 17 * screenUnit;
@@ -778,9 +778,9 @@ export function SketchWorkspace({
 
   useEffect(() => {
     try {
-      const dimensions = window.localStorage.getItem("educad.sketch-dimension-labels");
-      const constraints = window.localStorage.getItem("educad.sketch-constraint-labels");
-      const annotationsVisible = window.localStorage.getItem("educad.sketch-annotations-visible");
+      const dimensions = window.localStorage.getItem("kercad.sketch-dimension-labels");
+      const constraints = window.localStorage.getItem("kercad.sketch-constraint-labels");
+      const annotationsVisible = window.localStorage.getItem("kercad.sketch-annotations-visible");
       if (dimensions !== null) setShowDimensionLabels(dimensions !== "false");
       if (constraints !== null) setShowConstraintLabels(constraints !== "false");
       if (annotationsVisible !== null) setShowAnnotations(annotationsVisible !== "false");
@@ -793,9 +793,9 @@ export function SketchWorkspace({
   useEffect(() => {
     if (!labelPreferencesLoaded) return;
     try {
-      window.localStorage.setItem("educad.sketch-dimension-labels", String(showDimensionLabels));
-      window.localStorage.setItem("educad.sketch-constraint-labels", String(showConstraintLabels));
-      window.localStorage.setItem("educad.sketch-annotations-visible", String(showAnnotations));
+      window.localStorage.setItem("kercad.sketch-dimension-labels", String(showDimensionLabels));
+      window.localStorage.setItem("kercad.sketch-constraint-labels", String(showConstraintLabels));
+      window.localStorage.setItem("kercad.sketch-annotations-visible", String(showAnnotations));
     } catch {
       // The toggles remain usable without persistent storage.
     }

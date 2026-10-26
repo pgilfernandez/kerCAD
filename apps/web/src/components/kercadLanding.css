@@ -1,5 +1,5 @@
 /* Public About page. Scoped independently from editor and dashboard styles. */
-.educad-about-page {
+.kercad-about-page {
   --about-ink: #19374e;
   --about-muted: #627887;
   --about-blue: #1269eb;
@@ -7,30 +7,30 @@
   background: var(--theme-surface);
   color: var(--about-ink);
 }
-.educad-about-page *, .educad-about-page *::before, .educad-about-page *::after { box-sizing: border-box; }
-.educad-about-page section[id] { scroll-margin-top: 110px; }
-.educad-about-page figure { margin: 0; }
-.educad-about-page img { max-width: 100%; }
-.educad-about-page em { font-style: normal; color: var(--about-blue); }
-.educad-about-page p { color: var(--about-muted); line-height: 1.75; }
-.educad-about-page svg { flex-shrink: 0; }
+.kercad-about-page *, .kercad-about-page *::before, .kercad-about-page *::after { box-sizing: border-box; }
+.kercad-about-page section[id] { scroll-margin-top: 110px; }
+.kercad-about-page figure { margin: 0; }
+.kercad-about-page img { max-width: 100%; }
+.kercad-about-page em { font-style: normal; color: var(--about-blue); }
+.kercad-about-page p { color: var(--about-muted); line-height: 1.75; }
+.kercad-about-page svg { flex-shrink: 0; }
 .about-container { width: min(1280px, calc(100% - 96px)); margin-inline: auto; }
 .about-section { padding-block: 104px; }
 .about-eyebrow { display: inline-flex; align-items: center; gap: 9px; font-size: 12px; line-height: 1.5; font-weight: 650; color: var(--about-blue); letter-spacing: .075em; text-transform: uppercase; }
 .about-section-heading { max-width: 760px; margin-bottom: 48px; }
-.educad-about-page h2 { margin: 16px 0 20px; font-size: clamp(32px, 3.5vw, 51px); font-weight: 650; line-height: 1.12; letter-spacing: -.045em; }
+.kercad-about-page h2 { margin: 16px 0 20px; font-size: clamp(32px, 3.5vw, 51px); font-weight: 650; line-height: 1.12; letter-spacing: -.045em; }
 .about-section-heading > p { max-width: 620px; margin-bottom: 0; font-size: 17px; }
 .about-live-dot { width: 7px; height: 7px; border-radius: 50%; background: #408d79; box-shadow: 0 0 0 4px #408d7912; }
-.educad-about-page .about-button { min-height: 48px; display: inline-flex; justify-content: center; align-items: center; gap: 14px; padding: 12px 21px; border: 1px solid transparent; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .15s, box-shadow .15s; }
-.educad-about-page .about-button.primary { background: var(--about-blue); color: white; box-shadow: 0 5px 12px #1269eb1c; }
-.educad-about-page .about-button.primary:hover { background: #075dcc; box-shadow: 0 6px 16px #1269eb30; }
-.educad-about-page .about-button.light { background: var(--theme-surface); color: var(--about-blue); }
-.educad-about-page .about-button.light:hover { background: var(--theme-active); }
-.educad-about-page a.about-text-link, .educad-about-page button.about-text-link { display: inline-flex; align-items: center; gap: 10px; padding: 0; border: 0; background: none; text-decoration: none; font-size: 13px; font-weight: 600; color: var(--about-blue); cursor: pointer; }
-.educad-about-page .about-text-link:hover { color: var(--theme-dark-link, #0755bb); text-decoration: underline; text-underline-offset: 4px; }
-.educad-about-page .educad-landing-nav > nav { gap: 20px; }
-.educad-about-page .educad-landing-nav > nav a { font-size: 12px; white-space: nowrap; }
-.educad-about-page .educad-landing-nav .educad-dashboard-brand { cursor: default; }
+.kercad-about-page .about-button { min-height: 48px; display: inline-flex; justify-content: center; align-items: center; gap: 14px; padding: 12px 21px; border: 1px solid transparent; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .15s, box-shadow .15s; }
+.kercad-about-page .about-button.primary { background: var(--about-blue); color: white; box-shadow: 0 5px 12px #1269eb1c; }
+.kercad-about-page .about-button.primary:hover { background: #075dcc; box-shadow: 0 6px 16px #1269eb30; }
+.kercad-about-page .about-button.light { background: var(--theme-surface); color: var(--about-blue); }
+.kercad-about-page .about-button.light:hover { background: var(--theme-active); }
+.kercad-about-page a.about-text-link, .kercad-about-page button.about-text-link { display: inline-flex; align-items: center; gap: 10px; padding: 0; border: 0; background: none; text-decoration: none; font-size: 13px; font-weight: 600; color: var(--about-blue); cursor: pointer; }
+.kercad-about-page .about-text-link:hover { color: var(--theme-dark-link, #0755bb); text-decoration: underline; text-underline-offset: 4px; }
+.kercad-about-page .kercad-landing-nav > nav { gap: 20px; }
+.kercad-about-page .kercad-landing-nav > nav a { font-size: 12px; white-space: nowrap; }
+.kercad-about-page .kercad-landing-nav .kercad-dashboard-brand { cursor: default; }
 
 /* First idea: a generous, quiet introduction and a tangible example. */
 .about-hero { display: grid; grid-template-columns: 1fr 1.08fr; gap: 45px; align-items: center; padding-top: 86px; padding-bottom: 120px; }
@@ -74,9 +74,9 @@
 /* The tool list stays readable: four focused, keyboard-accessible chapters. */
 .about-feature-section { background: var(--theme-dark-surface, #f5f8fb); border-block: 1px solid var(--theme-dark-border, #e7edf2); }
 .about-feature-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 5px; margin: 0 0 22px; border: 1px solid var(--theme-dark-border, #dce6ee); border-radius: 11px; background: var(--theme-dark-surface, #eaf0f6); }
-.educad-about-page .about-feature-tabs button { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 49px; padding: 10px; background: transparent; border: 1px solid transparent; border-radius: 7px; font-size: 13px; color: var(--theme-dark-link, #5b7185); text-align: left; cursor: pointer; }
-.educad-about-page .about-feature-tabs button:hover { color: var(--theme-link); background: var(--theme-dark-surface, #ffffff70); }
-.educad-about-page .about-feature-tabs button[aria-selected="true"] { background: var(--theme-surface); color: var(--theme-link); border-color: var(--theme-line-dce6ee); box-shadow: 0 2px 5px #21445c08; }
+.kercad-about-page .about-feature-tabs button { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 49px; padding: 10px; background: transparent; border: 1px solid transparent; border-radius: 7px; font-size: 13px; color: var(--theme-dark-link, #5b7185); text-align: left; cursor: pointer; }
+.kercad-about-page .about-feature-tabs button:hover { color: var(--theme-link); background: var(--theme-dark-surface, #ffffff70); }
+.kercad-about-page .about-feature-tabs button[aria-selected="true"] { background: var(--theme-surface); color: var(--theme-link); border-color: var(--theme-line-dce6ee); box-shadow: 0 2px 5px #21445c08; }
 .about-feature-panel { display: grid; grid-template-columns: 1.15fr 1fr; gap: 36px; align-items: center; padding: 42px; border: 1px solid var(--theme-dark-border, #e0e9f0); border-radius: 14px; background: var(--theme-dark-surface, #fff); }
 .about-feature-panel h3 { margin: 0 0 18px; font-size: 27px; letter-spacing: -.035em; font-weight: 600; }
 .about-feature-panel p { margin: 0 0 24px; max-width: 520px; font-size: 14px; }
@@ -153,13 +153,13 @@
 .about-footer strong { display: flex; align-items: center; gap: 12px; font-size: 20px; letter-spacing: -.04em; color: var(--theme-dark-link, #1269eb); }
 .about-footer p { font-size: 12px; margin: 12px 0 0; }
 .about-footer > div:last-child { display: flex; flex-direction: column; align-items: flex-end; gap: 20px; }
-.educad-about-page .about-footer a { display: inline-flex; gap: 9px; align-items: center; color: var(--theme-link); text-decoration: none; font-size: 12px; }
+.kercad-about-page .about-footer a { display: inline-flex; gap: 9px; align-items: center; color: var(--theme-link); text-decoration: none; font-size: 12px; }
 .about-footer small { color: var(--theme-dark-link, #899baa); font-size: 11px; }
 
 @media (max-width: 1500px) {
-  .educad-about-page .educad-landing-nav.educad-dashboard-topbar { grid-template-columns: minmax(0, 1fr) auto; }
-  .educad-about-page .educad-landing-nav > nav { display: none; }
-  .educad-about-page .educad-landing-section-control { display: block; }
+  .kercad-about-page .kercad-landing-nav.kercad-dashboard-topbar { grid-template-columns: minmax(0, 1fr) auto; }
+  .kercad-about-page .kercad-landing-nav > nav { display: none; }
+  .kercad-about-page .kercad-landing-section-control { display: block; }
 }
 @media (max-width: 1080px) {
   .about-container { width: calc(100% - 64px); }
@@ -217,7 +217,7 @@
   .about-visual-index { display: none; }
   .about-essentials > div { grid-template-columns: 1fr 1fr; padding-block: 23px; gap: 21px 14px; }
   .about-essentials span { justify-content: flex-start; font-size: 11px; }
-  .educad-about-page .about-feature-tabs button { justify-content: flex-start; font-size: 11px; gap: 7px; }
+  .kercad-about-page .about-feature-tabs button { justify-content: flex-start; font-size: 11px; gap: 7px; }
   .about-feature-panel ul { grid-template-columns: 1fr; }
   .about-feature-panel h3 { font-size: 24px; }
   .about-challenge-demo-content { padding: 20px; }
@@ -227,7 +227,7 @@
   .about-school h3 { font-size: 20px; }
   .about-final h2 { font-size: 30px; }
 }
-@media (max-width: 420px) { .educad-about-page .educad-landing-nav .educad-dashboard-brand > span { display: none; } }
+@media (max-width: 420px) { .kercad-about-page .kercad-landing-nav .kercad-dashboard-brand > span { display: none; } }
 @media (prefers-reduced-motion: reduce) {
-  .educad-about-page, .educad-about-page *, .educad-about-page *::before, .educad-about-page *::after { scroll-behavior: auto !important; transition: none !important; }
+  .kercad-about-page, .kercad-about-page *, .kercad-about-page *::before, .kercad-about-page *::after { scroll-behavior: auto !important; transition: none !important; }
 }

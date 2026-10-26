@@ -27,5 +27,5 @@ await cp(sourceDirectory, targetDirectory, {
 });
 
 // Stage the current application unchanged. The legacy MCP editor is not part
-// of eduCAD's parametric workflow and must not be patched into a desktop build.
-console.log(`[mac-build] prepared isolated eduCAD web source at ${targetDirectory}`);
+// of kerCAD's parametric workflow and must not be patched into a desktop build.
+console.log(`[mac-build] prepared isolated kerCAD web source at ${targetDirectory}`);

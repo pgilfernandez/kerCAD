@@ -3,8 +3,8 @@ import { hostname } from "node:os";
 
 // Keep coordination across development hot reloads. The supported deployment is
 // one application server per shared directory (not multiple container replicas).
-const state = globalThis as typeof globalThis & { educadSharedLocks?: Set<string> };
-const activeLocks = state.educadSharedLocks ??= new Set<string>();
+const state = globalThis as typeof globalThis & { kercadSharedLocks?: Set<string> };
+const activeLocks = state.kercadSharedLocks ??= new Set<string>();
 
 function occupied() {
   return Object.assign(new Error("Shared project is being changed"), { code: "EEXIST" });
@@ -15,7 +15,7 @@ async function removeAbandonedLock(lockPath: string) {
     const stat = await fs.lstat(lockPath);
     if (!stat.isFile() || stat.isSymbolicLink()) return false;
     const owner = JSON.parse(await fs.readFile(lockPath, "utf8"));
-    if (owner.format !== "educad-lock-v1" || owner.host !== hostname() || !Number.isSafeInteger(owner.pid) || owner.pid <= 0) return false;
+    if (owner.format !== "kercad-lock-v1" || owner.host !== hostname() || !Number.isSafeInteger(owner.pid) || owner.pid <= 0) return false;
     try {
       process.kill(owner.pid, 0);
       return false;
@@ -40,7 +40,7 @@ export async function acquireSharedProjectLock(lockPath: string): Promise<{ rele
       if ((error as NodeJS.ErrnoException).code !== "EEXIST" || !await removeAbandonedLock(lockPath)) throw error;
       handle = await fs.open(lockPath, "wx");
     }
-    await handle.writeFile(JSON.stringify({ format: "educad-lock-v1", pid: process.pid, host: hostname(), createdAt: new Date().toISOString() }));
+    await handle.writeFile(JSON.stringify({ format: "kercad-lock-v1", pid: process.pid, host: hostname(), createdAt: new Date().toISOString() }));
     await handle.sync();
     const ownedHandle = handle;
     let released = false;
