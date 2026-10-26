@@ -28,7 +28,6 @@
 .kercad-project-loading-status h1 span { font-weight: 650; }
 .kercad-project-loading-bar { width: min(240px, 100%); height: 3px; margin: 20px auto 9px; overflow: hidden; background: var(--theme-border); border-radius: 2px; }
 .kercad-project-loading-bar > span { display: block; height: 100%; background: var(--theme-link); border-radius: inherit; transition: width .2s linear; }
-.kercad-project-loading-estimate { width: min(240px, 100%); margin: 0 auto; color: var(--theme-text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .kercad-project-loading-campaign { margin: 0; overflow: hidden; background: var(--theme-page); border: 1px solid var(--theme-border); border-radius: 9px; }
 .kercad-project-loading-campaign > :is(img, video) { display: block; width: 100%; aspect-ratio: 2 / 1; object-fit: cover; }
 .kercad-project-loading-campaign figcaption { padding: 8px; color: var(--theme-text-muted); font-size: 10px; letter-spacing: .05em; }
