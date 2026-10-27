@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { normalizeCanonicalHost } from "./src/lib/canonicalHost.ts";
+// Next loads this config from the repository root; use an absolute dependency
+// path so its temporary config module can resolve the shared TypeScript helper.
+const { normalizeCanonicalHost } = require(path.join(__dirname, "src/lib/canonicalHost.ts")) as typeof import("./src/lib/canonicalHost");
 
 function applicationCommit() {
   // CI/archive builds can supply the revision without shipping .git or Git.
