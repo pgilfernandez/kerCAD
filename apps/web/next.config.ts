@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { normalizeCanonicalHost } from "./src/lib/canonicalHost";
+import { normalizeCanonicalHost } from "./src/lib/canonicalHost.ts";
 
 function applicationCommit() {
   // CI/archive builds can supply the revision without shipping .git or Git.
