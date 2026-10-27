@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { normalizeCanonicalHost } from "./src/lib/canonicalHost";
 
 function applicationCommit() {
   // CI/archive builds can supply the revision without shipping .git or Git.
@@ -17,6 +18,15 @@ function applicationCommit() {
 
 const isStaticExport = process.env.STATIC_EXPORT === "true";
 const isDockerBuild = (process.env.KERCAD_DOCKER_BUILD ?? process.env.SKETCHFORGE_DOCKER_BUILD) === "true";
+function canonicalDevelopmentHost() {
+  if (process.env.KERCAD_CANONICAL_HOST !== undefined) return normalizeCanonicalHost(process.env.KERCAD_CANONICAL_HOST);
+  if (isStaticExport || process.env.NODE_ENV !== "development" || process.platform !== "darwin") return "";
+  try {
+    const localName = execFileSync("scutil", ["--get", "LocalHostName"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    return normalizeCanonicalHost(`${localName}.local`);
+  } catch { return ""; }
+}
+const canonicalHost = canonicalDevelopmentHost();
 const extraAllowedDevOrigins = (process.env.SKETCHFORGE_ALLOWED_DEV_ORIGINS ?? "")
   .split(",")
   .map((origin) => origin.trim())
@@ -29,10 +39,11 @@ const nextConfig: NextConfig = {
   // `.next` lets a production verification build invalidate chunks used by a
   // running dev server, which also breaks API routes such as project snapshots.
   distDir: isStaticExport ? ".next-export" : process.env.NODE_ENV === "development" ? ".next-dev" : ".next",
-  allowedDevOrigins: ["localhost", "127.0.0.1", ...extraAllowedDevOrigins],
+  allowedDevOrigins: ["localhost", "127.0.0.1", ...(canonicalHost ? [canonicalHost] : []), ...extraAllowedDevOrigins],
   env: {
     NEXT_PUBLIC_KERCAD_COMMIT: applicationCommit(),
     NEXT_PUBLIC_STATIC_EXPORT: isStaticExport ? "true" : "false",
+    NEXT_PUBLIC_KERCAD_CANONICAL_HOST: canonicalHost,
   },
   images: {
     unoptimized: true

@@ -9,6 +9,7 @@ services:
     ports:
       - "${KERCAD_PORT:-${SKETCHFORGE_PORT:-3000}}:3000"
     environment:
+      KERCAD_CANONICAL_HOST: "${KERCAD_CANONICAL_HOST:-}"
       KERCAD_SHARED_PROJECTS_DIR: /data/projects
       KERCAD_CHALLENGES_DIR: /data/challenges
     volumes:

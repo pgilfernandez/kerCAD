@@ -100,7 +100,9 @@ Para que otros equipos de la red accedan al servidor de desarrollo:
 npm run dev -- --hostname 0.0.0.0
 ```
 
-Abre `http://IP_DEL_SERVIDOR:3000` desde esos equipos. Para habilitar bibliotecas persistentes en macOS/Linux, crea los directorios y arranca con rutas absolutas:
+En macOS, abre `http://NOMBRE_BONJOUR_DEL_MAC.local:3000`: se obtiene con `scutil --get LocalHostName`. Los accesos por IP o localhost se redirigen a ese nombre estable para no crear bibliotecas diferentes al cambiar la IP. Cada navegador y perfil conserva sus propios proyectos. En otros servidores, configura un nombre DNS estable con `KERCAD_CANONICAL_HOST`; consulta [biblioteca y dirección estable](docs/stable-project-origin.md).
+
+Para habilitar bibliotecas persistentes en macOS/Linux, crea los directorios y arranca con rutas absolutas:
 
 ```sh
 KERCAD_SHARED_PROJECTS_DIR=/ruta/absoluta/proyectos KERCAD_CHALLENGES_DIR=/ruta/absoluta/retos npm run dev -- --hostname 0.0.0.0
