@@ -209,6 +209,7 @@
 }
 
 html[data-theme="dark"] {
+  --theme-field-surface: #10171f;
   --background: #101820;
   --foreground: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.54995) 89.6078%);
   --topbar: #16212b;

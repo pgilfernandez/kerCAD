@@ -71,8 +71,8 @@ html[data-theme="dark"] :is(.kercad-rebuild-error, .pcad-build-warning, .sketch-
   box-shadow: var(--shadow);
 }
 
-/* Parameter text stays neutral; the accent is reserved for control states. */
-html[data-theme="dark"] .kercad-sidebar-editor {
+/* Both the operation tree and its parameter editor use neutral text. */
+html[data-theme="dark"] .kercad-model-sidebar {
   --theme-text: #e4e6e9;
   --theme-link: #e4e6e9;
   --theme-dark-text: #e4e6e9;
@@ -83,4 +83,35 @@ html[data-theme="dark"] .kercad-sidebar-editor {
   --theme-text-5c7182: #c7cbd1;
   --theme-text-8a9ba7: #a5a9b0;
   --theme-text-7d909d: #a5a9b0;
+}
+
+/* Editable fields sit below their surrounding cards and panels. */
+html[data-theme="dark"] body :is(
+  input:not([type]),
+  input[type="text"],
+  input[type="number"],
+  input[type="search"],
+  input[type="email"],
+  input[type="url"],
+  input[type="password"],
+  textarea,
+  select
+):not(:disabled):not([readonly]):not(.sketch-annotation-inline-editor):not(.kercad-annotation-editor textarea) {
+  background-color: var(--theme-field-surface);
+}
+
+html[data-theme="dark"] .kercad-dashboard-sidebar button > span {
+  color: #e4e6e9;
+}
+
+/* Compound fields share one surface through their units, icons and padding. */
+html[data-theme="dark"] .kercad-viewport-edge-treatment-radius > div,
+html[data-theme="dark"] .kercad-viewport-context-toolbar .kercad-viewport-edge-treatment-radius > div,
+html[data-theme="dark"] .kercad-viewport-context-toolbar .kercad-viewport-number-steppers button:not(:hover),
+html[data-theme="dark"] .kercad-dashboard-search {
+  background-color: var(--theme-field-surface);
+}
+
+html[data-theme="dark"] .kercad-dashboard-shell .kercad-edit-theme-icon {
+  background-color: var(--theme-text-668096);
 }
