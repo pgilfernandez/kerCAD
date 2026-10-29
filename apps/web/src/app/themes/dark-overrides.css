@@ -24,7 +24,8 @@ html[data-theme="dark"] .kercad-about-page .about-button.primary { color: #fff; 
 html[data-theme="dark"] .about-privacy-symbol { background: #203b32; border-color: #3c6857; color: #9bd7bb; }
 html[data-theme="dark"] .about-coming-soon { background: var(--theme-page); color: var(--theme-text-muted); }
 html[data-theme="dark"] .kercad-getting-started-pointer path { fill: var(--theme-surface); }
-html[data-theme="dark"] .kercad-getting-started:has(header:hover) .kercad-getting-started-pointer.top path { fill: var(--theme-dark-surface); }
+html[data-theme="dark"] .kercad-getting-started header:is(:hover, :active) { background: var(--theme-active); }
+html[data-theme="dark"] .kercad-getting-started:has(header:is(:hover, :active)) .kercad-getting-started-pointer.top path { fill: var(--theme-active); }
 
 /* SVG sketch paint is explicit: never invert geometry, images or axis colors. */
 html[data-theme="dark"] .sketch-plate-background { fill: var(--theme-grid-surface); }
