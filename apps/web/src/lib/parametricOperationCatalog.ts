@@ -129,7 +129,7 @@ export const parametricOperationCatalog: ParametricOperationDefinition[] = [
     kind: "roof",
     name: "Tejado",
     description: "Tejado a dos aguas paramétrico exacto",
-    menuIcon: "assets/sketchforge/shape-icons-gray/pyramid.png",
+    menuIcon: "assets/kercad/toolbar-3d/shapes/roof.svg",
     roles: roles("roof"),
     parameters: [dimension("width", "Ancho"), dimension("depth", "Largo"), dimension("height", "Altura", 12)],
   },
