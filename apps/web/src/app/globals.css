@@ -1455,6 +1455,8 @@ button {
 .kercad-rename-dialog > footer button.primary { color: #fff; background: var(--kercad-primary-blue); border-color: var(--kercad-primary-blue); }
 .kercad-rename-dialog > footer button.danger { color: #fff; background: #c84a50; border-color: #b83d44; }
 .kercad-rename-dialog > footer button:disabled { opacity: 0.45; }
+:is(.kercad-new-document-dialog, .kercad-rename-dialog)[aria-labelledby="kercad-project-rename-title"] > footer { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+:is(.kercad-new-document-dialog, .kercad-rename-dialog)[aria-labelledby="kercad-project-rename-title"] > footer button { min-width: 0; }
 .kercad-delete-dialog > p { margin: 0; padding: 19px 16px; color: var(--theme-text-607585); font-size: 12px; line-height: 1.5; }
 .kercad-delete-dialog > p strong { color: var(--theme-text-314a5f); }
 
