@@ -1,4 +1,5 @@
-export type KercadLocale = "es" | "en";
+export const KERCAD_LOCALES = ["en", "es"] as const;
+export type KercadLocale = (typeof KERCAD_LOCALES)[number];
 
 const es = {
   "loading.progress": "Progreso de carga", "loading.estimating": "Calculando estimación…",

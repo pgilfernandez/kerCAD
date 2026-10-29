@@ -4,7 +4,7 @@ import { HeaderToolbarIcon } from "@/components/icons";
 import { createPortal } from "react-dom";
 import packageInfo from "../../../../package.json";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { kercadTranslate, type KercadLocale, type KercadTranslationKey } from "@/lib/kercadI18n";
+import { KERCAD_LOCALES, kercadTranslate, type KercadLocale, type KercadTranslationKey } from "@/lib/kercadI18n";
 import { useAppTheme } from "@/lib/useAppTheme";
 import { Moon, Sun } from "lucide-react";
 
@@ -79,7 +79,7 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onL
       </div>
       <hr className="kercad-header-preference-separator" />
       <div className="kercad-header-preference-group" role="group" aria-labelledby="kercad-header-language-heading"><span id="kercad-header-language-heading" className="kercad-header-preference-heading">{t("settings.language")}</span>
-      {(["en", "es"] as const).map((language) => <button key={language} type="button" lang={language} aria-pressed={locale === language} onClick={() => { onLocaleChange(language); setOpen(false); }}>{t(language === "en" ? "settings.english" : "settings.spanish")}</button>)}
+      {KERCAD_LOCALES.map((language) => <button key={language} type="button" lang={language} aria-pressed={locale === language} onClick={() => { onLocaleChange(language); setOpen(false); }}>{t(language === "en" ? "settings.english" : "settings.spanish")}</button>)}
       </div>
     </div> : null}
   </div>;

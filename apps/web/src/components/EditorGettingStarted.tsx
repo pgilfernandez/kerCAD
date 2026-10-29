@@ -4,25 +4,27 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import type { KercadLocale } from "@/lib/kercadI18n";
+import { DashboardWelcomeDialog } from "@/components/DashboardWelcomeDialog";
 
 const STORAGE_KEY = "kercad.getting-started.v1.dismissed";
 const SKETCH_STORAGE_KEY = "kercad.sketch-getting-started.v1.dismissed";
 const DASHBOARD_STORAGE_KEY = "kercad.dashboard-getting-started.v1.dismissed";
+const DASHBOARD_WELCOME_KEY = "kercad.dashboard-welcome.v1.confirmed";
 
 export function resetStartupTutorials() {
-  try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(SKETCH_STORAGE_KEY); localStorage.removeItem(DASHBOARD_STORAGE_KEY); }
+  try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(SKETCH_STORAGE_KEY); localStorage.removeItem(DASHBOARD_STORAGE_KEY); localStorage.removeItem(DASHBOARD_WELCOME_KEY); }
   catch { /* The mounted tutorials can still be relaunched without storage. */ }
 }
 
 const dashboardCards = {
   en: [
-    { title: "Choose your language and theme", lines: ["Start here to choose the interface language and switch between the light and dark themes.", "Your preferences are remembered in this browser."] },
+    { title: "Change your language and theme", lines: ["You can always return to this button to change the interface language and switch between the light and dark themes.", "Your preferences are remembered in this browser."] },
     { title: "Your projects", lines: ["Projects is the main area of kerCAD, where you create and organize your designs.", "Use the new-project card to start designing. You can return to Projects from the navigation at any time."] },
     { title: "Learn and teach with challenges", lines: ["Challenges are step-by-step tutorials for learning and teaching how to use kerCAD and design parts.", "Open Challenges to explore the installed activities, import a challenge or create your own."] },
     { title: "Keep learning", lines: ["Open Documentation to learn more about kerCAD, explore its tools and deepen your design skills.", "You can relaunch this introduction from the Information button whenever you need it."] },
   ],
   es: [
-    { title: "Elige el idioma y el tema", lines: ["Empieza aquí para elegir el idioma de la interfaz y cambiar entre los temas claro y oscuro.", "Tus preferencias se recuerdan en este navegador."] },
+    { title: "Cambia el idioma y el tema", lines: ["Siempre que quieras, puedes volver a este botón para cambiar el idioma de la interfaz y elegir entre los temas claro y oscuro.", "Tus preferencias se recuerdan en este navegador."] },
     { title: "Tus proyectos", lines: ["Proyectos es la parte principal de kerCAD, donde creas y organizas tus diseños.", "Usa la tarjeta de nuevo proyecto para empezar a diseñar. Puedes volver a Proyectos desde la navegación en cualquier momento."] },
     { title: "Aprende y enseña con retos", lines: ["Los retos son tutoriales paso a paso para aprender y enseñar a usar kerCAD y a diseñar piezas.", "Entra en Retos para explorar las actividades instaladas, importar un reto o crear los tuyos."] },
     { title: "Sigue aprendiendo", lines: ["Abre Documentación para aprender más sobre kerCAD, explorar sus herramientas y profundizar en el diseño.", "Puedes volver a iniciar esta introducción desde el botón de Información cuando lo necesites."] },
@@ -72,8 +74,9 @@ const copy = {
   },
 };
 
-export function EditorGettingStarted({ locale, active, mode = "3d", launchRequest = 0, onShowProperties, dashboardSection = "home" }: { locale: KercadLocale; active: boolean; mode?: "3d" | "sketch" | "dashboard"; launchRequest?: number; onShowProperties?: () => void; dashboardSection?: "home" | "challenges" | "shared" }) {
+export function EditorGettingStarted({ locale, active, mode = "3d", launchRequest = 0, onShowProperties, dashboardSection = "home", onLocaleChange }: { locale: KercadLocale; active: boolean; mode?: "3d" | "sketch" | "dashboard"; launchRequest?: number; onShowProperties?: () => void; dashboardSection?: "home" | "challenges" | "shared"; onLocaleChange?: (locale: KercadLocale) => void }) {
   const [visible, setVisible] = useState(false);
+  const [welcomeRequired, setWelcomeRequired] = useState(false);
   const [step, setStep] = useState(0);
   const [position, setPosition] = useState<{ left: number; top: number; arrowSide: "top" | "right" | "bottom" | "left"; arrowOffset: number } | null>(null);
   const panel = useRef<HTMLElement>(null);
@@ -91,7 +94,13 @@ export function EditorGettingStarted({ locale, active, mode = "3d", launchReques
     catch { setVisible(true); }
   }, [storageKey]);
   useEffect(() => {
+    if (mode !== "dashboard") return;
+    try { setWelcomeRequired(localStorage.getItem(DASHBOARD_WELCOME_KEY) !== "true"); }
+    catch { setWelcomeRequired(true); }
+  }, [mode]);
+  useEffect(() => {
     if (!launchRequest) return;
+    if (mode === "dashboard") setWelcomeRequired(true);
     dragOffset.current = { x: 0, y: 0 };
     setStep(0);
     setPosition(null);
@@ -108,7 +117,7 @@ export function EditorGettingStarted({ locale, active, mode = "3d", launchReques
     setStep(next);
   };
   useLayoutEffect(() => {
-    if (!visible || !active) return;
+    if (!visible || !active || welcomeRequired) return;
     const stage = document.querySelector(mode === "dashboard" ? ".kercad-dashboard-main" : ".kercad-workplane-stage");
     const sidebar = mode === "dashboard" ? null : document.querySelector(".kercad-model-sidebar");
     const sketchAnchors = [".sketch-draw-section", ".kercad-sketch-constraints-panel", ".sketch-edit-section", ".sketch-import-section", ".sketch-annotations-section", '[data-tutorial="sketch-visibility"]'];
@@ -168,7 +177,15 @@ export function EditorGettingStarted({ locale, active, mode = "3d", launchReques
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
     return () => { updatePosition.current = () => {}; observer.disconnect(); window.removeEventListener("resize", update); window.removeEventListener("scroll", update, true); };
-  }, [active, visible, step, locale, mode, dashboardSection, centeredDashboardCard]);
+  }, [active, visible, step, locale, mode, dashboardSection, centeredDashboardCard, welcomeRequired]);
+  if (active && mode === "dashboard" && welcomeRequired && onLocaleChange) return <DashboardWelcomeDialog locale={locale} onLocaleChange={onLocaleChange} onConfirm={() => {
+    try { localStorage.setItem(DASHBOARD_WELCOME_KEY, "true"); localStorage.removeItem(DASHBOARD_STORAGE_KEY); } catch { /* Continue even when storage is unavailable. */ }
+    dragOffset.current = { x: 0, y: 0 };
+    setStep(0);
+    setPosition(null);
+    setVisible(true);
+    setWelcomeRequired(false);
+  }} />;
   if (!active || !visible) return null;
   const card = text.cards[step];
   return createPortal(<section ref={panel} className="kercad-getting-started" role="dialog" aria-modal="false" aria-labelledby={`kercad-getting-started-title-${mode}`} style={{ left: position?.left ?? 12, top: position?.top ?? 12, visibility: position ? "visible" : "hidden" }}>

@@ -53,14 +53,15 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
   const [locale, setLocale] = useState<KercadLocale>("en");
   const [tutorialLaunchRequest, setTutorialLaunchRequest] = useState(0);
   useEffect(() => {
-    const saved = localStorage.getItem("kercad.locale");
+    let saved: string | null = null;
+    try { saved = localStorage.getItem("kercad.locale"); } catch { /* Keep English if storage is unavailable. */ }
     const language = saved === "es" ? "es" : "en";
     setLocale(language);
     document.documentElement.lang = language;
   }, []);
   const changeLocale = (language: KercadLocale) => {
     setLocale(language);
-    localStorage.setItem("kercad.locale", language);
+    try { localStorage.setItem("kercad.locale", language); } catch { /* The selected language still applies for this session. */ }
     document.documentElement.lang = language;
   };
   const t = (key: DashboardTranslationKey, values?: Record<string, string | number>) => dashboardTranslate(locale, key, values);
@@ -107,7 +108,7 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
     setRenaming(null);
   };
   return <main className="kercad-dashboard-shell" aria-busy={busy}>
-    <EditorGettingStarted locale={locale} active={!busy} mode="dashboard" dashboardSection={section} launchRequest={tutorialLaunchRequest} />
+    <EditorGettingStarted locale={locale} onLocaleChange={changeLocale} active={!busy} mode="dashboard" dashboardSection={section} launchRequest={tutorialLaunchRequest} />
     <header className="kercad-dashboard-topbar">
       <strong className="kercad-dashboard-brand"><img className="kercad-dashboard-logo" src="/assets/kercad/logo.svg" alt="" /><span>kerCAD</span></strong>
       <nav className="kercad-dashboard-mobile-nav" aria-label={t("Dashboard sections")}><button data-tutorial="dashboard-projects" className={section === "home" ? "active" : ""} type="button" onClick={() => onSectionChange("home")}><Home size={18} /> {t("Projects")}</button><button data-tutorial="dashboard-challenges" className={section === "challenges" ? "active" : ""} type="button" onClick={() => onSectionChange("challenges")}><Grid3X3 size={18} /> {t("Challenges")}</button>{sharedEnabled ? <button type="button" onClick={() => onSectionChange("shared")}>{t("Shared")}</button> : null}</nav>
