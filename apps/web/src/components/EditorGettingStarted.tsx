@@ -7,11 +7,27 @@ import type { KercadLocale } from "@/lib/kercadI18n";
 
 const STORAGE_KEY = "kercad.getting-started.v1.dismissed";
 const SKETCH_STORAGE_KEY = "kercad.sketch-getting-started.v1.dismissed";
+const DASHBOARD_STORAGE_KEY = "kercad.dashboard-getting-started.v1.dismissed";
 
 export function resetStartupTutorials() {
-  try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(SKETCH_STORAGE_KEY); }
+  try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(SKETCH_STORAGE_KEY); localStorage.removeItem(DASHBOARD_STORAGE_KEY); }
   catch { /* The mounted tutorials can still be relaunched without storage. */ }
 }
+
+const dashboardCards = {
+  en: [
+    { title: "Choose your language and theme", lines: ["Start here to choose the interface language and switch between the light and dark themes.", "Your preferences are remembered in this browser."] },
+    { title: "Your projects", lines: ["Projects is the main area of kerCAD, where you create and organize your designs.", "Use the new-project card to start designing. You can return to Projects from the navigation at any time."] },
+    { title: "Learn and teach with challenges", lines: ["Challenges are step-by-step tutorials for learning and teaching how to use kerCAD and design parts.", "Open Challenges to explore the installed activities, import a challenge or create your own."] },
+    { title: "Keep learning", lines: ["Open Documentation to learn more about kerCAD, explore its tools and deepen your design skills.", "You can relaunch this introduction from the Information button whenever you need it."] },
+  ],
+  es: [
+    { title: "Elige el idioma y el tema", lines: ["Empieza aquí para elegir el idioma de la interfaz y cambiar entre los temas claro y oscuro.", "Tus preferencias se recuerdan en este navegador."] },
+    { title: "Tus proyectos", lines: ["Proyectos es la parte principal de kerCAD, donde creas y organizas tus diseños.", "Usa la tarjeta de nuevo proyecto para empezar a diseñar. Puedes volver a Proyectos desde la navegación en cualquier momento."] },
+    { title: "Aprende y enseña con retos", lines: ["Los retos son tutoriales paso a paso para aprender y enseñar a usar kerCAD y a diseñar piezas.", "Entra en Retos para explorar las actividades instaladas, importar un reto o crear los tuyos."] },
+    { title: "Sigue aprendiendo", lines: ["Abre Documentación para aprender más sobre kerCAD, explorar sus herramientas y profundizar en el diseño.", "Puedes volver a iniciar esta introducción desde el botón de Información cuando lo necesites."] },
+  ],
+};
 
 const sketchCards = {
   en: [
@@ -56,7 +72,7 @@ const copy = {
   },
 };
 
-export function EditorGettingStarted({ locale, active, mode = "3d", launchRequest = 0, onShowProperties }: { locale: KercadLocale; active: boolean; mode?: "3d" | "sketch"; launchRequest?: number; onShowProperties?: () => void }) {
+export function EditorGettingStarted({ locale, active, mode = "3d", launchRequest = 0, onShowProperties, dashboardSection = "home" }: { locale: KercadLocale; active: boolean; mode?: "3d" | "sketch" | "dashboard"; launchRequest?: number; onShowProperties?: () => void; dashboardSection?: "home" | "challenges" | "shared" }) {
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState(0);
   const [position, setPosition] = useState<{ left: number; top: number; arrowSide: "top" | "right" | "bottom" | "left"; arrowOffset: number } | null>(null);
@@ -64,8 +80,12 @@ export function EditorGettingStarted({ locale, active, mode = "3d", launchReques
   const dragOffset = useRef({ x: 0, y: 0 });
   const drag = useRef<{ pointerId: number; x: number; y: number; offsetX: number; offsetY: number } | null>(null);
   const updatePosition = useRef<() => void>(() => {});
-  const text = { ...copy[locale], cards: mode === "sketch" ? sketchCards[locale] : copy[locale].cards };
-  const storageKey = mode === "sketch" ? SKETCH_STORAGE_KEY : STORAGE_KEY;
+  const text = { ...copy[locale], cards: mode === "dashboard" ? dashboardCards[locale] : mode === "sketch" ? sketchCards[locale] : copy[locale].cards };
+  const storageKey = mode === "dashboard" ? DASHBOARD_STORAGE_KEY : mode === "sketch" ? SKETCH_STORAGE_KEY : STORAGE_KEY;
+  const centeredDashboardCard = mode === "dashboard" && ((step === 1 && dashboardSection === "home") || (step === 2 && dashboardSection === "challenges"));
+  useLayoutEffect(() => {
+    if (mode === "dashboard") dragOffset.current = { x: 0, y: 0 };
+  }, [mode, dashboardSection]);
   useEffect(() => {
     try { setVisible(localStorage.getItem(storageKey) !== "true"); }
     catch { setVisible(true); }
@@ -89,11 +109,13 @@ export function EditorGettingStarted({ locale, active, mode = "3d", launchReques
   };
   useLayoutEffect(() => {
     if (!visible || !active) return;
-    const stage = document.querySelector(".kercad-workplane-stage");
-    const sidebar = document.querySelector(".kercad-model-sidebar");
+    const stage = document.querySelector(mode === "dashboard" ? ".kercad-dashboard-main" : ".kercad-workplane-stage");
+    const sidebar = mode === "dashboard" ? null : document.querySelector(".kercad-model-sidebar");
     const sketchAnchors = [".sketch-draw-section", ".kercad-sketch-constraints-panel", ".sketch-edit-section", ".sketch-import-section", ".sketch-annotations-section", '[data-tutorial="sketch-visibility"]'];
     const sideAnchor = mode === "sketch" && (step === 1 || step === 5);
-    const anchor = mode === "sketch" ? document.querySelector(sketchAnchors[step]) : step === 1 ? document.querySelector(".toolbar-shapes-section")
+    const dashboardAnchors = ['.kercad-dashboard-topbar [data-tutorial="appearance-language"]', '[data-tutorial="dashboard-projects"]', '[data-tutorial="dashboard-challenges"]', '.kercad-dashboard-topbar [data-tutorial="documentation"]'];
+    const dashboardAnchor = () => centeredDashboardCard ? null : Array.from(document.querySelectorAll(dashboardAnchors[step] ?? "[data-tutorial-missing]")).find((element) => element.getBoundingClientRect().width > 0) ?? null;
+    const anchor = mode === "dashboard" ? dashboardAnchor() : mode === "sketch" ? document.querySelector(sketchAnchors[step]) : step === 1 ? document.querySelector(".toolbar-shapes-section")
       : step === 3 ? document.querySelector(".toolbar-modify-section")
       : step === 4 ? document.querySelector(".toolbar-actions-section")
       : step === 5 ? document.querySelector(".toolbar-annotations-section") : null;
@@ -106,16 +128,23 @@ export function EditorGettingStarted({ locale, active, mode = "3d", launchReques
       const right = side && side.width > 0 ? Math.min(bounds.right, side.left) : bounds.right;
       let left = (bounds.left + right - card.offsetWidth) / 2;
       let top = bounds.bottom - card.offsetHeight - 24;
+      if (mode === "dashboard") top = bounds.top + (bounds.height - card.offsetHeight) / 2;
       let targetX = (bounds.left + right) / 2;
       let targetY = bounds.top + bounds.height * .3;
-      if (anchor) {
-        const target = anchor.getBoundingClientRect();
+      const currentAnchor = mode === "dashboard" ? dashboardAnchor() : anchor;
+      if (currentAnchor) {
+        const target = currentAnchor.getBoundingClientRect();
         left = target.left;
         top = target.bottom + 10;
         targetX = target.left + target.width / 2;
         targetY = target.bottom;
         if (sideAnchor) {
           left = step === 1 ? target.left - card.offsetWidth - 12 : target.right + 12;
+          top = target.top + (target.height - card.offsetHeight) / 2;
+          targetY = target.top + target.height / 2;
+        }
+        if (mode === "dashboard" && currentAnchor.closest(".kercad-dashboard-sidebar")) {
+          left = target.right + 12;
           top = target.top + (target.height - card.offsetHeight) / 2;
           targetY = target.top + target.height / 2;
         }
@@ -139,11 +168,11 @@ export function EditorGettingStarted({ locale, active, mode = "3d", launchReques
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
     return () => { updatePosition.current = () => {}; observer.disconnect(); window.removeEventListener("resize", update); window.removeEventListener("scroll", update, true); };
-  }, [active, visible, step, locale, mode]);
+  }, [active, visible, step, locale, mode, dashboardSection, centeredDashboardCard]);
   if (!active || !visible) return null;
   const card = text.cards[step];
   return createPortal(<section ref={panel} className="kercad-getting-started" role="dialog" aria-modal="false" aria-labelledby={`kercad-getting-started-title-${mode}`} style={{ left: position?.left ?? 12, top: position?.top ?? 12, visibility: position ? "visible" : "hidden" }}>
-    {position && <svg className={`kercad-getting-started-pointer ${position.arrowSide}`} style={position.arrowSide === "top" || position.arrowSide === "bottom" ? { left: position.arrowOffset - 10 } : { top: position.arrowOffset - 10 }} width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M0 10 10 0 20 10" fill="white" stroke="#9ac2f4" strokeWidth="1" /></svg>}
+    {position && !centeredDashboardCard && <svg className={`kercad-getting-started-pointer ${position.arrowSide}`} style={position.arrowSide === "top" || position.arrowSide === "bottom" ? { left: position.arrowOffset - 10 } : { top: position.arrowOffset - 10 }} width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M0 10 10 0 20 10" fill="white" stroke="#9ac2f4" strokeWidth="1" /></svg>}
     <div className="kercad-getting-started-content">
     <header title={locale === "es" ? "Arrastra para mover esta tarjeta" : "Drag to move this card"}
       onPointerDown={(event) => {

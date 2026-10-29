@@ -9272,6 +9272,7 @@ circle.sketch-preview-line {
 .kercad-dashboard-about { margin-left: auto; min-height: 42px; padding: 0 18px; color: #fff; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.55); border-radius: 9px; font-size: 14px; font-weight: 750; }
 .kercad-dashboard-about:hover { color: var(--theme-link); background: var(--theme-surface); }
 .kercad-header-actions.dashboard-header-actions { position: relative; top: auto; right: auto; margin-left: auto; height: auto; gap: 10px; z-index: 45; flex-shrink: 0; }
+.kercad-dashboard-topbar:has(.kercad-header-language-menu) { position: relative; z-index: 100; }
 .kercad-dashboard-shell button:not(:disabled),
 .kercad-dashboard-topbar a[href] { cursor: pointer; }
 .dashboard-header-actions > button, .dashboard-header-actions > a { display: flex; align-items: center; justify-content: center; gap: 8px; width: auto; min-height: 38px; height: auto; padding: 7px 10px; border: 1px solid transparent; border-radius: 8px; color: white; background: transparent; font: inherit; font-size: 13px; text-decoration: none; white-space: nowrap; }

@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ToolbarEditOperationIcon } from "@/components/icons";
 import { SharedProjects } from "@/components/SharedProjects";
 import { EditorHeaderActions } from "@/components/EditorHeaderActions";
+import { EditorGettingStarted, resetStartupTutorials } from "@/components/EditorGettingStarted";
 import { ImportDesignDialog } from "@/components/ImportDesignDialog";
 import type { KercadLocale } from "@/lib/kercadI18n";
 import { dashboardTranslate, type DashboardTranslationKey } from "@/lib/dashboardI18n";
@@ -50,6 +51,7 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
   const [query, setQuery] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const [locale, setLocale] = useState<KercadLocale>("en");
+  const [tutorialLaunchRequest, setTutorialLaunchRequest] = useState(0);
   useEffect(() => {
     const saved = localStorage.getItem("kercad.locale");
     const language = saved === "es" ? "es" : "en";
@@ -105,15 +107,16 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
     setRenaming(null);
   };
   return <main className="kercad-dashboard-shell" aria-busy={busy}>
+    <EditorGettingStarted locale={locale} active={!busy} mode="dashboard" dashboardSection={section} launchRequest={tutorialLaunchRequest} />
     <header className="kercad-dashboard-topbar">
       <strong className="kercad-dashboard-brand"><img className="kercad-dashboard-logo" src="/assets/kercad/logo.svg" alt="" /><span>kerCAD</span></strong>
-      <nav className="kercad-dashboard-mobile-nav" aria-label={t("Dashboard sections")}><button className={section === "home" ? "active" : ""} type="button" onClick={() => onSectionChange("home")}><Home size={18} /> {t("Projects")}</button><button className={section === "challenges" ? "active" : ""} type="button" onClick={() => onSectionChange("challenges")}><Grid3X3 size={18} /> {t("Challenges")}</button>{sharedEnabled ? <button type="button" onClick={() => onSectionChange("shared")}>{t("Shared")}</button> : null}</nav>
-      <EditorHeaderActions locale={locale} onLocaleChange={changeLocale} onShowLanding={onShowLanding} showDonation />
+      <nav className="kercad-dashboard-mobile-nav" aria-label={t("Dashboard sections")}><button data-tutorial="dashboard-projects" className={section === "home" ? "active" : ""} type="button" onClick={() => onSectionChange("home")}><Home size={18} /> {t("Projects")}</button><button data-tutorial="dashboard-challenges" className={section === "challenges" ? "active" : ""} type="button" onClick={() => onSectionChange("challenges")}><Grid3X3 size={18} /> {t("Challenges")}</button>{sharedEnabled ? <button type="button" onClick={() => onSectionChange("shared")}>{t("Shared")}</button> : null}</nav>
+      <EditorHeaderActions locale={locale} onLocaleChange={changeLocale} onShowLanding={onShowLanding} onLaunchTutorial={() => { resetStartupTutorials(); setTutorialLaunchRequest((request) => request + 1); }} showDonation />
     </header>
     <div className="kercad-dashboard-layout">
       <aside className="kercad-dashboard-sidebar">
-        <button className={section === "home" ? "active" : ""} type="button" onClick={() => onSectionChange("home")}><Home size={23} /><span>{t("Projects")}</span></button>
-        <button className={section === "challenges" ? "active" : ""} type="button" onClick={() => onSectionChange("challenges")}><Grid3X3 size={23} /><span>{t("Challenges")}</span></button>
+        <button data-tutorial="dashboard-projects" className={section === "home" ? "active" : ""} type="button" onClick={() => onSectionChange("home")}><Home size={23} /><span>{t("Projects")}</span></button>
+        <button data-tutorial="dashboard-challenges" className={section === "challenges" ? "active" : ""} type="button" onClick={() => onSectionChange("challenges")}><Grid3X3 size={23} /><span>{t("Challenges")}</span></button>
         {sharedEnabled ? <button className={section === "shared" ? "active" : ""} type="button" onClick={() => onSectionChange("shared")}><Upload size={23} /><span>{t("Shared")}</span></button> : null}
       </aside>
       <section className="kercad-dashboard-main">
