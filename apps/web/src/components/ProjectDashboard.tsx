@@ -1,5 +1,7 @@
 "use client";
 
+import { CreateDesignIcon } from "@/components/CreateDesignIcon";
+
 import { LEGACY_PROJECT_ACCEPT } from "@/lib/legacyBrand";
 
 import { Copy, Download, FileArchive, Grid3X3, Home, List, Search, Trash2, Upload, X } from "lucide-react";
@@ -134,7 +136,7 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
           <div className={`kercad-challenge-library ${challengeView}`}>
             {!challengeQuery.trim() ? <article className="kercad-challenge-card kercad-challenge-new-card">
               <button className="challenge-open" type="button" onClick={onCreateChallenge}>
-                <span className="challenge-cover"><img src="/assets/kercad/create-new-3d-design.svg" alt="" draggable={false} /></span>
+                <span className="challenge-cover"><CreateDesignIcon /></span>
                 <span className="challenge-copy"><strong>{t("Create new challenge")}</strong><span>{t("Build a guided kerCAD activity")}</span></span>
               </button>
             </article> : null}
@@ -166,7 +168,7 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
         <div className={`kercad-dashboard-projects ${view}`}>
           {!query.trim() ? <article className="kercad-dashboard-card kercad-dashboard-new-card">
             <button className="card-open" type="button" onClick={onCreate}>
-              <span className="card-preview"><img src="/assets/kercad/create-new-3d-design.svg" alt="" draggable={false} /></span>
+              <span className="card-preview"><CreateDesignIcon /></span>
               <span className="card-copy"><strong>{t("Create new 3D design")}</strong><small>{t("Start with an empty workplane")}</small></span>
             </button>
           </article> : null}

@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import packageInfo from "../../../../package.json";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { KERCAD_LOCALES, kercadTranslate, type KercadLocale, type KercadTranslationKey } from "@/lib/kercadI18n";
+import { AccentColorOptions } from "@/components/AccentColorOptions";
 import { useAppTheme } from "@/lib/useAppTheme";
 import { Moon, Sun } from "lucide-react";
 
@@ -76,6 +77,7 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onL
     {open ? <div id="kercad-header-language-menu" className="kercad-header-language-menu" aria-label={t("settings.appearanceLanguage")}>
       <div className="kercad-header-preference-group" role="group" aria-labelledby="kercad-header-theme-heading"><span id="kercad-header-theme-heading" className="kercad-header-preference-heading">{t("settings.theme")}</span>
         <div className="kercad-header-theme-options">{(["light", "dark"] as const).map((option) => <button key={option} type="button" aria-pressed={theme === option} onClick={() => setTheme(option)}>{option === "light" ? <Sun size={16} /> : <Moon size={16} />}<span>{t(option === "light" ? "settings.themeLight" : "settings.themeDark")}</span></button>)}</div>
+        <AccentColorOptions locale={locale} />
       </div>
       <hr className="kercad-header-preference-separator" />
       <div className="kercad-header-preference-group" role="group" aria-labelledby="kercad-header-language-heading"><span id="kercad-header-language-heading" className="kercad-header-preference-heading">{t("settings.language")}</span>

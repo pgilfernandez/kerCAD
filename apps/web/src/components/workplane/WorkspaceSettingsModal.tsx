@@ -4,6 +4,7 @@ import { ChevronDown, Grid3X3, History, Palette, RotateCcw, Ruler, X } from "luc
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { HexColorInput, HexColorPicker } from "react-colorful";
+import { AccentColorOptions } from "@/components/AccentColorOptions";
 import { APP_THEME_OPTIONS, type AppThemePreference } from "@/lib/appTheme";
 import { normalizeScaleForUnits, parseMeasurementInput, scaleOptionsForUnits, WORKSPACE_UNIT_OPTIONS } from "@/lib/measurementUnits";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
@@ -196,7 +197,8 @@ export function WorkspaceSettingsModal({
                       ))}
                     </select>
                   </label>
-                  <p className="workspace-global-note">Theme applies across SketchForge and all projects.</p>
+                  <AccentColorOptions />
+                  <p className="workspace-global-note">Appearance applies across kerCAD and all projects.</p>
                   <WorkspaceToggle
                     label="Show movement dimensions"
                     checked={moveDimensionsEnabled}

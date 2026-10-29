@@ -88,11 +88,16 @@ export function SketchToolbarIcon({ file }: { file: string }) {
 }
 
 export function ViewToolbarIcon({ file }: { file: string }) {
+  if (["toggle-lengths", "toggle-dimensions", "toggle-constraints"].includes(file)) {
+    const mask = `url("/assets/kercad/toolbar-vertical/${file}.svg")`;
+    return <span aria-hidden="true" className="toolbar-command-icon kercad-sketch-toolbar-icon kercad-sketch-visibility-icon" style={{ maskImage: mask, WebkitMaskImage: mask }} />;
+  }
   return <img aria-hidden="true" className="toolbar-command-icon kercad-sketch-toolbar-icon" src={`/assets/kercad/${file === "inverse" ? "toolbar-horizontal" : "toolbar-vertical"}/${file}.svg`} alt="" draggable={false} />;
 }
 
 export function SketchConstraintIcon({ file }: { file: string }) {
-  return <img aria-hidden="true" className="kercad-sketch-constraint-icon" src={`/assets/kercad/toolbar-vertical/constraints/${file}.svg`} alt="" draggable={false} />;
+  const mask = `url("/assets/kercad/toolbar-vertical/constraints/${file}.svg")`;
+  return <span aria-hidden="true" className="kercad-sketch-constraint-icon" style={{ maskImage: mask, WebkitMaskImage: mask }} />;
 }
 
 export function ToolbarHomeIcon() {
@@ -226,7 +231,8 @@ export function ToolbarEditOperationIcon({ inheritColor = false }: { inheritColo
     const mask = `url("${operationIconPath("edit.svg")}")`;
     return <span aria-hidden="true" className="kercad-edit-theme-icon" style={{ maskImage: mask, WebkitMaskImage: mask }} />;
   }
-  return <KercadOperationImage file="edit.svg" />;
+  const mask = `url("${operationIconPath("edit.svg")}")`;
+  return <span aria-hidden="true" className="toolbar-command-icon kercad-toolbar-operation-icon kercad-edit-operation-icon" style={{ maskImage: mask, WebkitMaskImage: mask }} />;
 }
 
 export function ToolbarPreserveEdgeIcon(props: IconProps) {

@@ -1,3 +1,5 @@
+export { OBJECT_COLOR_PALETTE } from "@/lib/colorPalette";
+import { OBJECT_COLOR_PALETTE } from "@/lib/colorPalette";
 import { createExtrudeFeature, createParametricObject, createPrimitiveFeature, createSketchFeature } from "@/lib/parametricDocument";
 import type { ViewportSelection } from "@/components/ParametricViewport";
 import type { ExtrudeFeature, ParametricDocument, ParametricFeature, ParametricObject, PrimitiveFeature, SketchFeature } from "@/types/parametric";
@@ -51,9 +53,7 @@ function sketchDimensions(sketch: SketchFeature) {
   };
 }
 export type ParametricTreeSelection = { id: string; kind: "object" | "feature" };
-export const OBJECT_COLOR_PALETTE = [
-  "#bb0f17", "#e8731f", "#ddbd09", "#65c412", "#0f952a", "#18b99a", "#0098c7", "#3b82f6", "#8112cb", "#d03cab", "#b26519", "#ffffff", "#cfd8df", "#8a98a6", "#4b5563", "#111111",
-];
+
 
 export function canResetParametricFeature(feature: ParametricFeature) {
   return feature.kind !== "sketch" && feature.kind !== "importedStep";

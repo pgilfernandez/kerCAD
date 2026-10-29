@@ -38,10 +38,10 @@ html[data-theme="dark"] :is(.sketch-segment-dimensions, .sketch-circle-dimension
 html[data-theme="dark"] :is(.sketch-segment-dimensions, .sketch-circle-dimensions, .sketch-text-dimensions) text { fill: #e1ebf5; }
 html[data-theme="dark"] .sketch-dimension-editor-background { fill: #24466b !important; }
 html[data-theme="dark"] .sketch-dimension-editor-value { fill: #e1ebf5 !important; }
-html[data-theme="dark"] .sketch-dimension-editor-indicator { fill: #9ac6ff !important; }
+html[data-theme="dark"] .sketch-dimension-editor-indicator { fill: var(--accent-shade-9ac6ff) !important; }
 html[data-theme="dark"] .sketch-dimension-editor input { caret-color: #e1ebf5; }
 html[data-theme="dark"] .sketch-constraints rect { fill: #243544; }
-html[data-theme="dark"] .sketch-constraints text { fill: #9ac6ff; }
+html[data-theme="dark"] .sketch-constraints text { fill: var(--accent-shade-9ac6ff); }
 
 /* Directional scroll fades must match the surface, not leave white strips. */
 html[data-theme="dark"] .kercad-toolbar-scroll-indicator { background-color: var(--theme-surface); }
@@ -69,4 +69,18 @@ html[data-theme="dark"] :is(.kercad-rebuild-error, .pcad-build-warning, .sketch-
   background: var(--theme-dark-danger-surface);
   border-color: #965a64;
   box-shadow: var(--shadow);
+}
+
+/* Parameter text stays neutral; the accent is reserved for control states. */
+html[data-theme="dark"] .kercad-sidebar-editor {
+  --theme-text: #e4e6e9;
+  --theme-link: #e4e6e9;
+  --theme-dark-text: #e4e6e9;
+  --theme-dark-link: #c7cbd1;
+  --theme-dark-muted: #a5a9b0;
+  --theme-text-314a5f: #e4e6e9;
+  --theme-text-304a5f: #e4e6e9;
+  --theme-text-5c7182: #c7cbd1;
+  --theme-text-8a9ba7: #a5a9b0;
+  --theme-text-7d909d: #a5a9b0;
 }

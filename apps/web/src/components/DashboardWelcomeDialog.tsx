@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Moon, Sun } from "lucide-react";
 import { KERCAD_LOCALES, kercadTranslate, type KercadLocale } from "@/lib/kercadI18n";
+import { AccentColorOptions } from "@/components/AccentColorOptions";
 import { useAppTheme } from "@/lib/useAppTheme";
 import { useAccessibleDialog } from "@/components/useAccessibleDialog";
 
@@ -36,6 +37,7 @@ export function DashboardWelcomeDialog({ locale, onLocaleChange, onConfirm }: {
       </fieldset>
       <fieldset><legend>{t("settings.theme")}</legend>
         <div className="kercad-welcome-themes">{(["light", "dark"] as const).map((option) => <button key={option} type="button" aria-pressed={theme === option} onClick={() => setTheme(option)}>{option === "light" ? <Sun size={19} /> : <Moon size={19} />}{t(option === "light" ? "settings.themeLight" : "settings.themeDark")}</button>)}</div>
+        <AccentColorOptions locale={locale} />
       </fieldset>
       <button className="kercad-welcome-confirm" type="submit" disabled={!selectedLocale}>OK</button>
     </form>

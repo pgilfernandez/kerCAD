@@ -41,8 +41,8 @@ button {
   --pcad-ink: #263d49;
   --pcad-muted: #6d818b;
   --pcad-line: #d6e0e4;
-  --pcad-blue: #087fa4;
-  --pcad-blue-soft: #e5f5f9;
+  --pcad-blue: var(--accent-shade-087fa4);
+  --pcad-blue-soft: var(--accent-shade-e5f5f9);
   --pcad-orange: #e99b2f;
   display: grid;
   width: 100vw;
@@ -320,8 +320,8 @@ button {
   height: 28px;
   flex: 0 0 28px;
   place-items: center;
-  color: var(--theme-dark-link, #087fa4);
-  background: var(--theme-dark-active, #dff2f7);
+  color: var(--theme-dark-link, var(--accent-shade-087fa4));
+  background: var(--theme-dark-active, var(--accent-shade-dff2f7));
   border-radius: 6px;
 }
 
@@ -418,7 +418,7 @@ button {
 .kercad-viewport-edge-treatment-radius > div { display: flex; align-items: center; min-width: 0; overflow: hidden; background: var(--theme-surface); border: 1px solid var(--theme-line-cbd7df); border-radius: 4px; }
 .kercad-viewport-edge-treatment-radius input { width: 60px; min-width: 0; height: 24px; padding: 0 3px; color: var(--theme-dark-link, #243b49); font: inherit; font-size: 13px; font-weight: bold; text-align: right; background: transparent; border: 0; outline: 0; }
 .kercad-viewport-edge-treatment-radius > div > span { padding-right: 4px; color: var(--theme-dark-muted, #71838e); }
-.kercad-viewport-edge-treatment-radius > div:focus-within { border-color: var(--theme-line-168fc7); box-shadow: 0 0 0 1px rgba(22, 143, 199, 0.18); }
+.kercad-viewport-edge-treatment-radius > div:focus-within { border-color: var(--theme-line-168fc7); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-shade-168fc7) 18%, transparent); }
 .kercad-viewport-edge-treatment-actions { padding-top: 4px; border-top: 1px solid var(--theme-line-d7e1e7); }
 .kercad-viewport-edge-treatment-actions button { height: 30px; }
 .kercad-viewport-edge-treatment-actions button svg { width: 19px; height: 19px; }
@@ -474,8 +474,9 @@ button {
   transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease, transform 140ms ease;
 }
 .kercad-viewport-context-toolbar button:hover { color: var(--theme-text-071f32); background: var(--theme-bg-dfeff7-a820); border-color: var(--theme-line-9bbecf-a700); transform: translateY(1px); }
-.kercad-viewport-context-toolbar button:focus-visible { outline: 2px solid #28a9d2; outline-offset: 1px; }
+.kercad-viewport-context-toolbar button:focus-visible { outline: 2px solid var(--accent-shade-28a9d2); outline-offset: 1px; }
 .kercad-viewport-context-toolbar button:disabled { opacity: 0.35; cursor: default; transform: none; }
+.kercad-viewport-context-toolbar button .kercad-edit-operation-icon,
 .kercad-viewport-context-toolbar button img,
 .kercad-viewport-context-toolbar button svg { width: 34px; height: 34px; object-fit: contain; }
 .kercad-viewport-context-toolbar button small { position: absolute; right: 3px; bottom: 2px; color: var(--theme-text-486779); font-size: 9px; font-weight: 900; }
@@ -483,7 +484,7 @@ button {
 .kercad-viewport-context-toolbar .mode-add.active { color: var(--theme-text-167d54); background: var(--theme-bg-ddf4e8); border-color: var(--theme-line-66b994); }
 .kercad-viewport-context-toolbar .mode-cut.active { color: var(--theme-text-ba434c); background: var(--theme-bg-fbe4e6); border-color: var(--theme-dark-border, #d98990); }
 .kercad-viewport-context-toolbar .mode-intersect.active { color: var(--theme-text-7f46a5); background: var(--theme-bg-efe3f6); border-color: var(--theme-line-b58acb); }
-.kercad-viewport-context-toolbar button.active { color: var(--theme-text-006b94); background: var(--theme-bg-def5fb); border-color: var(--theme-line-6fc8df); box-shadow: inset 0 0 0 #079bc6; }
+.kercad-viewport-context-toolbar button.active { color: var(--theme-text-006b94); background: var(--theme-bg-def5fb); border-color: var(--theme-line-6fc8df); box-shadow: inset 0 0 0 var(--accent-shade-079bc6); }
 .kercad-viewport-context-toolbar button.kercad-alignment-mode { padding: 3px; }
 .kercad-viewport-context-toolbar .cancel { color: var(--theme-text-a3444a); }
 .kercad-viewport-context-toolbar .accept { color: var(--theme-text-23714e); }
@@ -492,7 +493,7 @@ button {
 .kercad-viewport-context-toolbar .kercad-viewport-edge-treatment-radius input { width: 58px; }
 .kercad-viewport-number-steppers { display: flex; flex-direction: column; align-self: stretch; border-left: 1px solid var(--theme-line-cbd7df); }
 .kercad-viewport-context-toolbar .kercad-viewport-number-steppers button { width: 22px; min-width: 22px; height: 16px; min-height: 0; flex: 1; padding: 0; border: 0; border-radius: 0; font-size: 11px; line-height: 1; color: var(--theme-text-31566d); background: var(--theme-bg-f3f7f9); }
-.kercad-viewport-context-toolbar .kercad-viewport-number-steppers button:hover { background: var(--theme-dark-active, #dceef7); }
+.kercad-viewport-context-toolbar .kercad-viewport-number-steppers button:hover { background: var(--theme-dark-active, var(--accent-shade-dceef7)); }
 @media (max-width: 490px) {
   .kercad-reference-shell.sidebar-normal:has(.kercad-viewport-context-toolbar) .kercad-sidebar-mode-control.normal {
     top: 64px;
@@ -508,6 +509,7 @@ button {
     flex-basis: 38px;
     border-radius: 10px;
   }
+  .kercad-viewport-context-toolbar button .kercad-edit-operation-icon,
   .kercad-viewport-context-toolbar button img,
   .kercad-viewport-context-toolbar button svg { width: 29px; height: 29px; }
 }
@@ -517,7 +519,7 @@ button {
   display: none;
   pointer-events: none;
   border: 1px solid var(--theme-line-168fc7);
-  background: rgba(41, 174, 222, 0.16);
+  background: color-mix(in srgb, var(--accent-shade-29aede) 16%, transparent);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
 }
 .parametric-selection-dimensions { position: absolute; inset: 0; z-index: 6; overflow: hidden; pointer-events: none; }
@@ -539,7 +541,7 @@ button {
 }
 .parametric-selection-dimensions input:focus {
   background: var(--theme-surface);
-  box-shadow: 0 0 0 2px rgba(22, 143, 199, 0.2), 0 3px 9px rgba(25, 55, 72, 0.2);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-shade-168fc7) 20%, transparent), 0 3px 9px rgba(25, 55, 72, 0.2);
 }
 .parametric-selection-dimensions .axis-x { color: var(--theme-text-b83d3d); }
 .parametric-selection-dimensions .axis-y { color: var(--theme-text-287d43); }
@@ -640,7 +642,7 @@ button {
 .pcad-select-field { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 7px 0; color: var(--theme-dark-text, #526975); font-size: 10px; }
 
 .pcad-input-wrap { display: flex; width: 104px; height: 29px; align-items: center; background: var(--theme-dark-surface, #fff); border: 1px solid var(--theme-dark-border, #cbd8dd); border-radius: 5px; overflow: hidden; }
-.pcad-input-wrap:focus-within { border-color: #66abc0; box-shadow: 0 0 0 2px #dff2f7; }
+.pcad-input-wrap:focus-within { border-color: #66abc0; box-shadow: 0 0 0 2px var(--accent-shade-dff2f7); }
 .pcad-input-wrap input { width: 100%; min-width: 0; height: 100%; padding: 0 6px; color: var(--theme-dark-text, #334d59); background: transparent; border: 0; outline: none; font-size: 11px; font-weight: 700; }
 .pcad-input-wrap small { padding-right: 6px; color: var(--theme-dark-muted, #93a4ab); font-size: 8px; }
 .pcad-field-grid .pcad-number-field { flex-direction: column; align-items: stretch; gap: 4px; }
@@ -769,10 +771,10 @@ button {
   transition: right 180ms ease, background 150ms ease;
 }
 
-.kercad-sidebar-mode-control:hover { color: var(--theme-text-087fa4); background: var(--theme-dark-surface, #f4fbfd); }
+.kercad-sidebar-mode-control:hover { color: var(--theme-text-087fa4); background: var(--theme-dark-surface, var(--accent-shade-f4fbfd)); }
 .kercad-sidebar-mode-control.simplified { right: 80px; }
 .kercad-sidebar-mode-control.hidden { right: 14px; }
-.kercad-sidebar-mode-control:focus-visible { outline: 3px solid rgba(0, 166, 219, 0.25); outline-offset: 2px; }
+.kercad-sidebar-mode-control:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent-shade-00a6db) 25%, transparent); outline-offset: 2px; }
 
 .kercad-workplane-settings-button,
 .kercad-workplane-snap-button {
@@ -797,7 +799,7 @@ button {
 .kercad-snap-spacing-options { position: absolute; bottom: calc(100% + 7px); left: 0; min-width: 112px; display: grid; padding: 5px; background: var(--theme-surface); border: 1px solid var(--theme-line-c5d6df); border-radius: 8px; box-shadow: 0 3px 14px rgba(38,62,79,.14); }
 .kercad-snap-spacing-options button { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 36px; padding: 6px 9px; border: 0; border-radius: 5px; background: transparent; color: var(--theme-text-muted); font: inherit; font-size: 12px; white-space: nowrap; }
 .kercad-snap-spacing-options button:hover, .kercad-snap-spacing-options button:focus-visible { color: var(--theme-link); background: var(--theme-bg-eef5ff); }
-.kercad-snap-spacing-options button.active { color: #fff; background: #1269eb; }
+.kercad-snap-spacing-options button.active { color: #fff; background: var(--accent-solid); }
 .kercad-workplane-settings-button:hover,
 .kercad-workplane-settings-button.active,
 .kercad-workplane-snap-button:hover { color: var(--theme-text-0d55bd); background: var(--theme-bg-effafe); border-color: var(--theme-line-83c5d9); }
@@ -956,9 +958,9 @@ button {
   gap: 2px;
   padding: 9px 14px;
   color: var(--theme-text-25566f);
-  background: rgba(239, 250, 255, 0.96);
-  border: 1px solid var(--theme-dark-border, #91cce4);
-  border-left: 4px solid #43b9e8;
+  background: color-mix(in srgb, var(--accent-shade-effaff) 96%, transparent);
+  border: 1px solid var(--theme-dark-border, var(--accent-shade-91cce4));
+  border-left: 4px solid var(--accent-shade-43b9e8);
   border-radius: 6px;
   box-shadow: 0 5px 18px rgba(31, 88, 113, 0.16);
   transform: translateX(-50%);
@@ -970,12 +972,12 @@ button {
 
 .kercad-topology-selection-actions { display: flex; justify-content: center; gap: 8px; margin-top: 7px; }
 .kercad-topology-selection-actions button { min-width: 82px; padding: 5px 12px; border: 1px solid var(--theme-dark-border, #8fb9cb); border-radius: 4px; background: var(--theme-surface); color: var(--theme-text-25566f); font: inherit; font-weight: 800; cursor: pointer; }
-.kercad-topology-selection-actions button.primary { border-color: #258fbd; background: #43b9e8; color: #fff; }
+.kercad-topology-selection-actions button.primary { border-color: var(--accent-shade-258fbd); background: var(--accent-shade-43b9e8); color: #fff; }
 .kercad-topology-selection-actions button:disabled { cursor: default; opacity: 0.45; }
 .kercad-edge-treatment-draft { padding-bottom: 14px; }
 .kercad-topology-selection-count { margin: 8px 12px 0; color: var(--theme-dark-link, #405f6d); font-size: 11px; font-weight: 700; text-align: center; }
-.kercad-edit-topology-selection { width: calc(100% - 24px); margin: 0 12px 8px; padding: 8px 10px; border: 1px solid #66b8da; border-radius: 5px; background: var(--theme-dark-active, #eefaff); color: var(--theme-dark-link, #236b89); font-size: 11px; font-weight: 800; cursor: pointer; }
-.kercad-edit-topology-selection:hover { background: var(--theme-dark-active, #ddf4fd); }
+.kercad-edit-topology-selection { width: calc(100% - 24px); margin: 0 12px 8px; padding: 8px 10px; border: 1px solid var(--accent-shade-66b8da); border-radius: 5px; background: var(--theme-dark-active, var(--accent-shade-eefaff)); color: var(--theme-dark-link, #236b89); font-size: 11px; font-weight: 800; cursor: pointer; }
+.kercad-edit-topology-selection:hover { background: var(--theme-dark-active, var(--accent-shade-ddf4fd)); }
 .kercad-topology-selection-actions .kercad-edit-topology-selection { flex: 1; min-width: 0; width: auto; margin: 0 0 8px; }
 .kercad-topology-selection-summary { margin-top: 0; }
 
@@ -1029,13 +1031,13 @@ button {
 }
 
 .kercad-history-list button:hover { background: var(--theme-bg-edf5f8); }
-.kercad-history-list button.selected { background: var(--theme-dark-active, #e4f4fa); border-color: var(--theme-dark-border, #99cfdf); }
+.kercad-history-list button.selected { background: var(--theme-dark-active, var(--accent-shade-e4f4fa)); border-color: var(--theme-dark-border, #99cfdf); }
 .kercad-history-list button.suppressed { opacity: 0.45; }
 .kercad-history-list button > span:nth-child(2) { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
 .kercad-history-list button strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .kercad-history-list button small { color: var(--theme-dark-link, #8496a3); font-size: 8px; }
 .kercad-history-list button i { color: var(--theme-dark-text, #3b9e72); font-size: 11px; font-style: normal; }
-.kercad-history-kind { display: grid; width: 26px; height: 26px; place-items: center; color: var(--theme-dark-link, #247b9c); background: var(--theme-dark-active, #dff2f8); border-radius: 5px; font-size: 9px; font-weight: 900; }
+.kercad-history-kind { display: grid; width: 26px; height: 26px; place-items: center; color: var(--theme-dark-link, var(--accent-shade-247b9c)); background: var(--theme-dark-active, var(--accent-shade-dff2f8)); border-radius: 5px; font-size: 9px; font-weight: 900; }
 .kercad-history-kind.extrude { color: var(--theme-dark-text, #8d651f); background: var(--theme-bg-fff0cf); }
 .kercad-history-kind.hole { color: var(--theme-dark-text, #944f4c); background: var(--theme-dark-danger-surface, #fae5e4); }
 .kercad-history-kind.fillet { color: var(--theme-dark-link, #644c9b); background: var(--theme-dark-surface, #eee7fa); }
@@ -1126,7 +1128,7 @@ button {
 }
 
 .kercad-object-row:hover { background: var(--theme-bg-eef5f8); }
-.kercad-object-row.selected { background: var(--theme-dark-active, #dff2f9); border-color: var(--theme-line-8ec9dc); }
+.kercad-object-row.selected { background: var(--theme-dark-active, var(--accent-shade-dff2f9)); border-color: var(--theme-line-8ec9dc); }
 .kercad-object-row.hidden .kercad-object-select { opacity: 0.48; }
 .kercad-object-row.locked .kercad-object-select > svg { color: var(--theme-dark-text, #9a6b35); }
 
@@ -1174,7 +1176,7 @@ button {
   border-radius: 4px;
 }
 
-.kercad-tree-actions > button:hover { color: var(--theme-dark-link, #217d9c); background: var(--theme-dark-active, #dceef4); }
+.kercad-tree-actions > button:hover { color: var(--theme-dark-link, var(--accent-shade-217d9c)); background: var(--theme-dark-active, #dceef4); }
 .kercad-tree-actions > button[aria-pressed="true"] { color: var(--theme-dark-muted, #a24d48); background: var(--theme-dark-danger-surface, #f7e7e6); }
 .kercad-tree-actions > button.kercad-origin-tree-button[aria-pressed="true"] { color: var(--theme-text-7b4dab); background: var(--theme-bg-f0e9f8); }
 
@@ -1211,7 +1213,7 @@ button {
 .kercad-operation-row:hover { background: var(--theme-bg-f4f4f4); }
 .kercad-operation-row.selected { color: var(--theme-dark-text, #2a3237); background: var(--theme-bg-f4f4f4); border-color: var(--theme-dark-border, #cccccc); }
 .kercad-object-row.selected.alignment-reference,
-.kercad-operation-row.selected.alignment-reference { color: var(--theme-dark-link, #194784); background: var(--theme-bg-dbeafe); border-color: var(--theme-line-60a5fa); }
+.kercad-operation-row.selected.alignment-reference { color: var(--theme-dark-link, var(--accent-shade-194784)); background: var(--theme-bg-dbeafe); border-color: var(--theme-line-60a5fa); }
 .kercad-object-row.selected.alignment-moving,
 .kercad-operation-row.selected.alignment-moving { color: var(--theme-dark-text, #205c39); background: var(--theme-dark-success-surface, #dcfce7); border-color: var(--theme-dark-border, #86c99c); }
 .kercad-operation-row.rebuild-failed,
@@ -1236,7 +1238,7 @@ button {
 .kercad-tree-branch { position: relative; left: -8px; width: calc(100% + 8px); height: 1px; background: var(--theme-bg-c7d5de); }
 .kercad-operation-tree-icon { display: inline-block; flex: none; background-color: currentColor; mask-repeat: no-repeat; mask-position: center; mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: center; -webkit-mask-size: contain; }
 .kercad-object-select > .kercad-object-color-icon { color: var(--object-color); }
-.kercad-operation-list .kercad-operation-tree-icon.sketch { color: var(--theme-dark-link, #2292b8); }
+.kercad-operation-list .kercad-operation-tree-icon.sketch { color: var(--theme-dark-link, var(--accent-shade-2292b8)); }
 .kercad-operation-list .kercad-operation-tree-icon.drill-hole { color: var(--theme-dark-muted, #bd5d57); }
 .kercad-operation-list .kercad-operation-tree-icon.fillet { color: var(--theme-dark-link, #7958aa); }
 .kercad-operation-icon { position: relative; display: grid; width: 24px; height: 27px; place-items: center; border-radius: 5px; }
@@ -1272,7 +1274,7 @@ button {
   border-radius: 5px;
 }
 
-.kercad-tree-toolbar > button:hover:not(:disabled) { color: var(--theme-dark-link, #167f9f); background: var(--theme-dark-active, #dfeff4); }
+.kercad-tree-toolbar > button:hover:not(:disabled) { color: var(--theme-dark-link, var(--accent-shade-167f9f)); background: var(--theme-dark-active, #dfeff4); }
 .kercad-tree-toolbar > button.danger:hover:not(:disabled) { color: var(--theme-dark-muted, #b44540); background: var(--theme-dark-danger-surface, #f8e5e4); }
 .kercad-tree-toolbar > button:disabled { opacity: 0.28; cursor: default; }
 .kercad-tree-toolbar > button[aria-pressed="true"] { color: var(--theme-text-7b4dab); background: var(--theme-bg-f0e9f8); }
@@ -1320,7 +1322,7 @@ button {
 .kercad-feature-inspector > header > div { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
 .kercad-feature-inspector > header strong { overflow: hidden; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
 .kercad-feature-inspector > header span { color: var(--theme-dark-link, #8294a2); font-size: 8px; font-weight: 750; }
-.kercad-feature-inspector > header svg { color: var(--theme-dark-link, #278cac); }
+.kercad-feature-inspector > header svg { color: var(--theme-dark-link, var(--accent-shade-278cac)); }
 
 .kercad-feature-card {
   margin: 10px 10px 0;
@@ -1449,7 +1451,7 @@ button {
 .kercad-rename-dialog > header button { display: grid; width: 32px; height: 32px; place-items: center; color: var(--theme-text-718493); background: transparent; border-radius: 5px; }
 .kercad-rename-dialog > label { display: grid; gap: 7px; padding: 18px 16px; color: var(--theme-text-607585); font-size: 10px; font-weight: 800; }
 .kercad-rename-dialog > label input { width: 100%; height: 38px; padding: 0 10px; color: var(--theme-text-304a5f); background: var(--theme-bg-fbfcfd); border: 1px solid var(--theme-dark-border, #bfcfd9); border-radius: 6px; font-size: 13px; outline: none; }
-.kercad-rename-dialog > label input:focus { border-color: #61b2cc; box-shadow: 0 0 0 3px rgba(12, 155, 198, 0.13); }
+.kercad-rename-dialog > label input:focus { border-color: #61b2cc; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-shade-0c9bc6) 13%, transparent); }
 .kercad-rename-dialog > footer { display: flex; justify-content: flex-end; gap: 8px; padding: 11px 16px; background: var(--theme-bg-f6f9fa); border-top: 1px solid var(--theme-line-e1e8ed); }
 .kercad-rename-dialog > footer button { min-width: 78px; min-height: 34px; padding: 0 13px; color: var(--theme-text-536b7b); background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: 6px; font-size: 10px; font-weight: 800; }
 .kercad-rename-dialog > footer button.primary { color: #fff; background: var(--kercad-primary-blue); border-color: var(--kercad-primary-blue); }
@@ -1507,14 +1509,14 @@ button {
   appearance: none;
   cursor: pointer;
   background: transparent;
-  accent-color: #00a6db;
+  accent-color: var(--accent-shade-00a6db);
 }
-.kercad-range-control input[type="range"]::-webkit-slider-runnable-track { height: 5px; background: linear-gradient(to right, #00a6db 0 var(--slider-pos), var(--theme-bg-dbe1e7) var(--slider-pos) 100%); border-radius: 999px; }
+.kercad-range-control input[type="range"]::-webkit-slider-runnable-track { height: 5px; background: linear-gradient(to right, var(--accent-shade-00a6db) 0 var(--slider-pos), var(--theme-bg-dbe1e7) var(--slider-pos) 100%); border-radius: 999px; }
 .kercad-range-control input[type="range"]::-webkit-slider-thumb { width: 17px; height: 17px; margin-top: -6px; appearance: none; background: var(--theme-surface); border: 2px solid var(--theme-line-00a6db); border-radius: 50%; box-shadow: 0 1px 4px rgba(24, 48, 68, 0.2); }
 .kercad-range-control input[type="range"]::-moz-range-track { height: 5px; background: var(--theme-bg-dbe1e7); border-radius: 999px; }
-.kercad-range-control input[type="range"]::-moz-range-progress { height: 5px; background: #00a6db; border-radius: 999px; }
+.kercad-range-control input[type="range"]::-moz-range-progress { height: 5px; background: var(--accent-shade-00a6db); border-radius: 999px; }
 .kercad-range-control input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; background: var(--theme-surface); border: 2px solid var(--theme-line-00a6db); border-radius: 50%; }
-.kercad-range-control input[type="range"]:focus-visible { outline: 3px solid rgba(0, 166, 219, 0.2); outline-offset: 2px; border-radius: 999px; }
+.kercad-range-control input[type="range"]:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent-shade-00a6db) 20%, transparent); outline-offset: 2px; border-radius: 999px; }
 .kercad-feature-card input:not([type="checkbox"]),
 .kercad-feature-card select {
   width: 100%;
@@ -1546,7 +1548,7 @@ button {
 .kercad-number-steppers { position: absolute; top: 2px; right: 2px; bottom: 2px; display: grid; width: 14px; grid-template-rows: 1fr 1fr; overflow: hidden; border-left: 1px solid var(--theme-line-c6d5de); border-radius: 0 3px 3px 0; }
 .kercad-number-steppers button { display: grid; min-width: 0; min-height: 0; padding: 0; place-items: center; border: 0; border-radius: 0; color: var(--theme-dark-link, #587486); background: var(--theme-bg-edf4f7); font-size: 6px; line-height: 1; cursor: pointer; }
 .kercad-number-steppers button + button { border-top: 1px solid var(--theme-line-c6d5de); }
-.kercad-number-steppers button:hover { color: var(--theme-dark-link, #176b91); background: var(--theme-dark-active, #dff3fb); }
+.kercad-number-steppers button:hover { color: var(--theme-dark-link, var(--accent-shade-176b91)); background: var(--theme-dark-active, var(--accent-shade-dff3fb)); }
 .kercad-operation-asset-icon { display: block; width: 18px; height: 18px; object-fit: contain; }
 .kercad-toolbar-operation-icon { display: block; width: 22px; height: 22px; object-fit: contain; }
 .kercad-transform-card .kercad-axis-label { display: grid; width: 21px; height: 21px; place-items: center; color: #ffffff; background: #d35b55; border-radius: 4px; font-size: 9px; }
@@ -1571,7 +1573,7 @@ button {
 .kercad-import-backdrop { backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
 .kercad-new-document-dialog.kercad-import-dialog { width: min(560px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; border: 1px solid var(--theme-line-c5d6df); border-radius: 8px; box-shadow: 0 12px 36px rgba(38,62,79,.2); }
 .kercad-import-dialog > p { padding: 14px 18px; }
-.kercad-import-dropzone { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; width: calc(100% - 36px); min-height: 150px; margin: 0 18px 14px; padding: 20px; color: var(--theme-text-muted); background: var(--theme-dark-surface, #f4f8ff); border: 2px dashed var(--theme-line-9ec6f8); border-radius: 8px; font: inherit; text-align: center; cursor: pointer; }
+.kercad-import-dropzone { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; width: calc(100% - 36px); min-height: 150px; margin: 0 18px 14px; padding: 20px; color: var(--theme-text-muted); background: var(--theme-dark-surface, var(--accent-shade-f4f8ff)); border: 2px dashed var(--theme-line-9ec6f8); border-radius: 8px; font: inherit; text-align: center; cursor: pointer; }
 .kercad-import-dropzone .toolbar-command-icon { width: 40px; height: 40px; object-fit: contain; pointer-events: none; }
 .kercad-import-dropzone strong { font-size: 14px; font-weight: 600; }
 .kercad-import-dropzone span { font-size: 12px; }
@@ -1623,14 +1625,14 @@ button {
 .kercad-export-options .kercad-stl-export-option > button { width: 100%; border: 0; border-radius: 0; box-shadow: none; }
 .kercad-stl-scope-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 8px 12px; border-top: 1px solid var(--theme-line-e2e9ee); }
 .kercad-export-options .kercad-stl-scope-buttons button { display: block; min-height: 34px; padding: 6px; text-align: center; font-size: 11px; }
-.kercad-export-options .kercad-stl-scope-buttons button[aria-pressed="true"] { color: var(--theme-link); background: var(--theme-bg-eaf2ff); border-color: var(--theme-dark-border, #88b9ed); }
+.kercad-export-options .kercad-stl-scope-buttons button[aria-pressed="true"] { color: var(--theme-link); background: var(--theme-bg-eaf2ff); border-color: var(--theme-dark-border, var(--accent-shade-88b9ed)); }
 .kercad-stl-quality { display: grid; gap: 5px; padding: 7px 12px 10px; color: var(--theme-text-657b8c); border-top: 1px solid var(--theme-line-e2e9ee); font-size: 9px; font-weight: 700; }
 .kercad-export-scope { display: grid; gap: 7px; padding: 12px; color: var(--theme-text-31566d); font-size: 12px; }
 .kercad-export-scope select { width: 100%; padding: 8px; border: 1px solid var(--theme-line-cbdce6); border-radius: 6px; background: var(--theme-surface); color: inherit; }
 .kercad-export-scope small { color: var(--theme-text-657b8c); line-height: 1.4; }
 .kercad-stl-quality > span:first-child { display: flex; justify-content: space-between; gap: 8px; }
 .kercad-stl-quality > span strong { color: var(--theme-text-31566d); font-size: 9px; }
-.kercad-stl-quality input { width: calc(100% - 48px); margin: 0 24px; accent-color: #159bc5; cursor: pointer; }
+.kercad-stl-quality input { width: calc(100% - 48px); margin: 0 24px; accent-color: var(--accent-shade-159bc5); cursor: pointer; }
 .kercad-stl-quality-labels { position: relative; display: block; height: 14px; margin-inline: 32px; color: var(--theme-dark-muted, #8a9aa6); }
 .kercad-stl-quality-labels small { position: absolute; top: 0; grid-column: auto; grid-row: auto; font-size: 9.8px; font-weight: 400; text-align: center; white-space: nowrap; transform: translateX(-50%); }
 .kercad-stl-quality-labels small:nth-child(1) { left: 0; }
@@ -1661,7 +1663,7 @@ button {
 .kercad-fps-counter.medium { color: var(--theme-dark-text, #9a6700); border-color: rgba(154, 103, 0, 0.33); }
 .kercad-fps-counter.low { color: var(--theme-text-b42318); border-color: rgba(180, 35, 24, 0.33); }
 .kercad-background-process { position: absolute; bottom: 18px; z-index: 35; display: flex; box-sizing: border-box; min-width: 146px; height: 42px; padding: 6px 10px; align-items: center; justify-content: center; gap: 8px; color: var(--theme-dark-link, #476275); background: var(--theme-bg-ffffff-a900); border: 1px solid var(--theme-dark-border, #c7d7e1); border-radius: 6px; box-shadow: 0 2px 8px rgba(28, 62, 78, 0.12); font-size: 10px; font-weight: 800; pointer-events: none; transition: right 160ms ease; }
-.kercad-background-process > span { width: 13px; height: 13px; flex: 0 0 auto; border: 2px solid rgba(18, 105, 235, 0.22); border-top-color: var(--kercad-primary-blue); border-radius: 50%; animation: kercad-background-spin 720ms linear infinite; }
+.kercad-background-process > span { width: 13px; height: 13px; flex: 0 0 auto; border: 2px solid color-mix(in srgb, var(--accent-shade-1269eb) 22%, transparent); border-top-color: var(--kercad-primary-blue); border-radius: 50%; animation: kercad-background-spin 720ms linear infinite; }
 .kercad-background-process.regenerating { color: var(--theme-dark-text, #705d21); background: rgba(255, 248, 204, 0.96); border-color: var(--theme-dark-border, #e5cf75); box-shadow: 0 2px 8px rgba(103, 81, 18, 0.14); }
 .kercad-background-process.regenerating > span { border-color: rgba(177, 132, 0, 0.24); border-top-color: #b18400; }
 @keyframes kercad-background-spin { to { transform: rotate(360deg); } }
@@ -1670,11 +1672,11 @@ button {
 .kercad-align-tool > .kercad-align-popover { display: none; pointer-events: none; }
 .kercad-align-tool > button:hover + .kercad-align-popover { display: block; }
 .kercad-alignment-face-buttons { position: absolute; inset: 0; z-index: 35; pointer-events: none; overflow: hidden; visibility: hidden; }
-.kercad-alignment-face-buttons button { position: absolute; top: 0; left: 0; width: 32px; height: 32px; padding: 0; border: 2px solid var(--theme-dark-border, #72a5d0); border-radius: 1px; background: var(--theme-dark-surface, #f8fcff); pointer-events: auto; transform-origin: 0 0; cursor: pointer; touch-action: none; }
+.kercad-alignment-face-buttons button { position: absolute; top: 0; left: 0; width: 32px; height: 32px; padding: 0; border: 2px solid var(--theme-dark-border, #72a5d0); border-radius: 1px; background: var(--theme-dark-surface, var(--accent-shade-f8fcff)); pointer-events: auto; transform-origin: 0 0; cursor: pointer; touch-action: none; }
 .kercad-alignment-face-buttons button img { display: block; width: 100%; height: 100%; pointer-events: none; }
-.kercad-alignment-face-buttons button:hover { background: var(--theme-bg-dbeafe); border-color: #2563eb; }
-.kercad-alignment-face-buttons button:focus-visible { outline: 3px solid #163fa4; outline-offset: 2px; }
-.kercad-alignment-face-buttons button:active { background: var(--theme-dark-active, #bfdbfe); }
+.kercad-alignment-face-buttons button:hover { background: var(--theme-bg-dbeafe); border-color: var(--accent-shade-2563eb); }
+.kercad-alignment-face-buttons button:focus-visible { outline: 3px solid var(--accent-shade-163fa4); outline-offset: 2px; }
+.kercad-alignment-face-buttons button:active { background: var(--theme-dark-active, var(--accent-shade-bfdbfe)); }
 .kercad-alignment-face-buttons button:disabled { pointer-events: none; }
 .kercad-alignment-face-buttons button[aria-disabled="true"] { cursor: progress; }
 .kercad-align-popover p { margin: 8px 3px 2px; font-size: 11px; line-height: 1.4; }
@@ -1693,7 +1695,7 @@ button {
 .kercad-align-row > strong.axis-y { color: var(--theme-text-287d43); }
 .kercad-align-row > strong.axis-z { color: var(--theme-text-236ebd); }
 .kercad-align-row button { min-height: 34px; color: var(--theme-dark-link, #456478); background: var(--theme-bg-f4f8fa); border: 1px solid var(--theme-dark-border, #d3e0e7); border-radius: 5px; font-size: 13px; font-weight: 900; }
-.kercad-align-row button:hover { color: var(--theme-dark-link, #167c9e); background: var(--theme-dark-active, #e5f4f8); border-color: var(--theme-dark-border, #8fc7d9); }
+.kercad-align-row button:hover { color: var(--theme-dark-link, var(--accent-shade-167c9e)); background: var(--theme-dark-active, #e5f4f8); border-color: var(--theme-dark-border, #8fc7d9); }
 
 @media (max-width: 1120px) {
   .kercad-project-name { display: none; }
@@ -2062,7 +2064,7 @@ button {
   min-height: 64px;
   padding: 0 14px;
   color: #ffffff;
-  background: #0e69f1;
+  background: var(--accent-shade-0e69f1);
   border-bottom: 0;
   box-shadow: none;
   font-family: Arial, Helvetica, sans-serif;
@@ -2118,7 +2120,7 @@ button {
   background: #ffffff;
   border: 1px solid rgba(255, 255, 255, 0.78);
   border-radius: 7px;
-  box-shadow: 0 2px 8px rgba(7, 48, 113, 0.16);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent-shade-073071) 16%, transparent);
 }
 
 .dashboard-search input {
@@ -2152,7 +2154,7 @@ button {
   gap: 7px;
   justify-content: center;
   padding: 0 18px;
-  color: #0e69f1;
+  color: var(--accent-shade-0e69f1);
   background: #ffffff;
   border-radius: 7px;
   box-shadow: none;
@@ -2161,7 +2163,7 @@ button {
 }
 
 .dashboard-primary:hover {
-  background: #edf4ff;
+  background: var(--accent-shade-edf4ff);
 }
 
 .dashboard-layout {
@@ -2215,8 +2217,8 @@ button {
 
 .dashboard-nav-item:hover,
 .dashboard-nav-item.active {
-  color: #0e69f1;
-  background: #edf4ff;
+  color: var(--accent-shade-0e69f1);
+  background: var(--accent-shade-edf4ff);
 }
 
 .dashboard-nav-item:focus {
@@ -2224,7 +2226,7 @@ button {
 }
 
 .dashboard-nav-item:focus-visible {
-  box-shadow: inset 0 0 0 2px #0e69f1;
+  box-shadow: inset 0 0 0 2px var(--accent-shade-0e69f1);
 }
 
 .dashboard-settings-button {
@@ -2282,14 +2284,14 @@ button {
 
 .dashboard-action-tile:hover,
 .project-card:hover {
-  border-color: #8bbaf7;
+  border-color: var(--accent-shade-8bbaf7);
   box-shadow: 0 5px 15px rgba(32, 61, 82, 0.12);
   transform: translateY(-1px);
 }
 
 .dashboard-action-tile.create {
-  border-color: #8bbaf7;
-  background: #f5f8ff;
+  border-color: var(--accent-shade-8bbaf7);
+  background: var(--accent-shade-f5f8ff);
 }
 
 .dashboard-action-icon {
@@ -2299,7 +2301,7 @@ button {
   height: 44px;
   place-items: center;
   color: #ffffff;
-  background: #0e69f1;
+  background: var(--accent-shade-0e69f1);
   border-radius: 8px;
 }
 
@@ -2354,7 +2356,7 @@ button {
 }
 
 .shared-projects-refresh:hover:not(:disabled) {
-  color: #087f9f;
+  color: var(--accent-shade-087f9f);
   border-color: #89d0e1;
 }
 
@@ -2452,14 +2454,14 @@ button {
   right: 10px;
   z-index: 2;
   padding: 4px 7px;
-  color: #087f9f;
+  color: var(--accent-shade-087f9f);
   font-size: 9px;
   font-weight: 900;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   pointer-events: none;
-  background: rgba(237, 251, 255, 0.94);
-  border: 1px solid #a9dfeb;
+  background: color-mix(in srgb, var(--accent-shade-edfbff) 94%, transparent);
+  border: 1px solid var(--accent-shade-a9dfeb);
   border-radius: 999px;
 }
 
@@ -2491,7 +2493,7 @@ button {
   aspect-ratio: 16 / 10;
   overflow: hidden;
   border-radius: 6px;
-  background: #eaf8fd;
+  background: var(--accent-shade-eaf8fd);
 }
 
 .project-list .project-preview {
@@ -2655,8 +2657,8 @@ button {
 
 .dashboard-confirm-save {
   color: #ffffff;
-  border: 1px solid #147ca8;
-  background: #147ca8;
+  border: 1px solid var(--accent-shade-147ca8);
+  background: var(--accent-shade-147ca8);
 }
 
 .dashboard-confirm-save:disabled {
@@ -2687,8 +2689,8 @@ button {
 }
 
 .dashboard-rename-dialog input:focus {
-  border-color: #1486b5;
-  box-shadow: 0 0 0 3px rgba(20, 134, 181, 0.14);
+  border-color: var(--accent-shade-1486b5);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-shade-1486b5) 14%, transparent);
 }
 
 .project-empty {
@@ -2712,8 +2714,8 @@ button {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(0, 174, 234, 0.19) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 174, 234, 0.19) 1px, transparent 1px);
+    linear-gradient(color-mix(in srgb, var(--accent-shade-00aeea) 19%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--accent-shade-00aeea) 19%, transparent) 1px, transparent 1px);
   background-size: 18px 18px;
   transform: perspective(360px) rotateX(56deg) translateY(20px) scale(1.3);
   transform-origin: 50% 100%;
@@ -2774,7 +2776,7 @@ button {
 }
 
 .project-preview.accent-cyan {
-  background: #e7f8fd;
+  background: var(--accent-shade-e7f8fd);
 }
 
 .project-preview.accent-green {
@@ -3061,9 +3063,9 @@ button {
   background:
     radial-gradient(circle at 50% 39%, #f3f6fb 0 12px, transparent 13px),
     radial-gradient(circle at 50% 77%, #f3f6fb 0 22px, transparent 23px),
-    #5f95df;
+    var(--accent-shade-5f95df);
   border-left: 1px solid var(--border);
-  box-shadow: inset 0 0 0 3px #77a4e7;
+  box-shadow: inset 0 0 0 3px var(--accent-shade-77a4e7);
   cursor: pointer;
 }
 
@@ -3074,9 +3076,9 @@ button {
   height: var(--editor-toolbar-height);
   overflow: visible;
   color: #ffffff;
-  background: #1269eb;
+  background: var(--accent-solid);
   border-bottom: 1px solid var(--theme-line-0d55bd);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 1px 2px rgba(12, 62, 139, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 1px 2px color-mix(in srgb, var(--accent-shade-0c3e8b) 22%, transparent);
 }
 
 .edge-modifier-panel {
@@ -3087,7 +3089,7 @@ button {
   width: min(340px, calc(100vw - 28px));
   padding: 14px;
   color: #274158;
-  background: rgba(250, 252, 254, 0.98);
+  background: color-mix(in srgb, var(--accent-shade-fafcfe) 98%, transparent);
   border: 1px solid #c8d6e1;
   border-radius: 12px;
   box-shadow: 0 14px 38px rgba(30, 55, 74, 0.2);
@@ -3152,8 +3154,8 @@ button {
 }
 
 .edge-modifier-target.grouped {
-  color: #17688a;
-  background: #eaf7fb;
+  color: var(--accent-shade-17688a);
+  background: var(--accent-shade-eaf7fb);
   border-color: #b8ddea;
 }
 
@@ -3308,7 +3310,7 @@ button {
 }
 
 .edge-modifier-check input {
-  accent-color: #139ed0;
+  accent-color: var(--accent-shade-139ed0);
 }
 
 .edge-modifier-error {
@@ -3340,8 +3342,8 @@ button {
   align-items: center;
   gap: 6px;
   color: white;
-  background: #119dcc;
-  border-color: #0787b3;
+  background: var(--accent-shade-119dcc);
+  border-color: var(--accent-shade-0787b3);
 }
 
 .edge-modifier-footer .primary:disabled {
@@ -3643,7 +3645,7 @@ button {
 }
 
 .toolbar-icon.active .sketch-reference-icon {
-  filter: contrast(1.12) brightness(0.9) drop-shadow(0 0 5px rgba(0, 156, 222, 0.28));
+  filter: contrast(1.12) brightness(0.9) drop-shadow(0 0 5px color-mix(in srgb, var(--accent-shade-009cde) 28%, transparent));
   opacity: 1;
 }
 
@@ -3694,7 +3696,7 @@ button {
 .kercad-header-actions > a, .toolbar-workspace-tabs .kercad-header-actions > button { display: grid; place-items: center; width: 30px; height: 28px; padding: 3px; border: 0; border-radius: 5px; color: white; background: transparent; text-decoration: none; }
 .kercad-header-actions > a:hover, .toolbar-workspace-tabs .kercad-header-actions > button:hover { color: var(--theme-link); background: var(--theme-bg-ffffff-a800); }
 .kercad-header-language-menu { position: absolute; top: 34px; right: 0; width: 150px; padding: 5px; border: 1px solid var(--theme-border); border-radius: 7px; background: var(--theme-surface); box-shadow: 0 5px 18px #173b5a26; }
-.kercad-getting-started { position: fixed; z-index: 90; box-sizing: border-box; width: min(340px, calc(100vw - 24px)); max-height: max(140px, calc(100dvh - 150px)); overflow: visible; color: var(--theme-text); background: var(--theme-surface); border: 1px solid var(--theme-dark-border, #9ac2f4); border-radius: 10px; box-shadow: 0 6px 24px #173b5a26; font-family: system-ui, sans-serif; }
+.kercad-getting-started { position: fixed; z-index: 90; box-sizing: border-box; width: min(340px, calc(100vw - 24px)); max-height: max(140px, calc(100dvh - 150px)); overflow: visible; color: var(--theme-text); background: var(--theme-surface); border: 1px solid var(--theme-dark-border, var(--accent-shade-9ac2f4)); border-radius: 10px; box-shadow: 0 6px 24px #173b5a26; font-family: system-ui, sans-serif; }
 .kercad-welcome-backdrop { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; padding: 20px; background: rgb(10 24 40 / 35%); backdrop-filter: blur(8px); }
 .kercad-welcome-dialog { box-sizing: border-box; width: min(420px, 100%); max-height: calc(100dvh - 40px); overflow-y: auto; overscroll-behavior: contain; padding: 26px; color: var(--theme-text); background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: 12px; box-shadow: 0 12px 48px rgb(0 0 0 / 22%); font-family: var(--font-ui); outline: none; }
 .kercad-welcome-dialog h2 { margin: 0 0 12px; font-size: 23px; line-height: 1.3; }
@@ -3711,7 +3713,7 @@ button {
 .kercad-welcome-dialog button:disabled { opacity: .45; cursor: not-allowed; }
 .kercad-getting-started-content { box-sizing: border-box; max-height: inherit; overflow-y: auto; padding: 14px 16px; border-radius: inherit; }
 .kercad-getting-started-pointer { position: absolute; overflow: visible; pointer-events: none; }
-.kercad-getting-started-pointer path { stroke: var(--theme-dark-border, #9ac2f4); }
+.kercad-getting-started-pointer path { stroke: var(--theme-dark-border, var(--accent-shade-9ac2f4)); }
 .kercad-getting-started-pointer.top { top: -10px; }
 .kercad-getting-started:has(header:hover) .kercad-getting-started-pointer.top path { fill: #f7f7f8; }
 .kercad-getting-started-pointer.right { right: -10px; transform: rotate(90deg); }
@@ -3730,9 +3732,9 @@ button {
 .kercad-getting-started footer button.primary { grid-column: 2; }
 .kercad-getting-started footer button { padding: 7px 12px; border: 1px solid var(--theme-line-c5d6df); border-radius: 6px; color: var(--theme-text); background: var(--theme-surface); }
 .kercad-getting-started footer button:hover { background: var(--theme-bg-edf5ff); }
-.kercad-getting-started footer button.primary { color: #fff; background: #1269eb; border-color: var(--theme-line-1269eb); }
-.kercad-getting-started footer button.primary:hover { background: #075dcc; }
-.kercad-getting-started button:focus-visible { outline: 2px solid #1269eb; outline-offset: 2px; }
+.kercad-getting-started footer button.primary { color: #fff; background: var(--accent-solid); border-color: var(--theme-line-1269eb); }
+.kercad-getting-started footer button.primary:hover { background: var(--accent-shade-075dcc); }
+.kercad-getting-started button:focus-visible { outline: 2px solid var(--accent-solid); outline-offset: 2px; }
 .kercad-about-dialog { position: fixed; top: 40px; right: 8px; z-index: 100; width: min(360px, calc(100vw - 16px)); max-height: calc(100dvh - 52px); overflow-y: auto; padding: 16px; color: var(--theme-text); background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: 10px; box-shadow: 0 8px 26px #173b5a26; }
 .kercad-about-dialog header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .kercad-about-dialog h2 { margin: 0; font-size: 20px; }
@@ -3745,7 +3747,7 @@ button {
 .kercad-about-links { display: grid; gap: 8px; margin: 18px 0; }
 .kercad-about-links a, .kercad-about-links button { display: flex; align-items: center; gap: 10px; padding: 8px 12px; color: var(--theme-link); background: var(--theme-bg-eef5ff); border: 1px solid var(--theme-border); border-radius: 6px; text-decoration: none; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
 .kercad-about-links .kercad-header-svg-icon { flex-shrink: 0; }
-.kercad-about-links a:hover, .kercad-about-links button:not(:disabled):hover { background: var(--theme-dark-active, #deebff); }
+.kercad-about-links a:hover, .kercad-about-links button:not(:disabled):hover { background: var(--theme-dark-active, var(--accent-shade-deebff)); }
 .kercad-about-links button:disabled { opacity: .55; cursor: default; }
 .toolbar-workspace-tabs .kercad-header-language-menu button { display: block; width: 100%; padding: 9px 12px; border: 0; border-radius: 4px; color: var(--theme-text); font-size: 13px; text-align: left; text-transform: none; letter-spacing: 0; background: transparent; }
 .toolbar-workspace-tabs .kercad-header-language-menu button:hover, .toolbar-workspace-tabs .kercad-header-language-menu button[aria-pressed="true"] { background: var(--theme-active); }
@@ -3760,9 +3762,9 @@ button {
 .kercad-documentation-sidebar > strong { display: block; padding: 0 12px 14px; font-size: 13px; color: var(--theme-text-617382); }
 .kercad-documentation-sidebar nav { display: flex; flex-direction: column; gap: 5px; }
 .kercad-documentation-sidebar a { display: block; padding: 10px 12px; border-radius: 6px; text-decoration: none; color: var(--theme-text); font-size: 14px; cursor: pointer; }
-.kercad-documentation-sidebar a:hover { color: var(--theme-link); background: var(--theme-dark-active, #f0f6ff); }
+.kercad-documentation-sidebar a:hover { color: var(--theme-link); background: var(--theme-dark-active, var(--accent-shade-f0f6ff)); }
 .kercad-documentation-sidebar a[aria-current] { color: var(--theme-link); background: var(--theme-active); font-weight: 600; }
-.kercad-documentation-sidebar a:focus-visible { outline: 2px solid #1269eb; outline-offset: 1px; }
+.kercad-documentation-sidebar a:focus-visible { outline: 2px solid var(--accent-solid); outline-offset: 1px; }
 .kercad-documentation-content { min-height: 0; overflow-y: auto; padding: 36px 24px; scroll-behavior: smooth; }
 .kercad-documentation-page article { max-width: 850px; margin: 0 auto; line-height: 1.6; padding-bottom: 50vh; }
 .kercad-documentation-page section { padding-top: 24px; scroll-margin-top: 16px; }
@@ -3856,7 +3858,7 @@ button {
 .toolbar-workspace-tabs button.active {
   color: var(--theme-dark-link, #264d68);
   background: var(--theme-bg-ffffff-a800);
-  border-bottom-color: #159fd0;
+  border-bottom-color: var(--accent-shade-159fd0);
 }
 
 .tool-group {
@@ -3915,7 +3917,7 @@ button {
   gap: 9px;
   color: #263f56;
   text-align: left;
-  background: #eef8fc;
+  background: var(--accent-shade-eef8fc);
   border: 1px solid #c9e1ec;
   border-radius: 7px;
   cursor: pointer;
@@ -3923,8 +3925,8 @@ button {
 
 .visibility-dropdown-action:hover:not(:disabled),
 .visibility-dropdown-action:focus-visible {
-  color: #123f5a;
-  background: #e2f4fb;
+  color: var(--accent-shade-123f5a);
+  background: var(--accent-shade-e2f4fb);
   border-color: #9acfe2;
   outline: none;
 }
@@ -4027,8 +4029,8 @@ button {
 
 .toolbar-icon.active {
   background: rgba(255, 255, 255, 0.84);
-  box-shadow: inset 0 0 0 2px rgba(0, 166, 219, 0.28);
-  color: var(--theme-dark-link, #0b8dbd);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent-shade-00a6db) 28%, transparent);
+  color: var(--theme-dark-link, var(--accent-shade-0b8dbd));
 }
 
 .toolbar-icon svg,
@@ -4112,12 +4114,12 @@ button {
 }
 
 .toolbar-icon:not(.disabled):hover .toolbar-command-icon {
-  filter: contrast(1.08) brightness(0.94) drop-shadow(0 0 4px rgba(0, 156, 222, 0.3));
+  filter: contrast(1.08) brightness(0.94) drop-shadow(0 0 4px color-mix(in srgb, var(--accent-shade-009cde) 30%, transparent));
   opacity: 1;
 }
 
 .toolbar-icon.active .toolbar-command-icon {
-  filter: contrast(1.12) brightness(0.9) drop-shadow(0 0 5px rgba(0, 156, 222, 0.38));
+  filter: contrast(1.12) brightness(0.9) drop-shadow(0 0 5px color-mix(in srgb, var(--accent-shade-009cde) 38%, transparent));
   opacity: 1;
 }
 
@@ -4151,7 +4153,7 @@ button {
 .shape-menu-trigger .vector-toolbar-sprite-icon,
 .action-buttons button .vector-toolbar-sprite-icon,
 .inspector-header-icon .vector-toolbar-sprite-icon {
-  filter: grayscale(0.35) sepia(0.12) saturate(1.7) hue-rotate(165deg) contrast(1.18) brightness(0.78) drop-shadow(0 0 1px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 3px rgba(0, 156, 222, 0.2));
+  filter: grayscale(0.35) sepia(0.12) saturate(1.7) hue-rotate(165deg) contrast(1.18) brightness(0.78) drop-shadow(0 0 1px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 3px color-mix(in srgb, var(--accent-shade-009cde) 20%, transparent));
   opacity: 0.94;
 }
 
@@ -4161,14 +4163,14 @@ button {
 .shape-menu-trigger.active .vector-toolbar-sprite-icon,
 .action-buttons button:hover .vector-toolbar-sprite-icon,
 .inspector-header-icon:hover .vector-toolbar-sprite-icon {
-  filter: grayscale(0.1) sepia(0.22) saturate(2.1) hue-rotate(164deg) contrast(1.2) brightness(0.72) drop-shadow(0 0 1px rgba(255, 255, 255, 1)) drop-shadow(0 0 5px rgba(0, 156, 222, 0.38));
+  filter: grayscale(0.1) sepia(0.22) saturate(2.1) hue-rotate(164deg) contrast(1.2) brightness(0.72) drop-shadow(0 0 1px rgba(255, 255, 255, 1)) drop-shadow(0 0 5px color-mix(in srgb, var(--accent-shade-009cde) 38%, transparent));
   opacity: 1;
 }
 
 .toolbar-icon.active .toolbar-sprite-icon,
 .toolbar-icon.active .vector-toolbar-sprite-icon,
 .inspector-header-icon.active .vector-toolbar-sprite-icon {
-  filter: grayscale(0.05) sepia(0.22) saturate(2.35) hue-rotate(164deg) contrast(1.2) brightness(0.7) drop-shadow(0 0 1px rgba(255, 255, 255, 1)) drop-shadow(0 0 5px rgba(0, 156, 222, 0.42));
+  filter: grayscale(0.05) sepia(0.22) saturate(2.35) hue-rotate(164deg) contrast(1.2) brightness(0.7) drop-shadow(0 0 1px rgba(255, 255, 255, 1)) drop-shadow(0 0 5px color-mix(in srgb, var(--accent-shade-009cde) 42%, transparent));
   opacity: 1;
 }
 
@@ -4382,7 +4384,7 @@ button {
 }
 
 .top-dropdown button:hover {
-  background: #eef8fc;
+  background: var(--accent-shade-eef8fc);
 }
 
 .top-action-panel {
@@ -4496,8 +4498,8 @@ button {
 
 .export-file-input-wrap:focus-within {
   background: var(--theme-surface);
-  border-color: #10a8d0;
-  box-shadow: 0 0 0 2px rgba(16, 168, 208, 0.12);
+  border-color: var(--accent-shade-10a8d0);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-shade-10a8d0) 12%, transparent);
 }
 
 .export-file-input {
@@ -4546,12 +4548,12 @@ button {
 .export-scope-badge {
   flex: none;
   padding: 4px 8px;
-  color: var(--theme-dark-link, #137897);
+  color: var(--theme-dark-link, var(--accent-shade-137897));
   font-size: 10px;
   font-weight: 850;
   text-transform: uppercase;
-  background: var(--theme-dark-active, #eaf9fd);
-  border: 1px solid var(--theme-dark-border, #c5edf7);
+  background: var(--theme-dark-active, var(--accent-shade-eaf9fd));
+  border: 1px solid var(--theme-dark-border, var(--accent-shade-c5edf7));
   border-radius: 999px;
 }
 
@@ -4648,7 +4650,7 @@ button {
 
 .skf-history-range-control::after {
   width: 0;
-  background: linear-gradient(90deg, #22b9dc, #079bc2);
+  background: linear-gradient(90deg, var(--accent-shade-22b9dc), var(--accent-shade-079bc2));
   transition: width 140ms ease;
 }
 
@@ -4696,9 +4698,9 @@ button {
   margin-top: -6px;
   appearance: none;
   background: #fff;
-  border: 2px solid #0ba4ca;
+  border: 2px solid var(--accent-shade-0ba4ca);
   border-radius: 50%;
-  box-shadow: 0 2px 6px rgba(22, 82, 108, 0.25);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--accent-shade-16526c) 25%, transparent);
 }
 
 .skf-history-range::-moz-range-track {
@@ -4710,17 +4712,17 @@ button {
   width: 14px;
   height: 14px;
   background: #fff;
-  border: 2px solid #0ba4ca;
+  border: 2px solid var(--accent-shade-0ba4ca);
   border-radius: 50%;
-  box-shadow: 0 2px 6px rgba(22, 82, 108, 0.25);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--accent-shade-16526c) 25%, transparent);
 }
 
 .skf-history-range:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 4px rgba(11, 164, 202, 0.17), 0 2px 6px rgba(22, 82, 108, 0.25);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-shade-0ba4ca) 17%, transparent), 0 2px 6px color-mix(in srgb, var(--accent-shade-16526c) 25%, transparent);
 }
 
 .skf-history-range:focus-visible::-moz-range-thumb {
-  box-shadow: 0 0 0 4px rgba(11, 164, 202, 0.17), 0 2px 6px rgba(22, 82, 108, 0.25);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-shade-0ba4ca) 17%, transparent), 0 2px 6px color-mix(in srgb, var(--accent-shade-16526c) 25%, transparent);
 }
 
 .skf-history-range-labels {
@@ -4758,7 +4760,7 @@ button {
 }
 
 .skf-history-range-labels span.active {
-  color: #087f9f;
+  color: var(--accent-shade-087f9f);
   font-weight: 850;
 }
 
@@ -4826,22 +4828,22 @@ button {
 .export-dialog-footer .export-primary-button {
   min-width: 118px;
   color: #fff;
-  background: linear-gradient(180deg, #14b4dc, #0799c1);
-  border: 1px solid #078daf;
-  box-shadow: 0 5px 14px rgba(4, 145, 183, 0.22);
+  background: linear-gradient(180deg, var(--accent-shade-14b4dc), var(--accent-shade-0799c1));
+  border: 1px solid var(--accent-shade-078daf);
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--accent-shade-0491b7) 22%, transparent);
 }
 
 .export-dialog-footer .export-shared-button {
   min-width: 122px;
   color: var(--theme-text-087f9f);
-  background: var(--theme-dark-active, #eefafd);
+  background: var(--theme-dark-active, var(--accent-shade-eefafd));
   border: 1px solid var(--theme-line-a9dce9);
 }
 
 .export-dialog-footer .export-shared-button:hover:not(:disabled) {
-  color: var(--theme-dark-link, #056c87);
-  background: var(--theme-dark-active, #e2f7fc);
-  border-color: var(--theme-dark-border, #6dc7dc);
+  color: var(--theme-dark-link, var(--accent-shade-056c87));
+  background: var(--theme-dark-active, var(--accent-shade-e2f7fc));
+  border-color: var(--theme-dark-border, var(--accent-shade-6dc7dc));
 }
 
 .export-dialog-footer .export-shared-button:disabled {
@@ -4855,7 +4857,7 @@ button {
 }
 
 .export-dialog-footer .export-primary-button:hover:not(:disabled) {
-  background: linear-gradient(180deg, #0eadd4, #058db2);
+  background: linear-gradient(180deg, var(--accent-shade-0eadd4), var(--accent-shade-058db2));
 }
 
 .export-dialog-footer .export-primary-button:disabled {
@@ -4953,9 +4955,9 @@ button {
   width: 34px;
   height: 34px;
   place-items: center;
-  color: #087f9f;
-  background: #eaf9fd;
-  border: 1px solid #c5edf7;
+  color: var(--accent-shade-087f9f);
+  background: var(--accent-shade-eaf9fd);
+  border: 1px solid var(--accent-shade-c5edf7);
   border-radius: 8px;
 }
 
@@ -5000,9 +5002,9 @@ button {
 }
 
 .top-action-body .import-drop-zone:hover {
-  background: var(--theme-dark-surface, #fafeff);
-  border-color: rgba(0, 159, 227, 0.76);
-  box-shadow: inset 0 0 0 1px rgba(0, 159, 227, 0.12), 0 4px 14px rgba(30, 50, 70, 0.1);
+  background: var(--theme-dark-surface, var(--accent-shade-fafeff));
+  border-color: color-mix(in srgb, var(--accent-shade-009fe3) 76%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-shade-009fe3) 12%, transparent), 0 4px 14px rgba(30, 50, 70, 0.1);
 }
 
 .import-drop-zone svg {
@@ -5141,10 +5143,10 @@ button {
   cursor: pointer;
 }
 
-.kercad-sketch-action:hover { color: var(--theme-text-087fa4); background: var(--theme-dark-surface, #f3fbfd); border-color: var(--theme-dark-border, #79bed3); }
+.kercad-sketch-action:hover { color: var(--theme-text-087fa4); background: var(--theme-dark-surface, var(--accent-shade-f3fbfd)); border-color: var(--theme-dark-border, #79bed3); }
 .kercad-sketch-action.primary { color: #ffffff; background: var(--kercad-primary-blue); border-color: var(--theme-line-0d55bd); }
-.kercad-sketch-action.primary:hover { background: #078db7; }
-.kercad-sketch-action:focus-visible { outline: 3px solid rgba(0, 166, 219, 0.25); outline-offset: 2px; }
+.kercad-sketch-action.primary:hover { background: var(--accent-shade-078db7); }
+.kercad-sketch-action:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent-shade-00a6db) 25%, transparent); outline-offset: 2px; }
 .kercad-sketch-action .kercad-sketch-toolbar-icon { width: 18px; height: 18px; }
 
 .kercad-workplane-stage.sketch-active > :not(.sketch-workspace-stage):not(.kercad-sketch-constraints-panel):not(.kercad-toolbar-scroll-indicators):not(.kercad-reference-toast):not(.kercad-fps-counter):not(.kercad-workplane-settings-button):not(.kercad-workplane-snap-button):not(.kercad-workplane-popover):not(.kercad-snap-spacing-control) {
@@ -5236,9 +5238,9 @@ button {
 }
 
 .kercad-sketch-side-tool:hover:not(:disabled) { color: var(--theme-text-071f32); background: var(--theme-bg-dfeff7-a820); border-color: var(--theme-line-9bbecf-a700); transform: translateX(-1px); }
-.kercad-sketch-side-tool.active { color: var(--theme-text-006b94); background: var(--theme-bg-def5fb); border-color: var(--theme-line-6fc8df); box-shadow: inset -3px 0 0 #079bc6; }
+.kercad-sketch-side-tool.active { color: var(--theme-text-006b94); background: var(--theme-bg-def5fb); border-color: var(--theme-line-6fc8df); box-shadow: inset -3px 0 0 var(--accent-shade-079bc6); }
 .kercad-sketch-side-tool:disabled { opacity: 0.35; cursor: default; }
-.kercad-sketch-side-tool:focus-visible { outline: 3px solid rgba(0, 166, 219, 0.25); outline-offset: 1px; }
+.kercad-sketch-side-tool:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent-shade-00a6db) 25%, transparent); outline-offset: 1px; }
 
 .kercad-sketch-side-tool-icon {
   display: grid;
@@ -5251,7 +5253,20 @@ button {
 }
 
 .kercad-sketch-side-tool-icon svg { width: 28px; height: 28px; stroke-width: 1.8; }
-.kercad-sketch-constraint-icon { display: block; width: 28px; height: 28px; object-fit: contain; }
+.kercad-sketch-constraint-icon { width: 28px; height: 28px; }
+.kercad-sketch-visibility-icon { width: 32px; height: 32px; }
+.kercad-edit-operation-icon,
+.kercad-sketch-visibility-icon,
+.kercad-sketch-constraint-icon {
+  display: block;
+  background-color: #173b5a;
+  mask-size: contain;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+}
 
 .kercad-workplane-stage.sketch-active > .kercad-toolbar-scroll-indicators.vertical { display: block; z-index: 15; }
 .kercad-toolbar-scroll-indicators.vertical { overflow: hidden; }
@@ -5259,8 +5274,8 @@ button {
 .kercad-toolbar-scroll-edge.bottom { left: 0; right: 0; width: 100%; height: 24px; justify-content: center; font-size: 22px; }
 .kercad-toolbar-scroll-edge.top { top: 0; bottom: auto; background: linear-gradient(to bottom, var(--theme-page) 15%, var(--theme-bg-f4f7f9-a0)); }
 .kercad-toolbar-scroll-edge.bottom { top: auto; bottom: 0; background: linear-gradient(to top, var(--theme-page) 15%, var(--theme-bg-f4f7f9-a0)); }
-.kercad-toolbar-scroll-indicators .kercad-toolbar-scroll-edge:hover { background: var(--theme-bg-e5efff); box-shadow: inset 0 0 0 1px #9ec6f8; }
-.kercad-toolbar-scroll-indicators .kercad-toolbar-scroll-edge:active { background: var(--theme-dark-active, #cddfff); }
+.kercad-toolbar-scroll-indicators .kercad-toolbar-scroll-edge:hover { background: var(--theme-bg-e5efff); box-shadow: inset 0 0 0 1px var(--accent-shade-9ec6f8); }
+.kercad-toolbar-scroll-indicators .kercad-toolbar-scroll-edge:active { background: var(--theme-dark-active, var(--accent-shade-cddfff)); }
 .kercad-toolbar-scroll-indicators .kercad-toolbar-scroll-edge:focus-visible { outline: 2px solid var(--kercad-primary-blue); outline-offset: -2px; background: var(--theme-bg-e5efff); }
 
 @media (max-width: 720px) {
@@ -5318,7 +5333,7 @@ button {
   width: clamp(210px, 25vw, 330px);
   height: clamp(170px, 28vh, 270px);
   overflow: hidden;
-  background: rgba(250, 253, 254, 0.94);
+  background: color-mix(in srgb, var(--accent-shade-fafdfe) 94%, transparent);
   border: 1px solid rgba(166, 190, 204, 0.9);
   border-radius: 12px;
   box-shadow: 0 12px 34px rgba(34, 67, 86, 0.16);
@@ -5394,7 +5409,7 @@ button {
 }
 
 .sketch-reference-axes .reference-axis.selected {
-  stroke: #168fba;
+  stroke: var(--accent-shade-168fba);
 }
 
 .sketch-reference-axes .reference-origin {
@@ -5411,8 +5426,8 @@ button {
 }
 
 .sketch-reference-axes .reference-origin.selected {
-  fill: #d9f3ff;
-  stroke: #168fba;
+  fill: var(--accent-shade-d9f3ff);
+  stroke: var(--accent-shade-168fba);
 }
 
 .sketch-plate.tool-select:not(.panning) {
@@ -5420,15 +5435,15 @@ button {
 }
 
 .sketch-selection-marquee {
-  fill: rgba(0, 159, 227, 0.1);
-  stroke: rgba(0, 159, 227, 0.86);
+  fill: color-mix(in srgb, var(--accent-shade-009fe3) 10%, transparent);
+  stroke: color-mix(in srgb, var(--accent-shade-009fe3) 86%, transparent);
   stroke-width: 1;
   stroke-dasharray: 4 3;
   vector-effect: non-scaling-stroke;
 }
 
 .sketch-plate-background {
-  fill: #ddf8ff;
+  fill: var(--accent-shade-ddf8ff);
   stroke: none;
 }
 
@@ -5441,7 +5456,7 @@ button {
 
 .sketch-plate-border {
   fill: none;
-  stroke: #4bbddf;
+  stroke: var(--accent-shade-4bbddf);
   stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
 }
@@ -5452,15 +5467,15 @@ button {
 }
 
 .sketch-grid .minor {
-  stroke: rgba(96, 204, 231, 0.46);
+  stroke: color-mix(in srgb, var(--accent-shade-60cce7) 46%, transparent);
 }
 
 .sketch-grid .major {
-  stroke: rgba(54, 174, 207, 0.68);
+  stroke: color-mix(in srgb, var(--accent-shade-36aecf) 68%, transparent);
 }
 
 .sketch-grid .axis {
-  stroke: #178db5;
+  stroke: var(--accent-shade-178db5);
   stroke-width: 1.6;
 }
 
@@ -5534,7 +5549,7 @@ button {
 
 .sketch-image-selection-box {
   fill: none;
-  stroke: #009fe3;
+  stroke: var(--accent-shade-009fe3);
   stroke-width: 1.7;
   stroke-dasharray: 5 3;
   vector-effect: non-scaling-stroke;
@@ -5542,7 +5557,7 @@ button {
 
 .sketch-image-resize-handle {
   fill: #ffffff;
-  stroke: #0b75a3;
+  stroke: var(--accent-shade-0b75a3);
   stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
 }
@@ -5595,7 +5610,7 @@ button {
 .sketch-segments path,
 .sketch-segments > circle {
   fill: none;
-  stroke: #173f60;
+  stroke: var(--accent-shade-173f60);
   stroke-width: 2.5;
   vector-effect: non-scaling-stroke;
   pointer-events: stroke;
@@ -5603,7 +5618,7 @@ button {
 }
 
 .sketch-text-entities text {
-  fill: #173f60;
+  fill: var(--accent-shade-173f60);
   stroke: transparent;
   stroke-width: 5;
   paint-order: stroke fill;
@@ -5612,17 +5627,17 @@ button {
 }
 
 .sketch-text-entities text:hover {
-  fill: #169fce;
+  fill: var(--accent-shade-169fce);
 }
 
 .sketch-text-entities text.selected {
-  fill: #1677c8;
-  stroke: rgba(22, 119, 200, 0.2);
+  fill: var(--accent-shade-1677c8);
+  stroke: color-mix(in srgb, var(--accent-shade-1677c8) 20%, transparent);
 }
 
 .sketch-text-selection-box {
-  fill: rgba(22, 119, 200, 0.05);
-  stroke: rgba(22, 119, 200, 0.75);
+  fill: color-mix(in srgb, var(--accent-shade-1677c8) 5%, transparent);
+  stroke: color-mix(in srgb, var(--accent-shade-1677c8) 75%, transparent);
   stroke-dasharray: 4 3;
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
@@ -5663,13 +5678,13 @@ button {
 
 .sketch-constraints rect {
   fill: #fff;
-  stroke: #2563eb;
+  stroke: var(--accent-shade-2563eb);
   stroke-width: 1.5px;
   vector-effect: non-scaling-stroke;
 }
 
 .sketch-constraints text {
-  fill: #1d4ed8;
+  fill: var(--accent-shade-1d4ed8);
   font-weight: 800;
   text-anchor: middle;
   user-select: none;
@@ -5681,7 +5696,7 @@ button {
 
 .sketch-constraint-badge > line,
 .sketch-constraint-remove-separator {
-  stroke: #60a5fa;
+  stroke: var(--accent-shade-60a5fa);
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
@@ -5697,7 +5712,7 @@ button {
 }
 
 .sketch-constraint-remove text {
-  fill: #1d4ed8 !important;
+  fill: var(--accent-shade-1d4ed8) !important;
   font-weight: 500 !important;
   text-anchor: middle;
 }
@@ -5738,7 +5753,7 @@ button {
 }
 
 .sketch-circle-handles line {
-  stroke: #169fce;
+  stroke: var(--accent-shade-169fce);
   stroke-width: 1.5;
   stroke-dasharray: 4 3;
   vector-effect: non-scaling-stroke;
@@ -5747,7 +5762,7 @@ button {
 .sketch-circle-center,
 .sketch-circle-radius-handle {
   fill: #ffffff;
-  stroke: #169fce;
+  stroke: var(--accent-shade-169fce);
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
 }
@@ -5758,14 +5773,14 @@ button {
 
 .sketch-circle-center.selected,
 .sketch-circle-radius-handle.selected {
-  fill: #60a5fa;
-  stroke: #1d4ed8;
+  fill: var(--accent-shade-60a5fa);
+  stroke: var(--accent-shade-1d4ed8);
   stroke-width: 2;
 }
 
 .sketch-circle-dimensions rect {
   fill: rgba(255, 255, 255, 0.96);
-  stroke: #169fce;
+  stroke: var(--accent-shade-169fce);
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
@@ -5789,15 +5804,15 @@ button {
 .kercad-sketch-smoothing-panel button { padding: 7px 12px; border: 1px solid var(--theme-line-b6cbd6); border-radius: 5px; background: var(--theme-bg-eef5ff); color: var(--theme-text); }
 
 .sketch-preview-line {
-  stroke: #169fce;
+  stroke: var(--accent-shade-169fce);
   stroke-width: 2;
   stroke-dasharray: 6 5;
   vector-effect: non-scaling-stroke;
 }
 
 .sketch-freehand-preview {
-  fill: rgba(22, 159, 206, 0.12);
-  stroke: #169fce;
+  fill: color-mix(in srgb, var(--accent-shade-169fce) 12%, transparent);
+  stroke: var(--accent-shade-169fce);
   stroke-width: 3;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -5829,7 +5844,7 @@ circle.sketch-preview-line {
 
 .sketch-points circle {
   fill: #ffffff;
-  stroke: #143c5c;
+  stroke: var(--accent-shade-143c5c);
   stroke-width: 1.4;
   vector-effect: non-scaling-stroke;
   cursor: pointer;
@@ -5837,8 +5852,8 @@ circle.sketch-preview-line {
 
 .sketch-points circle:hover,
 .sketch-points circle.active {
-  fill: #71d7f0;
-  stroke: #086f98;
+  fill: var(--accent-shade-71d7f0);
+  stroke: var(--accent-shade-086f98);
 }
 
 .sketch-points circle.selected {
@@ -5854,18 +5869,18 @@ circle.sketch-preview-line {
 }
 
 .sketch-points circle.invalid.selected {
-  fill: #60a5fa;
-  stroke: #1d4ed8;
+  fill: var(--accent-shade-60a5fa);
+  stroke: var(--accent-shade-1d4ed8);
   stroke-width: 2.8;
 }
 
 .sketch-arc-center { fill: #fff7d6; stroke: #d18a00; }
 .sketch-points circle.construction:not(.selected):not(:hover) { fill: #eef4f7; stroke: #718b9d; stroke-dasharray: 2 2; }
 .sketch-arc-center:hover { fill: #fde68a; stroke: #b66c00; }
-.sketch-arc-center.selected { fill: #60a5fa; stroke: #1d4ed8; }
+.sketch-arc-center.selected { fill: var(--accent-shade-60a5fa); stroke: var(--accent-shade-1d4ed8); }
 
 .sketch-cursor-point {
-  fill: #169fce;
+  fill: var(--accent-shade-169fce);
   stroke: #ffffff;
   stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
@@ -5884,14 +5899,14 @@ circle.sketch-preview-line {
 
 .sketch-dimension-editor-frame {
   fill: none !important;
-  stroke: #2563eb !important;
+  stroke: var(--accent-shade-2563eb) !important;
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
 
 .sketch-dimension-editor-background {
   cursor: text;
-  fill: #bfdbfe !important;
+  fill: var(--accent-shade-bfdbfe) !important;
   stroke: none !important;
 }
 
@@ -5913,7 +5928,7 @@ circle.sketch-preview-line {
 }
 
 .sketch-dimension-editor-indicator {
-  fill: #1d4ed8 !important;
+  fill: var(--accent-shade-1d4ed8) !important;
   font-weight: 600 !important;
   opacity: 1 !important;
   text-anchor: middle;
@@ -5967,7 +5982,7 @@ circle.sketch-preview-line {
 }
 
 .sketch-dimension-editor-group.editing input::selection {
-  background: #60a5fa;
+  background: var(--accent-shade-60a5fa);
   color: var(--theme-text-0f2740);
   -webkit-text-fill-color: var(--theme-text-0f2740);
 }
@@ -6001,7 +6016,7 @@ circle.sketch-preview-line {
 }
 
 .sketch-measurement.pending > line {
-  stroke: #169fce;
+  stroke: var(--accent-shade-169fce);
 }
 
 .sketch-measurement-point {
@@ -6012,11 +6027,11 @@ circle.sketch-preview-line {
 }
 
 .sketch-measurement-point.pending {
-  stroke: #169fce;
+  stroke: var(--accent-shade-169fce);
 }
 
 .sketch-measurement-point.hover {
-  fill: #169fce;
+  fill: var(--accent-shade-169fce);
   stroke: #ffffff;
 }
 
@@ -6040,7 +6055,7 @@ circle.sketch-preview-line {
 
 .sketch-measurement-pill:hover rect {
   fill: rgba(255, 255, 255, 0.98);
-  stroke: rgba(0, 159, 227, 0.85);
+  stroke: color-mix(in srgb, var(--accent-shade-009fe3) 85%, transparent);
 }
 
 .sketch-measurement-pill text.remove {
@@ -6088,14 +6103,14 @@ circle.sketch-preview-line {
 
 .sketch-point-actions button:hover {
   color: var(--theme-text-126b8e);
-  background: var(--theme-dark-active, #e6f5fb);
+  background: var(--theme-dark-active, var(--accent-shade-e6f5fb));
   border-color: var(--theme-dark-border, #b9dce9);
 }
 
 .sketch-point-actions button.active {
   color: #ffffff;
-  background: #168fbd;
-  border-color: #0d759e;
+  background: var(--accent-shade-168fbd);
+  border-color: var(--accent-shade-0d759e);
 }
 
 .sketch-point-actions svg {
@@ -6172,8 +6187,8 @@ circle.sketch-preview-line {
 
 .sketch-image-number-input:focus,
 .sketch-image-position-field input:focus {
-  border-color: var(--theme-dark-border, #74bdf0);
-  box-shadow: 0 0 0 3px rgba(0, 156, 222, 0.14);
+  border-color: var(--theme-dark-border, var(--accent-shade-74bdf0));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-shade-009cde) 14%, transparent);
 }
 
 .sketch-image-range-row span {
@@ -6193,7 +6208,7 @@ circle.sketch-preview-line {
 
 .sketch-image-range > input[type="range"]::-webkit-slider-runnable-track {
   height: 4px;
-  background: linear-gradient(to right, #00a6db 0 var(--slider-pos), var(--theme-bg-dbe1e7) var(--slider-pos) 100%);
+  background: linear-gradient(to right, var(--accent-shade-00a6db) 0 var(--slider-pos), var(--theme-bg-dbe1e7) var(--slider-pos) 100%);
   border-radius: 999px;
 }
 
@@ -6203,7 +6218,7 @@ circle.sketch-preview-line {
   margin-top: -4.5px;
   appearance: none;
   background: var(--theme-surface);
-  border: 2px solid #009fd7;
+  border: 2px solid var(--accent-shade-009fd7);
   border-radius: 999px;
   box-shadow: 0 1px 3px rgba(23, 59, 90, 0.22);
 }
@@ -6234,8 +6249,8 @@ circle.sketch-preview-line {
 }
 
 .sketch-image-aspect-toggle.active {
-  color: var(--theme-dark-link, #0879a5);
-  background: var(--theme-dark-active, #eaf8fc);
+  color: var(--theme-dark-link, var(--accent-shade-0879a5));
+  background: var(--theme-dark-active, var(--accent-shade-eaf8fc));
   border-color: var(--theme-dark-border, #90cee2);
 }
 
@@ -6340,7 +6355,7 @@ circle.sketch-preview-line {
   outline: none;
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.72),
-    0 0 0 2px rgba(80, 168, 212, 0.18);
+    0 0 0 2px color-mix(in srgb, var(--accent-shade-50a8d4) 18%, transparent);
 }
 
 .cube-top {
@@ -6417,7 +6432,7 @@ circle.sketch-preview-line {
 .cube-corner:hover,
 .cube-corner:focus-visible {
   z-index: 2;
-  background: #bfe7f4;
+  background: var(--accent-shade-bfe7f4);
   border-color: #55a9c7;
   outline: none;
 }
@@ -6482,10 +6497,10 @@ circle.sketch-preview-line {
 }
 
 .camera-controls button:focus-visible {
-  outline: 2px solid #28a9d2;
+  outline: 2px solid var(--accent-shade-28a9d2);
   outline-offset: 1px;
 }
-.viewport-display-controls button:focus-visible { outline: 2px solid #28a9d2; outline-offset: 1px; }
+.viewport-display-controls button:focus-visible { outline: 2px solid var(--accent-shade-28a9d2); outline-offset: 1px; }
 .camera-controls button:disabled { opacity: 0.35; cursor: default; transform: none; }
 .camera-controls button:disabled:hover { color: var(--theme-text); background: transparent; border-color: transparent; transform: none; }
 
@@ -6500,7 +6515,7 @@ circle.sketch-preview-line {
   color: var(--theme-text-006b94);
   background: var(--theme-bg-def5fb);
   border-color: var(--theme-line-6fc8df);
-  box-shadow: inset 0 0 0 #079bc6;
+  box-shadow: inset 0 0 0 var(--accent-shade-079bc6);
 }
 
 .camera-controls button.kercad-parameter-handles-toggle,
@@ -6637,8 +6652,8 @@ circle.sketch-preview-line {
 .selection-marquee {
   position: absolute;
   z-index: 3;
-  background: rgba(0, 159, 227, 0.1);
-  border: 1px solid rgba(0, 159, 227, 0.82);
+  background: color-mix(in srgb, var(--accent-shade-009fe3) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-shade-009fe3) 82%, transparent);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42);
   pointer-events: none;
 }
@@ -6718,7 +6733,7 @@ circle.sketch-preview-line {
 .ruler-point,
 .ruler-hover-point {
   fill: #ffffff;
-  stroke: #008fbe;
+  stroke: var(--accent-shade-008fbe);
   stroke-width: 2.4;
   vector-effect: non-scaling-stroke;
 }
@@ -6735,8 +6750,8 @@ circle.sketch-preview-line {
 
 .ruler-overlay.move-mode .ruler-point:active {
   cursor: grabbing;
-  fill: #dff7ff;
-  filter: drop-shadow(0 0 4px rgba(0, 143, 190, 0.4));
+  fill: var(--accent-shade-dff7ff);
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent-shade-008fbe) 40%, transparent));
 }
 
 .ruler-overlay.delete-mode .ruler-segment-group:hover .ruler-segment {
@@ -6752,25 +6767,25 @@ circle.sketch-preview-line {
 }
 
 .ruler-point.pending {
-  fill: #00a7d8;
+  fill: var(--accent-shade-00a7d8);
   stroke: #ffffff;
-  filter: drop-shadow(0 0 3px rgba(0, 126, 174, 0.72));
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent-shade-007eae) 72%, transparent));
 }
 
 .ruler-hover-point {
-  fill: rgba(0, 167, 216, 0.28);
+  fill: color-mix(in srgb, var(--accent-shade-00a7d8) 28%, transparent);
   stroke-dasharray: 3 2;
   pointer-events: none;
 }
 
 .ruler-hover-edge {
   fill: none;
-  stroke: #00aeea;
+  stroke: var(--accent-shade-00aeea);
   stroke-width: 4;
   stroke-linecap: round;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
-  filter: drop-shadow(0 0 3px rgba(0, 174, 234, 0.48));
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent-shade-00aeea) 48%, transparent));
   pointer-events: none;
 }
 
@@ -6839,7 +6854,7 @@ circle.sketch-preview-line {
 }
 
 .align-guides line {
-  stroke: rgba(0, 174, 234, 0.92);
+  stroke: color-mix(in srgb, var(--accent-shade-00aeea) 92%, transparent);
   stroke-width: 1.5;
   stroke-dasharray: 4 4;
   vector-effect: non-scaling-stroke;
@@ -6861,9 +6876,9 @@ circle.sketch-preview-line {
 
 .align-dot:hover:not(:disabled),
 .align-dot:focus-visible:not(:disabled) {
-  background: #00aeea;
+  background: var(--accent-shade-00aeea);
   outline: none;
-  box-shadow: 0 0 0 4px rgba(0, 174, 234, 0.18), 0 1px 5px rgba(13, 28, 40, 0.32);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-shade-00aeea) 18%, transparent), 0 1px 5px rgba(13, 28, 40, 0.32);
 }
 
 .align-dot.disabled,
@@ -6889,7 +6904,7 @@ circle.sketch-preview-line {
 }
 
 .mirror-guides line {
-  stroke: rgba(0, 174, 234, 0.78);
+  stroke: color-mix(in srgb, var(--accent-shade-00aeea) 78%, transparent);
   stroke-width: 1.45;
   stroke-dasharray: 5 4;
   vector-effect: non-scaling-stroke;
@@ -6927,7 +6942,7 @@ circle.sketch-preview-line {
 
 .mirror-handle:hover,
 .mirror-handle:focus-visible {
-  color: #00aeea;
+  color: var(--accent-shade-00aeea);
   outline: none;
 }
 
@@ -6974,7 +6989,7 @@ circle.sketch-preview-line {
   width: 64px;
   padding: 4px 6px;
   border-radius: 3px;
-  border: 1px solid rgba(0, 159, 227, 0.85);
+  border: 1px solid color-mix(in srgb, var(--accent-shade-009fe3) 85%, transparent);
   background: rgba(255, 255, 255, 0.98);
   color: #16283a;
   font-size: 14px;
@@ -6984,7 +6999,7 @@ circle.sketch-preview-line {
   pointer-events: auto;
   transform: translate3d(var(--overlay-x, 0), var(--overlay-y, 0), 0) translate(-50%, -50%);
   will-change: transform;
-  box-shadow: 0 2px 8px rgba(0, 159, 227, 0.18);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent-shade-009fe3) 18%, transparent);
   outline: none;
 }
 
@@ -7004,25 +7019,25 @@ circle.sketch-preview-line {
 
 .rotation-protractor-outer,
 .rotation-protractor-inner {
-  fill: rgba(104, 203, 232, 0.1);
-  stroke: rgba(0, 159, 227, 0.85);
+  fill: color-mix(in srgb, var(--accent-shade-68cbe8) 10%, transparent);
+  stroke: color-mix(in srgb, var(--accent-shade-009fe3) 85%, transparent);
   stroke-width: 1.3;
   vector-effect: non-scaling-stroke;
 }
 
 .rotation-protractor-inner {
   fill: none;
-  stroke: rgba(0, 159, 227, 0.46);
+  stroke: color-mix(in srgb, var(--accent-shade-009fe3) 46%, transparent);
 }
 
 .rotation-tick {
-  stroke: rgba(0, 159, 227, 0.7);
+  stroke: color-mix(in srgb, var(--accent-shade-009fe3) 70%, transparent);
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
 
 .rotation-tick.major {
-  stroke: rgba(0, 121, 176, 0.9);
+  stroke: color-mix(in srgb, var(--accent-shade-0079b0) 90%, transparent);
   stroke-width: 1.6;
 }
 
@@ -7293,7 +7308,7 @@ circle.sketch-preview-line {
 }
 
 .inspector-header-icon.active {
-  color: #0c9dd3;
+  color: var(--accent-shade-0c9dd3);
 }
 
 .shape-state-card {
@@ -7317,7 +7332,7 @@ circle.sketch-preview-line {
 }
 
 .shape-state-card button.active {
-  color: #7cbcff;
+  color: var(--accent-shade-7cbcff);
 }
 
 .large-solid-swatch,
@@ -7341,7 +7356,7 @@ circle.sketch-preview-line {
 
 .shape-state-card button.active .large-solid-swatch,
 .shape-state-card button.active .large-hole-swatch {
-  border-color: #7bb8ff;
+  border-color: var(--accent-shade-7bb8ff);
 }
 
 .shape-state-card button:disabled,
@@ -7392,9 +7407,9 @@ circle.sketch-preview-line {
 }
 
 .color-grid button.selected {
-  border-color: #0c9dd3;
+  border-color: var(--accent-shade-0c9dd3);
   box-shadow:
-    0 0 0 3px rgba(12, 157, 211, 0.22),
+    0 0 0 3px color-mix(in srgb, var(--accent-shade-0c9dd3) 22%, transparent),
     inset 0 0 0 3px white;
 }
 
@@ -7472,8 +7487,8 @@ circle.sketch-preview-line {
 
 .shape-inspector .edit-sketch-button:hover:not(:disabled),
 .shape-inspector .inspector-action-button:hover:not(:disabled) {
-  color: var(--theme-dark-link, #0d7198);
-  background: var(--theme-dark-active, #eaf7fb);
+  color: var(--theme-dark-link, var(--accent-shade-0d7198));
+  background: var(--theme-dark-active, var(--accent-shade-eaf7fb));
   border-color: var(--theme-dark-border, #8ecbdf);
 }
 
@@ -7518,7 +7533,7 @@ circle.sketch-preview-line {
 }
 
 .property-card-header:hover {
-  color: #1f8ec3;
+  color: var(--accent-shade-1f8ec3);
 }
 
 .property-list {
@@ -7558,16 +7573,16 @@ circle.sketch-preview-line {
 }
 
 .gear-type-options button:hover:not(:disabled) {
-  color: #176f94;
-  background: #eef9fc;
+  color: var(--accent-shade-176f94);
+  background: var(--accent-shade-eef9fc);
   border-color: #8fc9dc;
 }
 
 .gear-type-options button.selected {
-  color: #0b789f;
-  background: #eaf8fc;
-  border-color: #40aad0;
-  box-shadow: 0 0 0 2px rgba(0, 159, 211, 0.12);
+  color: var(--accent-shade-0b789f);
+  background: var(--accent-shade-eaf8fc);
+  border-color: var(--accent-shade-40aad0);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-shade-009fd3) 12%, transparent);
 }
 
 .gear-type-options button:disabled {
@@ -7622,8 +7637,8 @@ circle.sketch-preview-line {
 }
 
 .range-value-control:focus-within {
-  border-color: #55add8;
-  box-shadow: 0 0 0 3px rgba(0, 156, 222, 0.14);
+  border-color: var(--accent-shade-55add8);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-shade-009cde) 14%, transparent);
 }
 
 .range-value-control input {
@@ -7726,8 +7741,8 @@ circle.sketch-preview-line {
 
 .text-property input:focus,
 .select-property select:focus {
-  border-color: #74bdf0;
-  box-shadow: 0 0 0 3px rgba(0, 156, 222, 0.14);
+  border-color: var(--accent-shade-74bdf0);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-shade-009cde) 14%, transparent);
 }
 
 .text-property input:disabled,
@@ -7756,7 +7771,7 @@ circle.sketch-preview-line {
 .range-control input[type="range"]::-webkit-slider-runnable-track {
   height: 5px;
   background:
-    linear-gradient(to right, #00a6db 0 var(--slider-pos), #dbe1e7 var(--slider-pos) 100%);
+    linear-gradient(to right, var(--accent-shade-00a6db) 0 var(--slider-pos), #dbe1e7 var(--slider-pos) 100%);
   border-radius: 999px;
 }
 
@@ -7766,7 +7781,7 @@ circle.sketch-preview-line {
   margin-top: -6px;
   appearance: none;
   background: #ffffff;
-  border: 2px solid #00a6db;
+  border: 2px solid var(--accent-shade-00a6db);
   border-radius: 999px;
   box-shadow: 0 1px 4px rgba(24, 48, 68, 0.2);
 }
@@ -7779,7 +7794,7 @@ circle.sketch-preview-line {
 
 .range-control input[type="range"]::-moz-range-progress {
   height: 5px;
-  background: #00a6db;
+  background: var(--accent-shade-00a6db);
   border-radius: 999px;
 }
 
@@ -7787,14 +7802,14 @@ circle.sketch-preview-line {
   width: 15px;
   height: 15px;
   background: #ffffff;
-  border: 2px solid #00a6db;
+  border: 2px solid var(--accent-shade-00a6db);
   border-radius: 999px;
   box-shadow: 0 1px 4px rgba(24, 48, 68, 0.2);
 }
 
 .inspector-header-icon:hover,
 .shape-state-card button:not(:disabled):hover {
-  background: #eef8fc;
+  background: var(--accent-shade-eef8fc);
 }
 
 .shape-floating-controls {
@@ -7858,7 +7873,7 @@ circle.sketch-preview-line {
 }
 
 .shape-control-cluster button:hover {
-  background: #eaf5fa;
+  background: var(--accent-shade-eaf5fa);
   border-color: #a9c7d7;
 }
 
@@ -8059,7 +8074,7 @@ circle.sketch-preview-line {
 }
 
 .workspace-settings-nav button.active {
-  color: #176f95;
+  color: var(--accent-shade-176f95);
   background: #ffffff;
   border-color: #c7d9e4;
   box-shadow: 0 1px 0 rgba(31, 64, 84, 0.08);
@@ -8121,7 +8136,7 @@ circle.sketch-preview-line {
   justify-self: end;
   width: 18px;
   height: 18px;
-  accent-color: #0098c7;
+  accent-color: var(--accent-shade-0098c7);
 }
 
 .workspace-grid-color-row {
@@ -8165,7 +8180,7 @@ circle.sketch-preview-line {
 .workspace-color-trigger[aria-expanded="true"] {
   background: #ffffff;
   border-color: #70bad2;
-  box-shadow: 0 0 0 3px rgba(14, 156, 204, 0.11);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-shade-0e9ccc) 11%, transparent);
 }
 
 .workspace-color-trigger svg {
@@ -8244,7 +8259,7 @@ circle.sketch-preview-line {
 }
 
 .workspace-color-presets button.selected {
-  box-shadow: 0 0 0 2px #0e91bd, 0 0 0 5px rgba(14, 145, 189, 0.14);
+  box-shadow: 0 0 0 2px var(--accent-shade-0e91bd), 0 0 0 5px color-mix(in srgb, var(--accent-shade-0e91bd) 14%, transparent);
 }
 
 .workspace-color-popover-footer {
@@ -8300,8 +8315,8 @@ circle.sketch-preview-line {
 }
 
 .workspace-color-reset:hover {
-  color: #087fa6;
-  background: #ebf7fb;
+  color: var(--accent-shade-087fa6);
+  background: var(--accent-shade-ebf7fb);
   border-color: #91c8d9;
 }
 
@@ -8318,7 +8333,7 @@ circle.sketch-preview-line {
 
 .workspace-range input {
   width: 100%;
-  accent-color: #0fa7cf;
+  accent-color: var(--accent-shade-0fa7cf);
 }
 
 .workspace-range small {
@@ -8342,7 +8357,7 @@ circle.sketch-preview-line {
 
 .workspace-history-range-control input {
   width: 100%;
-  accent-color: #0fa7cf;
+  accent-color: var(--accent-shade-0fa7cf);
 }
 
 .workspace-history-labels {
@@ -8355,7 +8370,7 @@ circle.sketch-preview-line {
 }
 
 .workspace-history-labels .active {
-  color: #087f9f;
+  color: var(--accent-shade-087f9f);
 }
 
 .workspace-history-custom {
@@ -8460,7 +8475,7 @@ circle.sketch-preview-line {
 
 .workspace-modal-header button:hover,
 .make-default-button:hover {
-  background: #eef8fc;
+  background: var(--accent-shade-eef8fc);
 }
 
 .shapes-sidebar {
@@ -8810,7 +8825,7 @@ circle.sketch-preview-line {
 .selection-outline {
   position: absolute;
   inset: 1px;
-  border: 2px solid #42b6df;
+  border: 2px solid var(--accent-shade-42b6df);
   border-radius: 2px;
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.82);
   pointer-events: none;
@@ -8823,7 +8838,7 @@ circle.sketch-preview-line {
   height: 9px;
   content: "";
   background: #fff;
-  border: 2px solid #42b6df;
+  border: 2px solid var(--accent-shade-42b6df);
 }
 
 .selection-outline::before {
@@ -8879,7 +8894,7 @@ circle.sketch-preview-line {
 }
 
 .shape-mini-tools button:hover {
-  background: #eef8fc;
+  background: var(--accent-shade-eef8fc);
 }
 
 .more-shapes:hover {
@@ -9246,7 +9261,7 @@ circle.sketch-preview-line {
 /* Keyboard and motion accessibility ------------------------------------- */
 
 .kercad-reference-shell :where(button, input, select, textarea, [role="button"], [role="menuitem"], [role="radio"], [tabindex]:not([tabindex="-1"])):focus-visible {
-  outline: 2px solid #159fc9;
+  outline: 2px solid var(--accent-shade-159fc9);
   outline-offset: 2px;
 }
 
@@ -9281,7 +9296,7 @@ circle.sketch-preview-line {
   display: flex;
   align-items: center;
   gap: 26px;
-  background: #1269eb;
+  background: var(--accent-solid);
   color: white;
 }
 .kercad-dashboard-about { margin-left: auto; min-height: 42px; padding: 0 18px; color: #fff; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.55); border-radius: 9px; font-size: 14px; font-weight: 750; }
@@ -9291,7 +9306,7 @@ circle.sketch-preview-line {
 .kercad-dashboard-shell button:not(:disabled),
 .kercad-dashboard-topbar a[href] { cursor: pointer; }
 .dashboard-header-actions > button, .dashboard-header-actions > a { display: flex; align-items: center; justify-content: center; gap: 8px; width: auto; min-height: 38px; height: auto; padding: 7px 10px; border: 1px solid transparent; border-radius: 8px; color: white; background: transparent; font: inherit; font-size: 13px; text-decoration: none; white-space: nowrap; }
-.dashboard-header-actions > button:hover, .dashboard-header-actions > a:hover { color: #1269eb; background: rgba(255,255,255,.8); }
+.dashboard-header-actions > button:hover, .dashboard-header-actions > a:hover { color: var(--accent-solid); background: rgba(255,255,255,.8); }
 .dashboard-header-actions > button:focus-visible, .dashboard-header-actions > a:focus-visible { outline: 2px solid white; outline-offset: 2px; }
 .dashboard-header-actions > button:disabled { opacity: .55; cursor: default; pointer-events: none; }
 .dashboard-header-actions > button.kercad-header-start-designing { color: var(--theme-link); background: var(--theme-surface); border-color: var(--theme-dark-border, #fff); }
@@ -9331,28 +9346,28 @@ circle.sketch-preview-line {
 .kercad-dashboard-sort-toggle { display: flex; overflow: hidden; border: 1px solid var(--theme-line-c9d8e3); border-radius: 9px; background: var(--theme-surface); }
 .kercad-dashboard-sort-toggle button { width: 50px; height: var(--dashboard-control-height); display: grid; place-items: center; border: 0; border-left: 1px solid var(--theme-line-d4e0e8); background: var(--theme-surface); color: var(--theme-text-5b7489); }
 .kercad-dashboard-sort-toggle button:first-child { border-left: 0; }
-.kercad-dashboard-sort-toggle button.active { background: #1269eb; color: white; }
+.kercad-dashboard-sort-toggle button.active { background: var(--accent-solid); color: white; }
 .kercad-dashboard-sort-toggle .kercad-dashboard-sort-icon { width: 21px; height: 21px; color: inherit; background-color: currentColor; mask-size: contain; mask-position: center; mask-repeat: no-repeat; -webkit-mask-size: contain; -webkit-mask-position: center; -webkit-mask-repeat: no-repeat; }
 .kercad-dashboard-view-toggle button { width: 50px; height: var(--dashboard-control-height); display: grid; place-items: center; border: 0; border-left: 1px solid var(--theme-line-d4e0e8); background: var(--theme-surface); color: var(--theme-text-5b7489); }
 .kercad-dashboard-view-toggle button:first-child { border-left: 0; }
-.kercad-dashboard-view-toggle button.active { background: #1269eb; color: white; }
+.kercad-dashboard-view-toggle button.active { background: var(--accent-solid); color: white; }
 .kercad-dashboard-sort-toggle button:hover:not(.active),
 .kercad-dashboard-view-toggle button:hover:not(.active),
 .kercad-dashboard-sort-toggle button:focus-visible:not(.active),
 .kercad-dashboard-view-toggle button:focus-visible:not(.active) { background: var(--theme-bg-eef5ff); color: var(--theme-link); }
 .kercad-dashboard-sort-toggle button.active:hover,
-.kercad-dashboard-view-toggle button.active:hover { background: #075dcc; }
+.kercad-dashboard-view-toggle button.active:hover { background: var(--accent-shade-075dcc); }
 .kercad-dashboard-projects.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
 .kercad-dashboard-card { position: relative; min-width: 0; overflow: hidden; border: 1px solid var(--theme-line-cfdae3); border-radius: 11px; background: var(--theme-surface); box-shadow: 0 1px 3px #2442; }
 .kercad-dashboard-card:hover { border-color: var(--theme-line-82b5ef); box-shadow: 0 5px 18px #2442; }
 .kercad-dashboard-card .card-open { width: 100%; padding: 13px; display: block; border: 0; background: transparent; text-align: left; }
-.kercad-dashboard-card .card-preview { position: relative; height: 180px; overflow: hidden; display: grid; place-items: center; border-radius: 8px; color: var(--theme-dark-link, #6d8294); background: var(--theme-dark-active, #edf8ff); }
+.kercad-dashboard-card .card-preview { position: relative; height: 180px; overflow: hidden; display: grid; place-items: center; border-radius: 8px; color: var(--theme-dark-link, #6d8294); background: var(--theme-dark-active, var(--accent-shade-edf8ff)); }
 .kercad-dashboard-card .card-preview > img { width: 100%; height: 100%; display: block; object-fit: cover; }
-.kercad-dashboard-card .preview-grid { position: absolute; inset: 53% -10% -30%; transform: perspective(180px) rotateX(56deg); background-image: linear-gradient(#63cce555 1px, transparent 1px), linear-gradient(90deg, #63cce555 1px, transparent 1px); background-size: 26px 26px; }
+.kercad-dashboard-card .preview-grid { position: absolute; inset: 53% -10% -30%; transform: perspective(180px) rotateX(56deg); background-image: linear-gradient(var(--accent-shade-63cce555) 1px, transparent 1px), linear-gradient(90deg, var(--accent-shade-63cce555) 1px, transparent 1px); background-size: 26px 26px; }
 .kercad-dashboard-card .card-preview strong { z-index: 1; font-size: 14px; }
 .kercad-dashboard-card .accent-1 { background: var(--theme-dark-surface, #fff8df); }.kercad-dashboard-card .accent-2 { background: var(--theme-dark-success-surface, #e8f7f0); }.kercad-dashboard-card .accent-3 { background: var(--theme-dark-danger-surface, #fff0ef); }
 .kercad-dashboard-new-card .card-preview { background: var(--theme-bg-eef5ff); }
-.kercad-dashboard-new-card .card-preview > img { width: 82px; height: 82px; object-fit: contain; }
+.kercad-dashboard-new-card .card-preview > :is(img, svg) { width: 82px; height: 82px; object-fit: contain; }
 .kercad-dashboard-open-card .card-preview { background: var(--theme-dark-surface, #f2f8fb); }
 .kercad-dashboard-open-card .new-project-plus { background: var(--theme-dark-surface, #e8f0f4); color: var(--theme-dark-link, #254c68); }
 .kercad-dashboard-card .card-copy { padding: 13px 1px 3px; display: flex; flex-direction: column; gap: 7px; }
@@ -9388,8 +9403,8 @@ circle.sketch-preview-line {
 .kercad-challenges-heading { align-items: end; }
 .kercad-challenge-heading-actions { display: flex; align-items: center; gap: 9px; }
 .kercad-challenge-library-controls { margin: -4px 0 18px; }
-.kercad-install-challenge, .kercad-import-project, .kercad-create-challenge { min-height: 46px; padding: 0 18px; display: inline-flex; align-items: center; gap: 9px; color: #fff; background: #1269eb; border: 1px solid var(--theme-line-075acb); border-radius: 9px; font: inherit; font-weight: 750; white-space: nowrap; box-shadow: 0 3px 10px rgba(18,105,235,.18); }
-.kercad-install-challenge:hover, .kercad-import-project:hover { background: #075dcc; }
+.kercad-install-challenge, .kercad-import-project, .kercad-create-challenge { min-height: 46px; padding: 0 18px; display: inline-flex; align-items: center; gap: 9px; color: #fff; background: var(--accent-solid); border: 1px solid var(--theme-line-075acb); border-radius: 9px; font: inherit; font-weight: 750; white-space: nowrap; box-shadow: 0 3px 10px color-mix(in srgb, var(--accent-shade-1269eb) 18%, transparent); }
+.kercad-install-challenge:hover, .kercad-import-project:hover { background: var(--accent-shade-075dcc); }
 .kercad-create-challenge { color: var(--theme-text-31536d); background: var(--theme-surface); border-color: var(--theme-line-c9d8e3); box-shadow: 0 1px 3px rgba(27,60,83,.1); }
 .kercad-create-challenge:hover { color: var(--theme-link); border-color: var(--theme-line-82b5ef); background: var(--theme-bg-f8fbff); }
 .kercad-challenge-library.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 20px; }
@@ -9403,10 +9418,10 @@ circle.sketch-preview-line {
 .kercad-challenge-card { position: relative; min-width: 0; overflow: hidden; border: 1px solid var(--theme-line-cfdae3); border-radius: 11px; background: var(--theme-surface); box-shadow: 0 1px 3px #2442; }
 .kercad-challenge-card:hover { border-color: var(--theme-line-82b5ef); box-shadow: 0 5px 18px #2442; }
 .kercad-challenge-card .challenge-open { width: 100%; height: 100%; padding: 13px; display: flex; flex-direction: column; border: 0; background: transparent; text-align: left; }
-.kercad-challenge-card .challenge-cover { position: relative; width: 100%; height: auto; aspect-ratio: 16 / 10; display: grid; place-items: center; overflow: hidden; color: var(--theme-link); background: linear-gradient(145deg, #eef6ff, #e6f7fb); border-radius: 8px; }
+.kercad-challenge-card .challenge-cover { position: relative; width: 100%; height: auto; aspect-ratio: 16 / 10; display: grid; place-items: center; overflow: hidden; color: var(--theme-link); background: linear-gradient(145deg, var(--accent-shade-eef6ff), var(--accent-shade-e6f7fb)); border-radius: 8px; }
 .kercad-challenge-card .challenge-cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .kercad-challenge-new-card .challenge-cover { background: var(--theme-bg-eef5ff); }
-.kercad-challenge-new-card .challenge-cover img { position: static; width: 82px; height: 82px; object-fit: contain; }
+.kercad-challenge-new-card .challenge-cover :is(img, svg) { position: static; width: 82px; height: 82px; object-fit: contain; }
 .kercad-challenge-new-card .challenge-copy > span { min-height: 0; }
 .kercad-challenge-card .challenge-copy { padding: 13px 1px 4px; display: flex; flex-direction: column; gap: 5px; }
 .kercad-challenge-card .challenge-copy small { color: var(--theme-link); font-size: 11px; font-weight: 900; letter-spacing: .08em; }
@@ -9424,7 +9439,7 @@ circle.sketch-preview-line {
 .kercad-challenge-card .challenge-actions img { width: 100%; height: 100%; object-fit: contain; }
 .kercad-challenge-card:hover .challenge-actions, .kercad-challenge-card:focus-within .challenge-actions { opacity: 1; }
 .kercad-challenge-empty { min-height: 310px; display: grid; place-content: center; justify-items: center; gap: 9px; color: var(--theme-dark-link, #668196); background: rgba(255,255,255,.7); border: 2px dashed var(--theme-dark-border, #bfd0dc); border-radius: 12px; font: inherit; text-align: center; }
-.kercad-challenge-empty:hover { color: var(--theme-link); border-color: var(--theme-dark-border, #78abeb); background: var(--theme-bg-f8fbff); }
+.kercad-challenge-empty:hover { color: var(--theme-link); border-color: var(--theme-dark-border, var(--accent-shade-78abeb)); background: var(--theme-bg-f8fbff); }
 .kercad-challenge-empty strong { margin-top: 8px; font-size: 18px; }.kercad-challenge-empty span { font-size: 13px; }
 
 /* Guided challenges --------------------------------------------------- */
@@ -9440,7 +9455,7 @@ circle.sketch-preview-line {
 .kercad-challenge-player > header nav { position: absolute; top: 9px; right: 12px; left: 12px; display: flex; gap: 4px; }
 .kercad-challenge-player > header nav button:last-child { margin-left: auto; }
 .kercad-challenge-player > header nav button { width: 32px; height: 29px; display: grid; place-items: center; color: var(--theme-dark-link, #587287); background: var(--theme-bg-f4f8fa); border: 1px solid var(--theme-dark-border, #d2dee6); border-radius: 6px; }
-.kercad-challenge-player > header nav button:hover, .kercad-challenge-player > header nav button.active { color: var(--theme-link); background: var(--theme-active); border-color: var(--theme-dark-border, #91bdf3); }
+.kercad-challenge-player > header nav button:hover, .kercad-challenge-player > header nav button.active { color: var(--theme-link); background: var(--theme-active); border-color: var(--theme-dark-border, var(--accent-shade-91bdf3)); }
 .kercad-challenge-drag-hint { position: absolute; right: 17px; bottom: 15px; color: var(--theme-dark-link, #9bafbd); pointer-events: none; }
 .kercad-challenge-step { min-height: 0; padding: 22px 19px; flex: 1; overflow-y: auto; overscroll-behavior: contain; }
 .kercad-challenge-step h2 { margin: 8px 0 10px; font-size: 29px; font-weight: 500; line-height: 1.1; }
@@ -9451,14 +9466,14 @@ circle.sketch-preview-line {
 .kercad-challenge-step dt { font-size: 14px; font-weight: 750; }.kercad-challenge-step dd { margin: 0; padding: 7px 10px; color: var(--theme-dark-link, #29465d); background: var(--theme-bg-f7fafc); border: 1px solid var(--theme-line-cbdbe6); border-radius: 6px; font-weight: 800; }
 .kercad-challenge-player > footer { padding: 12px 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: var(--theme-surface); border-top: 1px solid var(--theme-line-d7e2e9); }
 .kercad-challenge-player > footer button { min-height: 47px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; color: var(--theme-dark-link, #405e75); background: var(--theme-surface); border: 1px solid var(--theme-dark-border, #c8d7e1); border-radius: 9px; font: inherit; font-weight: 800; }
-.kercad-challenge-player > footer button.primary { color: #fff; background: #1269eb; border-color: var(--theme-line-075acb); }.kercad-challenge-player > footer button:disabled { opacity: .42; }
+.kercad-challenge-player > footer button.primary { color: #fff; background: var(--accent-solid); border-color: var(--theme-line-075acb); }.kercad-challenge-player > footer button:disabled { opacity: .42; }
 .kercad-challenge-reopen { position: absolute; left: 76px; bottom: 18px; z-index: 12; min-height: 42px; padding: 0 13px; display: inline-flex; align-items: center; gap: 7px; color: var(--theme-link); background: var(--theme-bg-ffffff-a950); border: 1px solid var(--theme-line-a8c9ef); border-radius: 8px; box-shadow: 0 3px 14px rgba(38,62,79,.14); font-weight: 800; }
 .kercad-challenge-compact { position: fixed; z-index: 40; overflow: hidden; color: var(--theme-link); background: rgba(255,255,255,.97); border: 1px solid var(--theme-line-a9c8e9); box-shadow: 0 8px 24px rgba(25,54,75,.2); }
 .kercad-challenge-compact.floating { width: 50px; height: 50px; border-radius: 9px; }
 .kercad-challenge-compact.left, .kercad-challenge-compact.right { top: var(--editor-toolbar-height); bottom: 0; width: 30px; height: auto; border-radius: 0; }
 .kercad-challenge-compact.left { left: 0; border-width: 0 1px 0 0; }.kercad-challenge-compact.right { right: 0; border-width: 0 0 0 1px; }
 .kercad-challenge-compact button { width: 100%; height: 100%; padding: 0; display: grid; place-items: center; color: inherit; background: transparent; border: 0; }
-.kercad-challenge-compact button:hover { color: #fff; background: #1269eb; }
+.kercad-challenge-compact button:hover { color: #fff; background: var(--accent-solid); }
 .kercad-challenge-author { width: min(430px, calc(100vw - 16px)); }
 .kercad-challenge-author.left, .kercad-challenge-author.right { width: 430px; }
 .kercad-challenge-form { display: flex; flex-direction: column; gap: 13px; }
@@ -9468,16 +9483,16 @@ circle.sketch-preview-line {
 .kercad-challenge-form > label > span, .kercad-challenge-parameter-editor > header strong { color: var(--theme-text-506b80); font-size: 12px; font-weight: 800; }
 .kercad-challenge-form input, .kercad-challenge-form textarea { width: 100%; min-width: 0; padding: 9px 10px; color: var(--theme-dark-link, #253f55); background: var(--theme-surface); border: 1px solid var(--theme-dark-border, #c8d8e3); border-radius: 7px; outline: 0; font: inherit; font-size: 14px; }
 .kercad-challenge-form textarea { resize: vertical; line-height: 1.45; }
-.kercad-challenge-form input:focus, .kercad-challenge-form textarea:focus { border-color: #4399dc; box-shadow: 0 0 0 2px rgba(67,153,220,.14); }
+.kercad-challenge-form input:focus, .kercad-challenge-form textarea:focus { border-color: var(--accent-shade-4399dc); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-shade-4399dc) 14%, transparent); }
 .kercad-challenge-category-editor { display: flex; flex-direction: column; gap: 6px; }
 .kercad-challenge-category-editor > strong { color: var(--theme-text-506b80); font-size: 12px; font-weight: 800; }
 .kercad-challenge-category-input { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
-.kercad-challenge-category-input button { padding: 0 11px; display: inline-flex; align-items: center; gap: 4px; color: var(--theme-text-1769c7); background: var(--theme-bg-edf5ff); border: 1px solid var(--theme-dark-border, #b8d2ee); border-radius: 7px; font-weight: 750; }
+.kercad-challenge-category-input button { padding: 0 11px; display: inline-flex; align-items: center; gap: 4px; color: var(--theme-text-1769c7); background: var(--theme-bg-edf5ff); border: 1px solid var(--theme-dark-border, var(--accent-shade-b8d2ee)); border-radius: 7px; font-weight: 750; }
 .kercad-challenge-category-input button:disabled { opacity: .45; }
 .kercad-challenge-categories { display: flex; flex-wrap: wrap; gap: 5px; }
-.kercad-challenge-categories > span { padding: 4px 5px 4px 8px; display: inline-flex; align-items: center; gap: 3px; color: var(--theme-text-1769c7); background: var(--theme-active); border: 1px solid var(--theme-dark-border, #c5dcf5); border-radius: 999px; font-size: 12px; font-weight: 750; }
+.kercad-challenge-categories > span { padding: 4px 5px 4px 8px; display: inline-flex; align-items: center; gap: 3px; color: var(--theme-text-1769c7); background: var(--theme-active); border: 1px solid var(--theme-dark-border, var(--accent-shade-c5dcf5)); border-radius: 999px; font-size: 12px; font-weight: 750; }
 .kercad-challenge-categories > span button { width: 20px; height: 20px; padding: 0; display: grid; place-items: center; color: inherit; background: transparent; border: 0; border-radius: 50%; }
-.kercad-challenge-categories > span button:hover { background: var(--theme-dark-active, #cfe4fb); }
+.kercad-challenge-categories > span button:hover { background: var(--theme-dark-active, var(--accent-shade-cfe4fb)); }
 .kercad-challenge-parameter-editor { display: flex; flex-direction: column; gap: 7px; }
 .kercad-challenge-parameter-editor > header { display: flex; align-items: center; justify-content: space-between; }
 .kercad-challenge-parameter-editor > header button { min-height: 30px; padding: 0 9px; display: inline-flex; align-items: center; gap: 4px; color: var(--theme-link); background: var(--theme-bg-eef5ff); border: 1px solid var(--theme-line-a8c9ef); border-radius: 6px; font: inherit; font-size: 11px; font-weight: 800; }
@@ -9491,10 +9506,10 @@ circle.sketch-preview-line {
 .kercad-challenge-capture-placeholder { display: flex; flex-direction: column; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; }
 .kercad-challenge-capture-actions { position: absolute; top: 9px; right: 9px; display: flex; gap: 5px; }
 .kercad-challenge-capture-actions button { width: 38px; height: 38px; display: grid; place-items: center; color: var(--theme-link); background: var(--theme-bg-ffffff-a940); border: 1px solid var(--theme-line-a9c8e9); border-radius: 8px; box-shadow: 0 2px 8px rgba(31,64,88,.14); }
-.kercad-challenge-capture-actions button:hover { color: #fff; background: #1269eb; }
+.kercad-challenge-capture-actions button:hover { color: #fff; background: var(--accent-solid); }
 .kercad-challenge-capture > small { position: absolute; right: 9px; bottom: 8px; padding: 4px 7px; color: var(--theme-dark-link, #4f6d82); background: var(--theme-bg-ffffff-a900); border-radius: 5px; font-size: 10px; }
 .kercad-challenge-author > footer.kercad-challenge-author-footer { grid-template-columns: 1fr 45px 1fr; }
-.kercad-challenge-author-footer button.insert { padding: 0; color: var(--theme-link); background: var(--theme-bg-eef5ff); border-color: var(--theme-dark-border, #9fc3ed); }
+.kercad-challenge-author-footer button.insert { padding: 0; color: var(--theme-link); background: var(--theme-bg-eef5ff); border-color: var(--theme-dark-border, var(--accent-shade-9fc3ed)); }
 .kercad-challenge-author > footer.kercad-challenge-metadata-footer { display: flex; justify-content: flex-end; }
 .kercad-challenge-metadata-footer button { width: 50%; }
 .toolbar-workspace-tabs .kercad-toolbar-brand-button {
@@ -9575,8 +9590,8 @@ circle.sketch-preview-line {
 /* Public landing ------------------------------------------------------- */
 .kercad-landing { width: 100%; height: 100dvh; overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain; color: var(--theme-text-17364e); background: var(--theme-bg-f7fafc); font-family: Inter, ui-sans-serif, system-ui, sans-serif; scroll-behavior: smooth; }
 .kercad-landing button, .kercad-landing a:not(.kercad-dashboard-brand) { font: inherit; }
-.kercad-landing-nav { position: sticky; z-index: 30; top: 0; height: 74px; padding: 0 clamp(22px, 5vw, 76px); display: flex; align-items: center; gap: 34px; color: #fff; background: rgba(18,105,235,.96); box-shadow: 0 4px 20px rgba(18,63,121,.14); backdrop-filter: blur(12px); }
-.kercad-landing-nav.kercad-dashboard-topbar { box-sizing: border-box; width: 100%; height: 86px; padding: 0 28px; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 26px; background: #1269eb; }
+.kercad-landing-nav { position: sticky; z-index: 30; top: 0; height: 74px; padding: 0 clamp(22px, 5vw, 76px); display: flex; align-items: center; gap: 34px; color: #fff; background: color-mix(in srgb, var(--accent-shade-1269eb) 96%, transparent); box-shadow: 0 4px 20px color-mix(in srgb, var(--accent-shade-123f79) 14%, transparent); backdrop-filter: blur(12px); }
+.kercad-landing-nav.kercad-dashboard-topbar { box-sizing: border-box; width: 100%; height: 86px; padding: 0 28px; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 26px; background: var(--accent-solid); }
 .kercad-landing-nav .dashboard-header-actions { justify-self: end; }
 .kercad-landing-nav .dashboard-header-actions > button { font-size: 13px; cursor: pointer; }
 .kercad-landing-nav .dashboard-header-actions > button:disabled { cursor: default; }
@@ -9603,17 +9618,17 @@ circle.sketch-preview-line {
 }
 @media (max-width: 620px) { .kercad-landing-header-actions { gap: 4px; } .kercad-landing-menu-trigger { width: 36px; height: 36px; padding: 6px; background: transparent; border-color: transparent; } }
 @media (max-width: 420px) { .kercad-landing-nav .kercad-dashboard-brand strong { display: none; } }
-.kercad-landing-nav > button, .kercad-landing-footer button { min-height: 42px; padding: 0 17px; display: inline-flex; align-items: center; gap: 8px; color: var(--theme-link); background: var(--theme-surface); border: 0; border-radius: 9px; font-size: 13px; font-weight: 800; box-shadow: 0 3px 12px rgba(18,55,105,.15); }
-.kercad-landing-hero { min-height: 690px; padding: 90px clamp(24px, 7vw, 110px) 82px; display: grid; grid-template-columns: minmax(360px,.82fr) minmax(520px,1.18fr); align-items: center; gap: clamp(44px,6vw,100px); color: #fff; background: radial-gradient(circle at 72% 20%, rgba(100,204,239,.26), transparent 31%), linear-gradient(145deg,#1269eb 0%,#0953bd 61%,#073b87 100%); }
+.kercad-landing-nav > button, .kercad-landing-footer button { min-height: 42px; padding: 0 17px; display: inline-flex; align-items: center; gap: 8px; color: var(--theme-link); background: var(--theme-surface); border: 0; border-radius: 9px; font-size: 13px; font-weight: 800; box-shadow: 0 3px 12px color-mix(in srgb, var(--accent-shade-123769) 15%, transparent); }
+.kercad-landing-hero { min-height: 690px; padding: 90px clamp(24px, 7vw, 110px) 82px; display: grid; grid-template-columns: minmax(360px,.82fr) minmax(520px,1.18fr); align-items: center; gap: clamp(44px,6vw,100px); color: #fff; background: radial-gradient(circle at 72% 20%, rgba(100,204,239,.26), transparent 31%), linear-gradient(145deg,var(--accent-solid) 0%,var(--accent-shade-0953bd) 61%,var(--accent-shade-073b87) 100%); }
 .kercad-landing-hero-copy { max-width: 630px; }
-.kercad-landing-kicker, .kercad-landing-section-heading > span, .kercad-landing-workflow-copy > span, .kercad-landing-education > div > span { display: inline-flex; align-items: center; gap: 7px; color: var(--theme-dark-link, #65d8f4); font-size: 12px; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
+.kercad-landing-kicker, .kercad-landing-section-heading > span, .kercad-landing-workflow-copy > span, .kercad-landing-education > div > span { display: inline-flex; align-items: center; gap: 7px; color: var(--theme-dark-link, var(--accent-shade-65d8f4)); font-size: 12px; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
 .kercad-landing-hero h1 { max-width: 680px; margin: 18px 0 22px; font-size: clamp(45px,5.2vw,76px); line-height: .99; letter-spacing: -.055em; }
 .kercad-landing-hero-copy > p { max-width: 610px; margin: 0; color: rgba(255,255,255,.79); font-size: clamp(17px,1.5vw,21px); line-height: 1.62; }
 .kercad-landing-actions { margin: 34px 0 17px; display: flex; align-items: center; gap: 17px; }
-.kercad-landing-actions button { min-height: 52px; padding: 0 22px; display: inline-flex; align-items: center; gap: 9px; color: var(--theme-dark-link, #125ccc); background: var(--theme-surface); border: 0; border-radius: 10px; font-weight: 850; box-shadow: 0 9px 24px rgba(0,34,91,.22); }
+.kercad-landing-actions button { min-height: 52px; padding: 0 22px; display: inline-flex; align-items: center; gap: 9px; color: var(--theme-dark-link, var(--accent-shade-125ccc)); background: var(--theme-surface); border: 0; border-radius: 10px; font-weight: 850; box-shadow: 0 9px 24px color-mix(in srgb, var(--accent-shade-00225b) 22%, transparent); }
 .kercad-landing-actions a { padding: 15px 8px; color: #fff; text-decoration: none; font-weight: 750; }
 .kercad-landing-hero-copy > small { color: rgba(255,255,255,.6); font-size: 12px; }
-.kercad-landing-product-shot { min-width: 0; padding: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,.36); border-radius: 17px; background: rgba(255,255,255,.15); box-shadow: 0 34px 65px rgba(0,31,80,.35); transform: perspective(1300px) rotateY(-3deg) rotateX(1deg); }
+.kercad-landing-product-shot { min-width: 0; padding: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,.36); border-radius: 17px; background: rgba(255,255,255,.15); box-shadow: 0 34px 65px color-mix(in srgb, var(--accent-shade-001f50) 35%, transparent); transform: perspective(1300px) rotateY(-3deg) rotateX(1deg); }
 .landing-window-bar { height: 38px; padding: 0 12px; display: flex; align-items: center; gap: 6px; color: #557084; background: #edf3f7; }
 .landing-window-bar > span { width: 8px; height: 8px; border-radius: 50%; background: #bdcad2; }.landing-window-bar > span:first-child { background:#f17d74; }.landing-window-bar > span:nth-child(2){background:#e6b84c}.landing-window-bar > span:nth-child(3){background:#67bd7b}
 .landing-window-bar strong { margin: auto; padding-right: 36px; font-size: 10px; }
@@ -9632,12 +9647,12 @@ circle.sketch-preview-line {
 .landing-history section { margin-top: 18px; padding: 9px; display:grid; gap:9px; border:1px solid #dce6ed; border-radius:6px; background:#fff }.landing-history section small{font-weight:800}.landing-history section label{display:flex;justify-content:space-between;color:#7890a0}.landing-history section b{color:#38566b}
 .kercad-landing-proof { padding: 30px clamp(24px,7vw,110px); display:grid; grid-template-columns:repeat(4,1fr); gap:0; border-bottom:1px solid var(--theme-line-dce7ee); background:var(--theme-surface); box-shadow:0 6px 30px rgba(32,68,91,.05) }.kercad-landing-proof div{padding:4px 26px;border-left:1px solid var(--theme-line-dce7ee)}.kercad-landing-proof div:first-child{padding-left:0;border-left:0}.kercad-landing-proof strong,.kercad-landing-proof span{display:block}.kercad-landing-proof strong{font-size:15px}.kercad-landing-proof span{margin-top:5px;color:var(--theme-dark-link, #71889a);font-size:12px}
 .kercad-landing-section { max-width: 1280px; margin: auto; padding: 116px 38px; }
-.kercad-landing-section-heading { max-width: 710px; margin: 0 auto 55px; text-align:center }.kercad-landing-section-heading > span,.kercad-landing-workflow-copy > span,.kercad-landing-education > div > span{color:var(--theme-dark-link, #1677d9)}.kercad-landing-section h2,.kercad-landing-workflow h2,.kercad-landing-education h2{margin:12px 0 16px;font-size:clamp(32px,3.5vw,49px);line-height:1.08;letter-spacing:-.035em}.kercad-landing-section-heading p{color:var(--theme-dark-link, #647e91);font-size:17px;line-height:1.65}
+.kercad-landing-section-heading { max-width: 710px; margin: 0 auto 55px; text-align:center }.kercad-landing-section-heading > span,.kercad-landing-workflow-copy > span,.kercad-landing-education > div > span{color:var(--theme-dark-link, var(--accent-shade-1677d9))}.kercad-landing-section h2,.kercad-landing-workflow h2,.kercad-landing-education h2{margin:12px 0 16px;font-size:clamp(32px,3.5vw,49px);line-height:1.08;letter-spacing:-.035em}.kercad-landing-section-heading p{color:var(--theme-dark-link, #647e91);font-size:17px;line-height:1.65}
 .kercad-landing-feature-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px }.kercad-landing-feature-grid article{min-height:210px;padding:27px;border:1px solid var(--theme-line-d9e4eb);border-radius:13px;background:var(--theme-surface);box-shadow:0 5px 18px rgba(25,63,87,.045)}.kercad-landing-feature-grid i{width:43px;height:43px;display:grid;place-items:center;color:var(--theme-link);background:var(--theme-active);border-radius:10px}.kercad-landing-feature-grid h3{margin:22px 0 10px;font-size:18px}.kercad-landing-feature-grid p{margin:0;color:var(--theme-dark-link, #6d8292);font-size:14px;line-height:1.6}
 .kercad-landing-workflow { padding: 105px clamp(24px,8vw,130px); display:grid; grid-template-columns:minmax(330px,.85fr) minmax(380px,1fr); align-items:center; gap:clamp(55px,10vw,150px); background:var(--theme-active) }.kercad-landing-history-shot{padding:17px;border:1px solid var(--theme-dark-border, #c7d9e6);border-radius:14px;background:var(--theme-surface);box-shadow:0 22px 45px rgba(30,77,109,.13)}.kercad-landing-history-shot header{padding:5px 6px 16px;display:flex;align-items:center;gap:9px;border-bottom:1px solid var(--theme-dark-border, #dfe8ee)}.kercad-landing-history-shot > div{margin-top:8px;min-height:48px;padding:0 13px;display:grid;grid-template-columns:30px 1fr auto;align-items:center;border-radius:8px;background:var(--theme-bg-f5f8fa)}.kercad-landing-history-shot .tree-object{grid-template-columns:30px 1fr auto;background:var(--theme-dark-surface, #edf4f9)}.kercad-landing-history-shot small{color:var(--theme-dark-link, #8194a2)}.kercad-landing-history-shot .tree-operation{margin-left:27px}.tree-operation > span{width:25px;height:25px;display:grid;place-items:center;color:#fff;border-radius:6px;font-size:9px;font-weight:900}.tree-operation.add > span{background:#33a8d3}.tree-operation.hole > span{background:#e36c72}.tree-operation.feature > span{background:#816fdb}
 .kercad-landing-workflow-copy ol{margin:28px 0 0;padding:0;list-style:none;counter-reset:flow}.kercad-landing-workflow-copy li{position:relative;padding:0 0 24px 45px;counter-increment:flow}.kercad-landing-workflow-copy li::before{content:counter(flow);position:absolute;left:0;top:-2px;width:29px;height:29px;display:grid;place-items:center;color:var(--theme-link);background:var(--theme-surface);border:1px solid var(--theme-line-a9c9ef);border-radius:50%;font-size:11px;font-weight:900}.kercad-landing-workflow-copy li:not(:last-child)::after{content:"";position:absolute;left:14px;top:29px;bottom:0;border-left:1px solid var(--theme-line-a9c9ef)}.kercad-landing-workflow-copy li b{font-size:16px}.kercad-landing-workflow-copy li p{margin:5px 0;color:var(--theme-dark-link, #617c90);font-size:14px;line-height:1.55}
-.kercad-landing-education { padding:110px clamp(24px,9vw,150px);display:grid;grid-template-columns:1fr .85fr;align-items:center;gap:80px;color:#fff;background:#113b61}.kercad-landing-education > div:first-child{max-width:650px}.kercad-landing-education > div > span{color:var(--theme-text-63d5f1)}.kercad-landing-education p{color:var(--theme-text-c0d1dd);font-size:17px;line-height:1.7}.kercad-landing-education button{margin-top:18px;min-height:48px;padding:0 19px;display:inline-flex;align-items:center;gap:8px;color:var(--theme-link);background:var(--theme-surface);border:0;border-radius:9px;font-weight:850}.education-cards{display:grid;grid-template-columns:1fr 1fr;gap:13px}.education-cards article{min-height:175px;padding:24px;display:flex;flex-direction:column;gap:14px;border:1px solid rgba(255,255,255,.18);border-radius:12px;background:rgba(255,255,255,.07)}.education-cards svg{color:#61d5f2}.education-cards small{color:#b8cad7;line-height:1.5}
-.kercad-landing-footer{min-height:112px;padding:20px clamp(24px,7vw,110px);display:flex;align-items:center;gap:30px;color:#fff;background:#092c4b}.kercad-landing-footer p{margin-right:auto;color:var(--theme-dark-link, #93abba);font-size:13px}.kercad-landing-footer .kercad-landing-brand{font-size:18px}.kercad-landing-footer .kercad-landing-brand img{width:33px;height:33px}
+.kercad-landing-education { padding:110px clamp(24px,9vw,150px);display:grid;grid-template-columns:1fr .85fr;align-items:center;gap:80px;color:#fff;background:var(--accent-shade-113b61)}.kercad-landing-education > div:first-child{max-width:650px}.kercad-landing-education > div > span{color:var(--theme-text-63d5f1)}.kercad-landing-education p{color:var(--theme-text-c0d1dd);font-size:17px;line-height:1.7}.kercad-landing-education button{margin-top:18px;min-height:48px;padding:0 19px;display:inline-flex;align-items:center;gap:8px;color:var(--theme-link);background:var(--theme-surface);border:0;border-radius:9px;font-weight:850}.education-cards{display:grid;grid-template-columns:1fr 1fr;gap:13px}.education-cards article{min-height:175px;padding:24px;display:flex;flex-direction:column;gap:14px;border:1px solid rgba(255,255,255,.18);border-radius:12px;background:rgba(255,255,255,.07)}.education-cards svg{color:var(--accent-shade-61d5f2)}.education-cards small{color:#b8cad7;line-height:1.5}
+.kercad-landing-footer{min-height:112px;padding:20px clamp(24px,7vw,110px);display:flex;align-items:center;gap:30px;color:#fff;background:var(--accent-shade-092c4b)}.kercad-landing-footer p{margin-right:auto;color:var(--theme-dark-link, #93abba);font-size:13px}.kercad-landing-footer .kercad-landing-brand{font-size:18px}.kercad-landing-footer .kercad-landing-brand img{width:33px;height:33px}
 @media(max-width:980px){.kercad-landing-nav nav{display:none}.kercad-landing-hero{grid-template-columns:1fr;padding-top:65px}.kercad-landing-hero-copy{max-width:750px}.kercad-landing-product-shot{width:min(100%,760px);margin:auto;transform:none}.kercad-landing-feature-grid{grid-template-columns:repeat(2,1fr)}.kercad-landing-workflow{grid-template-columns:1fr}.kercad-landing-history-shot{width:min(100%,600px);margin:auto}.kercad-landing-education{grid-template-columns:1fr}.kercad-landing-proof{grid-template-columns:repeat(2,1fr);row-gap:24px}.kercad-landing-proof div:nth-child(3){padding-left:0;border-left:0}}
 @media(max-width:620px){.kercad-dashboard-about{min-height:38px;padding:0 11px;font-size:11px}.kercad-landing-nav{height:66px;padding:0 15px}.kercad-landing-nav > button{min-height:38px;padding:0 12px;font-size:11px}.kercad-landing-brand{font-size:19px}.kercad-landing-brand img{width:35px;height:35px}.kercad-landing-hero{min-height:0;padding:60px 20px}.kercad-landing-hero h1{font-size:45px}.kercad-landing-actions{align-items:stretch;flex-direction:column}.kercad-landing-actions a{text-align:center}.landing-editor-shot{height:330px;grid-template-columns:34px 1fr}.landing-history{display:none}.landing-demo-model{transform:scale(.78) skewY(-8deg) rotate(-3deg)}.kercad-landing-proof{grid-template-columns:1fr;padding:24px 20px}.kercad-landing-proof div,.kercad-landing-proof div:nth-child(3){padding:8px 0;border:0}.kercad-landing-section{padding:80px 20px}.kercad-landing-feature-grid{grid-template-columns:1fr}.kercad-landing-workflow{padding:80px 20px;gap:60px}.kercad-landing-history-shot{padding:10px}.kercad-landing-history-shot .tree-operation{margin-left:12px}.kercad-landing-education{padding:80px 20px;gap:50px}.education-cards{grid-template-columns:1fr}.kercad-landing-footer{align-items:flex-start;flex-direction:column;gap:14px}.kercad-landing-footer p{margin:0}.kercad-landing-footer button{width:100%;justify-content:center}}
 
@@ -9647,19 +9662,19 @@ circle.sketch-preview-line {
 .kercad-landing :is(a, button):focus-visible { outline: 3px solid #f5bf4f; outline-offset: 5px; }
 .kercad-landing-actions { flex-wrap: wrap; }
 .kercad-landing-actions a { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
-.kercad-landing-hero-copy > small { color: #c5dcf7; }
+.kercad-landing-hero-copy > small { color: var(--accent-shade-c5dcf7); }
 .landing-challenge-steps { display: grid; gap: 20px; margin: 28px 0 8px; padding-left: 24px; }
 .landing-challenge-steps li { padding-left: 8px; }
 .landing-challenge-steps li::marker { color: var(--theme-text-63d5f1); font-weight: 800; }
 .landing-challenge-steps b, .landing-challenge-steps span { display: block; }
 .landing-challenge-steps span { margin-top: 5px; color: var(--theme-text-c0d1dd); font-size: 14px; line-height: 1.6; }
-.landing-challenge-example { min-width: 0; padding: clamp(22px, 3vw, 38px); border: 1px solid #517591; border-radius: 20px; background: var(--theme-surface); color: var(--theme-text-17364e); box-shadow: 0 24px 50px #061e3433; }
+.landing-challenge-example { min-width: 0; padding: clamp(22px, 3vw, 38px); border: 1px solid #517591; border-radius: 20px; background: var(--theme-surface); color: var(--theme-text-17364e); box-shadow: 0 24px 50px var(--accent-shade-061e3433); }
 .landing-challenge-example-heading { display: flex; align-items: center; gap: 12px; color: var(--theme-link); font-weight: 800; font-size: 14px; }
 .landing-challenge-example-heading small { display: block; margin-top: 4px; color: var(--theme-dark-link, #61788b); font-size: 12px; font-weight: 500; }
 .landing-challenge-example h3 { margin: 28px 0 10px; font-size: clamp(26px, 3vw, 36px); letter-spacing: -.035em; line-height: 1.15; }
 .landing-challenge-example > p { margin: 0; color: var(--theme-text-536d80); font-size: 15px; line-height: 1.6; }
 .landing-challenge-example ol { display: grid; gap: 12px; margin: 24px 0; padding: 0; list-style: none; }
-.landing-challenge-example li { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 10px; background: var(--theme-dark-surface, #f0f6fc); }
+.landing-challenge-example li { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 10px; background: var(--theme-dark-surface, var(--accent-shade-f0f6fc)); }
 .landing-challenge-example li > span { flex-shrink: 0; color: var(--theme-link); font-size: 13px; font-weight: 850; }
 .landing-challenge-example li b { font-size: 15px; }
 .landing-challenge-example li small { display: block; margin-top: 4px; color: var(--theme-text-536d80); font-size: 13px; line-height: 1.5; }
@@ -9687,9 +9702,9 @@ circle.sketch-preview-line {
 .kercad-shared-library form { display: grid; gap: 16px; margin: 24px 0; padding: 24px; background: var(--theme-surface); border: 1px solid var(--theme-line-d9e4eb); border-radius: 12px; }
 .kercad-shared-library label { display: grid; gap: 8px; }
 .kercad-shared-library :is(input, select, button) { min-height: 44px; padding: 10px 14px; border: 1px solid var(--theme-line-9fb7c9); border-radius: 8px; font: inherit; }
-.kercad-shared-library button { cursor: pointer; background: #1269eb; color: #fff; }
+.kercad-shared-library button { cursor: pointer; background: var(--accent-solid); color: #fff; }
 .kercad-shared-library button:disabled { opacity: .5; cursor: default; }
-.kercad-shared-library :focus-visible { outline: 3px solid #1269eb; outline-offset: 3px; }
+.kercad-shared-library :focus-visible { outline: 3px solid var(--accent-solid); outline-offset: 3px; }
 .kercad-shared-files { display: grid; gap: 12px; }
 .kercad-shared-files article { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px; background: var(--theme-surface); border: 1px solid var(--theme-line-d9e4eb); border-radius: 10px; }
 .kercad-shared-files strong { overflow-wrap: anywhere; }
@@ -9749,10 +9764,10 @@ input[aria-invalid="true"] { box-shadow: inset 0 0 0 1px #d34545; }
 .parametric-viewport .kercad-annotation-position-handle { pointer-events: auto; }
 .sketch-annotation-context-toolbar { --annotation-button-width: 44px; --annotation-button-height: 43px; --annotation-icon-size: 34px; position: absolute; z-index: 40; top: 12px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; width: max-content; max-width: calc(100% - 150px); padding: 5px; border: 1px solid var(--theme-line-c2d1db-a900); border-radius: 17px; background: var(--theme-page); box-shadow: 0 10px 30px rgba(32, 64, 84, 0.14), 0 2px 6px rgba(32, 64, 84, 0.08); backdrop-filter: blur(14px) saturate(1.15); overflow-x: auto; scrollbar-width: none; touch-action: pan-x; }
 .sketch-annotation-context-toolbar::-webkit-scrollbar { display: none; }
-.sketch-selection-transform-box { fill: none; stroke: #1269eb; }
-.sketch-selection-transform-connector { stroke: #1269eb; }
-.sketch-selection-transform-handle { fill: #fff; stroke: #1269eb; pointer-events: all; }
-.sketch-selection-transform-handle:hover { fill: #dceaff; stroke: #075dcc; }
+.sketch-selection-transform-box { fill: none; stroke: var(--accent-solid); }
+.sketch-selection-transform-connector { stroke: var(--accent-solid); }
+.sketch-selection-transform-handle { fill: #fff; stroke: var(--accent-solid); pointer-events: all; }
+.sketch-selection-transform-handle:hover { fill: var(--accent-shade-dceaff); stroke: var(--accent-shade-075dcc); }
 .sketch-selection-transform-handle.handle-nw, .sketch-selection-transform-handle.handle-se { cursor: nwse-resize; }
 .sketch-selection-transform-handle.handle-ne, .sketch-selection-transform-handle.handle-sw { cursor: nesw-resize; }
 .sketch-selection-transform-handle.handle-n, .sketch-selection-transform-handle.handle-s { cursor: ns-resize; }
@@ -9770,7 +9785,7 @@ input[aria-invalid="true"] { box-shadow: inset 0 0 0 1px #d34545; }
 .sketch-annotation-color-control .kercad-color-preview { width: var(--annotation-icon-size); height: var(--annotation-icon-size); border-radius: 8px; }
 .sketch-annotation-context-toolbar > button:hover, .sketch-annotation-color-control > button:hover { color: var(--theme-text-071f32); background: var(--theme-bg-dfeff7-a820); border-color: var(--theme-line-9bbecf-a700); transform: translateY(1px); }
 .sketch-annotation-context-toolbar > button.active { color: var(--theme-text-006b94); background: var(--theme-bg-def5fb); border-color: var(--theme-line-6fc8df); }
-.sketch-annotation-context-toolbar > button:focus-visible, .sketch-annotation-color-control > button:focus-visible { outline: 2px solid #28a9d2; outline-offset: 1px; }
+.sketch-annotation-context-toolbar > button:focus-visible, .sketch-annotation-color-control > button:focus-visible { outline: 2px solid var(--accent-shade-28a9d2); outline-offset: 1px; }
 .sketch-annotation-context-toolbar .kercad-viewport-edge-treatment-radius { width: 120px; }
 .sketch-annotation-context-toolbar .kercad-annotation-plane-select { width: 64px; max-width: none; }
 .sketch-annotation-inline-editor { display: block; box-sizing: border-box; width: 100%; height: 100%; margin: 0; border: 0; outline: none; resize: none; overflow: hidden; background: transparent; opacity: 1; -webkit-text-fill-color: currentColor; caret-color: currentColor; font-weight: 400; line-height: 1.333333; }

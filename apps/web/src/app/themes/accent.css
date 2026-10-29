@@ -1,0 +1,247 @@
+/* One parent hue and saturation drive the entire application accent family.
+ * Light/dark shade tokens keep their own lightness; CAD and semantic colors stay separate. */
+:root {
+  --accent-base: #1269eb;
+  --accent-hue: 215.9447;
+  --accent-saturation: 85.7708%;
+  --accent-solid: #1269eb;
+  --accent-link-light: #1269eb;
+  --accent-link-dark: #8abaff;
+  --accent-header-dark: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.7) 20%);
+  --accent-shade-008fbe: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 37.2549%);
+  --accent-shade-0098c7: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 39.0196%);
+  --accent-shade-009fd7: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 42.1569%);
+  --accent-shade-009fe3: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 44.5098%);
+  --accent-shade-00a6db: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 42.9412%);
+  --accent-shade-00a7d8: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 42.3529%);
+  --accent-shade-00aeea: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 45.8824%);
+  --accent-shade-056c87: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.08262) 27.4510%);
+  --accent-shade-058db2: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.10219) 35.8824%);
+  --accent-shade-061e3433: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.92468) 11.3725% / 0.2000);
+  --accent-shade-075dcc: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.08854) 41.3725%);
+  --accent-shade-0787b3: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.07814) 36.4706%);
+  --accent-shade-078daf: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.07621) 35.6863%);
+  --accent-shade-078db7: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.07999) 37.2549%);
+  --accent-shade-0799c1: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.08429) 39.2157%);
+  --accent-shade-079bc2: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.08469) 39.4118%);
+  --accent-shade-079bc6: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.08628) 40.1961%);
+  --accent-shade-086f98: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.04931) 31.3725%);
+  --accent-shade-0879a5: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.05807) 33.9216%);
+  --accent-shade-087f9f: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.05420) 32.7451%);
+  --accent-shade-087fa4: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.05744) 33.7255%);
+  --accent-shade-087fa6: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.05869) 34.1176%);
+  --accent-shade-092c4b: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.91606) 16.4706%);
+  --accent-shade-0b75a3: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.01849) 34.1176%);
+  --accent-shade-0b789f: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.01502) 33.3333%);
+  --accent-shade-0b8dbd: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.03765) 39.2157%);
+  --accent-shade-0ba4ca: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.04548) 41.7647%);
+  --accent-shade-0c9dd3: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.04042) 43.7255%);
+  --accent-shade-0d7198: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.98218) 32.3529%);
+  --accent-shade-0d759e: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.98863) 33.5294%);
+  --accent-shade-0e69f1: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.03788) 50.0000%);
+  --accent-shade-0e91bd: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.00509) 39.8039%);
+  --accent-shade-0eadd4: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.02145) 44.3137%);
+  --accent-shade-0fa7cf: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.00834) 43.5294%);
+  --accent-shade-10a8d0: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.99934) 43.9216%);
+  --accent-shade-119dcc: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.98653) 43.3333%);
+  --accent-shade-123f5a: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.77727) 21.1765%);
+  --accent-shade-125ccc: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.97683) 43.5294%);
+  --accent-shade-1269eb: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.00000) 49.6078%);
+  --accent-shade-137897: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.90529) 33.3333%);
+  --accent-shade-139ed0: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.97073) 44.5098%);
+  --accent-shade-143c5c: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.74951) 21.9608%);
+  --accent-shade-147ca8: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.91784) 36.8627%);
+  --accent-shade-1486b5: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.93388) 39.4118%);
+  --accent-shade-14b4dc: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.97158) 47.0588%);
+  --accent-shade-159bc5: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.94128) 42.7451%);
+  --accent-shade-159fc9: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.94532) 43.5294%);
+  --accent-shade-159fd0: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.95207) 44.9020%);
+  --accent-shade-163fa4: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.89009) 36.4706%);
+  --accent-shade-1677c8: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.93482) 43.5294%);
+  --accent-shade-1677d9: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.95126) 46.8627%);
+  --accent-shade-167c9e: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.88090) 35.2941%);
+  --accent-shade-167f9f: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.88248) 35.4902%);
+  --accent-shade-168fba: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.91927) 40.7843%);
+  --accent-shade-168fbd: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.92277) 41.3725%);
+  --accent-shade-169fce: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.94090) 44.7059%);
+  --accent-shade-173f60: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.71522) 23.3333%);
+  --accent-shade-17688a: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.83278) 31.5686%);
+  --accent-shade-176b91: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.84666) 32.9412%);
+  --accent-shade-176f94: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.85227) 33.5294%);
+  --accent-shade-176f95: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.85409) 33.7255%);
+  --accent-shade-178db5: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.90300) 40.0000%);
+  --accent-shade-194784: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.79459) 30.7843%);
+  --accent-shade-1d4ed8: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.88989) 48.0392%);
+  --accent-shade-1f8ec3: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.84605) 44.3137%);
+  --accent-shade-217d9c: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.75876) 37.0588%);
+  --accent-shade-2292b8: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.80222) 42.7451%);
+  --accent-shade-22b9dc: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.85377) 49.8039%);
+  --accent-shade-24b8dc: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.84459) 50.1961%);
+  --accent-shade-2563eb: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.96995) 53.3333%);
+  --accent-shade-258fbd: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.78414) 44.3137%);
+  --accent-shade-278cac: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.73490) 41.3725%);
+  --accent-shade-28a9d2: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.79281) 49.0196%);
+  --accent-shade-31a8cc: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.71429) 49.6078%);
+  --accent-shade-40aad0: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.70542) 53.3333%);
+  --accent-shade-42b6df: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.82826) 56.6667%);
+  --accent-shade-42c7eb: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.94276) 59.0196%);
+  --accent-shade-4399dc: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.79992) 56.2745%);
+  --accent-shade-43b8d7: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.75681) 55.2941%);
+  --accent-shade-43b9e8: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.91172) 58.6275%);
+  --accent-shade-4bbddf: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.81393) 58.4314%);
+  --accent-shade-55add8: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.73078) 59.0196%);
+  --accent-shade-5f95df: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.77727) 62.3529%);
+  --accent-shade-60a5fa: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.09481) 67.8431%);
+  --accent-shade-63d2f1: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.97387) 66.6667%);
+  --accent-shade-65d8f4: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.01045) 67.6471%);
+  --accent-shade-66b8da: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.71181) 62.7451%);
+  --accent-shade-68c6df: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.75815) 64.1176%);
+  --accent-shade-6bcae3: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.79493) 65.4902%);
+  --accent-shade-6dc7dc: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.71500) 64.5098%);
+  --accent-shade-70d8f3: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.98537) 69.6078%);
+  --accent-shade-71d7f0: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.94312) 69.2157%);
+  --accent-shade-72d9f4: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.99715) 70.1961%);
+  --accent-shade-73d8f4: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.99603) 70.3922%);
+  --accent-shade-74bdf0: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.93878) 69.8039%);
+  --accent-shade-74d8f2: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.96647) 70.1961%);
+  --accent-shade-77a4e7: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.81613) 68.6275%);
+  --accent-shade-78abeb: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.86502) 69.6078%);
+  --accent-shade-7bb8ff: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 74.1176%);
+  --accent-shade-7cbcff: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 74.3137%);
+  --accent-shade-88b9ed: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.85953) 73.1373%);
+  --accent-shade-8bbaf7: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.01546) 75.6863%);
+  --accent-shade-91bdf3: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.93654) 76.0784%);
+  --accent-shade-91cce4: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.70635) 73.1373%);
+  --accent-shade-9ac2f4: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.93688) 78.0392%);
+  --accent-shade-9ac6ff: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 80.1961%);
+  --accent-shade-9ec6f8: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.00895) 79.6078%);
+  --accent-shade-9fc3ed: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.79772) 77.6471%);
+  --accent-shade-a9dfeb: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.72594) 79.2157%);
+  --accent-shade-b8d2ee: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.71544) 82.7451%);
+  --accent-shade-bfdbfe: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.13002) 87.2549%);
+  --accent-shade-bfe7f4: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.82390) 85.2941%);
+  --accent-shade-c5dcf5: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.82299) 86.6667%);
+  --accent-shade-c5dcf7: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.88326) 87.0588%);
+  --accent-shade-c5edf7: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.88326) 87.0588%);
+  --accent-shade-cddfff: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 90.1961%);
+  --accent-shade-cfe4fb: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.98653) 89.8039%);
+  --accent-shade-d9f3ff: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 92.5490%);
+  --accent-shade-dceaff: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 93.1373%);
+  --accent-shade-dceef7: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.73208) 91.5686%);
+  --accent-shade-ddf4fd: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.03635) 92.9412%);
+  --accent-shade-ddf8ff: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 93.3333%);
+  --accent-shade-deebff: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 93.5294%);
+  --accent-shade-dff2f7: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.69954) 92.1569%);
+  --accent-shade-dff2f9: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.79772) 92.5490%);
+  --accent-shade-dff3fb: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.90681) 92.9412%);
+  --accent-shade-dff5ff: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 93.7255%);
+  --accent-shade-dff7ff: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 93.7255%);
+  --accent-shade-e0f2fa: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.84204) 92.9412%);
+  --accent-shade-e2f4fb: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.88326) 93.5294%);
+  --accent-shade-e2f7fc: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.94729) 93.7255%);
+  --accent-shade-e4edff: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 94.7059%);
+  --accent-shade-e4f4fa: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.80156) 93.7255%);
+  --accent-shade-e5f4fc: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.92468) 94.3137%);
+  --accent-shade-e5f5f9: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.72869) 93.7255%);
+  --accent-shade-e6f5fb: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.84427) 94.3137%);
+  --accent-shade-e7f8fd: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.98653) 94.9020%);
+  --accent-shade-eaf5fa: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.71748) 94.9020%);
+  --accent-shade-eaf7fb: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.79281) 95.0980%);
+  --accent-shade-eaf8fc: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.87442) 95.2941%);
+  --accent-shade-eaf8fd: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.96313) 95.4902%);
+  --accent-shade-eaf9fd: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.96313) 95.4902%);
+  --accent-shade-ebf7fb: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.77727) 95.2941%);
+  --accent-shade-ecf8ff: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 96.2745%);
+  --accent-shade-ecf9ff: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 96.2745%);
+  --accent-shade-edf4ff: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 96.4706%);
+  --accent-shade-edfbff: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 96.4706%);
+  --accent-shade-eef8fc: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.81613) 96.0784%);
+  --accent-shade-eef9fc: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.81613) 96.0784%);
+  --accent-shade-eefafd: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.92045) 96.2745%);
+  --accent-shade-eefaff: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 96.6667%);
+  --accent-shade-f0f6fc: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.77727) 96.4706%);
+  --accent-shade-f0f6ff: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 97.0588%);
+  --accent-shade-f3fbfd: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.83278) 97.2549%);
+  --accent-shade-f4f8ff: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 97.8431%);
+  --accent-shade-f4fbfd: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.80716) 97.4510%);
+  --accent-shade-f5f8ff: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 98.0392%);
+  --accent-shade-f8fcff: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 98.6275%);
+  --accent-shade-fafeff: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 99.0196%);
+  --accent-shade-001f50: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 15.6863%);
+  --accent-shade-00225b: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 17.8431%);
+  --accent-shade-0079b0: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 34.5098%);
+  --accent-shade-007eae: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 34.1176%);
+  --accent-shade-009cde: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 43.5294%);
+  --accent-shade-009fd3: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 41.3725%);
+  --accent-shade-0491b7: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.11602) 36.6667%);
+  --accent-shade-073071: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.02988) 23.5294%);
+  --accent-shade-0c3e8b: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.98059) 29.6078%);
+  --accent-shade-0c9bc6: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.03265) 41.1765%);
+  --accent-shade-0e9ccc: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.01615) 42.7451%);
+  --accent-shade-123769: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.82466) 24.1176%);
+  --accent-shade-123f79: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.86394) 27.2549%);
+  --accent-shade-16526c: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.77129) 25.4902%);
+  --accent-shade-168fc7: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.93377) 43.3333%);
+  --accent-shade-29aede: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.85436) 51.5686%);
+  --accent-shade-36aecf: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.71640) 51.1765%);
+  --accent-shade-50a8d4: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.70596) 57.2549%);
+  --accent-shade-60cce7: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.86009) 64.1176%);
+  --accent-shade-68cbe8: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.85767) 65.8824%);
+  --accent-shade-effaff: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 96.8627%);
+  --accent-shade-fafcfe: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.77727) 98.8235%);
+  --accent-shade-fafdfe: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.77727) 98.8235%);
+  --accent-shade-073b87: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.05095) 27.8431%);
+  --accent-shade-0953bd: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.05991) 38.8235%);
+  --accent-shade-113b61: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.81817) 22.3529%);
+  --accent-shade-247b9c: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.72869) 37.6471%);
+  --accent-shade-61d5f2: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.98863) 66.4706%);
+  --accent-shade-63cce555: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.83278) 64.3137% / 0.3333);
+  --accent-shade-dff2f8: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.74737) 92.3529%);
+  --accent-shade-e6f7fb: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.84427) 94.3137%);
+  --accent-shade-edf8ff: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 96.4706%);
+  --accent-shade-eef6ff: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 96.6667%);
+}
+
+html[data-theme="dark"] :is(.kercad-dashboard-topbar, .kercad-landing-nav, .kercad-toolbar-titlebar) {
+  background: var(--accent-header-dark);
+}
+
+.kercad-accent-options {
+  display: grid;
+  grid-template-columns: repeat(9, 20px);
+  gap: 2px;
+  padding: 4px 0;
+}
+.kercad-accent-options .kercad-accent-swatch,
+.kercad-accent-options .kercad-accent-custom {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
+  min-height: 20px;
+  padding: 0;
+  margin: 0;
+  border: 1px solid #80808066;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.kercad-header-actions .kercad-header-language-menu .kercad-accent-swatch {
+  width: 20px;
+  min-height: 20px;
+  padding: 0;
+  margin: 0;
+  border: 1px solid #80808066;
+  border-radius: 4px;
+}
+.kercad-accent-options .kercad-accent-swatch:hover { filter: brightness(1.1); }
+.kercad-accent-options .kercad-accent-swatch[aria-pressed="true"],
+.kercad-accent-custom.selected {
+  outline: 2px solid var(--theme-menu-text);
+  outline-offset: -2px;
+}
+.kercad-accent-options .kercad-accent-swatch:focus-visible,
+.kercad-accent-custom:focus-within { outline: 2px solid var(--theme-link); outline-offset: -2px; }
+.kercad-accent-custom { background: conic-gradient(#f33, #ff3, #3f3, #3ff, #33f, #f3f, #f33); }
+.kercad-accent-custom input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
