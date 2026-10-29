@@ -140,7 +140,7 @@ import {
 } from "@/lib/parametricObjects";
 import { globalParametricWorkplanePlacement, objectPlacementForWorkplane, operationPlacementForWorkplane, parametricTransformMatrix, parametricWorkplaneFromFace, parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
 import { patternHandlePlacement } from "@/lib/parametricPatternHandles";
-import { localizedParametricOperationDefinition, parametricOperationCatalog, parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
+import { localizedParametricOperationDefinition, parametricShapeMenuOrder, parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import type { ViewportRenderQuality } from "@/lib/viewportPerformance";
 import type { BuildResult, ExtrudeFeature, ParametricAnnotation, ParametricDocument, ParametricFeature, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, PrimitiveFeature, RevolveFeature, SketchFeature } from "@/types/parametric";
 import type { GridSize, SketchConstraint, SketchPoint, SketchProfile, WorkplaneShape } from "@/types/sketchforge";
@@ -3688,8 +3688,12 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       {shapesOpen ? <div id="kercad-shape-menu" data-kercad-popup="shapes" className="shape-menu-dropdown detached" style={{ top: shapeMenuPosition.top, left: shapeMenuPosition.left }}>
         <div className="shape-menu-title">{t("toolbar.shapes")}</div>
         <div className="shape-menu-list">
-          {parametricOperationCatalog.map((asset) => { const localized = localizedParametricOperationDefinition(asset.kind, locale); return <button className="shape-menu-item" key={asset.kind} onClick={() => addShape(asset.kind)}><img src={asset.menuIcon} alt="" /><span>{localized.name}</span></button>; })}
-          <button className="shape-menu-item" onClick={addText}><img src="/assets/sketchforge/shape-icons-gray/raw/text.png" alt="" /><span>{t("toolbar.text")}</span></button>
+          {parametricShapeMenuOrder.map((kind) => {
+            if (kind === "text") return <button className="shape-menu-item" key={kind} onClick={addText}><img src="/assets/sketchforge/shape-icons-gray/raw/text.png" alt="" /><span>{t("toolbar.text")}</span></button>;
+            const asset = parametricOperationDefinition(kind);
+            const localized = localizedParametricOperationDefinition(kind, locale);
+            return <button className="shape-menu-item" key={kind} onClick={() => addShape(kind)}><img src={asset.menuIcon} alt="" /><span>{localized.name}</span></button>;
+          })}
         </div>
       </div> : null}
 

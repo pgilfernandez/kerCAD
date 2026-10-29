@@ -1,6 +1,11 @@
 export type ParametricPrimitiveKind = "box" | "roundedBox" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear";
 export type ParametricBooleanRole = "add" | "cut" | "intersect";
 
+export const parametricShapeMenuOrder: readonly (ParametricPrimitiveKind | "text")[] = [
+  "box", "roundedBox", "cylinder", "tube", "cone", "pyramid", "polygon",
+  "wedge", "roof", "roundRoof", "torus", "sphere", "halfSphere", "text", "gear",
+];
+
 export type ParametricParameterDefinition = {
   key: "width" | "depth" | "height" | "diameter" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "thickness" | "majorRadius" | "tubeRadius" | "cornerRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius";
   label: string;
