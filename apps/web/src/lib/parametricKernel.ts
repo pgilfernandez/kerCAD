@@ -1,6 +1,7 @@
 import { loadBrepWithOcct, type Brep, type BrepSolid } from "@/lib/brepKernel";
 import type { ParametricBuildProgress } from "@/lib/parametricBuildProgress";
 import { shellWithCorners } from "@/lib/shellKernel";
+import { gearOutlinePoints } from "@/lib/parametricGearProfile";
 import { orientedMeshNormals } from "@/lib/parametricMeshNormals";
 import type { AlignmentItem, AlignmentTarget } from "@/lib/parametricAlignment";
 import { parametricReferenceRenderRecords } from "@/lib/parametricReferenceImport";
@@ -221,19 +222,13 @@ function polygonPrismSolid(brep: Brep, feature: PrimitiveFeature): AnySolid {
 
 function educationalGearSolid(brep: Brep, feature: PrimitiveFeature): AnySolid {
   const outerRadius = feature.width / 2;
-  const toothDepth = Math.min(outerRadius - 0.2, Math.max(0.2, feature.toothDepth ?? 2.5));
+  const toothDepth = feature.toothDepth ?? 2.5;
   const rootRadius = outerRadius - toothDepth;
-  const teeth = Math.min(64, Math.max(6, Math.round(feature.teeth ?? 12)));
-  const toothWidth = Math.max(0.2, Math.PI * 2 * rootRadius / teeth * 0.48);
-  const shapes: AnySolid[] = [brep.cylinder(rootRadius, feature.height, { at: [0, 0, 0] })];
-  for (let index = 0; index < teeth; index += 1) {
-    const tooth = brep.box(toothWidth, toothDepth + 0.2, feature.height, {
-      centered: true,
-      at: [0, rootRadius + toothDepth / 2 - 0.1, feature.height / 2],
-    });
-    shapes.push(brep.rotate(tooth, index * 360 / teeth, { axis: [0, 0, 1] }));
-  }
-  let gear = brep.unwrap(brep.fuseAll(shapes, { simplify: true })) as AnySolid;
+  // Extrude the same continuous toothed outline that the viewport displays.
+  // Independent boxes fused to a cylinder produced a different tooth shape
+  // and could leave disconnected teeth when their overlap was insufficient.
+  const face = brep.unwrap(brep.polygon(gearOutlinePoints(feature.width, feature.depth, toothDepth, feature.teeth ?? 12)));
+  let gear = brep.unwrap(brep.extrude(face, feature.height)) as AnySolid;
   const boreRadius = Math.min(rootRadius - 0.1, Math.max(0, feature.boreRadius ?? 3));
   if (boreRadius > 0) {
     const bore = brep.cylinder(boreRadius, feature.height + 2, { at: [0, 0, -1] });

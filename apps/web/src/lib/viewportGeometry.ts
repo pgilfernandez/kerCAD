@@ -1,3 +1,5 @@
+import { gearOutlinePoints } from "@/lib/parametricGearProfile";
+
 export function operationPreviewWireframePositions(shape: "box" | "roundedBox" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear", width: number, depth: number, height: number, topWidth = width, innerWidth = 0, profileInsetWidth = 0, radialSegments = 64, cornerRadius = 0) {
   const positions: number[] = [];
   const addSegment = (x1: number, y1: number, z1: number, x2: number, y2: number, z2: number) => positions.push(x1, y1, z1, x2, y2, z2);
@@ -86,22 +88,15 @@ export function operationPreviewWireframePositions(shape: "box" | "roundedBox" |
   }
   const segments = 64;
   if (shape === "gear") {
-    const teeth = Math.min(64, Math.max(6, Math.round(radialSegments)));
-    const rootWidth = Math.max(0.2, width - profileInsetWidth * 2);
-    const rootDepth = Math.max(0.2, depth - profileInsetWidth * 2);
-    const outlineCount = teeth * 4;
-    const point = (index: number, z: number) => {
-      const phase = index % 4;
-      const outer = phase === 1 || phase === 2;
-      const angle = index / outlineCount * Math.PI * 2;
-      return [Math.cos(angle) * (outer ? halfWidth : rootWidth / 2), Math.sin(angle) * (outer ? halfDepth : rootDepth / 2), z] as const;
-    };
+    const lowerPoints = gearOutlinePoints(width, depth, profileInsetWidth, radialSegments, bottom);
+    const upperPoints = gearOutlinePoints(width, depth, profileInsetWidth, radialSegments, top);
+    const outlineCount = lowerPoints.length;
     for (let index = 0; index < outlineCount; index += 1) {
       const next = (index + 1) % outlineCount;
-      const lower = point(index, bottom);
-      const lowerNext = point(next, bottom);
-      const upper = point(index, top);
-      const upperNext = point(next, top);
+      const lower = lowerPoints[index];
+      const lowerNext = lowerPoints[next];
+      const upper = upperPoints[index];
+      const upperNext = upperPoints[next];
       addSegment(...lower, ...lowerNext);
       addSegment(...upper, ...upperNext);
       addSegment(...lower, ...upper);
