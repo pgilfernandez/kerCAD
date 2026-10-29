@@ -706,10 +706,12 @@ function applyPolarPatternFeature(brep: Brep, current: AnySolid, feature: Extrac
   const closesCircle = feature.equalSpacing && Math.abs(feature.angle) >= 359.999;
   const angleStep = feature.equalSpacing ? feature.angle / (closesCircle ? feature.count : feature.count - 1) : feature.angle;
   const axis: [number, number, number] = feature.axis === "x" ? [1, 0, 0] : feature.axis === "y" ? [0, 1, 0] : [0, 0, 1];
+  const center = feature.center ?? { x: 0, y: 0, z: 0 };
+  const at: [number, number, number] = [center.x, center.y, center.z];
   for (let index = 1; index < feature.count; index += 1) {
     const angle = angleStep * index;
-    if (added && !brep.isEmpty(added)) result = refinedBooleanSolid(brep, brep.fuse(result, brep.rotate(added, angle, { axis }) as AnySolid));
-    if (removed && !brep.isEmpty(removed)) result = refinedBooleanSolid(brep, brep.cut(result, brep.rotate(removed, angle, { axis }) as AnySolid));
+    if (added && !brep.isEmpty(added)) result = refinedBooleanSolid(brep, brep.fuse(result, brep.rotate(added, angle, { axis, at }) as AnySolid));
+    if (removed && !brep.isEmpty(removed)) result = refinedBooleanSolid(brep, brep.cut(result, brep.rotate(removed, angle, { axis, at }) as AnySolid));
   }
   return result;
 }

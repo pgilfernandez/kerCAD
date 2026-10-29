@@ -887,6 +887,11 @@ function ParametricFeatureInspector({
             <BoundedNumberField label={t("property.count")} value={feature.count} min={2} max={50} step={1} onChange={(value) => onUpdate((draft) => { if (draft.kind === "polarPattern") draft.count = Math.min(50, Math.max(2, Math.round(value))); })} />
             <BoundedNumberField label={feature.equalSpacing ? t("property.totalAngle") : t("property.angularStep")} value={feature.angle} min={-360} max={360} step={1} unit="°" onChange={(value) => onUpdate((draft) => { if (draft.kind === "polarPattern") draft.angle = Math.abs(value) < 0.1 ? (value < 0 ? -0.1 : 0.1) : value; })} />
           </div>
+          <details className="kercad-transform-section"><summary><ChevronRight size={16} /><span>{t("property.rotationCenter")}</span></summary><div>
+            <TransformGroup label={t("property.rotationCenter")} showHeading={false} values={feature.center ?? { x: 0, y: 0, z: 0 }} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => {
+              if (draft.kind === "polarPattern") (draft.center ??= { x: 0, y: 0, z: 0 })[axis] = value;
+            })} />
+          </div></details>
         </>
       ) : null}
 

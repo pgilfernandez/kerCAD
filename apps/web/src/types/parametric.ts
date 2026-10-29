@@ -203,6 +203,8 @@ export type PolarPatternFeature = BaseFeature & {
   source: "body" | "feature";
   sourceFeatureId?: string;
   axis: "x" | "y" | "z";
+  /** Rotation center in object-local coordinates; absent in older projects. */
+  center?: ParametricVector3;
   count: number;
   /** Total sweep when equalSpacing is enabled; otherwise the step angle. */
   angle: number;

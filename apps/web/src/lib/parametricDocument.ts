@@ -297,6 +297,7 @@ export function createPolarPatternFeature(index: number): PolarPatternFeature {
     suppressed: false,
     source: "body",
     axis: "z",
+    center: { x: 0, y: 0, z: 0 },
     count: 6,
     angle: 360,
     equalSpacing: true,
@@ -552,6 +553,8 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
         feature.dependencies = [...feature.dependencies ?? [], { type: "feature", id: feature.sourceFeatureId! }];
       }
       feature.axis = feature.axis === "x" || feature.axis === "y" ? feature.axis : "z";
+      const center = feature.center ?? { x: 0, y: 0, z: 0 };
+      feature.center = { x: Number.isFinite(center.x) ? center.x : 0, y: Number.isFinite(center.y) ? center.y : 0, z: Number.isFinite(center.z) ? center.z : 0 };
       feature.count = Math.min(50, Math.max(2, Math.round(Number.isFinite(feature.count) ? feature.count : 6)));
       feature.angle = Math.min(360, Math.max(-360, Number.isFinite(feature.angle) && Math.abs(feature.angle) >= 0.1 ? feature.angle : 360));
       feature.equalSpacing = typeof feature.equalSpacing === "boolean" ? feature.equalSpacing : true;

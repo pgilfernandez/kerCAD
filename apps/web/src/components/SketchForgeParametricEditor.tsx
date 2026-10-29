@@ -1086,7 +1086,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const selectedSketchPlacement = useMemo(() => selectedSketchId ? viewportPlacementForSketchFeature(document, selectedSketchId) : null, [document, selectedSketchId]);
   const selectedOriginObjectId = modelSelection.length === 1 && selectionKind === "object" ? selectedObjectId : null;
   const selectedReferenceObject = selectedOriginObjectId ? document.objects.find((object) => object.id === selectedOriginObjectId && object.referenceMesh) : undefined;
-  const selectedOperationOriginId = modelSelection.length === 1 ? selectedTransformOperationId : null;
+  const selectedOperationOriginId = modelSelection.length === 1 ? selectedFeature?.kind === "polarPattern" ? selectedFeature.id : selectedTransformOperationId : null;
   const selectedObjectVisible = Boolean(selectedObjectId && document.objects.find((object) => object.id === selectedObjectId)?.visible);
   const viewportSelectedObjectIds = useMemo(() => [...new Set(modelSelection.flatMap((item) => {
     const objectId = objectIdForFeature(document, item.id);
@@ -1120,14 +1120,21 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     ].filter((record) => visibleObjectIds.has(record.objectId));
   }, [build, document.objects, editingEdgeTreatmentId, editingFaceExtrudeId, editingRevolveId, editingShellId, referenceObjectRecords, topologySelectionBuild]);
   const selectedOperationVisible = selectedFeature?.kind !== "sketch" || selectedFeature.visible;
-  const viewportOperationOrigins = useMemo(() => selectedObjectVisible && selectedOperationVisible && selectedOperationOriginId && (selectedBox || selectedSketchPlacement) ? [{
-    featureId: selectedOperationOriginId,
-    visible: showPositionTriad || showRotationTriad,
-    position: selectedSketchPlacement?.position ?? selectedBox?.origin ?? { x: selectedBox?.x ?? 0, y: selectedBox?.y ?? 0, z: selectedBox?.baseZ ?? 0 },
-    rotation: selectedSketchPlacement?.rotation ?? selectedBox?.rotation3d ?? { x: 0, y: 0, z: selectedBox?.rotation ?? 0 },
-    positionVisible: showPositionTriad,
-    rotationEditable: showRotationTriad,
-  }] : [], [selectedBox, selectedObjectVisible, selectedOperationVisible, selectedOperationOriginId, selectedSketchPlacement, showPositionTriad, showRotationTriad]);
+  const viewportOperationOrigins = useMemo(() => {
+    if (selectedFeature?.kind === "polarPattern" && selectedObjectVisible && selectedOperationOriginId) {
+      const object = document.objects.find((candidate) => candidate.id === selectedFeature.objectId);
+      if (!object) return [];
+      return [{ featureId: selectedFeature.id, visible: showPositionTriad, position: patternHandlePlacement(object, selectedFeature.axis, selectedFeature.center).origin, rotation: object.transform.rotation, positionVisible: showPositionTriad, rotationEditable: false }];
+    }
+    return selectedObjectVisible && selectedOperationVisible && selectedOperationOriginId && (selectedBox || selectedSketchPlacement) ? [{
+      featureId: selectedOperationOriginId,
+      visible: showPositionTriad || showRotationTriad,
+      position: selectedSketchPlacement?.position ?? selectedBox?.origin ?? { x: selectedBox?.x ?? 0, y: selectedBox?.y ?? 0, z: selectedBox?.baseZ ?? 0 },
+      rotation: selectedSketchPlacement?.rotation ?? selectedBox?.rotation3d ?? { x: 0, y: 0, z: selectedBox?.rotation ?? 0 },
+      positionVisible: showPositionTriad,
+      rotationEditable: showRotationTriad,
+    }] : [];
+  }, [document.objects, selectedFeature, selectedBox, selectedObjectVisible, selectedOperationVisible, selectedOperationOriginId, selectedSketchPlacement, showPositionTriad, showRotationTriad]);
   // Camera orientation updates must not recreate GPU manipulator resources.
   const activeViewportObjectOrigins = useMemo(() => editingSection
     ? [{ objectId: SECTION_PLANE_ID, visible: true, position: sectionPose.position, rotation: sectionPose.rotation, positionVisible: sectionPositionVisible, rotationEditable: sectionRotationVisible }]
@@ -2543,7 +2550,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     const object = document.objects.find((candidate) => candidate.id === selectedFeature.objectId);
     if (!object || object.visible === false) return null;
     if (selectedFeature.kind === "polarPattern") {
-      const placement = patternHandlePlacement(object, selectedFeature.axis);
+      const placement = patternHandlePlacement(object, selectedFeature.axis, selectedFeature.center);
       return { origin: placement.origin, axis: placement.direction, angle: selectedFeature.angle, radius: 25 };
     }
     const objectMatrix = parametricTransformMatrix(object.transform);
@@ -4038,7 +4045,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/assets/kercad/alignment/mode-group.svg" alt="" draggable={false} />
             </button>
-          </> : selectedEdgeTreatmentFeature || pendingEdgeTreatment || pendingShell || editingMirrorPlaneId || selectedFeature?.kind === "shell" || selectedFeature?.kind === "mirror" || selectedFeature?.kind === "linearPattern" || selectedFeature?.kind === "polarPattern" ? null : <>
+          </> : selectedFeature?.kind === "polarPattern" ? <>
+            <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
+            <Tool label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>
+          </> : selectedEdgeTreatmentFeature || pendingEdgeTreatment || pendingShell || editingMirrorPlaneId || selectedFeature?.kind === "shell" || selectedFeature?.kind === "mirror" || selectedFeature?.kind === "linearPattern" ? null : <>
             <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
             <Tool label={t("camera.rotationTriad")} active={showRotationTriad} onClick={() => setShowRotationTriad((visible) => !visible)}><ToolbarRotationManipulatorIcon /></Tool>
             {selectionKind === "feature" && <Tool className="kercad-parameter-handles-toggle" label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>}

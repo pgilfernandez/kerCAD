@@ -118,6 +118,7 @@ export function resetParametricFeature(document: ParametricDocument, featureId: 
     feature.source = "body";
     delete feature.sourceFeatureId;
     feature.axis = "z";
+    feature.center = { x: 0, y: 0, z: 0 };
     feature.count = 6;
     feature.angle = 360;
     feature.equalSpacing = true;
@@ -876,7 +877,7 @@ export function applyParametricSelectionWorldDelta(
     transformParametricObjectTopologyHints(document, id, previousTransform);
     return;
   }
-  const feature = document.features.find((candidate): candidate is MovableOperation => candidate.id === id && isMovableOperation(candidate));
+  const feature = document.features.find((candidate): candidate is MovableOperation | Extract<ParametricFeature, { kind: "polarPattern" }> => candidate.id === id && (isMovableOperation(candidate) || candidate.kind === "polarPattern"));
   const object = feature ? document.objects.find((candidate) => candidate.id === feature.objectId) : null;
   if (!feature || !object) return;
   const unrotated = inverseRotateVector(delta, object.transform.rotation);
@@ -885,7 +886,12 @@ export function applyParametricSelectionWorldDelta(
     y: unrotated.y / object.transform.scale.y,
     z: unrotated.z / object.transform.scale.z,
   };
-  if (feature.kind === "sketch") {
+  if (feature.kind === "polarPattern") {
+    const center = feature.center ??= { x: 0, y: 0, z: 0 };
+    center.x += local.x;
+    center.y += local.y;
+    center.z += local.z;
+  } else if (feature.kind === "sketch") {
     feature.x += local.x;
     feature.y += local.y;
     feature.offset += local.z;
