@@ -3688,8 +3688,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       {shapesOpen ? <div id="kercad-shape-menu" data-kercad-popup="shapes" className="shape-menu-dropdown detached" style={{ top: shapeMenuPosition.top, left: shapeMenuPosition.left }}>
         <div className="shape-menu-title">{t("toolbar.shapes")}</div>
         <div className="shape-menu-list">
-          {parametricOperationCatalog.map((asset) => { const localized = localizedParametricOperationDefinition(asset.kind, locale); return <button className="shape-menu-item" key={asset.kind} onClick={() => addShape(asset.kind)}><img src={asset.menuIcon} alt="" /><span>{localized.name}<small>{selectedObjectId ? t("notice.newOperationInObject") : localized.description}</small></span></button>; })}
-          <button className="shape-menu-item" onClick={addText}><img src="/assets/sketchforge/shape-icons-gray/raw/text.png" alt="" /><span>{t("toolbar.text")}<small>{selectedObjectId ? t("toolbar.textInObject") : t("toolbar.extrudedText")}</small></span></button>
+          {parametricOperationCatalog.map((asset) => { const localized = localizedParametricOperationDefinition(asset.kind, locale); return <button className="shape-menu-item" key={asset.kind} onClick={() => addShape(asset.kind)}><img src={asset.menuIcon} alt="" /><span>{localized.name}</span></button>; })}
+          <button className="shape-menu-item" onClick={addText}><img src="/assets/sketchforge/shape-icons-gray/raw/text.png" alt="" /><span>{t("toolbar.text")}</span></button>
         </div>
       </div> : null}
 
