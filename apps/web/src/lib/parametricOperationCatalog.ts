@@ -105,7 +105,7 @@ export const parametricOperationCatalog: ParametricOperationDefinition[] = [
     kind: "torus",
     name: "Toro",
     description: "Toro paramétrico exacto con radios mayor y de tubo editables",
-    menuIcon: "assets/sketchforge/shape-icons-gray/torus.png",
+    menuIcon: "assets/kercad/toolbar-3d/shapes/torus.svg",
     roles: roles("torus"),
     parameters: [dimension("majorRadius", "Radio", 12), dimension("tubeRadius", "Espesor", 4)],
   },
