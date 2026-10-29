@@ -3,6 +3,8 @@ import "./globals.css";
 import "./themes/dark-overrides.css";
 import { APP_THEME_INITIAL_SCRIPT } from "@/lib/appTheme";
 import { BRAND_STORAGE_INITIAL_SCRIPT } from "@/lib/legacyBrand";
+import { LoadingCampaignPreloader } from "@/components/LoadingCampaignPreloader";
+import { projectLoadingCampaign } from "@/lib/projectLoadingCampaign";
 
 export const metadata: Metadata = {
   title: "kerCAD — Parametric CAD for learning",
@@ -16,8 +18,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" data-theme="light" suppressHydrationWarning>
-      <head><script dangerouslySetInnerHTML={{ __html: BRAND_STORAGE_INITIAL_SCRIPT + APP_THEME_INITIAL_SCRIPT }} /></head>
-      <body suppressHydrationWarning>{children}</body>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: BRAND_STORAGE_INITIAL_SCRIPT + APP_THEME_INITIAL_SCRIPT }} />
+        {projectLoadingCampaign.kind === "image" && <link rel="preload" as="image" href={projectLoadingCampaign.src} fetchPriority="high" />}
+      </head>
+      <body suppressHydrationWarning><LoadingCampaignPreloader />{children}</body>
     </html>
   );
 }

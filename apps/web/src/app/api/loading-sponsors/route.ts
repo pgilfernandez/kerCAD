@@ -1,0 +1,28 @@
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import { NextResponse } from "next/server";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export async function GET() {
+  const cwd = process.cwd();
+  const webRoot = path.basename(cwd) === "web" && path.basename(path.dirname(cwd)) === "apps"
+    ? cwd : path.join(cwd, "apps", "web");
+  const directory = path.join(webRoot, "public", "sponsors");
+  let images: string[] = [];
+  try {
+    const entries = await fs.readdir(directory, { withFileTypes: true });
+    images = (await Promise.all(entries
+      .filter((entry) => entry.isFile() && !entry.name.startsWith(".") && /\.(?:avif|webp|png|jpe?g|gif|svg)$/i.test(entry.name))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map(async (entry) => {
+        try {
+          const stat = await fs.lstat(path.join(directory, entry.name));
+          if (!stat.isFile() || stat.isSymbolicLink()) return null;
+          return `/sponsors/${encodeURIComponent(entry.name)}?v=${stat.size}-${Math.trunc(stat.mtimeMs)}`;
+        } catch { return null; }
+      }))).filter((src): src is string => src !== null);
+  } catch { /* An absent sponsor folder must not prevent opening projects. */ }
+  return NextResponse.json({ images }, { headers: { "Cache-Control": "no-store" } });
+}

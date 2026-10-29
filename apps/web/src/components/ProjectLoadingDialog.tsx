@@ -5,11 +5,11 @@ import { createPortal } from "react-dom";
 import { HeaderToolbarIcon } from "@/components/icons";
 import { useAccessibleDialog } from "@/components/useAccessibleDialog";
 import { kercadTranslate, type KercadLocale } from "@/lib/kercadI18n";
-import { projectLoadingCampaign as campaign } from "@/lib/projectLoadingCampaign";
+import { consumePreparedLoadingCampaign, peekPreparedLoadingCampaign, prepareProjectLoadingCampaign, projectLoadingCampaign } from "@/lib/projectLoadingCampaign";
 import type { ParametricBuildProgress } from "@/lib/parametricBuildProgress";
 import "./projectLoadingDialog.css";
 
-const MINIMUM_LOADING_MS = 3_000;
+const MINIMUM_LOADING_MS = 2_000;
 
 export function ProjectLoadingDialog({ projectName, locale, ready, progress, onFinished }: {
   projectName: string;
@@ -20,7 +20,24 @@ export function ProjectLoadingDialog({ projectName, locale, ready, progress, onF
 }) {
   const t = (key: Parameters<typeof kercadTranslate>[1]) => kercadTranslate(locale, key);
   const [minimumElapsed, setMinimumElapsed] = useState(false);
+  const [initialCampaign] = useState(peekPreparedLoadingCampaign);
+  const [campaign, setCampaign] = useState(initialCampaign ?? projectLoadingCampaign);
   const dialogRef = useAccessibleDialog<HTMLElement>(true, () => {});
+  useEffect(() => {
+    let active = true;
+    if (initialCampaign) {
+      consumePreparedLoadingCampaign(initialCampaign);
+      void prepareProjectLoadingCampaign("low");
+    } else {
+      void prepareProjectLoadingCampaign().then((loaded) => {
+        if (!active) return;
+        setCampaign(loaded);
+        consumePreparedLoadingCampaign(loaded);
+        void prepareProjectLoadingCampaign("low");
+      });
+    }
+    return () => { active = false; };
+  }, [initialCampaign]);
   useEffect(() => {
     const timer = window.setTimeout(() => setMinimumElapsed(true), MINIMUM_LOADING_MS);
     return () => window.clearTimeout(timer);
@@ -46,7 +63,7 @@ export function ProjectLoadingDialog({ projectName, locale, ready, progress, onF
       <figure className="kercad-project-loading-campaign">
         {campaign.kind === "video"
           ? <video src={campaign.src} poster={campaign.poster} muted autoPlay loop playsInline preload="metadata" aria-label={t("loading.campaign")} />
-          : <img src={campaign.src} alt={t("loading.campaign")} />}
+          : <img src={campaign.src} alt={t("loading.campaign")} width={960} height={480} loading="eager" fetchPriority="high" decoding="async" onError={() => setCampaign(projectLoadingCampaign)} />}
       </figure>
       <footer>
         <p>{t("loading.freeOpenSource")}</p>
