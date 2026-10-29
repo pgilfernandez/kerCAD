@@ -276,10 +276,15 @@ export function ToolbarDropToWorkplaneIcon() {
   return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/drop-to-workplane.svg" alt="" draggable={false} />;
 }
 
+function ProjectionToolbarIcon({ file }: { file: "perspective" | "orthographic" }) {
+  const mask = `url("/assets/kercad/toolbar-vertical/${file}.svg")`;
+  return <span aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" style={{ width: 32, height: 32, backgroundColor: "currentColor", maskImage: mask, WebkitMaskImage: mask, maskSize: "contain", WebkitMaskSize: "contain", maskRepeat: "no-repeat", WebkitMaskRepeat: "no-repeat", maskPosition: "center", WebkitMaskPosition: "center" }} />;
+}
+
 export function ToolbarPerspectiveIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-vertical/perspective.svg" alt="" draggable={false} />;
+  return <ProjectionToolbarIcon file="perspective" />;
 }
 
 export function ToolbarOrthographicIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-vertical/orthographic.svg" alt="" draggable={false} />;
+  return <ProjectionToolbarIcon file="orthographic" />;
 }
