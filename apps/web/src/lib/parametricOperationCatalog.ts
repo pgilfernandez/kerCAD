@@ -74,6 +74,14 @@ export const parametricOperationCatalog: ParametricOperationDefinition[] = [
     parameters: [dimension("radius", "Radio", 10)],
   },
   {
+    kind: "halfSphere",
+    name: "Semiesfera",
+    description: "Media esfera o semielipsoide paramétrico exacto",
+    menuIcon: "assets/sketchforge/shape-icons-gray/half-sphere.png",
+    roles: roles("halfSphere"),
+    parameters: [dimension("radius", "Radio", 10), dimension("height", "Altura", 10)],
+  },
+  {
     kind: "cone",
     name: "Cono",
     description: "Cono o tronco de cono paramétrico exacto",
@@ -92,14 +100,6 @@ export const parametricOperationCatalog: ParametricOperationDefinition[] = [
     menuIcon: "assets/sketchforge/shape-icons-gray/tube.png",
     roles: roles("tube"),
     parameters: [dimension("outerRadius", "Radio", 10), dimension("thickness", "Espesor", 4), dimension("height", "Altura")],
-  },
-  {
-    kind: "halfSphere",
-    name: "Semiesfera",
-    description: "Media esfera o semielipsoide paramétrico exacto",
-    menuIcon: "assets/sketchforge/shape-icons-gray/half-sphere.png",
-    roles: roles("halfSphere"),
-    parameters: [dimension("radius", "Radio", 10), dimension("height", "Altura", 10)],
   },
   {
     kind: "torus",
