@@ -63,6 +63,7 @@ import {
   ToolbarResetWorkplaneIcon,
 } from "@/components/icons";
 import { cloneDocument, createDrawnSketchFeature, createEmptyDocument, createExtrudeFeature, createFaceExtrudeFeature, createFilletFeature, createLinearPatternFeature, createMirrorFeature, createObjectBooleanFeature, createPolarPatternFeature, createRevolveFeature, createShellFeature, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
+import { createLocalId } from "@/lib/localIds";
 import { assertValidParametricDependencies } from "@/lib/parametricDependencyGraph";
 import { assertValidParametricTopology, parametricTopologyEditingSourceFeature, parametricTopologySelectionsMatch, recoverParametricTopologyReferenceInRecords, transformParametricObjectTopologyHints } from "@/lib/parametricTopology";
 import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint, parametricObjectGeometryFingerprint } from "@/lib/parametricBuildState";
@@ -1428,7 +1429,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   };
 
   const pasteSketchAnnotation = (source: ParametricAnnotation) => {
-    const annotation = structuredClone(source); annotation.id = crypto.randomUUID();
+    const annotation = structuredClone(source); annotation.id = createLocalId("annotation");
     const points = annotation.kind === "text" || annotation.kind === "circle" ? [annotation.position] : annotation.kind === "angle" ? [annotation.start, annotation.center, annotation.end] : [annotation.start, annotation.end];
     for (const point of points) { point.x += 5; point.y += 5; }
     setSketchAnnotations((annotations) => { annotation.name = nextAnnotationName(annotations, t(`annotation.${annotation.kind}`)); annotations.push(annotation); });
@@ -3945,7 +3946,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           onCancelAnnotationTool={() => setAnnotationTool(null)}
           onEditAnnotation={setEditingAnnotationId}
           onPlaceAnnotation={(kind, start, end, center) => {
-            const id = crypto.randomUUID();
+            const id = createLocalId("annotation");
             mutate((draft) => {
               draft.annotations ??= [];
               const common = { id, name: nextAnnotationName(draft.annotations, t(`annotation.${kind}`)), visible: true };
