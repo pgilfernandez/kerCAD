@@ -3711,6 +3711,7 @@ button {
 .kercad-welcome-dialog button:disabled { opacity: .45; cursor: not-allowed; }
 .kercad-getting-started-content { box-sizing: border-box; max-height: inherit; overflow-y: auto; padding: 14px 16px; border-radius: inherit; }
 .kercad-getting-started-pointer { position: absolute; overflow: visible; pointer-events: none; }
+.kercad-getting-started-pointer path { stroke: var(--theme-dark-border, #9ac2f4); }
 .kercad-getting-started-pointer.top { top: -10px; }
 .kercad-getting-started:has(header:hover) .kercad-getting-started-pointer.top path { fill: #f7f7f8; }
 .kercad-getting-started-pointer.right { right: -10px; transform: rotate(90deg); }
