@@ -351,9 +351,11 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [newDocumentOpen, setNewDocumentOpen] = useState(false);
   const [projectRenameOpen, setProjectRenameOpen] = useState(false);
   const [projectRenameDraft, setProjectRenameDraft] = useState("");
+  const [projectAuthorDraft, setProjectAuthorDraft] = useState("");
   const projectRenameDialogRef = useAccessibleDialog<HTMLFormElement>(projectRenameOpen, () => setProjectRenameOpen(false));
   const openProjectRename = () => {
     setProjectRenameDraft(document.name);
+    setProjectAuthorDraft(document.author ?? document.creator ?? "");
     setProjectRenameOpen(true);
   };
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -630,7 +632,11 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [authorPreferenceLoaded, setAuthorPreferenceLoaded] = useState(false);
   const [sharedSaveMessage, setSharedSaveMessage] = useState("");
   useEffect(() => {
-    try { setSharedAuthor(localStorage.getItem("kercad.shared-author") ?? ""); } catch {}
+    let author = initialDocument.author ?? initialDocument.creator ?? "";
+    if (!author) {
+      try { author = localStorage.getItem("kercad.shared-author") ?? ""; } catch {}
+    }
+    setSharedAuthor(author);
     setAuthorPreferenceLoaded(true);
   }, []);
   useEffect(() => {
@@ -1010,12 +1016,13 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     setNotice({ type: "error", text: `${removed} ${t(removed === 1 ? "notice.topologyReferenceRemoved" : "notice.topologyReferencesRemoved")}` });
   }, [build.objectRecords, editingEdgeTreatmentId, editingFaceExtrudeId, editingRevolveId, editingShellId, selectedTopologyEdges, selectedTopologyFaces, topologySelectionBuild]);
 
-  const commit = useCallback((next: ParametricDocument) => {
+  const commit = useCallback((next: ParametricDocument, authorOverride?: string) => {
     if (!next.annotations?.length) delete next.annotationGroup;
     next.updatedAt = Date.now();
-    if (sharedAuthor.trim()) {
-      next.creator = next.creator || next.author || sharedAuthor.trim();
-      next.author = sharedAuthor.trim();
+    const author = authorOverride ?? sharedAuthor.trim();
+    if (author) {
+      next.creator = next.creator || next.author || author;
+      next.author = author;
     }
     // Keep the newest committed document available synchronously. A numeric
     // field commits on blur immediately before the brand button's click, so a
@@ -1028,20 +1035,35 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const finishTransaction = useCallback(() => setHistory((current) => finishHistoryTransaction(current)), []);
   const cancelTransaction = useCallback(() => setHistory(cancelHistoryTransaction), []);
 
-  const mutate = useCallback((mutator: (draft: ParametricDocument) => void) => {
+  const mutate = useCallback((mutator: (draft: ParametricDocument) => void, authorOverride?: string) => {
     const next = cloneDocument(document);
     try {
       mutator(next);
       localizeNewDocumentEntries(document, next, locale);
       assertValidParametricDependencies(next);
       assertValidParametricTopology(next);
-      commit(next);
+      commit(next, authorOverride);
       return true;
     } catch (error) {
       setNotice({ type: "error", text: error instanceof Error ? error.message : t("notice.invalidDependency") });
       return false;
     }
   }, [commit, document, locale]);
+
+  const saveProjectDetails = () => {
+    const name = projectRenameDraft.trim();
+    const author = projectAuthorDraft.trim();
+    if (!name) return false;
+    if (name !== document.name || author !== (document.author ?? "")) {
+      if (!mutate((draft) => {
+        draft.name = name;
+        draft.creator = draft.creator || draft.author || author || undefined;
+        draft.author = author || undefined;
+      }, author)) return false;
+    }
+    setSharedAuthor(author);
+    return true;
+  };
 
   const primarySelection = modelSelection.at(-1) ?? null;
   // A selected operation exports its owning object's final body, never a
@@ -4444,20 +4466,18 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         <div className="kercad-dialog-backdrop" onPointerDown={() => setProjectRenameOpen(false)}>
           <form ref={projectRenameDialogRef} className="kercad-new-document-dialog" role="dialog" aria-modal="true" aria-labelledby="kercad-project-rename-title" tabIndex={-1} onPointerDown={(event) => event.stopPropagation()} onSubmit={(event) => {
             event.preventDefault();
-            const name = projectRenameDraft.trim();
-            if (!name) return;
-            if (name === document.name || mutate((draft) => { draft.name = name; })) setProjectRenameOpen(false);
+            if (saveProjectDetails()) setProjectRenameOpen(false);
           }}>
             <header><strong id="kercad-project-rename-title">{locale === "es" ? "Cambiar nombre del proyecto" : "Rename project"}</strong><button type="button" aria-label={t("common.close")} onClick={() => setProjectRenameOpen(false)}><X /></button></header>
             <label className="kercad-project-rename-field"><span>{t("settings.name")}</span><input autoFocus value={projectRenameDraft} maxLength={120} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setProjectRenameDraft(event.target.value)} /></label>
+            <label className="kercad-project-rename-field"><span>{t("project.author")}</span><input value={projectAuthorDraft} maxLength={160} autoComplete="name" onChange={(event) => setProjectAuthorDraft(event.target.value)} /></label>
             <section className="kercad-project-cover-controls">
               <strong>{t("project.cover")}</strong>
               {document.thumbnailOverride && <img src={document.thumbnailOverride} alt={t("project.cover")} />}
               <small>{t(document.thumbnailOverride ? "project.coverManual" : "project.coverAutomatic")}</small>
               <div><button type="button" disabled={Boolean(sketchSession)} onClick={() => {
                 if (sketchSession) return;
-                const name = projectRenameDraft.trim();
-                if (name && name !== document.name) mutate((draft) => { draft.name = name; });
+                if (!saveProjectDetails()) return;
                 setProjectRenameOpen(false); setPendingChallengeCapture(null); setPendingProjectCapture(true);
               }}><Camera size={18} />{t("project.captureCover")}</button>
               <button type="button" disabled={!document.thumbnailOverride} onClick={() => {

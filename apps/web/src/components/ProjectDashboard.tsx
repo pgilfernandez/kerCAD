@@ -25,7 +25,7 @@ type Props = {
   onOpen: (project: ProjectLibraryEntry) => void;
   onImport: (file: File) => void;
   onDelete: (project: ProjectLibraryEntry) => void;
-  onRename: (project: ProjectLibraryEntry, name: string) => void;
+  onRename: (project: ProjectLibraryEntry, name: string, author: string) => void;
   onDuplicate: (project: ProjectLibraryEntry) => void;
   onExport: (project: ProjectLibraryEntry) => void;
   challenges: KercadChallenge[];
@@ -70,6 +70,7 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
   const [renaming, setRenaming] = useState<ProjectLibraryEntry | null>(null);
   const [deleting, setDeleting] = useState<ProjectLibraryEntry | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
+  const [authorDraft, setAuthorDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const challengeInputRef = useRef<HTMLInputElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
@@ -95,11 +96,12 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
   }, [renaming]);
   const beginRename = (project: ProjectLibraryEntry) => {
     setRenameDraft(project.name);
+    setAuthorDraft(project.document.author ?? project.document.creator ?? "");
     setRenaming(project);
   };
   const commitRename = () => {
     if (!renaming || !renameDraft.trim()) return;
-    onRename(renaming, renameDraft.trim());
+    onRename(renaming, renameDraft.trim(), authorDraft.trim());
     setRenaming(null);
   };
   return <main className="kercad-dashboard-shell" aria-busy={busy}>
@@ -183,6 +185,7 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
       <form className="kercad-rename-dialog" role="dialog" aria-modal="true" aria-labelledby="kercad-project-rename-title" onPointerDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); commitRename(); }}>
         <header><strong id="kercad-project-rename-title">{t("Rename project")}</strong><button type="button" aria-label={t("Cancel")} onClick={() => setRenaming(null)}><X size={18} /></button></header>
         <label><span>{t("Name")}</span><input ref={renameInputRef} value={renameDraft} maxLength={80} onChange={(event) => setRenameDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") setRenaming(null); }} /></label>
+        <label><span>{t("Author")}</span><input value={authorDraft} maxLength={160} autoComplete="name" onChange={(event) => setAuthorDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") setRenaming(null); }} /></label>
         <footer><button type="button" onClick={() => setRenaming(null)}>{t("Cancel")}</button><button className="primary" type="submit" disabled={!renameDraft.trim()}>{t("OK")}</button></footer>
       </form>
     </div> : null}

@@ -3,6 +3,7 @@ import type { KercadLocale } from "@/lib/kercadI18n";
 // English is the source/fallback language. Project and challenge content is
 // user-authored and must never be translated as interface text.
 const es = {
+  "Author": "Autor",
   "Duplicate project": "Duplicar proyecto", "Export project": "Exportar proyecto",
   "{name} (copy)": "{name} (copia)", "Could not duplicate the project.": "No se pudo duplicar el proyecto.", "Could not export the project.": "No se pudo exportar el proyecto.",
   "Import project or 3D file": "Importar proyecto o archivo 3D",
