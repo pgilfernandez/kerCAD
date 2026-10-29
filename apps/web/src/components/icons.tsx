@@ -221,7 +221,11 @@ export function ToolbarFilletIcon() {
   return <KercadOperationImage file="fillet.svg" />;
 }
 
-export function ToolbarEditOperationIcon() {
+export function ToolbarEditOperationIcon({ inheritColor = false }: { inheritColor?: boolean } = {}) {
+  if (inheritColor) {
+    const mask = `url("${operationIconPath("edit.svg")}")`;
+    return <span aria-hidden="true" className="kercad-edit-theme-icon" style={{ maskImage: mask, WebkitMaskImage: mask }} />;
+  }
   return <KercadOperationImage file="edit.svg" />;
 }
 

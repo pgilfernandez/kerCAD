@@ -144,7 +144,7 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
                 <span className="challenge-copy"><strong>{challenge.title}</strong><span>{challenge.description || t("Guided kerCAD activity")}</span>{challenge.categories?.length ? <span className="challenge-categories">{challenge.categories.map((category) => <i key={category}>{category}</i>)}</span> : null}{challenge.author ? <em>{t("By {name}", { name: challenge.author })}</em> : null}</span>
               </button>
               <nav className="challenge-actions" aria-label={t("Actions for {name}", { name: challenge.title })}>
-                <button type="button" title={t("Edit challenge")} aria-label={t("Edit {name}", { name: challenge.title })} onClick={() => onEditChallenge(challenge)}><ToolbarEditOperationIcon /></button>
+                <button type="button" title={t("Edit challenge")} aria-label={t("Edit {name}", { name: challenge.title })} onClick={() => onEditChallenge(challenge)}><ToolbarEditOperationIcon inheritColor /></button>
                 <button type="button" title={t("Duplicate challenge")} aria-label={t("Duplicate {name}", { name: challenge.title })} disabled={busy} onClick={() => onDuplicateChallenge(challenge)}><Copy size={17} /></button>
                 <button type="button" title={t("Export challenge")} aria-label={t("Export {name}", { name: challenge.title })} onClick={() => onExportChallenge(challenge)}><Download size={17} /></button>
                 <button className="challenge-delete" type="button" title={t("Remove challenge")} aria-label={t("Remove {name}", { name: challenge.title })} onClick={() => onDeleteChallenge(challenge)}><Trash2 size={17} /></button>
@@ -175,7 +175,7 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
               <span className={`card-preview accent-${index % 4}`}>{project.thumbnail ? <img src={project.thumbnail} alt="" /> : <><span className="preview-grid" /><strong>{project.document.objects.length ? t(project.document.objects.length === 1 ? "{count} object" : "{count} objects", { count: project.document.objects.length }) : t("Empty design")}</strong></>}</span>
               <span className="card-copy"><strong>{project.name}</strong><small>{updatedLabel(project.updatedAt, locale)} · {project.document.author?.trim() || project.document.creator?.trim() || t("Author not provided")}</small></span>
             </button>
-            <button className="card-rename" type="button" aria-label={t("Rename {name}", { name: project.name })} title={t("Rename project")} onClick={() => beginRename(project)}><ToolbarEditOperationIcon /></button>
+            <button className="card-rename" type="button" aria-label={t("Rename {name}", { name: project.name })} title={t("Rename project")} onClick={() => beginRename(project)}><ToolbarEditOperationIcon inheritColor /></button>
             <button className="card-duplicate" type="button" disabled={busy} aria-label={t("Duplicate {name}", { name: project.name })} title={t("Duplicate project")} onClick={() => onDuplicate(project)}><Copy size={17} /></button>
             <button className="card-export" type="button" disabled={busy} aria-label={t("Export {name}", { name: project.name })} title={t("Export project")} onClick={() => onExport(project)}><Download size={17} /></button>
             <button className="card-delete" type="button" aria-label={t("Delete {name}", { name: project.name })} title={t("Delete project")} onClick={() => setDeleting(project)}><Trash2 size={17} /></button>
