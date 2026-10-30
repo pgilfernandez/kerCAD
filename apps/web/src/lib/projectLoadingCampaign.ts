@@ -9,7 +9,7 @@ export type ProjectLoadingCampaign = {
 export const projectLoadingCampaign: ProjectLoadingCampaign = {
   kind: "image",
   src: "/assets/kercad/loading-campaign.svg",
-  supportUrl: null,
+  supportUrl: "https://github.com/sponsors/pgilfernandez",
 };
 
 let prepared: ProjectLoadingCampaign | null = null;
