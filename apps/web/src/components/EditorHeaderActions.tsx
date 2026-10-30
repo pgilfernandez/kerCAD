@@ -9,6 +9,9 @@ import { AccentColorOptions } from "@/components/AccentColorOptions";
 import { useAppTheme } from "@/lib/useAppTheme";
 import { Moon, Sun } from "lucide-react";
 
+const GITHUB_URL = "https://github.com/pgilfernandez/SketchForge-3D-App/";
+const DONATE_URL = "https://github.com/sponsors/pgilfernandez";
+
 export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onLaunchTutorial, showDocumentation = true, startDesigning = false, showDonation = false, compactInformation = false }: { locale: KercadLocale; onLocaleChange: (locale: KercadLocale) => void; onShowLanding?: () => void; onLaunchTutorial?: () => void; showDocumentation?: boolean; startDesigning?: boolean; showDonation?: boolean; compactInformation?: boolean }) {
   const t = (key: KercadTranslationKey) => kercadTranslate(locale, key);
   const { theme, setTheme } = useAppTheme();
@@ -48,7 +51,7 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onL
   return <div ref={root} className={`kercad-header-actions${onShowLanding ? " dashboard-header-actions" : ""}`}>
     {onShowLanding && <>
       {showDonation && startDesigning && <button type="button" className="kercad-header-start-designing" aria-label={t("about.startDesigning")} title={t("about.startDesigning")} onClick={onShowLanding}><HeaderToolbarIcon file="square-pen" /><span>{t("about.startDesigning")}</span></button>}
-      {showDonation ? <button type="button" disabled aria-label={t("about.donate")} title={t("about.donatePending")}><HeaderToolbarIcon file="donate" /><span>{t("about.donate")}</span></button> : <button type="button" className={startDesigning ? "kercad-header-start-designing" : undefined} aria-label={t(startDesigning ? "about.startDesigning" : "about.projectOverview")} title={t(startDesigning ? "about.startDesigning" : "about.projectOverview")} onClick={onShowLanding}><HeaderToolbarIcon file={startDesigning ? "square-pen" : "project-overview"} /><span>{t(startDesigning ? "about.startDesigning" : "about.projectOverview")}</span></button>}
+      {showDonation ? <a href={DONATE_URL} target="_blank" rel="noopener noreferrer" aria-label={t("about.donate")} title={t("about.donate")}><HeaderToolbarIcon file="donate" /><span>{t("about.donate")}</span></a> : <button type="button" className={startDesigning ? "kercad-header-start-designing" : undefined} aria-label={t(startDesigning ? "about.startDesigning" : "about.projectOverview")} title={t(startDesigning ? "about.startDesigning" : "about.projectOverview")} onClick={onShowLanding}><HeaderToolbarIcon file={startDesigning ? "square-pen" : "project-overview"} /><span>{t(startDesigning ? "about.startDesigning" : "about.projectOverview")}</span></button>}
       {showDocumentation && <a data-tutorial="documentation" href={`/documentation?lang=${locale}`} target="_blank" rel="noopener noreferrer" title={t("about.documentation")}><HeaderToolbarIcon file="documentation" /><span>{locale === "es" ? "Documentación" : "Documentation"}</span></a>}
     </>}
     <button ref={infoTriggerRef} type="button" aria-label={t("about.label")} title={t("about.title")} aria-expanded={infoOpen} aria-controls="kercad-about-panel" onClick={() => { setOpen(false); setInfoOpen((value) => !value); }}><HeaderToolbarIcon file="information" />{onShowLanding && !compactInformation && <span>{t("about.title")}</span>}</button>
@@ -69,8 +72,8 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onL
           <a href="/?about=1" target="_blank" rel="noopener noreferrer"><HeaderToolbarIcon file="project-overview" />{t("about.projectOverview")}</a>
           {onLaunchTutorial && <button type="button" onClick={() => { setInfoOpen(false); onLaunchTutorial(); }}><HeaderToolbarIcon file="documentation" />{t("about.launchTutorial")}</button>}
           <div className="kercad-about-support-links">
-            <button type="button" disabled title={t("about.githubPending")}><HeaderToolbarIcon file="github" />GitHub</button>
-            <button type="button" disabled title={t("about.donatePending")}><HeaderToolbarIcon file="donate" />{t("about.donate")}</button>
+            <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" title="GitHub"><HeaderToolbarIcon file="github" />GitHub</a>
+            <a href={DONATE_URL} target="_blank" rel="noopener noreferrer" title={t("about.donate")}><HeaderToolbarIcon file="donate" />{t("about.donate")}</a>
           </div>
         </nav>
         <footer><p lang={locale}>{t("about.credit")}</p></footer>
