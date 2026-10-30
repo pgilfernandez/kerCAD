@@ -7,7 +7,7 @@ language menu read the generated registry, including each language's native name
 To add a language:
 
 ```sh
-npm run i18n:add -- fr "Français"
+npm run i18n:add -- pt "Português"
 # For a right-to-left language:
 npm run i18n:add -- ar "العربية" rtl
 ```
@@ -24,7 +24,18 @@ builds, type checks and unit tests run this automatically. The development serve
 also watches this directory: adding, removing or editing a catalog refreshes the
 registry and interface without restarting. Commit the catalog and `registry.generated.ts` together.
 
-Missing messages and missing nested content use English. An empty string is an
+**Every text change must include translations for every installed language.**
+Currently these are English, Spanish, French, Italian and German. Update both
+`messages` and any affected `content` entries in all catalogs. Normal validation
+fails if a message or structured content entry is missing in any language. Run
+`npm run i18n` before considering the change complete. Keep technical IDs and
+image filenames unchanged. The repository's `AGENTS.md` applies this rule to
+future implementation work.
+
+At runtime, missing messages and missing nested content use English as a safety
+net. For temporary drafts only, `npm run i18n -- --allow-incomplete` permits an
+unfinished catalog; normal development/build validation requires completeness.
+An empty string is an
 intentional translation, not a missing value. The validator rejects malformed
 metadata, unknown message keys and altered interpolation variables. Language
 preferences persist in the browser, synchronize across tabs and can be shared

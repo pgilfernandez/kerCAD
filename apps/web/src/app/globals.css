@@ -3694,7 +3694,7 @@ button {
 .kercad-header-actions { position: absolute; top: 0; right: 8px; height: 32px; display: flex; align-items: center; gap: 10px; z-index: 5; }
 .kercad-header-svg-icon { display: block; width: 20px; height: 20px; background: currentColor; mask-size: contain; mask-position: center; mask-repeat: no-repeat; -webkit-mask-size: contain; -webkit-mask-position: center; -webkit-mask-repeat: no-repeat; }
 .kercad-header-actions > a, .toolbar-workspace-tabs .kercad-header-actions > button { display: grid; place-items: center; width: 30px; height: 28px; padding: 3px; border: 0; border-radius: 5px; color: white; background: transparent; text-decoration: none; }
-.kercad-header-actions > a:hover, .toolbar-workspace-tabs .kercad-header-actions > button:hover { color: var(--theme-link); background: var(--theme-bg-ffffff-a800); }
+.kercad-header-actions > a:hover, .toolbar-workspace-tabs .kercad-header-actions > button:hover { color: var(--accent-link-light); background: rgba(255, 255, 255, 0.8); }
 .kercad-header-language-menu { position: absolute; top: 34px; right: 0; width: 150px; padding: 5px; border: 1px solid var(--theme-border); border-radius: 7px; background: var(--theme-surface); box-shadow: 0 5px 18px #173b5a26; }
 .kercad-getting-started { position: fixed; z-index: 90; box-sizing: border-box; width: min(340px, calc(100vw - 24px)); max-height: max(140px, calc(100dvh - 150px)); overflow: visible; color: var(--theme-text); background: var(--theme-surface); border: 1px solid var(--theme-dark-border, var(--accent-shade-9ac2f4)); border-radius: 10px; box-shadow: 0 6px 24px #173b5a26; font-family: system-ui, sans-serif; }
 .kercad-welcome-backdrop { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; padding: 20px; background: rgb(10 24 40 / 35%); backdrop-filter: blur(8px); }
@@ -3782,7 +3782,7 @@ button {
 @media (prefers-reduced-motion: reduce) { .kercad-documentation-content { scroll-behavior: auto; } }
 .kercad-sketch-header-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .kercad-sketch-header-actions .kercad-toolbar-brand-button + .kercad-toolbar-brand-button { margin-left: 0; }
-.kercad-toolbar-titlebar .kercad-project-name .kercad-sketcher-badge { padding: 2px 6px; border-radius: 3px; background: var(--theme-surface); color: var(--theme-text-0d55bd); font-weight: 700; font-size: 12px; flex-shrink: 0; }
+.kercad-toolbar-titlebar .kercad-project-name .kercad-sketcher-badge { padding: 2px 6px; border-radius: 3px; background: #fff; color: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.01583) 39.6078%); font-weight: 700; font-size: 12px; flex-shrink: 0; }
 @media (max-width: 720px) {
   .kercad-reference-shell:has(.kercad-parametric-sketch-toolbar) {
     --editor-toolbar-height: calc(var(--editor-toolbar-tools-height) + 72px);
@@ -3815,7 +3815,7 @@ button {
 }
 .kercad-toolbar-titlebar .kercad-project-name .kercad-project-rename-trigger { min-width: 0; padding: 2px 9px; color: white; background: transparent; border: 0; border-radius: 5px;font-weight: 400; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; }
 .kercad-toolbar-titlebar .kercad-project-name .kercad-project-rename-trigger:hover,
-.kercad-toolbar-titlebar .kercad-project-name .kercad-project-rename-trigger:focus-visible { color: var(--theme-text-0d55bd); background: var(--theme-surface); }
+.kercad-toolbar-titlebar .kercad-project-name .kercad-project-rename-trigger:focus-visible { color: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.01583) 39.6078%); background: #fff; }
 .kercad-plane-rename { position: absolute; z-index: 12; width: 32px; height: 32px; padding: 5px; color: var(--theme-text-31566d); background: transparent; border: 1px solid var(--theme-line-b6cbd6); border-radius: 5px; }
 .kercad-plane-rename[hidden] { display: none; }
 .kercad-plane-rename:hover { background: rgba(0, 0, 0, 0.1); }
@@ -9538,28 +9538,28 @@ circle.sketch-preview-line {
   transition: background-color 140ms ease, color 140ms ease;
 }
 
-.toolbar-workspace-tabs .kercad-toolbar-brand-button:hover,
-.toolbar-workspace-tabs .kercad-toolbar-brand-button:focus-visible {
-  color: var(--theme-link);
-  background: var(--theme-bg-ffffff-a800);
+.toolbar-workspace-tabs.kercad-toolbar-titlebar .kercad-toolbar-brand-button:hover,
+.toolbar-workspace-tabs.kercad-toolbar-titlebar .kercad-toolbar-brand-button:focus-visible {
+  color: var(--accent-link-light);
+  background: rgba(255, 255, 255, 0.8);
   outline: none;
 }
 
 .toolbar-workspace-tabs .kercad-sketch-header-actions .kercad-toolbar-brand-button:first-child {
-  color: var(--theme-link);
-  background: var(--theme-bg-ffffff-a800);
+  color: var(--accent-link-light);
+  background: rgba(255, 255, 255, 0.8);
 }
 .toolbar-workspace-tabs .kercad-sketch-header-actions .kercad-toolbar-brand-button:first-child:hover,
 .toolbar-workspace-tabs .kercad-sketch-header-actions .kercad-toolbar-brand-button:first-child:focus-visible {
-  color: var(--theme-link);
-  background: var(--theme-surface);
+  color: var(--accent-link-light);
+  background: #fff;
 }
 .toolbar-workspace-tabs .kercad-sketch-header-actions .kercad-toolbar-brand-button + .kercad-toolbar-brand-button {
   background: rgba(255, 255, 255, 0.25);
 }
 .toolbar-workspace-tabs .kercad-sketch-header-actions .kercad-toolbar-brand-button + .kercad-toolbar-brand-button:hover,
 .toolbar-workspace-tabs .kercad-sketch-header-actions .kercad-toolbar-brand-button + .kercad-toolbar-brand-button:focus-visible {
-  background: var(--theme-bg-ffffff-a800);
+  background: rgba(255, 255, 255, 0.8);
 }
 
 .kercad-toolbar-brand-button > span:first-child { margin-top: -1px; font-size: 22px; font-weight: 500; line-height: 1; }

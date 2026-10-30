@@ -163,7 +163,7 @@ html[data-theme="dark"] .menu-button,
 html[data-theme="dark"] .mode-tab,
 html[data-theme="dark"] .toolbar-icon,
 html[data-theme="dark"] .shape-menu-trigger,
-html[data-theme="dark"] .toolbar-workspace-tabs button,
+html[data-theme="dark"] .toolbar-workspace-tabs:not(.kercad-toolbar-titlebar) button,
 html[data-theme="dark"] .toolbar-section-label {
   color: #b7c9d6;
 }
@@ -174,7 +174,7 @@ html[data-theme="dark"] .toolbar-icon:not(.disabled):hover,
 html[data-theme="dark"] .action-buttons button:hover,
 html[data-theme="dark"] .shape-menu-trigger:hover,
 html[data-theme="dark"] .shape-menu-trigger.active,
-html[data-theme="dark"] .toolbar-workspace-tabs button:hover {
+html[data-theme="dark"] .toolbar-workspace-tabs:not(.kercad-toolbar-titlebar) button:hover {
   color: var(--accent-shade-e5f4fc);
   background: #273946;
 }

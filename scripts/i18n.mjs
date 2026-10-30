@@ -9,6 +9,8 @@ const directory = directoryArgument >= 0
   : path.join(root, "apps/web/src/locales");
 const files = (await readdir(directory)).filter((file) => file.endsWith(".json")).sort();
 const catalogs = [];
+const allowIncomplete = process.argv.includes("--allow-incomplete");
+const missingTranslations = [];
 const isObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 const placeholders = (text) => [...new Set([...text.matchAll(/\{(\w+)\}/g)].map((match) => match[1]))].sort().join(",");
 
@@ -30,20 +32,20 @@ const english = catalogs.find((catalog) => catalog.locale === "en");
 if (!english) throw Error("An English fallback catalog is required");
 
 function validateContent(base, translated, location) {
-  if (translated === undefined) return;
+  if (translated === undefined) { missingTranslations.push(location); return; }
   if (typeof base === "string") {
     if (typeof translated !== "string") throw Error(`Expected translated text: ${location}`);
     if (placeholders(base) !== placeholders(translated)) throw Error(`Placeholder mismatch ${location}`);
   } else if (Array.isArray(base)) {
     if (!Array.isArray(translated) || translated.length > base.length) throw Error(`Invalid content array: ${location}`);
-    translated.forEach((entry, index) => validateContent(base[index], entry, `${location}.${index}`));
+    base.forEach((entry, index) => validateContent(entry, translated[index], `${location}.${index}`));
   } else if (isObject(base)) {
     if (!isObject(translated)) throw Error(`Invalid content object: ${location}`);
     for (const [key, value] of Object.entries(translated)) {
       if (!Object.hasOwn(base, key)) throw Error(`Unknown content key: ${location}.${key}`);
-      if (key === "id" && value !== base[key]) throw Error(`Technical content id must remain unchanged: ${location}.${key}`);
-      validateContent(base[key], value, `${location}.${key}`);
+      if (["id", "image"].includes(key) && value !== base[key]) throw Error(`Technical content ${key} must remain unchanged: ${location}.${key}`);
     }
+    for (const [key, value] of Object.entries(base)) validateContent(value, translated[key], `${location}.${key}`);
   }
 }
 
@@ -54,9 +56,14 @@ for (const catalog of catalogs) {
     if (reference === undefined) throw Error(`Unknown key ${catalog.locale}:${key}`);
     if (placeholders(value) !== placeholders(reference)) throw Error(`Placeholder mismatch ${catalog.locale}:${key}`);
   }
-  validateContent(english.content ?? {}, catalog.content, `${catalog.locale}:content`);
+  if (english.content !== undefined) validateContent(english.content, catalog.content, `${catalog.locale}:content`);
   const missing = Object.keys(english.messages).filter((key) => !Object.hasOwn(catalog.messages, key));
-  if (missing.length) console.warn(`${catalog.locale}: ${missing.length} untranslated messages use English fallback`);
+  missingTranslations.push(...missing.map((key) => `${catalog.locale}:messages.${key}`));
+}
+if (missingTranslations.length) {
+  const report = `Missing translations (${missingTranslations.length}):\n${missingTranslations.join("\n")}`;
+  if (!allowIncomplete) throw Error(`${report}\nTranslate every installed language before continuing.`);
+  console.warn(`${report}\nIncomplete catalogs temporarily use English fallback.`);
 }
 for (const [source, key] of Object.entries(english.sourceAliases ?? {})) {
   if (!Object.hasOwn(english.messages, key)) throw Error(`Unknown source alias: ${source} -> ${key}`);
