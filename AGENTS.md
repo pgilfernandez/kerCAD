@@ -18,3 +18,9 @@
   automatically, without adding per-language branches to components.
 
 See `apps/web/src/locales/README.md` for the catalog workflow.
+
+# Commits
+
+- Create focused commits after each completed implementation, unless the user
+  explicitly requests otherwise. Include only the related changes and preserve
+  unrelated local work.
