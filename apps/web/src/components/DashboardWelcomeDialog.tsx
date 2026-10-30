@@ -31,11 +31,12 @@ export function DashboardWelcomeDialog({ onLocaleChange, onConfirm }: {
       event.preventDefault();
       if (selectedLocale) onConfirm();
     }}>
+      <img className="kercad-welcome-logo" src="/assets/kercad/kercad_logo_color.svg" width={64} height={64} alt={uiText("ui.page.kercad.c0bf6d", {}, locale)} />
       <h2 id="kercad-welcome-title">{uiText("ui.dashboardwelcomedialog.hello.hola.ddf727", {}, locale)}</h2>
-      <p id="kercad-welcome-description">{uiText("ui.dashboardwelcomedialog.choose.your.language.to.continue.5ac606", {}, locale)}</p>
-      <fieldset>
+      <div id="kercad-welcome-description" className="kercad-welcome-section-label">{t("settings.language")}</div>
+      <div className="kercad-welcome-language-group" role="group" aria-label={t("settings.language")}>
         <div className="kercad-welcome-languages">{KERCAD_LOCALES.map((language) => <button key={language} type="button" lang={language} aria-pressed={selectedLocale === language} onClick={() => { setSelectedLocale(language); onLocaleChange(language); }}>{getLanguageName(language)}</button>)}</div>
-      </fieldset>
+      </div>
       <fieldset><legend>{t("settings.theme")}</legend>
         <div className="kercad-welcome-themes">{(["light", "dark"] as const).map((option) => <button key={option} type="button" aria-pressed={theme === option} onClick={() => setTheme(option)}>{option === "light" ? <Sun size={19} /> : <Moon size={19} />}{t(option === "light" ? "settings.themeLight" : "settings.themeDark")}</button>)}</div>
         <AccentColorOptions locale={locale} />
