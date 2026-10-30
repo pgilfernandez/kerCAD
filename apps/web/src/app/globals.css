@@ -9531,7 +9531,9 @@ circle.sketch-preview-line {
 .kercad-challenge-categories > span button:hover { background: var(--theme-dark-active, var(--accent-shade-cfe4fb)); }
 .kercad-challenge-parameter-editor { display: flex; flex-direction: column; gap: 7px; }
 .kercad-challenge-parameter-editor > header { display: flex; align-items: center; justify-content: space-between; }
+.kercad-challenge-parameter-actions { display: flex; gap: 5px; }
 .kercad-challenge-parameter-editor > header button { min-height: 30px; padding: 0 9px; display: inline-flex; align-items: center; gap: 4px; color: var(--theme-link); background: var(--theme-bg-eef5ff); border: 1px solid var(--theme-line-a8c9ef); border-radius: 6px; font: inherit; font-size: 11px; font-weight: 800; }
+.kercad-challenge-parameter-actions button:disabled { opacity: .4; cursor: default; }
 .kercad-challenge-parameter-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,.8fr) auto; gap: 5px; }
 .kercad-challenge-parameter-row input { padding: 7px 8px; font-size: 12px; }
 .kercad-challenge-parameter-row > span { display: flex; gap: 2px; }

@@ -1444,7 +1444,11 @@
     "challenge.firstStep": "Première étape",
     "challenge.beforeStart": "AVANT DE COMMENCER",
     "challenge.firstStepBody": "Décrivez ce que l'apprenant doit faire à cette étape.",
-    "welcome.greeting": "bonjour"
+    "welcome.greeting": "bonjour",
+    "challenge.captureParameters": "Capturer",
+    "challenge.captureParametersHint": "Sélectionnez un objet ou une opération pour capturer ses paramètres.",
+    "challenge.parameterAxis": "{parameter} {axis}",
+    "challenge.parameterOf": "{name} · {parameter}"
   },
   "content": {
     "tutorial": {

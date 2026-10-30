@@ -1,9 +1,10 @@
 "use client";
 
-import { Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, GripHorizontal, ImageUp, PanelLeft, PanelRight, PanelsTopLeft, Plus, Star, Trash2, X } from "lucide-react";
+import { Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, GripHorizontal, ImageUp, PanelLeft, PanelRight, PanelsTopLeft, Plus, ScanLine, Star, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { KercadChallenge } from "@/lib/challengeLibrary";
 import { uiText } from "@/lib/kercadI18n";
+import type { CapturedChallengeParameter } from "@/lib/challengeParameterCapture";
 
 export type ChallengeDock = "floating" | "left" | "right" | "compact-floating" | "compact-left" | "compact-right";
 
@@ -11,6 +12,7 @@ type Props = {
   challenge: KercadChallenge;
   dock: ChallengeDock;
   capture?: { stepId: string; dataUrl: string; token: number } | null;
+  selectionParameters?: CapturedChallengeParameter[];
   onDockChange: (dock: ChallengeDock) => void;
   onCapture: (stepId: string) => void;
   onCancel: () => void;
@@ -21,7 +23,7 @@ function nextStepId() {
   return typeof crypto.randomUUID === "function" ? `step-${crypto.randomUUID()}` : `step-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export function ChallengeEditor({ challenge, dock, capture, onDockChange, onCapture, onCancel, onSave }: Props) {
+export function ChallengeEditor({ challenge, dock, capture, selectionParameters = [], onDockChange, onCapture, onCancel, onSave }: Props) {
   const [draft, setDraft] = useState(() => structuredClone(challenge));
   const [stepIndex, setStepIndex] = useState(0);
   const [editingMetadata, setEditingMetadata] = useState(true);
@@ -122,7 +124,10 @@ export function ChallengeEditor({ challenge, dock, capture, onDockChange, onCapt
       <label><span>{uiText("ui.challengeeditor.description.55f8eb")}</span><textarea rows={4} value={step.body} onChange={(event) => updateStep({ body: event.target.value })} /></label>
       <label><span>{uiText("ui.challengeeditor.step.subtitle.2b531b")}</span><input value={step.label ?? ""} maxLength={80} placeholder={stepIndex === 0 ? uiText("ui.challengeeditor.before.you.start.c5e2bb") : uiText("ui.challengeeditor.step.0a0a95", { value0: stepIndex })} onChange={(event) => updateStep({ label: event.target.value })} /></label>
       <section className="kercad-challenge-parameter-editor">
-        <header><strong>{uiText("operation.parameters")}</strong><button type="button" onClick={() => updateStep({ values: [...(step.values ?? []), { label: uiText("ui.challengeeditor.parameter.f699f2"), value: "1 mm" }] })}><Plus size={16} /> {uiText("model.add")}</button></header>
+        <header><strong>{uiText("operation.parameters")}</strong><div className="kercad-challenge-parameter-actions">
+          <button type="button" onClick={() => updateStep({ values: [...(step.values ?? []), { label: uiText("ui.challengeeditor.parameter.f699f2"), value: "1 mm" }] })}><Plus size={16} /> {uiText("model.add")}</button>
+          <button type="button" disabled={!selectionParameters.length} title={uiText("challenge.captureParametersHint")} onClick={() => updateStep({ values: [...(step.values ?? []), ...selectionParameters.map((parameter) => ({ ...parameter }))] })}><ScanLine size={16} /> {uiText("challenge.captureParameters")}</button>
+        </div></header>
         {(step.values ?? []).map((value, index) => <div className="kercad-challenge-parameter-row" key={`${step.id}:value:${index}`}>
           <input aria-label={uiText("ui.challengeeditor.parameter.name.978a9c", { value0: index + 1 })} value={value.label} placeholder={uiText("dashboard.name.709a23")} onChange={(event) => updateValue(index, { label: event.target.value })} />
           <input aria-label={uiText("ui.challengeeditor.parameter.value.1bc9f6", { value0: index + 1 })} value={value.value} placeholder={uiText("ui.challengeeditor.value.8dce17")} onChange={(event) => updateValue(index, { value: event.target.value })} />

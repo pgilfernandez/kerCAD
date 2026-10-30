@@ -3,6 +3,7 @@
 import { PROJECT_FILE_PATTERN, LEGACY_PROJECT_ACCEPT } from "@/lib/legacyBrand";
 import { Camera, RotateCcw, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, Focus, Grid3X3, Home, Maximize2, Minus, Plus, Trash2, X } from "lucide-react";
 import { ChallengeEditor, type ChallengeDock } from "@/components/ChallengeEditor";
+import { captureChallengeParameters } from "@/lib/challengeParameterCapture";
 import { ChallengePlayer } from "@/components/ChallengePlayer";
 import type { KercadChallenge } from "@/lib/challengeLibrary";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent as ReactFocusEvent } from "react";
@@ -1059,6 +1060,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   };
 
   const primarySelection = modelSelection.at(-1) ?? null;
+  const challengeSelectionParameters = useMemo(() => challengeEditor && modelSelection.length === 1 ? captureChallengeParameters(document, primarySelection, locale) : [], [challengeEditor, document, modelSelection, locale]);
   // A selected operation exports its owning object's final body, never a
   // truncated operation history. Several operations can belong to one object.
   const exportSelectedObjectIds = [...new Set(modelSelection.map((item) =>
@@ -4309,6 +4311,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           challenge={challengeEditor}
           dock={challengeDock}
           capture={challengeCapture}
+          selectionParameters={challengeSelectionParameters}
           onDockChange={setChallengeDock}
           onCapture={(stepId) => {
             setPendingChallengeCapture(stepId);
