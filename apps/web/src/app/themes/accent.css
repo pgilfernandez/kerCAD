@@ -207,7 +207,9 @@ html[data-theme="dark"] :is(.kercad-dashboard-topbar, .kercad-landing-nav, .kerc
 
 .kercad-accent-options {
   display: grid;
-  grid-template-columns: repeat(9, 20px);
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  width: 100%;
   gap: 2px;
   padding: 4px 0;
 }
@@ -216,8 +218,8 @@ html[data-theme="dark"] :is(.kercad-dashboard-topbar, .kercad-landing-nav, .kerc
   position: relative;
   display: block;
   box-sizing: border-box;
-  width: 20px;
-  min-width: 20px;
+  width: 100%;
+  min-width: 0;
   height: 20px;
   min-height: 20px;
   padding: 0;
@@ -227,7 +229,7 @@ html[data-theme="dark"] :is(.kercad-dashboard-topbar, .kercad-landing-nav, .kerc
   cursor: pointer;
 }
 .kercad-header-actions .kercad-header-language-menu .kercad-accent-swatch {
-  width: 20px;
+  width: 100%;
   min-height: 20px;
   padding: 0;
   margin: 0;
@@ -242,25 +244,22 @@ html[data-theme="dark"] :is(.kercad-dashboard-topbar, .kercad-landing-nav, .kerc
 }
 .kercad-accent-options .kercad-accent-swatch:focus-visible,
 .kercad-accent-custom:focus-within { outline: 2px solid var(--theme-link); outline-offset: -2px; }
-.kercad-accent-custom { background: conic-gradient(#f33, #ff3, #3f3, #3ff, #33f, #f3f, #f33); }
+.kercad-accent-options .kercad-accent-custom { display: grid; place-items: center; color: var(--theme-menu-text); background: transparent; }
 .kercad-accent-custom input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 
 .kercad-welcome-dialog .kercad-accent-options {
-  grid-template-columns: repeat(9, minmax(0, 1fr));
   width: 100%;
   margin-top: 6px;
 }
 .kercad-welcome-dialog .kercad-accent-options > :is(button, label) {
   width: 100%;
   min-width: 0;
-  height: auto;
+  height: 24px;
   min-height: 0;
-  aspect-ratio: 1;
   padding: 0;
 }
 
 .kercad-header-language-menu .kercad-accent-options {
-  grid-template-columns: repeat(9, minmax(0, 1fr));
   width: 100%;
 }
 .kercad-header-actions .kercad-header-language-menu .kercad-accent-options > :is(button, label) {
