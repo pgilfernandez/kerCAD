@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { groupChallengeParameters } from "@/lib/challengeParameters";
 import { captureChallengeParameters } from "@/lib/challengeParameterCapture";
 import { createEmptyDocument, createParametricObject, createPrimitiveFeature, createSketchFeature, createExtrudeFeature, createShellFeature, createFilletFeature, createPolarPatternFeature } from "@/lib/parametricDocument";
 
@@ -31,14 +32,14 @@ describe("challenge parameter capture", () => {
     extrude.transform.position.y = 7;
     extrude.transform.rotation.x = 12.5;
     const objectValues = captureChallengeParameters(document, { kind: "object", id: object.id }, "en");
-    expect(objectValues.slice(2)).toEqual([
-      { label: `${extrude.name} · Position Y`, value: "7 mm" },
-      { label: `${extrude.name} · Rotation X`, value: "12.5 °" },
-      { label: "Position X", value: "-10 mm" },
-      { label: "Rotation Z", value: "45 °" },
+    expect(groupChallengeParameters(objectValues).slice(1)).toEqual([
+      [{ label: `${extrude.name} · Position Y`, value: "7 mm" }],
+      [{ label: `${extrude.name} · Rotation X`, value: "12.5 °" }],
+      [{ label: "Position X", value: "-10 mm" }],
+      [{ label: "Rotation Z", value: "45 °" }],
     ]);
-    expect(captureChallengeParameters(document, { kind: "feature", id: extrude.id }, "en").slice(2)).toEqual([
-      { label: "Position Y", value: "7 mm" }, { label: "Rotation X", value: "12.5 °" },
+    expect(groupChallengeParameters(captureChallengeParameters(document, { kind: "feature", id: extrude.id }, "en")).slice(1)).toEqual([
+      [{ label: "Position Y", value: "7 mm" }], [{ label: "Rotation X", value: "12.5 °" }],
     ]);
   });
 
@@ -81,7 +82,7 @@ describe("challenge parameter capture", () => {
     object.transform.rotation.z = 22.5;
     const before = structuredClone(document);
     expect(captureChallengeParameters(document, { kind: "object", id: object.id }, "es")).toEqual([
-      { label: "Radio", value: "0,9 cm" }, { label: "Altura", value: "3,2 cm" }, { label: "Rotación Z", value: "22,5 °" },
+      { label: "Radio", value: "0,9 cm" }, { label: "Altura", value: "3,2 cm" }, { type: "separator" }, { label: "Rotación Z", value: "22,5 °" },
     ]);
     expect(document).toEqual(before);
     const pattern = createPolarPatternFeature(1);

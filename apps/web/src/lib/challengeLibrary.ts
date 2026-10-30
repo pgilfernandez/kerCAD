@@ -1,3 +1,4 @@
+import { normalizeChallengeParameters, type ChallengeParameter } from "@/lib/challengeParameters";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { createEmptyDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import type { ParametricDocument } from "@/types/parametric";
@@ -10,7 +11,7 @@ export type KercadChallengeStep = {
   title: string;
   body: string;
   image?: string;
-  values?: Array<{ label: string; value: string }>;
+  values?: ChallengeParameter[];
 };
 
 export type KercadChallenge = {
@@ -68,7 +69,7 @@ type ChallengeManifest = {
     title: string;
     body: string;
     image?: string;
-    values?: Array<{ label: string; value: string }>;
+    values?: ChallengeParameter[];
   }>;
   workspace?: string;
 };
@@ -151,7 +152,7 @@ export async function importChallengePackage(file: File): Promise<KercadChalleng
       title: step.title.trim(),
       body: step.body.trim(),
       image: safeAsset(files, step.image),
-      values: Array.isArray(step.values) ? step.values.filter((value) => value?.label && value?.value).map((value) => ({ label: String(value.label), value: String(value.value) })) : undefined,
+      values: normalizeChallengeParameters(step.values),
     };
   });
   let workspaceDocument: ParametricDocument | undefined;

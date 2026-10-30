@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, GripHorizontal,
 import { useEffect, useRef, useState } from "react";
 import type { KercadChallenge } from "@/lib/challengeLibrary";
 import { uiText } from "@/lib/kercadI18n";
+import { groupChallengeParameters } from "@/lib/challengeParameters";
 
 type Dock = "floating" | "left" | "right" | "compact-floating" | "compact-left" | "compact-right";
 
@@ -12,6 +13,7 @@ export function ChallengePlayer({ challenge, dock, onDockChange, onClose }: { ch
   const [position, setPosition] = useState({ x: 28, y: 96 });
   const dragRef = useRef<{ pointerId: number; x: number; y: number; left: number; top: number } | null>(null);
   const step = challenge.steps[stepIndex];
+  const parameterGroups = groupChallengeParameters(step.values);
   useEffect(() => { setStepIndex(0); }, [challenge.id]);
 
   const beginDrag = (event: React.PointerEvent<HTMLElement>) => {
@@ -57,7 +59,7 @@ export function ChallengePlayer({ challenge, dock, onDockChange, onClose }: { ch
       <small>{step.label || (stepIndex === 0 ? uiText("ui.challengeeditor.before.you.start.c5e2bb") : uiText("ui.challengeeditor.step.0a0a95", { value0: stepIndex }))}</small>
       <h2>{step.title}</h2>
       <p>{step.body}</p>
-      {step.values?.length ? <dl>{step.values.map((value) => <div key={`${value.label}:${value.value}`}><dt>{value.label}</dt><dd>{value.value}</dd></div>)}</dl> : null}
+      {parameterGroups.length ? <div className="kercad-challenge-parameter-groups">{parameterGroups.map((group, groupIndex) => <dl key={`${step.id}:group:${groupIndex}`}>{group.map((value, index) => <div key={`${groupIndex}:${index}`}><dt>{value.label}</dt><dd>{value.value}</dd></div>)}</dl>)}</div> : null}
       {step.image ? <img src={step.image} alt="" /> : null}
     </div>
     <footer>

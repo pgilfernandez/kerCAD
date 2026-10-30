@@ -1,3 +1,4 @@
+import { joinChallengeParameterGroups } from "@/lib/challengeParameters";
 import type { KercadChallengeStep } from "@/lib/challengeLibrary";
 import { kercadTranslate, type KercadLocale } from "@/lib/kercadI18n";
 import { localizedParametricOperationDefinition } from "@/lib/parametricOperationCatalog";
@@ -17,14 +18,15 @@ export function captureChallengeParameters(document: ParametricDocument, selecti
   const axisLabel = (parameter: string, axis: string) => kercadTranslate(locale, "challenge.parameterAxis", { parameter: t(parameter), axis: axis.toUpperCase() });
 
   const transformValues = (position: ParametricVector3, rotation: ParametricVector3, name?: string) => {
-    const values: CapturedChallengeParameter[] = [];
+    const positionValues: CapturedChallengeParameter[] = [];
+    const rotationValues: CapturedChallengeParameter[] = [];
     for (const axis of ["x", "y", "z"] as const) {
-      if (Number.isFinite(position[axis]) && Math.abs(position[axis]) > 1e-9) values.push({ label: qualify(axisLabel("property.position", axis), name), value: `${formatDisplayLength(position[axis], unit, 6, locale)} ${unit}` });
+      if (Number.isFinite(position[axis]) && Math.abs(position[axis]) > 1e-9) positionValues.push({ label: qualify(axisLabel("property.position", axis), name), value: `${formatDisplayLength(position[axis], unit, 6, locale)} ${unit}` });
     }
     for (const axis of ["x", "y", "z"] as const) {
-      if (Number.isFinite(rotation[axis]) && Math.abs(rotation[axis]) > 1e-9) values.push({ label: qualify(axisLabel("property.rotation", axis), name), value: `${number(rotation[axis])} °` });
+      if (Number.isFinite(rotation[axis]) && Math.abs(rotation[axis]) > 1e-9) rotationValues.push({ label: qualify(axisLabel("property.rotation", axis), name), value: `${number(rotation[axis])} °` });
     }
-    return values;
+    return joinChallengeParameterGroups([positionValues, rotationValues]);
   };
 
   const featureValues = (feature: ParametricFeature, prefix?: string, transformPrefix?: string) => {
@@ -85,10 +87,11 @@ export function captureChallengeParameters(document: ParametricDocument, selecti
     if (feature.kind === "linearPattern" || feature.kind === "polarPattern" || feature.kind === "revolve" || feature.kind === "mirror") {
       values.push({ label: qualify(t("property.axis"), prefix), value: feature.axis === "edge" ? t("operation.selectedEdge") : t(`value.local${feature.axis.toUpperCase()}`) });
     }
-    if (feature.kind === "sketch") values.push(...transformValues({ x: feature.x, y: feature.y, z: feature.offset }, feature.rotation, transformPrefix ?? prefix));
-    else if (feature.kind === "primitive" || feature.kind === "extrude") values.push(...transformValues(feature.transform.position, feature.transform.rotation, transformPrefix ?? prefix));
-    else if (feature.kind === "hole") values.push(...transformValues({ x: feature.x, y: feature.y, z: 0 }, { x: 0, y: 0, z: 0 }, transformPrefix ?? prefix));
-    return values;
+    let transforms: CapturedChallengeParameter[] = [];
+    if (feature.kind === "sketch") transforms = transformValues({ x: feature.x, y: feature.y, z: feature.offset }, feature.rotation, transformPrefix ?? prefix);
+    else if (feature.kind === "primitive" || feature.kind === "extrude") transforms = transformValues(feature.transform.position, feature.transform.rotation, transformPrefix ?? prefix);
+    else if (feature.kind === "hole") transforms = transformValues({ x: feature.x, y: feature.y, z: 0 }, { x: 0, y: 0, z: 0 }, transformPrefix ?? prefix);
+    return joinChallengeParameterGroups([values, transforms]);
   };
 
   if (selection.kind === "feature") {
@@ -99,8 +102,8 @@ export function captureChallengeParameters(document: ParametricDocument, selecti
   if (!object) return [];
   const owned = document.features.filter((feature) => feature.objectId === object.id && !feature.suppressed);
   const operations = owned.some((feature) => feature.kind !== "sketch") ? owned.filter((feature) => feature.kind !== "sketch") : owned;
-  return [
-    ...operations.flatMap((feature) => featureValues(feature, operations.length > 1 ? feature.name : undefined, feature.name)),
-    ...transformValues(object.transform.position, object.transform.rotation),
-  ];
+  return joinChallengeParameterGroups([
+    ...operations.map((feature) => featureValues(feature, operations.length > 1 ? feature.name : undefined, feature.name)),
+    transformValues(object.transform.position, object.transform.rotation),
+  ]);
 }

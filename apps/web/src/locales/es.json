@@ -1448,7 +1448,8 @@
     "challenge.captureParameters": "Capturar",
     "challenge.captureParametersHint": "Selecciona un objeto u operación para capturar sus parámetros.",
     "challenge.parameterAxis": "{parameter} {axis}",
-    "challenge.parameterOf": "{name} · {parameter}"
+    "challenge.parameterOf": "{name} · {parameter}",
+    "challenge.parameterSeparator": "Separador"
   },
   "content": {
     "tutorial": {

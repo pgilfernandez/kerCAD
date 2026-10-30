@@ -1448,7 +1448,8 @@
     "challenge.captureParameters": "Erfassen",
     "challenge.captureParametersHint": "Wähle ein Objekt oder eine Operation aus, um die Parameter zu erfassen.",
     "challenge.parameterAxis": "{parameter} {axis}",
-    "challenge.parameterOf": "{name} · {parameter}"
+    "challenge.parameterOf": "{name} · {parameter}",
+    "challenge.parameterSeparator": "Trennlinie"
   },
   "content": {
     "tutorial": {

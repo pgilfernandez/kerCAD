@@ -1,10 +1,11 @@
 "use client";
 
-import { Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, GripHorizontal, ImageUp, PanelLeft, PanelRight, PanelsTopLeft, Plus, ScanLine, Star, Trash2, X } from "lucide-react";
+import { Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, GripHorizontal, ImageUp, PanelLeft, PanelRight, PanelsTopLeft, Plus, ScanLine, SeparatorHorizontal, Star, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { KercadChallenge } from "@/lib/challengeLibrary";
 import { uiText } from "@/lib/kercadI18n";
 import type { CapturedChallengeParameter } from "@/lib/challengeParameterCapture";
+import { joinChallengeParameterGroups } from "@/lib/challengeParameters";
 
 export type ChallengeDock = "floating" | "left" | "right" | "compact-floating" | "compact-left" | "compact-right";
 
@@ -44,7 +45,7 @@ export function ChallengeEditor({ challenge, dock, capture, selectionParameters 
   }, [capture]);
 
   const updateStep = (update: Partial<typeof step>) => setDraft((current) => ({ ...current, steps: current.steps.map((candidate, index) => index === stepIndex ? { ...candidate, ...update } : candidate) }));
-  const updateValue = (index: number, update: Partial<{ label: string; value: string }>) => updateStep({ values: (step.values ?? []).map((value, valueIndex) => valueIndex === index ? { ...value, ...update } : value) });
+  const updateValue = (index: number, update: Partial<{ label: string; value: string }>) => updateStep({ values: (step.values ?? []).map((value, valueIndex) => valueIndex === index && value.type !== "separator" ? { ...value, ...update } : value) });
   const moveValue = (index: number, direction: -1 | 1) => {
     const values = [...(step.values ?? [])];
     const target = index + direction;
@@ -52,6 +53,7 @@ export function ChallengeEditor({ challenge, dock, capture, selectionParameters 
     [values[index], values[target]] = [values[target], values[index]];
     updateStep({ values });
   };
+  const parameterControls = (index: number) => <span className="kercad-challenge-parameter-controls"><button type="button" disabled={index === 0} title={uiText("model.moveUp")} aria-label={uiText("ui.challengeeditor.move.parameter.up.d439f7")} onClick={() => moveValue(index, -1)}><ChevronUp size={15} /></button><button type="button" disabled={index === (step.values?.length ?? 0) - 1} title={uiText("model.moveDown")} aria-label={uiText("ui.challengeeditor.move.parameter.down.0fa991")} onClick={() => moveValue(index, 1)}><ChevronDown size={15} /></button><button type="button" title={uiText("ui.challengeeditor.delete.parameter.999047")} aria-label={uiText("ui.challengeeditor.delete.parameter.999047")} onClick={() => updateStep({ values: (step.values ?? []).filter((_, valueIndex) => valueIndex !== index) })}><Trash2 size={15} /></button></span>;
   const insertStep = () => {
     const next = { id: nextStepId(), label: uiText("ui.challengeeditor.step.0a0a95", { value0: stepIndex + 1 }), title: uiText("ui.challengeeditor.new.step.fe37aa"), body: uiText("challenge.defaultStepDescription"), values: [] };
     setDraft((current) => ({ ...current, steps: [...current.steps.slice(0, stepIndex + 1), next, ...current.steps.slice(stepIndex + 1)] }));
@@ -126,12 +128,16 @@ export function ChallengeEditor({ challenge, dock, capture, selectionParameters 
       <section className="kercad-challenge-parameter-editor">
         <header><strong>{uiText("operation.parameters")}</strong><div className="kercad-challenge-parameter-actions">
           <button type="button" onClick={() => updateStep({ values: [...(step.values ?? []), { label: uiText("ui.challengeeditor.parameter.f699f2"), value: "1 mm" }] })}><Plus size={16} /> {uiText("model.add")}</button>
-          <button type="button" disabled={!selectionParameters.length} title={uiText("challenge.captureParametersHint")} onClick={() => updateStep({ values: [...(step.values ?? []), ...selectionParameters.map((parameter) => ({ ...parameter }))] })}><ScanLine size={16} /> {uiText("challenge.captureParameters")}</button>
+          <button type="button" disabled={!selectionParameters.length} title={uiText("challenge.captureParametersHint")} onClick={() => updateStep({ values: joinChallengeParameterGroups([step.values ?? [], selectionParameters]).map((parameter) => ({ ...parameter })) })}><ScanLine size={16} /> {uiText("challenge.captureParameters")}</button>
+          <button type="button" disabled={!step.values?.length || step.values.at(-1)?.type === "separator"} onClick={() => updateStep({ values: [...(step.values ?? []), { type: "separator" }] })}><SeparatorHorizontal size={16} /> {uiText("challenge.parameterSeparator")}</button>
         </div></header>
-        {(step.values ?? []).map((value, index) => <div className="kercad-challenge-parameter-row" key={`${step.id}:value:${index}`}>
+        {(step.values ?? []).map((value, index) => value.type === "separator" ? <div className="kercad-challenge-parameter-separator" key={`${step.id}:value:${index}`}>
+          <span><SeparatorHorizontal size={16} aria-hidden="true" />{uiText("challenge.parameterSeparator")}</span>
+          {parameterControls(index)}
+        </div> : <div className="kercad-challenge-parameter-row" key={`${step.id}:value:${index}`}>
           <input aria-label={uiText("ui.challengeeditor.parameter.name.978a9c", { value0: index + 1 })} value={value.label} placeholder={uiText("dashboard.name.709a23")} onChange={(event) => updateValue(index, { label: event.target.value })} />
           <input aria-label={uiText("ui.challengeeditor.parameter.value.1bc9f6", { value0: index + 1 })} value={value.value} placeholder={uiText("ui.challengeeditor.value.8dce17")} onChange={(event) => updateValue(index, { value: event.target.value })} />
-          <span><button type="button" disabled={index === 0} title={uiText("model.moveUp")} aria-label={uiText("ui.challengeeditor.move.parameter.up.d439f7")} onClick={() => moveValue(index, -1)}><ChevronUp size={15} /></button><button type="button" disabled={index === (step.values?.length ?? 0) - 1} title={uiText("model.moveDown")} aria-label={uiText("ui.challengeeditor.move.parameter.down.0fa991")} onClick={() => moveValue(index, 1)}><ChevronDown size={15} /></button><button type="button" title={uiText("ui.challengeeditor.delete.parameter.999047")} aria-label={uiText("ui.challengeeditor.delete.parameter.999047")} onClick={() => updateStep({ values: (step.values ?? []).filter((_, valueIndex) => valueIndex !== index) })}><Trash2 size={15} /></button></span>
+          {parameterControls(index)}
         </div>)}
       </section>
       <section className="kercad-challenge-capture">
