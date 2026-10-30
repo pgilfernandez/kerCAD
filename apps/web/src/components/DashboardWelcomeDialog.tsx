@@ -30,9 +30,9 @@ export function DashboardWelcomeDialog({ onLocaleChange, onConfirm }: {
       event.preventDefault();
       if (selectedLocale) onConfirm();
     }}>
-      <h2 id="kercad-welcome-title">{locale === "es" ? "Te damos la bienvenida a kerCAD" : "Welcome to kerCAD"}</h2>
-      <p id="kercad-welcome-description">{locale === "es" ? "Elige tu idioma para continuar. Después podrás cambiar estas preferencias en cualquier momento." : "Choose your language to continue. You can change these preferences at any time later."}</p>
-      <fieldset><legend>{t("settings.language")}</legend>
+      <h2 id="kercad-welcome-title">{locale === "es" ? "hello / hola" : "hello / hola"}</h2>
+      <p id="kercad-welcome-description">{locale === "es" ? "Elige tu idioma para continuar:" : "Choose your language to continue:"}</p>
+      <fieldset>
         <div className="kercad-welcome-languages">{KERCAD_LOCALES.map((language) => <button key={language} type="button" lang={language} aria-pressed={selectedLocale === language} onClick={() => { setSelectedLocale(language); onLocaleChange(language); }}>{kercadTranslate(language, language === "en" ? "settings.english" : "settings.spanish")}</button>)}</div>
       </fieldset>
       <fieldset><legend>{t("settings.theme")}</legend>
