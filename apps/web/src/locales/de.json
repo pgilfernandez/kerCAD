@@ -1443,7 +1443,8 @@
     "challenge.new": "Neue Herausforderung",
     "challenge.firstStep": "Erster Schritt",
     "challenge.beforeStart": "VOR DEM START",
-    "challenge.firstStepBody": "Beschreiben Sie, was der Lernende in diesem Schritt tun soll."
+    "challenge.firstStepBody": "Beschreiben Sie, was der Lernende in diesem Schritt tun soll.",
+    "welcome.greeting": "hallo"
   },
   "content": {
     "tutorial": {

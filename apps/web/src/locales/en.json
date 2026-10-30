@@ -1443,7 +1443,8 @@
     "challenge.new": "New challenge",
     "challenge.firstStep": "First step",
     "challenge.beforeStart": "BEFORE YOU START",
-    "challenge.firstStepBody": "Describe what the learner should do in this step."
+    "challenge.firstStepBody": "Describe what the learner should do in this step.",
+    "welcome.greeting": "hello"
   },
   "content": {
     "tutorial": {

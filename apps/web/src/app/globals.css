@@ -3702,6 +3702,20 @@ button {
 .kercad-welcome-dialog > * { flex-shrink: 0; }
 .kercad-welcome-logo { align-self: center; width: 83.2px; height: 83.2px; margin-bottom: 16px; object-fit: contain; }
 .kercad-welcome-dialog h2 { margin: 0 0 12px; font-size: 23px; line-height: 1.3; }
+.kercad-welcome-greetings { overflow: hidden; white-space: nowrap; }
+.kercad-welcome-greetings-track { display: flex; width: max-content; animation: kercad-welcome-greetings-scroll var(--welcome-greeting-duration, 20s) linear infinite; will-change: transform; }
+.kercad-welcome-greetings-group,
+.kercad-welcome-greeting-cycle { display: flex; flex-shrink: 0; }
+@keyframes kercad-welcome-greetings-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kercad-welcome-greetings { overflow-x: auto; }
+  .kercad-welcome-greetings-track { animation: none; will-change: auto; }
+  .kercad-welcome-greetings-group + .kercad-welcome-greetings-group,
+  .kercad-welcome-greeting-cycle + .kercad-welcome-greeting-cycle { display: none; }
+}
 .kercad-welcome-dialog p { margin: 0 0 22px; color: var(--theme-text-muted); font-size: 14px; line-height: 1.5; }
 .kercad-welcome-dialog fieldset { min-width: 0; margin: 0 0 20px; padding: 0; border: 0; }
 .kercad-welcome-dialog legend,

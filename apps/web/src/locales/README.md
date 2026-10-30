@@ -41,6 +41,8 @@ metadata, unknown message keys and altered interpolation variables. Language
 preferences persist in the browser, synchronize across tabs and can be shared
 using `?lang=fr`. The document's `lang` and `dir` follow the selected language.
 The welcome dialog always starts in English until a language is explicitly chosen.
+Its greeting carousel reads `welcome.greeting` from every installed catalog;
+translate that message as a native greeting when adding a language.
 
 ## Interface text
 
