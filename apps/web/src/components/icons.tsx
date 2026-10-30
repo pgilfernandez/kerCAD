@@ -8,7 +8,7 @@ export function GridControlIcon({ snap = false, size = 22 }: { snap?: boolean; s
   return <span aria-hidden="true" style={{ display: "inline-block", width: size, height: size, flexShrink: 0, backgroundColor: "currentColor", maskImage: mask, WebkitMaskImage: mask, maskSize: "contain", WebkitMaskSize: "contain", maskRepeat: "no-repeat", WebkitMaskRepeat: "no-repeat" }} />;
 }
 
-export function HeaderToolbarIcon({ file }: { file: "documentation" | "language" | "information" | "project-overview" | "square-pen" | "donate" | "github" | "menu" }) {
+export function HeaderToolbarIcon({ file }: { file: "documentation" | "language" | "theme-language" | "information" | "project-overview" | "square-pen" | "donate" | "github" | "menu" }) {
   const mask = `url("/assets/kercad/${file}.svg")`;
   return <span aria-hidden="true" className="kercad-header-svg-icon" style={{ maskImage: mask, WebkitMaskImage: mask }} />;
 }
