@@ -9,6 +9,31 @@
 .kercad-header-actions .kercad-header-language-menu button:focus-visible { outline: 2px solid var(--theme-link); outline-offset: -2px; }
 .kercad-header-preference-separator { margin: 5px 4px; border: 0; border-top: 1px solid var(--theme-menu-line); }
 
+/* Light and dark form one horizontal segmented control in both choosers. */
+.kercad-header-theme-options,
+.kercad-welcome-themes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--theme-menu-line);
+  border-radius: 6px;
+}
+.kercad-header-actions .kercad-header-language-menu .kercad-header-theme-options > button,
+.kercad-welcome-dialog .kercad-welcome-themes > button {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  justify-content: center;
+}
+.kercad-header-actions .kercad-header-language-menu .kercad-header-theme-options > button + button,
+.kercad-welcome-dialog .kercad-welcome-themes > button + button {
+  border-left: 1px solid var(--theme-menu-line);
+}
+.kercad-welcome-dialog .kercad-welcome-themes > button:focus-visible {
+  outline-offset: -2px;
+}
+
 /* Only paint overrides belong here. Layout remains shared with light mode. */
 html[data-theme="dark"] .kercad-about-page {
   --about-ink: var(--theme-text);
@@ -114,4 +139,27 @@ html[data-theme="dark"] .kercad-dashboard-search {
 
 html[data-theme="dark"] .kercad-dashboard-shell .kercad-edit-theme-icon {
   background-color: var(--theme-text-668096);
+}
+
+html[data-theme="dark"] .kercad-dashboard-shell h1,
+html[data-theme="dark"] .kercad-dashboard-card .card-copy > strong,
+html[data-theme="dark"] .kercad-challenge-card .challenge-copy strong {
+  color: #e4e6e9;
+}
+
+html[data-theme="dark"] .kercad-dashboard-search {
+  color: #a5a9b0;
+}
+html[data-theme="dark"] .kercad-dashboard-search input {
+  color: #e4e6e9;
+}
+html[data-theme="dark"] .kercad-dashboard-search input::placeholder {
+  color: #a5a9b0;
+  opacity: 1;
+}
+
+html[data-theme="dark"] .kercad-dashboard-card .card-copy > small,
+html[data-theme="dark"] .kercad-challenge-card .challenge-copy > span:not(.challenge-categories),
+html[data-theme="dark"] .kercad-challenge-card .challenge-copy > em {
+  color: #a5a9b0;
 }

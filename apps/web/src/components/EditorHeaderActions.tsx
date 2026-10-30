@@ -68,8 +68,10 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onL
           <a href={`/documentation?lang=${locale}`} target="_blank" rel="noopener noreferrer"><HeaderToolbarIcon file="documentation" />{t("about.documentation")}</a>
           <a href="/?about=1" target="_blank" rel="noopener noreferrer"><HeaderToolbarIcon file="project-overview" />{t("about.projectOverview")}</a>
           {onLaunchTutorial && <button type="button" onClick={() => { setInfoOpen(false); onLaunchTutorial(); }}><HeaderToolbarIcon file="documentation" />{t("about.launchTutorial")}</button>}
-          <button type="button" disabled title={t("about.githubPending")}><HeaderToolbarIcon file="github" />GitHub</button>
-          <button type="button" disabled title={t("about.donatePending")}><HeaderToolbarIcon file="donate" />{t("about.donate")}</button>
+          <div className="kercad-about-support-links">
+            <button type="button" disabled title={t("about.githubPending")}><HeaderToolbarIcon file="github" />GitHub</button>
+            <button type="button" disabled title={t("about.donatePending")}><HeaderToolbarIcon file="donate" />{t("about.donate")}</button>
+          </div>
         </nav>
         <footer><p lang={locale}>{t("about.credit")}</p></footer>
       </section>

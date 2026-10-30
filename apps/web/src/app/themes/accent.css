@@ -7,7 +7,6 @@
   --accent-solid: #1269eb;
   --accent-link-light: #1269eb;
   --accent-link-dark: #8abaff;
-  --accent-header-dark: hsl(var(--accent-hue) calc(var(--accent-saturation) * 0.7) 20%);
   --accent-shade-008fbe: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 37.2549%);
   --accent-shade-0098c7: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 39.0196%);
   --accent-shade-009fd7: hsl(var(--accent-hue) calc(var(--accent-saturation) * 1.16590) 42.1569%);
@@ -203,7 +202,7 @@
 }
 
 html[data-theme="dark"] :is(.kercad-dashboard-topbar, .kercad-landing-nav, .kercad-toolbar-titlebar) {
-  background: var(--accent-header-dark);
+  background: var(--accent-solid);
 }
 
 .kercad-accent-options {

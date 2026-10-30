@@ -178,7 +178,7 @@ export function EditorGettingStarted({ locale, active, mode = "3d", launchReques
     window.addEventListener("scroll", update, true);
     return () => { updatePosition.current = () => {}; observer.disconnect(); window.removeEventListener("resize", update); window.removeEventListener("scroll", update, true); };
   }, [active, visible, step, locale, mode, dashboardSection, centeredDashboardCard, welcomeRequired]);
-  if (active && mode === "dashboard" && welcomeRequired && onLocaleChange) return <DashboardWelcomeDialog locale={locale} onLocaleChange={onLocaleChange} onConfirm={() => {
+  if (active && mode === "dashboard" && welcomeRequired && onLocaleChange) return <DashboardWelcomeDialog onLocaleChange={onLocaleChange} onConfirm={() => {
     try { localStorage.setItem(DASHBOARD_WELCOME_KEY, "true"); localStorage.removeItem(DASHBOARD_STORAGE_KEY); } catch { /* Continue even when storage is unavailable. */ }
     dragOffset.current = { x: 0, y: 0 };
     setStep(0);

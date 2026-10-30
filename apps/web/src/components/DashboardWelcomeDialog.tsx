@@ -8,12 +8,12 @@ import { AccentColorOptions } from "@/components/AccentColorOptions";
 import { useAppTheme } from "@/lib/useAppTheme";
 import { useAccessibleDialog } from "@/components/useAccessibleDialog";
 
-export function DashboardWelcomeDialog({ locale, onLocaleChange, onConfirm }: {
-  locale: KercadLocale;
+export function DashboardWelcomeDialog({ onLocaleChange, onConfirm }: {
   onLocaleChange: (locale: KercadLocale) => void;
   onConfirm: () => void;
 }) {
   const [selectedLocale, setSelectedLocale] = useState<KercadLocale | null>(null);
+  const locale = selectedLocale ?? "en";
   const { theme, setTheme } = useAppTheme();
   const dialogRef = useAccessibleDialog<HTMLFormElement>(true, () => {});
   const t = (key: Parameters<typeof kercadTranslate>[1]) => kercadTranslate(locale, key);
@@ -26,7 +26,7 @@ export function DashboardWelcomeDialog({ locale, onLocaleChange, onConfirm }: {
   }, []);
 
   return createPortal(<div className="kercad-welcome-backdrop">
-    <form ref={dialogRef} className="kercad-welcome-dialog" role="dialog" aria-modal="true" aria-labelledby="kercad-welcome-title" aria-describedby="kercad-welcome-description" tabIndex={-1} onSubmit={(event) => {
+    <form ref={dialogRef} lang={locale} className="kercad-welcome-dialog" role="dialog" aria-modal="true" aria-labelledby="kercad-welcome-title" aria-describedby="kercad-welcome-description" tabIndex={-1} onSubmit={(event) => {
       event.preventDefault();
       if (selectedLocale) onConfirm();
     }}>
