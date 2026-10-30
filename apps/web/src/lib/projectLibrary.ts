@@ -17,6 +17,19 @@ const DATABASE_NAME = "kercad.project-library";
 const STORE_NAME = "projects";
 const DATABASE_VERSION = 1;
 
+/** Model content, independent of renames, view preferences and timestamps. */
+export function hasProjectGeometry(document: ParametricDocument): boolean {
+  return document.objects.some((object) => Boolean(object.referenceMesh?.positions.length || object.referenceMesh?.image?.dataUrl))
+    || document.features.some((feature) => {
+      if (feature.kind === "primitive" || feature.kind === "extrude") return true;
+      if (feature.kind === "importedStep") return Boolean(feature.stepText.trim());
+      if (feature.kind !== "sketch") return false;
+      if (feature.profile.shape !== "drawn") return true;
+      const geometry = feature.profile.geometry;
+      return Boolean(geometry.points.length || geometry.segments.length || geometry.circles?.length || geometry.images?.length || geometry.texts?.length);
+    });
+}
+
 function openProjectLibrary() {
   return new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);

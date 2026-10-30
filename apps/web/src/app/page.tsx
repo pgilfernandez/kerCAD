@@ -8,7 +8,7 @@ import { SketchForgeParametricEditor } from "@/components/SketchForgeParametricE
 import { createEmptyChallenge, deleteInstalledChallenge, duplicateChallenge, exportChallengePackage, importChallengePackage, listInstalledChallenges, saveInstalledChallenge, syncBundledChallenges, type KercadChallenge } from "@/lib/challengeLibrary";
 import { exportKercadProject, importKercadProject, KERCAD_PACKAGE_MEDIA_TYPE } from "@/lib/kercadProject";
 import { createEmptyDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
-import { deleteLibraryProject, getLibraryProject, listLibraryProjects, newProjectLibraryId, saveLibraryProject, updateLibraryProjectThumbnail, type ProjectLibraryEntry } from "@/lib/projectLibrary";
+import { deleteLibraryProject, getLibraryProject, hasProjectGeometry, listLibraryProjects, newProjectLibraryId, saveLibraryProject, updateLibraryProjectThumbnail, type ProjectLibraryEntry } from "@/lib/projectLibrary";
 import { thumbnailDocumentKey, uploadSharedThumbnail } from "@/lib/sharedProjectThumbnail";
 import type { ParametricDocument } from "@/types/parametric";
 import { dashboardTranslate, type DashboardTranslationKey } from "@/lib/dashboardI18n";
@@ -55,7 +55,7 @@ export default function Home() {
   const changeVersionRef = useRef(0);
   const savedVersionRef = useRef(0);
   const transientEditorRef = useRef(false);
-  const newProjectDraftRef = useRef<{ baseline: string; changed: boolean } | null>(null);
+  const newProjectDraftRef = useRef<{ baseline: string; changed: boolean; requiresGeometry: boolean } | null>(null);
 
   useEffect(() => { activeRef.current = active; }, [active]);
 
@@ -69,13 +69,14 @@ export default function Home() {
     const latest = activeRef.current;
     const version = changeVersionRef.current;
     if (!latest || transientEditorRef.current || version === savedVersionRef.current) return;
-    if (newProjectDraftRef.current && !newProjectDraftRef.current.changed) return;
+    const draft = newProjectDraftRef.current;
+    if (draft && (!draft.changed || (draft.requiresGeometry && !hasProjectGeometry(latest.document)))) return;
     await enqueueLibraryWrite(() => saveLibraryProject(structuredClone(latest)));
     if (changeVersionRef.current === version) savedVersionRef.current = version;
   }, [enqueueLibraryWrite]);
-  const openProject = useCallback((entry: ProjectLibraryEntry, transient = false, newDraft = false) => {
+  const openProject = useCallback((entry: ProjectLibraryEntry, transient = false, newDraft = false, requiresGeometry = false) => {
     transientEditorRef.current = transient;
-    newProjectDraftRef.current = newDraft ? { baseline: projectContentKey(entry.document), changed: false } : null;
+    newProjectDraftRef.current = newDraft ? { baseline: projectContentKey(entry.document), changed: false, requiresGeometry } : null;
     activeRef.current = entry;
     pendingDocumentRef.current = entry.document;
     changeVersionRef.current = 0;
@@ -138,16 +139,14 @@ export default function Home() {
     const entry = { id: newProjectLibraryId(), name: document.name, createdAt: now, updatedAt: now, document };
     openProject(entry, false, true);
   };
-  const startChallenge = async (challenge: KercadChallenge) => {
+  const startChallenge = (challenge: KercadChallenge) => {
     const document = createEmptyDocument();
     document.name = challenge.title;
     const now = Date.now();
     const entry = { id: newProjectLibraryId(), name: document.name, createdAt: now, updatedAt: now, document };
-    await saveLibraryProject(entry);
-    setProjects((current) => [entry, ...current]);
     setEditingChallenge(null);
     setActiveChallenge(challenge);
-    openProject(entry);
+    openProject(entry, false, true, true);
   };
   const editChallenge = (sourceChallenge?: KercadChallenge) => {
     const challenge = sourceChallenge ?? createEmptyChallenge();
@@ -202,7 +201,8 @@ export default function Home() {
       if (activeRef.current.document.thumbnailOverride && !manual) return;
       activeRef.current = { ...activeRef.current, thumbnail, thumbnailDocumentKey: key };
       // Keep automatic previews in memory until the draft has actual edits.
-      if (newProjectDraftRef.current && !newProjectDraftRef.current.changed) return;
+      const draft = newProjectDraftRef.current;
+      if (draft && (!draft.changed || (draft.requiresGeometry && !hasProjectGeometry(activeRef.current.document)))) return;
       await enqueueLibraryWrite(() => updateLibraryProjectThumbnail(current.id, thumbnail, key));
     })();
   }, [enqueueLibraryWrite]);
@@ -211,7 +211,12 @@ export default function Home() {
     const current = activeRef.current;
     const draft = newProjectDraftRef.current;
     if (draft && !draft.changed) draft.changed = projectContentKey(document) !== draft.baseline;
-    if (current && !transientEditorRef.current && (!draft || draft.changed)) {
+    if (current && !transientEditorRef.current && draft?.requiresGeometry && !hasProjectGeometry(document)) {
+      // Geometry may have been created and autosaved, then deleted. Queue the
+      // discard after those writes and prevent an interval from saving it again.
+      activeRef.current = null;
+      await enqueueLibraryWrite(() => deleteLibraryProject(current.id));
+    } else if (current && !transientEditorRef.current && (!draft || draft.changed)) {
       const saved = { ...current, name: document.name, updatedAt: Date.now(), document: structuredClone(document) };
       activeRef.current = saved;
       await enqueueLibraryWrite(() => saveLibraryProject(saved));
