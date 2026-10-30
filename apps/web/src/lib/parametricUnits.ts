@@ -1,3 +1,5 @@
+import { getCurrentLocale } from "@/lib/kercadI18n";
+
 export type ParametricDisplayUnit = "mm" | "cm" | "m" | "in" | "ft";
 
 // Geometry, constraints, grid spacing and exports remain in millimeters.
@@ -27,6 +29,15 @@ export function displayLengthToMillimeters(value: number, unit: ParametricDispla
   return value * MILLIMETERS_PER_UNIT[unit];
 }
 
-export function formatDisplayLength(valueInMillimeters: number, unit: ParametricDisplayUnit, maximumFractionDigits = unit === "mm" ? 2 : unit === "cm" ? 3 : unit === "in" ? 4 : 5) {
-  return new Intl.NumberFormat(undefined, { maximumFractionDigits, useGrouping: false }).format(millimetersToDisplayLength(valueInMillimeters, unit));
+export function formatDisplayLength(
+  valueInMillimeters: number,
+  unit: ParametricDisplayUnit,
+  maximumFractionDigits = unit === "mm" ? 2 : unit === "cm" ? 3 : unit === "in" ? 4 : 5,
+  locale: string = getCurrentLocale(),
+) {
+  // Editable CAD expressions use Latin digits; locale-specific decimal separators
+  // are supported by the parser. Strip bidi marks from RTL numeric formatting.
+  return new Intl.NumberFormat(locale, { maximumFractionDigits, useGrouping: false, numberingSystem: "latn" })
+    .format(millimetersToDisplayLength(valueInMillimeters, unit))
+    .replace(/[\u061c\u200e\u200f]/g, "");
 }

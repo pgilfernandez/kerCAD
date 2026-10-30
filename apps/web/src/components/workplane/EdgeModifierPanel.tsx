@@ -7,6 +7,7 @@ import { validateNumericExpression } from "@/lib/numericExpression";
 import type { CadModifierKind, CadModifierQuality } from "@/lib/cadModifierTypes";
 import { CAD_MODIFIER_MAX_SHARP_ANGLE, edgeModifierSelectionStatus } from "@/lib/cadModifierRuntime";
 import type { WorkplaneWorkspaceSettings } from "@/types/sketchforge";
+import { uiText } from "@/lib/kercadI18n";
 
 const MIN_EDGE_MODIFIER_AMOUNT = 0.001;
 const EDGE_MODIFIER_AMOUNT_STEP = 0.001;
@@ -206,21 +207,21 @@ export function EdgeModifierPanel({
           <strong>{title}</strong>
           <span>{edgeModifierSelectionStatus(prepared, selectedCount, availableCount)}</span>
         </div>
-        <button type="button" aria-label={`Cancel ${kind}`} onClick={onCancel}><X size={20} /></button>
+        <button type="button" aria-label={uiText("ui.edgemodifierpanel.cancel.64e3bf", { value0: kind })} onClick={onCancel}><X size={20} /></button>
       </div>
 
       <div className={`edge-modifier-target ${groupedCount > 0 ? "grouped" : ""}`}>
         <strong>{targetName}</strong>
-        <span>{groupedCount > 0 ? `${groupedCount} grouped objects` : "Single object"}{appliedFeatureCount > 0 ? ` · ${appliedFeatureCount} existing edge feature${appliedFeatureCount === 1 ? "" : "s"}` : ""}</span>
+        <span>{groupedCount > 0 ? uiText("ui.edgemodifierpanel.grouped.objects.6cc74b", { value0: groupedCount }) : uiText("ui.edgemodifierpanel.single.object.5fce0b")}{appliedFeatureCount > 0 ? uiText("ui.edgemodifierpanel.existing.edge.feature.951371", { value0: appliedFeatureCount, value1: appliedFeatureCount === 1 ? "" : "s" }) : ""}</span>
       </div>
 
       <div className="edge-modifier-selection-help">
-        {prepared ? "Click highlighted model edges to toggle them. Hold Shift to add or remove a single edge." : "Loading CAD edge data from the local browser worker."}
+        {prepared ? uiText("ui.edgemodifierpanel.click.highlighted.model.edges.to.toggle.them.hol.15fcc0") : uiText("ui.edgemodifierpanel.loading.cad.edge.data.from.the.local.browser.wor.62c2a2")}
       </div>
 
       <div className="edge-modifier-quick-actions">
-        <button type="button" disabled={!prepared || busy} onClick={onSelectAll}>All sharp edges</button>
-        <button type="button" disabled={!prepared || busy} onClick={onClear}>Clear</button>
+        <button type="button" disabled={!prepared || busy} onClick={onSelectAll}>{uiText("ui.edgemodifierpanel.all.sharp.edges.0cff77")}</button>
+        <button type="button" disabled={!prepared || busy} onClick={onClear}>{uiText("ui.edgemodifierpanel.clear.719ea3")}</button>
       </div>
 
       {appliedFeatureCount > 0 ? (
@@ -233,9 +234,9 @@ export function EdgeModifierPanel({
             onClick={() => setHistoryOpen((open) => !open)}
           >
             {historyOpen ? <Minus size={15} /> : <Plus size={15} />}
-            <span>Edge feature history</span>
+            <span>{uiText("ui.edgemodifierpanel.edge.feature.history.d7f073")}</span>
           </button>
-          {reversibleFeatureCount === 0 ? <span>Older edge features do not have stored undo history.</span> : null}
+          {reversibleFeatureCount === 0 ? <span>{uiText("ui.edgemodifierpanel.older.edge.features.do.not.have.stored.undo.hist.79e844")}</span> : null}
           {historyOpen && historyOptions.length > 0 ? (
             <div className="edge-modifier-history-list">
               {historyOptions.map((option) => (
@@ -245,7 +246,7 @@ export function EdgeModifierPanel({
                     <strong>{option.label}</strong>
                     <small>
                       {option.targetName}
-                      {option.removesNewerCount > 0 ? ` · also removes ${option.removesNewerCount} newer` : ""}
+                      {option.removesNewerCount > 0 ? uiText("ui.edgemodifierpanel.also.removes.newer.f4222b", { value0: option.removesNewerCount }) : ""}
                     </small>
                   </span>
                 </button>
@@ -256,7 +257,7 @@ export function EdgeModifierPanel({
       ) : null}
 
       <EdgeModifierSlider
-        label={kind === "fillet" ? "Radius" : "Distance"}
+        label={kind === "fillet" ? uiText("sidebar.radius") : uiText("property.distance")}
         value={amount}
         min={amountMin}
         max={amountMax}
@@ -267,36 +268,35 @@ export function EdgeModifierPanel({
         onChange={onAmountChange}
       />
 
-      {kind === "chamfer" ? <EdgeModifierSlider label="Angle" value={chamferAngle} min={5} max={85} step={1} unit="deg" workspace={workspace} disabled={!prepared || busy} onChange={onChamferAngleChange} /> : null}
+      {kind === "chamfer" ? <EdgeModifierSlider label={uiText("sketch.angle")} value={chamferAngle} min={5} max={85} step={1} unit="deg" workspace={workspace} disabled={!prepared || busy} onChange={onChamferAngleChange} /> : null}
 
-      <EdgeModifierSlider label="Sharp-edge threshold" value={sharpAngle} min={1} max={CAD_MODIFIER_MAX_SHARP_ANGLE} step={1} unit="deg" workspace={workspace} disabled={!prepared || busy} onChange={onSharpAngleChange} />
+      <EdgeModifierSlider label={uiText("ui.edgemodifierpanel.sharp.edge.threshold.b36c77")} value={sharpAngle} min={1} max={CAD_MODIFIER_MAX_SHARP_ANGLE} step={1} unit="deg" workspace={workspace} disabled={!prepared || busy} onChange={onSharpAngleChange} />
 
       <label className="edge-modifier-check">
         <input type="checkbox" checked={tangentChain} disabled={!prepared || busy} onChange={(event) => onTangentChainChange(event.currentTarget.checked)} />
-        <span>Select tangent chains</span>
+        <span>{uiText("ui.edgemodifierpanel.select.tangent.chains.bd4d68")}</span>
       </label>
 
       <label className="edge-modifier-check">
         <input type="checkbox" checked={preserveEdgeSize} disabled={!prepared || busy} onChange={(event) => onPreserveEdgeSizeChange(event.currentTarget.checked)} />
-        <span>Keep edge size when resizing</span>
+        <span>{uiText("ui.edgemodifierpanel.keep.edge.size.when.resizing.08f1e8")}</span>
       </label>
 
       <label className="edge-modifier-field">
-        <span>Preview quality</span>
+        <span>{uiText("ui.edgemodifierpanel.preview.quality.d8b13a")}</span>
         <select value={quality} disabled={!prepared || busy} onChange={(event) => onQualityChange(event.currentTarget.value as CadModifierQuality)}>
-          <option value="draft">Draft</option>
-          <option value="standard">Standard</option>
-          <option value="fine">Fine</option>
+          <option value="draft">{uiText("ui.edgemodifierpanel.draft.23d33e")}</option>
+          <option value="standard">{uiText("ui.edgemodifierpanel.standard.2dfa66")}</option>
+          <option value="fine">{uiText("ui.edgemodifierpanel.fine.226d7e")}</option>
         </select>
       </label>
 
       {error ? <div className="edge-modifier-error" role="alert">{error}</div> : null}
       <div className="edge-modifier-footer">
-        <button type="button" className="secondary" onClick={onCancel}>Cancel</button>
+        <button type="button" className="secondary" onClick={onCancel}>{uiText("dashboard.cancel.77dfd2")}</button>
         <button type="button" className="primary" disabled={!prepared || busy || selectedCount === 0 || Boolean(error)} onClick={onApply}>
           {busy ? <LoaderCircle className="edge-modifier-spinner" size={17} /> : <Check size={17} />}
-          Apply
-        </button>
+          {uiText("ui.edgemodifierpanel.apply.cfea41")}{" "}</button>
       </div>
     </aside>
   );

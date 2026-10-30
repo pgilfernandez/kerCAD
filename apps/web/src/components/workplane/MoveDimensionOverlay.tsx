@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
 import type { MoveDimensionAxis, MoveDimensionOverlayData } from "@/lib/moveDimensionLines";
+import { uiText } from "@/lib/kercadI18n";
 
 export function MoveDimensionOverlay({
   overlay,
@@ -50,14 +51,14 @@ export function MoveDimensionOverlay({
   }) as CSSProperties;
 
   return (
-    <div className={`move-dimension-overlay ${active ? "active" : "settled"}`} aria-label="Movement dimensions">
+    <div className={`move-dimension-overlay ${active ? "active" : "settled"}`} aria-label={uiText("ui.movedimensionoverlay.movement.dimensions.eb0502")}>
       {overlay.lines.map((line) => {
         if (editing?.axis === line.axis) {
           return (
             <input
               key={`edit-${line.axis}`}
               className="dimension-input move-dimension-input"
-              aria-label={`${line.axis.toUpperCase()} movement`}
+              aria-label={uiText("ui.movedimensionoverlay.movement.9e7fce", { value0: line.axis.toUpperCase() })}
               value={editing.value}
               autoFocus
               inputMode="text"
@@ -97,7 +98,7 @@ export function MoveDimensionOverlay({
             key={line.axis}
             className="dimension-label move-dimension-value"
             type="button"
-            aria-label={`${line.axis.toUpperCase()} movement`}
+            aria-label={uiText("ui.movedimensionoverlay.movement.9e7fce", { value0: line.axis.toUpperCase() })}
             style={styleForLine(line)}
             onClick={() => setEditing({ axis: line.axis, value: line.label })}
             onPointerDown={stopPointerPropagation}

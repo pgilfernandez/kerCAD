@@ -1,7 +1,6 @@
 "use client";
 
 import { PROJECT_FILE_PATTERN, LEGACY_PROJECT_ACCEPT } from "@/lib/legacyBrand";
-
 import { Camera, RotateCcw, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, Focus, Grid3X3, Home, Maximize2, Minus, Plus, Trash2, X } from "lucide-react";
 import { ChallengeEditor, type ChallengeDock } from "@/components/ChallengeEditor";
 import { ChallengePlayer } from "@/components/ChallengePlayer";
@@ -85,7 +84,7 @@ import { AnnotationIcon } from "@/components/AnnotationIcon";
 import { SketchAnnotationToolbar } from "@/components/SketchAnnotationToolbar";
 import { annotationDimensionPreset, type AnnotationTool } from "@/lib/annotationPresets";
 import { annotationPosition, rotatedCircleAnnotation, setAnnotationPosition, type AnnotationPoint } from "@/lib/annotationGeometry";
-import { kercadTranslate, normalizeKercadLocale, type KercadLocale, type KercadTranslationKey } from "@/lib/kercadI18n";
+import { kercadTranslate, type KercadLocale, type KercadTranslationKey } from "@/lib/kercadI18n";
 import { parametricRebuildSuggestion } from "@/lib/parametricRebuildDiagnostics";
 import { hasPreviousSolidOperation } from "@/lib/parametricOperationModes";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
@@ -145,6 +144,8 @@ import { localizedParametricOperationDefinition, parametricShapeMenuOrder, param
 import type { ViewportRenderQuality } from "@/lib/viewportPerformance";
 import type { BuildResult, ExtrudeFeature, ParametricAnnotation, ParametricDocument, ParametricFeature, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, PrimitiveFeature, RevolveFeature, SketchFeature } from "@/types/parametric";
 import type { GridSize, SketchConstraint, SketchPoint, SketchProfile, WorkplaneShape } from "@/types/sketchforge";
+import { uiText } from "@/lib/kercadI18n";
+import { useAppLocale } from "@/lib/useAppLocale";
 
 const RENDER_QUALITY_STORAGE_KEY = "kercad.viewport.render-mode";
 const FPS_VISIBLE_STORAGE_KEY = "kercad.viewport.show-fps";
@@ -156,32 +157,30 @@ const SHADING_MODE_STORAGE_KEY = "kercad.viewport.shading-mode";
 
 function localizeNewDocumentEntries(previous: ParametricDocument, next: ParametricDocument, locale: KercadLocale) {
   const previousObjectIds = new Set(previous.objects.map((object) => object.id));
-  next.objects.filter((object) => !previousObjectIds.has(object.id)).forEach((object, index) => { object.name = `${locale === "es" ? "Objeto" : "Object"} ${previous.objects.length + index + 1}`; });
+  next.objects.filter((object) => !previousObjectIds.has(object.id)).forEach((object, index) => { object.name = `${uiText("sidebar.object", {}, locale)} ${previous.objects.length + index + 1}`; });
   const previousFeatureIds = new Set(previous.features.map((feature) => feature.id));
   next.features.filter((feature) => !previousFeatureIds.has(feature.id)).forEach((feature) => {
     const index = next.features.filter((candidate) => candidate.kind === feature.kind).findIndex((candidate) => candidate.id === feature.id) + 1;
-    const en = locale === "en";
     if (feature.kind === "primitive") feature.name = localizedParametricOperationDefinition(feature.primitive, locale).name;
     else if (feature.kind === "sketch") {
       const generator = feature.profile.shape === "drawn" ? feature.profile.geometry.generator?.kind : null;
-      feature.name = generator === "text" ? (en ? "Text profile" : "Perfil de texto") : generator === "scribble" ? "Scribble profile" : `${en ? "Sketch" : "Boceto"} ${index}`;
+      feature.name = generator === "text" ? (uiText("ui.sketchforgeparametriceditor.text.profile.879b35", {}, locale)) : generator === "scribble" ? uiText("operation.scribbleProfile", {}, locale) : `${uiText("operation.sketch", {}, locale)} ${index}`;
     } else if (feature.kind === "extrude") {
       const sketch = next.features.find((candidate) => candidate.kind === "sketch" && candidate.id === feature.sketchId);
       const generator = sketch?.kind === "sketch" && sketch.profile.shape === "drawn" ? sketch.profile.geometry.generator?.kind : null;
-      feature.name = generator === "text" ? (en ? "Text" : "Texto") : generator === "scribble" ? "Scribble" : `${en ? "Extrusion" : "Extrusión"} ${index}`;
+      feature.name = generator === "text" ? (uiText("sidebar.text", {}, locale)) : generator === "scribble" ? uiText("operation.scribble", {}, locale) : `${uiText("ui.sketchforgeparametriceditor.extrusion.f1a195", {}, locale)} ${index}`;
     }
-    else if (feature.kind === "hole") feature.name = `${en ? "Hole" : "Taladro"} ${index}`;
-    else if (feature.kind === "fillet") feature.name = `${feature.treatment === "chamfer" ? (en ? "Chamfer" : "Chaflán") : (en ? "Fillet" : "Redondeo")} ${index}`;
-    else if (feature.kind === "faceExtrude") feature.name = `${feature.operation === "cut" ? (en ? "Face cut" : "Hueco de cara") : (en ? "Face extrusion" : "Extrusión de cara")} ${index}`;
-    else if (feature.kind === "shell") feature.name = `${en ? "Shell" : "Vaciado"} ${index}`;
-    else if (feature.kind === "revolve") feature.name = `${en ? "Revolution" : "Revolución"} ${index}`;
-    else if (feature.kind === "mirror") feature.name = `${en ? "Mirror" : "Espejo"} ${index}`;
-    else if (feature.kind === "linearPattern") feature.name = `${en ? "Linear pattern" : "Matriz lineal"} ${index}`;
-    else if (feature.kind === "polarPattern") feature.name = `${en ? "Polar pattern" : "Matriz polar"} ${index}`;
-    else if (feature.kind === "objectBoolean") feature.name = `${en ? "Object boolean" : "Booleana de objeto"} ${index}`;
+    else if (feature.kind === "hole") feature.name = `${uiText("operation.hole", {}, locale)} ${index}`;
+    else if (feature.kind === "fillet") feature.name = `${feature.treatment === "chamfer" ? (uiText("operation.chamfer", {}, locale)) : (uiText("operation.fillet", {}, locale))} ${index}`;
+    else if (feature.kind === "faceExtrude") feature.name = `${feature.operation === "cut" ? (uiText("ui.sketchforgeparametriceditor.face.cut.4c1acc", {}, locale)) : (uiText("operation.faceExtrude", {}, locale))} ${index}`;
+    else if (feature.kind === "shell") feature.name = `${uiText("toolbar.shell", {}, locale)} ${index}`;
+    else if (feature.kind === "revolve") feature.name = `${uiText("ui.sketchforgeparametriceditor.revolution.726830", {}, locale)} ${index}`;
+    else if (feature.kind === "mirror") feature.name = `${uiText("operation.mirror", {}, locale)} ${index}`;
+    else if (feature.kind === "linearPattern") feature.name = `${uiText("operation.linearPattern", {}, locale)} ${index}`;
+    else if (feature.kind === "polarPattern") feature.name = `${uiText("operation.polarPattern", {}, locale)} ${index}`;
+    else if (feature.kind === "objectBoolean") feature.name = `${uiText("ui.sketchforgeparametriceditor.object.boolean.0bf5b3", {}, locale)} ${index}`;
   });
 }
-const LOCALE_STORAGE_KEY = "kercad.locale";
 type Notice = { type: "ok" | "info" | "error"; text: string } | null;
 
 function downloadBlob(blob: Blob, name: string) {
@@ -396,7 +395,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [displayMode, setDisplayMode] = useState<ViewportDisplayMode>("solid");
   const [shadingMode, setShadingMode] = useState<ViewportShadingMode>("shadows");
   const displayUnit = normalizeDisplayUnit(document.displayUnit);
-  const [locale, setLocale] = useState<KercadLocale>("en");
+  const [locale, setLocale] = useAppLocale();
   const [showFps, setShowFps] = useState(false);
   const [showPositionTriad, setShowPositionTriad] = useState(true);
   const [showRotationTriad, setShowRotationTriad] = useState(false);
@@ -486,14 +485,14 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       }
       if (!event.data.complete) return;
       if (targets.length !== group.length) {
-        fail(locale === "es" ? "La alineación necesita geometría visible y activa para toda la selección." : "Alignment requires visible, active geometry for the entire selection.");
+        fail(uiText("ui.sketchforgeparametriceditor.alignment.requires.visible.active.geometry.for.t.12128c", {}, locale));
         return;
       }
       setAlignmentGeometry({ document, groupKey: alignmentGroupKey, targets, complete: true });
       worker.terminate();
     };
-    worker.onerror = event => fail(event.message || "Could not prepare alignment.");
-    worker.onmessageerror = () => fail("Could not receive alignment geometry.");
+    worker.onerror = event => fail(event.message || uiText("notice.alignmentPrepareFailed", {}, locale));
+    worker.onmessageerror = () => fail(uiText("notice.alignmentReceiveFailed", {}, locale));
     worker.postMessage({ document, selection: pendingGroup });
     return () => { cancelled = true; worker.terminate(); };
   }, [alignOpen, alignmentGroupKey, document, locale]);
@@ -654,8 +653,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       await onSaveShared(saved, `${sharedName.trim().replace(PROJECT_FILE_PATTERN, "")}.kercad`, sharedAuthor.trim());
       commit(saved);
       try { localStorage.setItem("kercad.shared-author", sharedAuthor.trim()); } catch {}
-      setSharedSaveMessage(locale === "es" ? "Proyecto guardado en compartidos." : "Project saved to shared.");
-    } catch (error) { setSharedSaveMessage(error instanceof Error ? error.message : "Could not save shared project."); }
+      setSharedSaveMessage(uiText("ui.sketchforgeparametriceditor.project.saved.to.shared.616ada", {}, locale));
+    } catch (error) { setSharedSaveMessage(error instanceof Error ? error.message : uiText("notice.sharedSaveFailed", {}, locale)); }
     finally { setSharedSaving(false); }
   };
   const [pendingProjectImport, setPendingProjectImport] = useState<{ document: ParametricDocument; assetCount: number; fileName: string } | null>(null);
@@ -734,7 +733,6 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       const storedShadingMode = localStorage.getItem(SHADING_MODE_STORAGE_KEY);
       if (storedShadingMode === "shadows" || storedShadingMode === "basic" || storedShadingMode === "noShadows") setShadingMode(storedShadingMode);
       else if (storedShadingMode === "unlit") setShadingMode("noShadows");
-      setLocale(normalizeKercadLocale(localStorage.getItem(LOCALE_STORAGE_KEY)));
       setShowFps(localStorage.getItem(FPS_VISIBLE_STORAGE_KEY) === "true");
       setShowPositionTriad(localStorage.getItem(POSITION_TRIAD_VISIBLE_STORAGE_KEY) !== "false");
       setShowRotationTriad(localStorage.getItem(ROTATION_TRIAD_VISIBLE_STORAGE_KEY) === "true");
@@ -758,12 +756,6 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   useEffect(() => {
     if (hydrated) localStorage.setItem(SHADING_MODE_STORAGE_KEY, shadingMode);
   }, [hydrated, shadingMode]);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    localStorage.setItem(LOCALE_STORAGE_KEY, locale);
-    window.document.documentElement.lang = locale;
-  }, [hydrated, locale]);
 
   useEffect(() => {
     if (hydrated) localStorage.setItem(FPS_VISIBLE_STORAGE_KEY, String(showFps));
@@ -1236,7 +1228,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     : exporting
     ? t("status.exportingStep")
     : alignmentCalculating
-      ? (locale === "es" ? "Calculando…" : "Calculating…")
+      ? (uiText("ui.sketchforgeparametriceditor.calculating.c57377", {}, locale))
     : kernelBusy
       ? t("status.regenerating")
       : topologyPreviewBusy || topologySelectionBusy || contextBusy
@@ -1316,7 +1308,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       const segmentIds = sketchSelection?.kind === "segment" ? [sketchSelection.id] : sketchSelection?.kind === "multiple" ? sketchSelection.segmentIds : [];
       const axisSegment = segmentIds.length === 1 ? sketchSession.profile.segments.find((segment) => segment.id === segmentIds[0]) : null;
       if (!axisSegment || (axisSegment.kind !== "line" && axisSegment.kind !== undefined)) {
-        setNotice({ type: "error", text: locale === "es" ? "Selecciona una única arista recta del boceto como eje." : "Select one straight sketch edge as the axis." });
+        setNotice({ type: "error", text: uiText("ui.sketchforgeparametriceditor.select.one.straight.sketch.edge.as.the.axis.c89db6", {}, locale) });
         return;
       }
       const revolveFeatureId = sketchSession.revolveAxisFeatureId;
@@ -1340,7 +1332,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       setSketchHistoryIndex(-1);
       setModelSidebarMode(sidebarModeBeforeSketchRef.current);
       setModelSelection([{ id: revolveFeatureId, kind: "feature" }]);
-      setNotice({ type: "ok", text: locale === "es" ? "Eje de revolución actualizado." : "Revolve axis updated." });
+      setNotice({ type: "ok", text: uiText("ui.sketchforgeparametriceditor.revolve.axis.updated.d60835", {}, locale) });
       return;
     }
     let featureId = sketchSession.featureId ?? "";
@@ -1364,7 +1356,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       }
       const feature = createDrawnSketchFeature(draft.features.filter((candidate) => candidate.kind === "sketch" && candidate.purpose === "user").length + 1, sketchSession.profile);
       feature.annotations = structuredClone(sketchSession.annotations);
-      feature.name = `${locale === "es" ? "Boceto" : "Sketch"} ${draft.features.filter((candidate) => candidate.kind === "sketch" && candidate.purpose === "user").length + 1}`;
+      feature.name = `${uiText("operation.sketch", {}, locale)} ${draft.features.filter((candidate) => candidate.kind === "sketch" && candidate.purpose === "user").length + 1}`;
       feature.objectId = objectId ?? undefined;
       if (usesExistingObject && objectId) {
         const object = draft.objects.find((candidate) => candidate.id === objectId);
@@ -1377,7 +1369,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         }
       }
       if (sketchSession.mode === "scribble") {
-        feature.name = locale === "es" ? "Perfil Scribble" : "Scribble profile";
+        feature.name = uiText("ui.sketchforgeparametriceditor.scribble.profile.7be30c", {}, locale);
         feature.purpose = "primitive";
         feature.visible = false;
       }
@@ -1386,7 +1378,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       if (sketchSession.mode === "scribble") {
         const extrusion = createExtrudeFeature(feature.id, draft.features.filter((candidate) => candidate.kind === "extrude").length + 1, false);
         extrusion.objectId = objectId ?? undefined;
-        extrusion.name = "Scribble";
+        extrusion.name = uiText("operation.scribble", {}, locale);
         extrusion.distance = 4;
         extrusion.dependencies = [{ type: "feature", id: feature.id }];
         draft.features.push(extrusion);
@@ -1898,11 +1890,11 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   };
 
   const sketchConstraintStatus = useMemo(() => {
-    if (!sketchSession) return { kind: "under", label: locale === "es" ? "Boceto libre" : "Free sketch" };
+    if (!sketchSession) return { kind: "under", label: uiText("ui.sketchforgeparametriceditor.free.sketch.03f859", {}, locale) };
     const analysis = analyzeSketchConstraints(sketchSession.profile);
-    if (analysis.status === "over") return { kind: "over", label: `${locale === "es" ? "Conflicto" : "Conflict"} · ${analysis.conflictingConstraintIds.length}` };
-    if (analysis.status === "full") return { kind: "full", label: locale === "es" ? "Totalmente restringido" : "Fully constrained" };
-    return { kind: "under", label: `${analysis.degreesOfFreedom} ${locale === "es" ? "GDL" : "DOF"}` };
+    if (analysis.status === "over") return { kind: "over", label: `${uiText("ui.sketchforgeparametriceditor.conflict.39f7b0", {}, locale)} · ${analysis.conflictingConstraintIds.length}` };
+    if (analysis.status === "full") return { kind: "full", label: uiText("ui.sketchforgeparametriceditor.fully.constrained.e8eddf", {}, locale) };
+    return { kind: "under", label: `${analysis.degreesOfFreedom} ${uiText("ui.sketchforgeparametriceditor.dof.4ffdb6", {}, locale)}` };
   }, [locale, sketchSession]);
 
   const selectedDimensionSegment = selectedConstraintSegments.length === 1 && !sketchReferenceAxis(selectedConstraintSegments[0].id) ? selectedConstraintSegments[0] : null;
@@ -2858,14 +2850,14 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     try {
       const deltas = await new Promise<Array<{ id: string; kind: "object" | "feature"; delta: { x: number; y: number; z: number } }>>((resolve, reject) => {
         worker.onmessage = event => event.data.error ? reject(new Error(event.data.error)) : resolve(event.data.deltas);
-        worker.onerror = event => reject(new Error(event.message || "Could not calculate the bounding box."));
-        worker.onmessageerror = () => reject(new Error("Could not receive the bounding box."));
+        worker.onerror = event => reject(new Error(event.message || uiText("notice.boundingBoxFailed", {}, locale)));
+        worker.onmessageerror = () => reject(new Error(uiText("ui.sketchforgeparametriceditor.could.not.receive.the.bounding.box.a6dd7a", {}, locale)));
         worker.postMessage({ document: structuredClone(source), selection: modelSelection });
       });
-      if (latestDocumentRef.current !== source) throw new Error(locale === "es" ? "El diseño ha cambiado. Vuelve a pulsar apoyar en el plano." : "The design changed. Run drop to workplane again.");
+      if (latestDocumentRef.current !== source) throw new Error(uiText("ui.sketchforgeparametriceditor.the.design.changed.run.drop.to.workplane.again.61b42c", {}, locale));
       if (deltas.length && !mutate(draft => { for (const item of deltas) applyParametricSelectionWorldDelta(draft, item.id, item.kind, item.delta); })) return;
-      setNotice({ type: "ok", text: locale === "es" ? "Selección apoyada en el plano de trabajo." : "Selection placed on the workplane." });
-    } catch (error) { setNotice({ type: "error", text: error instanceof Error ? error.message : "Could not drop the selection." }); }
+      setNotice({ type: "ok", text: uiText("ui.sketchforgeparametriceditor.selection.placed.on.the.workplane.545c8f", {}, locale) });
+    } catch (error) { setNotice({ type: "error", text: error instanceof Error ? error.message : uiText("ui.sketchforgeparametriceditor.could.not.drop.the.selection.864b49", {}, locale) }); }
     finally { worker.terminate(); dropWorkerRef.current = null; setDroppingToWorkplane(false); }
   };
 
@@ -2953,7 +2945,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     const reference = document.objects.find((object) => object.id === referenceId)
       ?? document.features.find((feature) => feature.id === referenceId);
     setNotice(moved > 0
-      ? { type: "ok", text: `${moved} ${t(moved === 1 ? "notice.alignedWithSingle" : "notice.alignedWith")} ${alignmentMode === "group" ? (locale === "es" ? "el grupo" : "the group") : reference?.name ?? t("notice.reference")}` }
+      ? { type: "ok", text: `${moved} ${t(moved === 1 ? "notice.alignedWithSingle" : "notice.alignedWith")} ${alignmentMode === "group" ? (uiText("ui.sketchforgeparametriceditor.the.group.bd3846", {}, locale)) : reference?.name ?? t("notice.reference")}` }
       : { type: "info", text: t("notice.noMovableAlignment") });
   };
 
@@ -2964,7 +2956,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const newDocument = () => {
     const next = createEmptyDocument();
     localizeNewDocumentEntries({ ...next, objects: [], features: [] }, next, locale);
-    next.name = locale === "es" ? "Nuevo diseño" : "New design";
+    next.name = uiText("notice.newDesign", {}, locale);
     setHistory(createParametricHistory(next));
     setModelSelection(next.objects[0] ? [{ id: next.objects[0].id, kind: "object" }] : []);
     setCamera("home");
@@ -3208,7 +3200,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     setSketchMeasurement(null);
     setSketchMeasureStart(null);
     setModelSidebarMode("hidden");
-    setNotice({ type: "info", text: locale === "es" ? "Selecciona una arista recta del boceto y acepta." : "Select a straight sketch edge and accept." });
+    setNotice({ type: "info", text: uiText("ui.sketchforgeparametriceditor.select.a.straight.sketch.edge.and.accept.6a9434", {}, locale) });
   };
 
   const cancelRevolve = () => {
@@ -3269,7 +3261,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     if (!source) return;
     const reference: ParametricTopologyReference = {
       id: `selected-face-${face.key}`,
-      name: `${locale === "es" ? "Cara de" : "Face of"} ${source.name}`,
+      name: `${uiText("ui.sketchforgeparametriceditor.face.of.3c8b36", {}, locale)} ${source.name}`,
       objectId: face.objectId,
       sourceFeatureId: source.id,
       reference: {
@@ -3311,7 +3303,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     if (!source) return;
     const reference: ParametricTopologyReference = {
       id: `selected-edge-${edge.key}`,
-      name: `${locale === "es" ? "Arista de" : "Edge of"} ${source.name}`,
+      name: `${uiText("ui.sketchforgeparametriceditor.edge.of.1e9c73", {}, locale)} ${source.name}`,
       objectId: edge.objectId,
       sourceFeatureId: source.id,
       reference: {
@@ -3449,7 +3441,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         next.objects.push(imported);
         commit(next);
         setModelSelection([{ id, kind: "object" }]);
-        setNotice({ type: "ok", text: locale === "es" ? "Imagen de referencia importada." : "Reference image imported." });
+        setNotice({ type: "ok", text: uiText("ui.sketchforgeparametriceditor.reference.image.imported.8b70b9", {}, locale) });
       } catch (error) {
         setNotice({ type: "error", text: error instanceof Error ? error.message : t("notice.referenceImportFailed") });
       }
@@ -3462,7 +3454,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         const objectId = importReferenceMesh(draft, file.name, await file.arrayBuffer());
         commit(draft);
         setModelSelection([{ id: objectId, kind: "object" }]);
-        setNotice({ type: "ok", text: `${file.name.toLowerCase().endsWith(".obj") ? "OBJ" : "STL"} ${t("notice.referenceImported")}` });
+        setNotice({ type: "ok", text: `${file.name.toLowerCase().endsWith(".obj") ? uiText("ui.sketchforgeeditor.obj.2f1e50", {}, locale) : uiText("ui.sketchforgeeditor.stl.735c11", {}, locale)} ${t("notice.referenceImported")}` });
       } catch (error) {
         setNotice({ type: "error", text: error instanceof Error ? error.message : t("notice.referenceImportFailed") });
       }
@@ -3512,8 +3504,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       <div className="secondary-toolbar">
         <div className="toolbar-workspace-tabs kercad-toolbar-titlebar">
           <EditorHeaderActions locale={locale} onLocaleChange={setLocale} onLaunchTutorial={!challengeEditor ? () => { resetStartupTutorials(); setTutorialLaunchRequest((request) => request + 1); } : undefined} />
-          {sketchSession ? <div className="kercad-sketch-header-actions"><button className="kercad-toolbar-brand kercad-toolbar-brand-button" type="button" onClick={acceptSketch}><ChevronLeft size={20} aria-hidden="true" />{t("sketch.accept")}</button><button className="kercad-toolbar-brand kercad-toolbar-brand-button" type="button" onClick={cancelSketch}>{t("common.cancel")}</button></div> : onExitToProjects ? <button className="kercad-toolbar-brand kercad-toolbar-brand-button" type="button" onClick={() => onExitToProjects(latestDocumentRef.current)} title={locale === "es" ? "Volver a proyectos" : "Back to projects"}><ChevronLeft size={20} aria-hidden="true" />{locale === "es" ? "Proyectos" : "Projects"}</button> : null}
-          <span className="kercad-project-name"><img src="/assets/kercad/logo.svg" alt="kerCAD" /><strong>kerCAD</strong><span aria-hidden="true">-</span><button type="button" className="kercad-project-rename-trigger" onClick={openProjectRename} title={locale === "es" ? "Cambiar nombre del proyecto" : "Rename project"}>{document.name}</button>{sketchSession ? <strong className="kercad-sketcher-badge">SKETCHER</strong> : null}</span>
+          {sketchSession ? <div className="kercad-sketch-header-actions"><button className="kercad-toolbar-brand kercad-toolbar-brand-button" type="button" onClick={acceptSketch}><ChevronLeft size={20} aria-hidden="true" />{t("sketch.accept")}</button><button className="kercad-toolbar-brand kercad-toolbar-brand-button" type="button" onClick={cancelSketch}>{t("common.cancel")}</button></div> : onExitToProjects ? <button className="kercad-toolbar-brand kercad-toolbar-brand-button" type="button" onClick={() => onExitToProjects(latestDocumentRef.current)} title={uiText("ui.sketchforgeparametriceditor.back.to.projects.055981", {}, locale)}><ChevronLeft size={20} aria-hidden="true" />{uiText("dashboard.projects.53e890", {}, locale)}</button> : null}
+          <span className="kercad-project-name"><img src="/assets/kercad/logo.svg" alt={uiText("ui.page.kercad.c0bf6d", {}, locale)} /><strong>{uiText("ui.page.kercad.c0bf6d", {}, locale)}</strong><span aria-hidden="true">-</span><button type="button" className="kercad-project-rename-trigger" onClick={openProjectRename} title={uiText("dashboard.rename.project.633018", {}, locale)}>{document.name}</button>{sketchSession ? <strong className="kercad-sketcher-badge">{uiText("ui.sketchforgeparametriceditor.sketcher.44752f", {}, locale)}</strong> : null}</span>
         </div>
         {sketchSession ? <div ref={toolbarScrollRef} className="sketch-toolbar-ribbon kercad-parametric-sketch-toolbar" aria-label={t("sketch.tools")}>
           <ToolbarSection label={t("sketch.history")}>
@@ -3559,13 +3551,13 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("sketch.splitHandles")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("split")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "split")}><SketchToolbarIcon file="split-handles" /></Tool>
           </ToolbarSection>
           <ToolbarSection label={t("sketch.edit")} className="sketch-edit-section">
-            <Tool label={locale === "es" ? "Suavizar trazado" : "Smooth path"} enabled={Boolean(sketchCopyableSelection?.segments.length)} active={Boolean(sketchSmoothingSource)} onClick={() => {
+            <Tool label={uiText("ui.sketchforgeparametriceditor.smooth.path.087536", {}, locale)} enabled={Boolean(sketchCopyableSelection?.segments.length)} active={Boolean(sketchSmoothingSource)} onClick={() => {
               if (!sketchCopyableSelection || !sketchSession) return;
               const source = sketchCopyableSelection;
               const ids = new Set(source.segments.map((segment) => segment.id));
               const points = new Set(source.points.map((point) => point.id));
               if (sketchSession.profile.segments.some((segment) => !ids.has(segment.id) && (points.has(segment.startId) || points.has(segment.endId))) || source.points.some((point) => source.segments.filter((segment) => segment.startId === point.id || segment.endId === point.id).length > 2)) {
-                setNotice({ type: "error", text: locale === "es" ? "Selecciona un trazado completo sin ramificaciones para suavizarlo." : "Select a complete path without branches to smooth it." });
+                setNotice({ type: "error", text: uiText("ui.sketchforgeparametriceditor.select.a.complete.path.without.branches.to.smoot.c9f12a", {}, locale) });
                 return;
               }
               setSketchSmoothingSource(source);
@@ -3593,7 +3585,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               <Tool label={t("toolbar.redo")} enabled={history.index < history.entries.length - 1} onClick={redo}><ToolbarRedoIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label={t("toolbar.clipboard")}>
-              <Tool label={t("toolbar.copy")} enabled={Boolean(selectedId)} onClick={() => { setClipboardId(selectedId); setNotice({ type: "info", text: selectionKind === "feature" ? (locale === "es" ? "Operación copiada" : "Operation copied") : t("notice.objectCopied") }); }}><ToolbarCopyIcon /></Tool>
+              <Tool label={t("toolbar.copy")} enabled={Boolean(selectedId)} onClick={() => { setClipboardId(selectedId); setNotice({ type: "info", text: selectionKind === "feature" ? (uiText("ui.sketchforgeparametriceditor.operation.copied.3dbb82", {}, locale)) : t("notice.objectCopied") }); }}><ToolbarCopyIcon /></Tool>
               <Tool label={t("toolbar.paste")} enabled={Boolean(clipboardId)} onClick={() => duplicateSelected(clipboardId)}><ToolbarPasteIcon /></Tool>
               <Tool label={t("toolbar.duplicate")} enabled={Boolean(selectedObjectId)} onClick={() => duplicateSelected()}><ToolbarDuplicateIcon /></Tool>
               <Tool label={modelSelection.length > 1 ? t("toolbar.deleteSelection") : selectionKind === "feature" ? t("toolbar.deleteOperation") : t("toolbar.deleteObject")} enabled={modelSelection.length > 0 || Boolean(selectedAnnotation) || selectedAnnotationId === ANNOTATIONS_GROUP_ID} onClick={deleteCurrentSelection}><ToolbarTrashIcon /></Tool>
@@ -3647,10 +3639,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
                 }}><ToolbarAlignIcon /></Tool>
                 {alignmentHelpHovered ? <div className="kercad-align-popover" role="tooltip" aria-label={t("align.title")}>
                   <header><strong>{t("align.action")}</strong><span>{alignmentMode === "group"
-                    ? (locale === "es" ? "El recuadro azul engloba toda la selección. Los elementos verdes se alinean con los límites o el centro del grupo." : "The blue box encloses the entire selection. Green items align to the group bounds or center.")
-                    : (locale === "es" ? "Azul: referencia · Verde: selección a mover. Pulsa una geometría o su nombre para cambiar la referencia." : "Blue: reference · Green: moving selection. Click geometry or its name to change the reference.")}</span></header>
-                  {alignOpen && alignmentTargets.length === 0 ? <p role="status">{locale === "es" ? "Preparando geometría…" : "Preparing geometry…"}</p> : null}
-                  <p>{locale === "es" ? "Usa los triángulos sobre el recuadro para alinear los extremos o el centro de cada eje." : "Use the triangles on the box to align the ends or center of each axis."}</p>
+                    ? (uiText("ui.sketchforgeparametriceditor.the.blue.box.encloses.the.entire.selection.green.4fa1e2", {}, locale))
+                    : (uiText("ui.sketchforgeparametriceditor.blue.reference.green.moving.selection.click.geom.c62fd3", {}, locale))}</span></header>
+                  {alignOpen && alignmentTargets.length === 0 ? <p role="status">{uiText("ui.sketchforgeparametriceditor.preparing.geometry.be5809", {}, locale)}</p> : null}
+                  <p>{uiText("ui.sketchforgeparametriceditor.use.the.triangles.on.the.box.to.align.the.ends.o.901219", {}, locale)}</p>
                 </div> : null}
               </div>
             </ToolbarSection>
@@ -3672,10 +3664,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       </div>
 
       {sketchSession && sketchSmoothingSource && sketchSmoothingPreview ? <div className="kercad-sketch-smoothing-overlay">
-        <section className="kercad-sketch-smoothing-panel" role="dialog" aria-modal="true" aria-label={locale === "es" ? "Suavizar trazado" : "Smooth path"}>
-          <strong>{locale === "es" ? "Suavizar trazado" : "Smooth path"}</strong>
-          <label>{locale === "es" ? "Suavidad y simplificación" : "Smoothing and simplification"} <output>{Math.round(sketchSmoothing * 100)}%</output><input type="range" min="0" max="1" step="0.01" value={sketchSmoothing} onChange={(event) => setSketchSmoothing(Number(event.target.value))} /></label>
-          <small>{locale === "es" ? "Las restricciones del trazado reemplazado se eliminarán." : "Constraints on the replaced path will be removed."}</small>
+        <section className="kercad-sketch-smoothing-panel" role="dialog" aria-modal="true" aria-label={uiText("ui.sketchforgeparametriceditor.smooth.path.087536", {}, locale)}>
+          <strong>{uiText("ui.sketchforgeparametriceditor.smooth.path.087536", {}, locale)}</strong>
+          <label>{uiText("ui.sketchforgeparametriceditor.smoothing.and.simplification.dcb876", {}, locale)} <output>{Math.round(sketchSmoothing * 100)}%</output><input type="range" min="0" max="1" step="0.01" value={sketchSmoothing} onChange={(event) => setSketchSmoothing(Number(event.target.value))} /></label>
+          <small>{uiText("ui.sketchforgeparametriceditor.constraints.on.the.replaced.path.will.be.removed.9ef860", {}, locale)}</small>
           <div><button type="button" onClick={() => setSketchSmoothingSource(null)}>{t("common.cancel")}</button><button type="button" onClick={() => {
             const oldIds = new Set(sketchSession.profile.points.map((point) => point.id));
             const newPoints = sketchSmoothingPreview.points.filter((point) => !oldIds.has(point.id));
@@ -3689,7 +3681,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       </div> : null}
       {sketchSession && polygonMenuPosition ? <div ref={polygonMenuRef} id="sketch-polygon-menu" className="kercad-polygon-menu" style={polygonMenuPosition}>
         {[3, 4, 5, 6, 7, 8].map((sides) => {
-          const names = locale === "es" ? ["Triángulo", "Rombo", "Pentágono", "Hexágono", "Heptágono", "Octógono"] : ["Triangle", "Rhombus", "Pentagon", "Hexagon", "Heptagon", "Octagon"];
+          const names = [uiText("ui.sketchforgeparametriceditor.triangle.73d3ae", {}, locale), uiText("ui.sketchforgeparametriceditor.rhombus.95de17", {}, locale), uiText("ui.sketchforgeparametriceditor.pentagon.a21e71", {}, locale), uiText("ui.sketchforgeparametriceditor.hexagon.08596d", {}, locale), uiText("ui.sketchforgeparametriceditor.heptagon.71d314", {}, locale), uiText("ui.sketchforgeparametriceditor.octagon.4fecd7", {}, locale)];
           return <button key={sides} type="button" aria-pressed={sketchTool === "polygon" && sketchPolygonSides === sides} onClick={() => { setSketchPolygonSides(sides); chooseSketchTool("polygon"); setPolygonMenuPosition(null); }}><SketchToolbarIcon file={`polygon-${sides}`} /><span>{names[sides - 3]}</span></button>;
         })}
       </div> : null}
@@ -3951,7 +3943,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               draft.annotations ??= [];
               const common = { id, name: nextAnnotationName(draft.annotations, t(`annotation.${kind}`)), visible: true };
               draft.annotations.push(kind === "text"
-                ? { ...common, kind, position: start, alignment: "center", size: 6, font: "Sans", text: "kerCAD" }
+                ? { ...common, kind, position: start, alignment: "center", size: 6, font: "Sans", text: uiText("ui.page.kercad.c0bf6d", {}, locale) }
                 : kind === "circle" ? { ...common, kind, position: start, rotation: { x: 0, y: 0, z: 0 }, radius: Math.max(0.1, Math.hypot((end?.x ?? start.x) - start.x, (end?.y ?? start.y) - start.y, (end?.z ?? start.z) - start.z)), mode: "billboard", color: "#233c52", lineWidth: 2 }
                 : kind === "angle" ? { ...common, kind, start, center: center ?? start, end: end ?? start, color: "#233c52" }
                 : { ...common, kind: "dimension", start, end: end ?? start, ...annotationDimensionPreset(kind) });
@@ -4038,11 +4030,11 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               <Tool label={t("operation.edit")} active={editingAnnotationId === selectedAnnotation.id} onClick={() => setEditingAnnotationId(selectedAnnotation.id)}><ToolbarEditOperationIcon /></Tool>
             </>}
           </> : alignOpen ? <>
-            <button type="button" className={`kercad-alignment-mode ${alignmentMode === "reference" ? "active" : ""}`} aria-label={locale === "es" ? "Alinear a referencia" : "Align to reference"} title={locale === "es" ? "Alinear a referencia" : "Align to reference"} aria-pressed={alignmentMode === "reference"} onClick={() => setAlignmentMode("reference")}>
+            <button type="button" className={`kercad-alignment-mode ${alignmentMode === "reference" ? "active" : ""}`} aria-label={uiText("ui.sketchforgeparametriceditor.align.to.reference.d591b2", {}, locale)} title={uiText("ui.sketchforgeparametriceditor.align.to.reference.d591b2", {}, locale)} aria-pressed={alignmentMode === "reference"} onClick={() => setAlignmentMode("reference")}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/assets/kercad/alignment/mode-reference.svg" alt="" draggable={false} />
             </button>
-            <button type="button" className={`kercad-alignment-mode ${alignmentMode === "group" ? "active" : ""}`} aria-label={locale === "es" ? "Alinear al grupo" : "Align to group"} title={locale === "es" ? "Alinear al grupo" : "Align to group"} aria-pressed={alignmentMode === "group"} onClick={() => setAlignmentMode("group")}>
+            <button type="button" className={`kercad-alignment-mode ${alignmentMode === "group" ? "active" : ""}`} aria-label={uiText("ui.sketchforgeparametriceditor.align.to.group.19071e", {}, locale)} title={uiText("ui.sketchforgeparametriceditor.align.to.group.19071e", {}, locale)} aria-pressed={alignmentMode === "group"} onClick={() => setAlignmentMode("group")}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/assets/kercad/alignment/mode-group.svg" alt="" draggable={false} />
             </button>
@@ -4325,7 +4317,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           onSave={(edited) => onSaveChallenge?.(edited, structuredClone(latestDocumentRef.current))}
         /> : null}
         {challenge && challengeOpen && !sketchSession ? <ChallengePlayer challenge={challenge} dock={challengeDock} onDockChange={setChallengeDock} onClose={() => { setChallengeOpen(false); setChallengeDock("left"); }} /> : null}
-        {challenge && !challengeOpen && !sketchSession ? <button className="kercad-challenge-reopen" type="button" onClick={() => { setChallengeDock("left"); setChallengeOpen(true); }}><Grid3X3 size={19} /> Challenge</button> : null}
+        {challenge && !challengeOpen && !sketchSession ? <button className="kercad-challenge-reopen" type="button" onClick={() => { setChallengeDock("left"); setChallengeOpen(true); }}><Grid3X3 size={19} /> {uiText("ui.sketchforgeparametriceditor.challenge.bb9d65", {}, locale)}</button> : null}
         <button data-kercad-popup="grid" className={`kercad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label={t("grid.settings")} title={t("grid.title")} onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><GridControlIcon size={22} /></button>
         <button
           className={`kercad-workplane-snap-button ${document.workplane.snapToGrid ? "active" : ""}`}
@@ -4447,15 +4439,15 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       {exportOpen && (
         <aside data-kercad-popup="export" className="top-action-panel export-action-panel kercad-export-panel">
           <header><div className="top-action-heading"><strong>{t("dialog.exportTitle")}</strong></div><button aria-label={t("common.close")} onClick={() => setExportOpen(false)}><X /></button></header>
-          <label className="kercad-export-name"><span>{t("dialog.fileName")}</span><input type="text" value={exportFileName} maxLength={120} placeholder="model" onChange={(event) => setExportFileName(event.target.value)} /></label>
+          <label className="kercad-export-name"><span>{t("dialog.fileName")}</span><input type="text" value={exportFileName} maxLength={120} placeholder={uiText("common.filenameModel", {}, locale)} onChange={(event) => setExportFileName(event.target.value)} /></label>
           <label className="kercad-export-name"><span>{t("dialog.authorName")}</span><input type="text" value={sharedAuthor} maxLength={160} autoComplete="name" placeholder={t("dialog.authorName")} onChange={(event) => setSharedAuthor(event.target.value)} disabled={projectExporting || sharedSaving} /></label>
           {onSaveShared ? <>
-            <button type="button" onClick={() => setSharedSaveOpen(current => !current)} aria-expanded={sharedSaveOpen}>{locale === "es" ? "Guardar en compartidos" : "Save to shared"}</button>
+            <button type="button" onClick={() => setSharedSaveOpen(current => !current)} aria-expanded={sharedSaveOpen}>{uiText("dashboard.save.to.shared.5476e1", {}, locale)}</button>
             {sharedSaveOpen ? <form className="kercad-editor-share-form" onSubmit={event => { event.preventDefault(); void publishShared(); }}>
-              <p>{locale === "es" ? "Guarda una copia en el servidor accesible para todos. Tus cambios locales no se publican automáticamente." : "Save a copy on the server for everyone. Local changes are not published automatically."}</p>
-              <label>{locale === "es" ? "Nombre compartido" : "Shared file name"}<input autoFocus value={sharedName} required maxLength={100} pattern={'[^<>:"/\\\\|?*]+'} disabled={sharedSaving} onChange={event => setSharedName(event.target.value)} /></label>
-              <label>{locale === "es" ? "Tu nombre" : "Your name"}<input value={sharedAuthor} required maxLength={80} disabled={sharedSaving} onChange={event => setSharedAuthor(event.target.value)} /></label>
-              <button type="submit" disabled={sharedSaving || !sharedName.trim() || !sharedAuthor.trim()}>{sharedSaving ? (locale === "es" ? "Guardando…" : "Saving…") : (locale === "es" ? "Publicar proyecto" : "Publish project")}</button>
+              <p>{uiText("ui.sketchforgeparametriceditor.save.a.copy.on.the.server.for.everyone.local.cha.0911ad", {}, locale)}</p>
+              <label>{uiText("dashboard.shared.file.name.930b6b", {}, locale)}<input autoFocus value={sharedName} required maxLength={100} pattern={'[^<>:"/\\\\|?*]+'} disabled={sharedSaving} onChange={event => setSharedName(event.target.value)} /></label>
+              <label>{uiText("dashboard.your.name.ab4229", {}, locale)}<input value={sharedAuthor} required maxLength={80} disabled={sharedSaving} onChange={event => setSharedAuthor(event.target.value)} /></label>
+              <button type="submit" disabled={sharedSaving || !sharedName.trim() || !sharedAuthor.trim()}>{sharedSaving ? (uiText("dialog.saving", {}, locale)) : (uiText("ui.sketchforgeparametriceditor.publish.project.0b468c", {}, locale))}</button>
               {sharedSaveMessage ? <p role="status">{sharedSaveMessage}</p> : null}
             </form> : null}
           </> : null}
@@ -4464,12 +4456,12 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               <button onClick={() => void exportProject()} disabled={projectExporting}><span className="export-format-icon">edu</span><strong>{projectExporting ? t("dialog.saving") : t("dialog.projectFormat")}</strong><small>{t("dialog.projectFormatHint")}</small></button>
               <div className="kercad-project-credits"><span>{t("dialog.creator")}: {document.creator || document.author || sharedAuthor.trim() || "—"}</span><span>{t("dialog.lastAuthor")}: {sharedAuthor.trim() || document.author || "—"}</span></div>
             </div>
-            <button onClick={() => void exportStep()} disabled={exporting || kernelBusy || !build.mesh || (exportScope === "selection" && !exportSelectedObjectIds.length)}><span className="export-format-icon step">STEP</span><strong>{exporting ? t("dialog.exporting") : t("dialog.stepFormat")}</strong><small>{t("dialog.stepFormatHint")}</small></button>
+            <button onClick={() => void exportStep()} disabled={exporting || kernelBusy || !build.mesh || (exportScope === "selection" && !exportSelectedObjectIds.length)}><span className="export-format-icon step">{uiText("ui.parametriccadeditor.step.0c9b85", {}, locale)}</span><strong>{exporting ? t("dialog.exporting") : t("dialog.stepFormat")}</strong><small>{t("dialog.stepFormatHint")}</small></button>
             <div className="kercad-stl-export-option">
-              <button onClick={() => void exportStl()} disabled={stlExporting || kernelBusy || build.objectRecords.length === 0 || (stlExportScope === "selection" && !exportSelectedObjectIds.length)}><span className="export-format-icon">STL</span><strong>{stlExporting ? t("dialog.exporting") : t("dialog.stlFormat")}</strong><small>{t("dialog.stlFormatHint")}</small></button>
-              <div className="kercad-stl-scope-buttons" role="group" aria-label={locale === "es" ? "Alcance de exportación STL" : "STL export scope"}>
-                <button type="button" aria-pressed={stlExportScope === "project"} disabled={stlExporting} onClick={() => setStlExportScope("project")}>{locale === "es" ? "Proyecto completo" : "Whole project"}</button>
-                <button type="button" aria-pressed={stlExportScope === "selection"} disabled={stlExporting || !exportSelectedObjectIds.length} onClick={() => setStlExportScope("selection")}>{locale === "es" ? "Sólo selección" : "Selection only"} ({exportSelectedObjectIds.length})</button>
+              <button onClick={() => void exportStl()} disabled={stlExporting || kernelBusy || build.objectRecords.length === 0 || (stlExportScope === "selection" && !exportSelectedObjectIds.length)}><span className="export-format-icon">{uiText("ui.sketchforgeeditor.stl.735c11", {}, locale)}</span><strong>{stlExporting ? t("dialog.exporting") : t("dialog.stlFormat")}</strong><small>{t("dialog.stlFormatHint")}</small></button>
+              <div className="kercad-stl-scope-buttons" role="group" aria-label={uiText("ui.sketchforgeparametriceditor.stl.export.scope.defecc", {}, locale)}>
+                <button type="button" aria-pressed={stlExportScope === "project"} disabled={stlExporting} onClick={() => setStlExportScope("project")}>{uiText("ui.sketchforgeparametriceditor.whole.project.a904ea", {}, locale)}</button>
+                <button type="button" aria-pressed={stlExportScope === "selection"} disabled={stlExporting || !exportSelectedObjectIds.length} onClick={() => setStlExportScope("selection")}>{uiText("ui.sketchforgeparametriceditor.selection.only.66c1ae", {}, locale)} ({exportSelectedObjectIds.length})</button>
               </div>
               <label className="kercad-stl-quality"><span>{t("dialog.stlQuality")}: <strong>{t(stlQuality === "low" ? "dialog.qualityLow" : stlQuality === "medium" ? "dialog.qualityMedium" : stlQuality === "high" ? "dialog.qualityHigh" : "dialog.qualityVeryHigh")}</strong></span><input type="range" min={0} max={3} step={1} value={(["low", "medium", "high", "veryHigh"] as const).indexOf(stlQuality)} aria-valuetext={t(stlQuality === "low" ? "dialog.qualityLow" : stlQuality === "medium" ? "dialog.qualityMedium" : stlQuality === "high" ? "dialog.qualityHigh" : "dialog.qualityVeryHigh")} onChange={(event) => setStlQuality((["low", "medium", "high", "veryHigh"] as const)[Number(event.target.value)])} /><span className="kercad-stl-quality-labels" aria-hidden="true"><small>{t("dialog.qualityLow")}</small><small>{t("dialog.qualityMedium")}</small><small>{t("dialog.qualityHigh")}</small><small>{t("dialog.qualityVeryHigh")}</small></span></label>
             </div>
@@ -4483,7 +4475,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             event.preventDefault();
             if (saveProjectDetails()) setProjectRenameOpen(false);
           }}>
-            <header><strong id="kercad-project-rename-title">{locale === "es" ? "Cambiar nombre del proyecto" : "Rename project"}</strong><button type="button" aria-label={t("common.close")} onClick={() => setProjectRenameOpen(false)}><X /></button></header>
+            <header><strong id="kercad-project-rename-title">{uiText("dashboard.rename.project.633018", {}, locale)}</strong><button type="button" aria-label={t("common.close")} onClick={() => setProjectRenameOpen(false)}><X /></button></header>
             <label className="kercad-project-rename-field"><span>{t("settings.name")}</span><input autoFocus value={projectRenameDraft} maxLength={120} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setProjectRenameDraft(event.target.value)} /></label>
             <label className="kercad-project-rename-field"><span>{t("project.author")}</span><input value={projectAuthorDraft} maxLength={160} autoComplete="name" onChange={(event) => setProjectAuthorDraft(event.target.value)} /></label>
             <section className="kercad-project-cover-controls">
@@ -4501,7 +4493,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
                 setChallengeCaptureCrop(undefined); setChallengeCaptureToken((current) => current + 1);
               }}><RotateCcw size={18} />{t("project.resetCover")}</button></div>
             </section>
-            <footer><button type="button" onClick={() => setProjectRenameOpen(false)}>{t("common.cancel")}</button><button type="submit" className="primary" disabled={!projectRenameDraft.trim()}>OK</button></footer>
+            <footer><button type="button" onClick={() => setProjectRenameOpen(false)}>{t("common.cancel")}</button><button type="submit" className="primary" disabled={!projectRenameDraft.trim()}>{uiText("dashboard.ok.9ce3bd", {}, locale)}</button></footer>
           </form>
         </div>
       ) : null}
@@ -4569,7 +4561,7 @@ function FpsCounter({ sketchMode = false }: { sketchMode?: boolean }) {
     return () => window.clearInterval(timer);
   }, [sketchMode]);
   const tone = fps > 0 && fps < 20 ? "low" : fps < 40 ? "medium" : "high";
-  return <output className={`kercad-fps-counter ${tone}`} aria-label={`${fps} frames per second`}>{fps} FPS</output>;
+  return <output className={`kercad-fps-counter ${tone}`} aria-label={uiText("ui.sketchforgeparametriceditor.frames.per.second.1f5f3f", { value0: fps })}>{fps} {uiText("ui.sketchforgeparametriceditor.fps.fce204")}</output>;
 }
 
 function BackgroundProcessIndicator({ label, rightOffset, regenerating = false }: { label: string; rightOffset: number; regenerating?: boolean }) {
@@ -4705,7 +4697,7 @@ function ViewCube({ orientation, onDirection }: { orientation: CameraOrientation
   };
   return <div
     className="view-cube"
-    aria-label="Cubo de vistas interactivo"
+    aria-label={uiText("ui.sketchforgeparametriceditor.cubo.de.vistas.interactivo.48a94b")}
     onPointerDown={(event) => {
       if (event.button !== 0) return;
       setHoveredSurfaceId(surfaceAt(event.clientX, event.clientY, event.currentTarget)?.id ?? null);
@@ -4739,8 +4731,8 @@ function ViewCube({ orientation, onDirection }: { orientation: CameraOrientation
       const surface = projected.find((candidate) => candidate.id === hoveredSurfaceId);
       if (surface) chooseDirection(surface.direction);
     }}
-  ><svg className="kercad-navicube" viewBox="0 0 82 82" role="group" aria-label="View directions">
-    {projected.map((surface) => <g key={surface.id} className={`kercad-navicube-surface ${surface.kind} ${hoveredSurfaceId === surface.id ? "hovered" : ""}`} pointerEvents="none" role="button" tabIndex={0} aria-label={surface.label ? `${surface.label} view` : `${surface.kind} view ${surface.direction.join(", ")}`} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); chooseDirection(surface.direction); } }}>
+  ><svg className="kercad-navicube" viewBox="0 0 82 82" role="group" aria-label={uiText("ui.sketchforgeparametriceditor.view.directions.7bb8d1")}>
+    {projected.map((surface) => <g key={surface.id} className={`kercad-navicube-surface ${surface.kind} ${hoveredSurfaceId === surface.id ? "hovered" : ""}`} pointerEvents="none" role="button" tabIndex={0} aria-label={surface.label ? uiText("ui.sketchforgeparametriceditor.view.81bf77", { value0: surface.label }) : uiText("ui.sketchforgeparametriceditor.view.b4f03d", { value0: surface.kind, value1: surface.direction.join(", ") })} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); chooseDirection(surface.direction); } }}>
       <polygon points={surface.points.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(" ")} />
       {surface.label && surface.textTransform ? <text x={0} y={0} transform={surface.textTransform}>{surface.label}</text> : null}
     </g>)}

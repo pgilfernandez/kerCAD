@@ -1,34 +1,6 @@
-import type { KercadLocale } from "@/lib/kercadI18n";
+import { kercadTranslate, type KercadLocale, type KercadTranslationKey, type TranslationValues } from "@/lib/kercadI18n";
 
-// English is the source/fallback language. Project and challenge content is
-// user-authored and must never be translated as interface text.
-const es = {
-  "Author": "Autor",
-  "Duplicate project": "Duplicar proyecto", "Export project": "Exportar proyecto",
-  "{name} (copy)": "{name} (copia)", "Could not duplicate the project.": "No se pudo duplicar el proyecto.", "Could not export the project.": "No se pudo exportar el proyecto.",
-  "Import project or 3D file": "Importar proyecto o archivo 3D",
-  "Unsupported file format.": "Formato de archivo no compatible.",
-  "Could not install the challenge.": "No se pudo importar el reto.", "Could not duplicate the challenge.": "No se pudo duplicar el reto.", "This is not a valid kerCAD project.": "Este archivo no es un proyecto kerCAD válido.", "Could not open the project.": "No se pudo abrir el proyecto.", "No local project is open.": "No hay ningún proyecto local abierto.", "Could not save the shared project.": "No se pudo guardar el proyecto compartido.", "The shared file has changed or this name is already in use. Your local work is safe. Save with another name, or open a fresh copy from Shared.": "El archivo compartido ha cambiado o ese nombre ya está en uso. Tu trabajo local está a salvo. Guarda con otro nombre o abre una copia nueva desde Compartidos.",
-  "Dashboard sections": "Secciones", "Projects": "Proyectos", "Challenges": "Retos", "Shared": "Compartidos", "Settings": "Ajustes",
-  "Just now": "Ahora mismo", "Today": "Hoy", "{count} visible": "{count} visibles", "{count} installed": "{count} instalados",
-  "Import challenge": "Importar reto", "Search challenges": "Buscar retos", "Sort challenges": "Ordenar retos",
-  "Sort by recent": "Ordenar por recientes", "Sort by name": "Ordenar por nombre", "Card view": "Vista de tarjetas", "List view": "Vista de lista",
-  "Create new challenge": "Crear nuevo reto", "Build a guided kerCAD activity": "Crea una actividad guiada de kerCAD", "Guided kerCAD activity": "Actividad guiada de kerCAD", "By {name}": "Por {name}",
-  "Actions for {name}": "Acciones de {name}", "Edit challenge": "Editar reto", "Edit {name}": "Editar {name}", "Duplicate challenge": "Duplicar reto", "Duplicate {name}": "Duplicar {name}", "Export challenge": "Exportar reto", "Export {name}": "Exportar {name}", "Remove challenge": "Eliminar reto", "Remove {name}": "Eliminar {name}",
-  "Install your first challenge": "Importa tu primer reto", "Choose an kerCAD challenge ZIP from your computer.": "Elige un archivo ZIP de reto kerCAD desde tu ordenador.", "No matching challenges": "No hay retos que coincidan", "Try another search.": "Prueba otra búsqueda.",
-  "Import project": "Importar proyecto", "Search projects": "Buscar proyectos", "Sort projects": "Ordenar proyectos", "Create new 3D design": "Crear nuevo diseño 3D", "Start with an empty workplane": "Empieza con un plano de trabajo vacío", "Empty design": "Diseño vacío",
-  "{count} object": "{count} objeto", "{count} objects": "{count} objetos", "{count} operation": "{count} operación", "{count} operations": "{count} operaciones",
-  "Rename {name}": "Cambiar nombre de {name}", "Rename project": "Cambiar nombre del proyecto", "Delete {name}": "Eliminar {name}", "Delete project": "Eliminar proyecto", "Delete project?": "¿Eliminar proyecto?", "Delete": "Eliminar", "Cancel": "Cancelar", "Name": "Nombre", "OK": "Aceptar",
-  "No projects found": "No se han encontrado proyectos", "Try another project name.": "Prueba otro nombre de proyecto.", "Delete project “{name}”? This cannot be undone.": "¿Eliminar el proyecto «{name}»? Esta acción no se puede deshacer.",
-  "Shared projects": "Proyectos compartidos", "Files available to everyone using this server. Opening a file creates your own local copy; changes are shared only when you save them here.": "Archivos disponibles para todos los usuarios de este servidor. Abrir un archivo crea tu propia copia local; los cambios sólo se comparten cuando los guardas aquí.", "Refresh library": "Actualizar biblioteca",
-  "Save a local project to shared": "Compartir un proyecto local", "Local project": "Proyecto local", "Choose a project": "Elige un proyecto", "Shared file name": "Nombre del archivo compartido", "Your name": "Tu nombre", "Shown with your shared changes. Remembered in this browser; this is not a verified account.": "Se muestra con tus cambios compartidos. Se recuerda en este navegador; no es una cuenta verificada.", "Save to shared": "Guardar en compartidos", "Last modified": "Última modificación", "Author not provided": "Autor no indicado", "Open local copy": "Abrir copia local", "Delete shared": "Eliminar compartido", "Delete shared project {name}": "Eliminar proyecto compartido {name}", "No shared projects yet. Choose a local project above to share the first one.": "Aún no hay proyectos compartidos. Elige un proyecto local arriba para compartir el primero.",
-  "Shared storage is unavailable.": "El almacenamiento compartido no está disponible.", "Could not open the shared project. Refresh the library and try again.": "No se pudo abrir el proyecto compartido. Actualiza la biblioteca y vuelve a intentarlo.", "The server did not provide a project revision.": "El servidor no proporcionó una revisión del proyecto.", "Could not open project.": "No se pudo abrir el proyecto.",
-  "Delete shared project “{name}”?\n\nThis removes it from the server for everyone and cannot be undone. Local copies are kept.": "¿Eliminar el proyecto compartido «{name}»?\n\nSe eliminará del servidor para todos y no se puede deshacer. Las copias locales se conservan.", "Could not delete the shared project.": "No se pudo eliminar el proyecto compartido.", "Shared project “{name}” deleted. Local copies are kept.": "Proyecto compartido «{name}» eliminado. Las copias locales se conservan.",
-  "Enter your name before sharing.": "Introduce tu nombre antes de compartir.", "Choose a local project first.": "Elige primero un proyecto local.", "The server copy has changed or this name is already in use. Your local work is safe. Save with another name, or open the server version as a separate local copy below.": "La copia del servidor ha cambiado o ese nombre ya está en uso. Tu trabajo local está a salvo. Guarda con otro nombre o abre la versión del servidor como otra copia local desde la lista inferior.", "Could not share the project.": "No se pudo compartir el proyecto.", "Could not share project.": "No se pudo compartir el proyecto.", "Project saved to the shared library.": "Proyecto guardado en la biblioteca compartida.",
-} as const;
-
-export type DashboardTranslationKey = keyof typeof es;
-export function dashboardTranslate(locale: KercadLocale, key: DashboardTranslationKey, values: Record<string, string | number> = {}) {
-  const text = locale === "es" ? es[key] : key;
-  return text.replace(/\{(\w+)\}/g, (placeholder, name: string) => String(values[name] ?? placeholder));
+export type DashboardTranslationKey = KercadTranslationKey;
+export function dashboardTranslate(locale: KercadLocale, key: DashboardTranslationKey, values: TranslationValues = {}) {
+  return kercadTranslate(locale, key, values);
 }

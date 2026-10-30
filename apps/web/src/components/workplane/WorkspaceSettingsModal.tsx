@@ -9,6 +9,7 @@ import { APP_THEME_OPTIONS, type AppThemePreference } from "@/lib/appTheme";
 import { normalizeScaleForUnits, parseMeasurementInput, scaleOptionsForUnits, WORKSPACE_UNIT_OPTIONS } from "@/lib/measurementUnits";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import type { GridSize, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
+import { translateSourceText, uiText } from "@/lib/kercadI18n";
 
 type WorkspaceSettings = WorkplaneWorkspaceSettings;
 type WorkspaceSettingsSection = "appearance" | "measurement" | "workplane" | "history";
@@ -19,12 +20,12 @@ const MAX_WORKSPACE_SIZE = 2000;
 const MIN_GRID_BLOCK_SIZE = 1;
 const MAX_GRID_BLOCK_SIZE = 200;
 const WORKSPACE_SIZE_PRESETS = [
-  { label: "200 x 200 mm", width: 200, depth: 200 },
-  { label: "300 x 300 mm", width: 300, depth: 300 },
-  { label: "500 x 500 mm", width: 500, depth: 500 },
-  { label: "1000 x 1000 mm", width: 1000, depth: 1000 },
-  { label: "2000 x 2000 mm", width: 2000, depth: 2000 },
-  { label: "Custom", width: 200, depth: 200 },
+  { label: uiText("ui.workspacesettingsmodal.200.x.200.mm.a01839"), width: 200, depth: 200 },
+  { label: uiText("ui.workspacesettingsmodal.300.x.300.mm.c6ca9e"), width: 300, depth: 300 },
+  { label: uiText("ui.workspacesettingsmodal.500.x.500.mm.321fe6"), width: 500, depth: 500 },
+  { label: uiText("ui.workspacesettingsmodal.1000.x.1000.mm.d71fd0"), width: 1000, depth: 1000 },
+  { label: uiText("ui.workspacesettingsmodal.2000.x.2000.mm.c970b7"), width: 2000, depth: 2000 },
+  { label: uiText("ui.shapeinspector.custom.081ae3"), width: 200, depth: 200 },
 ];
 const GRID_BLOCK_PRESETS = ["1 mm", "2.5 mm", "5 mm", "10 mm", "20 mm", "50 mm", "100 mm", "Custom"] as const;
 const HISTORY_LIMIT_OPTIONS = [30, 50, 100, "unlimited", "custom"] as const;
@@ -147,32 +148,32 @@ export function WorkspaceSettingsModal({
   };
 
   return (
-    <div className="workspace-modal" role="dialog" aria-modal="true" aria-label="Workspace settings">
+    <div className="workspace-modal" role="dialog" aria-modal="true" aria-label={uiText("ui.sketchforgeeditor.workspace.settings.432fa1")}>
       <div className="workspace-modal-card" onPointerDown={(event) => event.stopPropagation()}>
         <header className="workspace-modal-header">
-          <strong>Workspace settings</strong>
-          <button aria-label="Close settings" onClick={onClose}>
+          <strong>{uiText("ui.sketchforgeeditor.workspace.settings.432fa1")}</strong>
+          <button aria-label={uiText("ui.workspacesettingsmodal.close.settings.6bf9c4")} onClick={onClose}>
             <X size={18} />
           </button>
         </header>
 
         <div className="workspace-modal-layout">
-          <nav className="workspace-settings-nav" aria-label="Workspace settings sections">
+          <nav className="workspace-settings-nav" aria-label={uiText("ui.workspacesettingsmodal.workspace.settings.sections.e7d821")}>
             <button className={activeSection === "appearance" ? "active" : ""} aria-current={activeSection === "appearance" ? "page" : undefined} onClick={() => setActiveSection("appearance")}>
               <Palette size={18} />
-              <span>Appearance</span>
+              <span>{uiText("ui.workspacesettingsmodal.appearance.41def7")}</span>
             </button>
             <button className={activeSection === "measurement" ? "active" : ""} aria-current={activeSection === "measurement" ? "page" : undefined} onClick={() => setActiveSection("measurement")}>
               <Ruler size={18} />
-              <span>Measurement</span>
+              <span>{uiText("ui.workspacesettingsmodal.measurement.de10ed")}</span>
             </button>
             <button className={activeSection === "workplane" ? "active" : ""} aria-current={activeSection === "workplane" ? "page" : undefined} onClick={() => setActiveSection("workplane")}>
               <Grid3X3 size={18} />
-              <span>Workplane</span>
+              <span>{uiText("ui.workplaneviewport.workplane.c83d9b")}</span>
             </button>
             <button className={activeSection === "history" ? "active" : ""} aria-current={activeSection === "history" ? "page" : undefined} onClick={() => setActiveSection("history")}>
               <History size={18} />
-              <span>History</span>
+              <span>{uiText("sketch.history")}</span>
             </button>
           </nav>
 
@@ -181,11 +182,11 @@ export function WorkspaceSettingsModal({
               {activeSection === "appearance" ? (
                 <>
                   <div className="workspace-section-heading">
-                    <strong>Appearance</strong>
-                    <span>Adjust the canvas and navigation behavior.</span>
+                    <strong>{uiText("ui.workspacesettingsmodal.appearance.41def7")}</strong>
+                    <span>{uiText("ui.workspacesettingsmodal.adjust.the.canvas.and.navigation.behavior.34d82b")}</span>
                   </div>
                   <label className="workspace-select">
-                    <span>Theme</span>
+                    <span>{uiText("settings.theme")}</span>
                     <select
                       value={themePreference}
                       onChange={(event) => onThemePreferenceChange?.(event.currentTarget.value as AppThemePreference)}
@@ -198,20 +199,20 @@ export function WorkspaceSettingsModal({
                     </select>
                   </label>
                   <AccentColorOptions />
-                  <p className="workspace-global-note">Appearance applies across kerCAD and all projects.</p>
+                  <p className="workspace-global-note">{uiText("ui.workspacesettingsmodal.appearance.applies.across.kercad.and.all.project.856383")}</p>
                   <WorkspaceToggle
-                    label="Show movement dimensions"
+                    label={uiText("ui.workspacesettingsmodal.show.movement.dimensions.d7d9c0")}
                     checked={moveDimensionsEnabled}
                     onChange={onMoveDimensionsEnabledChange}
                   />
-                  <WorkspaceToggle label="Show shadows" checked={workspace.showShadows} onChange={(showShadows) => patchWorkspace({ showShadows })} />
+                  <WorkspaceToggle label={uiText("ui.workspacesettingsmodal.show.shadows.a22544")} checked={workspace.showShadows} onChange={(showShadows) => patchWorkspace({ showShadows })} />
                   <WorkspaceToggle
-                    label="Cruise when adding new shapes"
+                    label={uiText("ui.workspacesettingsmodal.cruise.when.adding.new.shapes.f73e47")}
                     checked={workspace.cruiseShapes}
                     onChange={(cruiseShapes) => patchWorkspace({ cruiseShapes })}
                   />
                   <label className="workspace-range">
-                    <span>Zoom speed</span>
+                    <span>{uiText("ui.workspacesettingsmodal.zoom.speed.034c07")}</span>
                     <input
                       type="range"
                       min={1}
@@ -220,8 +221,8 @@ export function WorkspaceSettingsModal({
                       onChange={(event) => patchWorkspace({ zoomSpeed: Number(event.currentTarget.value) })}
                     />
                     <small>
-                      <span>Slow</span>
-                      <span>Fast</span>
+                      <span>{uiText("ui.workspacesettingsmodal.slow.33dcec")}</span>
+                      <span>{uiText("ui.workspacesettingsmodal.fast.8db6a2")}</span>
                     </small>
                   </label>
                 </>
@@ -230,29 +231,29 @@ export function WorkspaceSettingsModal({
               {activeSection === "measurement" ? (
                 <>
                   <div className="workspace-section-heading">
-                    <strong>Measurement</strong>
-                    <span>Choose units, precision, scale, and snapping.</span>
+                    <strong>{uiText("ui.workspacesettingsmodal.measurement.de10ed")}</strong>
+                    <span>{uiText("ui.workspacesettingsmodal.choose.units.precision.scale.and.snapping.7259b4")}</span>
                   </div>
                   <WorkspaceSelect
-                    label="Units"
+                    label={uiText("settings.units")}
                     value={workspace.units}
                     options={WORKSPACE_UNIT_OPTIONS}
                     onChange={(units) => patchWorkspace({ units })}
                   />
                   <WorkspaceSelect
-                    label="Scale"
+                    label={uiText("sidebar.scale")}
                     value={scaleValue}
                     options={scaleOptions}
                     onChange={(scale) => patchWorkspace({ scale })}
                   />
                   <WorkspaceSelect
-                    label="Accuracy"
+                    label={uiText("ui.workspacesettingsmodal.accuracy.12a3a4")}
                     value={`0.${"0".repeat(workspace.accuracy)}`}
                     options={["0.0", "0.00", "0.000"]}
                     onChange={(accuracy) => patchWorkspace({ accuracy: accuracy.slice(2).length as WorkspaceSettings["accuracy"] })}
                   />
                   <WorkspaceSelect
-                    label="Snap Grid"
+                    label={uiText("ui.shapeinspector.snap.grid.109603")}
                     value={snap}
                     options={GRID_SIZES}
                     onChange={(next) => {
@@ -266,18 +267,18 @@ export function WorkspaceSettingsModal({
               {activeSection === "workplane" ? (
                 <>
                   <div className="workspace-section-heading">
-                    <strong>Workplane</strong>
-                    <span>Set the plate dimensions and visible grid spacing.</span>
+                    <strong>{uiText("ui.workplaneviewport.workplane.c83d9b")}</strong>
+                    <span>{uiText("ui.workspacesettingsmodal.set.the.plate.dimensions.and.visible.grid.spacin.ebe096")}</span>
                   </div>
                   <WorkspaceSelect
-                    label="Workplane size"
+                    label={uiText("ui.workspacesettingsmodal.workplane.size.ad915a")}
                     value={workspace.sizePreset}
                     options={WORKSPACE_SIZE_PRESETS.map((preset) => preset.label)}
                     onChange={setWorkspaceSizePreset}
                   />
                   <div className="workspace-dimensions">
                     <label>
-                      <span>Width</span>
+                      <span>{uiText("sidebar.width")}</span>
                       <input
                         type="text"
                         inputMode="text"
@@ -293,7 +294,7 @@ export function WorkspaceSettingsModal({
                       />
                     </label>
                     <label>
-                      <span>Length</span>
+                      <span>{uiText("sketch.dimensionLength")}</span>
                       <input
                         type="text"
                         inputMode="text"
@@ -309,12 +310,12 @@ export function WorkspaceSettingsModal({
                       />
                     </label>
                   </div>
-                  <WorkspaceSelect label="Grid block size" value={workspace.gridBlockPreset} options={GRID_BLOCK_PRESETS} onChange={setGridBlockPreset} />
+                  <WorkspaceSelect label={uiText("ui.workspacesettingsmodal.grid.block.size.e0c74b")} value={workspace.gridBlockPreset} options={GRID_BLOCK_PRESETS} onChange={setGridBlockPreset} />
                   <GridColorControl color={gridColor} onChange={(nextGridColor) => patchWorkspace({ gridColor: nextGridColor })} />
                   {workspace.gridBlockPreset === "Custom" ? (
                     <div className="workspace-dimensions workspace-grid-dimensions">
                       <label>
-                        <span>Block size</span>
+                        <span>{uiText("ui.workspacesettingsmodal.block.size.574a76")}</span>
                         <input
                           type="text"
                           inputMode="text"
@@ -334,8 +335,8 @@ export function WorkspaceSettingsModal({
               {activeSection === "history" ? (
                 <>
                   <div className="workspace-section-heading">
-                    <strong>Saved history</strong>
-                    <span>Choose how many completed actions remain available after saving or reopening this project.</span>
+                    <strong>{uiText("ui.workspacesettingsmodal.saved.history.dc43cb")}</strong>
+                    <span>{uiText("ui.workspacesettingsmodal.choose.how.many.completed.actions.remain.availab.ba65eb")}</span>
                   </div>
                   <div className="workspace-history-setting">
                     <div
@@ -348,21 +349,21 @@ export function WorkspaceSettingsModal({
                         max={HISTORY_LIMIT_OPTIONS.length - 1}
                         step={1}
                         value={historyLimitIndex}
-                        aria-label="Saved history actions"
-                        aria-valuetext={historyLimitMode === "unlimited" ? "Unlimited" : historyLimitMode === "custom" ? `${workspace.historyLimit} actions` : `${historyLimitMode} actions`}
+                        aria-label={uiText("ui.workspacesettingsmodal.saved.history.actions.81157c")}
+                        aria-valuetext={historyLimitMode === "unlimited" ? uiText("ui.sketchforgeeditor.unlimited.b8bef3") : historyLimitMode === "custom" ? uiText("ui.sketchforgeeditor.actions.3503fd", { value0: workspace.historyLimit }) : uiText("ui.sketchforgeeditor.actions.3503fd", { value0: historyLimitMode })}
                         onChange={(event) => setHistoryLimitMode(HISTORY_LIMIT_OPTIONS[Number(event.currentTarget.value)] ?? "unlimited")}
                       />
                     </div>
                     <div className="workspace-history-labels" aria-hidden="true">
                       {HISTORY_LIMIT_OPTIONS.map((option) => (
                         <span key={option} className={historyLimitMode === option ? "active" : undefined}>
-                          {option === "unlimited" ? "Unlimited" : option === "custom" ? "Custom" : option}
+                          {option === "unlimited" ? uiText("ui.sketchforgeeditor.unlimited.b8bef3") : option === "custom" ? uiText("ui.shapeinspector.custom.081ae3") : option}
                         </span>
                       ))}
                     </div>
                     {historyLimitMode === "custom" ? (
                       <label className="workspace-history-custom">
-                        <span>Actions to retain</span>
+                        <span>{uiText("ui.workspacesettingsmodal.actions.to.retain.8b6a4e")}</span>
                         <input
                           type="text"
                           inputMode="text"
@@ -379,15 +380,14 @@ export function WorkspaceSettingsModal({
                       </label>
                     ) : null}
                     <p className="workspace-history-note">
-                      100 actions is the default. Lower limits permanently discard older Undo states from this project.
-                    </p>
+                      {uiText("ui.workspacesettingsmodal.100.actions.is.the.default.lower.limits.permanen.b2c027")}{" "}</p>
                   </div>
                 </>
               ) : null}
             </div>
 
             <div className="workspace-modal-footer">
-              <span>Save the current settings for this project.</span>
+              <span>{uiText("ui.workspacesettingsmodal.save.the.current.settings.for.this.project.511cdb")}</span>
               <button
                 className="make-default-button"
                 onClick={() => {
@@ -395,13 +395,13 @@ export function WorkspaceSettingsModal({
                   setDefaultSaved(true);
                 }}
               >
-                {defaultSaved ? "Default saved" : "Make default"}
+                {defaultSaved ? uiText("ui.workspacesettingsmodal.default.saved.8aaba9") : uiText("ui.workspacesettingsmodal.make.default.7b2628")}
               </button>
             </div>
           </div>
         </div>
       </div>
-      <button className="workspace-modal-backdrop" aria-label="Close settings" onClick={onClose} />
+      <button className="workspace-modal-backdrop" aria-label={uiText("ui.workspacesettingsmodal.close.settings.6bf9c4")} onClick={onClose} />
     </div>
   );
 }
@@ -518,7 +518,7 @@ function GridColorControl({ color, onChange }: { color: string; onChange: (color
         ref={popoverRef}
         className="workspace-color-popover"
         role="group"
-        aria-label="Grid color picker"
+        aria-label={uiText("ui.workspacesettingsmodal.grid.color.picker.91d42a")}
         onKeyDown={(event) => {
           if (event.key === "Escape") {
             setOpen(false);
@@ -537,13 +537,13 @@ function GridColorControl({ color, onChange }: { color: string; onChange: (color
             }}
           />
         </div>
-        <div className="workspace-color-presets" aria-label="Grid color presets">
+        <div className="workspace-color-presets" aria-label={uiText("ui.workspacesettingsmodal.grid.color.presets.5cc9dd")}>
           {GRID_COLOR_PRESETS.map((preset) => (
             <button
               key={preset}
               className={preset.toLowerCase() === draftColor.toLowerCase() ? "selected" : ""}
               type="button"
-              aria-label={`Use grid color ${preset}`}
+              aria-label={uiText("ui.workspacesettingsmodal.use.grid.color.e03453", { value0: preset })}
               aria-pressed={preset.toLowerCase() === draftColor.toLowerCase()}
               style={{ backgroundColor: preset }}
               onClick={() => {
@@ -555,20 +555,20 @@ function GridColorControl({ color, onChange }: { color: string; onChange: (color
         </div>
         <div className="workspace-color-popover-footer">
           <label>
-            <span>HEX</span>
+            <span>{uiText("ui.workspacesettingsmodal.hex.887bb1")}</span>
             <HexColorInput
               color={draftColor}
               onChange={previewColor}
               onBlur={commitDraftColor}
               prefixed
-              aria-label="Grid color hexadecimal value"
+              aria-label={uiText("ui.workspacesettingsmodal.grid.color.hexadecimal.value.aa6715")}
             />
           </label>
           <button
             className="workspace-color-reset"
             type="button"
-            title="Reset grid color"
-            aria-label="Reset grid color"
+            title={uiText("ui.workspacesettingsmodal.reset.grid.color.20564a")}
+            aria-label={uiText("ui.workspacesettingsmodal.reset.grid.color.20564a")}
             onClick={() => {
               previewColor(DEFAULT_WORKPLANE_WORKSPACE.gridColor);
               onChange(DEFAULT_WORKPLANE_WORKSPACE.gridColor);
@@ -584,7 +584,7 @@ function GridColorControl({ color, onChange }: { color: string; onChange: (color
 
   return (
     <div className="workspace-row workspace-grid-color-row">
-      <span>Grid color</span>
+      <span>{uiText("ui.workspacesettingsmodal.grid.color.3fd291")}</span>
       <div
         className="workspace-color-control"
         ref={rootRef}
@@ -596,7 +596,7 @@ function GridColorControl({ color, onChange }: { color: string; onChange: (color
           ref={triggerRef}
           className="workspace-color-trigger"
           type="button"
-          aria-label={`Grid color ${color}`}
+          aria-label={uiText("ui.workspacesettingsmodal.grid.color.18ede2", { value0: color })}
           aria-haspopup="dialog"
           aria-expanded={open}
           onClick={() => {
@@ -619,7 +619,7 @@ function GridColorControl({ color, onChange }: { color: string; onChange: (color
 function WorkspaceToggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
   return (
     <label className="workspace-toggle">
-      <span>{label}</span>
+      <span>{translateSourceText(label)}</span>
       <input type="checkbox" checked={checked} onChange={(event) => onChange(event.currentTarget.checked)} />
     </label>
   );
@@ -638,11 +638,11 @@ function WorkspaceSelect({
 }) {
   return (
     <label className="workspace-select">
-      <span>{label}</span>
+      <span>{translateSourceText(label)}</span>
       <select value={value} onChange={(event) => onChange(event.currentTarget.value)}>
         {options.map((option) => (
           <option key={option} value={option}>
-            {option}
+            {translateSourceText(option)}
           </option>
         ))}
       </select>

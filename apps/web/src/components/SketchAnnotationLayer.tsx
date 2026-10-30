@@ -1,4 +1,5 @@
 "use client";
+
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import type { AnnotationEnding, ParametricAnnotation } from "@/types/parametric";
 import { annotationEnding, annotationEndingSize } from "@/lib/annotationEndings";
@@ -6,11 +7,12 @@ import type { ParametricDisplayUnit } from "@/lib/parametricUnits";
 import { annotationAngleGeometry, annotationLabelInfo, annotationPosition, type AnnotationPoint } from "@/lib/annotationGeometry";
 import { annotationDimensionPreset, type AnnotationTool } from "@/lib/annotationPresets";
 import { kercadTranslate, type KercadLocale } from "@/lib/kercadI18n";
+import { uiText } from "@/lib/kercadI18n";
 
 export function sketchAnnotationFromPicks(tool: AnnotationTool, picks: Array<{ x: number; y: number }>, locale: KercadLocale): ParametricAnnotation {
   const point = (index: number) => ({ ...picks[Math.min(index, picks.length - 1)], z: 0 });
   const common = { id: crypto.randomUUID(), name: kercadTranslate(locale, `annotation.${tool}`), visible: true };
-  if (tool === "text") return { ...common, kind: "text", position: point(0), text: "kerCAD", size: 6, font: "Sans", alignment: "center", color: "#000000" };
+  if (tool === "text") return { ...common, kind: "text", position: point(0), text: uiText("ui.page.kercad.c0bf6d", {}, locale), size: 6, font: "Sans", alignment: "center", color: "#000000" };
   if (tool === "circle") return { ...common, kind: "circle", position: point(0), radius: Math.max(0.1, Math.hypot(point(1).x - point(0).x, point(1).y - point(0).y)), rotation: { x: 0, y: 0, z: 0 }, mode: "planar", color: "#233c52", lineWidth: 2 };
   if (tool === "angle") return { ...common, kind: "angle", start: point(0), center: point(1), end: point(2), size: 3, color: "#233c52" };
   return { ...common, kind: "dimension", start: point(0), end: point(1), size: 3, ...annotationDimensionPreset(tool) };

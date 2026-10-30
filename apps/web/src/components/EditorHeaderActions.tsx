@@ -8,6 +8,7 @@ import { KERCAD_LOCALES, kercadTranslate, type KercadLocale, type KercadTranslat
 import { AccentColorOptions } from "@/components/AccentColorOptions";
 import { useAppTheme } from "@/lib/useAppTheme";
 import { Moon, Sun } from "lucide-react";
+import { uiText, getLanguageName } from "@/lib/kercadI18n";
 
 const GITHUB_URL = "https://github.com/pgilfernandez/SketchForge-3D-App/";
 const DONATE_URL = "https://github.com/sponsors/pgilfernandez";
@@ -52,7 +53,7 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onL
     {onShowLanding && <>
       {showDonation && startDesigning && <button type="button" className="kercad-header-start-designing" aria-label={t("about.startDesigning")} title={t("about.startDesigning")} onClick={onShowLanding}><HeaderToolbarIcon file="square-pen" /><span>{t("about.startDesigning")}</span></button>}
       {showDonation ? <a href={DONATE_URL} target="_blank" rel="noopener noreferrer" aria-label={t("about.donate")} title={t("about.donate")}><HeaderToolbarIcon file="donate" /><span>{t("about.donate")}</span></a> : <button type="button" className={startDesigning ? "kercad-header-start-designing" : undefined} aria-label={t(startDesigning ? "about.startDesigning" : "about.projectOverview")} title={t(startDesigning ? "about.startDesigning" : "about.projectOverview")} onClick={onShowLanding}><HeaderToolbarIcon file={startDesigning ? "square-pen" : "project-overview"} /><span>{t(startDesigning ? "about.startDesigning" : "about.projectOverview")}</span></button>}
-      {showDocumentation && <a data-tutorial="documentation" href={`/documentation?lang=${locale}`} target="_blank" rel="noopener noreferrer" title={t("about.documentation")}><HeaderToolbarIcon file="documentation" /><span>{locale === "es" ? "Documentación" : "Documentation"}</span></a>}
+      {showDocumentation && <a data-tutorial="documentation" href={`/documentation?lang=${locale}`} target="_blank" rel="noopener noreferrer" title={t("about.documentation")}><HeaderToolbarIcon file="documentation" /><span>{uiText("ui.page.documentation.9e9cf3", {}, locale)}</span></a>}
     </>}
     <button ref={infoTriggerRef} type="button" aria-label={t("about.label")} title={t("about.title")} aria-expanded={infoOpen} aria-controls="kercad-about-panel" onClick={() => { setOpen(false); setInfoOpen((value) => !value); }}><HeaderToolbarIcon file="information" />{onShowLanding && !compactInformation && <span>{t("about.title")}</span>}</button>
     <button data-tutorial="appearance-language" type="button" aria-label={t("settings.appearanceLanguage")} title={t("settings.appearanceLanguage")} aria-expanded={open} aria-controls="kercad-header-language-menu" onClick={() => { setInfoOpen(false); setOpen((value) => !value); }}><HeaderToolbarIcon file="theme-language" /></button>
@@ -62,9 +63,9 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onL
         <p>{t("about.description")}</p>
         <dl>
           <dt>{t("about.version")}</dt><dd>0.9 ({process.env.NEXT_PUBLIC_KERCAD_COMMIT ?? "—"})</dd>
-          <dt>{t("about.cadEngine")}</dt><dd>OpenCascade · WebAssembly (occt-wasm)</dd>
-          <dt>{t("about.viewer")}</dt><dd>Three.js · WebGL</dd>
-          <dt>{t("about.sketches")}</dt><dd>SVG · {t("about.constraints")}</dd>
+          <dt>{t("about.cadEngine")}</dt><dd>{uiText("ui.editorheaderactions.opencascade.webassembly.occt.wasm.ee4783", {}, locale)}</dd>
+          <dt>{t("about.viewer")}</dt><dd>{uiText("ui.editorheaderactions.three.js.webgl.a44d17", {}, locale)}</dd>
+          <dt>{t("about.sketches")}</dt><dd>{uiText("ui.editorheaderactions.svg.ec9928", {}, locale)}{" "}{t("about.constraints")}</dd>
           <dt>{t("about.license")}</dt><dd>{packageInfo.license}</dd>
         </dl>
         <nav className="kercad-about-links" aria-label={t("about.resources")}>
@@ -72,7 +73,7 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onL
           <a href="/?about=1" target="_blank" rel="noopener noreferrer"><HeaderToolbarIcon file="project-overview" />{t("about.projectOverview")}</a>
           {onLaunchTutorial && <button type="button" onClick={() => { setInfoOpen(false); onLaunchTutorial(); }}><HeaderToolbarIcon file="documentation" />{t("about.launchTutorial")}</button>}
           <div className="kercad-about-support-links">
-            <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" title="GitHub"><HeaderToolbarIcon file="github" />GitHub</a>
+            <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" title={uiText("ui.editorheaderactions.github.5442e2", {}, locale)}><HeaderToolbarIcon file="github" />{uiText("ui.editorheaderactions.github.5442e2", {}, locale)}</a>
             <a href={DONATE_URL} target="_blank" rel="noopener noreferrer" title={t("about.donate")}><HeaderToolbarIcon file="donate" />{t("about.donate")}</a>
           </div>
         </nav>
@@ -86,7 +87,7 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onL
       </div>
       <hr className="kercad-header-preference-separator" />
       <div className="kercad-header-preference-group" role="group" aria-labelledby="kercad-header-language-heading"><span id="kercad-header-language-heading" className="kercad-header-preference-heading">{t("settings.language")}</span>
-      {KERCAD_LOCALES.map((language) => <button key={language} type="button" lang={language} aria-pressed={locale === language} onClick={() => { onLocaleChange(language); setOpen(false); }}>{t(language === "en" ? "settings.english" : "settings.spanish")}</button>)}
+      {KERCAD_LOCALES.map((language) => <button key={language} type="button" lang={language} aria-pressed={locale === language} onClick={() => { onLocaleChange(language); setOpen(false); }}>{getLanguageName(language)}</button>)}
       </div>
     </div> : null}
   </div>;

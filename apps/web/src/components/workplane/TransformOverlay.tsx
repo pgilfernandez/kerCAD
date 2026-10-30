@@ -5,7 +5,6 @@ import {
   type TransformOverlayProps,
   type TransformOverlayState,
 } from "@/components/workplane/transformOverlayTypes";
-
 export {
   getElevationMeasureKey,
   measureKeyForHandle,
@@ -20,6 +19,7 @@ export {
   type TransformHandleKind,
   type TransformOverlayState,
 } from "@/components/workplane/transformOverlayTypes";
+import { uiText } from "@/lib/kercadI18n";
 
 export function TransformOverlay({
   box,
@@ -125,8 +125,7 @@ export function TransformOverlay({
             <line className="rotation-zero-line" x1="0" y1="0" x2="0" y2="-92" />
             <line className="rotation-current-line" x1="0" y1="0" x2={activeLine.x} y2={activeLine.y} />
             <text className="rotation-zero-label" x="0" y="-75">
-              0&deg;
-            </text>
+              {uiText("ui.transformoverlay.0.deg.eaa57c")}{" "}</text>
           </g>
         </svg>
       ) : null}
@@ -197,7 +196,7 @@ export function TransformOverlay({
               }
             }}
           />
-          <span>&deg;</span>
+          <span>{uiText("ui.transformoverlay.deg.8f63da")}</span>
         </label>
       ) : null}
       {box.handles.map((handle) => (
@@ -241,7 +240,7 @@ export function TransformOverlay({
           key={handle.key}
           className={`rotate-handle ${handle.className}`}
           style={{ "--overlay-x": `${handle.x}px`, "--overlay-y": `${handle.y}px`, "--rotate-handle-angle": `${handle.angle}deg` } as CSSProperties}
-          title="Rotate"
+          title={uiText("ui.transformoverlay.rotate.87b85d")}
           onPointerDown={(event) => {
             if (event.button === 0) {
               onBeginTransform("rotate", handle.key, event);

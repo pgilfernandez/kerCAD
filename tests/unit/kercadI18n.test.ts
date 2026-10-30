@@ -10,7 +10,7 @@ describe("kerCAD translations", () => {
   it("uses English when no supported locale has been persisted", () => {
     expect(normalizeKercadLocale("en")).toBe("en");
     expect(normalizeKercadLocale("es")).toBe("es");
-    expect(normalizeKercadLocale("fr")).toBe("en");
+    expect(normalizeKercadLocale("xx-unknown")).toBe("en");
     expect(normalizeKercadLocale(null)).toBe("en");
   });
 });

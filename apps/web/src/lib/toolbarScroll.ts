@@ -1,3 +1,5 @@
+import { uiText, LOCALE_CHANGE_EVENT } from "@/lib/kercadI18n";
+
 /** Mouse alternatives to native touch/trackpad scrolling. */
 export function enableToolbarMouseScroll(toolbar: HTMLElement, vertical = false) {
   let drag: { pointerId: number; x: number; scroll: number } | null = null;
@@ -25,9 +27,8 @@ export function enableToolbarMouseScroll(toolbar: HTMLElement, vertical = false)
   indicators.append(left, right);
   toolbar.parentElement?.append(indicators);
   const updateIndicators = () => {
-    const spanish = document.documentElement.lang.startsWith("es");
-    left.title = spanish ? vertical ? "Desplazar hacia arriba" : "Desplazar hacia la izquierda" : vertical ? "Scroll up" : "Scroll left";
-    right.title = spanish ? vertical ? "Desplazar hacia abajo" : "Desplazar hacia la derecha" : vertical ? "Scroll down" : "Scroll right";
+    left.title = uiText(vertical ? "scroll.up" : "scroll.left");
+    right.title = uiText(vertical ? "scroll.down" : "scroll.right");
     left.setAttribute("aria-label", left.title);
     right.setAttribute("aria-label", right.title);
     const bounds = toolbar.getBoundingClientRect();
@@ -94,7 +95,9 @@ export function enableToolbarMouseScroll(toolbar: HTMLElement, vertical = false)
   toolbar.addEventListener("lostpointercapture", stop);
   toolbar.addEventListener("mousedown", preventAutoscroll);
   toolbar.addEventListener("auxclick", preventAutoscroll);
+  window.addEventListener(LOCALE_CHANGE_EVENT, updateIndicators);
   return () => {
+    window.removeEventListener(LOCALE_CHANGE_EVENT, updateIndicators);
     resizeObserver.disconnect();
     toolbar.removeEventListener("scroll", updateIndicators);
     window.removeEventListener("resize", updateIndicators);

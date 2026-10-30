@@ -1,10 +1,10 @@
 "use client";
+
 import { OperationTreeIcon } from "@/components/OperationTreeIcon";
 import { AnnotationIcon } from "@/components/AnnotationIcon";
 import { ShellCornerButtons } from "@/components/ShellCornerButtons";
 import { ReferenceDisplayButtons } from "@/components/ReferenceDisplayButtons";
 import { enableToolbarMouseScroll } from "@/lib/toolbarScroll";
-
 import {
   ArrowDown,
   ArrowUp,
@@ -32,6 +32,7 @@ import { parseNumericExpression, validateNumericExpression } from "@/lib/numeric
 import { kercadTranslate, type KercadLocale, type KercadTranslationKey } from "@/lib/kercadI18n";
 import type { ParametricAnnotation, ParametricDocument, ParametricFeature, ParametricObject } from "@/types/parametric";
 import { annotationAngleGeometry, annotationPosition, type AnnotationPoint } from "@/lib/annotationGeometry";
+import { uiText, translateSourceText } from "@/lib/kercadI18n";
 
 export type ModelSelectionKind = "object" | "feature";
 export type ModelSidebarMode = "normal" | "simplified";
@@ -44,23 +45,10 @@ const useSidebarTranslation = () => {
   return (key: KercadTranslationKey) => kercadTranslate(locale, key);
 };
 
-const englishSidebarLiterals: Record<string, string> = {
-  "Posición": "Position", "Rotación": "Rotation", "Escala": "Scale", "Posición · rotación": "Position · rotation",
-  "Posición · rotación · escala": "Position · rotation · scale", "Anchura": "Width", "Profundidad": "Depth",
-  "Diámetro": "Diameter", "Radio": "Radius", "Altura": "Height", "Tamaño": "Size", "Espaciado": "Spacing",
-  "Perfil": "Profile", "Forma": "Shape", "Caras seleccionadas": "Selected faces", "Aristas seleccionadas": "Selected edges",
-  "Transformación del objeto contenedor": "Container object transform", "Sin transformación propia": "No independent transform",
-  "Dirección normal a la cara": "Direction normal to face", "Eje local del objeto": "Object local axis",
-  "Plano local del objeto": "Object local plane", "Dirección local del objeto": "Object local direction",
-  "Rotación alrededor del origen local": "Rotation around local origin", "Referencia entre objetos": "Object reference",
-  "Texto": "Text", "Fuente web": "Web font", "Alineación": "Alignment", "Alineación vertical": "Vertical alignment",
-  "Final": "Termination", "Aristas": "Edges", "Plano": "Plane", "Resultado": "Result", "Origen": "Source",
-  "Eje": "Axis", "Distribución uniforme": "Uniform distribution", "Objeto": "Object", "Formato": "Format",
-  "Opacidad": "Opacity", "Visualización": "Display", "Seleccionable": "Selectable", "Color": "Color",
-};
+
 
 function localizedSidebarLiteral(locale: KercadLocale, text: string) {
-  return locale === "en" ? englishSidebarLiterals[text] ?? text : text;
+  return translateSourceText(text, locale);
 }
 
 function useLocalizedSidebarLiteral(text: string) {
@@ -536,7 +524,7 @@ function ParametricObjectInspector({
   );
 }
 
-function TransformSection({ children, description = "Posición · rotación · escala" }: { children: ReactNode; description?: string }) {
+function TransformSection({ children, description = uiText("sidebar.position.rotation.scale") }: { children: ReactNode; description?: string }) {
   const t = useSidebarTranslation();
   const localizedDescription = useLocalizedSidebarLiteral(description);
   return (
@@ -627,7 +615,7 @@ function ParametricFeatureInspector({
   const treatmentFaceCount = treatmentReferences.filter((reference) => reference?.reference.hint.entityType === "face").length;
   const treatmentEdgeCount = treatmentReferences.filter((reference) => reference?.reference.hint.entityType === "edge").length;
   return (
-    <div className="kercad-feature-inspector" aria-label={`${locale === "en" ? "Properties of" : "Propiedades de"} ${feature.name}`}>
+    <div className="kercad-feature-inspector" aria-label={`${uiText("ui.parametricmodelsidebar.properties.of.6bbb0a", {}, locale)} ${feature.name}`}>
 
       {feature.kind === "sketch" ? (
         <>
@@ -653,12 +641,12 @@ function ParametricFeatureInspector({
           </div>
           <ShapeParametersSection>
             {textGenerator && primitiveSketch ? <>
-              <label><span>{localizedSidebarLiteral(locale, "Texto")}</span><DeferredTextInput value={textGenerator.text} maxLength={40} onCommit={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { text: value }); })} /></label>
-              <label><span>{localizedSidebarLiteral(locale, "Fuente web")}</span><select value={textGenerator.font ?? "Sans"} onChange={(event) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { font: event.target.value as typeof textGenerator.font }); })}>{parametricTextFontNames.map((font) => <option key={font} value={font}>{font}</option>)}</select></label>
+              <label><span>{localizedSidebarLiteral(locale, uiText("toolbar.text", {}, locale))}</span><DeferredTextInput value={textGenerator.text} maxLength={40} onCommit={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { text: value }); })} /></label>
+              <label><span>{localizedSidebarLiteral(locale, uiText("sidebar.web.font", {}, locale))}</span><select value={textGenerator.font ?? "Sans"} onChange={(event) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { font: event.target.value as typeof textGenerator.font }); })}>{parametricTextFontNames.map((font) => <option key={font} value={font}>{font}</option>)}</select></label>
               <BoundedNumberField label={t("property.size")} value={textGenerator.size} min={1} max={200} unit="mm" onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { size: value }); })} />
               <BoundedNumberField label={t("property.spacing")} value={textGenerator.spacing} min={0} max={100} unit="mm" onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { spacing: value }); })} />
-              <label><span>{localizedSidebarLiteral(locale, "Alineación")}</span><select value={textGenerator.align} onChange={(event) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { align: event.target.value as typeof textGenerator.align }); })}><option value="left">{locale === "en" ? "Left" : "Izquierda"}</option><option value="center">{locale === "en" ? "Center" : "Centro"}</option><option value="right">{locale === "en" ? "Right" : "Derecha"}</option></select></label>
-              <label><span>{localizedSidebarLiteral(locale, "Alineación vertical")}</span><select value={textGenerator.verticalAlign ?? "center"} onChange={(event) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { verticalAlign: event.target.value as typeof textGenerator.verticalAlign }); })}><option value="bottom">{locale === "en" ? "Bottom" : "Inferior"}</option><option value="center">{locale === "en" ? "Center" : "Centro"}</option><option value="top">{locale === "en" ? "Top" : "Superior"}</option></select></label>
+              <label><span>{localizedSidebarLiteral(locale, uiText("annotation.alignment", {}, locale))}</span><select value={textGenerator.align} onChange={(event) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { align: event.target.value as typeof textGenerator.align }); })}><option value="left">{uiText("annotation.left", {}, locale)}</option><option value="center">{uiText("align.center", {}, locale)}</option><option value="right">{uiText("annotation.right", {}, locale)}</option></select></label>
+              <label><span>{localizedSidebarLiteral(locale, uiText("sidebar.vertical.alignment", {}, locale))}</span><select value={textGenerator.verticalAlign ?? "center"} onChange={(event) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { verticalAlign: event.target.value as typeof textGenerator.verticalAlign }); })}><option value="bottom">{uiText("ui.parametricmodelsidebar.bottom.cce7f2", {}, locale)}</option><option value="center">{uiText("align.center", {}, locale)}</option><option value="top">{uiText("ui.parametricmodelsidebar.top.cae043", {}, locale)}</option></select></label>
             </> : scribbleGenerator && primitiveSketch ? <button className="kercad-edit-topology-selection" type="button" onClick={() => onEditSketch(primitiveSketch.id)}>{t("operation.editScribble")}</button> : primitiveSketch?.profile.shape === "rectangle" ? (
               <>
                 <BoundedNumberField label={t("property.width")} value={primitiveSketch.profile.width} min={0.01} max={200} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} />
@@ -669,7 +657,7 @@ function ParametricFeatureInspector({
             ) : null}
             <BoundedNumberField label={t("property.height")} value={feature.distance} min={-200} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "extrude" && Math.abs(value) >= 0.01) draft.distance = value; })} />
           </ShapeParametersSection>
-          <TransformSection description="Posición · rotación">
+          <TransformSection description={uiText("sidebar.position.rotation", {}, locale)}>
             <TransformGroup label={t("property.position")} values={feature.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.transform.position[axis] = value; })} />
             <TransformGroup label={t("property.rotation")} values={feature.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.transform.rotation[axis] = value; })} />
           </TransformSection>
@@ -768,7 +756,7 @@ function ParametricFeatureInspector({
               />
             ))}
           </ShapeParametersSection>
-          <TransformSection description="Posición · rotación">
+          <TransformSection description={uiText("sidebar.position.rotation", {}, locale)}>
             <TransformGroup label={t("property.position")} values={feature.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "primitive") draft.transform.position[axis] = value; })} />
             <TransformGroup label={t("property.rotation")} values={feature.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "primitive") draft.transform.rotation[axis] = value; })} />
           </TransformSection>
@@ -778,7 +766,7 @@ function ParametricFeatureInspector({
       {feature.kind === "importedStep" ? (
         <>
           <div className="kercad-feature-card"><h3>{t("model.operation")}</h3><ReadOnlyField label={t("property.type")} value={t("operation.importedStep")} /><ReadOnlyField label={t("property.file")} value={feature.sourceName} /><ReadOnlyField label={t("property.geometry")} value={t("operation.exactBrep")} /></div>
-          <TransformSection description="Transformación del objeto contenedor"><p className="kercad-transform-empty">{t("help.importedBase")}</p></TransformSection>
+          <TransformSection description={uiText("sidebar.container.object.transform", {}, locale)}><p className="kercad-transform-empty">{t("help.importedBase")}</p></TransformSection>
         </>
       ) : null}
 
@@ -786,7 +774,7 @@ function ParametricFeatureInspector({
         <>
           <div className="kercad-feature-card"><h3>{t("model.operation")}</h3><ReadOnlyField label={t("property.type")} value={t("operation.hole")} /><label><span>{t("property.termination")}</span><select value={feature.termination} onChange={(event) => onUpdate((draft) => { if (draft.kind === "hole") draft.termination = event.target.value as typeof draft.termination; })}><option value="through-all">{t("value.throughAll")}</option><option value="blind">{t("value.blind")}</option></select></label></div>
           <ShapeParametersSection><BoundedNumberField label={t("property.diameter")} value={feature.diameter} min={0.01} max={100} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.diameter = Math.max(0.01, value); })} />{feature.termination === "blind" ? <BoundedNumberField label={t("property.depth")} value={feature.depth} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.depth = Math.max(0.01, value); })} /> : null}</ShapeParametersSection>
-          <TransformSection description="Posición">
+          <TransformSection description={uiText("annotation.position", {}, locale)}>
             <div className="kercad-feature-card kercad-transform-card"><h3>{t("property.position")}</h3><NumberField label="X" value={feature.x} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.x = value; })} /><NumberField label="Y" value={feature.y} onChange={(value) => onUpdate((draft) => { if (draft.kind === "hole") draft.y = value; })} /></div>
           </TransformSection>
         </>
@@ -796,7 +784,7 @@ function ParametricFeatureInspector({
         <>
           <div className="kercad-feature-card"><h3>{t("model.operation")}</h3><EdgeTreatmentButtons value={feature.treatment} onChange={(treatment) => onUpdate((draft) => { if (draft.kind === "fillet") draft.treatment = treatment; })} /><BoundedNumberField label={feature.treatment === "chamfer" ? t("property.distance") : t("property.radius")} value={feature.radius} min={0.01} max={50} onChange={(value) => onUpdate((draft) => { if (draft.kind === "fillet") draft.radius = Math.max(0.01, value); })} />{!(feature.selectionReferenceIds?.length ?? feature.edgeReferenceIds?.length) ? <label><span>{t("property.edges")}</span><select value={feature.edges} onChange={(event) => onUpdate((draft) => { if (draft.kind === "fillet") draft.edges = event.target.value as typeof draft.edges; })}><option value="vertical">{t("value.vertical")}</option><option value="all">{t("value.all")}</option></select></label> : null}</div>
           {(feature.selectionReferenceIds?.length ?? feature.edgeReferenceIds?.length) ? <><button className="kercad-edit-topology-selection" type="button" onClick={() => onEditSelection(feature.id)}>{t("operation.editSelection")}</button></> : null}
-          <TransformSection description="Sin transformación propia"><p className="kercad-transform-empty">{t("help.previousResult")}</p></TransformSection>
+          <TransformSection description={uiText("sidebar.no.independent.transform", {}, locale)}><p className="kercad-transform-empty">{t("help.previousResult")}</p></TransformSection>
         </>
       ) : null}
 
@@ -804,7 +792,7 @@ function ParametricFeatureInspector({
         <>
           <div className="kercad-feature-card"><h3>{t("model.operation")}</h3><OperationModeButtons addOnly={requiresAddOperation(document, feature)} value={feature.operation} includeCommon={false} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "faceExtrude" && operation !== "intersect") draft.operation = operation; })} /><BoundedNumberField label={t("property.length")} value={feature.distance} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "faceExtrude") draft.distance = Math.max(0.01, value); })} /></div>
           <button className="kercad-edit-topology-selection" type="button" onClick={() => onEditFaceExtrudeSelection(feature.id)}>{t("operation.editFace")}</button>
-          <TransformSection description="Dirección normal a la cara"><p className="kercad-transform-empty">{t("help.faceExtrude")}</p></TransformSection>
+          <TransformSection description={uiText("sidebar.direction.normal.to.face", {}, locale)}><p className="kercad-transform-empty">{t("help.faceExtrude")}</p></TransformSection>
         </>
       ) : null}
 
@@ -820,7 +808,7 @@ function ParametricFeatureInspector({
           <div className="kercad-feature-card"><h3>{t("model.operation")}</h3><OperationModeButtons addOnly={requiresAddOperation(document, feature)} value={feature.operation} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "revolve") draft.operation = operation; })} /><label><span>{t("property.axis")}</span><select value={feature.axis === "edge" && feature.source === "sketch" ? `sketch-edge:${feature.sketchAxisSegmentId ?? ""}` : feature.axis} onChange={(event) => onUpdate((draft) => { if (draft.kind !== "revolve") return; const value = event.target.value; if (value.startsWith("sketch-edge:")) { draft.axis = "edge"; draft.sketchAxisSegmentId = value.slice("sketch-edge:".length); draft.axisReferenceId = undefined; } else { draft.axis = value as "x" | "y" | "z" | "edge"; draft.sketchAxisSegmentId = undefined; } })}><option value="x">{t("value.localX")}</option><option value="y">{t("value.localY")}</option><option value="z">{t("value.localZ")}</option>{feature.source === "sketch" ? revolveSketchAxes.map((segment, index) => <option key={segment.id} value={`sketch-edge:${segment.id}`}>{t("operation.selectedEdge")} {index + 1}</option>) : feature.axis === "edge" ? <option value="edge">{t("operation.selectedEdge")}</option> : null}</select></label><BoundedNumberField label={t("property.angle")} value={feature.angle} min={-360} max={360} step={1} unit="°" onChange={(value) => onUpdate((draft) => { if (draft.kind === "revolve") draft.angle = Math.abs(value) < 1 ? (value < 0 ? -1 : 1) : Math.min(360, Math.max(-360, value)); })} /></div>
           {revolveSketch && revolveSketch.profile.shape !== "drawn" ? <div className="kercad-feature-card"><h3>{t("operation.sketchProfile")}</h3><ReadOnlyField label={t("property.shape")} value={revolveSketch.profile.shape === "rectangle" ? t("value.rectangle") : t("value.circle")} />{revolveSketch.profile.shape === "rectangle" ? <><BoundedNumberField label={t("property.width")} value={revolveSketch.profile.width} min={0.01} max={200} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} /><BoundedNumberField label={t("property.depth")} value={revolveSketch.profile.depth} min={0.01} max={200} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} /></> : <BoundedNumberField label={t("property.radius")} value={revolveSketch.profile.diameter / 2} min={0.01} max={100} onChange={(value) => onUpdateFeature(revolveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value * 2); })} />}</div> : null}
           {feature.source === "face" ? <div className="kercad-topology-selection-actions"><button className="kercad-edit-topology-selection" type="button" onClick={() => onEditRevolveFace(feature.id)}>{t("operation.editFace")}</button><button className="kercad-edit-topology-selection" type="button" onClick={() => onEditRevolveAxis(feature.id)}>{t("operation.editAxis")}</button></div> : <button className="kercad-edit-topology-selection" type="button" onClick={() => onEditRevolveAxis(feature.id)}>{t("operation.editAxis")}</button>}
-          <TransformSection description="Eje local del objeto"><p className="kercad-transform-empty">{t("help.revolve")}</p></TransformSection>
+          <TransformSection description={uiText("sidebar.object.local.axis", {}, locale)}><p className="kercad-transform-empty">{t("help.revolve")}</p></TransformSection>
         </>
       ) : null}
 

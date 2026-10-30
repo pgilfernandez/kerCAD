@@ -1,334 +1,84 @@
-export const KERCAD_LOCALES = ["en", "es"] as const;
-export type KercadLocale = (typeof KERCAD_LOCALES)[number];
+import { languageCatalogs } from "@/locales/registry.generated";
+import english from "@/locales/en.json";
 
-const es = {
-  "loading.progress": "Progreso de carga", "loading.estimating": "Calculando estimación…",
-  "loading.remaining": "≈ {seconds} s restantes", "loading.openingIn": "Listo · abriendo en {seconds} s",
-  "loading.opening": "Abriendo proyecto…", "loading.initializing": "Inicializando motor CAD…",
-  "loading.operations": "Reconstruyendo operaciones…", "loading.meshing": "Preparando geometría 3D…",
-  "loading.project": "Cargando", "loading.campaign": "Patrocinadores y campañas",
-  "loading.freeOpenSource": "kerCAD es gratuito y de código abierto.", "loading.support": "Apoyar kerCAD",
-  "settings.appearanceLanguage": "Tema e idioma", "settings.theme": "Tema", "settings.themeLight": "Claro", "settings.themeDark": "Oscuro",
-  "project.author": "Autor", "project.cover": "Imagen del proyecto", "project.coverManual": "Captura manual guardada", "project.coverAutomatic": "Capturas automáticas activadas",
-  "project.captureCover": "Capturar imagen", "project.resetCover": "Restablecer automática",
-  "camera.sectionPickHint": "Selecciona un plano principal o una cara para definir el corte · Esc cancela",
-  "camera.sectionView": "Vista de sección", "camera.reverseSection": "Invertir lado del corte",
-  "annotation.ending.none": "Ninguno", "annotation.ending.square": "Cuadrado", "annotation.ending.circle": "Círculo",
-  "annotation.ending.arrow1": "Flecha 1", "annotation.ending.arrow2": "Flecha 2", "annotation.ending.arrow3": "Flecha 3", "annotation.ending.arrow4": "Flecha 4",
-  "sketch.centerRectangle": "Rectángulo por centro y esquina",
-  "sketch.roundedRectangle": "Rectángulo redondeado",
-  "annotation.arrow": "Flecha",
-  "annotation.angle": "Ángulo", "annotation.vertex": "Vértice central",
-  "annotation.circle": "Círculo", "annotation.mode": "Modo", "annotation.billboard": "2D", "annotation.planar": "3D", "annotation.lineWidth": "Grosor del trazo",
-  "annotation.dashedLine": "Línea rayada", "annotation.startArrow": "Extremo inicial", "annotation.endArrow": "Extremo final", "annotation.lineStyle": "Trazo", "annotation.solid": "Continuo", "annotation.dashed": "Rayado", "annotation.showLength": "Mostrar longitud",
-  "annotation.group": "Anotaciones", "annotation.text": "Etiqueta de texto", "annotation.dimension": "Dimensión", "annotation.font": "Fuente", "annotation.size": "Tamaño del texto", "annotation.alignment": "Alineación", "annotation.left": "Izquierda", "annotation.center": "Centro", "annotation.right": "Derecha", "annotation.position": "Posición", "annotation.start": "Punto inicial", "annotation.end": "Punto final",
-  "dialog.authorName": "Tu nombre", "dialog.creator": "Creador", "dialog.lastAuthor": "Autor de la última modificación",
-  "about.title": "acerca de kerCAD", "about.label": "Acerca de kerCAD", "about.startDesigning": "Empieza a diseñar", "about.githubPending": "Enlace al repositorio pendiente", "about.donate": "Donar", "about.donatePending": "Donaciones disponibles próximamente",
-  "about.description": "CAD paramétrico de código abierto para educación.",
-  "about.version": "Versión", "about.cadEngine": "Motor CAD", "about.viewer": "Visor 3D",
-  "about.sketches": "Bocetos", "about.constraints": "Restricciones paramétricas", "about.license": "Licencia",
-  "about.resources": "Recursos del proyecto", "about.documentation": "Documentación y tutoriales", "about.launchTutorial": "Iniciar tutorial de introducción",
-  "about.projectOverview": "Página del proyecto", "about.credit": "diseñado con cariño por Pablo Gil Fernández",
-  "settings.title": "Ajustes del diseño", "settings.name": "Nombre", "settings.rendering": "Renderizado",
-  "settings.renderNormal": "Normal (suavizado)", "settings.renderOptimized": "Optimizar rendimiento",
-  "settings.shading": "Sombreado", "settings.shadows": "Sombras", "settings.basicShadows": "Sombras básicas",
-  "settings.noShadows": "Sin sombras", "settings.units": "Unidades", "settings.millimeters": "Milímetros (mm)",
-  "settings.centimeters": "Centímetros (cm)", "settings.meters": "Metros (m)", "settings.feet": "Imperiales: pies (ft)",
-  "settings.unitsHint": "Cambiar las unidades sólo cambia cómo se muestran y editan las medidas. El tamaño real se mantiene y la geometría se guarda en milímetros.",
-  "settings.inches": "Imperiales: pulgadas (in)", "settings.language": "Idioma", "settings.spanish": "Español",
-  "settings.english": "English", "settings.showFps": "Mostrar FPS",
-  "settings.snapshots": "Instantáneas locales", "settings.createSnapshot": "Crear", "settings.restoreSnapshot": "Restaurar", "settings.noSnapshots": "Todavía no hay instantáneas.",
-  "settings.autosave": "El proyecto se guarda automáticamente. Las preferencias visuales se recuerdan en este dispositivo.",
-  "grid.title": "Rejilla", "grid.showFloor": "Mostrar suelo XY", "grid.activeSize": "Tamaño del plano activo",
-  "grid.size": "Tamaño", "grid.width": "Ancho (eje X)", "grid.depth": "Profundo (eje Y)", "grid.step": "Separación de líneas", "grid.snapSpacing": "Separación del ajuste", "common.close": "Cerrar",
-  "camera.positionTriad": "Triada de posición", "camera.rotationTriad": "Triada de rotación", "camera.parameterHandles": "Manipuladores de parámetros", "camera.wireframe": "Vista alámbrica",
-  "camera.perspective": "Perspectiva", "camera.orthographic": "Ortográfica", "camera.home": "Vista inicial",
-  "camera.fit": "Encuadrar todo", "camera.selection": "Zoom a la selección", "camera.zoomIn": "Acercar", "camera.zoomOut": "Alejar",
-  "toolbar.new": "Nuevo diseño", "toolbar.copy": "Copiar", "toolbar.paste": "Pegar", "toolbar.duplicate": "Duplicar",
-  "toolbar.newGroup": "Nuevo", "toolbar.clipboard": "Portapapeles", "toolbar.history": "Historial", "toolbar.manipulators": "Manipuladores", "toolbar.shapes": "Crear", "toolbar.modify": "Modificar", "toolbar.helpers": "Ayudas",
-  "toolbar.deleteSelection": "Eliminar selección", "toolbar.deleteOperation": "Eliminar operación", "toolbar.deleteObject": "Eliminar objeto",
-  "toolbar.undo": "Deshacer", "toolbar.redo": "Rehacer", "toolbar.addShape": "Añadir forma", "toolbar.createSketch": "Crear boceto",
-  "toolbar.align": "Alinear", "toolbar.mirror": "Espejo", "toolbar.linearPattern": "Matriz lineal", "toolbar.polarPattern": "Matriz polar",
-  "toolbar.objectBoolean": "Booleana entre objetos", "toolbar.snapGrid": "Ajustar a rejilla", "toolbar.chamfer": "Chaflán",
-  "toolbar.fillet": "Redondeo", "toolbar.extrudeFace": "Extruir cara", "toolbar.extrudeSketch": "Extruir boceto",
-  "toolbar.revolve": "Revolución", "toolbar.revolveSketch": "Revolucionar boceto", "toolbar.shell": "Vaciado",
-  "toolbar.manage": "Gestionar", "toolbar.import": "Importar", "toolbar.export": "Exportar", "toolbar.settings": "Ajustes",
-  "toolbar.arrange": "Organizar", "toolbar.placeWorkplane": "Colocar plano de trabajo", "toolbar.cancelWorkplane": "Cancelar plano de trabajo",
-  "toolbar.resetWorkplane": "Restaurar plano global", "toolbar.dropToWorkplane": "Bajar al plano",
-  "toolbar.text": "Texto", "toolbar.textInObject": "Nueva operación en el objeto", "toolbar.extrudedText": "Texto paramétrico extruido",
-  "common.cancel": "Cancelar", "common.accept": "Aceptar", "common.delete": "Eliminar", "common.rename": "Editar nombre", "common.open": "Abrir",
-  "model.label": "Modelo paramétrico", "model.moveUp": "Subir", "model.moveDown": "Bajar", "model.editOrigin": "Editar origen", "model.treeActions": "Acciones de la jerarquía",
-  "model.expand": "Desplegar", "model.collapse": "Contraer", "model.show": "Mostrar", "model.hide": "Ocultar", "model.lock": "Bloquear", "model.unlock": "Desbloquear",
-  "model.operationsFor": "Operaciones de", "model.showSketch": "Mostrar boceto", "model.hideSketch": "Ocultar boceto", "model.activate": "Activar", "model.suppress": "Suprimir",
-  "model.noSelection": "Nada seleccionado", "model.noSelectionHint": "Selecciona un objeto u operación para editar sus propiedades.",
-  "model.renameTitle": "Cambiar nombre", "model.name": "Nombre", "model.commonName": "Nombre común", "model.applyCommonName": "Aplicar el mismo nombre a todos",
-  "model.selected": "elementos seleccionados", "model.objects": "objetos", "model.operations": "operaciones", "model.multiSelectionHint": "Usa Ctrl/Cmd para alternar elementos o Shift para seleccionar un rango.",
-  "model.operation": "Operación", "model.shapeParameters": "Parámetros de la forma",
-  "model.transform": "Transformación", "model.mode": "Modo", "model.add": "Añadir", "model.hole": "Hueco", "model.common": "Común",
-  "mirror.selectedFace": "Cara seleccionada", "mirror.choosePlane": "Elegir plano o cara",
-  "dialog.newTitle": "Nuevo diseño", "dialog.newWarning": "El proyecto actual se cerrará. Guarda antes si quieres conservar los últimos cambios.",
-  "dialog.save": "Guardar", "dialog.createNew": "Nuevo", "dialog.exportTitle": "Exportar diseño",
-  "dialog.importProject": "Importar proyecto kerCAD", "dialog.addToCurrent": "Añadir al actual",
-  "dialog.contains": "contiene", "dialog.object": "objeto", "dialog.objects": "objetos", "dialog.importChoice": "Puedes abrirlo como proyecto independiente o añadir sus objetos al diseño actual.",
-  "dialog.exportSubtitle": "Conserva los parámetros o fabrica la pieza", "dialog.fileName": "Nombre del archivo", "dialog.saving": "Guardando…", "dialog.exporting": "Exportando…",
-  "dialog.projectFormat": "Proyecto kerCAD", "dialog.projectFormatHint": "Paquete editable con historial y recursos", "dialog.stepFormat": "Modelo STEP", "dialog.stepFormatHint": "B-Rep exacto para fabricación", "dialog.stlFormat": "Modelo STL", "dialog.stlFormatHint": "Binario, en milímetros y listo para imprimir", "dialog.stlQuality": "Resolución STL", "dialog.qualityLow": "Baja", "dialog.qualityMedium": "Media", "dialog.qualityHigh": "Alta", "dialog.qualityVeryHigh": "Muy alta",
-  "align.title": "Alinear selección", "align.action": "Alinear", "align.referenceLast": "Referencia: último seleccionado", "align.minimum": "Mín.", "align.center": "Centro", "align.maximum": "Máx.",
-  "sidebar.simplify": "Simplificar jerarquía", "sidebar.hide": "Ocultar jerarquía", "sidebar.show": "Mostrar jerarquía", "sidebar.visible": "Panel visible", "sidebar.simplified": "Panel simplificado", "sidebar.hidden": "Panel oculto", "camera.controls": "Controles de cámara", "history.stopped": "El historial se detuvo aquí",
-  "rebuild.suggestionLabel": "Sugerencia", "rebuild.suggestion.generic": "Revisa los parámetros de la operación resaltada o restáurala a sus valores iniciales.",
-  "rebuild.suggestion.topology": "Edita la selección de la operación y vuelve a elegir las caras o aristas que ya no existen.", "rebuild.suggestion.base": "El objeto debe comenzar con una operación sólida en modo Añadir.",
-  "rebuild.suggestion.sketch": "Corrige el perfil del boceto: debe contener contornos cerrados válidos y sin cruces.", "rebuild.suggestion.extrude": "Comprueba el boceto de origen, usa una longitud positiva y verifica el modo booleano.",
-  "rebuild.suggestion.primitive": "Comprueba que todas las dimensiones sean positivas y que la primera forma use Añadir.", "rebuild.suggestion.importedStep": "Vuelve a importar el STEP o colócalo como primera geometría base del objeto.",
-  "rebuild.suggestion.hole": "Usa un diámetro y una profundidad positivos y comprueba que el taladro alcance el sólido.", "rebuild.suggestion.fillet": "Reduce el radio o la distancia y, si cambió la geometría, vuelve a seleccionar las caras o aristas.",
-  "rebuild.suggestion.faceExtrude": "Usa una longitud positiva y vuelve a seleccionar una cara plana válida.", "rebuild.suggestion.shell": "Reduce el espesor y comprueba que las caras abiertas sigan perteneciendo al sólido anterior.",
-  "rebuild.suggestion.revolve": "Usa un ángulo distinto de cero entre -360° y 360° y comprueba la cara o eje seleccionado.", "rebuild.suggestion.mirror": "Comprueba el plano de espejo y que exista un resultado sólido anterior.",
-  "rebuild.suggestion.linearPattern": "Usa entre 2 y 50 copias, una separación distinta de cero y una operación de origen válida.", "rebuild.suggestion.polarPattern": "Usa entre 2 y 50 copias, un ángulo válido distinto de cero y una operación de origen disponible.",
-  "rebuild.suggestion.objectBoolean": "Comprueba que el objeto de referencia exista, tenga geometría válida y no produzca una dependencia cíclica.",
-  "status.loadingWorkspace": "Preparando el espacio de trabajo…", "status.exportingStep": "Exportando STEP…",
-  "status.regenerating": "Regenerando modelo…", "status.updatingView": "Actualizando vista…", "grid.settings": "Ajustes de rejilla",
-  "grid.enableSnap": "Activar ajuste a rejilla", "grid.disableSnap": "Desactivar ajuste a rejilla",
-  "grid.snapEnabled": "Snap to grid: activado", "grid.snapDisabled": "Snap to grid: desactivado",
-  "property.type": "Tipo", "property.position": "Posición", "property.rotation": "Rotación", "property.rotationCenter": "Centro de rotación", "property.scale": "Escala", "property.profile": "Perfil", "property.shape": "Forma",
-  "property.axis": "Eje", "property.angle": "Ángulo", "property.length": "Longitud", "property.radius": "Radio",
-  "property.distance": "Distancia", "property.thickness": "Espesor", "property.width": "Anchura", "property.depth": "Profundidad", "property.size": "Tamaño",
-  "property.height": "Altura", "property.file": "Archivo", "property.geometry": "Geometría", "property.reference": "Referencia", "property.format": "Formato",
-  "property.opacity": "Opacidad", "property.display": "Visualización", "property.pickable": "Seleccionable", "property.color": "Color", "property.customColor": "Color personalizado", "property.objectColor": "Color del objeto",
-  "property.diameter": "Diámetro", "property.result": "Resultado", "property.source": "Origen", "property.plane": "Plano", "property.termination": "Final", "property.edges": "Aristas", "property.uniformDistribution": "Distribución uniforme", "property.object": "Objeto",
-  "property.count": "Cantidad", "property.spacing": "Separación", "property.totalAngle": "Ángulo total", "property.angularStep": "Paso angular",
-  "operation.new": "Nueva operación", "operation.edit": "Editar operación", "operation.editSelection": "Editar caras y aristas", "operation.reset": "Restaurar operación",
-  "operation.previewRevolve": "Revolución temporal", "operation.previewShell": "Vaciado temporal", "operation.previewFaceExtrude": "Extrusión temporal de cara", "operation.previewTopology": "Selección temporal de caras y aristas",
-  "operation.faceExtrude": "Extrusión desde cara", "operation.facePocket": "Hueco desde cara", "operation.openFaces": "caras abiertas", "operation.facesEdges": "caras / aristas", "operation.faceAxis": "cara / eje",
-  "operation.editSketch": "Editar boceto", "operation.editScribble": "Editar dibujo libre", "operation.editFace": "Editar cara", "operation.editOpenFaces": "Editar caras abiertas", "operation.editAxis": "Editar eje", "operation.sketchProfile": "Perfil de boceto",
-  "value.rectangle": "Rectángulo", "value.circle": "Círculo", "value.throughAll": "Pasante", "value.blind": "Ciego", "value.vertical": "Verticales", "value.all": "Todas",
-  "value.duplicate": "Duplicar", "value.transformOnly": "Sólo transformar", "value.fullBody": "Cuerpo completo", "value.previousOperation": "Operación", "value.localX": "X local", "value.localY": "Y local", "value.localZ": "Z local",
-  "help.importedBase": "Esta es la geometría base. Las operaciones posteriores permanecen editables en el historial.", "help.previousResult": "Esta operación actúa sobre el resultado anterior del objeto.",
-  "help.faceExtrude": "La longitud se aplica perpendicularmente a la cara seleccionada.", "help.shell": "El vaciado desplaza las paredes hacia el interior y elimina las caras seleccionadas.",
-  "help.revolve": "La cara gira alrededor del eje local seleccionado que pasa por el origen del objeto.", "help.mirror": "El resultado anterior se refleja respecto al plano local que pasa por el origen.",
-  "help.linearPattern": "La cantidad incluye el original. Puede repetirse el cuerpo acumulado o la contribución de una operación anterior.", "help.polarPattern": "La cantidad incluye el original. El signo del ángulo determina el sentido de giro.",
-  "help.objectBoolean": "La geometría se actualiza con el objeto de referencia. Puedes ocultarlo en el árbol sin romper esta operación.",
-  "operation.sketch": "Boceto", "operation.importedStep": "STEP importado", "operation.exactBrep": "B-Rep exacto",
-  "operation.hole": "Taladro", "operation.fillet": "Redondeo", "operation.chamfer": "Chaflán", "operation.revolve": "Revolución",
-  "operation.mirror": "Espejo", "operation.linearPattern": "Matriz lineal", "operation.polarPattern": "Matriz polar",
-  "operation.fullBody": "Cuerpo completo", "operation.selectedEdge": "Arista seleccionada", "operation.parameters": "Parámetros",
-  "sketch.tools": "Herramientas de boceto", "sketch.draw": "Dibujar", "sketch.edit": "Editar", "sketch.point": "Punto",
-  "sketch.history": "Historial", "sketch.inspect": "Inspeccionar", "sketch.import": "Importar", "sketch.line": "Línea",
-  "sketch.polygon": "Polígono", "sketch.polygonType": "Tipo de polígono", "sketch.sides": "lados", "sketch.slot": "Ranura recta", "sketch.arcSlot": "Ranura curva", "sketch.rectangle": "Rectángulo", "sketch.bezier": "Curva Bézier", "sketch.smoothCurve": "Curva suave", "sketch.freehand": "Dibujo libre",
-  "sketch.smoothFreehand": "Dibujo libre suavizado", "sketch.text": "Texto", "sketch.circle": "Círculo", "sketch.centerArc": "Arco por centro",
-  "sketch.connectNodes": "Conectar nodos", "sketch.select": "Seleccionar", "sketch.refine": "Añadir nodo", "sketch.trim": "Recortar", "sketch.erase": "Borrar",
-  "sketch.eraseSelection": "Borrar selección", "sketch.construction": "Geometría de construcción", "sketch.mergePoints": "Fusionar vértices abiertos", "sketch.corner": "Esquina",
-  "sketch.smooth": "Suave", "sketch.splitHandles": "Separar tiradores", "sketch.undo": "Deshacer boceto", "sketch.redo": "Rehacer boceto",
-  "sketch.measure": "Medir", "sketch.importSvg": "Importar SVG editable", "sketch.accept": "Guardar boceto",
-  "sketch.constraints": "Restricciones", "sketch.constraintHint": "Selecciona geometría para habilitar herramientas",
-  "sketch.geometric": "Geométricas", "sketch.dimensions": "Cotas", "sketch.horizontal": "Horizontal", "sketch.vertical": "Vertical",
-  "sketch.parallel": "Paralela", "sketch.perpendicular": "Perpendicular", "sketch.concentric": "Concéntrica", "sketch.equal": "Igual",
-  "sketch.midpoint": "Punto medio", "sketch.pointOnGeometry": "Punto sobre geometría", "sketch.tangent": "Tangente",
-  "sketch.symmetry": "Simetría", "sketch.coincident": "Coincidente", "sketch.fixPoint": "Fijar punto",
-  "sketch.dimensionLength": "Longitud", "sketch.distanceX": "Distancia X", "sketch.distanceY": "Distancia Y",
-  "sketch.diameter": "Diámetro", "sketch.radius": "Radio", "sketch.angle": "Ángulo",
-  "notice.editingSketch": "Editando boceto", "notice.drawClosedContour": "Dibuja un contorno cerrado",
-  "notice.sketchCancelled": "Edición de boceto cancelada", "notice.closeContours": "Cierra todos los contornos antes de aceptar el boceto.",
-  "notice.sketchUpdated": "Boceto actualizado", "notice.sketchAdded": "Boceto añadido al historial",
-  "notice.scribbleUpdated": "Scribble actualizado", "notice.scribbleAdded": "Scribble añadido al historial",
-  "notice.constraintDeleted": "Restricción eliminada; geometría liberada", "notice.newOperationInObject": "Nueva operación en el objeto", "notice.mergeDistinctEdges": "Selecciona exactamente dos extremos abiertos de aristas distintas.",
-  "notice.svgSketchImported": "SVG importado como geometría editable", "notice.svgSketchFailed": "No se pudo convertir el SVG en un boceto editable.",
-  "notice.autosaveRecovered": "Se ha recuperado la copia de seguridad local del proyecto.",
-  "notice.snapshotCreated": "Instantánea local creada.", "notice.snapshotRestored": "Proyecto restaurado desde la instantánea.",
-  "notice.operationReset": "La operación ha recuperado sus parámetros iniciales.",
-  "notice.workplaneCancelled": "Colocación del plano de trabajo cancelada", "notice.topologyCancelled": "Selección topológica cancelada", "notice.invalidDependency": "La operación crearía una dependencia no válida.",
-  "notice.invalidProfile": "el perfil no es válido.", "notice.cannotExtrude": "No se puede extruir", "notice.cannotRevolve": "No se puede revolucionar", "notice.mirrorCreated": "Operación espejo creada",
-  "notice.createdInNewObject": "creada en un objeto nuevo", "notice.addedToActiveObject": "añadida al final del objeto activo", "notice.textAdded": "Texto añadido al objeto activo", "notice.textCreated": "Texto creado en un objeto nuevo", "notice.operationDeleted": "Operación eliminada",
-  "notice.noMovableAlignment": "No hay elementos móviles que alinear con esa referencia.", "notice.newDesign": "Nuevo diseño", "notice.topologyHint": "Pulsa caras o aristas para añadirlas o retirarlas de la selección", "notice.temporaryCancelled": "Operación temporal cancelada",
-  "notice.faceExtrudeCancelled": "Extrusión temporal cancelada", "notice.selectOpenFaces": "Selecciona las caras que quedarán abiertas", "notice.revolveCancelled": "Revolución temporal cancelada", "notice.revolvePlanar": "La revolución requiere una cara plana.", "notice.faceExtrudePlanar": "La extrusión desde cara requiere una cara plana.", "notice.revolveStraightAxis": "El eje de revolución debe ser una arista recta.",
-  "notice.workplanePlaceHint": "Pasa sobre una cara y haz clic para colocar el plano de trabajo", "notice.placementCancelled": "Colocación cancelada",
-  "notice.topologyReferencesRemoved": "referencias topológicas ya no existen tras reconstruir la pieza", "notice.topologyReferenceRemoved": "referencia topológica ya no existe tras reconstruir la pieza",
-  "notice.alignedWith": "alineados con", "notice.alignedWithSingle": "alineado con", "notice.reference": "la referencia",
-  "notice.updated": "actualizado", "notice.added": "añadido", "notice.updatedFeminine": "actualizada", "notice.addedFeminine": "añadida", "notice.elements": "elementos", "notice.element": "elemento",
-  "notice.parametric": "paramétrico", "notice.selectPlanarFaceExtrude": "Selecciona una cara plana para extruir o ahuecar", "notice.selectPlanarFace": "Selecciona una cara plana.",
-  "notice.selectPlanarFaceRevolve": "Selecciona una cara plana para revolucionar", "notice.selectPlanarFaceAndAxis": "Selecciona una cara plana y una arista recta como eje.",
-  "notice.selectRevolveAxis": "Selecciona una arista recta como eje de rotación.", "notice.revolveReady": "Ajusta el ángulo y acepta para crear la revolución.",
-  "notice.saveFailed": "No se pudo guardar el proyecto", "notice.exportFailed": "No se pudo exportar", "notice.stlExportFailed": "No se pudo exportar el STL", "notice.noObjectsToExport": "No hay objetos que exportar.",
-  "notice.archiveTooLarge": "El proyecto supera el límite comprimido de 256 MB.", "notice.documentTooLarge": "El documento supera el límite de 32 MB.", "notice.incompatibleProject": "Este no es un proyecto kerCAD compatible.", "notice.openFailed": "No se pudo abrir",
-  "notice.projectAdded": "añadidos al proyecto", "notice.projectAddedSingle": "añadido al proyecto", "notice.addProjectFailed": "No se pudo añadir el proyecto",
-  "notice.referenceImported": "importado como referencia", "notice.referenceImportFailed": "No se pudo importar la referencia.", "notice.importingStep": "Importando B-Rep STEP…", "notice.stepImported": "STEP importado como geometría base editable", "notice.stepImportFailed": "No se pudo importar el STEP.",
-  "notice.svgImported": "SVG importado como extrusión paramétrica", "notice.segments": "segmentos", "notice.circles": "círculos", "notice.svgImportFailed": "No se pudo importar el SVG.",
-  "notice.objectCopied": "Objeto copiado", "notice.workplaneRestored": "Plano de trabajo global restaurado", "notice.freehandFailed": "No se pudo crear el contorno libre.", "notice.workplanePlaced": "Plano de trabajo colocado sobre la cara",
-  "notice.linearPatternCreated": "Matriz lineal creada", "notice.polarPatternCreated": "Matriz polar creada", "notice.objectBooleanCreated": "Booleana entre objetos creada", "notice.shapeDuplicated": "Forma duplicada",
-  "notice.itemsDeleted": "elementos eliminados", "notice.selectTopologySameObject": "Selecciona una o varias caras o aristas del mismo objeto.", "notice.selectFacesSameObject": "Selecciona una o varias caras del mismo objeto.",
-  "notice.projectSaved": "Proyecto kerCAD guardado", "notice.stepExported": "STEP B-Rep exportado", "notice.binaryStlExported": "STL binario exportado", "notice.projectOpened": "Proyecto abierto", "notice.resources": "recursos", "notice.resource": "recurso",
-  "display.solidEdges": "Color y aristas", "display.solid": "Color", "display.wireframe": "Sólo aristas", "input.increment": "Aumentar valor", "input.decrement": "Disminuir valor",
-  "notice.invalidArcAngle": "El ángulo del arco debe estar entre 0° y 360°.", "notice.invalidAngle": "El ángulo debe ser un número válido.",
-  "notice.positiveDimension": "La cota debe ser un número mayor que cero.", "notice.sketchExtruded": "Extrusión creada desde el boceto",
-  "notice.sketchRevolved": "Revolución creada desde el boceto",
-  "notice.selectMirrorPlane": "Selecciona una cara o uno de los planos principales", "notice.mirrorPlaneSet": "Plano de espejo definido",
-} as const;
-
-export type KercadTranslationKey = keyof typeof es;
-
-const en: Record<KercadTranslationKey, string> = {
-  "loading.progress": "Loading progress", "loading.estimating": "Estimating remaining time…",
-  "loading.remaining": "≈ {seconds} s remaining", "loading.openingIn": "Ready · opening in {seconds} s",
-  "loading.opening": "Opening project…", "loading.initializing": "Initializing CAD engine…",
-  "loading.operations": "Rebuilding operations…", "loading.meshing": "Preparing 3D geometry…",
-  "loading.project": "Loading", "loading.campaign": "Sponsors and campaigns",
-  "loading.freeOpenSource": "kerCAD is free and open source.", "loading.support": "Support kerCAD",
-  "settings.appearanceLanguage": "Theme and language", "settings.theme": "Theme", "settings.themeLight": "Light", "settings.themeDark": "Dark",
-  "project.author": "Author", "project.cover": "Project image", "project.coverManual": "Saved manual capture", "project.coverAutomatic": "Automatic captures enabled",
-  "project.captureCover": "Capture image", "project.resetCover": "Reset to automatic",
-  "camera.sectionPickHint": "Select a main plane or a face to define the section · Esc cancels",
-  "camera.sectionView": "Section view", "camera.reverseSection": "Reverse cutting side",
-  "annotation.ending.none": "None", "annotation.ending.square": "Square", "annotation.ending.circle": "Circle",
-  "annotation.ending.arrow1": "Arrow 1", "annotation.ending.arrow2": "Arrow 2", "annotation.ending.arrow3": "Arrow 3", "annotation.ending.arrow4": "Arrow 4",
-  "sketch.centerRectangle": "Center rectangle",
-  "sketch.roundedRectangle": "Rounded rectangle",
-  "annotation.arrow": "Arrow",
-  "annotation.angle": "Angle", "annotation.vertex": "Central vertex",
-  "annotation.circle": "Circle", "annotation.mode": "Mode", "annotation.billboard": "2D", "annotation.planar": "3D", "annotation.lineWidth": "Stroke width",
-  "annotation.dashedLine": "Dashed line", "annotation.startArrow": "Start ending", "annotation.endArrow": "End ending", "annotation.lineStyle": "Line style", "annotation.solid": "Solid", "annotation.dashed": "Dashed", "annotation.showLength": "Show length",
-  "annotation.group": "Annotations", "annotation.text": "Text label", "annotation.dimension": "Dimension", "annotation.font": "Font", "annotation.size": "Text size", "annotation.alignment": "Alignment", "annotation.left": "Left", "annotation.center": "Center", "annotation.right": "Right", "annotation.position": "Position", "annotation.start": "Start point", "annotation.end": "End point",
-  "dialog.authorName": "Your name", "dialog.creator": "Creator", "dialog.lastAuthor": "Last modified by",
-  "about.title": "about kerCAD", "about.label": "about kerCAD", "about.startDesigning": "Start designing", "about.githubPending": "Repository link coming soon", "about.donate": "Donate", "about.donatePending": "Donations coming soon",
-  "about.description": "Open-source parametric CAD for education.",
-  "about.version": "Version", "about.cadEngine": "CAD engine", "about.viewer": "3D viewer",
-  "about.sketches": "Sketches", "about.constraints": "Parametric constraints", "about.license": "License",
-  "about.resources": "Project resources", "about.documentation": "Documentation and tutorials", "about.launchTutorial": "Launch startup tutorial",
-  "about.projectOverview": "Project overview", "about.credit": "designed with love by Pablo Gil Fernández",
-  "settings.title": "Design settings", "settings.name": "Name", "settings.rendering": "Rendering",
-  "settings.renderNormal": "Normal (antialiased)", "settings.renderOptimized": "Optimize performance",
-  "settings.shading": "Shading", "settings.shadows": "Shadows", "settings.basicShadows": "Basic shadows",
-  "settings.noShadows": "No shadows", "settings.units": "Units", "settings.millimeters": "Millimeters (mm)",
-  "settings.centimeters": "Centimeters (cm)", "settings.meters": "Meters (m)", "settings.feet": "Imperial: feet (ft)",
-  "settings.unitsHint": "Changing units only changes how measurements are displayed and edited. Physical dimensions are preserved and geometry is stored in millimeters.",
-  "settings.inches": "Imperial: inches (in)", "settings.language": "Language", "settings.spanish": "Español",
-  "settings.english": "English", "settings.showFps": "Show FPS",
-  "settings.snapshots": "Local snapshots", "settings.createSnapshot": "Create", "settings.restoreSnapshot": "Restore", "settings.noSnapshots": "There are no snapshots yet.",
-  "settings.autosave": "The project is saved automatically. Visual preferences are remembered on this device.",
-  "grid.title": "Grid", "grid.showFloor": "Show XY floor", "grid.activeSize": "Active plane size",
-  "grid.size": "Size", "grid.width": "Width (X axis)", "grid.depth": "Depth (Y axis)", "grid.step": "Line spacing", "grid.snapSpacing": "Snap spacing", "common.close": "Close",
-  "camera.positionTriad": "Position triad", "camera.rotationTriad": "Rotation triad", "camera.parameterHandles": "Parameter handles", "camera.wireframe": "Wireframe view",
-  "camera.perspective": "Perspective", "camera.orthographic": "Orthographic", "camera.home": "Home view",
-  "camera.fit": "Fit all", "camera.selection": "Zoom to selection", "camera.zoomIn": "Zoom in", "camera.zoomOut": "Zoom out",
-  "toolbar.new": "New design", "toolbar.copy": "Copy", "toolbar.paste": "Paste", "toolbar.duplicate": "Duplicate",
-  "toolbar.newGroup": "New", "toolbar.clipboard": "Clipboard", "toolbar.history": "History", "toolbar.manipulators": "Manipulators", "toolbar.shapes": "Create", "toolbar.modify": "Modify", "toolbar.helpers": "Helpers",
-  "toolbar.deleteSelection": "Delete selection", "toolbar.deleteOperation": "Delete operation", "toolbar.deleteObject": "Delete object",
-  "toolbar.undo": "Undo", "toolbar.redo": "Redo", "toolbar.addShape": "Add shape", "toolbar.createSketch": "Create sketch",
-  "toolbar.align": "Align", "toolbar.mirror": "Mirror", "toolbar.linearPattern": "Linear pattern", "toolbar.polarPattern": "Polar pattern",
-  "toolbar.objectBoolean": "Boolean between objects", "toolbar.snapGrid": "Snap to grid", "toolbar.chamfer": "Chamfer",
-  "toolbar.fillet": "Fillet", "toolbar.extrudeFace": "Extrude face", "toolbar.extrudeSketch": "Extrude sketch",
-  "toolbar.revolve": "Revolve", "toolbar.revolveSketch": "Revolve sketch", "toolbar.shell": "Shell",
-  "toolbar.manage": "Manage", "toolbar.import": "Import", "toolbar.export": "Export", "toolbar.settings": "Settings",
-  "toolbar.arrange": "Arrange", "toolbar.placeWorkplane": "Place workplane", "toolbar.cancelWorkplane": "Cancel workplane placement",
-  "toolbar.resetWorkplane": "Restore global workplane", "toolbar.dropToWorkplane": "Drop to workplane",
-  "toolbar.text": "Text", "toolbar.textInObject": "New operation in object", "toolbar.extrudedText": "Extruded parametric text",
-  "common.cancel": "Cancel", "common.accept": "Accept", "common.delete": "Delete", "common.rename": "Rename", "common.open": "Open",
-  "model.label": "Parametric model", "model.moveUp": "Move up", "model.moveDown": "Move down", "model.editOrigin": "Edit origin", "model.treeActions": "Hierarchy actions",
-  "model.expand": "Expand", "model.collapse": "Collapse", "model.show": "Show", "model.hide": "Hide", "model.lock": "Lock", "model.unlock": "Unlock",
-  "model.operationsFor": "Operations for", "model.showSketch": "Show sketch", "model.hideSketch": "Hide sketch", "model.activate": "Activate", "model.suppress": "Suppress",
-  "model.noSelection": "Nothing selected", "model.noSelectionHint": "Select an object or operation to edit its properties.",
-  "model.renameTitle": "Rename", "model.name": "Name", "model.commonName": "Common name", "model.applyCommonName": "Apply the same name to all",
-  "model.selected": "items selected", "model.objects": "objects", "model.operations": "operations", "model.multiSelectionHint": "Use Ctrl/Cmd to toggle items or Shift to select a range.",
-  "model.operation": "Operation", "model.shapeParameters": "Shape parameters",
-  "model.transform": "Transform", "model.mode": "Mode", "model.add": "Add", "model.hole": "Hole", "model.common": "Common",
-  "mirror.selectedFace": "Selected face", "mirror.choosePlane": "Choose plane or face",
-  "dialog.newTitle": "New design", "dialog.newWarning": "The current project will be closed. Save first if you want to keep the latest changes.",
-  "dialog.save": "Save", "dialog.createNew": "New", "dialog.exportTitle": "Export design",
-  "dialog.importProject": "Import kerCAD project", "dialog.addToCurrent": "Add to current project",
-  "dialog.contains": "contains", "dialog.object": "object", "dialog.objects": "objects", "dialog.importChoice": "You can open it as a separate project or add its objects to the current design.",
-  "dialog.exportSubtitle": "Preserve parameters or manufacture the part", "dialog.fileName": "File name", "dialog.saving": "Saving…", "dialog.exporting": "Exporting…",
-  "dialog.projectFormat": "kerCAD project", "dialog.projectFormatHint": "Editable package with history and assets", "dialog.stepFormat": "STEP model", "dialog.stepFormatHint": "Exact B-Rep for manufacturing", "dialog.stlFormat": "STL model", "dialog.stlFormatHint": "Binary, in millimeters, and ready to print", "dialog.stlQuality": "STL resolution", "dialog.qualityLow": "Low", "dialog.qualityMedium": "Medium", "dialog.qualityHigh": "High", "dialog.qualityVeryHigh": "Very high",
-  "align.title": "Align selection", "align.action": "Align", "align.referenceLast": "Reference: last selected", "align.minimum": "Min.", "align.center": "Center", "align.maximum": "Max.",
-  "sidebar.simplify": "Simplify hierarchy", "sidebar.hide": "Hide hierarchy", "sidebar.show": "Show hierarchy", "sidebar.visible": "Panel visible", "sidebar.simplified": "Simplified panel", "sidebar.hidden": "Panel hidden", "camera.controls": "Camera controls", "history.stopped": "History stopped here",
-  "rebuild.suggestionLabel": "Suggestion", "rebuild.suggestion.generic": "Review the highlighted operation parameters or reset it to its initial values.",
-  "rebuild.suggestion.topology": "Edit the operation selection and choose again the faces or edges that no longer exist.", "rebuild.suggestion.base": "The object must start with a solid operation in Add mode.",
-  "rebuild.suggestion.sketch": "Correct the sketch profile: it must contain valid closed contours without crossings.", "rebuild.suggestion.extrude": "Check the source sketch, use a positive length and verify the Boolean mode.",
-  "rebuild.suggestion.primitive": "Check that every dimension is positive and that the first shape uses Add.", "rebuild.suggestion.importedStep": "Import the STEP again or place it as the object's first base geometry.",
-  "rebuild.suggestion.hole": "Use a positive diameter and depth and check that the hole reaches the solid.", "rebuild.suggestion.fillet": "Reduce the radius or distance and, if the geometry changed, select the faces or edges again.",
-  "rebuild.suggestion.faceExtrude": "Use a positive length and select a valid planar face again.", "rebuild.suggestion.shell": "Reduce the thickness and check that the open faces still belong to the preceding solid.",
-  "rebuild.suggestion.revolve": "Use a non-zero angle between -360° and 360° and check the selected face or axis.", "rebuild.suggestion.mirror": "Check the mirror plane and that a previous solid result exists.",
-  "rebuild.suggestion.linearPattern": "Use 2 to 50 instances, non-zero spacing and a valid source operation.", "rebuild.suggestion.polarPattern": "Use 2 to 50 instances, a valid non-zero angle and an available source operation.",
-  "rebuild.suggestion.objectBoolean": "Check that the reference object exists, has valid geometry and does not create a cyclic dependency.",
-  "status.loadingWorkspace": "Preparing workspace…", "status.exportingStep": "Exporting STEP…",
-  "status.regenerating": "Regenerating model…", "status.updatingView": "Updating view…", "grid.settings": "Grid settings",
-  "grid.enableSnap": "Enable snap to grid", "grid.disableSnap": "Disable snap to grid",
-  "grid.snapEnabled": "Snap to grid: enabled", "grid.snapDisabled": "Snap to grid: disabled",
-  "property.type": "Type", "property.position": "Position", "property.rotation": "Rotation", "property.rotationCenter": "Rotation center", "property.scale": "Scale", "property.profile": "Profile", "property.shape": "Shape",
-  "property.axis": "Axis", "property.angle": "Angle", "property.length": "Length", "property.radius": "Radius",
-  "property.distance": "Distance", "property.thickness": "Thickness", "property.width": "Width", "property.depth": "Depth", "property.size": "Size",
-  "property.height": "Height", "property.file": "File", "property.geometry": "Geometry", "property.reference": "Reference", "property.format": "Format",
-  "property.opacity": "Opacity", "property.display": "Display", "property.pickable": "Pickable", "property.color": "Color", "property.customColor": "Custom color", "property.objectColor": "Object color",
-  "property.diameter": "Diameter", "property.result": "Result", "property.source": "Source", "property.plane": "Plane", "property.termination": "Termination", "property.edges": "Edges", "property.uniformDistribution": "Uniform distribution", "property.object": "Object",
-  "property.count": "Count", "property.spacing": "Spacing", "property.totalAngle": "Total angle", "property.angularStep": "Angular step",
-  "operation.new": "New operation", "operation.edit": "Edit operation", "operation.editSelection": "Edit faces and edges", "operation.reset": "Reset operation",
-  "operation.previewRevolve": "Temporary revolve", "operation.previewShell": "Temporary shell", "operation.previewFaceExtrude": "Temporary face extrusion", "operation.previewTopology": "Temporary face and edge selection",
-  "operation.faceExtrude": "Face extrusion", "operation.facePocket": "Face pocket", "operation.openFaces": "open faces", "operation.facesEdges": "faces / edges", "operation.faceAxis": "face / axis",
-  "operation.editSketch": "Edit sketch", "operation.editScribble": "Edit scribble", "operation.editFace": "Edit face", "operation.editOpenFaces": "Edit open faces", "operation.editAxis": "Edit axis", "operation.sketchProfile": "Sketch profile",
-  "value.rectangle": "Rectangle", "value.circle": "Circle", "value.throughAll": "Through all", "value.blind": "Blind", "value.vertical": "Vertical", "value.all": "All",
-  "value.duplicate": "Duplicate", "value.transformOnly": "Transform only", "value.fullBody": "Full body", "value.previousOperation": "Operation", "value.localX": "Local X", "value.localY": "Local Y", "value.localZ": "Local Z",
-  "help.importedBase": "This is the base geometry. Later operations remain editable in the history.", "help.previousResult": "This operation acts on the object's previous result.",
-  "help.faceExtrude": "The length is applied perpendicular to the selected face.", "help.shell": "Shell offsets the walls inward and removes the selected faces.",
-  "help.revolve": "The face revolves around the selected local axis through the object origin.", "help.mirror": "The previous result is mirrored across the local plane through the origin.",
-  "help.linearPattern": "The count includes the original. The accumulated body or a previous operation contribution can be repeated.", "help.polarPattern": "The count includes the original. The angle sign determines the rotation direction.",
-  "help.objectBoolean": "Geometry updates with the reference object. You can hide it in the tree without breaking this operation.",
-  "operation.sketch": "Sketch", "operation.importedStep": "Imported STEP", "operation.exactBrep": "Exact B-Rep",
-  "operation.hole": "Hole", "operation.fillet": "Fillet", "operation.chamfer": "Chamfer", "operation.revolve": "Revolve",
-  "operation.mirror": "Mirror", "operation.linearPattern": "Linear pattern", "operation.polarPattern": "Polar pattern",
-  "operation.fullBody": "Full body", "operation.selectedEdge": "Selected edge", "operation.parameters": "Parameters",
-  "sketch.tools": "Sketch tools", "sketch.draw": "Draw", "sketch.edit": "Edit", "sketch.point": "Point",
-  "sketch.history": "History", "sketch.inspect": "Inspect", "sketch.import": "Import", "sketch.line": "Line",
-  "sketch.polygon": "Polygon", "sketch.polygonType": "Polygon type", "sketch.sides": "sides", "sketch.slot": "Slot", "sketch.arcSlot": "Arc slot", "sketch.rectangle": "Rectangle", "sketch.bezier": "Bezier curve", "sketch.smoothCurve": "Smooth curve", "sketch.freehand": "Freehand",
-  "sketch.smoothFreehand": "Smooth freehand", "sketch.text": "Text", "sketch.circle": "Circle", "sketch.centerArc": "Center arc",
-  "sketch.connectNodes": "Connect nodes", "sketch.select": "Select", "sketch.refine": "Add node", "sketch.trim": "Trim", "sketch.erase": "Erase",
-  "sketch.eraseSelection": "Erase selection", "sketch.construction": "Construction geometry", "sketch.mergePoints": "Merge open vertices", "sketch.corner": "Corner",
-  "sketch.smooth": "Smooth", "sketch.splitHandles": "Split handles", "sketch.undo": "Undo sketch", "sketch.redo": "Redo sketch",
-  "sketch.measure": "Measure", "sketch.importSvg": "Import editable SVG", "sketch.accept": "Save sketch",
-  "sketch.constraints": "Constraints", "sketch.constraintHint": "Select geometry to enable tools",
-  "sketch.geometric": "Geometric", "sketch.dimensions": "Dimensions", "sketch.horizontal": "Horizontal", "sketch.vertical": "Vertical",
-  "sketch.parallel": "Parallel", "sketch.perpendicular": "Perpendicular", "sketch.concentric": "Concentric", "sketch.equal": "Equal",
-  "sketch.midpoint": "Midpoint", "sketch.pointOnGeometry": "Point on geometry", "sketch.tangent": "Tangent",
-  "sketch.symmetry": "Symmetry", "sketch.coincident": "Coincident", "sketch.fixPoint": "Fix point",
-  "sketch.dimensionLength": "Length", "sketch.distanceX": "X distance", "sketch.distanceY": "Y distance",
-  "sketch.diameter": "Diameter", "sketch.radius": "Radius", "sketch.angle": "Angle",
-  "notice.editingSketch": "Editing sketch", "notice.drawClosedContour": "Draw a closed contour",
-  "notice.sketchCancelled": "Sketch editing cancelled", "notice.closeContours": "Close every contour before accepting the sketch.",
-  "notice.sketchUpdated": "Sketch updated", "notice.sketchAdded": "Sketch added to history",
-  "notice.scribbleUpdated": "Scribble updated", "notice.scribbleAdded": "Scribble added to history",
-  "notice.constraintDeleted": "Constraint deleted; geometry released", "notice.newOperationInObject": "New operation in object", "notice.mergeDistinctEdges": "Select exactly two open endpoints from different edges.",
-  "notice.svgSketchImported": "SVG imported as editable geometry", "notice.svgSketchFailed": "The SVG could not be converted into an editable sketch.",
-  "notice.autosaveRecovered": "The local project backup has been recovered.",
-  "notice.snapshotCreated": "Local snapshot created.", "notice.snapshotRestored": "Project restored from snapshot.",
-  "notice.operationReset": "The operation has been reset to its initial parameters.",
-  "notice.workplaneCancelled": "Workplane placement cancelled", "notice.topologyCancelled": "Topology selection cancelled", "notice.invalidDependency": "The operation would create an invalid dependency.",
-  "notice.invalidProfile": "the profile is invalid.", "notice.cannotExtrude": "Cannot extrude", "notice.cannotRevolve": "Cannot revolve", "notice.mirrorCreated": "Mirror operation created",
-  "notice.createdInNewObject": "created in a new object", "notice.addedToActiveObject": "added to the end of the active object", "notice.textAdded": "Text added to the active object", "notice.textCreated": "Text created in a new object", "notice.operationDeleted": "Operation deleted",
-  "notice.noMovableAlignment": "There are no movable items to align with that reference.", "notice.newDesign": "New design", "notice.topologyHint": "Click faces or edges to add or remove them from the selection", "notice.temporaryCancelled": "Temporary operation cancelled",
-  "notice.faceExtrudeCancelled": "Temporary extrusion cancelled", "notice.selectOpenFaces": "Select the faces that will remain open", "notice.revolveCancelled": "Temporary revolve cancelled", "notice.revolvePlanar": "Revolve requires a planar face.", "notice.faceExtrudePlanar": "Face extrusion requires a planar face.", "notice.revolveStraightAxis": "The revolve axis must be a straight edge.",
-  "notice.workplanePlaceHint": "Hover over a face and click to place the workplane", "notice.placementCancelled": "Placement cancelled",
-  "notice.topologyReferencesRemoved": "topological references no longer exist after rebuilding the part", "notice.topologyReferenceRemoved": "topological reference no longer exists after rebuilding the part",
-  "notice.alignedWith": "items aligned with", "notice.alignedWithSingle": "item aligned with", "notice.reference": "the reference",
-  "notice.updated": "updated", "notice.added": "added", "notice.updatedFeminine": "updated", "notice.addedFeminine": "added", "notice.elements": "elements", "notice.element": "element",
-  "notice.parametric": "parametric", "notice.selectPlanarFaceExtrude": "Select a planar face to extrude or cut", "notice.selectPlanarFace": "Select a planar face.",
-  "notice.selectPlanarFaceRevolve": "Select a planar face to revolve", "notice.selectPlanarFaceAndAxis": "Select a planar face and a straight edge as the axis.",
-  "notice.selectRevolveAxis": "Select a straight edge as the rotation axis.", "notice.revolveReady": "Adjust the angle and accept to create the revolution.",
-  "notice.saveFailed": "Could not save the project", "notice.exportFailed": "Could not export", "notice.stlExportFailed": "Could not export the STL", "notice.noObjectsToExport": "There are no objects to export.",
-  "notice.archiveTooLarge": "The compressed project exceeds the 256 MB limit.", "notice.documentTooLarge": "The document exceeds the 32 MB limit.", "notice.incompatibleProject": "This is not a compatible kerCAD project.", "notice.openFailed": "Could not open the project",
-  "notice.projectAdded": "objects added to the project", "notice.projectAddedSingle": "object added to the project", "notice.addProjectFailed": "Could not add the project",
-  "notice.referenceImported": "imported as a reference", "notice.referenceImportFailed": "Could not import the reference.", "notice.importingStep": "Importing STEP B-Rep…", "notice.stepImported": "STEP imported as editable base geometry", "notice.stepImportFailed": "Could not import the STEP file.",
-  "notice.svgImported": "SVG imported as a parametric extrusion", "notice.segments": "segments", "notice.circles": "circles", "notice.svgImportFailed": "Could not import the SVG file.",
-  "notice.objectCopied": "Object copied", "notice.workplaneRestored": "Global workplane restored", "notice.freehandFailed": "Could not create the freehand contour.", "notice.workplanePlaced": "Workplane placed on the face",
-  "notice.linearPatternCreated": "Linear pattern created", "notice.polarPatternCreated": "Polar pattern created", "notice.objectBooleanCreated": "Boolean operation between objects created", "notice.shapeDuplicated": "Shape duplicated",
-  "notice.itemsDeleted": "items deleted", "notice.selectTopologySameObject": "Select one or more faces or edges from the same object.", "notice.selectFacesSameObject": "Select one or more faces from the same object.",
-  "notice.projectSaved": "kerCAD project saved", "notice.stepExported": "STEP B-Rep exported", "notice.binaryStlExported": "Binary STL exported", "notice.projectOpened": "Project opened", "notice.resources": "resources", "notice.resource": "resource",
-  "display.solidEdges": "Color and edges", "display.solid": "Color", "display.wireframe": "Only edges", "input.increment": "Increase value", "input.decrement": "Decrease value",
-  "notice.invalidArcAngle": "The arc angle must be between 0° and 360°.", "notice.invalidAngle": "The angle must be a valid number.",
-  "notice.positiveDimension": "The dimension must be greater than zero.", "notice.sketchExtruded": "Extrusion created from sketch",
-  "notice.sketchRevolved": "Revolution created from sketch",
-  "notice.selectMirrorPlane": "Select a face or one of the principal planes", "notice.mirrorPlaneSet": "Mirror plane set",
-};
-
-const translations: Record<KercadLocale, Record<KercadTranslationKey, string>> = { es, en };
-
-export function kercadTranslate(locale: KercadLocale, key: KercadTranslationKey) {
-  return translations[locale]?.[key] ?? translations.en[key];
-}
+export type KercadLocale = keyof typeof languageCatalogs;
+export type KercadTranslationKey = keyof typeof english.messages;
+export type TranslationValues = Record<string, string | number>;
+export const KERCAD_LOCALES = Object.keys(languageCatalogs) as KercadLocale[];
+export const KERCAD_LANGUAGES = KERCAD_LOCALES.map((locale) => ({
+  locale,
+  name: languageCatalogs[locale].name,
+  direction: languageCatalogs[locale].direction as "ltr" | "rtl",
+}));
+export const LOCALE_STORAGE_KEY = "kercad.locale";
+export const LOCALE_CHANGE_EVENT = "kercad:locale-change";
 
 export function normalizeKercadLocale(value: unknown): KercadLocale {
-  return value === "es" ? "es" : "en";
+  if (typeof value !== "string") return "en";
+  const normalized = value.trim().replace(/_/g, "-").toLowerCase();
+  return KERCAD_LOCALES.find((locale) => locale.toLowerCase() === normalized)
+    ?? KERCAD_LOCALES.find((locale) => locale.toLowerCase() === normalized.split("-")[0])
+    ?? "en";
 }
+
+export function getCurrentLocale(): KercadLocale {
+  if (typeof document !== "undefined") return normalizeKercadLocale(document.documentElement.lang);
+  return "en";
+}
+
+export function getLanguageName(locale: KercadLocale): string {
+  return languageCatalogs[locale].name;
+}
+
+export function kercadTranslate(locale: KercadLocale, key: string, values: TranslationValues = {}): string {
+  const messages: Record<string, string> = languageCatalogs[normalizeKercadLocale(locale)].messages;
+  const fallback: Record<string, string> = english.messages;
+  const text = messages[key] ?? fallback[key] ?? key;
+  return text.replace(/\{(\w+)\}/g, (placeholder, name: string) => String(values[name] ?? placeholder));
+}
+
+// Used by interface components without an explicit locale prop, including legacy tools.
+export function uiText(key: string, values: TranslationValues = {}, locale = getCurrentLocale()): string {
+  return kercadTranslate(locale, key, values);
+}
+
+export function applyAppLocale(locale: KercadLocale) {
+  if (typeof document === "undefined") return;
+  const normalized = normalizeKercadLocale(locale);
+  document.documentElement.lang = normalized;
+  document.documentElement.dir = languageCatalogs[normalized].direction;
+  window.dispatchEvent(new Event(LOCALE_CHANGE_EVENT));
+}
+
+function mergeContent(base: unknown, translated: unknown): unknown {
+  if (Array.isArray(base)) return base.map((value, index) => mergeContent(value, Array.isArray(translated) ? translated[index] : undefined));
+  if (base && typeof base === "object") return Object.fromEntries(Object.entries(base).map(([key, value]) => [key, mergeContent(value, translated && typeof translated === "object" ? (translated as Record<string, unknown>)[key] : undefined)]));
+  return typeof translated === typeof base ? translated : base;
+}
+
+const contentCache = new Map<string, unknown>();
+
+export function getLocaleContent<Key extends keyof typeof english.content>(locale: string, key: Key): typeof english.content[Key] {
+  const normalized = normalizeKercadLocale(locale);
+  const cacheKey = `${normalized}:${key}`;
+  if (!contentCache.has(cacheKey)) {
+    const catalog = languageCatalogs[normalized] as { content?: Record<string, unknown> };
+    contentCache.set(cacheKey, mergeContent(english.content[key], catalog.content?.[key]));
+  }
+  return contentCache.get(cacheKey) as typeof english.content[Key];
+}
+
+// Legacy CAD definitions keep stable internal labels; their presentation is localized here.
+export function translateSourceText(source: string, locale = getCurrentLocale()): string {
+  const aliases: Record<string, string> = english.sourceAliases;
+  return aliases[source] ? kercadTranslate(locale, aliases[source]) : source;
+}
+
+export function pluralMessage(locale: KercadLocale, prefix: string, count: number): string {
+  const category = new Intl.PluralRules(locale).select(count);
+  const key = `${prefix}.${category}`;
+  const messages: Record<string, string> = languageCatalogs[locale].messages;
+  return key in messages || key in english.messages ? key : `${prefix}.other`;
+}
+
+export const APP_LOCALE_INITIAL_SCRIPT = `(function(){var languages=${JSON.stringify(KERCAD_LANGUAGES)};var value="en";try{value=new URLSearchParams(location.search).get("lang")||localStorage.getItem("${LOCALE_STORAGE_KEY}")||"en";}catch(e){}value=value.trim().replace(/_/g,"-").toLowerCase();var selected=languages.find(function(l){return l.locale.toLowerCase()===value;})||languages.find(function(l){return l.locale.toLowerCase()===value.split("-")[0];})||languages.find(function(l){return l.locale==="en";});document.documentElement.lang=selected.locale;document.documentElement.dir=selected.direction;})();`;

@@ -1,3 +1,5 @@
+import { getLocaleContent, type KercadLocale } from "@/lib/kercadI18n";
+
 export type ParametricPrimitiveKind = "box" | "roundedBox" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear";
 export type ParametricBooleanRole = "add" | "cut" | "intersect";
 
@@ -25,10 +27,13 @@ export type ParametricOperationDefinition = {
   parameters: ParametricParameterDefinition[];
 };
 
+const sourcePrimitive = (kind: ParametricPrimitiveKind) => getLocaleContent("es", "primitives")[kind];
+const sourceParameter = (kind: ParametricPrimitiveKind, key: string) => (sourcePrimitive(kind).parameters as Record<string, string>)[key];
+
 const roles = (kind: ParametricPrimitiveKind): ParametricOperationDefinition["roles"] => ({
-  add: { label: "Añadir", color: "#378451", iconId: `${kind}-add` },
-  cut: { label: "Hueco", color: "#b6524d", iconId: `${kind}-hole` },
-  intersect: { label: "Común", color: "#7256aa", iconId: `${kind}-common` },
+  add: { label: sourcePrimitive(kind).roles.add, color: "#378451", iconId: `${kind}-add` },
+  cut: { label: sourcePrimitive(kind).roles.cut, color: "#b6524d", iconId: `${kind}-hole` },
+  intersect: { label: sourcePrimitive(kind).roles.intersect, color: "#7256aa", iconId: `${kind}-common` },
 });
 
 const dimension = (key: ParametricParameterDefinition["key"], label: string, defaultValue = 20): ParametricParameterDefinition => ({
@@ -48,119 +53,119 @@ const count = (key: "sides" | "teeth", label: string, defaultValue: number, min:
 export const parametricOperationCatalog: ParametricOperationDefinition[] = [
   {
     kind: "box",
-    name: "Caja",
-    description: "Prisma rectangular paramétrico",
+    name: sourcePrimitive("box").name,
+    description: sourcePrimitive("box").description,
     menuIcon: "assets/sketchforge/shape-icons-gray/box.png",
     roles: roles("box"),
-    parameters: [dimension("width", "Anchura"), dimension("depth", "Profundidad"), dimension("height", "Altura")],
+    parameters: [dimension("width", sourceParameter("box", "width")), dimension("depth", sourceParameter("box", "depth")), dimension("height", sourceParameter("box", "height"))],
   },
   {
     kind: "roundedBox",
-    name: "Caja redondeada",
-    description: "Caja paramétrica con las cuatro esquinas verticales redondeadas",
+    name: sourcePrimitive("roundedBox").name,
+    description: sourcePrimitive("roundedBox").description,
     menuIcon: "assets/kercad/toolbar-3d/shapes/box_rounded.svg",
     roles: roles("roundedBox"),
-    parameters: [dimension("width", "Anchura"), dimension("depth", "Profundidad"), dimension("height", "Altura"), dimension("cornerRadius", "Radio de esquina", 3)],
+    parameters: [dimension("width", sourceParameter("roundedBox", "width")), dimension("depth", sourceParameter("roundedBox", "depth")), dimension("height", sourceParameter("roundedBox", "height")), dimension("cornerRadius", sourceParameter("roundedBox", "cornerRadius"), 3)],
   },
   {
     kind: "cylinder",
-    name: "Cilindro",
-    description: "Cilindro circular paramétrico",
+    name: sourcePrimitive("cylinder").name,
+    description: sourcePrimitive("cylinder").description,
     menuIcon: "assets/sketchforge/shape-icons-gray/cylinder.png",
     roles: roles("cylinder"),
-    parameters: [dimension("radius", "Radio", 10), dimension("height", "Altura")],
+    parameters: [dimension("radius", sourceParameter("cylinder", "radius"), 10), dimension("height", sourceParameter("cylinder", "height"))],
   },
   {
     kind: "sphere",
-    name: "Esfera",
-    description: "Esfera paramétrica exacta",
+    name: sourcePrimitive("sphere").name,
+    description: sourcePrimitive("sphere").description,
     menuIcon: "assets/sketchforge/shape-icons-gray/sphere.png",
     roles: roles("sphere"),
-    parameters: [dimension("radius", "Radio", 10)],
+    parameters: [dimension("radius", sourceParameter("sphere", "radius"), 10)],
   },
   {
     kind: "halfSphere",
-    name: "Semiesfera",
-    description: "Media esfera o semielipsoide paramétrico exacto",
+    name: sourcePrimitive("halfSphere").name,
+    description: sourcePrimitive("halfSphere").description,
     menuIcon: "assets/sketchforge/shape-icons-gray/half-sphere.png",
     roles: roles("halfSphere"),
-    parameters: [dimension("radius", "Radio", 10), dimension("height", "Altura", 10)],
+    parameters: [dimension("radius", sourceParameter("halfSphere", "radius"), 10), dimension("height", sourceParameter("halfSphere", "height"), 10)],
   },
   {
     kind: "cone",
-    name: "Cono",
-    description: "Cono o tronco de cono paramétrico exacto",
+    name: sourcePrimitive("cone").name,
+    description: sourcePrimitive("cone").description,
     menuIcon: "assets/sketchforge/shape-icons-gray/cone.png",
     roles: roles("cone"),
     parameters: [
-      dimension("baseRadius", "Radio inferior", 10),
-      { ...dimension("topRadius", "Radio superior", 0), min: 0 },
-      dimension("height", "Altura"),
+      dimension("baseRadius", sourceParameter("cone", "baseRadius"), 10),
+      { ...dimension("topRadius", sourceParameter("cone", "topRadius"), 0), min: 0 },
+      dimension("height", sourceParameter("cone", "height")),
     ],
   },
   {
     kind: "tube",
-    name: "Tubo",
-    description: "Tubo paramétrico exacto con pared editable",
+    name: sourcePrimitive("tube").name,
+    description: sourcePrimitive("tube").description,
     menuIcon: "assets/sketchforge/shape-icons-gray/tube.png",
     roles: roles("tube"),
-    parameters: [dimension("outerRadius", "Radio", 10), dimension("thickness", "Espesor", 4), dimension("height", "Altura")],
+    parameters: [dimension("outerRadius", sourceParameter("tube", "outerRadius"), 10), dimension("thickness", sourceParameter("tube", "thickness"), 4), dimension("height", sourceParameter("tube", "height"))],
   },
   {
     kind: "torus",
-    name: "Toro",
-    description: "Toro paramétrico exacto con radios mayor y de tubo editables",
+    name: sourcePrimitive("torus").name,
+    description: sourcePrimitive("torus").description,
     menuIcon: "assets/kercad/toolbar-3d/shapes/torus.svg",
     roles: roles("torus"),
-    parameters: [dimension("majorRadius", "Radio", 12), dimension("tubeRadius", "Espesor", 4)],
+    parameters: [dimension("majorRadius", sourceParameter("torus", "majorRadius"), 12), dimension("tubeRadius", sourceParameter("torus", "tubeRadius"), 4)],
   },
   {
     kind: "pyramid",
-    name: "Pirámide",
-    description: "Pirámide rectangular paramétrica exacta",
+    name: sourcePrimitive("pyramid").name,
+    description: sourcePrimitive("pyramid").description,
     menuIcon: "assets/sketchforge/shape-icons-gray/pyramid.png",
     roles: roles("pyramid"),
-    parameters: [dimension("width", "Ancho"), dimension("depth", "Largo"), dimension("height", "Altura")],
+    parameters: [dimension("width", sourceParameter("pyramid", "width")), dimension("depth", sourceParameter("pyramid", "depth")), dimension("height", sourceParameter("pyramid", "height"))],
   },
   {
     kind: "wedge",
-    name: "Cuña",
-    description: "Prisma triangular paramétrico exacto",
+    name: sourcePrimitive("wedge").name,
+    description: sourcePrimitive("wedge").description,
     menuIcon: "assets/sketchforge/shape-icons-gray/wedge.png",
     roles: roles("wedge"),
-    parameters: [dimension("width", "Ancho"), dimension("depth", "Largo"), dimension("height", "Altura")],
+    parameters: [dimension("width", sourceParameter("wedge", "width")), dimension("depth", sourceParameter("wedge", "depth")), dimension("height", sourceParameter("wedge", "height"))],
   },
   {
     kind: "roof",
-    name: "Tejado",
-    description: "Tejado a dos aguas paramétrico exacto",
+    name: sourcePrimitive("roof").name,
+    description: sourcePrimitive("roof").description,
     menuIcon: "assets/kercad/toolbar-3d/shapes/roof.svg",
     roles: roles("roof"),
-    parameters: [dimension("width", "Ancho"), dimension("depth", "Largo"), dimension("height", "Altura", 12)],
+    parameters: [dimension("width", sourceParameter("roof", "width")), dimension("depth", sourceParameter("roof", "depth")), dimension("height", sourceParameter("roof", "height"), 12)],
   },
   {
     kind: "roundRoof",
-    name: "Tejado redondo",
-    description: "Tejado semicilíndrico o semielíptico paramétrico exacto",
+    name: sourcePrimitive("roundRoof").name,
+    description: sourcePrimitive("roundRoof").description,
     menuIcon: "assets/sketchforge/shape-icons-gray/round-roof.png",
     roles: roles("roundRoof"),
-    parameters: [dimension("width", "Ancho"), dimension("depth", "Largo"), dimension("height", "Altura", 10)],
+    parameters: [dimension("width", sourceParameter("roundRoof", "width")), dimension("depth", sourceParameter("roundRoof", "depth")), dimension("height", sourceParameter("roundRoof", "height"), 10)],
   },
   {
     kind: "polygon",
-    name: "Polígono",
-    description: "Prisma poligonal regular paramétrico exacto",
+    name: sourcePrimitive("polygon").name,
+    description: sourcePrimitive("polygon").description,
     menuIcon: "assets/kercad/toolbar-3d/shapes/polygon.svg",
     roles: roles("polygon"),
-    parameters: [dimension("radius", "Radio", 10), count("sides", "Lados", 6, 3, 32), dimension("height", "Altura")],
+    parameters: [dimension("radius", sourceParameter("polygon", "radius"), 10), count("sides", sourceParameter("polygon", "sides"), 6, 3, 32), dimension("height", sourceParameter("polygon", "height"))],
   },
   {
     kind: "gear",
-    name: "Engranaje",
-    description: "Engranaje educativo paramétrico con dentado recto",
+    name: sourcePrimitive("gear").name,
+    description: sourcePrimitive("gear").description,
     menuIcon: "assets/sketchforge/gear-types/spur.png",
     roles: roles("gear"),
-    parameters: [dimension("outerRadius", "Radio exterior", 15), count("teeth", "Dientes", 12, 6, 64), dimension("toothDepth", "Profundidad del diente", 2.5), { ...dimension("boreRadius", "Radio del eje", 3), min: 0 }, dimension("height", "Altura", 6)],
+    parameters: [dimension("outerRadius", sourceParameter("gear", "outerRadius"), 15), count("teeth", sourceParameter("gear", "teeth"), 12, 6, 64), dimension("toothDepth", sourceParameter("gear", "toothDepth"), 2.5), { ...dimension("boreRadius", sourceParameter("gear", "boreRadius"), 3), min: 0 }, dimension("height", sourceParameter("gear", "height"), 6)],
   },
 ];
 
@@ -168,39 +173,14 @@ export function parametricOperationDefinition(kind: ParametricPrimitiveKind) {
   return parametricOperationCatalog.find((definition) => definition.kind === kind)!;
 }
 
-const englishPrimitiveNames: Record<ParametricPrimitiveKind, string> = {
-  box: "Box", roundedBox: "Rounded box", cylinder: "Cylinder", sphere: "Sphere", cone: "Cone", tube: "Tube",
-  halfSphere: "Half sphere", torus: "Torus", pyramid: "Pyramid", wedge: "Wedge", roof: "Roof",
-  roundRoof: "Round roof", polygon: "Polygon", gear: "Gear",
-};
-
-const englishPrimitiveDescriptions: Record<ParametricPrimitiveKind, string> = {
-  box: "Parametric rectangular prism", roundedBox: "Parametric box with rounded vertical corners",
-  cylinder: "Parametric circular cylinder", sphere: "Exact parametric sphere", cone: "Exact parametric cone or frustum",
-  tube: "Exact parametric tube with editable wall", halfSphere: "Exact parametric half sphere or half ellipsoid",
-  torus: "Exact parametric torus with editable major and tube radii", pyramid: "Exact parametric rectangular pyramid",
-  wedge: "Exact parametric triangular prism", roof: "Exact parametric gable roof", roundRoof: "Exact semicylindrical or semielliptical roof",
-  polygon: "Exact regular polygonal prism", gear: "Educational parametric spur gear",
-};
-
-export function localizedParametricOperationDefinition(kind: ParametricPrimitiveKind, locale: "es" | "en") {
+export function localizedParametricOperationDefinition(kind: ParametricPrimitiveKind, locale: KercadLocale) {
   const definition = parametricOperationDefinition(kind);
-  if (locale === "es") return definition;
-  const parameterLabels: Record<string, string> = {
-    Anchura: "Width", Ancho: "Width", Profundidad: "Depth", Largo: "Depth", Altura: "Height", Radio: "Radius",
-    "Radio de esquina": "Corner radius", "Radio inferior": "Bottom radius", "Radio superior": "Top radius",
-    "Radio exterior": "Outer radius", "Radio interior": "Inner radius", Espesor: "Thickness", Lados: "Sides",
-    Dientes: "Teeth", "Profundidad del diente": "Tooth depth", "Radio del eje": "Bore radius",
-  };
+  const text = getLocaleContent(locale, "primitives")[kind];
   return {
     ...definition,
-    name: englishPrimitiveNames[kind],
-    description: englishPrimitiveDescriptions[kind],
-    roles: {
-      add: { ...definition.roles.add, label: "Add" },
-      cut: { ...definition.roles.cut, label: "Hole" },
-      intersect: { ...definition.roles.intersect, label: "Common" },
-    },
-    parameters: definition.parameters.map((parameter) => ({ ...parameter, label: parameterLabels[parameter.label] ?? parameter.label })),
+    name: text.name,
+    description: text.description,
+    roles: Object.fromEntries(Object.entries(definition.roles).map(([key, role]) => [key, { ...role, label: text.roles[key as keyof typeof text.roles] }])) as ParametricOperationDefinition["roles"],
+    parameters: definition.parameters.map((parameter) => ({ ...parameter, label: (text.parameters as Record<string, string>)[parameter.key] ?? parameter.label })),
   };
 }

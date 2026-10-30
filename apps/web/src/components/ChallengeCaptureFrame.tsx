@@ -1,13 +1,15 @@
 "use client";
+
 import { Camera, X } from "lucide-react";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import type { CaptureCrop } from "@/lib/viewportCapture";
+import { uiText, type KercadLocale } from "@/lib/kercadI18n";
 
 const ASPECT = 1200 / 750;
 type Rect = { x: number; y: number; width: number; height: number };
 type Corner = "nw" | "ne" | "sw" | "se";
 
-export function ChallengeCaptureFrame({ locale, onCapture, onCancel }: { locale: "es" | "en"; onCapture: (crop: CaptureCrop) => void; onCancel: () => void }) {
+export function ChallengeCaptureFrame({ locale, onCapture, onCancel }: { locale: KercadLocale; onCapture: (crop: CaptureCrop) => void; onCancel: () => void }) {
   const host = useRef<HTMLDivElement>(null);
   const [bounds, setBounds] = useState({ width: 0, height: 0 });
   const [rect, setRect] = useState<Rect | null>(null);
@@ -60,9 +62,9 @@ export function ChallengeCaptureFrame({ locale, onCapture, onCancel }: { locale:
   };
   return <div ref={host} className="kercad-capture-overlay">
     {rect && bounds.width > 0 && <div className="kercad-capture-frame" style={{ left: rect.x, top: rect.y, width: rect.width, height: rect.height }} onPointerDown={(event) => begin(event)} onPointerMove={move} onPointerUp={(event) => finish(event)} onPointerCancel={(event) => finish(event, true)}>
-      {(["nw", "ne", "sw", "se"] as const).map((corner) => <button key={corner} type="button" className={`kercad-capture-corner ${corner}`} aria-label={locale === "es" ? "Redimensionar encuadre" : "Resize capture frame"} onPointerDown={(event) => begin(event, corner)} />)}
-      <button type="button" className="kercad-capture-shutter" title={locale === "es" ? "Capturar imagen · 1200 × 750 px" : "Capture image · 1200 × 750 px"} aria-label={locale === "es" ? "Capturar imagen" : "Capture image"} onPointerDown={(event) => event.stopPropagation()} onClick={() => onCapture({ x: rect.x / bounds.width, y: rect.y / bounds.height, width: rect.width / bounds.width, height: rect.height / bounds.height })}><Camera size={38} /></button>
-      <button type="button" className="kercad-capture-cancel" title={locale === "es" ? "Cancelar captura" : "Cancel capture"} aria-label={locale === "es" ? "Cancelar captura" : "Cancel capture"} onPointerDown={(event) => event.stopPropagation()} onClick={onCancel}><X size={20} /></button>
+      {(["nw", "ne", "sw", "se"] as const).map((corner) => <button key={corner} type="button" className={`kercad-capture-corner ${corner}`} aria-label={uiText("ui.challengecaptureframe.resize.capture.frame.47abc1", {}, locale)} onPointerDown={(event) => begin(event, corner)} />)}
+      <button type="button" className="kercad-capture-shutter" title={uiText("ui.challengecaptureframe.capture.image.1200.750.px.1c378c", {}, locale)} aria-label={uiText("project.captureCover", {}, locale)} onPointerDown={(event) => event.stopPropagation()} onClick={() => onCapture({ x: rect.x / bounds.width, y: rect.y / bounds.height, width: rect.width / bounds.width, height: rect.height / bounds.height })}><Camera size={38} /></button>
+      <button type="button" className="kercad-capture-cancel" title={uiText("ui.challengecaptureframe.cancel.capture.657d36", {}, locale)} aria-label={uiText("ui.challengecaptureframe.cancel.capture.657d36", {}, locale)} onPointerDown={(event) => event.stopPropagation()} onClick={onCancel}><X size={20} /></button>
     </div>}
   </div>;
 }

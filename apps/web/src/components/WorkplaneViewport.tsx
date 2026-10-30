@@ -61,6 +61,7 @@ import {
 } from "@/components/workplane/TransformOverlay";
 import type { AlignAxis, AlignHandleStatus, AlignTarget, GridSize, MeasurementAccuracy, ShapeAsset, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
 import type { CadModifierEdge } from "@/lib/cadModifierTypes";
+import { uiText } from "@/lib/kercadI18n";
 
 const WORKPLANE_WIDTH = 200;
 const WORKPLANE_DEPTH = 140;
@@ -1383,7 +1384,7 @@ function RulerOverlay({
   onSegmentPointerDown: (event: ReactPointerEvent<SVGElement>, segmentId: string) => void;
 }) {
   return (
-    <div className={`ruler-overlay ${active ? "active" : ""} ${deleteMode ? "delete-mode" : ""} ${moveMode ? "move-mode" : ""}`} aria-label="Ruler measurements">
+    <div className={`ruler-overlay ${active ? "active" : ""} ${deleteMode ? "delete-mode" : ""} ${moveMode ? "move-mode" : ""}`} aria-label={uiText("ui.workplaneviewport.ruler.measurements.65be90")}>
       <svg className="ruler-guides" width="100%" height="100%" aria-hidden="true">
         {overlay.segments.map((segment) => (
           <g key={segment.id} className="ruler-segment-group">
@@ -4758,41 +4759,41 @@ export function WorkplaneViewport({
 
   return (
     <main className="workplane-stage">
-      <div className="view-cube" aria-label="View orientation cube" onPointerDown={(event) => event.stopPropagation()}>
+      <div className="view-cube" aria-label={uiText("ui.workplaneviewport.view.orientation.cube.42af52")} onPointerDown={(event) => event.stopPropagation()}>
         <div className="view-cube-inner" ref={viewCubeRef}>
-          <button type="button" className="cube-face cube-top" aria-label="Bottom view" onClick={() => setViewCubeFace("bottom")}>BOTTOM</button>
-          <button type="button" className="cube-face cube-bottom" aria-label="Top view" onClick={() => setViewCubeFace("top")}>TOP</button>
-          <button type="button" className="cube-face cube-front" aria-label="Front view" onClick={() => setViewCubeFace("front")}>FRONT</button>
-          <button type="button" className="cube-face cube-back" aria-label="Back view" onClick={() => setViewCubeFace("back")}>BACK</button>
-          <button type="button" className="cube-face cube-right" aria-label="Right view" onClick={() => setViewCubeFace("right")}>RIGHT</button>
-          <button type="button" className="cube-face cube-left" aria-label="Left view" onClick={() => setViewCubeFace("left")}>LEFT</button>
+          <button type="button" className="cube-face cube-top" aria-label={uiText("ui.workplaneviewport.bottom.view.840b96")} onClick={() => setViewCubeFace("bottom")}>{uiText("ui.workplaneviewport.bottom.44d0fd")}</button>
+          <button type="button" className="cube-face cube-bottom" aria-label={uiText("ui.workplaneviewport.top.view.9d5974")} onClick={() => setViewCubeFace("top")}>{uiText("ui.workplaneviewport.top.b48813")}</button>
+          <button type="button" className="cube-face cube-front" aria-label={uiText("ui.workplaneviewport.front.view.8704d0")} onClick={() => setViewCubeFace("front")}>{uiText("ui.workplaneviewport.front.bf753d")}</button>
+          <button type="button" className="cube-face cube-back" aria-label={uiText("ui.workplaneviewport.back.view.e25601")} onClick={() => setViewCubeFace("back")}>{uiText("ui.workplaneviewport.back.587eac")}</button>
+          <button type="button" className="cube-face cube-right" aria-label={uiText("ui.workplaneviewport.right.view.d10224")} onClick={() => setViewCubeFace("right")}>{uiText("ui.workplaneviewport.right.952532")}</button>
+          <button type="button" className="cube-face cube-left" aria-label={uiText("ui.workplaneviewport.left.view.da9bd3")} onClick={() => setViewCubeFace("left")}>{uiText("ui.workplaneviewport.left.969e2c")}</button>
         </div>
       </div>
 
-      <div className={`camera-controls ${cameraControlsCollapsed ? "collapsed" : ""}`} aria-label="Camera controls">
+      <div className={`camera-controls ${cameraControlsCollapsed ? "collapsed" : ""}`} aria-label={uiText("camera.controls")}>
         {cameraControlsCollapsed ? (
-          <button className="camera-controls-toggle" aria-label="Show camera controls" title="Show controls" aria-expanded={false} onClick={() => setCameraControlsCollapsed(false)}>
+          <button className="camera-controls-toggle" aria-label={uiText("ui.workplaneviewport.show.camera.controls.c31b45")} title={uiText("ui.workplaneviewport.show.controls.50262d")} aria-expanded={false} onClick={() => setCameraControlsCollapsed(false)}>
             <ChevronRight size={24} strokeWidth={2.25} aria-hidden="true" />
           </button>
         ) : (
           <>
-            <button className="camera-controls-toggle" aria-label="Hide camera controls" title="Hide controls" aria-expanded={true} onClick={collapseCameraControls}>
+            <button className="camera-controls-toggle" aria-label={uiText("ui.workplaneviewport.hide.camera.controls.d243cf")} title={uiText("ui.workplaneviewport.hide.controls.6fb371")} aria-expanded={true} onClick={collapseCameraControls}>
               <ChevronLeft size={24} strokeWidth={2.25} aria-hidden="true" />
             </button>
-            <button aria-label="Home" onClick={resetView}>
+            <button aria-label={uiText("ui.sketchforgeeditor.home.70f8bb")} onClick={resetView}>
               <Home size={24} strokeWidth={2.25} />
             </button>
-            <button aria-label="Zoom in" onClick={() => zoomCamera(0.7)}>
+            <button aria-label={uiText("camera.zoomIn")} onClick={() => zoomCamera(0.7)}>
               <Plus size={28} strokeWidth={2.15} />
             </button>
-            <button aria-label="Zoom out" onClick={() => zoomCamera(1.35)}>
+            <button aria-label={uiText("camera.zoomOut")} onClick={() => zoomCamera(1.35)}>
               <Minus size={28} strokeWidth={2.15} />
             </button>
             <div className="workplane-control-group">
               <button
                 className={workplaneMode ? "active" : ""}
-                aria-label="Place workplane"
-                title="Place workplane (W)"
+                aria-label={uiText("toolbar.placeWorkplane")}
+                title={uiText("ui.workplaneviewport.place.workplane.w.a698e0")}
                 aria-pressed={workplaneMode}
                 onClick={togglePlacementWorkplane}
               >
@@ -4802,8 +4803,8 @@ export function WorkplaneViewport({
             <div className="ruler-control-group">
               <button
                 className={`ruler-trigger ${rulerToolsOpen ? "active" : ""}`}
-                aria-label="Ruler tools"
-                title="Ruler tools"
+                aria-label={uiText("ui.workplaneviewport.ruler.tools.9d0d63")}
+                title={uiText("ui.workplaneviewport.ruler.tools.9d0d63")}
                 aria-expanded={rulerToolsOpen}
                 aria-controls="ruler-tool-popover"
                 onClick={toggleRulerTools}
@@ -4811,14 +4812,14 @@ export function WorkplaneViewport({
                 <Ruler size={26} strokeWidth={2.2} aria-hidden="true" />
               </button>
               {rulerToolsOpen ? (
-                <div id="ruler-tool-popover" className="ruler-tool-popover" aria-label="Ruler actions">
-                  <button className={rulerMode ? "active" : ""} aria-label="Add measurement" title="Add measurement" aria-pressed={rulerMode} onClick={activateRulerAdd}>
+                <div id="ruler-tool-popover" className="ruler-tool-popover" aria-label={uiText("ui.workplaneviewport.ruler.actions.c1acff")}>
+                  <button className={rulerMode ? "active" : ""} aria-label={uiText("ui.workplaneviewport.add.measurement.094387")} title={uiText("ui.workplaneviewport.add.measurement.094387")} aria-pressed={rulerMode} onClick={activateRulerAdd}>
                     <Plus size={21} strokeWidth={2.4} aria-hidden="true" />
                   </button>
-                  <button className={rulerMoveMode ? "active" : ""} aria-label="Move measurement points" title="Move measurement points" aria-pressed={rulerMoveMode} onClick={activateRulerMove}>
+                  <button className={rulerMoveMode ? "active" : ""} aria-label={uiText("ui.workplaneviewport.move.measurement.points.0c2169")} title={uiText("ui.workplaneviewport.move.measurement.points.0c2169")} aria-pressed={rulerMoveMode} onClick={activateRulerMove}>
                     <MousePointer2 size={20} strokeWidth={2.25} aria-hidden="true" />
                   </button>
-                  <button className={`ruler-delete-button ${rulerDeleteMode ? "active" : ""}`} aria-label="Delete measurement part" title="Delete measurement part" aria-pressed={rulerDeleteMode} onClick={activateRulerDelete}>
+                  <button className={`ruler-delete-button ${rulerDeleteMode ? "active" : ""}`} aria-label={uiText("ui.workplaneviewport.delete.measurement.part.bfe79a")} title={uiText("ui.workplaneviewport.delete.measurement.part.bfe79a")} aria-pressed={rulerDeleteMode} onClick={activateRulerDelete}>
                     <X size={20} strokeWidth={2.4} aria-hidden="true" />
                   </button>
                 </div>
@@ -4828,7 +4829,7 @@ export function WorkplaneViewport({
         )}
       </div>
 
-      <section className={`workplane-wrap ${workplaneMode ? "placing-workplane" : ""} ${rulerMode ? "ruler-mode" : ""} ${rulerDeleteMode ? "ruler-delete-mode" : ""} ${rulerMoveMode ? "ruler-move-mode" : ""} ${modifierActive ? "modifier-edge-pick" : ""}`} aria-label="Workplane">
+      <section className={`workplane-wrap ${workplaneMode ? "placing-workplane" : ""} ${rulerMode ? "ruler-mode" : ""} ${rulerDeleteMode ? "ruler-delete-mode" : ""} ${rulerMoveMode ? "ruler-move-mode" : ""} ${modifierActive ? "modifier-edge-pick" : ""}`} aria-label={uiText("ui.workplaneviewport.workplane.c83d9b")}>
         <div className="workplane-plane">
           <div
             className="three-workplane-host"
@@ -6359,16 +6360,16 @@ function syncTransformOverlay(
       ...footprintGuides,
     ],
     handles: [
-      { key: "near-left", className: "corner", kind: "scale" as const, x: bottom.nearLeft.x, y: bottom.nearLeft.y, title: "Resize" },
-      { key: "near-right", className: "corner", kind: "scale" as const, x: bottom.nearRight.x, y: bottom.nearRight.y, title: "Resize" },
-      { key: "far-right", className: "corner", kind: "scale" as const, x: bottom.farRight.x, y: bottom.farRight.y, title: "Resize" },
-      { key: "far-left", className: "corner", kind: "scale" as const, x: bottom.farLeft.x, y: bottom.farLeft.y, title: "Resize" },
-      { key: "near-mid", className: "edge dark", kind: "scale" as const, x: mid.near.x, y: mid.near.y, title: "Resize" },
-      { key: "right-mid", className: "edge dark", kind: "scale" as const, x: mid.right.x, y: mid.right.y, title: "Resize" },
-      { key: "far-mid", className: "edge dark", kind: "scale" as const, x: mid.far.x, y: mid.far.y, title: "Resize" },
-      { key: "left-mid", className: "edge dark", kind: "scale" as const, x: mid.left.x, y: mid.left.y, title: "Resize" },
-      { key: heightHandleKey, className: "height-top", kind: "height" as const, x: heightPoint.x, y: heightPoint.y, title: "Height" },
-      { key: liftHandleKey, className: showLowerHandles ? "height-lift lower" : "height-lift", kind: "lift" as const, x: liftPoint.x, y: liftPoint.y, title: "Lift", angle: liftHandleAngle },
+      { key: "near-left", className: "corner", kind: "scale" as const, x: bottom.nearLeft.x, y: bottom.nearLeft.y, title: uiText("ui.workplaneviewport.resize.f52dc7") },
+      { key: "near-right", className: "corner", kind: "scale" as const, x: bottom.nearRight.x, y: bottom.nearRight.y, title: uiText("ui.workplaneviewport.resize.f52dc7") },
+      { key: "far-right", className: "corner", kind: "scale" as const, x: bottom.farRight.x, y: bottom.farRight.y, title: uiText("ui.workplaneviewport.resize.f52dc7") },
+      { key: "far-left", className: "corner", kind: "scale" as const, x: bottom.farLeft.x, y: bottom.farLeft.y, title: uiText("ui.workplaneviewport.resize.f52dc7") },
+      { key: "near-mid", className: "edge dark", kind: "scale" as const, x: mid.near.x, y: mid.near.y, title: uiText("ui.workplaneviewport.resize.f52dc7") },
+      { key: "right-mid", className: "edge dark", kind: "scale" as const, x: mid.right.x, y: mid.right.y, title: uiText("ui.workplaneviewport.resize.f52dc7") },
+      { key: "far-mid", className: "edge dark", kind: "scale" as const, x: mid.far.x, y: mid.far.y, title: uiText("ui.workplaneviewport.resize.f52dc7") },
+      { key: "left-mid", className: "edge dark", kind: "scale" as const, x: mid.left.x, y: mid.left.y, title: uiText("ui.workplaneviewport.resize.f52dc7") },
+      { key: heightHandleKey, className: "height-top", kind: "height" as const, x: heightPoint.x, y: heightPoint.y, title: uiText("sidebar.height") },
+      { key: liftHandleKey, className: showLowerHandles ? "height-lift lower" : "height-lift", kind: "lift" as const, x: liftPoint.x, y: liftPoint.y, title: uiText("ui.workplaneviewport.lift.efd097"), angle: liftHandleAngle },
     ],
     rotateHandles: [
       { key: "rotate-left", className: "screen-left", x: rotateLeft.x, y: rotateLeft.y, angle: xRotateAngle },
@@ -6598,7 +6599,7 @@ function syncMirrorOverlay(
         x: xScreen.x,
         y: xScreen.y,
         angle: screenAngle(xWorld.clone().add(new THREE.Vector3(-step, 0, 0)), xWorld.clone().add(new THREE.Vector3(step, 0, 0))),
-        title: "Mirror left-right",
+        title: uiText("ui.workplaneviewport.mirror.left.right.a884ab"),
       },
       {
         axis: "z" as const,
@@ -6606,7 +6607,7 @@ function syncMirrorOverlay(
         x: zScreen.x,
         y: zScreen.y,
         angle: screenAngle(zWorld.clone().add(new THREE.Vector3(0, 0, -step)), zWorld.clone().add(new THREE.Vector3(0, 0, step))),
-        title: "Mirror front-back",
+        title: uiText("ui.workplaneviewport.mirror.front.back.d06996"),
       },
       {
         axis: "y" as const,
@@ -6614,7 +6615,7 @@ function syncMirrorOverlay(
         x: yScreen.x,
         y: yScreen.y,
         angle: screenAngle(yWorld.clone().add(new THREE.Vector3(0, -step, 0)), yWorld.clone().add(new THREE.Vector3(0, step, 0))),
-        title: "Mirror top-bottom",
+        title: uiText("ui.workplaneviewport.mirror.top.bottom.938fe4"),
       },
     ],
   };

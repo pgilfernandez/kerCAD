@@ -1,7 +1,6 @@
 "use client";
 
 import { LEGACY_DEMO_CHALLENGE_ID, PROJECT_FILE_PATTERN } from "@/lib/legacyBrand";
-
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ProjectDashboard } from "@/components/ProjectDashboard";
 import { KercadLandingPage } from "@/components/KercadLandingPage";
@@ -13,12 +12,13 @@ import { deleteLibraryProject, getLibraryProject, listLibraryProjects, newProjec
 import { thumbnailDocumentKey, uploadSharedThumbnail } from "@/lib/sharedProjectThumbnail";
 import type { ParametricDocument } from "@/types/parametric";
 import { dashboardTranslate, type DashboardTranslationKey } from "@/lib/dashboardI18n";
-import { normalizeKercadLocale } from "@/lib/kercadI18n";
+import { getCurrentLocale, kercadTranslate } from "@/lib/kercadI18n";
 import { assertImportByteLimit } from "@/lib/parametricImportLimits";
+import { type KercadLocale } from "@/lib/kercadI18n";
+import { useAppLocale } from "@/lib/useAppLocale";
 
 function libraryText(key: DashboardTranslationKey, values?: Record<string, string | number>) {
-  try { return dashboardTranslate(normalizeKercadLocale(localStorage.getItem("kercad.locale")), key, values); }
-  catch { return dashboardTranslate("en", key, values); }
+  return dashboardTranslate(getCurrentLocale(), key, values);
 }
 
 function projectContentKey(document: ParametricDocument) {
@@ -28,6 +28,7 @@ function projectContentKey(document: ParametricDocument) {
 }
 
 export default function Home() {
+  useAppLocale();
   const [projects, setProjects] = useState<ProjectLibraryEntry[]>([]);
   const [active, setActive] = useState<ProjectLibraryEntry | null>(null);
   const [editorSession, setEditorSession] = useState(0);
@@ -132,6 +133,7 @@ export default function Home() {
 
   const createProject = () => {
     const document = createEmptyDocument();
+    document.name = kercadTranslate(getCurrentLocale(), "notice.newDesign");
     const now = Date.now();
     const entry = { id: newProjectLibraryId(), name: document.name, createdAt: now, updatedAt: now, document };
     openProject(entry, false, true);
@@ -147,7 +149,15 @@ export default function Home() {
     setActiveChallenge(challenge);
     openProject(entry);
   };
-  const editChallenge = (challenge = createEmptyChallenge()) => {
+  const editChallenge = (sourceChallenge?: KercadChallenge) => {
+    const challenge = sourceChallenge ?? createEmptyChallenge();
+    if (!sourceChallenge) {
+      const locale = getCurrentLocale();
+      challenge.title = kercadTranslate(locale, "challenge.new");
+      challenge.steps[0].label = kercadTranslate(locale, "challenge.beforeStart");
+      challenge.steps[0].title = kercadTranslate(locale, "challenge.firstStep");
+      challenge.steps[0].body = kercadTranslate(locale, "challenge.firstStepBody");
+    }
     const document = structuredClone(challenge.workspaceDocument ?? createEmptyDocument());
     document.name = challenge.title;
     const now = Date.now();
@@ -162,7 +172,7 @@ export default function Home() {
       await saveInstalledChallenge(challenge);
       setChallenges(await listInstalledChallenges());
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : libraryText("Could not install the challenge."));
+      window.alert(error instanceof Error ? error.message : libraryText("dashboard.could.not.install.the.challenge.4d97e0"));
     } finally { setBusy(false); }
   };
   const persistActive = useCallback((document: ParametricDocument) => {
@@ -250,7 +260,7 @@ export default function Home() {
       await saveInstalledChallenge(copy);
       setChallenges(await listInstalledChallenges());
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : libraryText("Could not duplicate the challenge."));
+      window.alert(error instanceof Error ? error.message : libraryText("dashboard.could.not.duplicate.the.challenge.d1bc5a"));
     } finally { setBusy(false); }
   };
   const importProject = async (file: File) => {
@@ -263,7 +273,7 @@ export default function Home() {
         const bytes = new Uint8Array(await file.arrayBuffer());
         packaged = PROJECT_FILE_PATTERN.test(file.name) ? await importKercadProject(bytes) : null;
         const parsed = packaged?.document ?? JSON.parse(new TextDecoder().decode(bytes)) as unknown;
-        if (!validateDocument(parsed)) throw new Error(libraryText("This is not a valid kerCAD project."));
+        if (!validateDocument(parsed)) throw new Error(libraryText("dashboard.this.is.not.a.valid.kercad.project.329a80"));
         document = normalizeParametricDocument(parsed);
       } else {
         document = createEmptyDocument();
@@ -283,7 +293,7 @@ export default function Home() {
           assertImportByteLimit("SVG", file.size);
           const { importSvgAsParametricExtrusion } = await import("@/lib/svgParametricImport");
           importSvgAsParametricExtrusion(document, await file.text(), file.name, null);
-        } else throw new Error(libraryText("Unsupported file format."));
+        } else throw new Error(libraryText("dashboard.unsupported.file.format.c1a423"));
       }
       const now = Date.now();
       const entry = { id: newProjectLibraryId(), name: document.name, createdAt: now, updatedAt: now, document, assets: packaged?.assets };
@@ -293,12 +303,12 @@ export default function Home() {
       setEditingChallenge(null);
       openProject(entry);
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : libraryText("Could not open the project."));
+      window.alert(error instanceof Error ? error.message : libraryText("dashboard.could.not.open.the.project.3f5194"));
     } finally { setBusy(false); }
   };
   const saveActiveShared = async (document: ParametricDocument, fileName: string, author: string) => {
     const current = activeRef.current;
-    if (!current || transientEditorRef.current) throw new Error(libraryText("No local project is open."));
+    if (!current || transientEditorRef.current) throw new Error(libraryText("dashboard.no.local.project.is.open.168a0f"));
     // Keep the editable local copy even if publishing fails or conflicts.
     persistActive(document);
     await saveLatestActive();
@@ -309,8 +319,8 @@ export default function Home() {
       headers: { "Content-Type": KERCAD_PACKAGE_MEDIA_TYPE, "X-Kercad-Author": encodeURIComponent(author), ...(revision ? { "If-Match": revision } : { "If-None-Match": "*" }) },
     });
     const payload = await response.json();
-    if (response.status === 409) throw new Error(libraryText("The shared file has changed or this name is already in use. Your local work is safe. Save with another name, or open a fresh copy from Shared."));
-    if (!response.ok) throw new Error(payload.error || libraryText("Could not save the shared project."));
+    if (response.status === 409) throw new Error(libraryText("dashboard.the.shared.file.has.changed.or.this.name.is.already.in..1ad3d9"));
+    if (!response.ok) throw new Error(payload.error || libraryText("dashboard.could.not.save.the.shared.project.a18f08"));
     await uploadSharedThumbnail(payload.project.fileName, payload.project.revision, document, current.thumbnail, current.thumbnailDocumentKey);
     if (activeRef.current?.id === current.id) {
       activeRef.current = { ...activeRef.current, sharedSource: { fileName: payload.project.fileName, revision: payload.project.revision } };
@@ -333,7 +343,7 @@ export default function Home() {
       await writeQueueRef.current.catch(() => undefined);
       const source = await getLibraryProject(project.id) ?? project;
       const names = new Set((await listLibraryProjects()).map((entry) => entry.name));
-      const base = libraryText("{name} (copy)", { name: source.name });
+      const base = libraryText("dashboard.copy.7e4c74", { name: source.name });
       let name = base;
       for (let suffix = 2; names.has(name); suffix += 1) name = `${base} ${suffix}`;
       const now = Date.now();
@@ -345,7 +355,7 @@ export default function Home() {
       await saveLibraryProject(entry);
       setProjects((current) => [entry, ...current]);
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : libraryText("Could not duplicate the project."));
+      window.alert(error instanceof Error ? error.message : libraryText("dashboard.could.not.duplicate.the.project.ebb95d"));
     } finally { setBusy(false); }
   };
   const downloadProject = async (project: ProjectLibraryEntry) => {
@@ -363,7 +373,7 @@ export default function Home() {
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : libraryText("Could not export the project."));
+      window.alert(error instanceof Error ? error.message : libraryText("dashboard.could.not.export.the.project.373612"));
     } finally { setBusy(false); }
   };
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
+import { uiText } from "@/lib/kercadI18n";
 
 export function SketchRevolvePreview({ positions }: { positions: number[] | null }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -64,9 +65,9 @@ export function SketchRevolvePreview({ positions }: { positions: number[] | null
   }, [positions]);
 
   return (
-    <aside className="sketch-revolve-preview" aria-label="Revolve 3D preview">
-      <div className="sketch-revolve-preview-title">3D preview</div>
-      {positions?.length ? <canvas ref={canvasRef} /> : <div className="sketch-revolve-preview-empty">Draw a profile left of the axis</div>}
+    <aside className="sketch-revolve-preview" aria-label={uiText("ui.sketchrevolvepreview.revolve.3d.preview.41c1af")}>
+      <div className="sketch-revolve-preview-title">{uiText("ui.sketchrevolvepreview.3d.preview.7c8dae")}</div>
+      {positions?.length ? <canvas ref={canvasRef} /> : <div className="sketch-revolve-preview-empty">{uiText("ui.sketchrevolvepreview.draw.a.profile.left.of.the.axis.535230")}</div>}
     </aside>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { listLibraryProjects, newProjectLibraryId, saveLibraryProject, type ProjectLibraryEntry } from "@/lib/projectLibrary";
+import { uiText } from "@/lib/kercadI18n";
 
 const MESSAGE_TYPE = "kercad-local-project-migration/v1";
 
@@ -79,14 +80,14 @@ export default function MigrateLocalProjectsPage() {
 
     if (sender) {
       if (!targetOrigin || !messageToken || !window.opener) {
-        setStatus("Solicitud de migración inválida.");
+        setStatus(uiText("ui.page.solicitud.de.migracion.invalida.741d9b"));
         return;
       }
       void listLibraryProjects()
         .then((storedProjects) => {
           const projects = [...storedProjects, ...legacyLocalProjects()];
           window.opener.postMessage({ type: MESSAGE_TYPE, token: messageToken, projects } satisfies MigrationMessage, targetOrigin);
-          setStatus(`${projects.length} proyectos enviados al nuevo origen.`);
+          setStatus(uiText("ui.page.proyectos.enviados.al.nuevo.origen.844fac", { value0: projects.length }));
           window.setTimeout(() => window.close(), 800);
         })
         .catch((error) => {
@@ -96,24 +97,24 @@ export default function MigrateLocalProjectsPage() {
     }
 
     if (!sourceOrigin || sourceOrigin === window.location.origin) {
-      setStatus("Indica un origen anterior distinto mediante ?source=http://IP:PUERTO.");
+      setStatus(uiText("ui.page.indica.un.origen.anterior.distinto.mediante.sour.c3b95a"));
       return;
     }
 
     const token = migrationToken();
     setSourceWindowUrl(`${sourceOrigin}/migrate-local-projects?sender=1&target=${encodeURIComponent(window.location.origin)}&token=${encodeURIComponent(token)}`);
-    setStatus("Pulsa el botón para abrir temporalmente la biblioteca anterior y copiarla.");
+    setStatus(uiText("ui.page.pulsa.el.boton.para.abrir.temporalmente.la.bibli.726480"));
 
     const receive = (event: MessageEvent<unknown>) => {
       if (event.origin !== sourceOrigin || !isMigrationMessage(event.data) || event.data.token !== token || startedRef.current) return;
       startedRef.current = true;
       if (event.data.error) {
-        setStatus(`No se pudo leer la biblioteca anterior: ${event.data.error}`);
+        setStatus(uiText("ui.page.no.se.pudo.leer.la.biblioteca.anterior.7a574a", { value0: event.data.error }));
         return;
       }
       const incoming = Array.isArray(event.data.projects) ? event.data.projects : [];
       void (async () => {
-        setStatus(`Copiando ${incoming.length} proyectos…`);
+        setStatus(uiText("ui.page.copiando.proyectos.f63870", { value0: incoming.length }));
         const current = await listLibraryProjects();
         const currentById = new Map(current.map((project) => [project.id, project]));
         let copied = 0;
@@ -131,8 +132,8 @@ export default function MigrateLocalProjectsPage() {
           copied += 1;
         }
         setFinished(true);
-        setStatus(`${copied} proyectos copiados.${preserved ? ` ${preserved} conflictos se conservaron como copias separadas.` : ""}`);
-      })().catch((error) => setStatus(`La copia no pudo completarse: ${error instanceof Error ? error.message : "error desconocido"}`));
+        setStatus(uiText("ui.page.proyectos.copiados.c952dc", { value0: copied, value1: preserved ? uiText("ui.page.conflictos.se.conservaron.como.copias.separad.4ece67", { value0: preserved }) : "" }));
+      })().catch((error) => setStatus(uiText("ui.page.la.copia.no.pudo.completarse.ee67f9", { value0: error instanceof Error ? error.message : uiText("ui.page.error.desconocido.9032e0") })));
     };
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
@@ -140,15 +141,15 @@ export default function MigrateLocalProjectsPage() {
 
   return <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "#eef5f8", color: "#27485c", fontFamily: "Inter, Arial, sans-serif" }}>
     <section style={{ width: "min(560px, 100%)", padding: 28, border: "1px solid #c9dbe5", borderRadius: 12, background: "white", boxShadow: "0 18px 45px rgba(31, 72, 96, .12)" }}>
-      <h1 style={{ margin: "0 0 12px", fontSize: 24 }}>Migrar proyectos locales</h1>
+      <h1 style={{ margin: "0 0 12px", fontSize: 24 }}>{uiText("ui.page.migrar.proyectos.locales.de52b4")}</h1>
       <p role="status" style={{ margin: 0, lineHeight: 1.55 }}>{status}</p>
       {!finished && sourceWindowUrl ? <button type="button" onClick={() => {
         startedRef.current = false;
         const sourceWindow = window.open(sourceWindowUrl, "kercad-project-migration", "popup,width=560,height=420");
-        if (!sourceWindow) setStatus("El navegador bloqueó la ventana. Permite ventanas emergentes para esta página y vuelve a intentarlo.");
-        else setStatus("Leyendo la biblioteca anterior…");
-      }} style={{ marginTop: 20, padding: "10px 16px", border: 0, borderRadius: 7, color: "white", background: "#148eb8", fontWeight: 700, cursor: "pointer" }}>Copiar proyectos desde 172.23.7.18</button> : null}
-      {finished ? <a href="/" style={{ display: "inline-block", marginTop: 20, padding: "10px 16px", borderRadius: 7, color: "white", background: "#148eb8", textDecoration: "none", fontWeight: 700 }}>Abrir proyectos</a> : null}
+        if (!sourceWindow) setStatus(uiText("ui.page.el.navegador.bloqueo.la.ventana.permite.ventanas.28089f"));
+        else setStatus(uiText("ui.page.leyendo.la.biblioteca.anterior.6d07b0"));
+      }} style={{ marginTop: 20, padding: "10px 16px", border: 0, borderRadius: 7, color: "white", background: "#148eb8", fontWeight: 700, cursor: "pointer" }}>{uiText("ui.page.copiar.proyectos.desde.172.23.7.18.0f1b44")}</button> : null}
+      {finished ? <a href="/" style={{ display: "inline-block", marginTop: 20, padding: "10px 16px", borderRadius: 7, color: "white", background: "#148eb8", textDecoration: "none", fontWeight: 700 }}>{uiText("ui.page.abrir.proyectos.7888af")}</a> : null}
     </section>
   </main>;
 }

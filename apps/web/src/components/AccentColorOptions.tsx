@@ -2,6 +2,7 @@
 
 import { useAppAccent } from "@/lib/useAppAccent";
 import type { KercadLocale } from "@/lib/kercadI18n";
+import { uiText } from "@/lib/kercadI18n";
 
 const PRESETS = [
   "#c5343c", "#934bc3", "#b94b9e", "#4b6fc3",
@@ -11,8 +12,8 @@ const PRESETS = [
 export function AccentColorOptions({ locale = "en" }: { locale?: KercadLocale }) {
   const { accent, setAccent } = useAppAccent();
   const custom = !PRESETS.includes(accent);
-  const label = locale === "es" ? "Color de acento" : "Accent color";
-  const customLabel = locale === "es" ? "Color de acento personalizado" : "Custom accent color";
+  const label = uiText("ui.accentcoloroptions.accent.color.e49578", {}, locale);
+  const customLabel = uiText("ui.accentcoloroptions.custom.accent.color.1982ac", {}, locale);
   return <div className="kercad-accent-options" role="group" aria-label={label}>
     {PRESETS.map((color) => <button
       key={color}

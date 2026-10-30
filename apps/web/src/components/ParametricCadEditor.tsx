@@ -2,7 +2,6 @@
 
 import { LEGACY_PROJECT_ACCEPT } from "@/lib/legacyBrand";
 import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
-
 import {
   ArrowDown,
   ArrowUp,
@@ -47,6 +46,7 @@ import {
 import { buildParametricModel, exportParametricStep } from "@/lib/parametricKernel";
 import { objectColorsFromFingerprint, parametricGeometryFingerprint, parametricObjectColorFingerprint } from "@/lib/parametricBuildState";
 import type { BuildResult, ParametricDocument, ParametricFeature } from "@/types/parametric";
+import { uiText } from "@/lib/kercadI18n";
 
 const STORAGE_KEY = "kercad.parametric.document.v1";
 
@@ -74,10 +74,10 @@ function featureIcon(feature: ParametricFeature) {
 }
 
 function featureLabel(feature: ParametricFeature) {
-  if (feature.kind === "sketch") return "Boceto 2D";
-  if (feature.kind === "extrude") return "Extrusión";
-  if (feature.kind === "hole") return "Taladro";
-  return "Redondeo";
+  if (feature.kind === "sketch") return uiText("ui.parametriccadeditor.boceto.2d.a48b0e");
+  if (feature.kind === "extrude") return uiText("ui.sketchforgeparametriceditor.extrusion.f1a195");
+  if (feature.kind === "hole") return uiText("operation.hole");
+  return uiText("toolbar.fillet");
 }
 
 function NumberField({ label, value, onChange, min = -1000, max = 1000, step = 1, suffix = "mm" }: {
@@ -218,7 +218,7 @@ export function ParametricCadEditor() {
   const addExtrude = () => {
     const sketch = previousSketch(document.features, selectedId);
     if (!sketch) {
-      setNotice({ tone: "info", text: "Crea o selecciona un boceto antes de extruir." });
+      setNotice({ tone: "info", text: uiText("ui.parametriccadeditor.crea.o.selecciona.un.boceto.antes.de.extruir.bc466e") });
       return;
     }
     const feature = createExtrudeFeature(sketch.id, document.features.filter((item) => item.kind === "extrude").length + 1, documentHasSolid(document.features));
@@ -228,7 +228,7 @@ export function ParametricCadEditor() {
 
   const addHole = () => {
     if (!documentHasSolid(document.features)) {
-      setNotice({ tone: "info", text: "Primero crea un sólido con una extrusión." });
+      setNotice({ tone: "info", text: uiText("ui.parametriccadeditor.primero.crea.un.solido.con.una.extrusion.96a79a") });
       return;
     }
     const feature = createHoleFeature(document.features.filter((item) => item.kind === "hole").length + 1);
@@ -238,7 +238,7 @@ export function ParametricCadEditor() {
 
   const addFillet = () => {
     if (!documentHasSolid(document.features)) {
-      setNotice({ tone: "info", text: "Primero crea un sólido con una extrusión." });
+      setNotice({ tone: "info", text: uiText("ui.parametriccadeditor.primero.crea.un.solido.con.una.extrusion.96a79a") });
       return;
     }
     const feature = createFilletFeature(document.features.filter((item) => item.kind === "fillet").length + 1);
@@ -272,7 +272,7 @@ export function ParametricCadEditor() {
 
   const exportDocument = () => {
     downloadBlob(new Blob([JSON.stringify(document, null, 2)], { type: "application/json" }), `${safeFileName(document.name)}.kercad.json`);
-    setNotice({ tone: "success", text: "Documento paramétrico exportado." });
+    setNotice({ tone: "success", text: uiText("ui.parametriccadeditor.documento.parametrico.exportado.320eef") });
   };
 
   const exportStep = async () => {
@@ -280,9 +280,9 @@ export function ParametricCadEditor() {
     try {
       const blob = await exportParametricStep(document);
       downloadBlob(blob, `${safeFileName(document.name)}.step`);
-      setNotice({ tone: "success", text: "STEP B-Rep exportado correctamente." });
+      setNotice({ tone: "success", text: uiText("ui.parametriccadeditor.step.b.rep.exportado.correctamente.3dfa86") });
     } catch (error) {
-      setNotice({ tone: "error", text: error instanceof Error ? error.message : "No se pudo exportar STEP." });
+      setNotice({ tone: "error", text: error instanceof Error ? error.message : uiText("ui.parametriccadeditor.no.se.pudo.exportar.step.86fba1") });
     } finally {
       setExporting(false);
     }
@@ -291,12 +291,12 @@ export function ParametricCadEditor() {
   const importDocument = async (file: File) => {
     try {
       const parsed = JSON.parse(await file.text()) as unknown;
-      if (!validateDocument(parsed)) throw new Error("El archivo no es un documento kerCAD v1 válido.");
+      if (!validateDocument(parsed)) throw new Error(uiText("ui.parametriccadeditor.el.archivo.no.es.un.documento.kercad.v1.valido.7bbfe3"));
       setHistory({ entries: [parsed], index: 0 });
       setSelectedId(parsed.features[0]?.id ?? null);
-      setNotice({ tone: "success", text: "Documento paramétrico abierto." });
+      setNotice({ tone: "success", text: uiText("ui.parametriccadeditor.documento.parametrico.abierto.4aad51") });
     } catch (error) {
-      setNotice({ tone: "error", text: error instanceof Error ? error.message : "No se pudo abrir el archivo." });
+      setNotice({ tone: "error", text: error instanceof Error ? error.message : uiText("ui.parametriccadeditor.no.se.pudo.abrir.el.archivo.5243e0") });
     }
   };
 
@@ -304,7 +304,7 @@ export function ParametricCadEditor() {
     const next = createEmptyDocument();
     setHistory({ entries: [next], index: 0 });
     setSelectedId(next.features[0]?.id ?? null);
-    setNotice({ tone: "info", text: "Se ha creado una pieza de ejemplo nueva." });
+    setNotice({ tone: "info", text: uiText("ui.parametriccadeditor.se.ha.creado.una.pieza.de.ejemplo.nueva.7737d1") });
   };
 
   const setCamera = (name: CameraView["name"]) => setView((current) => ({ name, token: current.token + 1 }));
@@ -312,54 +312,54 @@ export function ParametricCadEditor() {
   return (
     <main className="pcad-app">
       <header className="pcad-header">
-        <button className="pcad-icon-button pcad-mobile-menu" aria-label="Abrir menú"><Menu size={20} /></button>
-        <div className="pcad-brand" aria-label="kerCAD">
+        <button className="pcad-icon-button pcad-mobile-menu" aria-label={uiText("ui.parametriccadeditor.abrir.menu.256a5c")}><Menu size={20} /></button>
+        <div className="pcad-brand" aria-label={uiText("ui.page.kercad.c0bf6d")}>
           <span className="pcad-logo"><Hexagon size={25} strokeWidth={2.4} /><span>e</span></span>
-          <strong>edu<span>CAD</span></strong>
-          <small>parametric</small>
+          <strong>edu<span>{uiText("ui.parametriccadeditor.cad.b821b2")}</span></strong>
+          <small>{uiText("common.parametric")}</small>
         </div>
         <div className="pcad-project-title">
           <input
             value={document.name}
-            aria-label="Nombre del proyecto"
+            aria-label={uiText("ui.parametriccadeditor.nombre.del.proyecto.bcf415")}
             onChange={(event) => mutateDocument((draft) => { draft.name = event.target.value; })}
           />
-          <span><Save size={13} /> guardado en este navegador</span>
+          <span><Save size={13} /> {uiText("ui.parametriccadeditor.guardado.en.este.navegador.d0f7e7")}</span>
         </div>
         <div className="pcad-header-actions">
-          <button onClick={() => setShowLesson(true)} className="pcad-challenge"><GraduationCap size={18} /> Reto guiado</button>
-          <button className="pcad-avatar" aria-label="Perfil local">P</button>
+          <button onClick={() => setShowLesson(true)} className="pcad-challenge"><GraduationCap size={18} /> {uiText("ui.parametriccadeditor.reto.guiado.f6dee5")}</button>
+          <button className="pcad-avatar" aria-label={uiText("ui.parametriccadeditor.perfil.local.354b80")}>P</button>
         </div>
       </header>
 
-      <nav className="pcad-ribbon" aria-label="Herramientas CAD">
+      <nav className="pcad-ribbon" aria-label={uiText("ui.parametriccadeditor.herramientas.cad.2b6886")}>
         <div className="pcad-ribbon-group compact">
-          <button title="Nueva pieza" onClick={newDocument}><FileBox size={22} /><span>Nuevo</span></button>
-          <button title="Importar documento" onClick={() => importRef.current?.click()}><Import size={22} /><span>Abrir</span></button>
-          <button title="Deshacer" disabled={history.index === 0} onClick={undo}><Undo2 size={22} /><span>Deshacer</span></button>
-          <button title="Rehacer" disabled={history.index === history.entries.length - 1} onClick={redo}><Redo2 size={22} /><span>Rehacer</span></button>
+          <button title={uiText("ui.parametriccadeditor.nueva.pieza.c53d84")} onClick={newDocument}><FileBox size={22} /><span>{uiText("toolbar.newGroup")}</span></button>
+          <button title={uiText("ui.parametriccadeditor.importar.documento.a08d0a")} onClick={() => importRef.current?.click()}><Import size={22} /><span>{uiText("common.open")}</span></button>
+          <button title={uiText("toolbar.undo")} disabled={history.index === 0} onClick={undo}><Undo2 size={22} /><span>{uiText("toolbar.undo")}</span></button>
+          <button title={uiText("toolbar.redo")} disabled={history.index === history.entries.length - 1} onClick={redo}><Redo2 size={22} /><span>{uiText("toolbar.redo")}</span></button>
         </div>
         <div className="pcad-ribbon-group">
-          <button onClick={() => addSketch("rectangle")}><Square size={24} /><span>Boceto rect.</span></button>
-          <button onClick={() => addSketch("circle")}><CircleDot size={24} /><span>Boceto círculo</span></button>
-          <button onClick={addExtrude}><Box size={24} /><span>Extruir</span></button>
-          <button onClick={addHole}><Grid3X3 size={24} /><span>Taladro</span></button>
-          <button onClick={addFillet}><Sparkles size={24} /><span>Redondear</span></button>
+          <button onClick={() => addSketch("rectangle")}><Square size={24} /><span>{uiText("ui.parametriccadeditor.boceto.rect.bea8d2")}</span></button>
+          <button onClick={() => addSketch("circle")}><CircleDot size={24} /><span>{uiText("ui.parametriccadeditor.boceto.circulo.d29ba0")}</span></button>
+          <button onClick={addExtrude}><Box size={24} /><span>{uiText("ui.parametriccadeditor.extruir.b54531")}</span></button>
+          <button onClick={addHole}><Grid3X3 size={24} /><span>{uiText("operation.hole")}</span></button>
+          <button onClick={addFillet}><Sparkles size={24} /><span>{uiText("ui.parametriccadeditor.redondear.dbcd28")}</span></button>
         </div>
         <div className="pcad-ribbon-spacer" />
         <div className="pcad-ribbon-group export">
-          <button onClick={exportDocument}><FileJson size={23} /><span>Proyecto</span></button>
-          <button onClick={exportStep} disabled={exporting || !build.mesh}>{exporting ? <LoaderCircle className="pcad-spin" size={23} /> : <Download size={23} />}<span>STEP</span></button>
+          <button onClick={exportDocument}><FileJson size={23} /><span>{uiText("ui.parametriccadeditor.proyecto.cca57b")}</span></button>
+          <button onClick={exportStep} disabled={exporting || !build.mesh}>{exporting ? <LoaderCircle className="pcad-spin" size={23} /> : <Download size={23} />}<span>{uiText("ui.parametriccadeditor.step.0c9b85")}</span></button>
         </div>
       </nav>
 
       <section className="pcad-workspace">
         <aside className="pcad-tree-panel">
           <div className="pcad-panel-heading">
-            <span><Shapes size={17} /> Historial del modelo</span>
-            <button aria-label="Opciones del historial"><ChevronDown size={16} /></button>
+            <span><Shapes size={17} /> {uiText("ui.parametriccadeditor.historial.del.modelo.a88d65")}</span>
+            <button aria-label={uiText("ui.parametriccadeditor.opciones.del.historial.55e4a6")}><ChevronDown size={16} /></button>
           </div>
-          <div className="pcad-origin-row"><Rotate3D size={16} /><span>Origen</span><small>XY · Z↑</small></div>
+          <div className="pcad-origin-row"><Rotate3D size={16} /><span>{uiText("property.source")}</span><small>{uiText("ui.parametriccadeditor.xy.z.4182ad")}</small></div>
           <div className="pcad-feature-list">
             {document.features.map((feature, index) => {
               const Icon = featureIcon(feature);
@@ -379,32 +379,32 @@ export function ParametricCadEditor() {
             })}
           </div>
           <div className="pcad-tree-actions">
-            <button onClick={() => moveSelected(-1)} disabled={!selected || document.features[0]?.id === selected.id} title="Subir operación"><ArrowUp size={16} /></button>
-            <button onClick={() => moveSelected(1)} disabled={!selected || document.features.at(-1)?.id === selected.id} title="Bajar operación"><ArrowDown size={16} /></button>
-            <button onClick={removeSelected} disabled={!selected} title="Eliminar operación"><Trash2 size={16} /></button>
+            <button onClick={() => moveSelected(-1)} disabled={!selected || document.features[0]?.id === selected.id} title={uiText("ui.parametriccadeditor.subir.operacion.ef6154")}><ArrowUp size={16} /></button>
+            <button onClick={() => moveSelected(1)} disabled={!selected || document.features.at(-1)?.id === selected.id} title={uiText("ui.parametriccadeditor.bajar.operacion.f6f830")}><ArrowDown size={16} /></button>
+            <button onClick={removeSelected} disabled={!selected} title={uiText("toolbar.deleteOperation")}><Trash2 size={16} /></button>
           </div>
           <div className="pcad-concept-card">
-            <span>IDEA CLAVE</span>
-            <strong>El orden importa</strong>
-            <p>Cada operación usa el resultado anterior. Arrastra mentalmente el tiempo de arriba abajo.</p>
+            <span>{uiText("ui.parametriccadeditor.idea.clave.edd8e4")}</span>
+            <strong>{uiText("ui.parametriccadeditor.el.orden.importa.7ec9fd")}</strong>
+            <p>{uiText("ui.parametriccadeditor.cada.operacion.usa.el.resultado.anterior.arrastr.c0380d")}</p>
           </div>
         </aside>
 
         <div className="pcad-stage">
           <ParametricViewport mesh={build.mesh} objectRecords={build.objectRecords} objectColors={objectColors} color={document.color} workplane={document.workplane} view={view} />
-          <div className="pcad-view-buttons" aria-label="Vistas de cámara">
-            <button onClick={() => setCamera("top")}>SUP</button>
-            <button onClick={() => setCamera("front")}>FREN</button>
-            <button onClick={() => setCamera("right")}>DER</button>
-            <button className="active" onClick={() => setCamera("iso")}>ISO</button>
+          <div className="pcad-view-buttons" aria-label={uiText("ui.parametriccadeditor.vistas.de.camara.e6987a")}>
+            <button onClick={() => setCamera("top")}>{uiText("ui.parametriccadeditor.sup.92de3a")}</button>
+            <button onClick={() => setCamera("front")}>{uiText("ui.parametriccadeditor.fren.fae8a3")}</button>
+            <button onClick={() => setCamera("right")}>{uiText("ui.parametriccadeditor.der.8a5f02")}</button>
+            <button className="active" onClick={() => setCamera("iso")}>{uiText("ui.parametriccadeditor.iso.4f325d")}</button>
           </div>
-          <div className="pcad-navigation-hint"><MousePointer2 size={15} /> Arrastra para orbitar · rueda para zoom · ⇧ arrastra para desplazar</div>
-          {kernelState === "loading" && <div className="pcad-kernel-status"><LoaderCircle className="pcad-spin" size={17} /> Reconstruyendo B-Rep…</div>}
-          {build.warning && <div className="pcad-build-warning"><strong>La reconstrucción se detuvo</strong><span>{build.warning}</span></div>}
+          <div className="pcad-navigation-hint"><MousePointer2 size={15} /> {uiText("ui.parametriccadeditor.arrastra.para.orbitar.rueda.para.zoom.arrastra.p.bf02a1")}</div>
+          {kernelState === "loading" && <div className="pcad-kernel-status"><LoaderCircle className="pcad-spin" size={17} /> {uiText("ui.parametriccadeditor.reconstruyendo.b.rep.5cd185")}</div>}
+          {build.warning && <div className="pcad-build-warning"><strong>{uiText("ui.parametriccadeditor.la.reconstruccion.se.detuvo.31cb52")}</strong><span>{build.warning}</span></div>}
         </div>
 
         <aside className="pcad-inspector">
-          <div className="pcad-panel-heading"><span>Parámetros</span><span className="pcad-unit">mm</span></div>
+          <div className="pcad-panel-heading"><span>{uiText("operation.parameters")}</span><span className="pcad-unit">mm</span></div>
           {selected ? (
             <FeatureInspector
               feature={selected}
@@ -413,15 +413,15 @@ export function ParametricCadEditor() {
               onDelete={removeSelected}
             />
           ) : (
-            <div className="pcad-empty-inspector"><MousePointer2 size={28} /><strong>Selecciona una operación</strong><span>Aquí podrás editar sus parámetros.</span></div>
+            <div className="pcad-empty-inspector"><MousePointer2 size={28} /><strong>{uiText("ui.parametriccadeditor.selecciona.una.operacion.ba0426")}</strong><span>{uiText("ui.parametriccadeditor.aqui.podras.editar.sus.parametros.26d5b6")}</span></div>
           )}
           {build.mesh && (
             <div className="pcad-metrics">
-              <span>RESULTADO EXACTO</span>
-              <div><small>Ancho</small><strong>{build.mesh.metrics.width.toFixed(1)} mm</strong></div>
-              <div><small>Fondo</small><strong>{build.mesh.metrics.depth.toFixed(1)} mm</strong></div>
-              <div><small>Alto</small><strong>{build.mesh.metrics.height.toFixed(1)} mm</strong></div>
-              <div><small>Volumen</small><strong>{build.mesh.metrics.volume.toFixed(0)} mm³</strong></div>
+              <span>{uiText("ui.parametriccadeditor.resultado.exacto.485ce3")}</span>
+              <div><small>{uiText("ui.parametriccadeditor.ancho.4fb4e0")}</small><strong>{build.mesh.metrics.width.toFixed(1)} mm</strong></div>
+              <div><small>{uiText("ui.parametriccadeditor.fondo.44603f")}</small><strong>{build.mesh.metrics.depth.toFixed(1)} mm</strong></div>
+              <div><small>{uiText("ui.parametriccadeditor.alto.f46edd")}</small><strong>{build.mesh.metrics.height.toFixed(1)} mm</strong></div>
+              <div><small>{uiText("ui.parametriccadeditor.volumen.9111b3")}</small><strong>{build.mesh.metrics.volume.toFixed(0)} {uiText("ui.parametriccadeditor.mm.44e775")}</strong></div>
             </div>
           )}
         </aside>
@@ -429,9 +429,9 @@ export function ParametricCadEditor() {
 
       <footer className="pcad-statusbar">
         <span className={`pcad-dot ${kernelState}`} />
-        <span>{kernelState === "ready" ? "OpenCascade listo" : kernelState === "error" ? "Error del núcleo" : "Cargando núcleo CAD"}</span>
+        <span>{kernelState === "ready" ? uiText("ui.parametriccadeditor.opencascade.listo.14ff2f") : kernelState === "error" ? uiText("ui.parametriccadeditor.error.del.nucleo.95a5a9") : uiText("ui.parametriccadeditor.cargando.nucleo.cad.87b25a")}</span>
         <span className="pcad-status-spacer" />
-        <span>B-Rep exacto</span><span>·</span><span>{document.features.length} operaciones</span><span>·</span><span>unidades: mm</span>
+        <span>{uiText("operation.exactBrep")}</span><span>·</span><span>{uiText("common.operationCount", { count: document.features.length })}</span><span>·</span><span>{uiText("ui.parametriccadeditor.unidades.mm.74c0d1")}</span>
       </footer>
 
       <input
@@ -447,16 +447,16 @@ export function ParametricCadEditor() {
       {showLesson && (
         <div className="pcad-modal-backdrop" onMouseDown={() => setShowLesson(false)}>
           <article className="pcad-lesson" onMouseDown={(event) => event.stopPropagation()}>
-            <span className="pcad-lesson-badge"><GraduationCap size={18} /> RETO 01</span>
-            <h2>Convierte la placa en una etiqueta</h2>
-            <p>Edita parámetros existentes: no necesitas empezar de cero.</p>
+            <span className="pcad-lesson-badge"><GraduationCap size={18} /> {uiText("ui.parametriccadeditor.reto.01.db5503")}</span>
+            <h2>{uiText("ui.parametriccadeditor.convierte.la.placa.en.una.etiqueta.2f686b")}</h2>
+            <p>{uiText("ui.parametriccadeditor.edita.parametros.existentes.no.necesitas.empezar.8b1e29")}</p>
             <ol>
-              <li>Cambia el <strong>ancho del Boceto base a 90 mm</strong>.</li>
-              <li>Pon los taladros en <strong>X = −32 y X = 32</strong>.</li>
-              <li>Reduce el redondeo exterior a <strong>3 mm</strong>.</li>
-              <li>Exporta el resultado como <strong>STEP</strong>.</li>
+              <li>{uiText("ui.parametriccadeditor.cambia.el.11511d")}{" "}<strong>{uiText("ui.parametriccadeditor.ancho.del.boceto.base.a.90.mm.560a53")}</strong>.</li>
+              <li>{uiText("ui.parametriccadeditor.pon.los.taladros.en.64a2ef")}{" "}<strong>X = −32 y X = 32</strong>.</li>
+              <li>{uiText("ui.parametriccadeditor.reduce.el.redondeo.exterior.a.ed1089")}{" "}<strong>{uiText("ui.kercadaboutcontent.3.mm.a7c82d")}</strong>.</li>
+              <li>{uiText("ui.parametriccadeditor.exporta.el.resultado.como.57135c")}{" "}<strong>{uiText("ui.parametriccadeditor.step.0c9b85")}</strong>.</li>
             </ol>
-            <button onClick={() => setShowLesson(false)}>Empezar el reto</button>
+            <button onClick={() => setShowLesson(false)}>{uiText("ui.parametriccadeditor.empezar.el.reto.5d64f1")}</button>
           </article>
         </div>
       )}
@@ -478,60 +478,60 @@ function FeatureInspector({ feature, features, onUpdate, onDelete }: {
         <label><small>{featureLabel(feature)}</small><input value={feature.name} onChange={(event) => patch({ name: event.target.value })} /></label>
       </div>
       <label className="pcad-toggle-row">
-        <span><Eye size={16} /> Operación activa</span>
+        <span><Eye size={16} /> {uiText("ui.parametriccadeditor.operacion.activa.eb57e5")}</span>
         <input type="checkbox" checked={!feature.suppressed} onChange={(event) => patch({ suppressed: !event.target.checked })} />
       </label>
 
       {feature.kind === "sketch" && (
         <>
-          <section className="pcad-property-section"><h3>Plano y posición</h3>
-            <label className="pcad-select-field"><span>Plano</span><select value={feature.plane} disabled><option>XY</option></select></label>
-            <div className="pcad-field-grid"><NumberField label="Centro X" value={feature.x} onChange={(x) => patch({ x })} /><NumberField label="Centro Y" value={feature.y} onChange={(y) => patch({ y })} /></div>
-            <NumberField label="Desfase del plano" value={feature.offset} onChange={(offset) => patch({ offset })} />
+          <section className="pcad-property-section"><h3>{uiText("ui.parametriccadeditor.plano.y.posicion.7cc81c")}</h3>
+            <label className="pcad-select-field"><span>{uiText("property.plane")}</span><select value={feature.plane} disabled><option>{uiText("ui.parametriccadeditor.xy.034f19")}</option></select></label>
+            <div className="pcad-field-grid"><NumberField label={uiText("ui.parametriccadeditor.centro.x.ba4678")} value={feature.x} onChange={(x) => patch({ x })} /><NumberField label={uiText("ui.parametriccadeditor.centro.y.6496a7")} value={feature.y} onChange={(y) => patch({ y })} /></div>
+            <NumberField label={uiText("ui.parametriccadeditor.desfase.del.plano.7461f2")} value={feature.offset} onChange={(offset) => patch({ offset })} />
           </section>
-          <section className="pcad-property-section"><h3>Cotas del perfil</h3>
+          <section className="pcad-property-section"><h3>{uiText("ui.parametriccadeditor.cotas.del.perfil.ab7fbf")}</h3>
             {feature.profile.shape === "rectangle" ? (
               <div className="pcad-field-grid">
-                <NumberField label="Ancho" value={feature.profile.width} min={0.1} onChange={(width) => patch({ profile: { shape: "rectangle", width, depth: feature.profile.shape === "rectangle" ? feature.profile.depth : 30 } })} />
-                <NumberField label="Fondo" value={feature.profile.depth} min={0.1} onChange={(depth) => patch({ profile: { shape: "rectangle", width: feature.profile.shape === "rectangle" ? feature.profile.width : 40, depth } })} />
+                <NumberField label={uiText("ui.parametriccadeditor.ancho.4fb4e0")} value={feature.profile.width} min={0.1} onChange={(width) => patch({ profile: { shape: "rectangle", width, depth: feature.profile.shape === "rectangle" ? feature.profile.depth : 30 } })} />
+                <NumberField label={uiText("ui.parametriccadeditor.fondo.44603f")} value={feature.profile.depth} min={0.1} onChange={(depth) => patch({ profile: { shape: "rectangle", width: feature.profile.shape === "rectangle" ? feature.profile.width : 40, depth } })} />
               </div>
-            ) : feature.profile.shape === "circle" ? <NumberField label="Diámetro" value={feature.profile.diameter} min={0.1} onChange={(diameter) => patch({ profile: { shape: "circle", diameter } })} /> : <p>Boceto dibujado en el editor 2D</p>}
-            <div className="pcad-constraint-ok"><Check size={14} /> Boceto totalmente acotado</div>
+            ) : feature.profile.shape === "circle" ? <NumberField label={uiText("property.diameter")} value={feature.profile.diameter} min={0.1} onChange={(diameter) => patch({ profile: { shape: "circle", diameter } })} /> : <p>{uiText("ui.parametriccadeditor.boceto.dibujado.en.el.editor.2d.c7cbf9")}</p>}
+            <div className="pcad-constraint-ok"><Check size={14} /> {uiText("ui.parametriccadeditor.boceto.totalmente.acotado.4a69cf")}</div>
           </section>
         </>
       )}
 
       {feature.kind === "extrude" && (
         <>
-          <section className="pcad-property-section"><h3>Referencia</h3>
-            <label className="pcad-select-field"><span>Boceto</span><select value={feature.sketchId} onChange={(event) => patch({ sketchId: event.target.value })}>{features.filter((item) => item.kind === "sketch").map((sketch) => <option key={sketch.id} value={sketch.id}>{sketch.name}</option>)}</select></label>
+          <section className="pcad-property-section"><h3>{uiText("property.reference")}</h3>
+            <label className="pcad-select-field"><span>{uiText("operation.sketch")}</span><select value={feature.sketchId} onChange={(event) => patch({ sketchId: event.target.value })}>{features.filter((item) => item.kind === "sketch").map((sketch) => <option key={sketch.id} value={sketch.id}>{sketch.name}</option>)}</select></label>
           </section>
-          <section className="pcad-property-section"><h3>Operación</h3>
-            <label className="pcad-select-field"><span>Resultado</span><select value={feature.operation} onChange={(event) => patch({ operation: event.target.value as "add" | "cut" | "intersect" })}><option value="add">Añadir</option><option value="cut">Sustraer</option><option value="intersect">Intersección</option></select></label>
-            <NumberField label="Distancia" value={feature.distance} min={0.1} onChange={(distance) => patch({ distance })} />
-            <label className="pcad-toggle-row inset"><span>Simétrica al plano</span><input type="checkbox" checked={feature.symmetric} onChange={(event) => patch({ symmetric: event.target.checked })} /></label>
+          <section className="pcad-property-section"><h3>{uiText("model.operation")}</h3>
+            <label className="pcad-select-field"><span>{uiText("property.result")}</span><select value={feature.operation} onChange={(event) => patch({ operation: event.target.value as "add" | "cut" | "intersect" })}><option value="add">{uiText("model.add")}</option><option value="cut">{uiText("ui.parametriccadeditor.sustraer.dc08cc")}</option><option value="intersect">{uiText("ui.parametriccadeditor.interseccion.c8c96c")}</option></select></label>
+            <NumberField label={uiText("property.distance")} value={feature.distance} min={0.1} onChange={(distance) => patch({ distance })} />
+            <label className="pcad-toggle-row inset"><span>{uiText("ui.parametriccadeditor.simetrica.al.plano.7ba27c")}</span><input type="checkbox" checked={feature.symmetric} onChange={(event) => patch({ symmetric: event.target.checked })} /></label>
           </section>
         </>
       )}
 
       {feature.kind === "hole" && (
         <>
-          <section className="pcad-property-section"><h3>Posición del centro</h3><div className="pcad-field-grid"><NumberField label="X" value={feature.x} onChange={(x) => patch({ x })} /><NumberField label="Y" value={feature.y} onChange={(y) => patch({ y })} /></div></section>
-          <section className="pcad-property-section"><h3>Taladro</h3>
-            <NumberField label="Diámetro" value={feature.diameter} min={0.1} onChange={(diameter) => patch({ diameter })} />
-            <label className="pcad-select-field"><span>Final</span><select value={feature.termination} onChange={(event) => patch({ termination: event.target.value as "through-all" | "blind" })}><option value="through-all">Pasante</option><option value="blind">Profundidad</option></select></label>
-            {feature.termination === "blind" && <NumberField label="Profundidad" value={feature.depth} min={0.1} onChange={(depth) => patch({ depth })} />}
+          <section className="pcad-property-section"><h3>{uiText("ui.parametriccadeditor.posicion.del.centro.2258b2")}</h3><div className="pcad-field-grid"><NumberField label="X" value={feature.x} onChange={(x) => patch({ x })} /><NumberField label="Y" value={feature.y} onChange={(y) => patch({ y })} /></div></section>
+          <section className="pcad-property-section"><h3>{uiText("operation.hole")}</h3>
+            <NumberField label={uiText("property.diameter")} value={feature.diameter} min={0.1} onChange={(diameter) => patch({ diameter })} />
+            <label className="pcad-select-field"><span>{uiText("property.termination")}</span><select value={feature.termination} onChange={(event) => patch({ termination: event.target.value as "through-all" | "blind" })}><option value="through-all">{uiText("value.throughAll")}</option><option value="blind">{uiText("property.depth")}</option></select></label>
+            {feature.termination === "blind" && <NumberField label={uiText("property.depth")} value={feature.depth} min={0.1} onChange={(depth) => patch({ depth })} />}
           </section>
         </>
       )}
 
       {feature.kind === "fillet" && (
-        <section className="pcad-property-section"><h3>Redondeo</h3>
-          <NumberField label="Radio" value={feature.radius} min={0.1} step={0.5} onChange={(radius) => patch({ radius })} />
-          <label className="pcad-select-field"><span>Aristas</span><select value={feature.edges} onChange={(event) => patch({ edges: event.target.value as "vertical" | "all" })}><option value="vertical">Solo verticales</option><option value="all">Todas las aristas</option></select></label>
+        <section className="pcad-property-section"><h3>{uiText("toolbar.fillet")}</h3>
+          <NumberField label={uiText("property.radius")} value={feature.radius} min={0.1} step={0.5} onChange={(radius) => patch({ radius })} />
+          <label className="pcad-select-field"><span>{uiText("property.edges")}</span><select value={feature.edges} onChange={(event) => patch({ edges: event.target.value as "vertical" | "all" })}><option value="vertical">{uiText("ui.parametriccadeditor.solo.verticales.c03a43")}</option><option value="all">{uiText("ui.parametriccadeditor.todas.las.aristas.3ae805")}</option></select></label>
         </section>
       )}
-      <button className="pcad-delete-feature" onClick={onDelete}><Trash2 size={16} /> Eliminar operación</button>
+      <button className="pcad-delete-feature" onClick={onDelete}><Trash2 size={16} /> {uiText("toolbar.deleteOperation")}</button>
     </div>
   );
 }

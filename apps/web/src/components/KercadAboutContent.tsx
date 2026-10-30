@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { ArrowRight, BookOpen, Box, Check, Code2, FolderOpen, Globe, GraduationCap, History, MessageCircle, PencilRuler, Ruler, School, Server, ShieldCheck, Sparkles, Tablet, UserRound } from "lucide-react";
-import { aboutContent } from "@/lib/aboutContent";
+import { getAboutContent } from "@/lib/aboutContent";
 import type { KercadLocale } from "@/lib/kercadI18n";
+import { uiText } from "@/lib/kercadI18n";
 
 const featureIcons = [Box, PencilRuler, Ruler, FolderOpen];
 const essentialIcons = [Code2, UserRound, Globe, Tablet, FolderOpen, Server];
@@ -11,7 +12,7 @@ const illustrationPath = "/assets/kercad/about/";
 
 export function KercadAboutContent({ locale, preview, onStart, onOpenChallenges }: { locale: KercadLocale; preview?: string; onStart: () => void; onOpenChallenges: () => void }) {
   const [featureIndex, setFeatureIndex] = useState(0);
-  const text = aboutContent[locale];
+  const text = getAboutContent(locale);
   const feature = text.featureGroups[featureIndex];
   return <>
     <section id="top" className="about-hero about-container">
@@ -56,7 +57,7 @@ export function KercadAboutContent({ locale, preview, onStart, onOpenChallenges 
     <section id="challenges" className="about-challenges about-section">
       <div className="about-container about-challenge-layout">
         <div className="about-challenge-copy"><span className="about-eyebrow"><GraduationCap size={18} />{text.challengeEyebrow}</span><h2>{text.challengeTitle}<br /><em>{text.challengeAccent}</em></h2><p>{text.challengeDescription}</p><ol>{text.challengeSteps.map((item, index) => <li key={item.title}><span>{String(index + 1).padStart(2, "0")}</span><div><h3>{item.title}</h3><p>{item.description}</p></div></li>)}</ol><button className="about-button light" type="button" onClick={onOpenChallenges}>{text.openChallenges}<ArrowRight size={18} /></button></div>
-        <figure className="about-challenge-figure"><div className="about-challenge-demo"><header><BookOpen size={20} /><span>{text.challengeWindow}</span><span>2 / 4</span></header><div className="about-challenge-demo-content"><small>{text.challengeStep}</small><h3>{text.challengeName}</h3><p>{text.challengeInstruction}</p><div className="about-challenge-values"><span>{text.challengeParameter}<b>5 mm</b></span><span>{text.challengeParameter2}<b>3 mm</b></span></div><img src={`${illustrationPath}challenge.svg`} width="1000" height="700" alt={text.featureGroups[3].alt} loading="lazy" decoding="async" /><div className="about-demo-navigation" aria-hidden="true"><span>{text.previous}</span><span>{text.next}<ArrowRight size={14} /></span></div></div></div><figcaption>{text.challengeCaption}</figcaption></figure>
+        <figure className="about-challenge-figure"><div className="about-challenge-demo"><header><BookOpen size={20} /><span>{text.challengeWindow}</span><span>2 / 4</span></header><div className="about-challenge-demo-content"><small>{text.challengeStep}</small><h3>{text.challengeName}</h3><p>{text.challengeInstruction}</p><div className="about-challenge-values"><span>{text.challengeParameter}<b>{uiText("ui.kercadaboutcontent.5.mm.58ead5", {}, locale)}</b></span><span>{text.challengeParameter2}<b>{uiText("ui.kercadaboutcontent.3.mm.a7c82d", {}, locale)}</b></span></div><img src={`${illustrationPath}challenge.svg`} width="1000" height="700" alt={text.featureGroups[3].alt} loading="lazy" decoding="async" /><div className="about-demo-navigation" aria-hidden="true"><span>{text.previous}</span><span>{text.next}<ArrowRight size={14} /></span></div></div></div><figcaption>{text.challengeCaption}</figcaption></figure>
       </div>
     </section>
 
@@ -67,6 +68,6 @@ export function KercadAboutContent({ locale, preview, onStart, onOpenChallenges 
     <section id="stories" className="about-stories about-container about-section"><div className="about-story-graphic" aria-hidden="true"><span><MessageCircle size={44} strokeWidth={1.4} /></span><i /><i /><Sparkles size={26} /></div><div><span className="about-eyebrow">{text.storiesEyebrow}</span><h2>{text.storiesTitle}<br /><em>{text.storiesAccent}</em></h2><p>{text.storiesDescription}</p><span className="about-coming-soon">{text.comingSoon}</span></div></section>
 
     <section className="about-final"><div className="about-container"><div><h2>{text.finalTitle}</h2><p>{text.finalDescription}</p></div><button className="about-button light" type="button" onClick={onStart}>{text.start}<ArrowRight size={19} /></button></div></section>
-    <footer className="about-footer about-container"><div><strong><img src="/assets/kercad/logo.svg" width="34" height="34" alt="" />kerCAD</strong><p>{text.footer}</p></div><div><a href={`/documentation?lang=${locale}`} target="_blank" rel="noopener noreferrer">{text.documentation}<ArrowRight size={14} /></a><small>{text.credit}</small></div></footer>
+    <footer className="about-footer about-container"><div><strong><img src="/assets/kercad/logo.svg" width="34" height="34" alt="" />{uiText("ui.page.kercad.c0bf6d", {}, locale)}</strong><p>{text.footer}</p></div><div><a href={`/documentation?lang=${locale}`} target="_blank" rel="noopener noreferrer">{text.documentation}<ArrowRight size={14} /></a><small>{text.credit}</small></div></footer>
   </>;
 }

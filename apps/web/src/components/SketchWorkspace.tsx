@@ -21,6 +21,7 @@ import { SKETCH_ORIGIN_POINT_ID, SKETCH_X_AXIS_ID, SKETCH_Y_AXIS_ID, solveSketch
 import type { SketchProfileValidation } from "@/lib/sketchProfileValidation";
 import type { KercadLocale } from "@/lib/kercadI18n";
 import type { GridSize, SketchCircle, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchSegment, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
+import { uiText, pluralMessage } from "@/lib/kercadI18n";
 
 export type SketchTool = "line" | "connect" | "rectangle" | "centerRectangle" | "roundedRectangle" | "polygon" | "slot" | "arcSlot" | "bezier" | "smooth" | "freehand" | "freehandSmooth" | "circle" | "arc" | "select" | "refine" | "trim" | "erase" | "measure";
 export type SketchSelection =
@@ -329,7 +330,7 @@ function SketchDimensionInput({ id, label, indicator, value: storedValue, millim
     <text className="sketch-dimension-editor-indicator" pointerEvents="none" x={x + indicatorWidth / 2} y={5 * screenUnit} fontSize={11 * screenUnit}>{indicator}</text>
     <line className="sketch-constraint-remove-separator" pointerEvents="none" x1={x + indicatorWidth} y1={-pill.height / 2 + 4 * screenUnit} x2={x + indicatorWidth} y2={pill.height / 2 - 4 * screenUnit} />
     <line className="sketch-constraint-remove-separator" pointerEvents="none" x1={x + pill.width - removeWidth} y1={-pill.height / 2 + 4 * screenUnit} x2={x + pill.width - removeWidth} y2={pill.height / 2 - 4 * screenUnit} />
-    <g className="sketch-constraint-remove" role="button" tabIndex={0} aria-label={`${locale === "es" ? "Eliminar restricción" : "Delete constraint"} ${label}`} onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); onDelete?.(id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); onDelete?.(id); } }}>
+    <g className="sketch-constraint-remove" role="button" tabIndex={0} aria-label={`${uiText("ui.sketchworkspace.delete.constraint.0e1bde", {}, locale)} ${label}`} onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); onDelete?.(id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); onDelete?.(id); } }}>
       <rect x={x + pill.width - removeWidth} y={-pill.height / 2} width={removeWidth} height={pill.height} />
       <text pointerEvents="none" x={x + pill.width - removeWidth / 2} y={5 * screenUnit} fontSize={14 * screenUnit}>×</text>
     </g>
@@ -345,7 +346,7 @@ function SketchConstraintBadge({ id, label, x, z, screenUnit, locale, onDelete }
     <rect x={-width / 2} y={-height / 2} width={width} height={height} rx={3 * screenUnit} />
     <text pointerEvents="none" x={-removeWidth / 2} y={4 * screenUnit} fontSize={11 * screenUnit}>{label}</text>
     <line pointerEvents="none" x1={0} y1={-height / 2 + 3 * screenUnit} x2={0} y2={height / 2 - 3 * screenUnit} />
-    <g className="sketch-constraint-remove" role="button" tabIndex={0} aria-label={`${locale === "es" ? "Eliminar restricción" : "Delete constraint"} ${label}`} onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); onDelete?.(id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); onDelete?.(id); } }}>
+    <g className="sketch-constraint-remove" role="button" tabIndex={0} aria-label={`${uiText("ui.sketchworkspace.delete.constraint.0e1bde", {}, locale)} ${label}`} onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); onDelete?.(id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); onDelete?.(id); } }}>
       <rect x={0} y={-height / 2} width={removeWidth} height={height} />
       <text pointerEvents="none" x={removeWidth / 2} y={4 * screenUnit} fontSize={12 * screenUnit}>×</text>
     </g>
@@ -1237,9 +1238,9 @@ export function SketchWorkspace({
       onUpdateImage(action.imageId, {
         x: action.start.x + action.current.x - action.origin.x,
         z: action.start.z + action.current.z - action.origin.z,
-      }, "Sketch image moved");
+      }, uiText("ui.sketchworkspace.sketch.image.moved.ed55e6", {}, locale));
     } else if (action.kind === "resize-image") {
-      onUpdateImage(action.imageId, resizeSketchImage(action.start, action.handle, action.current), "Sketch image resized");
+      onUpdateImage(action.imageId, resizeSketchImage(action.start, action.handle, action.current), uiText("ui.sketchworkspace.sketch.image.resized.4d3d1f", {}, locale));
     }
     setPointerAction(null);
   };
@@ -1375,21 +1376,21 @@ export function SketchWorkspace({
   return (
     <main className="sketch-workspace-stage">
       {profileValidation && !editingGeometry ? <aside className={`sketch-profile-status ${profileValidation.valid ? "valid" : "invalid"}`}>
-        <strong>{profileValidation.valid ? locale === "es" ? `Perfil válido · ${profileValidation.closedContourCount} contorno${profileValidation.closedContourCount === 1 ? "" : "s"}` : `Valid profile · ${profileValidation.closedContourCount} contour${profileValidation.closedContourCount === 1 ? "" : "s"}` : locale === "es" ? "Perfil no válido" : "Invalid profile"}</strong>
+        <strong>{profileValidation.valid ? uiText(pluralMessage(locale, "sketch.validProfile", profileValidation.closedContourCount), { count: profileValidation.closedContourCount }, locale) : uiText("ui.sketchworkspace.invalid.profile.ef4b23", {}, locale)}</strong>
         {!profileValidation.valid ? <span>{profileValidation.diagnostics[0]?.message}</span> : null}
-        {profileValidation.diagnostics.length > 1 ? <small>+{profileValidation.diagnostics.length - 1} {locale === "es" ? `problema${profileValidation.diagnostics.length === 2 ? "" : "s"}` : `problem${profileValidation.diagnostics.length === 2 ? "" : "s"}`}</small> : null}
+        {profileValidation.diagnostics.length > 1 ? <small>{uiText(pluralMessage(locale, "sketch.moreProblems", profileValidation.diagnostics.length - 1), { count: profileValidation.diagnostics.length - 1 }, locale)}</small> : null}
       </aside> : null}
       {operation === "revolve" ? <SketchRevolvePreview positions={revolvePreviewPositions} /> : null}
-      <div className="camera-controls sketch-camera-controls" aria-label="Sketch view controls">
-        <button aria-label="Reset sketch view" onClick={() => { setZoom(1); setPan({ x: 0, z: 0 }); }}><Home size={28} /></button>
-        <button aria-label="Zoom in" onClick={() => setZoom((value) => clamp(value * 1.25, 0.75, 6))}><Plus size={33} /></button>
-        <button aria-label="Zoom out" onClick={() => setZoom((value) => clamp(value / 1.25, 0.75, 6))}><Minus size={33} /></button>
+      <div className="camera-controls sketch-camera-controls" aria-label={uiText("ui.sketchworkspace.sketch.view.controls.909bec", {}, locale)}>
+        <button aria-label={uiText("ui.sketchworkspace.reset.sketch.view.96427e", {}, locale)} onClick={() => { setZoom(1); setPan({ x: 0, z: 0 }); }}><Home size={28} /></button>
+        <button aria-label={uiText("camera.zoomIn", {}, locale)} onClick={() => setZoom((value) => clamp(value * 1.25, 0.75, 6))}><Plus size={33} /></button>
+        <button aria-label={uiText("camera.zoomOut", {}, locale)} onClick={() => setZoom((value) => clamp(value / 1.25, 0.75, 6))}><Minus size={33} /></button>
         <span className="camera-control-separator" />
-        <button className={showDimensionLabels ? "active" : ""} type="button" aria-label={locale === "es" ? "Mostrar u ocultar longitudes" : "Show or hide lengths"} title={locale === "es" ? "Mostrar u ocultar longitudes" : "Show or hide lengths"} aria-pressed={showDimensionLabels} onClick={() => setShowDimensionLabels((visible) => !visible)}><ViewToolbarIcon file="toggle-lengths" /></button>
-        <button data-tutorial="sketch-visibility" className={showAnnotations ? "active" : ""} type="button" aria-label={locale === "es" ? "Mostrar u ocultar anotaciones" : "Show or hide annotations"} title={locale === "es" ? "Mostrar u ocultar anotaciones" : "Show or hide annotations"} aria-pressed={showAnnotations} onClick={() => { setShowAnnotations((visible) => !visible); if (showAnnotations) { onSelectAnnotation?.(null); if (annotationTool) onCancelActiveTool?.(); } }}><ViewToolbarIcon file="toggle-dimensions" /></button>
-        <button className={showConstraintLabels ? "active" : ""} type="button" aria-label={locale === "es" ? "Mostrar u ocultar etiquetas de restricciones" : "Show or hide constraint labels"} title={locale === "es" ? "Mostrar u ocultar etiquetas de restricciones" : "Show or hide constraint labels"} aria-pressed={showConstraintLabels} onClick={() => setShowConstraintLabels((visible) => !visible)}><ViewToolbarIcon file="toggle-constraints" /></button>
+        <button className={showDimensionLabels ? "active" : ""} type="button" aria-label={uiText("ui.sketchworkspace.show.or.hide.lengths.8f1aaa", {}, locale)} title={uiText("ui.sketchworkspace.show.or.hide.lengths.8f1aaa", {}, locale)} aria-pressed={showDimensionLabels} onClick={() => setShowDimensionLabels((visible) => !visible)}><ViewToolbarIcon file="toggle-lengths" /></button>
+        <button data-tutorial="sketch-visibility" className={showAnnotations ? "active" : ""} type="button" aria-label={uiText("ui.sketchworkspace.show.or.hide.annotations.e7f82f", {}, locale)} title={uiText("ui.sketchworkspace.show.or.hide.annotations.e7f82f", {}, locale)} aria-pressed={showAnnotations} onClick={() => { setShowAnnotations((visible) => !visible); if (showAnnotations) { onSelectAnnotation?.(null); if (annotationTool) onCancelActiveTool?.(); } }}><ViewToolbarIcon file="toggle-dimensions" /></button>
+        <button className={showConstraintLabels ? "active" : ""} type="button" aria-label={uiText("ui.sketchworkspace.show.or.hide.constraint.labels.87746e", {}, locale)} title={uiText("ui.sketchworkspace.show.or.hide.constraint.labels.87746e", {}, locale)} aria-pressed={showConstraintLabels} onClick={() => setShowConstraintLabels((visible) => !visible)}><ViewToolbarIcon file="toggle-constraints" /></button>
       </div>
-      <section className="sketch-plate-wrap" aria-label="2D sketch plate">
+      <section className="sketch-plate-wrap" aria-label={uiText("ui.sketchworkspace.2d.sketch.plate.da6dc0", {}, locale)}>
         <svg
           ref={svgRef}
           className={`sketch-plate tool-${tool} ${pointerAction?.kind === "pan" ? "panning" : ""}`}
@@ -1477,7 +1478,7 @@ export function SketchWorkspace({
             <g className="sketch-revolve-guide" pointerEvents="none">
               <rect x={0} y={-workspace.depth / 2} width={workspace.width / 2} height={workspace.depth} />
               <line x1={0} y1={-workspace.depth / 2} x2={0} y2={workspace.depth / 2} />
-              <text x={-5 * screenUnit} y={workspace.depth / 2 - 18 * screenUnit} fontSize={12 * screenUnit}>REVOLVE AXIS</text>
+              <text x={-5 * screenUnit} y={workspace.depth / 2 - 18 * screenUnit} fontSize={12 * screenUnit}>{uiText("ui.sketchworkspace.revolve.axis.96c40c", {}, locale)}</text>
             </g>
           ) : null}
           <g className="sketch-reference-images">
@@ -1717,7 +1718,7 @@ export function SketchWorkspace({
               const dimensionStart = pointById.get(segment.startId), dimensionEnd = pointById.get(segment.endId);
               if (constraints.length) return showConstraintLabels && dimensionStart && dimensionEnd ? constraints.map((constraint, index) => (
                 <SketchFixedLengthDimension key={`dimension-${constraint.id}`} start={dimensionStart} end={dimensionEnd} contour={dimensionContours.get(segment.id)} axis={constraint.axis} screenUnit={screenUnit} index={index} labelWidth={dimensionPillSize(formatDimension(constraint.value / millimetersPerUnit, workspace.accuracy + Math.max(0, Math.ceil(Math.log10(millimetersPerUnit)))), screenUnit, 60).width}>
-                  <SketchDimensionInput millimetersPerUnit={millimetersPerUnit} id={constraint.id} label={locale === "es" ? constraint.axis === "x" ? "Distancia X" : constraint.axis === "z" ? "Distancia Y" : "Longitud" : constraint.axis === "x" ? "X distance" : constraint.axis === "z" ? "Y distance" : "Length"} indicator={constraint.axis === "x" ? "H" : constraint.axis === "z" ? "V" : "D"} value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
+                  <SketchDimensionInput millimetersPerUnit={millimetersPerUnit} id={constraint.id} label={(constraint.axis === "x" ? uiText("sketch.distanceX", {}, locale) : constraint.axis === "z" ? uiText("sketch.distanceY", {}, locale) : uiText("sketch.dimensionLength", {}, locale))} indicator={constraint.axis === "x" ? "H" : constraint.axis === "z" ? "V" : "D"} value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
                 </SketchFixedLengthDimension>
               )) : null;
               if (!showDimensionLabels) return null;
@@ -1742,7 +1743,7 @@ export function SketchWorkspace({
               const x = dimensions.reduce((total, dimension) => total + dimension.midpoint.x, 0) / dimensions.length;
               const z = dimensions.reduce((total, dimension) => total + dimension.midpoint.z, 0) / dimensions.length + labelOffset + 30 * screenUnit;
               return <g key={`angle-${constraint.id}`} transform={`translate(${x} ${z})`}>
-                <SketchDimensionInput id={constraint.id} label={locale === "es" ? "Ángulo" : "Angle"} indicator="A" value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} allowSigned onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
+                <SketchDimensionInput id={constraint.id} label={uiText("sketch.angle", {}, locale)} indicator="A" value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} allowSigned onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
               </g>;
             })}
           </g> : null}
@@ -1816,7 +1817,7 @@ export function SketchWorkspace({
               <g
                 className="sketch-measurement-pill"
                 role="button"
-                aria-label="Remove measurement"
+                aria-label={uiText("ui.sketchworkspace.remove.measurement.0e1d09", {}, locale)}
                 transform={`translate(${(measurement.start.x + measurement.end.x) / 2} ${(measurement.start.z + measurement.end.z) / 2 + labelOffset})`}
                 onPointerDown={(event) => {
                   event.preventDefault();
@@ -1855,7 +1856,7 @@ export function SketchWorkspace({
               if (constraint?.kind === "radius" || constraint?.kind === "diameter") return <g key={`radius-${constraint.id}`}>
                 {leader}
                 <g transform={`translate(${radialPosition.x} ${radialPosition.z})`}>
-                <SketchDimensionInput millimetersPerUnit={millimetersPerUnit} id={constraint.id} label={locale === "es" ? constraint.kind === "diameter" ? "Diámetro" : "Radio" : constraint.kind === "diameter" ? "Diameter" : "Radius"} indicator={constraint.kind === "diameter" ? "Ø" : "R"} value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} align="start" onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
+                <SketchDimensionInput millimetersPerUnit={millimetersPerUnit} id={constraint.id} label={(constraint.kind === "diameter" ? uiText("sidebar.diameter", {}, locale) : uiText("sidebar.radius", {}, locale))} indicator={constraint.kind === "diameter" ? "Ø" : "R"} value={constraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} align="start" onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
                 </g>
               </g>;
               return <g key={`radius-${circle.id}`} pointerEvents="none">
@@ -1887,13 +1888,13 @@ export function SketchWorkspace({
               return <g key={`arc-dimensions-${segment.id}`}>
                 {(radialConstraint ? showConstraintLabels : showDimensionLabels) && <SketchRadialLeader center={arc.center} label={{ x: radialPosition.x + radialLabelWidth / 2, z: radialPosition.z }} radius={arc.radius} screenUnit={screenUnit} />}
                 {radialConstraint ? showConstraintLabels ? <g transform={`translate(${radialPosition.x} ${radialPosition.z})`}>
-                  <SketchDimensionInput millimetersPerUnit={millimetersPerUnit} id={radialConstraint.id} label={locale === "es" ? radialConstraint.kind === "arcDiameter" ? "Diámetro" : "Radio" : radialConstraint.kind === "arcDiameter" ? "Diameter" : "Radius"} indicator={radialConstraint.kind === "arcDiameter" ? "Ø" : "R"} value={radialConstraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} align="start" onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
+                  <SketchDimensionInput millimetersPerUnit={millimetersPerUnit} id={radialConstraint.id} label={(radialConstraint.kind === "arcDiameter" ? uiText("sidebar.diameter", {}, locale) : uiText("sidebar.radius", {}, locale))} indicator={radialConstraint.kind === "arcDiameter" ? "Ø" : "R"} value={radialConstraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} align="start" onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
                 </g> : null : showDimensionLabels ? <g pointerEvents="none" transform={`translate(${radialPosition.x} ${radialPosition.z})`}>
                   <rect x={0} y={-radialPill.height / 2} width={radialPill.width} height={radialPill.height} rx={radialPill.radius} />
                   <text x={radialPill.width / 2} y={5 * screenUnit} fontSize={13 * screenUnit}>{radialLabel}</text>
                 </g> : null}
                 {angleConstraint && showConstraintLabels ? <g transform={`translate(${anglePosition.x} ${anglePosition.z})`}>
-                  <SketchDimensionInput id={angleConstraint.id} label={locale === "es" ? "Ángulo del arco" : "Arc angle"} indicator="A" value={angleConstraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
+                  <SketchDimensionInput id={angleConstraint.id} label={uiText("ui.sketchworkspace.arc.angle.90ac83", {}, locale)} indicator="A" value={angleConstraint.value} accuracy={workspace.accuracy} screenUnit={screenUnit} locale={locale} onCommit={onUpdateConstraintValue} onDelete={onDeleteConstraint} />
                 </g> : null}
               </g>;
             })}
@@ -2001,8 +2002,8 @@ export function SketchWorkspace({
               ["nw", transformFrame.minX, transformFrame.maxZ], ["n", (transformFrame.minX + transformFrame.maxX) / 2, transformFrame.maxZ], ["ne", transformFrame.maxX, transformFrame.maxZ],
               ["w", transformFrame.minX, (transformFrame.minZ + transformFrame.maxZ) / 2], ["e", transformFrame.maxX, (transformFrame.minZ + transformFrame.maxZ) / 2],
               ["sw", transformFrame.minX, transformFrame.minZ], ["s", (transformFrame.minX + transformFrame.maxX) / 2, transformFrame.minZ], ["se", transformFrame.maxX, transformFrame.minZ],
-            ] as Array<[SketchTransformHandle, number, number]>).map(([handle, x, z]) => <rect key={handle} data-sketch-entity="selection-handle" className={`sketch-selection-transform-handle handle-${handle}`} x={x + (handle.includes("w") ? -12.8 : handle.includes("e") ? 0 : -6.4) * screenUnit} y={z + (handle.includes("n") ? 0 : handle.includes("s") ? -12.8 : -6.4) * screenUnit} width={12.8 * screenUnit} height={12.8 * screenUnit} strokeWidth={1.5 * screenUnit} onPointerDown={(event) => beginSelectionTransform(event, handle)}><title>{locale === "es" ? "Escalar selección" : "Scale selection"}</title></rect>)}
-            <circle data-sketch-entity="selection-handle" className="sketch-selection-transform-handle handle-rotate" cx={(transformFrame.minX + transformFrame.maxX) / 2} cy={transformFrame.maxZ + 28 * screenUnit} r={6.4 * screenUnit} strokeWidth={1.5 * screenUnit} onPointerDown={(event) => beginSelectionTransform(event, "rotate")}><title>{locale === "es" ? "Rotar selección" : "Rotate selection"}</title></circle>
+            ] as Array<[SketchTransformHandle, number, number]>).map(([handle, x, z]) => <rect key={handle} data-sketch-entity="selection-handle" className={`sketch-selection-transform-handle handle-${handle}`} x={x + (handle.includes("w") ? -12.8 : handle.includes("e") ? 0 : -6.4) * screenUnit} y={z + (handle.includes("n") ? 0 : handle.includes("s") ? -12.8 : -6.4) * screenUnit} width={12.8 * screenUnit} height={12.8 * screenUnit} strokeWidth={1.5 * screenUnit} onPointerDown={(event) => beginSelectionTransform(event, handle)}><title>{uiText("ui.sketchworkspace.scale.selection.72f3e0", {}, locale)}</title></rect>)}
+            <circle data-sketch-entity="selection-handle" className="sketch-selection-transform-handle handle-rotate" cx={(transformFrame.minX + transformFrame.maxX) / 2} cy={transformFrame.maxZ + 28 * screenUnit} r={6.4 * screenUnit} strokeWidth={1.5 * screenUnit} onPointerDown={(event) => beginSelectionTransform(event, "rotate")}><title>{uiText("ui.sketchworkspace.rotate.selection.8310b0", {}, locale)}</title></circle>
             {transformPivot && <g className="sketch-selection-pivot">
               {pointerAction?.kind === "move-selection-pivot" && pointerAction.snapTarget && <circle className="sketch-selection-pivot-snap" cx={pointerAction.snapTarget.x} cy={pointerAction.snapTarget.z} r={12 * screenUnit} strokeWidth={2 * screenUnit} pointerEvents="none" />}
               <circle data-sketch-entity="selection-handle" className="sketch-selection-transform-handle handle-pivot" cx={transformPivot.x} cy={transformPivot.z} r={8 * screenUnit} strokeWidth={1.5 * screenUnit} onDoubleClick={(event) => { event.stopPropagation(); setSelectionPivot(null); }} onPointerDown={(event) => {
@@ -2011,7 +2012,7 @@ export function SketchWorkspace({
                 const pointer = pointFromEvent(event, false, false);
                 if (!pointer) return;
                 beginEntityDrag(event, { kind: "move-selection-pivot", pointerId: event.pointerId, current: { ...transformPivot }, offset: { x: transformPivot.x - pointer.x, z: transformPivot.z - pointer.z } });
-              }}><title>{locale === "es" ? "Origen de rotación · arrastra para mover · doble clic para centrar" : "Rotation origin · drag to move · double-click to center"}</title></circle>
+              }}><title>{uiText("ui.sketchworkspace.rotation.origin.drag.to.move.double.click.to.cen.22268c", {}, locale)}</title></circle>
               <path d={`M ${transformPivot.x - 4 * screenUnit} ${transformPivot.z} h ${8 * screenUnit} M ${transformPivot.x} ${transformPivot.z - 4 * screenUnit} v ${8 * screenUnit}`} stroke="#1269eb" strokeWidth={screenUnit} pointerEvents="none" />
             </g>}
           </g>}
@@ -2031,10 +2032,10 @@ export function SketchWorkspace({
         />
       ) : null}
       {showPointActions && selectedPoint && tool === "select" ? (
-        <div className="sketch-point-actions" aria-label="Point actions">
-          <button className={selectedPoint.mode === "corner" || !selectedPoint.mode ? "active" : ""} type="button" title="Make corner" aria-pressed={selectedPoint.mode === "corner" || !selectedPoint.mode} onClick={() => onSetPointMode(selectedPoint.id, "corner")}><CornerDownRight /><span>Corner</span></button>
-          <button className={selectedPoint.mode === "smooth" ? "active" : ""} type="button" title="Make smooth" aria-pressed={selectedPoint.mode === "smooth"} onClick={() => onSetPointMode(selectedPoint.id, "smooth")}><Waves /><span>Smooth</span></button>
-          <button className={selectedPoint.mode === "split" ? "active" : ""} type="button" title="Split handles" aria-pressed={selectedPoint.mode === "split"} onClick={() => onSetPointMode(selectedPoint.id, "split")}><Split /><span>Split</span></button>
+        <div className="sketch-point-actions" aria-label={uiText("ui.sketchworkspace.point.actions.e96719", {}, locale)}>
+          <button className={selectedPoint.mode === "corner" || !selectedPoint.mode ? "active" : ""} type="button" title={uiText("ui.sketchworkspace.make.corner.7d290b", {}, locale)} aria-pressed={selectedPoint.mode === "corner" || !selectedPoint.mode} onClick={() => onSetPointMode(selectedPoint.id, "corner")}><CornerDownRight /><span>{uiText("sketch.corner", {}, locale)}</span></button>
+          <button className={selectedPoint.mode === "smooth" ? "active" : ""} type="button" title={uiText("ui.sketchworkspace.make.smooth.9174d5", {}, locale)} aria-pressed={selectedPoint.mode === "smooth"} onClick={() => onSetPointMode(selectedPoint.id, "smooth")}><Waves /><span>{uiText("sketch.smooth", {}, locale)}</span></button>
+          <button className={selectedPoint.mode === "split" ? "active" : ""} type="button" title={uiText("sketch.splitHandles", {}, locale)} aria-pressed={selectedPoint.mode === "split"} onClick={() => onSetPointMode(selectedPoint.id, "split")}><Split /><span>{uiText("ui.sketchworkspace.split.fc8230", {}, locale)}</span></button>
         </div>
       ) : null}
       {showGridControls ? <div className="grid-settings sketch-grid-settings">
@@ -2066,21 +2067,21 @@ function SketchImageInspector({
   const updateWidth = (width: number) => onUpdate({
     width,
     ...(image.lockAspect !== false ? { depth: Math.max(0.5, width / aspect) } : {}),
-  }, "Sketch image width updated");
+  }, uiText("ui.sketchworkspace.sketch.image.width.updated.97e8f7"));
   const updateDepth = (depth: number) => onUpdate({
     depth,
     ...(image.lockAspect !== false ? { width: Math.max(0.5, depth * aspect) } : {}),
-  }, "Sketch image height updated");
+  }, uiText("ui.sketchworkspace.sketch.image.height.updated.82a713"));
 
   return (
-    <aside className="shape-inspector sketch-image-inspector" aria-label={`${image.name} image settings`} onPointerDown={(event) => event.stopPropagation()}>
+    <aside className="shape-inspector sketch-image-inspector" aria-label={uiText("ui.sketchworkspace.image.settings.5b79bd", { value0: image.name })} onPointerDown={(event) => event.stopPropagation()}>
       <div className="shape-inspector-header">
-        <button className="inspector-header-icon" type="button" aria-label="Close image settings" onClick={onClose}>
+        <button className="inspector-header-icon" type="button" aria-label={uiText("ui.sketchworkspace.close.image.settings.4487d6")} onClick={onClose}>
           <ChevronUp size={26} strokeWidth={2.8} />
         </button>
         <strong>{image.name}</strong>
         <div className="inspector-header-actions">
-          <button className="inspector-header-icon danger" type="button" aria-label="Delete sketch image" title="Delete image" onClick={onDelete}>
+          <button className="inspector-header-icon danger" type="button" aria-label={uiText("ui.sketchworkspace.delete.sketch.image.29418e")} title={uiText("ui.sketchworkspace.delete.image.ffc272")} onClick={onDelete}>
             <Trash2 size={25} strokeWidth={2.2} />
           </button>
         </div>
@@ -2090,16 +2091,16 @@ function SketchImageInspector({
         <span>{image.pixelWidth} × {image.pixelHeight} px</span>
       </div>
       <div className="property-card">
-        <div className="property-card-header static"><span>Properties</span></div>
+        <div className="property-card-header static"><span>{uiText("ui.sketchworkspace.properties.bc6c88")}</span></div>
         <div className="property-list">
-          <SketchImageRange label="Width" value={image.width / millimetersPerUnit} min={0.5 / millimetersPerUnit} max={200 / millimetersPerUnit} accuracy={displayAccuracy} suffix={unitLabel} onChange={(value) => updateWidth(value * millimetersPerUnit)} />
-          <SketchImageRange label="Height" value={image.depth / millimetersPerUnit} min={0.5 / millimetersPerUnit} max={200 / millimetersPerUnit} accuracy={displayAccuracy} suffix={unitLabel} onChange={(value) => updateDepth(value * millimetersPerUnit)} />
-          <SketchImageRange label="Opacity" value={(image.opacity ?? 0.55) * 100} min={5} max={100} accuracy={1} suffix="%" onChange={(opacity) => onUpdate({ opacity: opacity / 100 }, "Sketch image opacity updated")} />
-          <SketchImagePositionField label={`Position X (${unitLabel})`} value={image.x / millimetersPerUnit} accuracy={displayAccuracy} onChange={(x) => onUpdate({ x: x * millimetersPerUnit }, "Sketch image moved")} />
-          <SketchImagePositionField label={`Position Y (${unitLabel})`} value={image.z / millimetersPerUnit} accuracy={displayAccuracy} onChange={(z) => onUpdate({ z: z * millimetersPerUnit }, "Sketch image moved")} />
-          <button className={`sketch-image-aspect-toggle ${image.lockAspect !== false ? "active" : ""}`} type="button" onClick={() => onUpdate({ lockAspect: image.lockAspect === false }, "Image aspect ratio setting updated")}>
+          <SketchImageRange label={uiText("sidebar.width")} value={image.width / millimetersPerUnit} min={0.5 / millimetersPerUnit} max={200 / millimetersPerUnit} accuracy={displayAccuracy} suffix={unitLabel} onChange={(value) => updateWidth(value * millimetersPerUnit)} />
+          <SketchImageRange label={uiText("sidebar.height")} value={image.depth / millimetersPerUnit} min={0.5 / millimetersPerUnit} max={200 / millimetersPerUnit} accuracy={displayAccuracy} suffix={unitLabel} onChange={(value) => updateDepth(value * millimetersPerUnit)} />
+          <SketchImageRange label={uiText("sidebar.opacity")} value={(image.opacity ?? 0.55) * 100} min={5} max={100} accuracy={1} suffix="%" onChange={(opacity) => onUpdate({ opacity: opacity / 100 }, uiText("ui.sketchworkspace.sketch.image.opacity.updated.0ef043"))} />
+          <SketchImagePositionField label={uiText("ui.sketchworkspace.position.x.e24e60", { value0: unitLabel })} value={image.x / millimetersPerUnit} accuracy={displayAccuracy} onChange={(x) => onUpdate({ x: x * millimetersPerUnit }, uiText("ui.sketchworkspace.sketch.image.moved.ed55e6"))} />
+          <SketchImagePositionField label={uiText("ui.sketchworkspace.position.y.144f14", { value0: unitLabel })} value={image.z / millimetersPerUnit} accuracy={displayAccuracy} onChange={(z) => onUpdate({ z: z * millimetersPerUnit }, uiText("ui.sketchworkspace.sketch.image.moved.ed55e6"))} />
+          <button className={`sketch-image-aspect-toggle ${image.lockAspect !== false ? "active" : ""}`} type="button" onClick={() => onUpdate({ lockAspect: image.lockAspect === false }, uiText("ui.sketchworkspace.image.aspect.ratio.setting.updated.9461a3"))}>
             {image.lockAspect !== false ? <Link size={17} /> : <Link2Off size={17} />}
-            <span>{image.lockAspect !== false ? "Aspect ratio locked" : "Aspect ratio unlocked"}</span>
+            <span>{image.lockAspect !== false ? uiText("ui.sketchworkspace.aspect.ratio.locked.a95ef9") : uiText("ui.sketchworkspace.aspect.ratio.unlocked.c8be6b")}</span>
           </button>
         </div>
       </div>
