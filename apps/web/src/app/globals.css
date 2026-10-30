@@ -3706,6 +3706,7 @@ button {
 .kercad-welcome-greetings-track { display: flex; width: max-content; animation: kercad-welcome-greetings-scroll var(--welcome-greeting-duration, 20s) linear infinite; will-change: transform; }
 .kercad-welcome-greetings-group,
 .kercad-welcome-greeting-cycle { display: flex; flex-shrink: 0; }
+.kercad-welcome-greeting-cycle > span { white-space: pre; }
 @keyframes kercad-welcome-greetings-scroll {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
