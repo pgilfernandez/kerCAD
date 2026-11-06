@@ -1593,10 +1593,10 @@ button {
 .kercad-export-name input:disabled { opacity: .55; cursor: not-allowed; }
 .kercad-export-name > span { text-align: right; }
 
-.kercad-export-options button {
+.kercad-export-option-header {
   display: grid;
   min-height: 68px;
-  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-columns: 44px minmax(0, 1fr) auto;
   grid-template-rows: auto auto;
   align-content: center;
   align-items: center;
@@ -1610,9 +1610,14 @@ button {
   border-radius: 8px;
 }
 
+.kercad-export-options button { display: inline-flex; align-items: center; justify-content: center; min-height: 32px; padding: 6px 10px; color: var(--theme-text); background: var(--theme-surface); border: 1px solid var(--theme-line-cfdae3); border-radius: 6px; cursor: pointer; font: inherit; font-size: 12px; }
+.kercad-export-option { overflow: hidden; background: var(--theme-surface); border: 1px solid var(--theme-line-cfdae3); border-radius: 8px; }
+.kercad-export-option-header { border: 0; border-radius: 0; }
+.kercad-export-options .kercad-export-option-header > button { grid-column: 3; grid-row: 1; align-self: center; min-height: 32px; color: #fff; background: var(--accent-solid); border-color: var(--accent-solid); white-space: nowrap; }
+.kercad-export-options .kercad-export-option-header > button:disabled { opacity: .5; cursor: default; }
 .kercad-export-options button:hover:not(:disabled) { border-color: var(--theme-line-67b8d4); box-shadow: 0 4px 14px rgba(28, 70, 91, 0.12); }
-.kercad-export-options strong { grid-column: 2; grid-row: 1; align-self: end; margin: 0; font-size: 12px; }
-.kercad-export-options small { grid-column: 2; grid-row: 2; align-self: start; color: var(--theme-dark-link, #7d8f9d); font-size: 9px; }
+.kercad-export-options strong { grid-column: 2; grid-row: 1; align-self: center; margin: 0; font-size: 12px; }
+.kercad-export-options small { grid-column: 2 / -1; grid-row: 2; align-self: start; color: var(--theme-dark-link, #7d8f9d); font-size: 9px; }
 .export-format-icon { display: grid; width: 44px; height: 36px; grid-column: 1; grid-row: 1 / 3; place-items: center; color: var(--theme-dark-link, #3f7897); background: var(--theme-dark-active, #e5f3f8); border-radius: 5px; font-size: 9px; font-weight: 900; }
 .export-format-icon.step { color: var(--theme-dark-text, #8d621a); background: var(--theme-bg-fff0cf); }
 .kercad-stl-export-option { overflow: hidden; background: var(--theme-surface); border: 1px solid var(--theme-line-cfdae3); border-radius: 8px; transition: border-color 140ms ease, box-shadow 140ms ease; }
