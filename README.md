@@ -127,7 +127,7 @@ El núcleo OpenCascade pesa aproximadamente 22 MB y se carga de forma diferida l
 
 ## Modelo de documento
 
-El archivo `.kercad` es un paquete ZIP que contiene el documento paramétrico versionado y los recursos necesarios para reabrirlo. El JSON del historial sigue siendo la fuente de verdad; STL contiene geometría triangulada y no sustituye esa copia editable. El siguiente fragmento ilustra el documento interno, no un paquete completo importable:
+El archivo `.kercad` es un paquete ZIP que contiene el documento paramétrico versionado y los recursos necesarios para reabrirlo. La versión 2 incorpora también `model.step` con la geometría final de los sólidos para intercambio y conservación independiente del historial. Se siguen importando los paquetes de versión 1. La [especificación del formato](docs/KERCAD_PROJECT_FORMAT.md) detalla el manifiesto, las comprobaciones de integridad y la representación STEP. El JSON del historial sigue siendo la fuente de verdad; STL contiene geometría triangulada y no sustituye esa copia editable. El siguiente fragmento ilustra el documento interno, no un paquete completo importable:
 
 ```json
 {

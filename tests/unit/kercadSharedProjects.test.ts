@@ -8,6 +8,8 @@ import { createStarterDocument } from "@/lib/parametricDocument";
 import { createEmptyDocument } from "@/lib/parametricDocument";
 import { exportKercadProject, importKercadProject } from "@/lib/kercadProject";
 
+vi.mock("@/lib/parametricKernel", () => ({ exportParametricStep: vi.fn(async () => new Blob(["ISO-10303-21;\nHEADER;ENDSEC;DATA;ENDSEC;END-ISO-10303-21;"], { type: "application/step" })) }));
+
 let root: string;
 const url = "http://localhost/api/kercad-shared-projects?fileName=Lesson.kercad";
 async function save(name: string, revision?: string, author?: string) {

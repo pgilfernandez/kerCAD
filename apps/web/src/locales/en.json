@@ -229,7 +229,7 @@
     "dialog.saving": "Saving…",
     "dialog.exporting": "Exporting…",
     "dialog.projectFormat": "kerCAD project",
-    "dialog.projectFormatHint": "Editable package with history and assets",
+    "dialog.projectFormatHint": "Editable package with history, assets and STEP geometry",
     "dialog.stepFormat": "STEP model",
     "dialog.stepFormatHint": "Exact B-Rep for manufacturing",
     "dialog.stlFormat": "STL model",
@@ -1449,7 +1449,11 @@
     "challenge.captureParametersHint": "Select an object or operation to capture its parameters.",
     "challenge.parameterAxis": "{parameter} {axis}",
     "challenge.parameterOf": "{name} · {parameter}",
-    "challenge.parameterSeparator": "Separator"
+    "challenge.parameterSeparator": "Separator",
+    "package.invalidStep": "The embedded STEP entry is invalid.",
+    "package.stepIntegrity": "The embedded STEP geometry failed its integrity check.",
+    "package.stepLimit": "The STEP geometry exceeds the 128 MB limit.",
+    "package.stepExportFailed": "Could not include STEP geometry: {reason}"
   },
   "content": {
     "tutorial": {

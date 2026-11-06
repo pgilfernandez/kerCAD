@@ -229,7 +229,7 @@
     "dialog.saving": "Speichern…",
     "dialog.exporting": "Exportieren…",
     "dialog.projectFormat": "kerCAD-Projekt",
-    "dialog.projectFormatHint": "Bearbeitbares Paket mit Verlauf und Ressourcen",
+    "dialog.projectFormatHint": "Bearbeitbares Paket mit Verlauf, Ressourcen und STEP-Geometrie",
     "dialog.stepFormat": "STEP-Modell",
     "dialog.stepFormatHint": "Genaues B-Rep für die Fertigung",
     "dialog.stlFormat": "STL-Modell",
@@ -1449,7 +1449,11 @@
     "challenge.captureParametersHint": "Wähle ein Objekt oder eine Operation aus, um die Parameter zu erfassen.",
     "challenge.parameterAxis": "{parameter} {axis}",
     "challenge.parameterOf": "{name} · {parameter}",
-    "challenge.parameterSeparator": "Trennlinie"
+    "challenge.parameterSeparator": "Trennlinie",
+    "package.invalidStep": "Die eingebettete STEP-Datei ist ungültig.",
+    "package.stepIntegrity": "Die Integritätsprüfung der eingebetteten STEP-Geometrie ist fehlgeschlagen.",
+    "package.stepLimit": "Die STEP-Geometrie überschreitet die Grenze von 128 MB.",
+    "package.stepExportFailed": "STEP-Geometrie konnte nicht eingebettet werden: {reason}"
   },
   "content": {
     "tutorial": {

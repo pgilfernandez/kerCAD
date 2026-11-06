@@ -4,9 +4,10 @@ import { defaultMediaTypeForSource, normalizeProjectAsset, sha256Hex } from "@/l
 import type { ParametricDocument } from "@/types/parametric";
 import type { ProjectAsset, ProjectAssetSourceFormat } from "@/types/sketchforge";
 import { isLegacyProjectSchema } from "@/lib/legacyBrand";
+import { uiText } from "@/lib/kercadI18n";
 
 export const KERCAD_PACKAGE_SCHEMA = "org.kercad.project";
-export const KERCAD_PACKAGE_VERSION = 1;
+export const KERCAD_PACKAGE_VERSION = 2;
 export const KERCAD_PACKAGE_MEDIA_TYPE = "application/vnd.kercad.project+zip";
 
 export const KERCAD_PACKAGE_LIMITS = {
@@ -37,10 +38,27 @@ export type KercadPackageManifestV1 = {
   assets: PackageAssetRecord[];
 };
 
+export type KercadStepRepresentation = {
+  path: "model.step";
+  mediaType: "application/step";
+  units: "mm";
+  byteLength: number;
+  sha256: string;
+};
+
+export type KercadPackageManifestV2 = Omit<KercadPackageManifestV1, "formatVersion" | "minimumReaderVersion"> & {
+  formatVersion: 2;
+  minimumReaderVersion: 2;
+  /** Null for documents without active solid-generating operations. */
+  geometry: KercadStepRepresentation | null;
+};
+export type KercadPackageManifest = KercadPackageManifestV1 | KercadPackageManifestV2;
+
 export type KercadProjectPackage = {
   document: ParametricDocument;
   assets: ProjectAsset[];
-  manifest: KercadPackageManifestV1;
+  manifest: KercadPackageManifest;
+  step?: Uint8Array;
 };
 
 type ArchiveFiles = Record<string, Uint8Array>;
@@ -126,10 +144,14 @@ function isSourceFormat(value: unknown): value is ProjectAssetSourceFormat {
   return value === "svg" || value === "step" || value === "stl" || value === "obj";
 }
 
-function parseManifest(raw: unknown): KercadPackageManifestV1 {
+function parseManifest(raw: unknown): KercadPackageManifest {
   if (!raw || typeof raw !== "object") throw new Error("manifest.json is invalid.");
-  const manifest = raw as Partial<KercadPackageManifestV1>;
-  if ((manifest.schema !== KERCAD_PACKAGE_SCHEMA && !isLegacyProjectSchema(manifest.schema)) || manifest.formatVersion !== KERCAD_PACKAGE_VERSION || manifest.minimumReaderVersion !== 1 || typeof manifest.createdWithVersion !== "string") throw new Error("The kerCAD package version is not supported.");
+  const manifest = raw as Partial<Omit<KercadPackageManifestV2, "formatVersion" | "minimumReaderVersion">> & { formatVersion?: number; minimumReaderVersion?: number };
+  if ((manifest.schema !== KERCAD_PACKAGE_SCHEMA && !isLegacyProjectSchema(manifest.schema)) || ![1, KERCAD_PACKAGE_VERSION].includes(manifest.formatVersion ?? 0) || manifest.minimumReaderVersion !== manifest.formatVersion || typeof manifest.createdWithVersion !== "string") throw new Error("The kerCAD package version is not supported.");
+  if (manifest.formatVersion === 2 && manifest.geometry !== null) {
+    const geometry = manifest.geometry;
+    if (!geometry || geometry.path !== "model.step" || geometry.mediaType !== "application/step" || geometry.units !== "mm" || !Number.isSafeInteger(geometry.byteLength) || geometry.byteLength <= 0 || geometry.byteLength > KERCAD_PACKAGE_LIMITS.assetBytes || !/^[a-f0-9]{64}$/.test(geometry.sha256)) throw new Error(uiText("package.invalidStep"));
+  }
   if (!manifest.document || manifest.document.path !== "project.json" || !Number.isSafeInteger(manifest.document.byteLength) || manifest.document.byteLength < 0 || manifest.document.byteLength > KERCAD_PACKAGE_LIMITS.projectBytes || typeof manifest.document.sha256 !== "string" || !/^[a-f0-9]{64}$/.test(manifest.document.sha256)) throw new Error("The document entry is invalid.");
   if (!Array.isArray(manifest.assets)) throw new Error("The asset list is invalid.");
   const ids = new Set<string>();
@@ -143,14 +165,32 @@ function parseManifest(raw: unknown): KercadPackageManifestV1 {
     paths.add(asset.path);
     hashes.add(asset.sha256);
   }
-  return { ...manifest, schema: KERCAD_PACKAGE_SCHEMA } as KercadPackageManifestV1;
+  return { ...manifest, schema: KERCAD_PACKAGE_SCHEMA } as KercadPackageManifest;
 }
 
 export async function exportKercadProject(document: ParametricDocument, assets: ProjectAsset[] = [], compressionLevel: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 = 6) {
   if (!validateDocument(document)) throw new Error("The kerCAD document is invalid.");
-  const projectBytes = strToU8(`${JSON.stringify(normalizeParametricDocument(document), null, 2)}\n`);
+  const snapshot = normalizeParametricDocument(structuredClone(document));
+  const projectBytes = strToU8(`${JSON.stringify(snapshot, null, 2)}\n`);
   if (projectBytes.byteLength > KERCAD_PACKAGE_LIMITS.projectBytes) throw new Error("The document exceeds the 32 MB limit.");
   const files: Record<string, Uint8Array> = { "project.json": projectBytes };
+  let geometry: KercadStepRepresentation | null = null;
+  const hasSolids = snapshot.features.some((feature) => !feature.suppressed && (feature.kind === "extrude" || feature.kind === "primitive" || feature.kind === "importedStep" || (feature.kind === "revolve" && feature.source === "sketch")));
+  if (hasSolids) {
+    let stepBytes: Uint8Array;
+    try {
+      const { exportParametricStep } = await import("@/lib/parametricKernel");
+      // The complete project, including hidden objects and world placements;
+      // never reuse an imported source STEP or a stale tessellation/cache.
+      stepBytes = new Uint8Array(await (await exportParametricStep(snapshot)).arrayBuffer());
+    } catch (error) {
+      throw new Error(uiText("package.stepExportFailed", { reason: error instanceof Error ? error.message : String(error) }));
+    }
+    if (stepBytes.byteLength > KERCAD_PACKAGE_LIMITS.assetBytes) throw new Error(uiText("package.stepLimit"));
+    if (!strFromU8(stepBytes.subarray(0, 64)).trimStart().startsWith("ISO-10303-21;")) throw new Error(uiText("package.invalidStep"));
+    files["model.step"] = stepBytes;
+    geometry = { path: "model.step", mediaType: "application/step", units: "mm", byteLength: stepBytes.byteLength, sha256: await sha256Hex(stepBytes) };
+  }
   const records: PackageAssetRecord[] = [];
   const hashes = new Set<string>();
   const ids = new Set<string>();
@@ -166,16 +206,19 @@ export async function exportKercadProject(document: ParametricDocument, assets: 
     hashes.add(sha256);
     ids.add(asset.id);
   }
-  const manifest: KercadPackageManifestV1 = {
+  const manifest: KercadPackageManifestV2 = {
     schema: KERCAD_PACKAGE_SCHEMA,
     formatVersion: KERCAD_PACKAGE_VERSION,
-    minimumReaderVersion: 1,
+    minimumReaderVersion: 2,
     createdWithVersion: "0.1.0",
     document: { path: "project.json", byteLength: projectBytes.byteLength, sha256: await sha256Hex(projectBytes) },
     assets: records.sort((a, b) => a.id.localeCompare(b.id)),
+    geometry,
   };
   files["manifest.json"] = strToU8(`${JSON.stringify(manifest, null, 2)}\n`);
-  return zipAsync(Object.fromEntries(Object.entries(files).sort(([left], [right]) => left.localeCompare(right))), compressionLevel);
+  const bytes = await zipAsync(Object.fromEntries(Object.entries(files).sort(([left], [right]) => left.localeCompare(right))), compressionLevel);
+  inspectZip(bytes);
+  return bytes;
 }
 
 export async function importKercadProject(input: ArrayBuffer | Uint8Array): Promise<KercadProjectPackage> {
@@ -197,15 +240,24 @@ export async function importKercadProject(input: ArrayBuffer | Uint8Array): Prom
   }
   const manifest = parseManifest(manifestRaw);
   const expectedPaths = new Set(["manifest.json", manifest.document.path, ...manifest.assets.map((asset) => asset.path)]);
+  const geometry = manifest.formatVersion === 2 ? manifest.geometry : null;
+  if (geometry) expectedPaths.add(geometry.path);
   if (Object.keys(files).some((path) => !expectedPaths.has(path))) throw new Error("The package contains files that are not declared in the manifest.");
   const projectBytes = files[manifest.document.path];
   if (projectBytes.byteLength !== manifest.document.byteLength || await sha256Hex(projectBytes) !== manifest.document.sha256) throw new Error("The document failed its integrity check.");
   if (!validateDocument(documentRaw)) throw new Error("project.json does not contain a compatible kerCAD document.");
+  let step: Uint8Array | undefined;
+  if (geometry) {
+    const stepBytes = files[geometry.path];
+    if (!stepBytes || stepBytes.byteLength !== geometry.byteLength || await sha256Hex(stepBytes) !== geometry.sha256) throw new Error(uiText("package.stepIntegrity"));
+    if (!strFromU8(stepBytes.subarray(0, 64)).trimStart().startsWith("ISO-10303-21;")) throw new Error(uiText("package.invalidStep"));
+    step = new Uint8Array(stepBytes);
+  }
   const assets: ProjectAsset[] = [];
   for (const record of manifest.assets) {
     const assetBytes = files[record.path];
     if (!assetBytes || assetBytes.byteLength !== record.byteLength || await sha256Hex(assetBytes) !== record.sha256) throw new Error(`Asset '${record.name}' failed its integrity check.`);
     assets.push({ id: record.id, name: record.name, mediaType: record.mediaType, sourceFormat: record.sourceFormat, bytes: new Uint8Array(assetBytes), byteLength: assetBytes.byteLength, sha256: record.sha256 });
   }
-  return { document: normalizeParametricDocument(documentRaw), assets, manifest };
+  return { document: normalizeParametricDocument(documentRaw), assets, manifest, ...(step ? { step } : {}) };
 }

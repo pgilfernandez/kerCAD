@@ -1142,6 +1142,13 @@ export async function exportParametricStep(document: ParametricDocument, objectI
     }
     const objectId = feature.objectId ?? lastObjectId;
     let current = solids.get(objectId) ?? null;
+    if (feature.kind === "revolve" && feature.source === "sketch") {
+      const result = applyRevolveFeature(brep, document, current, feature);
+      lastObjectId = objectId;
+      solids.set(objectId, result);
+      operationStates.set(feature.id, { before: current, after: result });
+      continue;
+    }
     if (!current) continue;
     const previousSolid = current;
     if (feature.kind === "hole") {

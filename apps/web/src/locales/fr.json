@@ -229,7 +229,7 @@
     "dialog.saving": "Enregistrement…",
     "dialog.exporting": "Exporter…",
     "dialog.projectFormat": "Projet kerCAD",
-    "dialog.projectFormatHint": "Paquet modifiable avec historique et ressources",
+    "dialog.projectFormatHint": "Paquet modifiable avec historique, ressources et géométrie STEP",
     "dialog.stepFormat": "Modèle STEP",
     "dialog.stepFormatHint": "Exact B-Rep pour la fabrication",
     "dialog.stlFormat": "Modèle STL",
@@ -1449,7 +1449,11 @@
     "challenge.captureParametersHint": "Sélectionnez un objet ou une opération pour capturer ses paramètres.",
     "challenge.parameterAxis": "{parameter} {axis}",
     "challenge.parameterOf": "{name} · {parameter}",
-    "challenge.parameterSeparator": "Séparateur"
+    "challenge.parameterSeparator": "Séparateur",
+    "package.invalidStep": "Le fichier STEP intégré est invalide.",
+    "package.stepIntegrity": "La géométrie STEP intégrée a échoué au contrôle d’intégrité.",
+    "package.stepLimit": "La géométrie STEP dépasse la limite de 128 Mo.",
+    "package.stepExportFailed": "Impossible d’inclure la géométrie STEP : {reason}"
   },
   "content": {
     "tutorial": {
