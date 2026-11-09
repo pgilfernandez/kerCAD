@@ -166,7 +166,7 @@ export const ParameterHandleLabels = forwardRef<ParameterHandleLabelsApi, Props>
           element.style.setProperty("--handle-label-size", `${diameter}px`);
           // Extend under the right half of the real circle. Cut out its footprint
           // so the WebGL handle stays visually on top AND receives pointer hits.
-          const radius = diameter / 2 + 1;
+          const radius = diameter / 2;
           const limit = Math.asin(diameter / 2 / radius);
           const edge = Math.sqrt(radius * radius - diameter * diameter / 4);
           const outline = [`${edge}px 0px`, "100% 0px", "100% 100%", `${edge}px 100%`];
