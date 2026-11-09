@@ -132,21 +132,38 @@ export const ParameterHandleLabels = forwardRef<ParameterHandleLabelsApi, Props>
     if (hovered.current && !present.has(hovered.current)) hovered.current = null;
     if (labelHover.current && !present.has(labelHover.current)) labelHover.current = null;
     const visible = handles.filter((handle) => pinned.current.has(handle.key) || hovered.current === handle.key || labelHover.current === handle.key || edited.current.has(handle.key)).filter((handle) => {
-      let x: number, y: number;
+      let x: number, y: number, diameter: number;
       if (handle.anchor instanceof HTMLElement) {
         const rect = handle.anchor.getBoundingClientRect();
         if (!rect.width || !rect.height) return false;
-        x = rect.right - hostBounds.left; y = rect.top + rect.height / 2 - hostBounds.top;
+        x = rect.left + rect.width / 2 - hostBounds.left; y = rect.top + rect.height / 2 - hostBounds.top;
+        diameter = Math.min(rect.width, rect.height);
       } else {
         const point = handle.anchor.getWorldPosition(new THREE.Vector3()).project(camera.current!);
         if (point.z < -1 || point.z > 1) return false;
-        x = bounds.left - hostBounds.left + (point.x + 1) * bounds.width / 2 + 14;
+        x = bounds.left - hostBounds.left + (point.x + 1) * bounds.width / 2;
         y = bounds.top - hostBounds.top + (1 - point.y) * bounds.height / 2;
+        diameter = Number(handle.anchor.userData.yellowManipulatorDiameterPixels) || 28;
       }
       const element = elements.current.get(handle.key);
       if (element) {
-        element.style.left = `${Math.max(4, Math.min(x, hostBounds.width - element.offsetWidth - 4))}px`;
-        element.style.top = `${Math.max(4, Math.min(y - element.offsetHeight / 2, hostBounds.height - element.offsetHeight - 4))}px`;
+        if (element.dataset.diameter !== String(diameter)) {
+          element.dataset.diameter = String(diameter);
+          element.style.setProperty("--handle-label-size", `${diameter}px`);
+          // Extend under the right half of the real circle. Cut out its footprint
+          // so the WebGL handle stays visually on top AND receives pointer hits.
+          const radius = diameter / 2 + 1;
+          const limit = Math.asin(diameter / 2 / radius);
+          const edge = Math.sqrt(radius * radius - diameter * diameter / 4);
+          const outline = [`${edge}px 0px`, "100% 0px", "100% 100%", `${edge}px 100%`];
+          for (let index = 1; index < 24; index += 1) {
+            const angle = limit - index / 24 * limit * 2;
+            outline.push(`${Math.cos(angle) * radius}px ${diameter / 2 + Math.sin(angle) * radius}px`);
+          }
+          element.style.clipPath = `polygon(${outline.join(",")})`;
+        }
+        element.style.left = `${x}px`;
+        element.style.top = `${y - diameter / 2}px`;
         element.style.visibility = "visible";
       }
       return true;

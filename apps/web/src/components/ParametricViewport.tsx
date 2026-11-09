@@ -4151,6 +4151,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       handle.renderOrder = 22;
       handle.userData.shapeParameterVisual = parameter;
       handle.userData.shapeParameterVisualRole = "handle";
+      handle.userData.dimensionAxis = axis;
       handle.userData.yellowManipulatorBaseRadius = 1.7;
       handle.userData.yellowManipulatorDiameterPixels = 28;
       addYellowManipulatorOutline(handle, 1.7);
@@ -4415,11 +4416,12 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
         : parameter === "thickness" && parameters?.shape === "tube" ? parameters.outerRadius - parameters.innerRadius
         : values?.[parameter] ?? (parameter === "width" ? selected.width : parameter === "depth" ? selected.depth : parameter === "height" ? selected.height : 0);
       const dimensional = ["width", "depth", "height", "radius", "baseRadius", "topRadius", "outerRadius", "majorRadius", "tubeRadius"].includes(parameter);
+      const handleAxis = node.userData.dimensionAxis ?? resizeHitboxesRef.current.find((target) => target.userData.shapeParameter === parameter)?.userData.dimensionAxis;
       labels.push({
         key: `shape:${selected.id}:${parameter}`, anchor: node,
         targets: resizeHitboxesRef.current.filter((target) => target.userData.shapeParameter === parameter),
         name: definition?.label ?? uiText(parameter === "height" ? "sidebar.height" : "sidebar.size", {}, locale),
-        value, color: dimensional ? node.userData.dimensionAxis as "x" | "y" | "z" : "other",
+        value, color: dimensional && (handleAxis === "x" || handleAxis === "y" || handleAxis === "z") ? handleAxis : "other",
         unit: parameter === "sides" || parameter === "teeth" ? "count" : "length",
         min: parameter === "height" && selected.allowNegativeHeight ? -1000 : parameter === "topRadius" || parameter === "boreRadius" ? 0 : definition?.min ?? .01,
         max: parameter === "sides" || parameter === "teeth" ? definition?.max : undefined,
