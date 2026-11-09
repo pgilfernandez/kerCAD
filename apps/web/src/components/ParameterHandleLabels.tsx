@@ -145,6 +145,18 @@ export const ParameterHandleLabels = forwardRef<ParameterHandleLabelsApi, Props>
         x = bounds.left - hostBounds.left + (point.x + 1) * bounds.width / 2;
         y = bounds.top - hostBounds.top + (1 - point.y) * bounds.height / 2;
         diameter = Number(handle.anchor.userData.yellowManipulatorDiameterPixels) || 28;
+        // The nominal pixel size describes the yellow fill. The darker outline
+        // is a larger child sphere, and its outside edge is the visible diameter.
+        if (handle.anchor instanceof THREE.Mesh && handle.anchor.geometry instanceof THREE.SphereGeometry) {
+          const radius = handle.anchor.geometry.parameters.radius;
+          let outerScale = 1;
+          for (const child of handle.anchor.children) {
+            if (child.userData.yellowManipulatorOutline && child instanceof THREE.Mesh && child.geometry instanceof THREE.SphereGeometry && radius > 0) {
+              outerScale = Math.max(outerScale, child.geometry.parameters.radius * Math.max(Math.abs(child.scale.x), Math.abs(child.scale.y), Math.abs(child.scale.z)) / radius);
+            }
+          }
+          diameter *= outerScale;
+        }
       }
       const element = elements.current.get(handle.key);
       if (element) {
