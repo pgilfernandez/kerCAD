@@ -112,6 +112,7 @@ export const ParameterHandleLabels = forwardRef<ParameterHandleLabelsApi, Props>
   const hovered = useRef<string | null>(null);
   const labelHover = useRef<string | null>(null);
   const edited = useRef(new Set<string>());
+  const dragging = useRef<{ key: string; pointerId: number; x: number; y: number; active: boolean } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const updateRef = useRef<() => void>(() => {});
   const cancelHide = () => { if (timer.current !== null) clearTimeout(timer.current); timer.current = null; };
@@ -147,6 +148,7 @@ export const ParameterHandleLabels = forwardRef<ParameterHandleLabelsApi, Props>
       }
       const element = elements.current.get(handle.key);
       if (element) {
+        element.dataset.dragging = String(dragging.current?.key === handle.key && dragging.current.active);
         if (element.dataset.diameter !== String(diameter)) {
           element.dataset.diameter = String(diameter);
           element.style.setProperty("--handle-label-size", `${diameter}px`);
@@ -199,6 +201,8 @@ export const ParameterHandleLabels = forwardRef<ParameterHandleLabelsApi, Props>
     };
     const refresh = () => { updateRef.current(); current.current.invalidate(); };
     const move = (event: PointerEvent) => {
+      const drag = dragging.current;
+      if (drag?.pointerId === event.pointerId && Math.hypot(event.clientX - drag.x, event.clientY - drag.y) > 0) drag.active = true;
       if (!current.current.host.current?.contains(event.target as Node) && !hovered.current) return;
       if ((event.target as Element).closest?.("[data-parameter-handle-label]")) return;
       if (event.buttons) { refresh(); return; }
@@ -211,13 +215,22 @@ export const ParameterHandleLabels = forwardRef<ParameterHandleLabelsApi, Props>
       const focused = document.activeElement;
       if (focused instanceof HTMLInputElement && focused.closest("[data-parameter-handle-label]")) focused.blur();
       cancelHide(); const key = hit(event);
+      dragging.current = key ? { key, pointerId: event.pointerId, x: event.clientX, y: event.clientY, active: false } : null;
       pinned.current.clear(); hovered.current = key;
       if (key) pinned.current.add(key);
       refresh();
     };
+    const finishDrag = (event: PointerEvent) => {
+      if (dragging.current?.pointerId !== event.pointerId) return;
+      dragging.current = null;
+      refresh();
+    };
     document.addEventListener("pointermove", move, true);
     document.addEventListener("pointerdown", down, true);
-    return () => { cancelHide(); document.removeEventListener("pointermove", move, true); document.removeEventListener("pointerdown", down, true); };
+    document.addEventListener("pointerup", finishDrag, true);
+    document.addEventListener("pointercancel", finishDrag, true);
+    document.addEventListener("lostpointercapture", finishDrag, true);
+    return () => { cancelHide(); document.removeEventListener("pointermove", move, true); document.removeEventListener("pointerdown", down, true); document.removeEventListener("pointerup", finishDrag, true); document.removeEventListener("pointercancel", finishDrag, true); document.removeEventListener("lostpointercapture", finishDrag, true); };
   }, []);
   useLayoutEffect(() => { updateRef.current(); current.current.invalidate(); }, [rows, props.displayUnit]);
   return <div className="kercad-parameter-handle-labels">{rows.map((label) => <div key={label.key} style={{ visibility: "hidden" }} data-parameter-handle-label={label.key} className={`kercad-parameter-handle-label axis-${label.color}`} ref={(element) => { if (element) elements.current.set(label.key, element); else elements.current.delete(label.key); }} onPointerEnter={() => { cancelHide(); labelHover.current = label.key; }} onPointerLeave={() => { labelHover.current = null; updateRef.current(); }}>

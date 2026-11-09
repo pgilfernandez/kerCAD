@@ -3,7 +3,7 @@
 .kercad-parameter-handle-label.axis-x { --handle-label-ink: #b82020; --handle-label-bg: #ffdddd; --handle-label-border: #cf2727; }
 .kercad-parameter-handle-label.axis-y { --handle-label-ink: #1b713a; --handle-label-bg: #ddf3e1; --handle-label-border: #268449; }
 .kercad-parameter-handle-label.axis-z { --handle-label-ink: #1d559f; --handle-label-bg: #deecff; --handle-label-border: #276bbd; }
-.kercad-parameter-handle-label:hover, .kercad-parameter-handle-label:focus-within { opacity: 1; }
+.kercad-parameter-handle-label:hover, .kercad-parameter-handle-label:focus-within, .kercad-parameter-handle-label[data-dragging="true"] { opacity: 1; }
 .kercad-handle-label-content { box-sizing: border-box; height: 100%; padding: 0 14px 0 calc(var(--handle-label-size) / 2 + 9px); cursor: text; }
 .kercad-handle-label-name { display: block; height: calc((var(--handle-label-size) - 4px) * .4166667); font-size: calc(var(--handle-label-size) * .32); font-weight: 400; line-height: calc((var(--handle-label-size) - 4px) * .4166667); white-space: nowrap; }
 .kercad-handle-label-value { display: flex; align-items: baseline; gap: 5px; min-width: 64px; height: calc((var(--handle-label-size) - 4px) * .5833333); margin: 0; padding: 0; border: 0; border-radius: 0; color: inherit; background: transparent; font: inherit; font-size: calc(var(--handle-label-size) * .46); font-weight: 700; line-height: calc((var(--handle-label-size) - 4px) * .5833333); text-align: left; white-space: nowrap; }
