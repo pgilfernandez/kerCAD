@@ -85,7 +85,7 @@ export function attachReferenceImageHandle(model: THREE.Group, camera: THREE.Cam
   canvas.addEventListener("pointerdown", down, true); canvas.addEventListener("pointermove", move, true);
   canvas.addEventListener("pointerup", finish, true); canvas.addEventListener("pointercancel", finish, true); canvas.addEventListener("lostpointercapture", finish, true);
   update(); invalidate();
-  return { group: layer, update, dispose: () => {
+  return { group: layer, labelHandle: handle, scaleFactor: () => drag?.factor ?? 1, update, dispose: () => {
     if (drag) { controls.enabled = true; controls.enableDamping = drag.damping; drag.preview.restore(); }
     canvas.removeEventListener("pointerdown", down, true); canvas.removeEventListener("pointermove", move, true);
     canvas.removeEventListener("pointerup", finish, true); canvas.removeEventListener("pointercancel", finish, true); canvas.removeEventListener("lostpointercapture", finish, true);

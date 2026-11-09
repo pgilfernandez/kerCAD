@@ -1,0 +1,17 @@
+.kercad-parameter-handle-labels { position: absolute; inset: 0; pointer-events: none; z-index: 38; }
+.kercad-parameter-handle-label { --handle-label-ink: #a15f00; --handle-label-bg: #fff0bd; --handle-label-border: #bd8c16; position: absolute; width: max-content; max-width: min(260px, calc(100% - 8px)); opacity: .4; pointer-events: auto; border: 2px solid var(--handle-label-border); border-left-width: 0; border-radius: 0 999px 999px 0; color: var(--handle-label-ink); background: var(--handle-label-bg); transition: opacity 100ms ease; font-family: var(--font-ui); }
+.kercad-parameter-handle-label.axis-x { --handle-label-ink: #b82020; --handle-label-bg: #ffdddd; --handle-label-border: #cf2727; }
+.kercad-parameter-handle-label.axis-y { --handle-label-ink: #1b713a; --handle-label-bg: #ddf3e1; --handle-label-border: #268449; }
+.kercad-parameter-handle-label.axis-z { --handle-label-ink: #1d559f; --handle-label-bg: #deecff; --handle-label-border: #276bbd; }
+.kercad-parameter-handle-label:hover, .kercad-parameter-handle-label:focus-within { opacity: 1; }
+.kercad-handle-label-content { padding: 3px 14px 4px 9px; cursor: text; }
+.kercad-handle-label-name { display: block; font-size: 10px; font-weight: 400; line-height: 1.15; white-space: nowrap; }
+.kercad-handle-label-value { display: flex; align-items: baseline; gap: 5px; min-width: 64px; margin: 0; padding: 0; border: 0; border-radius: 0; color: inherit; background: transparent; font: inherit; font-size: 17px; font-weight: 700; line-height: 1.2; text-align: left; white-space: nowrap; }
+button.kercad-handle-label-value { cursor: text; width: 100%; }
+.kercad-parameter-handle-label .kercad-handle-label-value input { width: auto; min-width: 36px; max-width: 180px; padding: 0; margin: 0; border: 0; border-radius: 0; outline: none; box-shadow: none; color: inherit; -webkit-text-fill-color: currentColor; caret-color: currentColor; opacity: 1; background: transparent; font: inherit; line-height: inherit; }
+.kercad-handle-label-value input::selection { color: var(--handle-label-bg); background: var(--handle-label-ink); }
+.kercad-handle-label-unit { font-size: 15px; font-weight: 600; }
+html[data-theme="dark"] .kercad-parameter-handle-label { --handle-label-ink: #ffe096; --handle-label-bg: #483a1c; --handle-label-border: #d9af44; }
+html[data-theme="dark"] .kercad-parameter-handle-label.axis-x { --handle-label-ink: #ffb5b5; --handle-label-bg: #4a252a; --handle-label-border: #ea7777; }
+html[data-theme="dark"] .kercad-parameter-handle-label.axis-y { --handle-label-ink: #aff0be; --handle-label-bg: #203d2c; --handle-label-border: #70c88c; }
+html[data-theme="dark"] .kercad-parameter-handle-label.axis-z { --handle-label-ink: #b9d8ff; --handle-label-bg: #21364f; --handle-label-border: #78adee; }

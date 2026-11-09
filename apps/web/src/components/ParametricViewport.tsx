@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAppTheme } from "@/lib/useAppTheme";
 import { automaticWorkplaneSize } from "@/lib/workplaneGeometryBounds";
 import * as THREE from "three";
@@ -14,13 +14,14 @@ import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeome
 import { acceleratedRaycast, MeshBVH } from "three-mesh-bvh";
 import { Check, X } from "lucide-react";
 import { ShellCornerButtons } from "@/components/ShellCornerButtons";
-import { constrainViewportAxisDrag, coplanarFaceRegion, exactEdgeRegion, exactFaceRegion, finalReferenceWireframeDepthTest, formatViewportDimension, operationPreviewStyle, operationPreviewWireframePositions, type ViewportDimensionAxis, type ViewportEdgeGroup, type ViewportFaceGroup } from "@/lib/viewportGeometry";
+import { constrainViewportAxisDrag, coplanarFaceRegion, exactEdgeRegion, exactFaceRegion, finalReferenceWireframeDepthTest, operationPreviewStyle, operationPreviewWireframePositions, type ViewportDimensionAxis, type ViewportEdgeGroup, type ViewportFaceGroup } from "@/lib/viewportGeometry";
 import { AdaptiveViewportResolution, viewportPerformanceOptions, viewportRenderProfile, type ViewportRenderQuality } from "@/lib/viewportPerformance";
 import { orthographicTouchTargetWorldSize, perspectiveTouchTargetWorldSize, viewportPointerDragIntent, type ViewportPointerDragIntent } from "@/lib/viewportPointer";
 import { parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
 import { ToolbarBooleanModeIcon, ToolbarChamferIcon, ToolbarEditOperationIcon, ToolbarFilletIcon } from "@/components/icons";
-import { displayLengthToMillimeters, displayUnitLabel, formatDisplayLength, millimetersToDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
-import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
+import { displayUnitLabel, formatDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
+import { ParameterHandleLabels, type ParameterHandleLabel, type ParameterHandleLabelsApi } from "@/components/ParameterHandleLabels";
+import { localizedParametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import { createAnnotationScene } from "@/lib/annotationScene";
 import { attachReferenceImageHandle } from "@/lib/referenceImageHandle";
 import { referenceTransformPreview } from "@/lib/referenceTransformPreview";
@@ -634,13 +635,8 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
   alignmentReferenceRef.current = alignmentReference;
   const alignmentPickMeshesRef = useRef<THREE.Mesh[]>([]);
   const selectionBoxRef = useRef<HTMLDivElement>(null);
-  const dimensionXRef = useRef<HTMLInputElement>(null);
-  const dimensionYRef = useRef<HTMLInputElement>(null);
-  const dimensionZRef = useRef<HTMLInputElement>(null);
-  const dimensionPinnedRef = useRef(new Set<ViewportDimensionAxis>());
-  const dimensionHoverRef = useRef(new Set<ViewportDimensionAxis>());
-  const dimensionHoverTimerRef = useRef<number | null>(null);
-  const dimensionSelectionIdRef = useRef<string | null>(selection?.id ?? null);
+  const parameterLabelsRef = useRef<ParameterHandleLabelsApi>(null);
+  const handleHoverTimerRef = useRef<number | null>(null);
   const [moveDimension, setMoveDimension] = useState<ViewportMoveDimension | null>(null);
   const [edgeTreatmentRadiusPreview, setEdgeTreatmentRadiusPreview] = useState<number | null>(null);
   const [revolveAnglePreview, setRevolveAnglePreview] = useState<number | null>(null);
@@ -730,11 +726,6 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
 
   useEffect(() => {
     selectionRef.current = selection;
-    if ((selection?.id ?? null) !== dimensionSelectionIdRef.current) {
-      dimensionSelectionIdRef.current = selection?.id ?? null;
-      dimensionPinnedRef.current.clear();
-      dimensionHoverRef.current.clear();
-    }
   }, [selection]);
   useEffect(() => { shapeParameterRef.current = onShapeParameterChange; }, [onShapeParameterChange]);
   useEffect(() => { originMoveRef.current = onObjectOriginMove; }, [onObjectOriginMove]);
@@ -803,73 +794,6 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
   }, [thumbnailRequestToken]);
   useEffect(() => { activeWorkplaneRef.current = workplane; }, [workplane]);
   useEffect(() => { isolatedHistoryObjectIdRef.current = isolatedHistoryObjectId; }, [isolatedHistoryObjectId]);
-
-  const setDimensionHover = (axis: ViewportDimensionAxis, active: boolean) => {
-    if (dimensionHoverTimerRef.current !== null) {
-      window.clearTimeout(dimensionHoverTimerRef.current);
-      dimensionHoverTimerRef.current = null;
-    }
-    if (active) dimensionHoverRef.current.add(axis); else dimensionHoverRef.current.delete(axis);
-    invalidateRef.current();
-  };
-
-  const dimensionValue = (axis: ViewportDimensionAxis) => {
-    const selected = selectionRef.current;
-    if (!selected) return 0;
-    const parameters = selected.shapeParameters;
-    const boxLike = parameters && (parameters.shape === "box" || parameters.shape === "roundedBox" || parameters.shape === "pyramid" || parameters.shape === "wedge" || parameters.shape === "roof" || parameters.shape === "roundRoof");
-    const parameter = axis === "x" ? parameters?.shape === "text" ? null : boxLike ? "width" : parameters?.shape === "cone" ? "baseRadius" : parameters?.shape === "tube" ? "outerRadius" : parameters?.shape === "gear" ? "outerRadius" : parameters?.shape === "torus" ? "majorRadius" : parameters ? "radius" : null
-      : axis === "y" ? parameters?.shape === "text" ? "size" : parameters?.shape === "cone" ? "topRadius" : parameters?.shape === "tube" ? "thickness" : parameters?.shape === "polygon" ? "sides" : boxLike ? "depth" : null
-        : axis === "z" && parameters ? parameters.shape === "torus" ? "tubeRadius" : parameters.shape !== "sphere" ? "height" : null : null;
-    const preview = shapeParameterPreviewRef.current;
-    if (parameter && preview?.parameter === parameter) return preview.value;
-    if (parameter === "width" && boxLike) return parameters.width;
-    if (parameter === "size" && parameters?.shape === "text") return parameters.size;
-    if (parameter === "depth" && boxLike) return parameters.depth;
-    if (parameter === "radius" && (parameters?.shape === "cylinder" || parameters?.shape === "sphere" || parameters?.shape === "halfSphere" || parameters?.shape === "polygon")) return parameters.radius;
-    if (parameter === "baseRadius" && parameters?.shape === "cone") return parameters.baseRadius;
-    if (parameter === "topRadius" && parameters?.shape === "cone") return parameters.topRadius;
-    if (parameter === "outerRadius" && (parameters?.shape === "tube" || parameters?.shape === "gear")) return parameters.outerRadius;
-    if (parameter === "thickness" && parameters?.shape === "tube") return parameters.outerRadius - parameters.innerRadius;
-    if (parameter === "sides" && parameters?.shape === "polygon") return parameters.sides;
-    if (parameter === "majorRadius" && parameters?.shape === "torus") return parameters.majorRadius;
-    if (parameter === "tubeRadius" && parameters?.shape === "torus") return parameters.tubeRadius;
-    if (parameter === "height" && parameters && parameters.shape !== "sphere" && parameters.shape !== "torus") return parameters.height;
-    if (axis === "x") return selected.width;
-    if (axis === "y") return selected.depth;
-    if (axis === "z") return selected.height;
-    return selected.rotation;
-  };
-
-  const beginDimensionEdit = (axis: ViewportDimensionAxis, input: HTMLInputElement) => {
-    dimensionPinnedRef.current.add(axis);
-    const scalar = selectionRef.current?.shapeParameters?.shape === "polygon" && axis === "y";
-    input.value = scalar ? formatViewportDimension(dimensionValue(axis)) : formatDisplayLength(dimensionValue(axis), displayUnit);
-    window.requestAnimationFrame(() => input.select());
-    invalidateRef.current();
-  };
-
-  const commitDimensionEdit = (axis: ViewportDimensionAxis, input: HTMLInputElement) => {
-    const selected = selectionRef.current;
-    const scalar = selected?.shapeParameters?.shape === "polygon" && axis === "y";
-    const parsedValue = parseNumericExpression(input.value, scalar ? "" : displayUnit);
-    const value = scalar ? parsedValue : displayLengthToMillimeters(parsedValue, displayUnit);
-    if (!validateNumericExpression(input, value)) return;
-    if (!selected) {
-      input.value = scalar ? formatViewportDimension(dimensionValue(axis)) : formatDisplayLength(dimensionValue(axis), displayUnit);
-      invalidateRef.current();
-      return;
-    }
-    const parameters = selected.shapeParameters;
-    if (parameters) {
-      const boxLike = parameters.shape === "box" || parameters.shape === "roundedBox" || parameters.shape === "pyramid" || parameters.shape === "wedge" || parameters.shape === "roof" || parameters.shape === "roundRoof";
-      const parameter = axis === "x" ? parameters.shape === "text" ? null : boxLike ? "width" : parameters.shape === "cone" ? "baseRadius" : parameters.shape === "tube" ? "outerRadius" : parameters.shape === "gear" ? "outerRadius" : parameters.shape === "torus" ? "majorRadius" : "radius" : axis === "y" ? parameters.shape === "text" ? "size" : parameters.shape === "cone" ? "topRadius" : parameters.shape === "tube" ? "thickness" : parameters.shape === "polygon" ? "sides" : boxLike ? "depth" : null : axis === "z" ? parameters.shape === "torus" ? "tubeRadius" : parameters.shape !== "sphere" ? "height" : null : null;
-      if (parameter && (parameter === "topRadius" ? value >= 0 : value > 0)) shapeParameterRef.current?.(parameter, value);
-    }
-    input.value = scalar ? formatViewportDimension(dimensionValue(axis)) : formatDisplayLength(dimensionValue(axis), displayUnit);
-    dimensionPinnedRef.current.add(axis);
-    invalidateRef.current();
-  };
 
   useEffect(() => {
     const host = hostRef.current;
@@ -963,92 +887,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
     let processPendingHover: () => void = () => undefined;
     const performanceStats: ParametricViewportPerformance = { fps: 0, frameMs: 0, drawCalls: 0, triangles: 0 };
     window.kercadParametricPerf = { get: () => ({ ...performanceStats }) };
-    const updateDimensionLabels = () => {
-      const root = selectionRootRef.current;
-      const visualRoot = selectionVisualRootRef.current;
-      const selected = selectionRef.current;
-      const labels = [dimensionXRef.current, dimensionYRef.current, dimensionZRef.current];
-      const visibleAxes = new Set([...dimensionPinnedRef.current, ...dimensionHoverRef.current]);
-      if (!root || !visualRoot || !selected) {
-        labels.forEach((label) => { if (label) label.style.display = "none"; });
-        return;
-      }
-      visualRoot.updateWorldMatrix(true, false);
-      const parameters = selected.shapeParameters;
-      const coneRadialScale = parameters?.shape === "cone" ? selected.width / Math.max(0.01, parameters.baseRadius * 2) : 1;
-      const coneHeightScale = parameters?.shape === "cone" ? selected.height / Math.max(0.01, parameters.height) : 1;
-      const points = parameters?.shape === "cone"
-        ? [
-            new THREE.Vector3(dimensionValue("x") * coneRadialScale, 0, -dimensionValue("z") * coneHeightScale / 2),
-            new THREE.Vector3(dimensionValue("y") * coneRadialScale, 0, dimensionValue("z") * coneHeightScale / 2),
-            new THREE.Vector3(Math.max(dimensionValue("x"), dimensionValue("y")) * coneRadialScale, 0, 0),
-          ]
-        : parameters?.shape === "tube"
-          ? [
-              new THREE.Vector3(dimensionValue("x") * selected.width / Math.max(0.01, parameters.outerRadius * 2), 0, -selected.height / 2),
-              new THREE.Vector3(Math.max(0, parameters.outerRadius - dimensionValue("y") - 5) * selected.width / Math.max(0.01, parameters.outerRadius * 2), 0, dimensionValue("z") * selected.height / Math.max(0.01, parameters.height) / 2),
-              new THREE.Vector3(selected.width / 2, 0, 0),
-            ]
-        : parameters?.shape === "torus"
-          ? [
-              new THREE.Vector3(dimensionValue("x") * selected.width / Math.max(0.01, (parameters.majorRadius + parameters.tubeRadius) * 2), 0, 0),
-              new THREE.Vector3(0, 0, 0),
-              new THREE.Vector3(parameters.majorRadius * selected.width / Math.max(0.01, (parameters.majorRadius + parameters.tubeRadius) * 2), 0, dimensionValue("z") * selected.height / Math.max(0.01, parameters.tubeRadius * 2)),
-            ]
-        : parameters?.shape === "polygon"
-          ? [
-              new THREE.Vector3(selected.width / 2, 0, -selected.height / 2),
-              new THREE.Vector3(0, selected.depth / 2, selected.height / 2),
-              new THREE.Vector3(selected.width / 2, 0, 0),
-            ]
-        : parameters?.shape === "text"
-          ? [
-              new THREE.Vector3(0, 0, 0),
-              new THREE.Vector3(0, selected.depth / 2 + 3, -selected.height / 2),
-              new THREE.Vector3(selected.width / 2, selected.depth / 2, 0),
-            ]
-        : [
-            new THREE.Vector3(0, -selected.depth / 2, -selected.height / 2),
-            new THREE.Vector3(-selected.width / 2, 0, -selected.height / 2),
-            new THREE.Vector3(selected.width / 2, selected.depth / 2, 0),
-          ];
-      const values = [
-        dimensionValue("x"),
-        dimensionValue("y"),
-        dimensionValue("z"),
-      ];
-      const axes: ViewportDimensionAxis[] = ["x", "y", "z"];
-      const names = (parameters?.shape === "cone" ? [uiText("ui.parametricviewport.bottom.radius.051b10", {}, presentationRef.current.locale), uiText("ui.parametricviewport.top.radius.42b434", {}, presentationRef.current.locale), uiText("sidebar.height", {}, presentationRef.current.locale)] : parameters?.shape === "tube" ? [uiText("sidebar.radius", {}, presentationRef.current.locale), uiText("property.thickness", {}, presentationRef.current.locale), uiText("sidebar.height", {}, presentationRef.current.locale)] : parameters?.shape === "gear" ? [uiText("ui.parametricviewport.outer.radius.63bda8", {}, presentationRef.current.locale), "", uiText("sidebar.height", {}, presentationRef.current.locale)] : parameters?.shape === "polygon" ? [uiText("sidebar.radius", {}, presentationRef.current.locale), uiText("ui.shapeinspector.sides.dea946", {}, presentationRef.current.locale), uiText("sidebar.height", {}, presentationRef.current.locale)] : parameters?.shape === "torus" ? [uiText("sidebar.radius", {}, presentationRef.current.locale), uiText("sketch.dimensionLength", {}, presentationRef.current.locale), uiText("property.thickness", {}, presentationRef.current.locale)] : parameters?.shape === "text" ? ["", uiText("sidebar.size", {}, presentationRef.current.locale), uiText("sidebar.height", {}, presentationRef.current.locale)] : [parameters?.shape === "box" || parameters?.shape === "roundedBox" || parameters?.shape === "pyramid" || parameters?.shape === "wedge" || parameters?.shape === "roof" || parameters?.shape === "roundRoof" ? uiText("sidebar.width", {}, presentationRef.current.locale) : uiText("sidebar.radius", {}, presentationRef.current.locale), uiText("sidebar.depth", {}, presentationRef.current.locale), uiText("sidebar.height", {}, presentationRef.current.locale)]);
-      const lengthUnit = displayUnitLabel(presentationRef.current.displayUnit);
-      const units = parameters?.shape === "polygon" ? [lengthUnit, "", lengthUnit] : [lengthUnit, lengthUnit, lengthUnit];
-      const offsets = [[0, 18], [-24, 0], [22, 0]];
-      if (parameters?.shape === "text") {
-        // push the `size` label a bit outward so it doesn't overlap the yellow circle
-        offsets[1] = [-40, 0];
-      }
-      points.forEach((point, index) => {
-        const label = labels[index];
-        if (!label) return;
-        if (!visibleAxes.has(axes[index])) {
-          label.style.display = "none";
-          return;
-        }
-        const projected = visualRoot.localToWorld(point).project(camera);
-        if (projected.z < -1 || projected.z > 1) {
-          label.style.display = "none";
-          return;
-        }
-        label.style.display = "block";
-        label.style.left = `${(projected.x + 1) * host.clientWidth / 2}px`;
-        label.style.top = `${(1 - projected.y) * host.clientHeight / 2}px`;
-        label.style.transform = `translate(-50%, -50%) translate(${offsets[index][0]}px, ${offsets[index][1]}px)`;
-        if (document.activeElement !== label) {
-          const text = `${names[index]} ${units[index] ? formatDisplayLength(values[index], presentationRef.current.displayUnit) : formatViewportDimension(values[index])} ${units[index]}`;
-          label.value = text;
-          label.style.width = `${Math.max(76, Math.min(172, text.length * 7.2 + 18))}px`;
-        }
-      });
-    };
+    const updateParameterLabels = () => parameterLabelsRef.current?.update();
     let cameraWasBelowGround: boolean | null = null;
     const updateGroundOpacity = () => {
       const belowGround = camera.position.y < 0;
@@ -1192,7 +1031,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       }
       performanceStats.drawCalls = renderer.info.render.calls;
       performanceStats.triangles = renderer.info.render.triangles;
-      updateDimensionLabels();
+      updateParameterLabels();
       if (controlsChanged) requestRender();
     };
     const onControlsChange = () => {
@@ -1318,7 +1157,6 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
     let parameterWorldToLocal: THREE.Matrix4 | null = null;
     let resizeStart: ViewportSelection | null = null;
     let resizeRootStart: THREE.Vector3 | null = null;
-    let interactionDimensions: ViewportDimensionAxis[] = [];
     let originDragAxis: "x" | "y" | "z" | "xy" | null = null;
     let originDragStart: THREE.Vector3 | null = null;
     let originPointerStart: THREE.Vector3 | null = null;
@@ -1747,12 +1585,6 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
         target.updateMatrixWorld(true);
       }
     };
-    const replaceHoverDimensions = (axes: ViewportDimensionAxis[]) => {
-      const current = dimensionHoverRef.current;
-      if (current.size === axes.length && axes.every((axis) => current.has(axis))) return;
-      dimensionHoverRef.current = new Set(axes);
-      requestRender();
-    };
     const originHandleAtPointer = () => {
       const editableId = editableOriginIdRef.current;
       const targetId = editableId ?? selectedOperationOriginIdRef.current ?? selectedObjectOriginIdRef.current;
@@ -1982,7 +1814,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
         if (!edge && (workplaneFaceSelectionRef.current || topologyFaceSelectionRef.current)) updateWorkplaneFaceHighlight();
         return;
       }
-      replaceHoverDimensions(hoveredManipulatorDimensions(event));
+      hoveredManipulatorDimensions(event);
       if (!alignmentRef.current.active && annotationAtPointer() && !originHandleAtPointer()) renderer.domElement.style.cursor = "pointer";
       if (!alignmentRef.current.active && annotationPointHandleRef.current(event)) renderer.domElement.style.cursor = "grab";
       const annotationParameterHandle = !alignmentRef.current.active ? annotationRadiusHandleRef.current(event) : null;
@@ -2430,8 +2262,6 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
           dragPlane.setFromNormalAndCoplanarPoint(planeNormal.normalize(), center);
           if (raycaster.ray.intersectPlane(dragPlane, dragPoint)) {
             interaction = "parameter";
-            const dimensionAxis = resizeHit.object.userData.dimensionAxis;
-            interactionDimensions = [dimensionAxis === "y" ? "y" : dimensionAxis === "z" ? "z" : "x"];
             resizeStart = { ...selected };
             resizeRootStart = root.position.clone();
             root.updateWorldMatrix(true, false);
@@ -2510,7 +2340,6 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
         return;
       }
       controls.enabled = false;
-      replaceHoverDimensions(interactionDimensions);
       renderer.domElement.setPointerCapture(event.pointerId);
       renderer.domElement.style.cursor = "grabbing";
       event.preventDefault();
@@ -2654,6 +2483,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
         pendingFaceExtrudeOperation = crossedOrigin ? (faceExtrudeStartOperation === "add" ? "cut" : "add") : faceExtrudeStartOperation;
         const layer = faceExtrudeHandleRef.current;
         if (layer) {
+          layer.userData.parameterLabelValue = pendingFaceExtrudeDistance;
           const origin = layer.userData.origin as THREE.Vector3;
           const initialDirection = layer.userData.direction as THREE.Vector3;
           const direction = crossedOrigin ? initialDirection.clone().negate() : initialDirection;
@@ -2965,11 +2795,9 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
         else emptySelectRef.current?.();
         return;
       }
-      const completedDimensions = interactionDimensions;
       const completedInteraction = interaction;
       if (completedInteraction === "axisMove" || completedInteraction === "snapMove" || completedInteraction === "axisRotate") setAnnotationPreview(null);
       interaction = null;
-      interactionDimensions = [];
       pickCandidate = null;
       controls.enabled = true;
       renderer.domElement.style.cursor = "default";
@@ -3053,7 +2881,6 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
           requestRender();
         }
       } else {
-        completedDimensions.forEach((axis) => dimensionPinnedRef.current.add(axis));
         if (completedInteraction === "origin" && pendingOrigin) originMoveRef.current?.(pendingOrigin.objectId, pendingOrigin.position);
         if ((completedInteraction === "axisMove" || completedInteraction === "snapMove") && pendingAxisMove) {
           if (pendingAxisMove.targetKind === "object") objectAxisMoveRef.current?.(pendingAxisMove.targetId, pendingAxisMove.position);
@@ -3084,6 +2911,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       }
       pendingShapeParameter = null;
       pendingFaceExtrudeDistance = null;
+      if (faceExtrudeHandleRef.current) delete faceExtrudeHandleRef.current.userData.parameterLabelValue;
       pendingFaceExtrudeOperation = null;
       faceExtrudeAxis = null;
       faceExtrudeOriginWorld = null;
@@ -3156,10 +2984,10 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
         renderer.domElement.style.cursor = "default";
         requestRender();
       }
-      if (interaction || dimensionHoverTimerRef.current !== null) return;
-      dimensionHoverTimerRef.current = window.setTimeout(() => {
-        dimensionHoverTimerRef.current = null;
-        replaceHoverDimensions([]);
+      if (interaction || handleHoverTimerRef.current !== null) return;
+      handleHoverTimerRef.current = window.setTimeout(() => {
+        handleHoverTimerRef.current = null;
+        setShapeParameterHandleHover(null);
       }, 350);
     };
     const onTrackpadWheel = (event: WheelEvent) => {
@@ -3259,7 +3087,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       delete window.kercadParametricPerf;
       renderer.dispose();
       renderer.domElement.remove();
-      if (dimensionHoverTimerRef.current !== null) window.clearTimeout(dimensionHoverTimerRef.current);
+      if (handleHoverTimerRef.current !== null) window.clearTimeout(handleHoverTimerRef.current);
       disposeTemporaryLineGroup(rotationGuide);
       disposeTemporaryLineGroup(rotationPreview);
       disposeTemporaryLineGroup(revolveGuide);
@@ -3287,7 +3115,6 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       edgeTreatmentHandleRef.current = null;
       revolveHandleRef.current = null;
       distanceHandleRef.current = null;
-      [dimensionXRef.current, dimensionYRef.current, dimensionZRef.current].forEach((label) => { if (label) label.style.display = "none"; });
       invalidateRef.current = () => undefined;
     };
   }, [renderQuality, shadingMode]);
@@ -4232,11 +4059,6 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
     selectionRootRef.current = null;
     selectionVisualRootRef.current = null;
     resizeHitboxesRef.current = [];
-    if (!parameterHandlesVisible) {
-      dimensionPinnedRef.current.clear();
-      dimensionHoverRef.current.clear();
-      [dimensionXRef.current, dimensionYRef.current, dimensionZRef.current].forEach((label) => { if (label) label.style.display = "none"; });
-    }
     if (!selection) {
       invalidateRef.current();
       return;
@@ -4550,26 +4372,6 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
     return () => { if (referenceImageHandleRef.current === handle) referenceImageHandleRef.current = null; handle.dispose(); };
   }, [referenceImageSelection, snap, parameterHandlesVisible, projection, renderQuality, shadingMode]);
 
-  const dimensionInput = (axis: ViewportDimensionAxis, ref: typeof dimensionXRef, className: string, label: string) => <input
-    ref={ref}
-    className={className}
-    type="text"
-    inputMode="text"
-    aria-label={label}
-    onFocus={(event) => beginDimensionEdit(axis, event.currentTarget)}
-    onBlur={(event) => commitDimensionEdit(axis, event.currentTarget)}
-    onKeyDown={(event) => {
-      if (event.key === "Enter") event.currentTarget.blur();
-      if (event.key === "Escape") {
-        event.currentTarget.value = formatViewportDimension(dimensionValue(axis));
-        event.currentTarget.blur();
-      }
-    }}
-    onPointerEnter={() => setDimensionHover(axis, true)}
-    onPointerLeave={(event) => {
-      if (document.activeElement !== event.currentTarget) setDimensionHover(axis, false);
-    }}
-  />;
   const faceExtrudeControls = faceExtrudeDraft ?? faceExtrudeHandle;
   const floatingBoolean = floatingFeature?.kind === "objectBoolean" ? floatingFeature : null;
   const showOperationModes = !faceExtrudeControls && !revolveDraft && !shellDraft && (Boolean(floatingBoolean) || operationModesVisible && Boolean(selection?.operationPreview));
@@ -4584,6 +4386,99 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       ? { ...selectedAnnotationForInteraction, position: annotationPreview.position }
       : annotationPreview
     : selectedAnnotationForInteraction;
+
+  const labelDefinitions = useMemo(() => {
+    const shape = selection?.shapeParameters?.shape;
+    return shape && shape !== "text" ? localizedParametricOperationDefinition(shape, locale).parameters : [];
+  }, [selection?.shapeParameters?.shape, locale]);
+  const parameterLabelHandles = (): ParameterHandleLabel[] => {
+    if (!parameterHandlesVisible) return [];
+    const labels: ParameterHandleLabel[] = [];
+    const isVisible = (node: THREE.Object3D) => {
+      for (let parent: THREE.Object3D | null = node; parent; parent = parent.parent) if (!parent.visible) return false;
+      return true;
+    };
+    const axisColor = (direction?: { x: number; y: number; z: number }): ParameterHandleLabel["color"] => {
+      if (!direction) return "other";
+      const length = Math.hypot(direction.x, direction.y, direction.z);
+      return (["x", "y", "z"] as const).find((axis) => length > 0 && Math.abs(direction[axis]) / length > .999) ?? "other";
+    };
+    const selected = selectionRef.current;
+    const parameters = selected?.shapeParameters;
+    if (selected) selectionVisualRootRef.current?.traverse((node) => {
+      if (node.userData.shapeParameterVisualRole !== "handle" || !isVisible(node)) return;
+      const parameter = node.userData.shapeParameterVisual as ShapeParameter;
+      const definition = labelDefinitions.find((entry) => entry.key === parameter);
+      const values = parameters as unknown as Record<string, number> | undefined;
+      const preview = shapeParameterPreviewRef.current;
+      const value = preview?.parameter === parameter ? preview.value
+        : parameter === "thickness" && parameters?.shape === "tube" ? parameters.outerRadius - parameters.innerRadius
+        : values?.[parameter] ?? (parameter === "width" ? selected.width : parameter === "depth" ? selected.depth : parameter === "height" ? selected.height : 0);
+      const dimensional = ["width", "depth", "height", "radius", "baseRadius", "topRadius", "outerRadius", "majorRadius", "tubeRadius"].includes(parameter);
+      labels.push({
+        key: `shape:${selected.id}:${parameter}`, anchor: node,
+        targets: resizeHitboxesRef.current.filter((target) => target.userData.shapeParameter === parameter),
+        name: definition?.label ?? uiText(parameter === "height" ? "sidebar.height" : "sidebar.size", {}, locale),
+        value, color: dimensional ? node.userData.dimensionAxis as "x" | "y" | "z" : "other",
+        unit: parameter === "sides" || parameter === "teeth" ? "count" : "length",
+        min: parameter === "height" && selected.allowNegativeHeight ? -1000 : parameter === "topRadius" || parameter === "boreRadius" ? 0 : definition?.min ?? .01,
+        max: parameter === "sides" || parameter === "teeth" ? definition?.max : undefined,
+        onCommit: (next) => shapeParameterRef.current?.(parameter, next),
+      });
+    });
+    const addSpecial = (layer: THREE.Group | null, handleFlag: string, targetFlag: string | null, label: Omit<ParameterHandleLabel, "key" | "anchor" | "targets">) => {
+      if (!layer || !isVisible(layer)) return;
+      const anchor = layer.children.find((node) => node.userData[handleFlag]);
+      if (!anchor || !isVisible(anchor)) return;
+      const target = targetFlag ? layer.children.find((node) => node.userData[targetFlag]) : null;
+      labels.push({ ...label, key: `${floatingFeature?.id ?? selected?.id ?? "operation"}:${handleFlag}`, anchor, targets: target ? [target] : [anchor] });
+    };
+    if (faceExtrudeHandle) addSpecial(faceExtrudeHandleRef.current, "faceExtrudeHandle", null, {
+      name: uiText("sidebar.depth", {}, locale), value: faceExtrudeHandleRef.current?.userData.parameterLabelValue ?? faceExtrudeHandle.distance,
+      color: axisColor(faceExtrudeHandle.normal), unit: "length", min: .01,
+      onCommit: (value) => faceExtrudeDistanceChangeRef.current?.(value, faceExtrudeHandle.operation),
+    });
+    if (edgeTreatmentHandle) addSpecial(edgeTreatmentHandleRef.current, "edgeTreatmentRadiusHandle", "edgeTreatmentRadiusTarget", {
+      name: uiText("sidebar.radius", {}, locale), value: edgeTreatmentRadiusPreview ?? edgeTreatmentHandle.radius,
+      color: "other", unit: "length", min: .01,
+      onCommit: (value) => edgeTreatmentRadiusChangeRef.current?.(value),
+    });
+    if (revolveHandle) addSpecial(revolveHandleRef.current, "revolveAngleHandle", "revolveAngleTarget", {
+      name: uiText("sketch.angle", {}, locale), value: revolveAnglePreview ?? revolveHandle.angle,
+      color: "other", unit: "angle", min: -360, max: 360,
+      onCommit: (value) => revolveAngleChangeRef.current?.(value),
+    });
+    if (distanceHandle) addSpecial(distanceHandleRef.current, "distanceParameterHandle", "distanceParameterTarget", {
+      name: uiText(floatingFeature?.kind === "linearPattern" ? "property.spacing" : floatingFeature?.kind === "mirror" ? "property.distance" : "property.thickness", {}, locale),
+      value: distanceParameterPreview ?? distanceHandle.value, color: axisColor(distanceHandle.direction), unit: "length", min: distanceHandle.min, max: distanceHandle.max,
+      onCommit: (value) => distanceParameterChangeRef.current?.(value),
+    });
+    const annotation = annotationInteractionSelection;
+    if (annotation?.visible && annotationsVisible) {
+      if (annotation.kind === "circle") annotationLayerRef.current?.traverse((node) => {
+        const width = Boolean(node.userData.annotationLineWidthTarget);
+        if ((!width && !node.userData.annotationRadiusTarget) || !isVisible(node)) return;
+        labels.push({ key: `${annotation.id}:${width ? "lineWidth" : "radius"}`, anchor: node,
+          name: uiText(width ? "annotation.lineWidth" : "sidebar.radius", {}, locale), value: width ? annotation.lineWidth : annotation.radius,
+          unit: width ? "pixels" : "length", color: "other", min: width ? .5 : .1, max: width ? 20 : 10000,
+          onCommit: (value) => { if (width) onUpdateAnnotation?.(annotation.id, (draft) => { if (draft.kind === "circle") draft.lineWidth = value; }); else onCircleAnnotationRadius?.(annotation.id, value); },
+        });
+      });
+      else {
+        const handle = hostRef.current?.querySelector<HTMLElement>(".kercad-annotation-size-handle");
+        if (handle) labels.push({ key: `${annotation.id}:size`, anchor: handle, name: uiText("annotation.size", {}, locale), value: annotation.size ?? 3,
+          unit: "length", color: "other", min: .1, max: 1000,
+          onCommit: (value) => onUpdateAnnotation?.(annotation.id, (draft) => { if (draft.kind !== "circle") draft.size = value; }),
+        });
+      }
+    }
+    const imageHandle = referenceImageHandleRef.current;
+    if (imageHandle && referenceImageSelection && isVisible(imageHandle.labelHandle)) labels.push({ key: `${referenceImageSelection.id}:scale`, anchor: imageHandle.labelHandle,
+      name: uiText("property.scale", {}, locale), value: referenceImageSelection.transform.scale.x * imageHandle.scaleFactor(), unit: "scalar", color: "other", min: .001,
+      onCommit: (value) => referenceImageScaleCallbackRef.current?.(referenceImageSelection.id, value / referenceImageSelection.transform.scale.x),
+    });
+    return labels;
+  };
 
   useEffect(() => {
     const host = hostRef.current;
@@ -4756,10 +4651,6 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       </svg>
       <span style={{ left: moveDimension.labelX, top: moveDimension.labelY }}>{moveDimension.value}</span>
     </div> : null}
-    <div className="parametric-selection-dimensions">
-      {dimensionInput("x", dimensionXRef, "axis-x", uiText("ui.parametricviewport.edit.x.dimension.8a3102", {}, locale))}
-      {dimensionInput("y", dimensionYRef, "axis-y", uiText("ui.parametricviewport.edit.y.dimension.9880ba", {}, locale))}
-      {dimensionInput("z", dimensionZRef, "axis-z", uiText("ui.parametricviewport.edit.z.dimension.948e7c", {}, locale))}
-    </div>
+    <ParameterHandleLabels ref={parameterLabelsRef} host={hostRef} camera={cameraRef} displayUnit={displayUnit} snap={workplane.snapSpacing} getHandles={parameterLabelHandles} invalidate={() => invalidateRef.current()} />
   </div>;
 }
