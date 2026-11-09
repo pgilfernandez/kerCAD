@@ -508,6 +508,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   };
   const [cameraOrientation, setCameraOrientation] = useState<CameraOrientation>({ azimuth: -Math.PI / 4, polar: 1.02 });
   const [clipboardId, setClipboardId] = useState<string | null>(null);
+  const [annotationClipboard, setAnnotationClipboard] = useState<ParametricAnnotation[] | null>(null);
   const [sketchSession, setSketchSession] = useState<{ featureId: string | null; objectId: string | null; profile: SketchProfile; annotations: ParametricAnnotation[]; mode: "sketch" | "scribble"; revolveAxisFeatureId?: string } | null>(null);
   const sketchSessionRef = useRef(sketchSession); sketchSessionRef.current = sketchSession;
   const [sketchAnnotationTool, setSketchAnnotationTool] = useState<AnnotationTool | null>(null);
@@ -2714,7 +2715,51 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     setModelSelection(nextId ? [{ id: nextId, kind: "object" }] : []);
   }, [document, mutate, selectedObjectId]);
 
+  const pasteAnnotations = useCallback((sources: ParametricAnnotation[]) => {
+    const copies = structuredClone(sources);
+    const changed = mutate((draft) => {
+      draft.annotations ??= [];
+      for (const annotation of copies) {
+        annotation.id = createLocalId("annotation");
+        annotation.name = nextAnnotationName(draft.annotations, t(`annotation.${annotation.kind}`));
+        const points = annotation.kind === "text" || annotation.kind === "circle"
+          ? [annotation.position]
+          : annotation.kind === "angle"
+            ? [annotation.start, annotation.center, annotation.end]
+            : [annotation.start, annotation.end];
+        for (const point of points) { point.x += 5; point.y += 5; }
+        draft.annotations.push(annotation);
+      }
+      draft.annotationGroup = { expanded: true, position: 0, ...draft.annotationGroup, visible: true };
+    });
+    if (!changed) return;
+    setModelSelection([]);
+    setAnnotationTool(null);
+    setEditingAnnotationId(null);
+    setAnnotationEndpoint(null);
+    setSelectedAnnotationId(copies.length === 1 ? copies[0].id : ANNOTATIONS_GROUP_ID);
+  }, [mutate, t]);
+
+  const copyCurrentSelection = () => {
+    const annotations = selectedAnnotationId === ANNOTATIONS_GROUP_ID
+      ? document.annotations ?? [] : selectedAnnotation ? [selectedAnnotation] : [];
+    if (annotations.length) {
+      setAnnotationClipboard(structuredClone(annotations));
+      setClipboardId(null);
+    } else {
+      setAnnotationClipboard(null);
+      setClipboardId(selectedId);
+      setNotice({ type: "info", text: selectionKind === "feature" ? uiText("ui.sketchforgeparametriceditor.operation.copied.3dbb82", {}, locale) : t("notice.objectCopied") });
+    }
+  };
+
   const duplicateSelected = useCallback((sourceId?: string | null) => {
+    if (!sourceId && selectedAnnotationId) {
+      const annotations = selectedAnnotationId === ANNOTATIONS_GROUP_ID
+        ? document.annotations ?? [] : document.annotations?.filter((item) => item.id === selectedAnnotationId) ?? [];
+      if (annotations.length) pasteAnnotations(annotations);
+      return;
+    }
     if (sourceId) {
       let nextId: string | null = null;
       const sourceIsFeature = document.features.some((feature) => feature.id === sourceId);
@@ -2736,7 +2781,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       setModelSelection(duplicated);
       setNotice({ type: "ok", text: t("notice.shapeDuplicated") });
     }
-  }, [document.features, modelSelection, mutate, selectedObjectId]);
+  }, [document.features, document.annotations, modelSelection, mutate, selectedObjectId, selectedAnnotationId, pasteAnnotations]);
 
   const deleteFeature = useCallback((id: string) => {
     let result: ReturnType<typeof deleteParametricFeature> = { objectId: null, nextId: null };
@@ -3587,9 +3632,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               <Tool label={t("toolbar.redo")} enabled={history.index < history.entries.length - 1} onClick={redo}><ToolbarRedoIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label={t("toolbar.clipboard")}>
-              <Tool label={t("toolbar.copy")} enabled={Boolean(selectedId)} onClick={() => { setClipboardId(selectedId); setNotice({ type: "info", text: selectionKind === "feature" ? (uiText("ui.sketchforgeparametriceditor.operation.copied.3dbb82", {}, locale)) : t("notice.objectCopied") }); }}><ToolbarCopyIcon /></Tool>
-              <Tool label={t("toolbar.paste")} enabled={Boolean(clipboardId)} onClick={() => duplicateSelected(clipboardId)}><ToolbarPasteIcon /></Tool>
-              <Tool label={t("toolbar.duplicate")} enabled={Boolean(selectedObjectId)} onClick={() => duplicateSelected()}><ToolbarDuplicateIcon /></Tool>
+              <Tool label={t("toolbar.copy")} enabled={Boolean(selectedId || selectedAnnotationId)} onClick={copyCurrentSelection}><ToolbarCopyIcon /></Tool>
+              <Tool label={t("toolbar.paste")} enabled={Boolean(clipboardId || annotationClipboard?.length)} onClick={() => { if (annotationClipboard) pasteAnnotations(annotationClipboard); else duplicateSelected(clipboardId); }}><ToolbarPasteIcon /></Tool>
+              <Tool label={t("toolbar.duplicate")} enabled={Boolean(selectedObjectId || selectedAnnotationId)} onClick={() => duplicateSelected()}><ToolbarDuplicateIcon /></Tool>
               <Tool label={modelSelection.length > 1 ? t("toolbar.deleteSelection") : selectionKind === "feature" ? t("toolbar.deleteOperation") : t("toolbar.deleteObject")} enabled={modelSelection.length > 0 || Boolean(selectedAnnotation) || selectedAnnotationId === ANNOTATIONS_GROUP_ID} onClick={deleteCurrentSelection}><ToolbarTrashIcon /></Tool>
             </ToolbarSection>
             <ToolbarSection label={t("toolbar.shapes")} className="toolbar-shapes-section">
