@@ -11,6 +11,6 @@ export function AnnotationIcon({ kind, size = 24 }: { kind: "text" | "dimension"
   const path = annotationIconPath(kind);
   const src = theme === "dark" && path.startsWith("/assets/kercad/toolbar-3d/annotations/")
     ? path.replace("/annotations/", "/annotations/dark/") : path;
-  if (kind === "rectangle") return <ThemedToolbarImage src={path} className="kercad-operation-tree-icon toolbar-command-icon" width={size} height={size} alt="" aria-hidden="true" draggable={false} style={{ objectFit: "contain", backgroundColor: "transparent" }} />;
+  if (kind === "rectangle" || path.startsWith("/assets/kercad/toolbar-horizontal/annotations/")) return <ThemedToolbarImage src={path} className="kercad-operation-tree-icon toolbar-command-icon" width={size} height={size} alt="" aria-hidden="true" draggable={false} style={{ objectFit: "contain", backgroundColor: "transparent" }} />;
   return <img src={src} className="kercad-operation-tree-icon toolbar-command-icon" width={size} height={size} alt="" aria-hidden="true" draggable={false} style={{ objectFit: "contain", backgroundColor: "transparent", filter: "none", opacity: 1 }} />;
 }

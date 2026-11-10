@@ -8,6 +8,7 @@ const darkImages = new Map<string, Promise<string>>();
 
 function darkPaint(hex: string) {
   const color = hex.toLowerCase();
+  if (color === "currentcolor") return "#ebeaeb";
   const accents: Record<string, string> = {
     "#292422": "#ebeaeb",
     "#ebeaeb": "#292422",
@@ -33,7 +34,7 @@ function darkImage(src: string) {
       return response.text();
     }).then((svg) => {
       // Only paint properties, never Inkscape metadata, opacity or geometry.
-      const themed = svg.replace(/\b(fill|stroke|stop-color)(\s*[:=]\s*["']?)(#[0-9a-fA-F]{6})\b/g,
+      const themed = svg.replace(/\b(fill|stroke|stop-color)(\s*[:=]\s*["']?)(#[0-9a-fA-F]{6}|currentColor)\b/g,
         (_match, property: string, separator: string, color: string) => `${property}${separator}${darkPaint(color)}`);
       return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(themed)}`;
     }).catch(() => {
@@ -48,7 +49,8 @@ function darkImage(src: string) {
 export function ThemedToolbarImage({ src, className = "", ...props }: ComponentProps<"img"> & { src: string }) {
   const { theme } = useAppTheme();
   const [image, setImage] = useState<{ src: string; themed: string } | null>(null);
-  const eligible = /^\/assets\/kercad\/toolbar-(3d|sketch)\//.test(src);
+  const eligible = /^\/assets\/kercad\/toolbar-(3d|sketch)\//.test(src)
+    || src.startsWith("/assets/kercad/toolbar-horizontal/annotations/");
   useEffect(() => {
     if (theme !== "dark" || !eligible) return;
     let cancelled = false;
