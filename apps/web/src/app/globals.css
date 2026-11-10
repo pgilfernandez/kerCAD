@@ -9781,6 +9781,7 @@ input[aria-invalid="true"] { box-shadow: inset 0 0 0 1px #d34545; }
 .kercad-annotation-size-slider .kercad-annotation-size-handle { position: absolute; top: 0; left: 0; transform: translate(-50%, -50%); width: 22px; height: 22px; border: 2px solid #e0b800; border-radius: 50%; padding: 0; background: #fff157; opacity: .75; cursor: nesw-resize; pointer-events: auto; touch-action: none; }
 .kercad-annotation-size-slider .kercad-annotation-size-handle:hover { background: #ffdf00; opacity: 1; }
 .kercad-annotation-snap-marker { position: absolute; z-index: 31; width: 18px; height: 18px; border: 2px solid #f1c500; background: #fff15744; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+.kercad-annotation-snap-marker.placing { width: 14px; height: 14px; background: transparent; }
 .kercad-annotation-instruction { position: absolute; right: 12px; bottom: 64px; z-index: 30; max-width: calc(100% - 24px); padding: 8px 12px; border: 1px solid var(--theme-dark-border, #cbd9e4); border-radius: 6px; background: var(--theme-dark-surface, #ffffffee); color: var(--theme-dark-link, #233c52); font-size: 12px; pointer-events: none; }
 .parametric-viewport .kercad-dimension-endpoint { position: absolute; z-index: 32; width: 14px; height: 14px; transform: translate(-50%, -50%); padding: 0; border: 2px solid #526579; border-radius: 50%; background: var(--theme-surface); cursor: grab; touch-action: none; }
 .parametric-viewport .kercad-dimension-endpoint:active { cursor: grabbing; }

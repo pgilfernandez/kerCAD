@@ -179,18 +179,32 @@ export function AnnotationInteraction(props: Props) {
       const cam = camera.current, root = model.current;
       const canvas = element.querySelector("canvas");
       if (!cam || !root || !canvas) return null;
-      if (p.tool === "dimension" || p.tool === "arrow" || p.tool === "dashedLine" || p.tool === "angle" || p.tool === "circle") {
+      const showPoint = (point: THREE.Vector3 | null) => {
+        setSnapped((previous) => previous && point && previous.distanceToSquared(point) < 1e-12 ? previous : point?.clone() ?? null);
+        return point;
+      };
+      if (p.tool) {
         const target = snapPoint.current?.(event) ?? null;
-        setSnapped((previous) => previous && target && previous.distanceToSquared(target) < 1e-12 ? previous : target?.clone() ?? null);
-        if (target) return target;
-      } else setSnapped(null);
+        if (target) return showPoint(target);
+      }
       const bounds = canvas.getBoundingClientRect();
       raycaster.setFromCamera(new THREE.Vector2((event.clientX - bounds.left) / bounds.width * 2 - 1, -(event.clientY - bounds.top) / bounds.height * 2 + 1), cam);
       const origin = root.localToWorld(new THREE.Vector3(p.workplane.origin.x, p.workplane.origin.y, p.workplane.origin.z));
       const normal = new THREE.Vector3(p.workplane.normal.x, p.workplane.normal.y, p.workplane.normal.z).transformDirection(root.matrixWorld);
       const hit = raycaster.ray.intersectPlane(new THREE.Plane().setFromNormalAndCoplanarPoint(normal, origin), new THREE.Vector3());
-      if (!hit) return null;
-      return root.worldToLocal(hit);
+      if (!hit) return showPoint(null);
+      const point = root.worldToLocal(hit);
+      const plane = p.workplane;
+      if (plane.snapToGrid && plane.snapSpacing > 0) {
+        const origin = new THREE.Vector3(plane.origin.x, plane.origin.y, plane.origin.z);
+        const delta = point.clone().sub(origin);
+        point.copy(origin);
+        for (const axis of [plane.xAxis, plane.yAxis]) {
+          const direction = new THREE.Vector3(axis.x, axis.y, axis.z);
+          point.addScaledVector(direction, Math.round(delta.dot(direction) / plane.snapSpacing) * plane.snapSpacing);
+        }
+      }
+      return showPoint(point);
     };
     const move = (event: PointerEvent) => {
       const radius = radiusDrag.current;
@@ -209,7 +223,8 @@ export function AnnotationInteraction(props: Props) {
         moveEndpointDrag(event); event.stopImmediatePropagation(); return;
       }
       const p = current.current;
-      if (!p.tool || event.buttons !== 0 || !(event.target instanceof HTMLCanvasElement)) return;
+      if (!p.tool || event.buttons !== 0) return;
+      if (!(event.target instanceof HTMLCanvasElement)) { setSnapped(null); return; }
       const point = pointAt(event);
       if (point && start.current && p.tool !== "text") {
         const base = { id: "annotation-preview", name: "", visible: true, start: { ...start.current }, end: { ...point } };
@@ -294,13 +309,15 @@ export function AnnotationInteraction(props: Props) {
       if (radiusDrag.current?.pointerId === event.pointerId) cancelRadiusDrag();
       if (endpointDrag.current?.element instanceof HTMLCanvasElement && endpointDrag.current.pointerId === event.pointerId) cancelEndpointDrag();
     };
+    const leave = () => { if (current.current.tool) setSnapped(null); };
+    element.addEventListener("pointerleave", leave);
     element.addEventListener("pointermove", move, true);
     element.addEventListener("pointerdown", down, true);
     element.addEventListener("pointerup", up, true);
     element.addEventListener("pointercancel", cancel, true);
     element.addEventListener("lostpointercapture", cancel, true);
     window.addEventListener("keydown", key);
-    return () => { element.removeEventListener("pointermove", move, true); element.removeEventListener("pointerdown", down, true); element.removeEventListener("pointerup", up, true); element.removeEventListener("pointercancel", cancel, true); element.removeEventListener("lostpointercapture", cancel, true); window.removeEventListener("keydown", key); };
+    return () => { element.removeEventListener("pointerleave", leave); element.removeEventListener("pointermove", move, true); element.removeEventListener("pointerdown", down, true); element.removeEventListener("pointerup", up, true); element.removeEventListener("pointercancel", cancel, true); element.removeEventListener("lostpointercapture", cancel, true); window.removeEventListener("keydown", key); };
   }, [host, camera, model, snapPoint]);
 
   useEffect(() => {
@@ -358,7 +375,7 @@ export function AnnotationInteraction(props: Props) {
   return <>
     {tool && tool !== "angle" && <div className="kercad-annotation-instruction">{(tool === "circle" ? uiText("ui.annotationinteraction.pick.the.center.and.a.point.to.define.the.radius.0b9dbc", {}, locale) : tool === "text" ? uiText("ui.annotationinteraction.click.the.plane.to.place.a.label.esc.cancels.cf6aaf", {}, locale) : uiText("ui.annotationinteraction.pick.two.points.vertices.and.edge.midpoints.avai.5a13fc", {}, locale))}</div>}
     {tool === "angle" && <div className="kercad-annotation-instruction">{uiText(`annotation.angleStep.${angleStage}`, {}, locale)} {uiText("common.escapeCancels", {}, locale)}</div>}
-    {snapped && (tool === "dimension" || tool === "arrow" || tool === "dashedLine" || tool === "angle" || tool === "circle" || endpointDragging) && <div ref={marker} className="kercad-annotation-snap-marker" />}
+    {snapped && (tool || endpointDragging) && <div ref={marker} className={`kercad-annotation-snap-marker${tool ? " placing" : ""}`} />}
     {textAnnotation?.visible && <button ref={textMarker} style={{ display: "none" }} type="button" className={`kercad-dimension-endpoint kercad-annotation-position-handle ${endpointDragging ? "active" : ""}`} title={uiText("ui.annotationinteraction.drag.position.snap.to.geometry.c19cd1", {}, locale)} aria-label={uiText("ui.annotationinteraction.move.label.ef242f", {}, locale)} onPointerDown={(event) => beginEndpointDrag(event, "position")} onPointerMove={moveEndpointDrag} onPointerUp={finishEndpointDrag} onPointerCancel={cancelEndpointDrag} onLostPointerCapture={() => { if (endpointDrag.current) cancelEndpointDrag(); }} />}
     {labelInfo && selected?.visible && <div ref={editor} className="kercad-annotation-editor" style={{ fontFamily: `${labelInfo.font}, sans-serif`, textAlign: labelInfo.alignment, color: selected.color ?? (selected.kind === "text" ? "#000000" : "#233c52") }}>
       {textAnnotation ? editing ? <textarea ref={input} value={text} maxLength={2000} aria-label={uiText("ui.annotationinteraction.label.text.870d39", {}, locale)} onChange={(event) => { setText(event.target.value); draft.current.text = event.target.value; }} onKeyDown={(event) => { event.stopPropagation(); if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); finish(); } if (event.key === "Escape") { if (endpointDrag.current) cancelEndpointDrag(); else cancelEdit(); } }} /> : <button className="kercad-annotation-edit-target" aria-label={uiText("ui.annotationinteraction.edit.label.84e1c4", {}, locale)} title={uiText("ui.annotationinteraction.double.click.to.edit.1b1ef7", {}, locale)} onPointerDown={(event) => { if (props.selectLabelAtPointer(event.nativeEvent)) { event.preventDefault(); event.stopPropagation(); } }} onDoubleClick={() => props.onEdit(textAnnotation.id)} /> : null}
