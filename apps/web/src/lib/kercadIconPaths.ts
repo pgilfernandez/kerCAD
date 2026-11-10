@@ -1,7 +1,6 @@
 // Shared artwork lives once, grouped by its primary GUI role.
 export function operationIconPath(file: string) {
-  const folder = file === "snap-grid.svg" ? "toolbar-vertical"
-    : ["edit.svg", "sharp.svg", "boolean-add.svg", "boolean-hole.svg", "boolean-common.svg"].includes(file) ? "toolbar-horizontal"
+  const folder = ["edit.svg", "sharp.svg", "boolean-add.svg", "boolean-hole.svg", "boolean-common.svg"].includes(file) ? "toolbar-horizontal"
     : "toolbar-3d";
   return `/assets/kercad/${folder}/${file}`;
 }
