@@ -3370,6 +3370,11 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
     for (const origin of objectOrigins) {
       if (!origin.visible) continue;
       const marker = objectOriginMarker(origin.objectId, origin.objectId === editableOriginId, "object", origin.positionVisible !== false, origin.rotationEditable && origin.objectId !== editableOriginId, visualSection?.inverted !== false ? 1 : -1);
+      if (annotationStateRef.current.annotations?.some((annotation) => annotation.id === origin.objectId)) {
+        // Include nested groups (ArrowHelper) so Three.js sorts the entire triad
+        // above annotation strokes, labels and endpoint handles.
+        marker.traverse((child) => { child.renderOrder += 100020; });
+      }
       marker.position.set(origin.position.x, origin.position.y, origin.position.z);
       marker.rotation.set(
         THREE.MathUtils.degToRad(origin.rotation.x),
