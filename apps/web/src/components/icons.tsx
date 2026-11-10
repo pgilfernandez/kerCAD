@@ -107,27 +107,27 @@ export function ToolbarHomeIcon() {
 }
 
 export function ToolbarCopyIcon() {
-  return <ToolbarCommandImage file="toolbar-copy.png" className="toolbar-user-art-icon" />;
+  return <KercadOperationImage file="file-copy.svg" />;
 }
 
 export function ToolbarPasteIcon() {
-  return <ToolbarCommandImage file="toolbar-paste.png" className="toolbar-user-art-icon" />;
+  return <KercadOperationImage file="file-paste.svg" />;
 }
 
 export function ToolbarDuplicateIcon() {
-  return <ToolbarCommandImage file="toolbar-duplicate.png" className="toolbar-user-art-icon" />;
+  return <KercadOperationImage file="file-duplicate.svg" />;
 }
 
 export function ToolbarTrashIcon() {
-  return <ToolbarCommandImage file="toolbar-delete.png" className="toolbar-user-art-icon" />;
+  return <KercadOperationImage file="file-delete.svg" />;
 }
 
 export function ToolbarUndoIcon() {
-  return <ToolbarCommandImage file="toolbar-undo.png" className="toolbar-user-art-icon" />;
+  return <KercadOperationImage file="undo.svg" />;
 }
 
 export function ToolbarRedoIcon() {
-  return <ToolbarCommandImage file="toolbar-redo.png" className="toolbar-user-art-icon" />;
+  return <KercadOperationImage file="redo.svg" />;
 }
 
 export function ToolbarImportIcon() {
