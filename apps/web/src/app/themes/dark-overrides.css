@@ -121,7 +121,7 @@ html[data-theme="dark"] body :is(
   input[type="password"],
   textarea,
   select
-):not(:disabled):not([readonly]):not(.sketch-annotation-inline-editor):not(.kercad-annotation-editor textarea) {
+):not(:disabled):not([readonly]):not(.sketch-annotation-inline-editor):not(.kercad-annotation-editor textarea):not(.kercad-handle-label-value input) {
   background-color: var(--theme-field-surface);
 }
 
