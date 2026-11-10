@@ -189,6 +189,12 @@ html[data-theme="dark"] .toolbar-workspace-tabs:not(.kercad-toolbar-titlebar) bu
   background: #273946;
 }
 
+html[data-theme="dark"] .toolbar-icon:is(.active, [aria-pressed="true"]),
+html[data-theme="dark"] .toolbar-icon:is(.active, [aria-pressed="true"]):hover {
+  background: var(--theme-active);
+  color: var(--theme-link);
+}
+
 html[data-theme="dark"] .shape-menu-dropdown,
 html[data-theme="dark"] .visibility-dropdown,
 html[data-theme="dark"] .top-action-panel,
