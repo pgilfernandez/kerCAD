@@ -1425,8 +1425,6 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
 
   const pasteSketchAnnotation = (source: ParametricAnnotation) => {
     const annotation = structuredClone(source); annotation.id = createLocalId("annotation");
-    const points = annotation.kind === "text" || annotation.kind === "circle" ? [annotation.position] : annotation.kind === "angle" ? [annotation.start, annotation.center, annotation.end] : [annotation.start, annotation.end];
-    for (const point of points) { point.x += 5; point.y += 5; }
     setSketchAnnotations((annotations) => { annotation.name = nextAnnotationName(annotations, t(`annotation.${annotation.kind}`)); annotations.push(annotation); });
     setSketchSelection(null); setSelectedSketchAnnotationId(annotation.id); setSketchAnnotationTool(null);
   };
@@ -2722,12 +2720,6 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       for (const annotation of copies) {
         annotation.id = createLocalId("annotation");
         annotation.name = nextAnnotationName(draft.annotations, t(`annotation.${annotation.kind}`));
-        const points = annotation.kind === "text" || annotation.kind === "circle"
-          ? [annotation.position]
-          : annotation.kind === "angle"
-            ? [annotation.start, annotation.center, annotation.end]
-            : [annotation.start, annotation.end];
-        for (const point of points) { point.x += 5; point.y += 5; }
         draft.annotations.push(annotation);
       }
       draft.annotationGroup = { expanded: true, position: 0, ...draft.annotationGroup, visible: true };
