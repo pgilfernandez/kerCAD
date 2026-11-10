@@ -41,6 +41,8 @@
     "annotation.angle": "Angle",
     "annotation.vertex": "Sommet central",
     "annotation.circle": "Cercle",
+    "annotation.rectangle": "Rectangle",
+    "annotation.rectangleHint": "Sélectionnez le centre, puis un coin pour définir le rectangle.",
     "annotation.mode": "Mode",
     "annotation.billboard": "2D",
     "annotation.planar": "3D",

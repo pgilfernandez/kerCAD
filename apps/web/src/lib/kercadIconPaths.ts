@@ -8,7 +8,7 @@ export function operationIconPath(file: string) {
 
 export function annotationIconPath(kind: string) {
   if (kind === "group") return "/assets/kercad/operations-tree/annotations.svg";
-  const folder = ["text", "dimension", "arrow", "dashedLine", "angle", "circle"].includes(kind)
+  const folder = ["text", "dimension", "arrow", "dashedLine", "angle", "circle", "rectangle"].includes(kind)
     ? "toolbar-3d" : "toolbar-horizontal";
   return `/assets/kercad/${folder}/annotations/${kind}.svg`;
 }

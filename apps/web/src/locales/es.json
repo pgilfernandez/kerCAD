@@ -41,6 +41,8 @@
     "annotation.angle": "Ángulo",
     "annotation.vertex": "Vértice central",
     "annotation.circle": "Círculo",
+    "annotation.rectangle": "Rectángulo",
+    "annotation.rectangleHint": "Selecciona el centro y después una esquina para definir el rectángulo.",
     "annotation.mode": "Modo",
     "annotation.billboard": "2D",
     "annotation.planar": "3D",

@@ -13,6 +13,7 @@ export function sketchAnnotationFromPicks(tool: AnnotationTool, picks: Array<{ x
   const point = (index: number) => ({ ...picks[Math.min(index, picks.length - 1)], z: 0 });
   const common = { id: crypto.randomUUID(), name: kercadTranslate(locale, `annotation.${tool}`), visible: true };
   if (tool === "text") return { ...common, kind: "text", position: point(0), text: uiText("ui.page.kercad.c0bf6d", {}, locale), size: 6, font: "Sans", alignment: "center", color: "#000000" };
+  if (tool === "rectangle") return { ...common, kind: "rectangle", position: point(0), radius: Math.max(.1, Math.abs(point(1).x - point(0).x)), height: Math.max(.1, Math.abs(point(1).y - point(0).y) * 2), rotation: { x: 0, y: 0, z: 0 }, mode: "planar", color: "#233c52", lineWidth: 2 };
   if (tool === "circle") return { ...common, kind: "circle", position: point(0), radius: Math.max(0.1, Math.hypot(point(1).x - point(0).x, point(1).y - point(0).y)), rotation: { x: 0, y: 0, z: 0 }, mode: "planar", color: "#233c52", lineWidth: 2 };
   if (tool === "angle") return { ...common, kind: "angle", start: point(0), center: point(1), end: point(2), size: 3, color: "#233c52" };
   return { ...common, kind: "dimension", start: point(0), end: point(1), size: 3, ...annotationDimensionPreset(tool) };
@@ -59,7 +60,7 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
     document.addEventListener("pointerdown", outside, true);
     return () => document.removeEventListener("pointerdown", outside, true);
   }, [editing?.id]);
-  const drag = useRef<{ annotation: ParametricAnnotation; point: AnnotationPoint | "position" | "radius" | "lineWidth" | "size" | null; origin: { x: number; y: number }; resizeCorner?: { x: number; y: number }; pointerId: number; latest: ParametricAnnotation | null } | null>(null);
+  const drag = useRef<{ annotation: ParametricAnnotation; point: AnnotationPoint | "position" | "radius" | "height" | "lineWidth" | "size" | null; origin: { x: number; y: number }; resizeCorner?: { x: number; y: number }; pointerId: number; latest: ParametricAnnotation | null } | null>(null);
   const measure = useRef<CanvasRenderingContext2D | null>(null);
   if (!measure.current && typeof document !== "undefined") measure.current = document.createElement("canvas").getContext("2d");
   useEffect(() => {
@@ -80,12 +81,16 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
     event.preventDefault(); event.stopPropagation();
     const point = pointFromEvent(event, action.point !== "size"); if (!point) return;
     const next = structuredClone(action.annotation);
-    if (action.point === "radius" && next.kind === "circle") {
-      const radius = Math.hypot(point.x - next.position.x, point.z - next.position.y);
+    if (action.point === "radius" && (next.kind === "circle" || next.kind === "rectangle")) {
+      const radius = next.kind === "rectangle" ? next.radius + point.x - action.origin.x : Math.hypot(point.x - next.position.x, point.z - next.position.y);
       next.radius = Math.max(0.1, snapSpacing > 0 ? Math.round(radius / snapSpacing) * snapSpacing : radius);
     }
-    else if (action.point === "lineWidth" && next.kind === "circle") {
-      next.lineWidth = Math.max(0.5, Math.min(20, Math.round((action.annotation.kind === "circle" ? action.annotation.lineWidth + point.z - action.origin.y : 2) * 10) / 10));
+    else if (action.point === "height" && next.kind === "rectangle") {
+      const height = (next.height ?? next.radius * 1.4) + (point.z - action.origin.y) * 2;
+      next.height = Math.max(.1, snapSpacing > 0 ? Math.round(height / snapSpacing) * snapSpacing : height);
+    }
+    else if (action.point === "lineWidth" && (next.kind === "circle" || next.kind === "rectangle")) {
+      next.lineWidth = Math.max(0.5, Math.min(20, Math.round(((action.annotation.kind === "circle" || action.annotation.kind === "rectangle") ? action.annotation.lineWidth + point.z - action.origin.y : 2) * 10) / 10));
     }
     else if (action.point === "size") {
       const corner = action.resizeCorner ?? { x: 1, y: 1 };
@@ -98,7 +103,7 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
       const target = annotationPosition(next, action.point === "position" ? null : action.point);
       if (target) { target.x = point.x; target.y = point.z; target.z = 0; }
     } else {
-      const points = next.kind === "text" || next.kind === "circle" ? [next.position] : next.kind === "angle" ? [next.start, next.center, next.end] : [next.start, next.end];
+      const points = next.kind === "text" || (next.kind === "circle" || next.kind === "rectangle") ? [next.position] : next.kind === "angle" ? [next.start, next.center, next.end] : [next.start, next.end];
       const anchor = next.kind === "angle" ? next.center : points[0];
       let dx = point.x - action.origin.x, dy = point.z - action.origin.y;
       if (snapSpacing > 0) { dx = Math.round((anchor.x + dx) / snapSpacing) * snapSpacing - anchor.x; dy = Math.round((anchor.y + dy) / snapSpacing) * snapSpacing - anchor.y; }
@@ -120,7 +125,7 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
       const selected = annotation.id === selectedId;
       const color = annotation.color ?? (annotation.kind === "text" ? "#000000" : "#233c52");
       const label = annotationLabelInfo(annotation.kind === "text" && editing?.id === annotation.id ? { ...annotation, text: editing.text } : annotation, displayUnit);
-      const stroke = annotation.kind === "circle" ? annotation.lineWidth : 2;
+      const stroke = (annotation.kind === "circle" || annotation.kind === "rectangle") ? annotation.lineWidth : 2;
       const polyline = annotation.kind === "dimension" ? `${annotation.start.x},${annotation.start.y} ${annotation.end.x},${annotation.end.y}` : annotation.kind === "angle" ? `${annotation.start.x},${annotation.start.y} ${annotation.center.x},${annotation.center.y} ${annotation.end.x},${annotation.end.y}` : "";
       const angle = annotation.kind === "angle" ? annotationAngleGeometry(annotation) : null;
       const arrow = (start: { x: number; y: number }, end: { x: number; y: number }, key: string, ending: AnnotationEnding) => {
@@ -144,7 +149,7 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
       const width = Math.max(labelSize * 4 / 3, ...lines.map((line) => (context?.measureText(line).width ?? line.length * 28) / 48 * labelSize + labelSize * 4 / 3));
       const height = (lines.length * 4 / 3 + 1 / 3) * labelSize;
       const labelX = label?.alignment === "left" ? 0 : label?.alignment === "right" ? -width : -width / 2;
-      const points: Array<AnnotationPoint | "position"> = annotation.kind === "text" || annotation.kind === "circle" ? ["position"] : annotation.kind === "angle" ? ["start", "center", "end"] : ["start", "end"];
+      const points: Array<AnnotationPoint | "position"> = annotation.kind === "text" || (annotation.kind === "circle" || annotation.kind === "rectangle") ? ["position"] : annotation.kind === "angle" ? ["start", "center", "end"] : ["start", "end"];
       return <g key={annotation.id} data-sketch-annotation={annotation.id} style={{ cursor: editing?.id === annotation.id ? "text" : "move" }} opacity={preview?.id === annotation.id ? .65 : 1} onPointerDown={(event) => begin(event, annotation, null)} onDoubleClick={(event) => {
         if (annotation.kind !== "text" || editingRef.current?.id === annotation.id) return;
         event.preventDefault(); event.stopPropagation(); drag.current = null; setMoving(null); onSelect(annotation.id);
@@ -153,6 +158,7 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
         {polyline && <polyline points={polyline} fill="none" stroke="transparent" strokeWidth={12} vectorEffect="non-scaling-stroke" />}
         {angle && angle.degrees > .0001 && <polyline points={angle.arc.map((point) => `${point.x},${point.y}`).join(" ")} fill="none" stroke="transparent" strokeWidth={12} vectorEffect="non-scaling-stroke" />}
         {annotation.kind === "circle" && <circle cx={annotation.position.x} cy={annotation.position.y} r={annotation.radius} fill="none" stroke="transparent" strokeWidth={12} vectorEffect="non-scaling-stroke" />}
+        {annotation.kind === "rectangle" && <rect x={annotation.position.x - annotation.radius} y={annotation.position.y - (annotation.height ?? annotation.radius * 1.4) / 2} width={annotation.radius * 2} height={annotation.height ?? annotation.radius * 1.4} rx={Math.min(annotation.radius, (annotation.height ?? annotation.radius * 1.4) / 2) * .12} fill="none" stroke="transparent" strokeWidth={12} vectorEffect="non-scaling-stroke" />}
         {polyline && <polyline points={polyline} fill="none" stroke={color} strokeWidth={stroke} vectorEffect="non-scaling-stroke" strokeDasharray={annotation.kind === "dimension" && annotation.lineStyle === "dashed" ? `${54 * screenUnit * zoom} ${36 * screenUnit * zoom}` : undefined} />}
         {angle && angle.degrees > .0001 && <polyline points={angle.arc.map((point) => `${point.x},${point.y}`).join(" ")} fill="none" stroke={color} strokeWidth={2} vectorEffect="non-scaling-stroke" />}
         {annotation.kind === "dimension" && <>{arrow(annotation.end, annotation.start, "start", annotationEnding(annotation, "start"))}{arrow(annotation.start, annotation.end, "end", annotationEnding(annotation, "end"))}</>}
@@ -163,6 +169,7 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
           return <>{[annotation.start, annotation.end].map((point, index) => <line key={index} x1={point.x - x} y1={point.y - y} x2={point.x + x} y2={point.y + y} stroke={color} strokeWidth={2} vectorEffect="non-scaling-stroke" />)}</>;
         })()}
         {annotation.kind === "circle" && <circle cx={annotation.position.x} cy={annotation.position.y} r={annotation.radius} fill="none" stroke={color} strokeWidth={annotation.lineWidth} vectorEffect="non-scaling-stroke" />}
+        {annotation.kind === "rectangle" && <rect x={annotation.position.x - annotation.radius} y={annotation.position.y - (annotation.height ?? annotation.radius * 1.4) / 2} width={annotation.radius * 2} height={annotation.height ?? annotation.radius * 1.4} rx={Math.min(annotation.radius, (annotation.height ?? annotation.radius * 1.4) / 2) * .12} fill="none" stroke={color} strokeWidth={annotation.lineWidth} vectorEffect="non-scaling-stroke" />}
         {label && <g transform={`translate(${label.position.x} ${label.position.y}) scale(1 -1)`}>
           <rect x={labelX} y={-height / 2} width={width} height={height} rx={labelSize / 6} fill="#fff" stroke={color} strokeWidth={2} vectorEffect="non-scaling-stroke" />
           {annotation.kind === "text" && editing?.id === annotation.id && <foreignObject x={labelX} y={-height / 2} width={width} height={height}>
@@ -179,8 +186,9 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
           const point = annotationPosition(annotation, key === "position" ? null : key); if (!point) return null;
           return <circle key={key} cx={point.x} cy={point.y} r={6 * screenUnit} fill="#add8ff" stroke="#526579" strokeWidth={1} vectorEffect="non-scaling-stroke" onPointerDown={(event) => begin(event, annotation, key)} />;
         })}
-        {selected && annotation.kind === "circle" && <circle cx={annotation.position.x + annotation.radius} cy={annotation.position.y} r={8 * screenUnit} fill="#fff157" stroke="#e0b800" strokeWidth={2} vectorEffect="non-scaling-stroke" onPointerDown={(event) => begin(event, annotation, "radius")} />}
-        {selected && annotation.kind === "circle" && <>
+        {selected && (annotation.kind === "circle" || annotation.kind === "rectangle") && <circle cx={annotation.position.x + annotation.radius} cy={annotation.position.y} r={8 * screenUnit} fill="#fff157" stroke="#e0b800" strokeWidth={2} vectorEffect="non-scaling-stroke" onPointerDown={(event) => begin(event, annotation, "radius")} />}
+        {selected && annotation.kind === "rectangle" && <circle cx={annotation.position.x} cy={annotation.position.y + (annotation.height ?? annotation.radius * 1.4) / 2} r={8 * screenUnit} fill="#fff157" stroke="#e0b800" strokeWidth={2} vectorEffect="non-scaling-stroke" onPointerDown={(event) => begin(event, annotation, "height")} />}
+        {selected && (annotation.kind === "circle" || annotation.kind === "rectangle") && <>
           <line x1={annotation.position.x} x2={annotation.position.x} y1={annotation.position.y + annotation.radius + 4} y2={annotation.position.y + annotation.radius + 4 + annotation.lineWidth} stroke="#e0b800" strokeWidth={2} vectorEffect="non-scaling-stroke" pointerEvents="none" />
           <circle cx={annotation.position.x} cy={annotation.position.y + annotation.radius + 4 + annotation.lineWidth} r={8 * screenUnit} fill="#fff157" stroke="#e0b800" strokeWidth={2} vectorEffect="non-scaling-stroke" onPointerDown={(event) => begin(event, annotation, "lineWidth")} />
         </>}

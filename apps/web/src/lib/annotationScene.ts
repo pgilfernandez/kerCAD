@@ -42,7 +42,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
     // Earlier tree entries paint last, above every later annotation.
     drawOrder = 100 + (annotations.length - index) * 4;
     if (!annotation.visible) continue;
-    if (annotation.kind === "circle") {
+    if ((annotation.kind === "circle" || annotation.kind === "rectangle")) {
       const circle = new THREE.Group();
       circle.position.copy(vector(annotation.position));
       circle.rotation.set(THREE.MathUtils.degToRad(annotation.rotation.x), THREE.MathUtils.degToRad(annotation.rotation.y), THREE.MathUtils.degToRad(annotation.rotation.z), "ZYX");
@@ -50,7 +50,18 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
       group.add(circle);
       if (annotation.mode === "billboard") billboardCircles.push(circle);
       const points: THREE.Vector3[] = [];
-      for (let index = 0; index < 128; index++) {
+      if (annotation.kind === "rectangle") {
+        const x = annotation.radius, y = (annotation.height ?? annotation.radius * 1.4) / 2;
+        const r = Math.min(x, y) * 0.12;
+        const outline = new THREE.Shape();
+        outline.moveTo(-x + r, -y);
+        outline.lineTo(x - r, -y); outline.quadraticCurveTo(x, -y, x, -y + r);
+        outline.lineTo(x, y - r); outline.quadraticCurveTo(x, y, x - r, y);
+        outline.lineTo(-x + r, y); outline.quadraticCurveTo(-x, y, -x, y - r);
+        outline.lineTo(-x, -y + r); outline.quadraticCurveTo(-x, -y, -x + r, -y);
+        const vertices = outline.getPoints(8);
+        for (let i = 1; i < vertices.length; i++) points.push(new THREE.Vector3(vertices[i - 1].x, vertices[i - 1].y, 0), new THREE.Vector3(vertices[i].x, vertices[i].y, 0));
+      } else for (let index = 0; index < 128; index++) {
         const first = index / 128 * Math.PI * 2, last = (index + 1) / 128 * Math.PI * 2;
         points.push(new THREE.Vector3(Math.cos(first) * annotation.radius, Math.sin(first) * annotation.radius, 0), new THREE.Vector3(Math.cos(last) * annotation.radius, Math.sin(last) * annotation.radius, 0));
       }
@@ -70,8 +81,13 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
           const guide = drawLines([new THREE.Vector3(), end], annotation.id, "#e4bc00");
           guide.userData.annotationPickable = false; guide.renderOrder = 100009; circle.add(guide);
           const handle = sphere("#fff157", 28); handle.position.copy(end); handle.userData.annotationRadiusTarget = true;
-          const widthEnd = new THREE.Vector3(0, annotation.radius + 4 + annotation.lineWidth, 0);
-          const widthGuide = drawLines([new THREE.Vector3(0, annotation.radius + 4, 0), widthEnd], annotation.id, "#e4bc00");
+          const top = annotation.kind === "rectangle" ? (annotation.height ?? annotation.radius * 1.4) / 2 : annotation.radius;
+          if (annotation.kind === "rectangle") {
+            const heightHandle = sphere("#fff157", 28);
+            heightHandle.position.set(0, top + 4, 0); heightHandle.userData.annotationHeightTarget = true;
+          }
+          const widthEnd = new THREE.Vector3(annotation.kind === "rectangle" ? -annotation.radius : 0, top + 4 + annotation.lineWidth, 0);
+          const widthGuide = drawLines([new THREE.Vector3(widthEnd.x, top + 4, 0), widthEnd], annotation.id, "#e4bc00");
           widthGuide.userData.annotationPickable = false; widthGuide.renderOrder = 100009; circle.add(widthGuide);
           const widthHandle = sphere("#fff157", 28); widthHandle.position.copy(widthEnd); widthHandle.userData.annotationLineWidthTarget = true;
         }

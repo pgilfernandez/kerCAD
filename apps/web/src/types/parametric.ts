@@ -254,7 +254,18 @@ export type ParametricAnnotation = {
 } & ({ kind: "text"; position: ParametricVector3; alignment: "left" | "center" | "right"; size: number; font: string; text: string; color?: string }
   | { kind: "dimension"; start: ParametricVector3; end: ParametricVector3; size?: number; color?: string; startArrow?: boolean; endArrow?: boolean; startEnding?: AnnotationEnding; endEnding?: AnnotationEnding; lineStyle?: "solid" | "dashed"; showLength?: boolean }
   | { kind: "angle"; start: ParametricVector3; center: ParametricVector3; end: ParametricVector3; size?: number; color?: string }
-  | { kind: "circle"; position: ParametricVector3; rotation: ParametricVector3; radius: number; mode: "billboard" | "planar"; color: string; lineWidth: number; size?: number });
+  | {
+    kind: "circle" | "rectangle";
+    position: ParametricVector3;
+    rotation: ParametricVector3;
+    /** Circle radius, or half the rectangle width for the shared horizontal handle. */
+    radius: number;
+    height?: number;
+    mode: "billboard" | "planar";
+    color: string;
+    lineWidth: number;
+    size?: number;
+  });
 
 export type ParametricDocument = {
   schema: "kercad-parametric/v1" | "kercad-parametric/v2";

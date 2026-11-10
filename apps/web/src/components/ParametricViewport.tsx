@@ -181,7 +181,7 @@ type Props = {
   onCircleAnnotationRadius?: (id: string, radius: number) => void;
   annotationTool?: AnnotationTool | null;
   editingAnnotationId?: string | null;
-  onPlaceAnnotation?: (kind: AnnotationTool, start: { x: number; y: number; z: number }, end?: { x: number; y: number; z: number }, center?: { x: number; y: number; z: number }) => void;
+  onPlaceAnnotation?: (kind: AnnotationTool, start: { x: number; y: number; z: number }, end?: { x: number; y: number; z: number }, center?: { x: number; y: number; z: number }, rectangle?: { radius: number; height: number }) => void;
   onFinishAnnotation?: (id: string, text: string, size: number) => void;
   onEditAnnotation?: (id: string | null) => void;
   onCancelAnnotationTool?: () => void;
@@ -1792,7 +1792,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       if (!layer?.visible) return null;
       setPointer(event); layer.userData.updateBillboards?.(camera); updateYellowManipulatorScreenSizes(); layer.updateWorldMatrix(true, true);
       const handles: THREE.Object3D[] = [];
-      layer.traverse((child) => { if (child.visible && (child.userData.annotationRadiusTarget || child.userData.annotationLineWidthTarget)) handles.push(child); });
+      layer.traverse((child) => { if (child.visible && (child.userData.annotationRadiusTarget || child.userData.annotationLineWidthTarget || child.userData.annotationHeightTarget)) handles.push(child); });
       return raycaster.intersectObjects(handles, false)[0]?.object ?? null;
     };
     const setSectionGuideHover = (hovered: boolean) => {
@@ -1818,7 +1818,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       if (!alignmentRef.current.active && annotationAtPointer() && !originHandleAtPointer()) renderer.domElement.style.cursor = "pointer";
       if (!alignmentRef.current.active && annotationPointHandleRef.current(event)) renderer.domElement.style.cursor = "grab";
       const annotationParameterHandle = !alignmentRef.current.active ? annotationRadiusHandleRef.current(event) : null;
-      if (annotationParameterHandle) renderer.domElement.style.cursor = annotationParameterHandle.userData.annotationLineWidthTarget ? "ns-resize" : "ew-resize";
+      if (annotationParameterHandle) renderer.domElement.style.cursor = annotationParameterHandle.userData.annotationLineWidthTarget || annotationParameterHandle.userData.annotationHeightTarget ? "ns-resize" : "ew-resize";
       const guide = modelGroup.userData.sectionGuide as LineSegments2 | undefined;
       if (guide) {
         setPointer(event);
@@ -1879,7 +1879,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       if (!annotation) return;
       const point = { x: position.x, y: position.y, z: position.z };
       if (annotation.kind === "text") setAnnotationPreview({ ...annotation, position: point, text: state.editingAnnotationId === id ? "" : annotation.text });
-      else if (annotation.kind === "circle") setAnnotationPreview({ ...annotation, position: point });
+      else if ((annotation.kind === "circle" || annotation.kind === "rectangle")) setAnnotationPreview({ ...annotation, position: point });
       else if (state.selectedAnnotationEndpoint && annotationPosition(annotation, state.selectedAnnotationEndpoint)) setAnnotationPreview({ ...annotation, [state.selectedAnnotationEndpoint]: point });
     };
     const updateConePreview = (selected: ViewportSelection, baseRadius: number, topRadius: number, height: number) => {
@@ -2550,7 +2550,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
         pendingRotation.deltaDegrees = degrees;
         rotationGuide?.userData.updateAngle?.(degrees);
         const circle = annotationStateRef.current.annotations?.find((annotation) => annotation.id === pendingRotation!.targetId);
-        if (circle?.kind === "circle") setAnnotationPreview({ ...circle, rotation: rotatedCircleAnnotation(circle.rotation, pendingRotation.localAxis, degrees) });
+        if ((circle?.kind === "circle" || circle?.kind === "rectangle")) setAnnotationPreview({ ...circle, rotation: rotatedCircleAnnotation(circle.rotation, pendingRotation.localAxis, degrees) });
         const parentAxis = new THREE.Vector3(pendingRotation.axis.x, pendingRotation.axis.y, pendingRotation.axis.z).normalize();
         rotationDragMarker.quaternion.copy(new THREE.Quaternion().setFromAxisAngle(parentAxis, THREE.MathUtils.degToRad(degrees)).multiply(rotationStartQuaternion));
         rotationPreview?.quaternion.setFromAxisAngle(rotationPlaneAxis, THREE.MathUtils.degToRad(degrees));
@@ -4457,20 +4457,21 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
     });
     const annotation = annotationInteractionSelection;
     if (annotation?.visible && annotationsVisible) {
-      if (annotation.kind === "circle") annotationLayerRef.current?.traverse((node) => {
+      if ((annotation.kind === "circle" || annotation.kind === "rectangle")) annotationLayerRef.current?.traverse((node) => {
         const width = Boolean(node.userData.annotationLineWidthTarget);
-        if ((!width && !node.userData.annotationRadiusTarget) || !isVisible(node)) return;
-        labels.push({ key: `${annotation.id}:${width ? "lineWidth" : "radius"}`, anchor: node,
-          name: uiText(width ? "annotation.lineWidth" : "sidebar.radius", {}, locale), value: width ? annotation.lineWidth : annotation.radius,
+        const height = Boolean(node.userData.annotationHeightTarget);
+        if ((!width && !height && !node.userData.annotationRadiusTarget) || !isVisible(node)) return;
+        labels.push({ key: `${annotation.id}:${width ? "lineWidth" : height ? "height" : "radius"}`, anchor: node,
+          name: uiText(width ? "annotation.lineWidth" : height ? "property.height" : annotation.kind === "rectangle" ? "property.width" : "sidebar.radius", {}, locale), value: width ? annotation.lineWidth : height ? annotation.height ?? annotation.radius * 1.4 : annotation.radius * (annotation.kind === "rectangle" ? 2 : 1),
           unit: width ? "pixels" : "length", color: "other", min: width ? .5 : .1, max: width ? 20 : 10000,
-          onCommit: (value) => { if (width) onUpdateAnnotation?.(annotation.id, (draft) => { if (draft.kind === "circle") draft.lineWidth = value; }); else onCircleAnnotationRadius?.(annotation.id, value); },
+          onCommit: (value) => { if (width) onUpdateAnnotation?.(annotation.id, (draft) => { if (draft.kind === "circle" || draft.kind === "rectangle") draft.lineWidth = value; }); else if (height) onUpdateAnnotation?.(annotation.id, (draft) => { if (draft.kind === "rectangle") draft.height = value; }); else onCircleAnnotationRadius?.(annotation.id, value / (annotation.kind === "rectangle" ? 2 : 1)); },
         });
       });
       else {
         const handle = hostRef.current?.querySelector<HTMLElement>(".kercad-annotation-size-handle");
         if (handle) labels.push({ key: `${annotation.id}:size`, anchor: handle, name: uiText("annotation.size", {}, locale), value: annotation.size ?? 3,
           unit: "length", color: "other", min: .1, max: 1000,
-          onCommit: (value) => onUpdateAnnotation?.(annotation.id, (draft) => { if (draft.kind !== "circle") draft.size = value; }),
+          onCommit: (value) => onUpdateAnnotation?.(annotation.id, (draft) => { if ((draft.kind !== "circle" && draft.kind !== "rectangle")) draft.size = value; }),
         });
       }
     }
@@ -4574,7 +4575,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
   }, [canRenameProject, projection, renderQuality, shadingMode]);
   return <div className="parametric-viewport" ref={hostRef} aria-label={uiText("ui.parametricviewport.3d.model.view.6d76d7", {}, locale)}>
     {captureFrameActive && <ChallengeCaptureFrame locale={locale} onCapture={(crop) => onCaptureFrame?.(crop)} onCancel={() => onCancelCaptureFrame?.()} />}
-    <AnnotationInteraction host={hostRef} camera={cameraRef} model={modelRef} snapPoint={annotationSnapRef} positionHandleAtPointer={(event) => annotationPositionHandleRef.current(event)} pointHandleAtPointer={(event) => annotationPointHandleRef.current(event)} radiusHandleAtPointer={(event) => annotationRadiusHandleRef.current(event)} selectLabelAtPointer={(event) => annotationLabelSelectRef.current(event)} onCircleRadius={(id, radius) => onCircleAnnotationRadius?.(id, radius)} onCircleLineWidth={(id, width) => onUpdateAnnotation?.(id, (draft) => { if (draft.kind === "circle") draft.lineWidth = width; })} workplane={workplane} displayUnit={displayUnit} tool={annotationTool} selected={annotationInteractionSelection ? { ...annotationInteractionSelection, visible: annotationInteractionSelection.visible && annotationsVisible } : undefined} parameterHandlesVisible={parameterHandlesVisible} onSelectEndpoint={(endpoint) => onSelectAnnotationEndpoint?.(endpoint)} onMoveEndpoint={(id, endpoint, position) => onMoveAnnotationEndpoint?.(id, endpoint, position)} onMoveText={(id, position) => onObjectAxisMove?.(id, position)} editing={Boolean(editingAnnotationId && editingAnnotationId === selectedAnnotationId)} locale={locale} onPlace={(kind, start, end, center) => onPlaceAnnotation?.(kind, start, end, center)} onFinish={(id, text, size) => onFinishAnnotation?.(id, text, size)} onEdit={(id) => onEditAnnotation?.(id)} onCancelTool={() => onCancelAnnotationTool?.()} onPreview={setAnnotationPreview} />
+    <AnnotationInteraction host={hostRef} camera={cameraRef} model={modelRef} snapPoint={annotationSnapRef} positionHandleAtPointer={(event) => annotationPositionHandleRef.current(event)} pointHandleAtPointer={(event) => annotationPointHandleRef.current(event)} radiusHandleAtPointer={(event) => annotationRadiusHandleRef.current(event)} selectLabelAtPointer={(event) => annotationLabelSelectRef.current(event)} onCircleRadius={(id, radius) => onCircleAnnotationRadius?.(id, radius)} onCircleLineWidth={(id, width) => onUpdateAnnotation?.(id, (draft) => { if ((draft.kind === "circle" || draft.kind === "rectangle")) draft.lineWidth = width; })} onRectangleHeight={(id, height) => onUpdateAnnotation?.(id, (draft) => { if (draft.kind === "rectangle") draft.height = height; })} workplane={workplane} displayUnit={displayUnit} tool={annotationTool} selected={annotationInteractionSelection ? { ...annotationInteractionSelection, visible: annotationInteractionSelection.visible && annotationsVisible } : undefined} parameterHandlesVisible={parameterHandlesVisible} onSelectEndpoint={(endpoint) => onSelectAnnotationEndpoint?.(endpoint)} onMoveEndpoint={(id, endpoint, position) => onMoveAnnotationEndpoint?.(id, endpoint, position)} onMoveText={(id, position) => onObjectAxisMove?.(id, position)} editing={Boolean(editingAnnotationId && editingAnnotationId === selectedAnnotationId)} locale={locale} onPlace={(kind, start, end, center, rectangle) => onPlaceAnnotation?.(kind, start, end, center, rectangle)} onFinish={(id, text, size) => onFinishAnnotation?.(id, text, size)} onEdit={(id) => onEditAnnotation?.(id)} onCancelTool={() => onCancelAnnotationTool?.()} onPreview={setAnnotationPreview} />
     {alignmentActive ? <div ref={alignmentButtonsRef} className="kercad-alignment-face-buttons" role="group" aria-label={uiText("ui.parametricviewport.align.with.reference.6cf488", {}, locale)}>
       {(["x", "y", "z"] as const).flatMap(axis => (["min", "center", "max"] as const).map(anchor => {
         const label = uiText("ui.parametricviewport.align.2b570f", { value0: axis.toUpperCase(), value1: uiText(anchor === "min" ? "align.minimum" : anchor === "center" ? "align.center" : "align.maximum", {}, locale) }, locale);

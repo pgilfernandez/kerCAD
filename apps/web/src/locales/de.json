@@ -41,6 +41,8 @@
     "annotation.angle": "Winkel",
     "annotation.vertex": "Mittlerer Eckpunkt",
     "annotation.circle": "Kreis",
+    "annotation.rectangle": "Rechteck",
+    "annotation.rectangleHint": "Wähle den Mittelpunkt und dann eine Ecke, um das Rechteck festzulegen.",
     "annotation.mode": "Modus",
     "annotation.billboard": "2D",
     "annotation.planar": "3D",

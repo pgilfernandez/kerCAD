@@ -21,6 +21,7 @@ type Props = {
   selectLabelAtPointer: (event: PointerEvent) => boolean;
   onCircleRadius: (id: string, radius: number) => void;
   onCircleLineWidth: (id: string, width: number) => void;
+  onRectangleHeight: (id: string, height: number) => void;
   workplane: ParametricDocument["workplane"];
   tool: AnnotationTool | null;
   selected?: ParametricAnnotation;
@@ -31,7 +32,7 @@ type Props = {
   onMoveEndpoint: (id: string, endpoint: AnnotationPoint, position: ParametricVector3) => void;
   onMoveText: (id: string, position: ParametricVector3) => void;
   locale: KercadLocale;
-  onPlace: (kind: AnnotationTool, start: ParametricVector3, end?: ParametricVector3, center?: ParametricVector3) => void;
+  onPlace: (kind: AnnotationTool, start: ParametricVector3, end?: ParametricVector3, center?: ParametricVector3, rectangle?: { radius: number; height: number }) => void;
   onFinish: (id: string, text: string, size: number) => void;
   onEdit: (id: string | null) => void;
   onCancelTool: () => void;
@@ -58,15 +59,15 @@ export function AnnotationInteraction(props: Props) {
     x: number; y: number; plane: THREE.Plane; offset: THREE.Vector3;
     latest: THREE.Vector3 | null;
   } | null>(null);
-  const radiusDrag = useRef<{ annotation: Extract<ParametricAnnotation, { kind: "circle" }>; parameter: "radius" | "lineWidth"; pointerId: number; element: HTMLCanvasElement; plane: THREE.Plane; inverse: THREE.Matrix4; offset: number; latest: number | null } | null>(null);
+  const radiusDrag = useRef<{ annotation: Extract<ParametricAnnotation, { kind: "circle" | "rectangle" }>; parameter: "radius" | "lineWidth" | "height"; pointerId: number; element: HTMLCanvasElement; plane: THREE.Plane; inverse: THREE.Matrix4; offset: number; latest: number | null } | null>(null);
   const dragging = useRef<{ x: number; y: number; cornerX: number; cornerY: number; size: number; pointerId: number } | null>(null);
   const draft = useRef({ text, size }); draft.current = { text, size };
-  const labelSize = selected && selected.kind !== "circle" ? selected.size : undefined;
+  const labelSize = selected && (selected.kind !== "circle" && selected.kind !== "rectangle") ? selected.size : undefined;
   const labelInfo = selected ? annotationLabelInfo(selected, props.displayUnit) : null;
   const currentLabel = useRef(labelInfo); currentLabel.current = labelInfo;
   const finish = () => {
     const active = current.current.selected;
-    if (active && active.kind !== "circle") current.current.onFinish(active.id, draft.current.text, draft.current.size);
+    if (active && (active.kind !== "circle" && active.kind !== "rectangle")) current.current.onFinish(active.id, draft.current.text, draft.current.size);
     current.current.onPreview(null);
   };
   const cancelEdit = () => {
@@ -90,10 +91,19 @@ export function AnnotationInteraction(props: Props) {
     ray.setFromCamera(new THREE.Vector2((event.clientX - bounds.left) / bounds.width * 2 - 1, -(event.clientY - bounds.top) / bounds.height * 2 + 1), cam);
     return ray.ray;
   };
+  const rectangleSize = (first: THREE.Vector3, last: THREE.Vector3) => {
+    const cam = camera.current, root = model.current;
+    const delta = last.clone().sub(first);
+    if (!cam || !root) return { radius: Math.max(.1, Math.abs(delta.x)), height: Math.max(.1, Math.abs(delta.y) * 2) };
+    const inverse = root.matrixWorld.clone().invert();
+    const right = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0).transformDirection(inverse);
+    const up = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 1).transformDirection(inverse);
+    return { radius: Math.max(.1, Math.abs(delta.dot(right))), height: Math.max(.1, Math.abs(delta.dot(up)) * 2) };
+  };
   const beginEndpointDrag = (event: PointPointerEvent, endpoint: AnnotationPoint | "position") => {
     const p = current.current, selected = p.selected;
     event.stopPropagation();
-    if (event.button !== 0 || !selected || (endpoint === "position" ? selected.kind !== "text" && selected.kind !== "circle" : selected.kind === "text" || selected.kind === "circle")) return;
+    if (event.button !== 0 || !selected || (endpoint === "position" ? selected.kind !== "text" && (selected.kind !== "circle" && selected.kind !== "rectangle") : selected.kind === "text" || (selected.kind === "circle" || selected.kind === "rectangle"))) return;
     event.preventDefault();
     if (endpoint !== "position") p.onSelectEndpoint(endpoint);
     const root = model.current, cam = camera.current, ray = rayAtPointer(event);
@@ -158,7 +168,7 @@ export function AnnotationInteraction(props: Props) {
   useEffect(() => {
     if (selected?.kind === "text") setText(selected.text);
   }, [selected?.id, selected?.kind === "text" ? selected.text : null]);
-  useEffect(() => { if (selected && selected.kind !== "circle") setSize(labelSize ?? 3); }, [selected?.id, labelSize]);
+  useEffect(() => { if (selected && (selected.kind !== "circle" && selected.kind !== "rectangle")) setSize(labelSize ?? 3); }, [selected?.id, labelSize]);
   useEffect(() => {
     if (!editing) return;
     const frame = requestAnimationFrame(() => { input.current?.focus(); input.current?.select(); });
@@ -213,9 +223,10 @@ export function AnnotationInteraction(props: Props) {
         const hit = rayAtPointer(event)?.intersectPlane(radius.plane, new THREE.Vector3());
         if (!hit) return;
         const width = radius.parameter === "lineWidth";
-        const step = width ? 0.1 : current.current.workplane.snapToGrid ? current.current.workplane.snapSpacing : 0.01;
+        const step = width ? 0.1 : (current.current.workplane.snapToGrid ? current.current.workplane.snapSpacing : 0.01) / (radius.annotation.kind === "rectangle" && radius.parameter === "radius" ? 2 : 1);
         const local = hit.applyMatrix4(radius.inverse);
-        radius.latest = Math.max(width ? 0.5 : 0.1, Math.min(width ? 20 : 10000, Math.round(((width ? local.y : local.x) - radius.offset) / step) * step));
+        const coordinate = radius.parameter === "height" ? local.y * 2 : width ? local.y : local.x;
+        radius.latest = Math.max(width ? 0.5 : 0.1, Math.min(width ? 20 : 10000, Math.round((coordinate - radius.offset) / step) * step));
         current.current.onPreview({ ...radius.annotation, [radius.parameter]: radius.latest });
         return;
       }
@@ -228,8 +239,8 @@ export function AnnotationInteraction(props: Props) {
       const point = pointAt(event);
       if (point && start.current && p.tool !== "text") {
         const base = { id: "annotation-preview", name: "", visible: true, start: { ...start.current }, end: { ...point } };
-        if (p.tool === "circle") {
-          p.onPreview({ id: "annotation-preview", name: "", kind: "circle", visible: true, position: { ...start.current }, rotation: { x: 0, y: 0, z: 0 }, radius: Math.max(0.1, start.current.distanceTo(point)), mode: "billboard", color: "#233c52", lineWidth: 2 });
+        if (p.tool === "circle" || p.tool === "rectangle") {
+          p.onPreview({ id: "annotation-preview", name: "", kind: p.tool, visible: true, position: { ...start.current }, rotation: { x: 0, y: 0, z: 0 }, radius: Math.max(0.1, start.current.distanceTo(point)), ...(p.tool === "rectangle" ? rectangleSize(start.current, point) : {}), mode: "billboard", color: "#233c52", lineWidth: 2 });
         } else if (p.tool === "angle") {
           p.onPreview(center.current ? { ...base, kind: "angle", center: { ...center.current }, color: "#233c52" }
             : { ...base, kind: "dimension", color: "#233c52", startArrow: false, endArrow: false, showLength: false });
@@ -242,16 +253,16 @@ export function AnnotationInteraction(props: Props) {
       if (event.button === 0 && event.target instanceof HTMLCanvasElement && !p.tool) {
         const handle = p.radiusHandleAtPointer(event);
         const root = handle?.parent;
-        if (root && handle && p.selected?.kind === "circle") {
+        if (root && handle && (p.selected?.kind === "circle" || p.selected?.kind === "rectangle")) {
           event.preventDefault(); event.stopImmediatePropagation();
           root.updateWorldMatrix(true, false);
           const inverse = root.matrixWorld.clone().invert();
           const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 0, 1).transformDirection(root.matrixWorld), root.getWorldPosition(new THREE.Vector3()));
           const hit = rayAtPointer(event)?.intersectPlane(plane, new THREE.Vector3());
           if (!hit) return;
-          const parameter = handle.userData.annotationLineWidthTarget ? "lineWidth" : "radius";
+          const parameter = handle.userData.annotationHeightTarget ? "height" : handle.userData.annotationLineWidthTarget ? "lineWidth" : "radius";
           const local = hit.applyMatrix4(inverse);
-          radiusDrag.current = { annotation: structuredClone(p.selected), parameter, pointerId: event.pointerId, element: event.target, inverse, plane, offset: (parameter === "lineWidth" ? local.y : local.x) - p.selected[parameter], latest: null };
+          radiusDrag.current = { annotation: structuredClone(p.selected), parameter, pointerId: event.pointerId, element: event.target, inverse, plane, offset: (parameter === "height" ? local.y * 2 : parameter === "lineWidth" ? local.y : local.x) - (p.selected[parameter] ?? p.selected.radius * 1.4), latest: null };
           event.target.setPointerCapture(event.pointerId);
           return;
         }
@@ -275,7 +286,8 @@ export function AnnotationInteraction(props: Props) {
       }
       if (p.tool === "text") p.onPlace("text", { ...point });
       else if (!start.current) start.current = point;
-      else if (start.current.distanceTo(point) > 0.001) { p.onPlace(p.tool === "circle" ? "circle" : p.tool === "arrow" ? "arrow" : p.tool === "dashedLine" ? "dashedLine" : "dimension", { ...start.current }, { ...point }); start.current = null; p.onPreview(null); setSnapped(null); }
+      else if (p.tool === "rectangle" && start.current.distanceTo(point) > .001) { p.onPlace("rectangle", { ...start.current }, { ...point }, undefined, rectangleSize(start.current, point)); start.current = null; p.onPreview(null); setSnapped(null); }
+      else if (start.current.distanceTo(point) > 0.001) { p.onPlace(p.tool === "rectangle" ? "rectangle" : p.tool === "circle" ? "circle" : p.tool === "arrow" ? "arrow" : p.tool === "dashedLine" ? "dashedLine" : "dimension", { ...start.current }, { ...point }); start.current = null; p.onPreview(null); setSnapped(null); }
     };
     const key = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
@@ -297,6 +309,7 @@ export function AnnotationInteraction(props: Props) {
         if (radius.element.hasPointerCapture(event.pointerId)) radius.element.releasePointerCapture(event.pointerId);
         if (radius.latest !== null) {
           if (radius.parameter === "lineWidth") current.current.onCircleLineWidth(radius.annotation.id, radius.latest);
+          else if (radius.parameter === "height") current.current.onRectangleHeight(radius.annotation.id, radius.latest);
           else current.current.onCircleRadius(radius.annotation.id, radius.latest);
         }
         current.current.onPreview(null); return;
@@ -373,7 +386,7 @@ export function AnnotationInteraction(props: Props) {
 
   const textAnnotation = selected?.kind === "text" ? selected : null;
   return <>
-    {tool && tool !== "angle" && <div className="kercad-annotation-instruction">{(tool === "circle" ? uiText("ui.annotationinteraction.pick.the.center.and.a.point.to.define.the.radius.0b9dbc", {}, locale) : tool === "text" ? uiText("ui.annotationinteraction.click.the.plane.to.place.a.label.esc.cancels.cf6aaf", {}, locale) : uiText("ui.annotationinteraction.pick.two.points.vertices.and.edge.midpoints.avai.5a13fc", {}, locale))}</div>}
+    {tool && tool !== "angle" && <div className="kercad-annotation-instruction">{(tool === "rectangle" ? uiText("annotation.rectangleHint", {}, locale) : tool === "circle" ? uiText("ui.annotationinteraction.pick.the.center.and.a.point.to.define.the.radius.0b9dbc", {}, locale) : tool === "text" ? uiText("ui.annotationinteraction.click.the.plane.to.place.a.label.esc.cancels.cf6aaf", {}, locale) : uiText("ui.annotationinteraction.pick.two.points.vertices.and.edge.midpoints.avai.5a13fc", {}, locale))}</div>}
     {tool === "angle" && <div className="kercad-annotation-instruction">{uiText(`annotation.angleStep.${angleStage}`, {}, locale)} {uiText("common.escapeCancels", {}, locale)}</div>}
     {snapped && (tool || endpointDragging) && <div ref={marker} className={`kercad-annotation-snap-marker${tool ? " placing" : ""}`} />}
     {textAnnotation?.visible && <button ref={textMarker} style={{ display: "none" }} type="button" className={`kercad-dimension-endpoint kercad-annotation-position-handle ${endpointDragging ? "active" : ""}`} title={uiText("ui.annotationinteraction.drag.position.snap.to.geometry.c19cd1", {}, locale)} aria-label={uiText("ui.annotationinteraction.move.label.ef242f", {}, locale)} onPointerDown={(event) => beginEndpointDrag(event, "position")} onPointerMove={moveEndpointDrag} onPointerUp={finishEndpointDrag} onPointerCancel={cancelEndpointDrag} onLostPointerCapture={() => { if (endpointDrag.current) cancelEndpointDrag(); }} />}
@@ -387,7 +400,7 @@ export function AnnotationInteraction(props: Props) {
           dragging.current = { x: event.clientX, y: event.clientY, cornerX: bounds.width * (alignment === "left" ? 1 : alignment === "right" ? 0 : .5), cornerY: -bounds.height / 2, size: draft.current.size, pointerId: event.pointerId };
           event.currentTarget.setPointerCapture(event.pointerId);
         }} onPointerMove={(event) => {
-          if (!dragging.current || !selected || selected.kind === "circle") return;
+          if (!dragging.current || !selected || (selected.kind === "circle" || selected.kind === "rectangle")) return;
           const step = props.workplane.snapToGrid ? props.workplane.snapSpacing / 2 : 0.01;
           const drag = dragging.current;
           const scale = 1 + ((event.clientX - drag.x) * drag.cornerX + (event.clientY - drag.y) * drag.cornerY) / Math.max(1, drag.cornerX ** 2 + drag.cornerY ** 2);

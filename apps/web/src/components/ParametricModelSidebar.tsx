@@ -392,12 +392,13 @@ function AnnotationProperties({ annotation, onUpdate }: { annotation: Parametric
   return <div className="kercad-feature-inspector kercad-annotation-properties">
     {annotation.kind === "dimension" && <AnnotationColorPicker color={annotation.color ?? "#233c52"} onChange={(color) => onUpdate((draft) => { if (draft.kind === "dimension") draft.color = color; })} />}
     <div className="kercad-feature-card">
-    {annotation.kind !== "text" && annotation.kind !== "circle" && <label><span>{t("annotation.size")}</span><DeferredNumberInput value={annotation.size ?? 3} min={0.1} max={1000} step={steps.input} unit="mm" onCommit={(value) => onUpdate((draft) => { if (draft.kind !== "text" && draft.kind !== "circle") draft.size = value; })} /></label>}
-    {annotation.kind === "circle" && <>
-      <AnnotationColorPicker color={annotation.color} onChange={(color) => onUpdate((draft) => { if (draft.kind === "circle") draft.color = color; })} />
-      <label><span>{t("annotation.mode")}</span><select value={annotation.mode} onChange={(event) => onUpdate((draft) => { if (draft.kind === "circle") draft.mode = event.target.value as "billboard" | "planar"; })}><option value="billboard">{t("annotation.billboard")}</option><option value="planar">{t("annotation.planar")}</option></select></label>
-      <label><span>{t("property.radius")}</span><DeferredNumberInput value={annotation.radius} min={0.1} max={10000} step={steps.input} unit="mm" onCommit={(radius) => onUpdate((draft) => { if (draft.kind === "circle") draft.radius = radius; })} /></label>
-      <label><span>{t("annotation.lineWidth")}</span><DeferredNumberInput value={annotation.lineWidth} min={0.5} max={20} step={0.5} unit="px" onCommit={(width) => onUpdate((draft) => { if (draft.kind === "circle") draft.lineWidth = width; })} /></label>
+    {annotation.kind !== "text" && (annotation.kind !== "circle" && annotation.kind !== "rectangle") && <label><span>{t("annotation.size")}</span><DeferredNumberInput value={annotation.size ?? 3} min={0.1} max={1000} step={steps.input} unit="mm" onCommit={(value) => onUpdate((draft) => { if (draft.kind !== "text" && (draft.kind !== "circle" && draft.kind !== "rectangle")) draft.size = value; })} /></label>}
+    {(annotation.kind === "circle" || annotation.kind === "rectangle") && <>
+      <AnnotationColorPicker color={annotation.color} onChange={(color) => onUpdate((draft) => { if ((draft.kind === "circle" || draft.kind === "rectangle")) draft.color = color; })} />
+      <label><span>{t("annotation.mode")}</span><select value={annotation.mode} onChange={(event) => onUpdate((draft) => { if ((draft.kind === "circle" || draft.kind === "rectangle")) draft.mode = event.target.value as "billboard" | "planar"; })}><option value="billboard">{t("annotation.billboard")}</option><option value="planar">{t("annotation.planar")}</option></select></label>
+      <label><span>{t(annotation.kind === "rectangle" ? "property.width" : "property.radius")}</span><DeferredNumberInput value={annotation.radius * (annotation.kind === "rectangle" ? 2 : 1)} min={0.1} max={20000} step={steps.input} unit="mm" onCommit={(value) => onUpdate((draft) => { if (draft.kind === "circle" || draft.kind === "rectangle") draft.radius = value / (draft.kind === "rectangle" ? 2 : 1); })} /></label>
+      {annotation.kind === "rectangle" && <label><span>{t("property.height")}</span><DeferredNumberInput value={annotation.height ?? annotation.radius * 1.4} min={0.1} max={20000} step={steps.input} unit="mm" onCommit={(value) => onUpdate((draft) => { if (draft.kind === "rectangle") draft.height = value; })} /></label>}
+      <label><span>{t("annotation.lineWidth")}</span><DeferredNumberInput value={annotation.lineWidth} min={0.5} max={20} step={0.5} unit="px" onCommit={(width) => onUpdate((draft) => { if ((draft.kind === "circle" || draft.kind === "rectangle")) draft.lineWidth = width; })} /></label>
     </>}
     {annotation.kind === "angle" && <AnnotationColorPicker color={annotation.color ?? "#233c52"} onChange={(color) => onUpdate((draft) => { if (draft.kind === "angle") draft.color = color; })} />}
     {annotation.kind === "dimension" && <>
@@ -416,12 +417,12 @@ function AnnotationProperties({ annotation, onUpdate }: { annotation: Parametric
     </> : annotation.kind === "angle" ? <ReadOnlyField label={t("annotation.angle")} value={annotationAngleGeometry(annotation)?.degrees.toFixed(2).concat("°") ?? "—"} /> : null}
     </div>
     <TransformSection description="">
-      {annotation.kind === "text" || annotation.kind === "circle" ? position("position", t("annotation.position")) : <>
+      {annotation.kind === "text" || (annotation.kind === "circle" || annotation.kind === "rectangle") ? position("position", t("annotation.position")) : <>
         {position("start", t("annotation.start"))}
         {annotation.kind === "angle" && position("center", t("annotation.vertex"))}
         {position("end", t("annotation.end"))}
       </>}
-      {annotation.kind === "circle" && <TransformGroup label={t("property.rotation")} values={annotation.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "circle") draft.rotation[axis] = value; })} />}
+      {(annotation.kind === "circle" || annotation.kind === "rectangle") && <TransformGroup label={t("property.rotation")} values={annotation.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { if ((draft.kind === "circle" || draft.kind === "rectangle")) draft.rotation[axis] = value; })} />}
     </TransformSection>
   </div>;
 }

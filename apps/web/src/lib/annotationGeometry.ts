@@ -6,7 +6,7 @@ import { displayUnitLabel, formatDisplayLength, type ParametricDisplayUnit } fro
 export type AnnotationPoint = "start" | "center" | "end";
 
 export function annotationPosition(annotation: ParametricAnnotation, point: AnnotationPoint | null) {
-  if (annotation.kind === "text" || annotation.kind === "circle") return annotation.position;
+  if (annotation.kind === "text" || (annotation.kind === "circle" || annotation.kind === "rectangle")) return annotation.position;
   if (!point) return null;
   if (point === "center") return annotation.kind === "angle" ? annotation.center : null;
   return annotation[point];
@@ -50,7 +50,7 @@ export function annotationAngleGeometry(annotation: Extract<ParametricAnnotation
 }
 
 export function annotationLabelInfo(annotation: ParametricAnnotation, unit: ParametricDisplayUnit) {
-  if (annotation.kind === "circle") return null;
+  if ((annotation.kind === "circle" || annotation.kind === "rectangle")) return null;
   if (annotation.kind === "text") return { position: new THREE.Vector3(annotation.position.x, annotation.position.y, annotation.position.z), text: annotation.text, font: annotationFontFamily(annotation.font), alignment: annotation.alignment };
   if (annotation.kind === "angle") {
     const angle = annotationAngleGeometry(annotation);

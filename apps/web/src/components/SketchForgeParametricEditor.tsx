@@ -1097,11 +1097,11 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     rotationEditable: object.id === selectedOriginObjectId && showRotationTriad,
   })), ...(selectedAnnotation && selectedAnnotationPoint ? [{
     objectId: selectedAnnotation.id,
-    visible: selectedAnnotation.visible && document.annotationGroup?.visible !== false && (showPositionTriad || selectedAnnotation.kind === "circle" && selectedAnnotation.mode === "planar" && showRotationTriad),
+    visible: selectedAnnotation.visible && document.annotationGroup?.visible !== false && (showPositionTriad || (selectedAnnotation.kind === "circle" || selectedAnnotation.kind === "rectangle") && selectedAnnotation.mode === "planar" && showRotationTriad),
     position: selectedAnnotationPoint,
-    rotation: selectedAnnotation.kind === "circle" ? selectedAnnotation.rotation : { x: 0, y: 0, z: 0 },
+    rotation: (selectedAnnotation.kind === "circle" || selectedAnnotation.kind === "rectangle") ? selectedAnnotation.rotation : { x: 0, y: 0, z: 0 },
     positionVisible: showPositionTriad,
-    rotationEditable: selectedAnnotation.kind === "circle" && selectedAnnotation.mode === "planar" && showRotationTriad,
+    rotationEditable: (selectedAnnotation.kind === "circle" || selectedAnnotation.kind === "rectangle") && selectedAnnotation.mode === "planar" && showRotationTriad,
   }] : [])], [document.objects, document.annotationGroup?.visible, selectedAnnotation, annotationEndpoint, originEditObjectId, selectedOriginObjectId, showPositionTriad, showRotationTriad]);
   const referenceObjectRecords = useMemo(() => parametricReferenceRenderRecords(document), [document]);
   const projectWorkplaneBounds = useMemo(() => workplaneGeometryBounds([
@@ -3609,7 +3609,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           </ToolbarSection>
           <ToolbarSection label={t("annotation.group")} className="sketch-annotations-section">
             <SketchToolMenu initialTool="dimension" activeTool={sketchAnnotationTool} renderIcon={(option) => <AnnotationIcon kind={option.tool} />} options={(["dimension", "arrow", "dashedLine"] as const).map((tool) => ({ tool, label: t(`annotation.${tool}`), icon: tool }))} onChoose={(kind) => { chooseSketchTool("select"); setSketchAnnotationTool(sketchAnnotationTool === kind ? null : kind); }} />
-            {(["angle", "circle"] as const).map((kind) => <Tool key={kind} label={`${t("annotation.group")}: ${t(`annotation.${kind}`)}`} active={sketchAnnotationTool === kind} onClick={() => { chooseSketchTool("select"); setSketchAnnotationTool(sketchAnnotationTool === kind ? null : kind); }}><AnnotationIcon kind={kind} /></Tool>)}
+            {(["angle", "circle", "rectangle"] as const).map((kind) => <Tool key={kind} label={`${t("annotation.group")}: ${t(`annotation.${kind}`)}`} active={sketchAnnotationTool === kind} onClick={() => { chooseSketchTool("select"); setSketchAnnotationTool(sketchAnnotationTool === kind ? null : kind); }}><AnnotationIcon kind={kind} /></Tool>)}
             <Tool label={t("annotation.text")} active={sketchAnnotationTool === "text"} onClick={() => { chooseSketchTool("select"); setSketchAnnotationTool(sketchAnnotationTool === "text" ? null : "text"); }}><AnnotationIcon kind="text" /></Tool>
           </ToolbarSection>
           <ToolbarSection label={t("sketch.import")} className="sketch-import-section">
@@ -3687,7 +3687,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             </ToolbarSection>
             <ToolbarSection label={t("annotation.group")} className="toolbar-annotations-section">
               <SketchToolMenu initialTool="dimension" activeTool={annotationTool} renderIcon={(option) => <AnnotationIcon kind={option.tool} />} options={(["dimension", "arrow", "dashedLine"] as const).map((tool) => ({ tool, label: t(`annotation.${tool}`), icon: tool }))} onChoose={chooseAnnotationTool} />
-              {(["angle", "circle"] as const).map((kind) => <Tool key={kind} label={t(`annotation.${kind}`)} active={annotationTool === kind} onClick={() => chooseAnnotationTool(kind)}><AnnotationIcon kind={kind} /></Tool>)}
+              {(["angle", "circle", "rectangle"] as const).map((kind) => <Tool key={kind} label={t(`annotation.${kind}`)} active={annotationTool === kind} onClick={() => chooseAnnotationTool(kind)}><AnnotationIcon kind={kind} /></Tool>)}
               <Tool label={t("annotation.text")} active={annotationTool === "text"} onClick={() => chooseAnnotationTool("text")}><AnnotationIcon kind="text" /></Tool>
             </ToolbarSection>
           </div>
@@ -3971,19 +3971,19 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             const annotation = draft.annotations?.find((item) => item.id === id);
             if (annotation) setAnnotationPosition(annotation, endpoint, position);
           })}
-          onCircleAnnotationRadius={(id, radius) => mutate((draft) => { const annotation = draft.annotations?.find((item) => item.id === id); if (annotation?.kind === "circle") annotation.radius = radius; })}
+          onCircleAnnotationRadius={(id, radius) => mutate((draft) => { const annotation = draft.annotations?.find((item) => item.id === id); if ((annotation?.kind === "circle" || annotation?.kind === "rectangle")) annotation.radius = radius; })}
           annotationTool={annotationTool}
           editingAnnotationId={editingAnnotationId}
           onCancelAnnotationTool={() => setAnnotationTool(null)}
           onEditAnnotation={setEditingAnnotationId}
-          onPlaceAnnotation={(kind, start, end, center) => {
+          onPlaceAnnotation={(kind, start, end, center, rectangle) => {
             const id = createLocalId("annotation");
             mutate((draft) => {
               draft.annotations ??= [];
               const common = { id, name: nextAnnotationName(draft.annotations, t(`annotation.${kind}`)), visible: true };
               draft.annotations.push(kind === "text"
                 ? { ...common, kind, position: start, alignment: "center", size: 6, font: "Sans", text: uiText("ui.page.kercad.c0bf6d", {}, locale) }
-                : kind === "circle" ? { ...common, kind, position: start, rotation: { x: 0, y: 0, z: 0 }, radius: Math.max(0.1, Math.hypot((end?.x ?? start.x) - start.x, (end?.y ?? start.y) - start.y, (end?.z ?? start.z) - start.z)), mode: "billboard", color: "#233c52", lineWidth: 2 }
+                : (kind === "circle" || kind === "rectangle") ? { ...common, kind, position: start, rotation: { x: 0, y: 0, z: 0 }, radius: Math.max(0.1, Math.hypot((end?.x ?? start.x) - start.x, (end?.y ?? start.y) - start.y, (end?.z ?? start.z) - start.z)), ...(kind === "rectangle" ? rectangle : {}), mode: "billboard", color: "#233c52", lineWidth: 2 }
                 : kind === "angle" ? { ...common, kind, start, center: center ?? start, end: end ?? start, color: "#233c52" }
                 : { ...common, kind: "dimension", start, end: end ?? start, ...annotationDimensionPreset(kind) });
             });
@@ -3991,7 +3991,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             setEditingAnnotationId(kind === "text" ? id : null);
           }}
           onFinishAnnotation={(id, text, size) => {
-            mutate((draft) => { const annotation = draft.annotations?.find((item) => item.id === id); if (annotation && annotation.kind !== "circle") { if (annotation.kind === "text") annotation.text = text; annotation.size = size; } });
+            mutate((draft) => { const annotation = draft.annotations?.find((item) => item.id === id); if (annotation && (annotation.kind !== "circle" && annotation.kind !== "rectangle")) { if (annotation.kind === "text") annotation.text = text; annotation.size = size; } });
             setEditingAnnotationId(null);
           }}
           onThumbnail={(dataUrl) => {
@@ -4062,8 +4062,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("camera.reverseSection")} onClick={() => setSectionPose((pose) => ({ ...pose, inverted: !(pose.inverted ?? true) }))}><ViewToolbarIcon file="inverse" /></Tool>
           </> : selectedAnnotation ? <>
             <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
-            {selectedAnnotation.kind !== "text" && (selectedAnnotation.kind === "circle" || selectedAnnotation.kind === "angle" || selectedAnnotation.showLength !== false) && <Tool label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>}
-            {selectedAnnotation.kind === "circle" && selectedAnnotation.mode === "planar" && <Tool label={t("camera.rotationTriad")} active={showRotationTriad} onClick={() => setShowRotationTriad((visible) => !visible)}><ToolbarRotationManipulatorIcon /></Tool>}
+            {selectedAnnotation.kind !== "text" && ((selectedAnnotation.kind === "circle" || selectedAnnotation.kind === "rectangle") || selectedAnnotation.kind === "angle" || selectedAnnotation.showLength !== false) && <Tool label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>}
+            {(selectedAnnotation.kind === "circle" || selectedAnnotation.kind === "rectangle") && selectedAnnotation.mode === "planar" && <Tool label={t("camera.rotationTriad")} active={showRotationTriad} onClick={() => setShowRotationTriad((visible) => !visible)}><ToolbarRotationManipulatorIcon /></Tool>}
             {selectedAnnotation.kind === "text" && <>
               <Tool label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>
               <Tool label={t("operation.edit")} active={editingAnnotationId === selectedAnnotation.id} onClick={() => setEditingAnnotationId(selectedAnnotation.id)}><ToolbarEditOperationIcon /></Tool>
@@ -4120,7 +4120,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             if (objectId === SECTION_PLANE_ID) { setSectionPose((pose) => ({ ...pose, rotation: rotatedCircleAnnotation(pose.rotation, localAxis, deltaDegrees) })); return; }
             mutate((draft) => {
             const annotation = draft.annotations?.find((item) => item.id === objectId);
-            if (annotation?.kind === "circle") annotation.rotation = rotatedCircleAnnotation(annotation.rotation, localAxis, deltaDegrees);
+            if ((annotation?.kind === "circle" || annotation?.kind === "rectangle")) annotation.rotation = rotatedCircleAnnotation(annotation.rotation, localAxis, deltaDegrees);
             else rotateParametricObjectAroundLocalAxis(draft, objectId, localAxis, deltaDegrees);
             });
           }}
