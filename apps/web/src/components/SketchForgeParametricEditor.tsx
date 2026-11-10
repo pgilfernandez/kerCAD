@@ -111,6 +111,8 @@ import {
   addPrimitiveToSelection,
   addParametricObject,
   applyParametricSelectionWorldDelta,
+  parametricSelectionSnapPosition,
+  snapParametricSelectionToGrid,
   applyParametricSelectionWorkplaneRotation,
   rotateParametricObjectAroundLocalAxis,
   applyWorkplanePatch,
@@ -3656,7 +3658,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
                 setNotice({ type: "info", text: t("camera.sectionPickHint") });
               }}><ToolbarSectionViewIcon /></Tool>
               <Tool label={hasActiveWorkplane ? t("toolbar.resetWorkplane") : placingWorkplane ? t("toolbar.cancelWorkplane") : t("toolbar.placeWorkplane")} active={placingWorkplane || hasActiveWorkplane} onClick={toggleWorkplanePlacement}>{hasActiveWorkplane ? <ToolbarResetWorkplaneIcon /> : <ToolbarWorkplaneIcon />}</Tool>
-              <Tool label={t("toolbar.snapGrid")} enabled={Boolean((selectedShape || selectedAnnotationPoint) && document.workplane.snapToGrid)} onClick={() => selectedAnnotationPoint ? adjustAnnotationPoint("snap") : selectedObjectId && mutate((draft) => applyWorkplanePatch(draft, selectedObjectId, { x: Math.round((selectedShape?.x ?? 0) / snapAmount) * snapAmount, z: Math.round((selectedShape?.z ?? 0) / snapAmount) * snapAmount }))}><ToolbarSnapGridIcon /></Tool>
+              <Tool label={t("toolbar.snapGrid")} enabled={Boolean((selectedAnnotationPoint || modelSelection.some((item) => parametricSelectionSnapPosition(document, item))) && document.workplane.snapToGrid)} onClick={() => selectedAnnotationPoint ? adjustAnnotationPoint("snap") : mutate((draft) => snapParametricSelectionToGrid(draft, modelSelection))}><ToolbarSnapGridIcon /></Tool>
               <Tool label={t("toolbar.dropToWorkplane")} enabled={Boolean(selectedAnnotationPoint) || modelSelection.some(item => {
                 const feature = item.kind === "feature" ? document.features.find(candidate => candidate.id === item.id) : undefined;
                 const object = document.objects.find(candidate => candidate.id === (item.kind === "object" ? item.id : feature?.objectId));

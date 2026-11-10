@@ -860,6 +860,45 @@ export function applyOperationWorldPosition(document: ParametricDocument, id: st
   feature.transform.position.y = (dx * Math.sin(angle) + dy * Math.cos(angle)) / object.transform.scale.y;
 }
 
+/** The same world-space origin edited by the position triad. */
+export function parametricSelectionSnapPosition(document: ParametricDocument, item: { id: string; kind: "object" | "feature" }) {
+  const feature = item.kind === "feature" ? document.features.find((candidate) => candidate.id === item.id) : null;
+  const object = document.objects.find((candidate) => candidate.id === (feature?.objectId ?? item.id));
+  if (!object || !object.visible || object.locked || Object.values(object.transform.scale).some((value) => Math.abs(value) < 1e-8)) return null;
+  if (item.kind === "object") return new THREE.Vector3().copy(object.transform.position);
+  if (!feature || feature.suppressed) return null;
+  const matrix = parametricTransformMatrix(object.transform);
+  if (feature.kind === "polarPattern") return new THREE.Vector3().copy(feature.center ?? { x: 0, y: 0, z: 0 }).applyMatrix4(matrix);
+  if (!isMovableOperation(feature)) return null;
+  if (feature.kind === "sketch") return new THREE.Vector3(feature.x, feature.y, feature.offset).applyMatrix4(matrix);
+  matrix.multiply(parametricTransformMatrix({ ...feature.transform, scale: { x: 1, y: 1, z: 1 } }));
+  if (feature.kind === "extrude") {
+    const sketch = document.features.find((candidate): candidate is SketchFeature => candidate.id === feature.sketchId && candidate.kind === "sketch");
+    if (sketch) matrix.multiply(parametricTransformMatrix({ position: { x: sketch.x, y: sketch.y, z: sketch.offset }, rotation: sketch.rotation }));
+  }
+  return new THREE.Vector3().applyMatrix4(matrix);
+}
+
+export function snapParametricSelectionToGrid(document: ParametricDocument, selection: Array<{ id: string; kind: "object" | "feature" }>) {
+  const plane = document.workplane;
+  if (!(plane.snapSpacing > 0)) return;
+  const origin = new THREE.Vector3().copy(plane.origin);
+  const axes = [plane.xAxis, plane.yAxis].map((axis) => new THREE.Vector3().copy(axis));
+  const objectIds = new Set(selection.filter((item) => item.kind === "object").map((item) => item.id));
+  for (const item of selection) {
+    if (item.kind === "feature" && objectIds.has(document.features.find((feature) => feature.id === item.id)?.objectId ?? "")) continue;
+    const position = parametricSelectionSnapPosition(document, item);
+    if (!position) continue;
+    const relative = position.clone().sub(origin);
+    const delta = new THREE.Vector3();
+    for (const axis of axes) {
+      const coordinate = relative.dot(axis);
+      delta.addScaledVector(axis, Math.round(coordinate / plane.snapSpacing) * plane.snapSpacing - coordinate);
+    }
+    applyParametricSelectionWorldDelta(document, item.id, item.kind, delta);
+  }
+}
+
 export function applyParametricSelectionWorldDelta(
   document: ParametricDocument,
   id: string,
