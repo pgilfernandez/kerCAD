@@ -254,7 +254,10 @@ export function ParametricModelSidebar({
                 <div className="kercad-object-node" key={ANNOTATIONS_GROUP_ID}>
                   <div className={`kercad-object-row ${annotationGroupSelected ? "selected" : ""} ${annotationsVisible ? "" : "hidden"}`}>
                     <button className="kercad-tree-toggle" aria-label={t("annotation.group")} aria-expanded={annotationsExpanded} onClick={() => onUpdateAnnotationGroup?.({ expanded: !annotationsExpanded })}><OperationTreeIcon file={annotationsExpanded ? "expanded" : "collapsed"} size={16} /></button>
-                    <button className="kercad-object-select" title={t("annotation.group")} aria-pressed={annotationGroupSelected} onClick={() => onSelectAnnotation?.(ANNOTATIONS_GROUP_ID)}><AnnotationIcon kind="group" /><span><strong>{t("annotation.group")}</strong></span></button>
+                    <button className="kercad-object-select" title={t("annotation.group")} aria-pressed={annotationGroupSelected} aria-expanded={mode === "simplified" ? annotationsExpanded : undefined} onClick={() => {
+                      if (mode === "simplified" && annotationGroupSelected) onUpdateAnnotationGroup?.({ expanded: !annotationsExpanded });
+                      else onSelectAnnotation?.(ANNOTATIONS_GROUP_ID);
+                    }}><AnnotationIcon kind="group" /><span><strong>{t("annotation.group")}</strong></span></button>
                     <div className="kercad-tree-actions"><button title={annotationsVisible ? t("model.hide") : t("model.show")} aria-label={`${annotationsVisible ? t("model.hide") : t("model.show")} ${t("annotation.group")}`} aria-pressed={!annotationsVisible} onClick={() => onUpdateAnnotationGroup?.({ visible: !annotationsVisible })}><OperationTreeIcon file={annotationsVisible ? "visible" : "hidden"} size={15} /></button></div>
                   </div>
                   {annotationsExpanded && <div className="kercad-operation-list" role="group" aria-label={t("annotation.group")}>
@@ -279,7 +282,11 @@ export function ParametricModelSidebar({
                     >
                       {isExpanded ? <OperationTreeIcon file="expanded" size={16} /> : <OperationTreeIcon file="collapsed" size={16} />}
                     </button>}
-                    <button className="kercad-object-select" title={object.name} aria-pressed={objectSelected} onClick={(event) => selectNode({ id: object.id, kind: "object" }, event)}>
+                    <button className="kercad-object-select" title={object.name} aria-pressed={objectSelected} aria-expanded={mode === "simplified" && !isImage ? isExpanded : undefined} onClick={(event) => {
+                      if (mode === "simplified" && objectSelected && !isImage && !onAlignmentSelect && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
+                        onUpdateObject(object.id, (draft) => { draft.expanded = !draft.expanded; });
+                      } else selectNode({ id: object.id, kind: "object" }, event);
+                    }}>
                       {isImage ? <OperationTreeIcon file="imported-img" size={17} /> : object.object.referenceMesh ? <OperationTreeIcon file="imported-step" size={17} /> : <OperationTreeIcon file="box" className="kercad-object-color-icon" size={17} />}
                       <span><strong>{object.name}</strong></span>
                     </button>
