@@ -163,3 +163,74 @@ html[data-theme="dark"] .kercad-challenge-card .challenge-copy > span:not(.chall
 html[data-theme="dark"] .kercad-challenge-card .challenge-copy > em {
   color: #a5a9b0;
 }
+
+/* Challenge authoring/player: floating, docked and compact share dark surfaces.
+   Keep these overrides scoped to dark mode; light artwork and photos stay intact. */
+html[data-theme="dark"] :is(.kercad-challenge-player, .kercad-challenge-compact, .kercad-challenge-reopen) {
+  color: var(--theme-text);
+  background: var(--theme-page);
+  border-color: var(--theme-border);
+}
+html[data-theme="dark"] .kercad-challenge-player > :is(header, footer) {
+  color: var(--theme-text);
+  background: var(--theme-surface);
+  border-color: var(--theme-border);
+}
+html[data-theme="dark"] :is(.kercad-challenge-step p, .kercad-challenge-drag-hint, .kercad-challenge-form > label > span, .kercad-challenge-category-editor > strong, .kercad-challenge-parameter-editor > header strong) {
+  color: var(--theme-text-muted);
+}
+html[data-theme="dark"] .kercad-challenge-form :is(input, textarea) {
+  color: var(--theme-text);
+  background-color: var(--theme-field-surface);
+  border-color: var(--theme-border);
+  caret-color: var(--theme-text);
+}
+html[data-theme="dark"] .kercad-challenge-form :is(input, textarea)::placeholder {
+  color: var(--theme-text-muted);
+  opacity: .75;
+}
+html[data-theme="dark"] :is(.kercad-challenge-player > header nav button, .kercad-challenge-player > footer button, .kercad-challenge-category-input button, .kercad-challenge-parameter-editor > header button, .kercad-challenge-parameter-controls button, .kercad-challenge-capture-actions button) {
+  color: var(--theme-text);
+  background: var(--theme-surface);
+  border-color: var(--theme-border);
+}
+html[data-theme="dark"] :is(.kercad-challenge-player > header nav button.active, .kercad-challenge-player > footer button.insert, .kercad-challenge-categories > span) {
+  color: var(--theme-link);
+  background: var(--theme-active);
+  border-color: var(--theme-border);
+}
+html[data-theme="dark"] :is(.kercad-challenge-player > header nav button, .kercad-challenge-player > footer button, .kercad-challenge-category-input button, .kercad-challenge-parameter-editor > header button, .kercad-challenge-parameter-controls button, .kercad-challenge-capture-actions button, .kercad-challenge-compact button, .kercad-challenge-reopen):not(:disabled):hover,
+html[data-theme="dark"] .kercad-challenge-categories > span button:hover {
+  color: var(--theme-link);
+  background: var(--theme-active);
+  border-color: var(--theme-link);
+}
+html[data-theme="dark"] .kercad-challenge-player > footer button.primary {
+  color: #fff;
+  background: var(--accent-solid);
+  border-color: var(--accent-solid);
+}
+html[data-theme="dark"] .kercad-challenge-player > footer button.primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--accent-solid) 85%, #fff);
+}
+html[data-theme="dark"] .kercad-challenge-player button:focus-visible {
+  outline: 2px solid var(--theme-link);
+  outline-offset: 2px;
+}
+html[data-theme="dark"] .kercad-challenge-capture-actions button:disabled { opacity: .35; }
+html[data-theme="dark"] .kercad-challenge-capture {
+  color: var(--theme-text-muted);
+  background: repeating-linear-gradient(0deg, transparent 0 24px, var(--theme-border) 25px), repeating-linear-gradient(90deg, var(--theme-field-surface) 0 24px, var(--theme-border) 25px);
+  border-color: var(--theme-border);
+}
+html[data-theme="dark"] .kercad-challenge-capture > small {
+  color: var(--theme-text-muted);
+  background: var(--theme-surface);
+}
+html[data-theme="dark"] .kercad-challenge-step :is(img, dl, dl > div + div) { border-color: var(--theme-border); }
+html[data-theme="dark"] .kercad-challenge-step dl > div { background: var(--theme-surface); }
+html[data-theme="dark"] .kercad-challenge-step dd {
+  color: var(--theme-text);
+  background: var(--theme-field-surface);
+  border-color: var(--theme-border);
+}
