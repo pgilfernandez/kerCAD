@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { PARAMETER_GUIDE_RENDER_ORDER, PARAMETER_HANDLE_RENDER_ORDER } from "@/lib/viewportRenderOrder";
 import { annotationFontFamily } from "@/lib/textFonts";
 import { annotationEnding, annotationEndingSize } from "@/lib/annotationEndings";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
@@ -71,7 +72,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
           const geometry = new THREE.SphereGeometry(1, 16, 12);
           const material = new THREE.MeshBasicMaterial({ color, depthTest: false, depthWrite: false, transparent: true });
           const handle = new THREE.Mesh(geometry, material);
-          handle.renderOrder = 100010; handle.userData.yellowManipulatorBaseRadius = 1; handle.userData.yellowManipulatorDiameterPixels = pixels;
+          handle.renderOrder = pixels === 28 ? PARAMETER_HANDLE_RENDER_ORDER : 100010; handle.userData.yellowManipulatorBaseRadius = 1; handle.userData.yellowManipulatorDiameterPixels = pixels;
           circle.add(handle); disposables.push(geometry, material);
           return handle;
         };
@@ -79,7 +80,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
         if (pointSelection.parametersVisible) {
           const end = new THREE.Vector3(annotation.radius + 4, 0, 0);
           const guide = drawLines([new THREE.Vector3(), end], annotation.id, "#e4bc00");
-          guide.userData.annotationPickable = false; guide.renderOrder = 100009; circle.add(guide);
+          guide.userData.annotationPickable = false; guide.renderOrder = PARAMETER_GUIDE_RENDER_ORDER; circle.add(guide);
           const handle = sphere("#fff157", 28); handle.position.copy(end); handle.userData.annotationRadiusTarget = true;
           const top = annotation.kind === "rectangle" ? (annotation.height ?? annotation.radius * 1.4) / 2 : annotation.radius;
           if (annotation.kind === "rectangle") {
@@ -88,7 +89,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
           }
           const widthEnd = new THREE.Vector3(annotation.kind === "rectangle" ? -annotation.radius : 0, top + 4 + annotation.lineWidth, 0);
           const widthGuide = drawLines([new THREE.Vector3(widthEnd.x, top + 4, 0), widthEnd], annotation.id, "#e4bc00");
-          widthGuide.userData.annotationPickable = false; widthGuide.renderOrder = 100009; circle.add(widthGuide);
+          widthGuide.userData.annotationPickable = false; widthGuide.renderOrder = PARAMETER_GUIDE_RENDER_ORDER; circle.add(widthGuide);
           const widthHandle = sphere("#fff157", 28); widthHandle.position.copy(widthEnd); widthHandle.userData.annotationLineWidthTarget = true;
         }
       }

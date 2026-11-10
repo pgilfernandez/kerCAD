@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { PARAMETER_HANDLE_RENDER_ORDER } from "@/lib/viewportRenderOrder";
 import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { ParametricObject } from "@/types/parametric";
 import { parametricTransformMatrix } from "@/lib/parametricWorkplane";
@@ -13,7 +14,7 @@ export function attachReferenceImageHandle(model: THREE.Group, camera: THREE.Cam
   ctx.beginPath(); ctx.arc(32, 32, 27, 0, Math.PI * 2); ctx.fillStyle = "#fff157"; ctx.fill(); ctx.strokeStyle = "#c39e00"; ctx.lineWidth = 4; ctx.stroke();
   const texture = new THREE.CanvasTexture(icon); texture.colorSpace = THREE.SRGBColorSpace;
   const material = new THREE.SpriteMaterial({ map: texture, depthTest: false, depthWrite: false });
-  const handle = new THREE.Sprite(material); handle.renderOrder = 100010;
+  const handle = new THREE.Sprite(material); handle.renderOrder = PARAMETER_HANDLE_RENDER_ORDER;
   layer.userData.viewportOverlay = true;
   layer.userData.referenceImageTarget = object.id;
   layer.add(handle); model.add(layer);
