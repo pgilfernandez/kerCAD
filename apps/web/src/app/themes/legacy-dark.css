@@ -1,5 +1,15 @@
 /* Existing dark styles retained for legacy editor compatibility. */
 
+/* These SVG images already have theme-aware paint colors. Do not re-filter them
+   in normal, hover or disabled states. */
+html[data-theme="dark"] img.kercad-themed-toolbar-image {
+  filter: none !important;
+  opacity: 1 !important;
+}
+html[data-theme="dark"] .toolbar-icon:is(.disabled, :disabled) img.kercad-themed-toolbar-image {
+  opacity: 0.24 !important;
+}
+
 html[data-theme="dark"] .kercad-toolbar-scroll-edge img { filter: brightness(0) invert(1); }
 html[data-theme="dark"] .kercad-toolbar-scroll-edge { color: #c9dbea; text-shadow: none; }
 html[data-theme="dark"] .kercad-toolbar-scroll-edge.left { background: linear-gradient(to right, #243442 15%, rgba(36, 52, 66, 0)); }

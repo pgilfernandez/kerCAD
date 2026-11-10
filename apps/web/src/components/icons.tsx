@@ -1,5 +1,6 @@
 import type { CSSProperties, SVGProps } from "react";
 import { operationIconPath } from "@/lib/kercadIconPaths";
+import { ThemedToolbarImage } from "./ThemedToolbarImage";
 
 type IconProps = SVGProps<SVGSVGElement>;
 
@@ -80,11 +81,11 @@ function ToolbarCommandImage({ file, className }: ToolbarCommandImageProps) {
 type KercadOperationImageProps = { file: string; className?: string };
 
 function KercadOperationImage({ file, className }: KercadOperationImageProps) {
-  return <img aria-hidden="true" className={["toolbar-command-icon", "kercad-toolbar-operation-icon", className].filter(Boolean).join(" ")} src={operationIconPath(file)} alt="" draggable={false} />;
+  return <ThemedToolbarImage aria-hidden="true" className={["toolbar-command-icon", "kercad-toolbar-operation-icon", className].filter(Boolean).join(" ")} src={operationIconPath(file)} alt="" draggable={false} />;
 }
 
 export function SketchToolbarIcon({ file }: { file: string }) {
-  return <img aria-hidden="true" className="toolbar-command-icon kercad-sketch-toolbar-icon" src={`/assets/kercad/toolbar-sketch/${file}.svg`} alt="" draggable={false} />;
+  return <ThemedToolbarImage aria-hidden="true" className="toolbar-command-icon kercad-sketch-toolbar-icon" src={`/assets/kercad/toolbar-sketch/${file}.svg`} alt="" draggable={false} />;
 }
 
 export function ViewToolbarIcon({ file }: { file: string }) {
@@ -132,12 +133,12 @@ export function ToolbarRedoIcon() {
 export function ToolbarImportIcon() {
   // return <ToolbarCommandImage file="toolbar-import.png" className="toolbar-user-art-icon" />;
   // return <KercadOperationImage file="import.svg" />;
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/import.svg" alt="" draggable={false} />;
+  return <ThemedToolbarImage aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/import.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarVectorExportIcon() {
   // return <ToolbarCommandImage file="toolbar-export.png" className="toolbar-user-art-icon" />;
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/export.svg" alt="" draggable={false} />;
+  return <ThemedToolbarImage aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/export.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarSettingsIcon() {
@@ -149,19 +150,19 @@ export function ToolbarShapeAddIcon(props: IconProps) {
 }
 
 export function ToolbarSketchIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/sketch.svg" alt="" draggable={false} />;
+  return <ThemedToolbarImage aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/sketch.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarPositionManipulatorIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/manipulator-position.svg" alt="" draggable={false} />;
+  return <ThemedToolbarImage aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/manipulator-position.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarRotationManipulatorIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/manipulator-rotation.svg" alt="" draggable={false} />;
+  return <ThemedToolbarImage aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/manipulator-rotation.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarParameterManipulatorIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/manipulator-parameters.svg" alt="" draggable={false} />;
+  return <ThemedToolbarImage aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/manipulator-parameters.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarBooleanModeIcon({ mode }: { mode: "add" | "hole" | "common" }) {
@@ -279,7 +280,7 @@ export function ToolbarResetWorkplaneIcon() {
 }
 
 export function ToolbarDropToWorkplaneIcon() {
-  return <img aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/drop-to-workplane.svg" alt="" draggable={false} />;
+  return <ThemedToolbarImage aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/drop-to-workplane.svg" alt="" draggable={false} />;
 }
 
 function ProjectionToolbarIcon({ file }: { file: "perspective" | "orthographic" }) {
