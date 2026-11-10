@@ -146,7 +146,7 @@ export function ToolbarSettingsIcon() {
 }
 
 export function ToolbarShapeAddIcon(props: IconProps) {
-  return <VectorToolbarSpriteIcon rect={{ x: 104, y: 0, width: 29, height: 27 }} {...props} />;
+  return <ThemedToolbarImage aria-hidden="true" className={["toolbar-command-icon", "kercad-toolbar-operation-icon", "kercad-add-shape-icon", props.className].filter(Boolean).join(" ")} src={operationIconPath("add-shape.svg")} alt="" draggable={false} style={props.style} />;
 }
 
 export function ToolbarSketchIcon() {

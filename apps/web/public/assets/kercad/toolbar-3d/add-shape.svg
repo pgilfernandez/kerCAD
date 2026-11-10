@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="104 0 29 27">
+<!-- Extracted from the original toolbar sprite; artwork by QuiverAI (https://quiver.ai). -->
+<style>
+.cls-2 {fill:#D4D7D9;}
+.cls-3 {fill:#BDC4C9;}
+.cls-4 {fill:none;stroke:#555E65;stroke-width:1.4;stroke-linejoin:round;}
+.cls-7 {fill:none;stroke:#555E65;stroke-width:1.4;stroke-linecap:round;stroke-miterlimit:10;}
+.cls-8 {fill:none;stroke:#555E65;stroke-width:1.4;stroke-miterlimit:10;}
+</style>
+  <path class="cls-2" d="m105.9 6.6 10.1-5.1 10.3 4.9 0.1 9.8-10.3 8.6-10.2-4.6v-13.6z"/>
+  <path class="cls-3" d="m116.2 11.6 10.1-5.2 0.1 9.8-10.1 8.6-0.1-13.2z"/>
+  <path class="cls-4" d="m105.9 6.5v13.6l10.2 4.8 3.5-1.6"/>
+  <path class="cls-4" d="m116.2 11.6 10.1-5.2v9.7"/>
+  <path class="cls-4" d="m105.9 6.4 10.2-4.9 10.2 4.9-10.1 5.2-10.3-5.2z"/>
+  <path class="cls-4" d="m116.2 11.6v13"/>
+  <circle class="cls-2" cx="124.3" cy="21.2" r="4.9"/>
+  <path class="cls-8" d="m126.6 16.3c-2.7-0.8-7.4 0.8-7.5 4.8 0 3.4 3 5.5 5.3 5.2 5.2 0 7-6.3 2.2-10z"/>
+  <line class="cls-7" x1="124.3" x2="124.3" y1="18.7" y2="23.5"/>
+  <line class="cls-7" x1="122.1" x2="126.6" y1="21.1" y2="21.1"/>
+</svg>
