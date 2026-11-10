@@ -4,7 +4,8 @@ import { useEffect, useRef, useState, type PointerEvent } from "react";
 import type { AnnotationEnding, ParametricAnnotation } from "@/types/parametric";
 import { annotationEnding, annotationEndingSize } from "@/lib/annotationEndings";
 import type { ParametricDisplayUnit } from "@/lib/parametricUnits";
-import { annotationAngleGeometry, annotationLabelInfo, annotationPosition, type AnnotationPoint } from "@/lib/annotationGeometry";
+import { annotationAngleGeometry, annotationLabelInfo, annotationPosition, annotationLabelColors, type AnnotationPoint } from "@/lib/annotationGeometry";
+import { useAppTheme } from "@/lib/useAppTheme";
 import { annotationDimensionPreset, type AnnotationTool } from "@/lib/annotationPresets";
 import { kercadTranslate, type KercadLocale } from "@/lib/kercadI18n";
 import { uiText } from "@/lib/kercadI18n";
@@ -34,6 +35,7 @@ type Props = {
 };
 
 export function SketchAnnotationLayer({ annotations, preview, selectedId, screenUnit, zoom, snapSpacing, displayUnit, locale = "en", pointFromEvent, onSelect, onCommit }: Props) {
+  const { theme } = useAppTheme();
   const [moving, setMoving] = useState<ParametricAnnotation | null>(null);
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
   const editingRef = useRef(editing); editingRef.current = editing;
@@ -126,6 +128,7 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
       const color = annotation.color ?? (annotation.kind === "text" ? "#000000" : "#233c52");
       const label = annotationLabelInfo(annotation.kind === "text" && editing?.id === annotation.id ? { ...annotation, text: editing.text } : annotation, displayUnit);
       const stroke = (annotation.kind === "circle" || annotation.kind === "rectangle") ? annotation.lineWidth : 2;
+      const labelColors = annotationLabelColors(annotation, theme === "dark");
       const polyline = annotation.kind === "dimension" ? `${annotation.start.x},${annotation.start.y} ${annotation.end.x},${annotation.end.y}` : annotation.kind === "angle" ? `${annotation.start.x},${annotation.start.y} ${annotation.center.x},${annotation.center.y} ${annotation.end.x},${annotation.end.y}` : "";
       const angle = annotation.kind === "angle" ? annotationAngleGeometry(annotation) : null;
       const arrow = (start: { x: number; y: number }, end: { x: number; y: number }, key: string, ending: AnnotationEnding) => {
@@ -171,7 +174,7 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
         {annotation.kind === "circle" && <circle cx={annotation.position.x} cy={annotation.position.y} r={annotation.radius} fill="none" stroke={color} strokeWidth={annotation.lineWidth} vectorEffect="non-scaling-stroke" />}
         {annotation.kind === "rectangle" && <rect x={annotation.position.x - annotation.radius} y={annotation.position.y - (annotation.height ?? annotation.radius * 1.4) / 2} width={annotation.radius * 2} height={annotation.height ?? annotation.radius * 1.4} rx={Math.min(annotation.radius, (annotation.height ?? annotation.radius * 1.4) / 2) * .12} fill="none" stroke={color} strokeWidth={annotation.lineWidth} vectorEffect="non-scaling-stroke" />}
         {label && <g transform={`translate(${label.position.x} ${label.position.y}) scale(1 -1)`}>
-          <rect x={labelX} y={-height / 2} width={width} height={height} rx={labelSize / 6} fill="#fff" stroke={color} strokeWidth={2} vectorEffect="non-scaling-stroke" />
+          <rect x={labelX} y={-height / 2} width={width} height={height} rx={labelSize / 6} fill={labelColors.background} stroke={labelColors.color} strokeWidth={2} vectorEffect="non-scaling-stroke" />
           {annotation.kind === "text" && editing?.id === annotation.id && <foreignObject x={labelX} y={-height / 2} width={width} height={height}>
             <textarea ref={textInput} className="sketch-annotation-inline-editor" aria-label={kercadTranslate(locale, "annotation.text")} maxLength={2000} value={editing.text} style={{ fontSize: labelSize, fontFamily: label.font, color, textAlign: label.alignment, padding: `${labelSize / 6}px ${labelSize * 2 / 3}px` }} onChange={(event) => { const next = { id: annotation.id, text: event.target.value }; editingRef.current = next; setEditing(next); }} onBlur={() => finishText()} onKeyDown={(event) => {
               event.stopPropagation();
@@ -179,7 +182,7 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
               if (event.key === "Escape") { event.preventDefault(); finishText(false); }
             }} />
           </foreignObject>}
-          {editing?.id !== annotation.id && lines.map((line, index) => <text key={index} x={label.alignment === "left" ? labelX + labelSize * 2 / 3 : label.alignment === "right" ? labelX + width - labelSize * 2 / 3 : labelX + width / 2} y={-height / 2 + labelSize / 6 + labelSize * (index * 4 / 3 + 2 / 3)} dominantBaseline="middle" textAnchor={label.alignment === "left" ? "start" : label.alignment === "right" ? "end" : "middle"} style={{ fontSize: labelSize, fontFamily: label.font, fill: color, opacity: 1, fontWeight: 400, stroke: "none" }}>{line}</text>)}
+          {editing?.id !== annotation.id && lines.map((line, index) => <text key={index} x={label.alignment === "left" ? labelX + labelSize * 2 / 3 : label.alignment === "right" ? labelX + width - labelSize * 2 / 3 : labelX + width / 2} y={-height / 2 + labelSize / 6 + labelSize * (index * 4 / 3 + 2 / 3)} dominantBaseline="middle" textAnchor={label.alignment === "left" ? "start" : label.alignment === "right" ? "end" : "middle"} style={{ fontSize: labelSize, fontFamily: label.font, fill: labelColors.color, opacity: 1, fontWeight: 400, stroke: "none" }}>{line}</text>)}
         </g>}
         {selected && label && editing?.id !== annotation.id && <circle cx={label.position.x + labelX + width} cy={label.position.y + height / 2} r={8 * screenUnit} fill="#fff157" stroke="#e0b800" strokeWidth={2} vectorEffect="non-scaling-stroke" style={{ cursor: "nesw-resize" }} onPointerDown={(event) => begin(event, annotation, "size", { x: labelX + width, y: height / 2 })} />}
         {selected && points.map((key) => {

@@ -3129,13 +3129,13 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       return shown.kind === "text" && shown.id === editingAnnotationId ? { ...shown, text: "" } : shown;
     });
     if (annotationPreview && !displayed.some((annotation) => annotation.id === annotationPreview.id)) displayed.push(annotationPreview);
-    const layer = createAnnotationScene(displayed, displayUnit, selectedAnnotationId, { point: selectedAnnotationEndpoint, triadVisible: objectOrigins.some((origin) => origin.objectId === selectedAnnotationId && origin.visible && origin.positionVisible !== false), parametersVisible: parameterHandlesVisible });
+    const layer = createAnnotationScene(displayed, displayUnit, selectedAnnotationId, { point: selectedAnnotationEndpoint, triadVisible: objectOrigins.some((origin) => origin.objectId === selectedAnnotationId && origin.visible && origin.positionVisible !== false), parametersVisible: parameterHandlesVisible }, theme === "dark");
     layer.group.visible = annotationsVisible;
     annotationLayerRef.current = layer.group;
     model.add(layer.group);
     invalidateRef.current();
     return () => { if (annotationLayerRef.current === layer.group) annotationLayerRef.current = null; layer.dispose(); invalidateRef.current(); };
-  }, [annotations, annotationsVisible, annotationPreview, selectedAnnotationId, selectedAnnotationEndpoint, objectOrigins, parameterHandlesVisible, editingAnnotationId, displayUnit, locale, renderQuality, shadingMode]);
+  }, [annotations, annotationsVisible, annotationPreview, selectedAnnotationId, selectedAnnotationEndpoint, objectOrigins, parameterHandlesVisible, editingAnnotationId, displayUnit, locale, renderQuality, shadingMode, theme]);
 
   useEffect(() => {
     const model = modelRef.current;

@@ -4,7 +4,8 @@ import { useEffect, useRef, useState, type RefObject, type PointerEvent as React
 import * as THREE from "three";
 import type { ParametricAnnotation, ParametricDocument, ParametricVector3 } from "@/types/parametric";
 import { annotationDimensionPreset, type AnnotationTool } from "@/lib/annotationPresets";
-import { annotationLabelInfo, annotationPosition, type AnnotationPoint } from "@/lib/annotationGeometry";
+import { annotationLabelInfo, annotationPosition, annotationLabelColors, type AnnotationPoint } from "@/lib/annotationGeometry";
+import { useAppTheme } from "@/lib/useAppTheme";
 import type { ParametricDisplayUnit } from "@/lib/parametricUnits";
 import { uiText, type KercadLocale } from "@/lib/kercadI18n";
 
@@ -40,6 +41,7 @@ type Props = {
 };
 
 export function AnnotationInteraction(props: Props) {
+  const { theme } = useAppTheme();
   const { host, camera, model, snapPoint, selected, editing, tool, locale, onPreview } = props;
   const current = useRef(props); current.current = props;
   const [text, setText] = useState("");
@@ -390,7 +392,7 @@ export function AnnotationInteraction(props: Props) {
     {tool === "angle" && <div className="kercad-annotation-instruction">{uiText(`annotation.angleStep.${angleStage}`, {}, locale)} {uiText("common.escapeCancels", {}, locale)}</div>}
     {snapped && (tool || endpointDragging) && <div ref={marker} className={`kercad-annotation-snap-marker${tool ? " placing" : ""}`} />}
     {textAnnotation?.visible && <button ref={textMarker} style={{ display: "none" }} type="button" className={`kercad-dimension-endpoint kercad-annotation-position-handle ${endpointDragging ? "active" : ""}`} title={uiText("ui.annotationinteraction.drag.position.snap.to.geometry.c19cd1", {}, locale)} aria-label={uiText("ui.annotationinteraction.move.label.ef242f", {}, locale)} onPointerDown={(event) => beginEndpointDrag(event, "position")} onPointerMove={moveEndpointDrag} onPointerUp={finishEndpointDrag} onPointerCancel={cancelEndpointDrag} onLostPointerCapture={() => { if (endpointDrag.current) cancelEndpointDrag(); }} />}
-    {labelInfo && selected?.visible && <div ref={editor} className="kercad-annotation-editor" style={{ fontFamily: `${labelInfo.font}, sans-serif`, textAlign: labelInfo.alignment, color: selected.color ?? (selected.kind === "text" ? "#000000" : "#233c52") }}>
+    {labelInfo && selected?.visible && <div ref={editor} className="kercad-annotation-editor" style={{ fontFamily: `${labelInfo.font}, sans-serif`, textAlign: labelInfo.alignment, color: annotationLabelColors(selected, theme === "dark").color }}>
       {textAnnotation ? editing ? <textarea ref={input} value={text} maxLength={2000} aria-label={uiText("ui.annotationinteraction.label.text.870d39", {}, locale)} onChange={(event) => { setText(event.target.value); draft.current.text = event.target.value; }} onKeyDown={(event) => { event.stopPropagation(); if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); finish(); } if (event.key === "Escape") { if (endpointDrag.current) cancelEndpointDrag(); else cancelEdit(); } }} /> : <button className="kercad-annotation-edit-target" aria-label={uiText("ui.annotationinteraction.edit.label.84e1c4", {}, locale)} title={uiText("ui.annotationinteraction.double.click.to.edit.1b1ef7", {}, locale)} onPointerDown={(event) => { if (props.selectLabelAtPointer(event.nativeEvent)) { event.preventDefault(); event.stopPropagation(); } }} onDoubleClick={() => props.onEdit(textAnnotation.id)} /> : null}
       {props.parameterHandlesVisible && <div className="kercad-annotation-size-slider">
         <button type="button" className="kercad-annotation-size-handle" title={uiText("annotation.size", {}, locale)} aria-label={uiText("annotation.size", {}, locale)} onPointerDown={(event) => {

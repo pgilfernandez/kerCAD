@@ -6,10 +6,10 @@ import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import type { ParametricAnnotation } from "@/types/parametric";
 import { displayUnitLabel, formatDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
-import { annotationAngleGeometry, annotationPosition, type AnnotationPoint } from "@/lib/annotationGeometry";
+import { annotationAngleGeometry, annotationPosition, annotationLabelColors, type AnnotationPoint } from "@/lib/annotationGeometry";
 
 /** An independent display layer: annotations never enter the CAD kernel. */
-export function createAnnotationScene(annotations: ParametricAnnotation[], unit: ParametricDisplayUnit, selectedId: string | null, pointSelection: { point: AnnotationPoint | null; triadVisible: boolean; parametersVisible: boolean }) {
+export function createAnnotationScene(annotations: ParametricAnnotation[], unit: ParametricDisplayUnit, selectedId: string | null, pointSelection: { point: AnnotationPoint | null; triadVisible: boolean; parametersVisible: boolean }, dark = false) {
   const group = new THREE.Group();
   const disposables: Array<{ dispose: () => void }> = [];
   const vector = (point: { x: number; y: number; z: number }) => new THREE.Vector3(point.x, point.y, point.z);
@@ -115,6 +115,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
     }
     const color = annotation.color ?? (annotation.kind === "text" ? "#000000" : "#233c52");
     const label = (text: string, position: THREE.Vector3, size: number, font = "Arial", alignment = "center") => {
+      const colors = annotationLabelColors(annotation, dark);
       if (!text) return;
       const canvas = document.createElement("canvas");
       const context = canvas.getContext("2d");
@@ -137,10 +138,10 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
         context.lineTo(inset + radius, bottom); context.quadraticCurveTo(inset, bottom, inset, bottom - radius);
         context.lineTo(inset, inset + radius); context.quadraticCurveTo(inset, inset, inset + radius, inset);
         context.closePath();
-        context.fillStyle = "#ffffff"; context.fill();
-        context.strokeStyle = color; context.lineWidth = stroke; context.stroke();
+        context.fillStyle = colors.background; context.fill();
+        context.strokeStyle = colors.color; context.lineWidth = stroke; context.stroke();
         context.font = fontSpec;
-        context.fillStyle = color;
+        context.fillStyle = colors.color;
         context.textBaseline = "middle";
         context.textAlign = alignment === "left" ? "left" : alignment === "right" ? "right" : "center";
         lines.forEach((line, index) => context.fillText(line, x, index * 64 + 40));

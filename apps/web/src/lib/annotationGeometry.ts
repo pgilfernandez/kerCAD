@@ -5,6 +5,16 @@ import { displayUnitLabel, formatDisplayLength, type ParametricDisplayUnit } fro
 
 export type AnnotationPoint = "start" | "center" | "end";
 
+/** Numeric badges follow the theme without changing the saved annotation color. */
+export function annotationLabelColors(annotation: ParametricAnnotation, dark: boolean) {
+  const color = annotation.color ?? (annotation.kind === "text" ? "#000000" : "#233c52");
+  const numeric = annotation.kind === "dimension" || annotation.kind === "angle";
+  return {
+    background: dark && numeric ? "#1c2835" : "#ffffff",
+    color: dark && numeric && ["#000000", "#233c52"].includes(color.toLowerCase()) ? "#d9e7f0" : color,
+  };
+}
+
 export function annotationPosition(annotation: ParametricAnnotation, point: AnnotationPoint | null) {
   if (annotation.kind === "text" || (annotation.kind === "circle" || annotation.kind === "rectangle")) return annotation.position;
   if (!point) return null;
