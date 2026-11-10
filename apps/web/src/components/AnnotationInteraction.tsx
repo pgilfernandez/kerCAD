@@ -186,6 +186,20 @@ export function AnnotationInteraction(props: Props) {
     const element = host.current;
     if (!element) return;
     const raycaster = new THREE.Raycaster();
+    let suppressPlacementContextMenu = false;
+    const cancelPlacement = () => {
+      start.current = null; center.current = null;
+      setAngleStage(0); setSnapped(null);
+      current.current.onPreview(null);
+      current.current.onCancelTool();
+    };
+    const contextMenu = (event: MouseEvent) => {
+      if (!suppressPlacementContextMenu && !current.current.tool) return;
+      if (!(event.target instanceof HTMLCanvasElement)) return;
+      event.preventDefault(); event.stopImmediatePropagation();
+      suppressPlacementContextMenu = false;
+      if (current.current.tool) cancelPlacement();
+    };
     const pointAt = (event: PointerEvent) => {
       const p = current.current;
       const cam = camera.current, root = model.current;
@@ -252,6 +266,12 @@ export function AnnotationInteraction(props: Props) {
     };
     const down = (event: PointerEvent) => {
       const p = current.current;
+      if (event.button === 2 && p.tool && event.target instanceof HTMLCanvasElement) {
+        event.preventDefault(); event.stopImmediatePropagation();
+        suppressPlacementContextMenu = true;
+        cancelPlacement();
+        return;
+      }
       if (event.button === 0 && event.target instanceof HTMLCanvasElement && !p.tool) {
         const handle = p.radiusHandleAtPointer(event);
         const root = handle?.parent;
@@ -326,13 +346,14 @@ export function AnnotationInteraction(props: Props) {
     };
     const leave = () => { if (current.current.tool) setSnapped(null); };
     element.addEventListener("pointerleave", leave);
+    element.addEventListener("contextmenu", contextMenu, true);
     element.addEventListener("pointermove", move, true);
     element.addEventListener("pointerdown", down, true);
     element.addEventListener("pointerup", up, true);
     element.addEventListener("pointercancel", cancel, true);
     element.addEventListener("lostpointercapture", cancel, true);
     window.addEventListener("keydown", key);
-    return () => { element.removeEventListener("pointerleave", leave); element.removeEventListener("pointermove", move, true); element.removeEventListener("pointerdown", down, true); element.removeEventListener("pointerup", up, true); element.removeEventListener("pointercancel", cancel, true); element.removeEventListener("lostpointercapture", cancel, true); window.removeEventListener("keydown", key); };
+    return () => { element.removeEventListener("contextmenu", contextMenu, true); element.removeEventListener("pointerleave", leave); element.removeEventListener("pointermove", move, true); element.removeEventListener("pointerdown", down, true); element.removeEventListener("pointerup", up, true); element.removeEventListener("pointercancel", cancel, true); element.removeEventListener("lostpointercapture", cancel, true); window.removeEventListener("keydown", key); };
   }, [host, camera, model, snapPoint]);
 
   useEffect(() => {
