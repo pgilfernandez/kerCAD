@@ -29,8 +29,11 @@ npm run desktop:package
 ```
 
 Outputs go to `dist/desktop`: macOS DMG, Windows NSIS EXE, Linux AppImage/DEB.
-The separate Mac installers are `kerCAD-0.9.0-macOS-x64.dmg` (Intel) and
-`kerCAD-0.9.0-macOS-arm64.dmg` (Apple Silicon); no Mac ZIP is generated.
+Installers use only the application name: `kerCAD.dmg`, `kerCAD.exe`,
+`kerCAD.AppImage` and `kerCAD.deb`. OS/architecture and the seven-character commit
+identify the separate Actions artifacts, not the filenames inside them.
+Keep different builds in separate directories when downloading/extracting them.
+No Mac ZIP is generated.
 The desktop package uses version 0.9.0 independently of the historical root npm
 version. The application's information panel retains the compiled Git commit.
 No external Node installation or Docker is needed to run an installed package.

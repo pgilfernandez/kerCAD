@@ -112,19 +112,24 @@ jobs:
           if (!page.ok) throw new Error(`Homepage returned ${page.status}`);
           NODE
 
+      - name: Set short artifact revision
+        id: revision
+        if: always()
+        run: node -e "require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'sha=' + process.env.GITHUB_SHA.slice(0, 7) + '\n')"
+
       - name: Archive production artifact
         run: |
-          tar -czf dist/kercad-server-linux-x64.tar.gz -C dist kercad-server
+          tar -czf dist/kerCAD.tar.gz -C dist kercad-server
           cd dist
-          sha256sum kercad-server-linux-x64.tar.gz > kercad-server-linux-x64.tar.gz.sha256
+          sha256sum kerCAD.tar.gz > kerCAD.tar.gz.sha256
 
       - name: Upload production artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kercad-server-linux-x64-${{ github.sha }}
+          name: kercad-server-linux-x64-${{ steps.revision.outputs.sha }}
           path: |
-            dist/kercad-server-linux-x64.tar.gz
-            dist/kercad-server-linux-x64.tar.gz.sha256
+            dist/kerCAD.tar.gz
+            dist/kerCAD.tar.gz.sha256
           if-no-files-found: error
           retention-days: 14
 
@@ -132,7 +137,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: kercad-production-log-${{ github.sha }}
+          name: kercad-production-log-${{ steps.revision.outputs.sha }}
           path: ${{ runner.temp }}/kercad-production.log
           if-no-files-found: ignore
           retention-days: 7

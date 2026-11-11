@@ -107,11 +107,16 @@ jobs:
           NODE
           docker image inspect kercad:validation > validation-logs/image.json
 
+      - name: Set short artifact revision
+        id: revision
+        if: always()
+        run: node -e "require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'sha=' + process.env.GITHUB_SHA.slice(0, 7) + '\n')"
+
       - name: Upload validation evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: kercad-docker-${{ matrix.architecture }}-${{ github.sha }}
+          name: kercad-docker-${{ matrix.architecture }}-${{ steps.revision.outputs.sha }}
           path: validation-logs/
           if-no-files-found: ignore
           retention-days: 14

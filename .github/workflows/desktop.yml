@@ -40,10 +40,15 @@ jobs:
         run: npm ci --prefix apps/desktop
       - name: Package for the native architecture
         run: npm --prefix apps/desktop run package -- --${{ matrix.arch }}
+      - name: Set short artifact revision
+        id: revision
+        if: always()
+        run: node -e "require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'sha=' + process.env.GITHUB_SHA.slice(0, 7) + '\n')"
+
       - name: Upload application installers
         uses: actions/upload-artifact@v4
         with:
-          name: kercad-desktop-${{ matrix.os }}-${{ matrix.arch }}-${{ github.sha }}
+          name: kercad-desktop-${{ matrix.os }}-${{ matrix.arch }}-${{ steps.revision.outputs.sha }}
           path: |
             dist/desktop/*.dmg
             dist/desktop/*.exe

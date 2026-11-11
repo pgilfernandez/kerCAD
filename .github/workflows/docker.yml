@@ -91,14 +91,19 @@ jobs:
           mkdir -p dist
           docker pull --platform "linux/$ARCH" "$IMAGE"
           docker tag "$IMAGE" kercad:local
-          docker save kercad:local | gzip -1 > "dist/kercad-docker-linux-$ARCH.tar.gz"
+          docker save kercad:local | gzip -1 > dist/kerCAD.tar.gz
           cd dist
-          sha256sum "kercad-docker-linux-$ARCH.tar.gz" > "kercad-docker-linux-$ARCH.tar.gz.sha256"
+          sha256sum kerCAD.tar.gz > kerCAD.tar.gz.sha256
+
+      - name: Set short artifact revision
+        id: revision
+        if: always()
+        run: node -e "require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'sha=' + process.env.GITHUB_SHA.slice(0, 7) + '\n')"
 
       - name: Upload Docker image archive
         uses: actions/upload-artifact@v4
         with:
-          name: kercad-docker-linux-${{ matrix.architecture }}-${{ github.sha }}
+          name: kercad-docker-linux-${{ matrix.architecture }}-${{ steps.revision.outputs.sha }}
           path: dist/
           if-no-files-found: error
           compression-level: 0
