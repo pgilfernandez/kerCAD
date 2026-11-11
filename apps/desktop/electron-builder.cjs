@@ -8,7 +8,7 @@ module.exports = {
   asar: true,
   npmRebuild: false,
   artifactName: 'kerCAD-${version}-${os}-${arch}.${ext}',
-  mac: { target: ['dmg', 'zip'], category: 'public.app-category.graphics-design' },
+  mac: { target: ['dmg'], artifactName: 'kerCAD-${version}-macOS-${arch}.${ext}', category: 'public.app-category.graphics-design' },
   win: { target: ['nsis'] },
   nsis: { oneClick: false, perMachine: false, allowToChangeInstallationDirectory: true },
   linux: { target: ['AppImage', 'deb'], category: 'Graphics', maintainer: 'kerCAD contributors' },

@@ -16,8 +16,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: macos, arch: x64, runner: macos-15-intel }
-          - { os: macos, arch: arm64, runner: macos-15 }
+          - { os: macOS, arch: x64, runner: macos-15-intel }
+          - { os: macOS, arch: arm64, runner: macos-15 }
           - { os: windows, arch: x64, runner: windows-latest }
           - { os: linux, arch: x64, runner: ubuntu-24.04 }
           - { os: linux, arch: arm64, runner: ubuntu-24.04-arm }
@@ -46,7 +46,6 @@ jobs:
           name: kercad-desktop-${{ matrix.os }}-${{ matrix.arch }}-${{ github.sha }}
           path: |
             dist/desktop/*.dmg
-            dist/desktop/*.zip
             dist/desktop/*.exe
             dist/desktop/*.AppImage
             dist/desktop/*.deb
