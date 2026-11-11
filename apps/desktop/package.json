@@ -1,0 +1,19 @@
+{
+  "name": "kercad-desktop",
+  "version": "0.9.0",
+  "private": true,
+  "description": "kerCAD desktop distribution",
+  "license": "MIT",
+  "main": "main.cjs",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "prepare:app": "node prepare.mjs",
+    "start": "electron staging/app",
+    "package": "npm run prepare:app && electron-builder --config electron-builder.cjs --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.3.0",
+    "electron-builder": "26.18.0",
+    "sharp": "0.35.5"
+  }
+}

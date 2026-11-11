@@ -146,6 +146,11 @@ Los identificadores completos, nombres, estados de supresión y metadatos se inc
 
 ## Distribución y próximos pasos
 
+- Escritorio Electron: encapsulación común para macOS, Windows y Linux en
+  [`apps/desktop`](apps/desktop/README.md), con perfil persistente independiente
+  del puerto y workflow manual para generar instaladores como artefactos.
+  Implementación inicial pendiente de compilación, firma y validación por plataforma.
+
 - Docker: configuración adaptada a kerCAD; pendientes construcción real, comprobación desde la LAN, restauración y validación amd64/arm64. El Compose precompilado requiere una imagen propia comprobada por el administrador.
 - macOS: existen herramientas heredadas de empaquetado, pero todavía no se ofrece una aplicación o DMG kerCAD validado y autocontenido.
 - Exportación de selección: en Exportar, elige «Proyecto completo / Selección» para STEP/STL. Las operaciones seleccionadas representan el cuerpo final de su objeto, sin duplicarlo si seleccionas varias operaciones del mismo. Se conservan las posiciones y dependencias del historial; `.kercad` siempre guarda el proyecto completo. Implementación pendiente de validación funcional.

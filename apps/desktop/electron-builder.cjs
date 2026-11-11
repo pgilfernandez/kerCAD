@@ -1,0 +1,15 @@
+module.exports = {
+  appId: 'org.kercad.desktop.electron',
+  productName: 'kerCAD',
+  electronVersion: '45.3.0',
+  directories: { app: 'staging/app', output: '../../dist/desktop', buildResources: 'staging/icons' },
+  files: ['**/*'],
+  extraResources: [{ from: 'staging/server', to: 'server' }, { from: 'staging/icons/icon.png', to: 'icon.png' }],
+  asar: true,
+  npmRebuild: false,
+  artifactName: 'kerCAD-${version}-${os}-${arch}.${ext}',
+  mac: { target: ['dmg', 'zip'], category: 'public.app-category.graphics-design' },
+  win: { target: ['nsis'] },
+  nsis: { oneClick: false, perMachine: false, allowToChangeInstallationDirectory: true },
+  linux: { target: ['AppImage', 'deb'], category: 'Graphics', maintainer: 'kerCAD contributors' },
+};

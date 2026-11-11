@@ -10,6 +10,7 @@ node_modules
 **/.next-dev
 **/.next-export
 apps/web/out
+apps/desktop
 coverage
 playwright-report
 test-results

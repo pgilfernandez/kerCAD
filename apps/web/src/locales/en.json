@@ -3,6 +3,13 @@
   "name": "English",
   "direction": "ltr",
   "messages": {
+    "desktop.errorTitle": "kerCAD",
+    "desktop.startFailed": "kerCAD could not start its local server.",
+    "desktop.logs": "Details are available in the log file:",
+    "desktop.saveFailed": "Some changes could not be saved. Retry, keep the window open, or close without saving.",
+    "desktop.retry": "Retry",
+    "desktop.cancel": "Cancel",
+    "desktop.discard": "Close without saving",
     "loading.progress": "Loading progress",
     "loading.estimating": "Estimating remaining time…",
     "loading.remaining": "≈ {seconds} s remaining",

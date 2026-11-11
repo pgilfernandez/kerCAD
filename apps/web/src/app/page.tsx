@@ -2,6 +2,8 @@
 
 import { LEGACY_DEMO_CHALLENGE_ID, PROJECT_FILE_PATTERN } from "@/lib/legacyBrand";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import { registerDesktopCloseHandler } from "@/lib/desktopBridge";
 import { ProjectDashboard } from "@/components/ProjectDashboard";
 import { KercadLandingPage } from "@/components/KercadLandingPage";
 import { SketchForgeParametricEditor } from "@/components/SketchForgeParametricEditor";
@@ -74,6 +76,15 @@ export default function Home() {
     await enqueueLibraryWrite(() => saveLibraryProject(structuredClone(latest)));
     if (changeVersionRef.current === version) savedVersionRef.current = version;
   }, [enqueueLibraryWrite]);
+  useEffect(() => registerDesktopCloseHandler(async () => {
+    // Accept the focused numeric field before waiting for IndexedDB writes.
+    flushSync(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); });
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    await saveLatestActive();
+    await writeQueueRef.current;
+    if (editingChallenge) throw new Error("Finish challenge authoring before closing.");
+    if (document.querySelector(".kercad-parametric-sketch-toolbar")) throw new Error("Accept or cancel the sketch before closing.");
+  }), [saveLatestActive, editingChallenge]);
   const openProject = useCallback((entry: ProjectLibraryEntry, transient = false, newDraft = false, requiresGeometry = false) => {
     transientEditorRef.current = transient;
     newProjectDraftRef.current = newDraft ? { baseline: projectContentKey(entry.document), changed: false, requiresGeometry } : null;

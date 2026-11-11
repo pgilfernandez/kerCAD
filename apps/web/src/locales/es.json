@@ -3,6 +3,13 @@
   "name": "Español",
   "direction": "ltr",
   "messages": {
+    "desktop.errorTitle": "kerCAD",
+    "desktop.startFailed": "kerCAD no ha podido iniciar su servidor local.",
+    "desktop.logs": "Los detalles están en el archivo de registro:",
+    "desktop.saveFailed": "No se han podido guardar algunos cambios. Reintenta, mantén la ventana abierta o cierra sin guardar.",
+    "desktop.retry": "Reintentar",
+    "desktop.cancel": "Cancelar",
+    "desktop.discard": "Cerrar sin guardar",
     "loading.progress": "Progreso de carga",
     "loading.estimating": "Calculando estimación…",
     "loading.remaining": "≈ {seconds} s restantes",
