@@ -2,6 +2,24 @@
 
 Configuración adaptada a kerCAD, pendiente de construcción y validación real. No hay una imagen precompilada validada que esta guía pueda recomendar. No se han comprobado aún exportaciones remotas, restauración ni las dos arquitecturas.
 
+## Imagen comprimida en los artefactos
+
+El workflow **Build and Push Docker Images** genera, tras publicar la imagen,
+dos artefactos descargables desde GitHub Actions: uno para Linux `amd64` y otro
+para Linux `arm64`. Cada uno contiene `kercad-docker-linux-<arquitectura>.tar.gz`
+y su checksum SHA-256. Se conservan durante 14 días y corresponden al digest
+exacto de la imagen construida en esa ejecución, no a una etiqueta mutable.
+
+Tras descargar y descomprimir el artefacto de Actions, carga la imagen apropiada:
+
+```sh
+docker load -i kercad-docker-linux-amd64.tar.gz
+```
+
+En equipos ARM utiliza el archivo `kercad-docker-linux-arm64.tar.gz`.
+La imagen se importa como `kercad:local` y puede arrancarse con
+`npm run docker:run`. El archivo no incluye proyectos ni volúmenes del usuario.
+
 ## Construcción local
 
 Desde la raíz del repositorio, con Docker y Compose disponibles:

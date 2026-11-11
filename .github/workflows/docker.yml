@@ -13,6 +13,9 @@ concurrency:
 jobs:
   build:
     timeout-minutes: 30
+    outputs:
+      image: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+      digest: ${{ steps.build.outputs.digest }}
     permissions:
       packages: write
       contents: read
@@ -45,6 +48,7 @@ jobs:
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Build and Push Docker Image
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -57,3 +61,45 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=sketchforge-docker
           cache-to: type=gha,mode=max,scope=sketchforge-docker
+
+  archive:
+    name: Docker archive (${{ matrix.architecture }})
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      packages: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        architecture: [amd64, arm64]
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Export compressed Docker image
+        env:
+          IMAGE: ${{ needs.build.outputs.image }}@${{ needs.build.outputs.digest }}
+          ARCH: ${{ matrix.architecture }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          docker pull --platform "linux/$ARCH" "$IMAGE"
+          docker tag "$IMAGE" kercad:local
+          docker save kercad:local | gzip -1 > "dist/kercad-docker-linux-$ARCH.tar.gz"
+          cd dist
+          sha256sum "kercad-docker-linux-$ARCH.tar.gz" > "kercad-docker-linux-$ARCH.tar.gz.sha256"
+
+      - name: Upload Docker image archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: kercad-docker-linux-${{ matrix.architecture }}-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
