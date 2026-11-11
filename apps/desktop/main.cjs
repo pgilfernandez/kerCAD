@@ -184,11 +184,18 @@ else {
       if (!internal(request.url)) return new Response(null, { status: 403 });
       const url = new URL(request.url), headers = new Headers(request.headers);
       headers.delete('host');
+      const origin = headers.get('origin');
+      if (origin && !internal(origin)) return new Response(null, { status: 403 });
+      // SVG masks use CORS image requests. Their renderer origin is kercad://app,
+      // but the private HTTP hop must see its own origin (also for API writes).
+      if (origin) headers.set('origin', serverURL);
       const response = await net.fetch(`${serverURL}${url.pathname}${url.search}`, {
         method: request.method, headers, redirect: 'manual',
         ...(!['GET', 'HEAD'].includes(request.method) ? { body: await request.arrayBuffer() } : {}),
       });
       const outgoing = new Headers(response.headers);
+      outgoing.set('access-control-allow-origin', 'kercad://app');
+      outgoing.set('access-control-allow-credentials', 'true');
       outgoing.delete('content-encoding'); outgoing.delete('content-length');
       if (outgoing.has('location')) {
         const redirect = new URL(outgoing.get('location'), serverURL);
