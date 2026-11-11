@@ -9,7 +9,7 @@ export function DashboardBrandLogo() {
   const [readyCycle, setReadyCycle] = useState<number | null>(null);
   const root = useRef<HTMLSpanElement>(null);
   useEffect(() => {
-    const brand = root.current?.closest(".kercad-dashboard-brand");
+    const brand = root.current?.closest(".kercad-dashboard-brand, .kercad-editor-brand");
     const restart = () => { setHovered(true); setReadyCycle(null); setCycle((value) => value + 1); };
     const leave = () => setHovered(false);
     brand?.addEventListener("mouseenter", restart);

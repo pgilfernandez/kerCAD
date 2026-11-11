@@ -1,5 +1,7 @@
 "use client";
 
+import { DashboardBrandLogo } from "@/components/DashboardBrandLogo";
+
 import { PROJECT_FILE_PATTERN, LEGACY_PROJECT_ACCEPT } from "@/lib/legacyBrand";
 import { Camera, RotateCcw, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, Focus, Grid3X3, Home, Maximize2, Minus, Plus, Trash2, X } from "lucide-react";
 import { ChallengeEditor, type ChallengeDock } from "@/components/ChallengeEditor";
@@ -3546,7 +3548,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         <div className="toolbar-workspace-tabs kercad-toolbar-titlebar">
           <EditorHeaderActions locale={locale} onLocaleChange={setLocale} onLaunchTutorial={!challengeEditor ? () => { resetStartupTutorials(); setTutorialLaunchRequest((request) => request + 1); } : undefined} />
           {sketchSession ? <div className="kercad-sketch-header-actions"><button className="kercad-toolbar-brand kercad-toolbar-brand-button" type="button" onClick={acceptSketch}><ChevronLeft size={20} aria-hidden="true" />{t("sketch.accept")}</button><button className="kercad-toolbar-brand kercad-toolbar-brand-button" type="button" onClick={cancelSketch}>{t("common.cancel")}</button></div> : onExitToProjects ? <button className="kercad-toolbar-brand kercad-toolbar-brand-button" type="button" onClick={() => onExitToProjects(latestDocumentRef.current)} title={uiText("ui.sketchforgeparametriceditor.back.to.projects.055981", {}, locale)}><ChevronLeft size={20} aria-hidden="true" />{uiText("dashboard.projects.53e890", {}, locale)}</button> : null}
-          <span className="kercad-project-name"><img src="/assets/kercad/kercad_logo_white.svg" alt={uiText("ui.page.kercad.c0bf6d", {}, locale)} /><strong>{uiText("ui.page.kercad.c0bf6d", {}, locale)}</strong><span aria-hidden="true">-</span><button type="button" className="kercad-project-rename-trigger" onClick={openProjectRename} title={uiText("dashboard.rename.project.633018", {}, locale)}>{document.name}</button>{sketchSession ? <strong className="kercad-sketcher-badge">{uiText("ui.sketchforgeparametriceditor.sketcher.44752f", {}, locale)}</strong> : null}</span>
+          <div className="kercad-project-name"><div className="kercad-editor-brand"><DashboardBrandLogo /><strong>{uiText("ui.page.kercad.c0bf6d", {}, locale)}</strong></div><span aria-hidden="true">-</span><button type="button" className="kercad-project-rename-trigger" onClick={openProjectRename} title={uiText("dashboard.rename.project.633018", {}, locale)}>{document.name}</button>{sketchSession ? <strong className="kercad-sketcher-badge">{uiText("ui.sketchforgeparametriceditor.sketcher.44752f", {}, locale)}</strong> : null}</div>
         </div>
         {sketchSession ? <div ref={toolbarScrollRef} className="sketch-toolbar-ribbon kercad-parametric-sketch-toolbar" aria-label={t("sketch.tools")}>
           <ToolbarSection label={t("sketch.history")}>
