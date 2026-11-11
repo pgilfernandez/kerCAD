@@ -9338,6 +9338,19 @@ circle.sketch-preview-line {
 
 .kercad-dashboard-brand { display: flex; align-items: center; gap: 15px; font-size: 27px; letter-spacing: -.5px; }
 .kercad-dashboard-logo { width: 50px; height: 50px; display: block; object-fit: contain; }
+.kercad-dashboard-logo-swap { position: relative; flex-shrink: 0; }
+.kercad-dashboard-logo-swap > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; transition: opacity 2s ease-out; pointer-events: none; }
+.kercad-brand-logo-white { opacity: 1; }
+.kercad-brand-logo-animation { opacity: 0; }
+.kercad-dashboard-logo-swap[data-active="true"] > img { transition: none; }
+.kercad-dashboard-logo-swap[data-active="true"] .kercad-brand-logo-white { opacity: 0; }
+.kercad-dashboard-logo-swap[data-active="true"] .kercad-brand-logo-animation { opacity: 1; }
+.kercad-dashboard-logo-swap[data-loading="true"] .kercad-brand-logo-white { opacity: 1; transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .kercad-dashboard-logo-swap > img, .kercad-dashboard-logo-swap[data-active="true"] > img { transition: none; }
+  .kercad-dashboard-logo-swap[data-active="true"] .kercad-brand-logo-white { opacity: 1; }
+  .kercad-dashboard-logo-swap[data-active="true"] .kercad-brand-logo-animation { opacity: 0; }
+}
 .kercad-dashboard-project-controls { --dashboard-control-height: 47px; }
 .kercad-dashboard-search { width: clamp(190px, 24vw, 320px); height: var(--dashboard-control-height); display: flex; align-items: center; gap: 10px; padding: 0 14px; border: 1px solid var(--theme-line-c9d8e3); border-radius: 9px; background: var(--theme-surface); color: var(--theme-dark-link, #668098); box-shadow: 0 1px 2px rgba(27, 60, 83, .08); }
 .kercad-dashboard-search input { width: 100%; border: 0; outline: 0; font: inherit; font-size: 18px; color: var(--theme-text-18354d); background: transparent; }

@@ -1,5 +1,7 @@
 "use client";
 
+import { DashboardBrandLogo } from "@/components/DashboardBrandLogo";
+
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { HeaderToolbarIcon } from "@/components/icons";
 import { EditorHeaderActions } from "@/components/EditorHeaderActions";
@@ -56,7 +58,7 @@ export function KercadLandingPage({ preview, onStart, onOpenChallenges }: Props)
   const changeLocale = setLocale;
   return <main className="kercad-landing kercad-about-page" lang={locale}>
     <header className="kercad-landing-nav kercad-dashboard-topbar">
-      <strong className="kercad-dashboard-brand"><img className="kercad-dashboard-logo" src="/assets/kercad/kercad_logo_white.svg" alt="" /><span>{uiText("ui.page.kercad.c0bf6d", {}, locale)}</span></strong>
+      <strong className="kercad-dashboard-brand"><DashboardBrandLogo /><span>{uiText("ui.page.kercad.c0bf6d", {}, locale)}</span></strong>
       <nav lang={locale} aria-label={uiText("ui.kercadlandingpage.main.navigation.efd197", {}, locale)}>{navigation.map((item) => <a key={item.id} href={`#${item.id}`}>{item.label}</a>)}</nav>
       <div className="kercad-landing-header-actions">
         <div ref={sectionsMenuRef} className="kercad-landing-section-control">
