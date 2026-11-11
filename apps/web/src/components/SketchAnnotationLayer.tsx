@@ -101,7 +101,7 @@ export function SketchAnnotationLayer({ annotations, preview, selectedId, screen
       const step = snapSpacing / 2;
       next.size = Math.max(0.1, Math.min(1000, step > 0 ? Math.round(size / step) * step : size));
     }
-    else if (action.point && action.point !== "radius" && action.point !== "lineWidth") {
+    else if (action.point && action.point !== "radius" && action.point !== "lineWidth" && action.point !== "height") {
       const target = annotationPosition(next, action.point === "position" ? null : action.point);
       if (target) { target.x = point.x; target.y = point.z; target.z = 0; }
     } else {

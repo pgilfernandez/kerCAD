@@ -247,6 +247,18 @@ export type ParametricObject = {
 
 export type AnnotationEnding = "none" | "square" | "circle" | "arrow1" | "arrow2" | "arrow3" | "arrow4";
 
+type AnnotationOutline = {
+  position: ParametricVector3;
+  rotation: ParametricVector3;
+  /** Circle radius, or half the rectangle width for the shared horizontal handle. */
+  radius: number;
+  height?: number;
+  mode: "billboard" | "planar";
+  color: string;
+  lineWidth: number;
+  size?: number;
+};
+
 export type ParametricAnnotation = {
   id: string;
   name: string;
@@ -254,18 +266,8 @@ export type ParametricAnnotation = {
 } & ({ kind: "text"; position: ParametricVector3; alignment: "left" | "center" | "right"; size: number; font: string; text: string; color?: string }
   | { kind: "dimension"; start: ParametricVector3; end: ParametricVector3; size?: number; color?: string; startArrow?: boolean; endArrow?: boolean; startEnding?: AnnotationEnding; endEnding?: AnnotationEnding; lineStyle?: "solid" | "dashed"; showLength?: boolean }
   | { kind: "angle"; start: ParametricVector3; center: ParametricVector3; end: ParametricVector3; size?: number; color?: string }
-  | {
-    kind: "circle" | "rectangle";
-    position: ParametricVector3;
-    rotation: ParametricVector3;
-    /** Circle radius, or half the rectangle width for the shared horizontal handle. */
-    radius: number;
-    height?: number;
-    mode: "billboard" | "planar";
-    color: string;
-    lineWidth: number;
-    size?: number;
-  });
+  | ({ kind: "circle" } & AnnotationOutline)
+  | ({ kind: "rectangle" } & AnnotationOutline));
 
 export type ParametricDocument = {
   schema: "kercad-parametric/v1" | "kercad-parametric/v2";
