@@ -11,6 +11,7 @@ import { projectLoadingCampaign } from "@/lib/projectLoadingCampaign";
 import { APP_LOCALE_INITIAL_SCRIPT, uiText } from "@/lib/kercadI18n";
 
 export const metadata: Metadata = {
+  icons: { icon: { url: "/assets/kercad/kercad_favicon.svg", type: "image/svg+xml" } },
   title: uiText("ui.layout.kercad.parametric.cad.for.learning.9bfd81"),
   description: uiText("ui.layout.local.open.source.parametric.cad.editor.designed.e15816"),
 };
