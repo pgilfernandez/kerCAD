@@ -101,7 +101,7 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
   return <main className="kercad-dashboard-shell" aria-busy={busy}>
     <EditorGettingStarted locale={locale} onLocaleChange={changeLocale} active={!busy} mode="dashboard" dashboardSection={section} launchRequest={tutorialLaunchRequest} />
     <header className="kercad-dashboard-topbar">
-      <strong className="kercad-dashboard-brand"><img className="kercad-dashboard-logo" src="/assets/kercad/logo.svg" alt="" /><span>{uiText("ui.page.kercad.c0bf6d", {}, locale)}</span></strong>
+      <strong className="kercad-dashboard-brand"><img className="kercad-dashboard-logo" src="/assets/kercad/kercad_logo_white.svg" alt="" /><span>{uiText("ui.page.kercad.c0bf6d", {}, locale)}</span></strong>
       <nav className="kercad-dashboard-mobile-nav" aria-label={t("dashboard.dashboard.sections.385166")}><button data-tutorial="dashboard-projects" className={section === "home" ? "active" : ""} type="button" onClick={() => onSectionChange("home")}><Home size={18} /> {t("dashboard.projects.53e890")}</button><button data-tutorial="dashboard-challenges" className={section === "challenges" ? "active" : ""} type="button" onClick={() => onSectionChange("challenges")}><Grid3X3 size={18} /> {t("dashboard.challenges.ff3876")}</button>{sharedEnabled ? <button type="button" onClick={() => onSectionChange("shared")}>{t("dashboard.shared.50d0d8")}</button> : null}</nav>
       <EditorHeaderActions locale={locale} onLocaleChange={changeLocale} onShowLanding={onShowLanding} onLaunchTutorial={() => { resetStartupTutorials(); setTutorialLaunchRequest((request) => request + 1); }} showDonation />
     </header>

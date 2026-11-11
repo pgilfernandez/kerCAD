@@ -35,7 +35,7 @@ export default function DocumentationPage() {
   }, []);
   return <main className="kercad-documentation-page">
     <header className="kercad-dashboard-topbar">
-      <strong className="kercad-dashboard-brand"><img className="kercad-dashboard-logo" src="/assets/kercad/logo.svg" alt="" /><span>{uiText("ui.page.kercad.c0bf6d", {}, locale)}</span></strong>
+      <strong className="kercad-dashboard-brand"><img className="kercad-dashboard-logo" src="/assets/kercad/kercad_logo_white.svg" alt="" /><span>{uiText("ui.page.kercad.c0bf6d", {}, locale)}</span></strong>
       <strong className="kercad-documentation-header-title">{uiText("ui.page.documentation.9e9cf3", {}, locale)}</strong>
       <EditorHeaderActions locale={locale} onLocaleChange={changeLocale} onShowLanding={() => { window.location.href = "/"; }} showDocumentation={false} startDesigning />
     </header>
