@@ -1,8 +1,9 @@
 # kerCAD desktop — Electron
 
 Shared desktop host for macOS, Windows and Linux. It reuses the unmodified CAD
-engine and Next.js application. This is an initial implementation: no desktop
-build, installer or device workflow is validated merely by adding these files.
+engine and Next.js application. The Legacy Intel `.app` has been built and its
+window, internal origin and local APIs checked on macOS 12.7.6. Full CAD workflows,
+installers and the other OS/architecture combinations remain unvalidated.
 The inherited Swift host in `apps/mac` is retained separately.
 
 ## Local commands

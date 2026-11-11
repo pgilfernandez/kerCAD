@@ -7,7 +7,13 @@ module.exports = {
   electronVersion: legacy ? '43.8.8' : '45.3.0',
   directories: { app: 'staging/app', output: `../../dist/desktop/${legacy ? 'legacy' : 'current'}`, buildResources: 'staging/icons' },
   files: ['**/*'],
-  extraResources: [{ from: 'staging/server', to: 'server' }, { from: 'staging/icons/icon.png', to: 'icon.png' }],
+  extraResources: [
+    { from: 'staging/server', to: 'server' },
+    // electron-builder excludes a source root's node_modules from ordinary
+    // resource copies. The standalone server needs its traced dependencies.
+    { from: 'staging/server/node_modules', to: 'server/node_modules' },
+    { from: 'staging/icons/icon.png', to: 'icon.png' },
+  ],
   asar: true,
   npmRebuild: false,
   artifactName: 'kerCAD.${ext}',
