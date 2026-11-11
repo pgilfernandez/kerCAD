@@ -54,6 +54,9 @@ const nextConfig: NextConfig = {
   // tries optional kernel backends via guarded `import().catch()`. We only install
   // and use occt-wasm, so silence the resolution warnings for the backends we omit.
   webpack: (config) => {
+    // Desktop staging already duplicates the standalone output; avoid keeping
+    // another large persistent webpack cache during installer builds.
+    if (process.env.KERCAD_DESKTOP_BUILD === "true") config.cache = false;
     config.resolve.alias = {
       ...config.resolve.alias,
       "brepkit-wasm": false,

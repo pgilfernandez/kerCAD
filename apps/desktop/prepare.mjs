@@ -12,7 +12,7 @@ const next = require.resolve('next/dist/bin/next');
 const run = (args) => new Promise((resolve, reject) => {
   const child = spawn(process.execPath, args, { cwd: root, stdio: 'inherit', env: {
     ...process.env, NODE_ENV: 'production', KERCAD_DOCKER_BUILD: 'true',
-    STATIC_EXPORT: 'false', KERCAD_CANONICAL_HOST: 'off', NEXT_TELEMETRY_DISABLED: '1',
+    STATIC_EXPORT: 'false', KERCAD_CANONICAL_HOST: 'off', NEXT_TELEMETRY_DISABLED: '1', KERCAD_DESKTOP_BUILD: 'true',
   } });
   child.once('error', reject);
   child.once('exit', (code) => code === 0 ? resolve() : reject(new Error(`Build exited with ${code}`)));
@@ -23,7 +23,10 @@ const { rm } = await import('node:fs/promises');
 await rm(path.join(directory, 'staging'), { recursive: true, force: true });
 await run([path.join(root, 'scripts/i18n.mjs')]);
 await run([path.join(root, 'scripts/copy-occt-wasm.mjs')]);
-await run([next, 'build', 'apps/web']);
+const nextEnvironment = path.join(root, 'apps/web/next-env.d.ts');
+const previousEnvironment = await readFile(nextEnvironment);
+try { await run([next, 'build', 'apps/web']); }
+finally { await writeFile(nextEnvironment, previousEnvironment); }
 const staging = path.join(directory, 'staging');
 const app = path.join(staging, 'app');
 const server = path.join(staging, 'server');
@@ -42,6 +45,7 @@ const metadata = JSON.parse(await readFile(path.join(directory, 'package.json'),
 delete metadata.devDependencies;
 delete metadata.scripts;
 await writeFile(path.join(app, 'package.json'), JSON.stringify(metadata, null, 2));
+await writeFile(path.join(app, 'desktop-variant.json'), JSON.stringify({ variant: process.env.KERCAD_DESKTOP_VARIANT === 'legacy' ? 'legacy' : 'current' }));
 await mkdir(path.join(staging, 'icons'), { recursive: true });
 await sharp(path.join(root, 'apps/web/public/assets/kercad/kercad_logo_color.svg'))
   .resize(1024, 1024).png().toFile(path.join(staging, 'icons/icon.png'));

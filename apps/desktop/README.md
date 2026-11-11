@@ -29,11 +29,30 @@ npm run desktop:package
 ```
 
 Outputs go to `dist/desktop`: macOS DMG, Windows NSIS EXE, Linux AppImage/DEB.
+Build outputs are separated into `dist/desktop/current` and `dist/desktop/legacy`.
 Installers use only the application name: `kerCAD.dmg`, `kerCAD.exe`,
 `kerCAD.AppImage` and `kerCAD.deb`. OS/architecture and the seven-character commit
 identify the separate Actions artifacts, not the filenames inside them.
 Keep different builds in separate directories when downloading/extracting them.
 No Mac ZIP is generated.
+
+### macOS compatibility variants
+
+- **Current:** Electron 45.3.0, minimum macOS 13 Ventura.
+- **Legacy:** Electron 43.8.8, minimum macOS 12 Monterey, no Big Sur support.
+  Electron 43 reaches upstream end of support on January 5, 2027; retaining this
+  runtime after that date does not provide ongoing security maintenance.
+
+To build only a Legacy `.app`, from macOS:
+
+```sh
+KERCAD_DESKTOP_VARIANT=legacy npm --prefix apps/desktop run package -- --mac --dir
+```
+
+`desktop:start` uses the current development Electron installation. Open the
+packaged Legacy `.app` instead when testing on Monterey.
+Actions produces both Mac variants for Intel and Apple Silicon. The artifact
+name includes `current` or `legacy`; each Mac artifact contains only `kerCAD.dmg`.
 The desktop package uses version 0.9.0 independently of the historical root npm
 version. The application's information panel retains the compiled Git commit.
 No external Node installation or Docker is needed to run an installed package.
@@ -55,6 +74,9 @@ Bundled challenge packages are seeded only when a file with that name is absent.
 Clearing the profile can still erase browser databases: export `.kercad` backups.
 Browser/Safari/Swift-host libraries are not migrated automatically; use explicit
 export/import to avoid silently mixing or replacing existing libraries.
+The Legacy variant has its own bundle ID and uses `kerCAD-Desktop-Legacy` rather
+than `kerCAD-Desktop`. Do not share Chromium profiles between different runtime
+versions; transfer projects explicitly via `.kercad` export/import instead.
 
 Closing requests a renderer save, accepts the focused numeric field and waits
 for the existing IndexedDB write queue. If saving fails or times out, native

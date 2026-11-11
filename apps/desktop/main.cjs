@@ -5,7 +5,8 @@ const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 
 app.setName('kerCAD');
-app.setPath('userData', path.join(app.getPath('appData'), 'kerCAD-Desktop'));
+const legacy = require('./desktop-variant.json').variant === 'legacy';
+app.setPath('userData', path.join(app.getPath('appData'), legacy ? 'kerCAD-Desktop-Legacy' : 'kerCAD-Desktop'));
 protocol.registerSchemesAsPrivileged([{ scheme: 'kercad', privileges: {
   standard: true, secure: true, supportFetchAPI: true, stream: true,
   corsEnabled: true, allowServiceWorkers: true, codeCache: true,

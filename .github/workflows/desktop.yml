@@ -9,22 +9,25 @@ permissions:
 
 jobs:
   desktop:
-    name: Desktop ${{ matrix.os }} ${{ matrix.arch }}
+    name: Desktop ${{ matrix.os }} ${{ matrix.arch }} (${{ matrix.variant }})
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { os: macOS, arch: x64, runner: macos-15-intel }
-          - { os: macOS, arch: arm64, runner: macos-15 }
-          - { os: windows, arch: x64, runner: windows-latest }
-          - { os: linux, arch: x64, runner: ubuntu-24.04 }
-          - { os: linux, arch: arm64, runner: ubuntu-24.04-arm }
+          - { os: macOS, arch: x64, runner: macos-15-intel, variant: current }
+          - { os: macOS, arch: arm64, runner: macos-15, variant: current }
+          - { os: macOS, arch: x64, runner: macos-15-intel, variant: legacy }
+          - { os: macOS, arch: arm64, runner: macos-15, variant: legacy }
+          - { os: windows, arch: x64, runner: windows-latest, variant: current }
+          - { os: linux, arch: x64, runner: ubuntu-24.04, variant: current }
+          - { os: linux, arch: arm64, runner: ubuntu-24.04-arm, variant: current }
     env:
       NEXT_TELEMETRY_DISABLED: '1'
       KERCAD_COMMIT: ${{ github.sha }}
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      KERCAD_DESKTOP_VARIANT: ${{ matrix.variant }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -48,12 +51,12 @@ jobs:
       - name: Upload application installers
         uses: actions/upload-artifact@v4
         with:
-          name: kercad-desktop-${{ matrix.os }}-${{ matrix.arch }}-${{ steps.revision.outputs.sha }}
+          name: kercad-desktop-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.variant }}-${{ steps.revision.outputs.sha }}
           path: |
-            dist/desktop/*.dmg
-            dist/desktop/*.exe
-            dist/desktop/*.AppImage
-            dist/desktop/*.deb
+            dist/desktop/${{ matrix.variant }}/*.dmg
+            dist/desktop/${{ matrix.variant }}/*.exe
+            dist/desktop/${{ matrix.variant }}/*.AppImage
+            dist/desktop/${{ matrix.variant }}/*.deb
           if-no-files-found: error
           compression-level: 0
           retention-days: 14

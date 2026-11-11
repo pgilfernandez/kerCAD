@@ -1,14 +1,17 @@
+const legacy = process.env.KERCAD_DESKTOP_VARIANT === 'legacy';
+if (legacy && process.platform !== 'darwin') throw new Error('Legacy desktop builds are macOS-only.');
+
 module.exports = {
-  appId: 'org.kercad.desktop.electron',
+  appId: legacy ? 'org.kercad.desktop.electron.legacy' : 'org.kercad.desktop.electron',
   productName: 'kerCAD',
-  electronVersion: '45.3.0',
-  directories: { app: 'staging/app', output: '../../dist/desktop', buildResources: 'staging/icons' },
+  electronVersion: legacy ? '43.8.8' : '45.3.0',
+  directories: { app: 'staging/app', output: `../../dist/desktop/${legacy ? 'legacy' : 'current'}`, buildResources: 'staging/icons' },
   files: ['**/*'],
   extraResources: [{ from: 'staging/server', to: 'server' }, { from: 'staging/icons/icon.png', to: 'icon.png' }],
   asar: true,
   npmRebuild: false,
   artifactName: 'kerCAD.${ext}',
-  mac: { target: ['dmg'], category: 'public.app-category.graphics-design' },
+  mac: { target: ['dmg'], minimumSystemVersion: legacy ? '12.0' : '13.0', category: 'public.app-category.graphics-design' },
   win: { target: ['nsis'] },
   nsis: { oneClick: false, perMachine: false, allowToChangeInstallationDirectory: true },
   linux: { target: ['AppImage', 'deb'], category: 'Graphics', maintainer: 'kerCAD contributors' },
