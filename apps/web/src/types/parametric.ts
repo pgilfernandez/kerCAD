@@ -92,6 +92,8 @@ export type ParametricVector3 = {
 export type ExtrudeFeature = BaseFeature & {
   kind: "extrude";
   sketchId: string;
+  /** When set, loft between the two positioned sketches instead of using distance. */
+  endSketchId?: string;
   distance: number;
   symmetric: boolean;
   operation: "add" | "cut" | "intersect";

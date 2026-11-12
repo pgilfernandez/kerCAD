@@ -1,5 +1,6 @@
 import { loadBrepWithOcct, type Brep, type BrepSolid } from "@/lib/brepKernel";
 import type { ParametricBuildProgress } from "@/lib/parametricBuildProgress";
+import { uiText } from "@/lib/kercadI18n";
 import { shellWithCorners } from "@/lib/shellKernel";
 import { gearOutlinePoints } from "@/lib/parametricGearProfile";
 import { orientedMeshNormals } from "@/lib/parametricMeshNormals";
@@ -114,7 +115,35 @@ function drawnSketchFaces(brep: Brep, sketch: SketchFeature): Face[] {
   return facesFromPlanarProfile(brep, loops, sketch.name);
 }
 
-function solidFromSketch(brep: Brep, sketch: SketchFeature, feature: ExtrudeFeature): AnySolid {
+function solidFromSketch(brep: Brep, sketch: SketchFeature, feature: ExtrudeFeature, document: ParametricDocument): AnySolid {
+  if (feature.endSketchId) {
+    const end = document.features.find((item): item is SketchFeature => item.kind === "sketch" && item.id === feature.endSketchId);
+    if (!end || end.suppressed || sketch.suppressed) throw new Error(uiText("loft.missingProfile"));
+    const owner = document.objects.find((item) => item.id === feature.objectId);
+    const localFaces = (profile: SketchFeature) => {
+      let faces = facesFromSketch(brep, profile);
+      const source = document.objects.find((item) => item.id === profile.objectId);
+      if (source && owner && source.id !== owner.id) {
+        const matrix = parametricTransformMatrix(owner.transform).invert().multiply(parametricTransformMatrix(source.transform));
+        const e = matrix.elements;
+        faces = faces.map((face) => brep.unwrap(brep.applyMatrix(face, {
+          linear: [e[0], e[4], e[8], e[1], e[5], e[9], e[2], e[6], e[10]],
+          translation: [e[12], e[13], e[14]],
+        })) as Face);
+      }
+      if (faces.length !== 1) throw new Error(uiText("loft.singleRegion"));
+      return faces[0];
+    };
+    const first = localFaces(sketch), last = localFaces(end);
+    const firstHoles = brep.innerWires(first), lastHoles = brep.innerWires(last);
+    if (firstHoles.length !== lastHoles.length) throw new Error(uiText("loft.matchingHoles"));
+    let solid = brep.unwrap(brep.loft([brep.outerWire(first), brep.outerWire(last)], { ruled: false })) as AnySolid;
+    for (let index = 0; index < firstHoles.length; index++) {
+      const hole = brep.unwrap(brep.loft([firstHoles[index], lastHoles[index]], { ruled: false })) as AnySolid;
+      solid = refinedBooleanSolid(brep, brep.cut(solid, hole));
+    }
+    return applyOperationTransform(brep, solid, feature.transform);
+  }
   const profile = sketch.profile;
   if (profile.shape === "drawn") {
     const solid = applySketchTransform(brep, extrudePlanarProfile(brep, drawnSketchFaces(brep, sketch), feature.distance, feature.symmetric), sketch);
@@ -403,7 +432,7 @@ function textExtrusionDirections(document: ParametricDocument, objectId: string,
   for (const feature of document.features.filter((candidate) => !candidate.suppressed && candidate.objectId === objectId)) {
     if (feature.kind === "extrude") {
       const sketch = sketches.get(feature.sketchId);
-      if (!sketch || !isTextOnlySketch(sketch)) {
+      if (feature.endSketchId || !sketch || !isTextOnlySketch(sketch)) {
         containsOtherSolidGeometry = true;
         continue;
       }
@@ -876,11 +905,11 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
       if (feature.kind === "extrude" || feature.kind === "primitive") {
         const sketch = feature.kind === "extrude" ? sketches.get(feature.sketchId) : null;
         if (feature.kind === "extrude" && !sketch) throw new Error(`${feature.name}: source sketch could not be found.`);
-        if (feature.kind === "extrude" && Math.abs(feature.distance) <= 1e-8) throw new Error(`${feature.name}: distance must not be zero.`);
+        if (feature.kind === "extrude" && !feature.endSketchId && Math.abs(feature.distance) <= 1e-8) throw new Error(`${feature.name}: distance must not be zero.`);
         const objectId = feature.objectId ?? "legacy";
         lastObjectId = objectId;
         const current = solids.get(objectId) ?? null;
-        const tool = feature.kind === "primitive" ? solidFromPrimitive(brep, feature) : solidFromSketch(brep, sketch!, feature);
+        const tool = feature.kind === "primitive" ? solidFromPrimitive(brep, feature) : solidFromSketch(brep, sketch!, feature, document);
         const result = applyBooleanOperation(brep, current, tool, feature);
         solids.set(objectId, result);
         operationStates.set(feature.id, {
@@ -1155,7 +1184,7 @@ export async function exportParametricStep(document: ParametricDocument, objectI
       const objectId = feature.objectId ?? "legacy";
       lastObjectId = objectId;
       const current = solids.get(objectId) ?? null;
-      const tool = feature.kind === "primitive" ? solidFromPrimitive(brep, feature) : solidFromSketch(brep, sketch!, feature);
+      const tool = feature.kind === "primitive" ? solidFromPrimitive(brep, feature) : solidFromSketch(brep, sketch!, feature, document);
       const result = applyBooleanOperation(brep, current, tool, feature);
       solids.set(objectId, result);
       operationStates.set(feature.id, {
@@ -1251,7 +1280,7 @@ export async function parametricAlignmentTargets(document: ParametricDocument, s
     else if (feature?.kind === "sketch") solid = brep.compound(facesFromSketch(brep, feature));
     else if (feature?.kind === "extrude") {
       const sketch = document.features.find((candidate): candidate is SketchFeature => candidate.id === feature.sketchId && candidate.kind === "sketch");
-      if (sketch) solid = solidFromSketch(brep, sketch, feature);
+      if (sketch) solid = solidFromSketch(brep, sketch, feature, document);
     } else if (feature) { await ensureModel(); solid = cachedFeatureSolids.get(feature.id)?.solid; }
     if (!solid) throw new Error(`${feature?.name ?? object.name}: no geometry is available for alignment.`);
     const world = applyObjectTransform(brep, solid, object);
@@ -1295,7 +1324,7 @@ export async function parametricDropToWorkplaneDeltas(document: ParametricDocume
       else if (feature.kind === "sketch" && feature.purpose === "user") solid = brep.compound(facesFromSketch(brep, feature));
       else if (feature.kind === "extrude") {
         const sketch = document.features.find((candidate): candidate is SketchFeature => candidate.id === feature.sketchId && candidate.kind === "sketch");
-        if (sketch) solid = solidFromSketch(brep, sketch, feature);
+        if (sketch) solid = solidFromSketch(brep, sketch, feature, document);
       }
     }
     if (!solid) throw new Error(`${feature?.name ?? object.name}: no independently movable solid is available.`);

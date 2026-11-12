@@ -1081,6 +1081,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const selectionKind = primarySelection?.kind ?? "object";
   const selectedObjectId = objectIdForFeature(document, selectedId);
   const selectedFeature = selectionKind === "feature" ? document.features.find((feature) => feature.id === selectedId) ?? null : null;
+  const selectedSketches = modelSelection.flatMap((item) => {
+    const feature = item.kind === "feature" ? document.features.find((candidate) => candidate.id === item.id) : null;
+    return feature?.kind === "sketch" ? [feature] : [];
+  });
   const selectedEdgeTreatmentFeature = selectedFeature?.kind === "fillet" ? selectedFeature : null;
   const selectedOperationId = selectionKind === "feature" && document.features.some((feature) => feature.id === selectedId && (feature.kind === "extrude" || feature.kind === "primitive")) ? selectedId : null;
   const selectedOperation = selectedOperationId ? document.features.find((feature): feature is ExtrudeFeature | PrimitiveFeature => feature.id === selectedOperationId && (feature.kind === "extrude" || feature.kind === "primitive")) : null;
@@ -2429,16 +2433,20 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     return true;
   };
 
-  const addExtrudeFromSketch = (sketch: SketchFeature) => {
-    if (sketch.profile.shape !== "drawn") return;
-    const validation = validateDrawnSketchProfile(sketch.profile.geometry);
-    if (!validation.valid) { setNotice({ type: "error", text: `${t("notice.cannotExtrude")}: ${validation.diagnostics[0]?.message ?? t("notice.invalidProfile")}` }); return; }
+  const addExtrudeFromSketch = (sketch: SketchFeature, endSketch?: SketchFeature) => {
+    for (const profile of endSketch ? [sketch, endSketch] : [sketch]) {
+      if (profile.profile.shape !== "drawn") continue;
+      const validation = validateDrawnSketchProfile(profile.profile.geometry);
+      if (!validation.valid) { setNotice({ type: "error", text: `${t("notice.cannotExtrude")}: ${validation.diagnostics[0]?.message ?? t("notice.invalidProfile")}` }); return; }
+    }
     let featureId = "";
     const changed = mutate((draft) => {
       if (!sketch.objectId) return;
       const feature = createExtrudeFeature(sketch.id, draft.features.filter((candidate) => candidate.kind === "extrude").length + 1, false);
       feature.objectId = sketch.objectId;
-      feature.dependencies = [{ type: "feature", id: sketch.id }];
+      feature.endSketchId = endSketch?.id;
+      feature.dependencies = (endSketch ? [sketch, endSketch] : [sketch]).map((profile) => ({ type: "feature" as const, id: profile.id }));
+      if (endSketch) feature.name = `${t("operation.loft")} ${draft.features.filter((candidate) => candidate.kind === "extrude" && candidate.endSketchId).length + 1}`;
       featureId = feature.id;
       draft.features.push(feature);
     });
@@ -3647,7 +3655,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <ToolbarSection label={t("toolbar.modify")} className="toolbar-modify-section">
               <Tool label={t("toolbar.chamfer")} active={pendingEdgeTreatment === "chamfer"} onClick={() => beginEdgeTreatment("chamfer")}><ToolbarChamferIcon /></Tool>
               <Tool label={t("toolbar.fillet")} active={pendingEdgeTreatment === "fillet"} onClick={() => beginEdgeTreatment("fillet")}><ToolbarFilletIcon /></Tool>
-              <Tool label={selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? t("toolbar.extrudeSketch") : t("toolbar.extrudeFace")} active={Boolean(pendingFaceExtrude)} onClick={() => selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? addExtrudeFromSketch(selectedFeature) : beginFaceExtrude("add")}><ToolbarExtrudeIcon /></Tool>
+              <Tool label={modelSelection.length === 2 && selectedSketches.length === 2 ? t("operation.loft") : selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? t("toolbar.extrudeSketch") : t("toolbar.extrudeFace")} active={Boolean(pendingFaceExtrude)} onClick={() => modelSelection.length === 2 && selectedSketches.length === 2 ? addExtrudeFromSketch(selectedSketches[0], selectedSketches[1]) : selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? addExtrudeFromSketch(selectedFeature) : beginFaceExtrude("add")}><ToolbarExtrudeIcon /></Tool>
               <Tool label={selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? t("toolbar.revolveSketch") : t("toolbar.revolve")} active={Boolean(pendingRevolve)} onClick={() => selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? addRevolveFromSketch(selectedFeature) : beginRevolve()}><ToolbarRevolveIcon /></Tool>
               <Tool label={t("toolbar.shell")} active={Boolean(pendingShell)} onClick={() => beginShell()}><ToolbarShellIcon /></Tool>
               <Tool label={t("toolbar.mirror")} enabled={Boolean(selectedObjectId)} onClick={addMirrorOperation}><ToolbarMirrorIcon /></Tool>

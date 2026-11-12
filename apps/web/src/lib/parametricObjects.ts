@@ -316,7 +316,7 @@ export function deleteParametricFeature(document: ParametricDocument, id: string
   }
   if (feature.kind === "sketch") {
     for (const candidate of document.features) {
-      if (candidate.kind === "extrude" && candidate.sketchId === feature.id) ids.add(candidate.id);
+      if (candidate.kind === "extrude" && (candidate.sketchId === feature.id || candidate.endSketchId === feature.id)) ids.add(candidate.id);
       if (candidate.kind === "revolve" && candidate.source === "sketch" && candidate.sketchId === feature.id) ids.add(candidate.id);
     }
   }
@@ -493,6 +493,7 @@ export function duplicateParametricObject(document: ParametricDocument, id: stri
     clone.objectId = objectClone.id;
     if (clone.kind === "extrude") {
       clone.sketchId = idMap.get(clone.sketchId) ?? clone.sketchId;
+      if (clone.endSketchId) clone.endSketchId = idMap.get(clone.endSketchId) ?? clone.endSketchId;
     }
     clone.dependencies = clone.dependencies?.map((reference) => reference.type === "feature"
       ? { ...reference, id: idMap.get(reference.id) ?? reference.id }
@@ -675,6 +676,8 @@ export function workplaneShapeForObject(document: ParametricDocument, id: string
   if (!feature) return null;
   const sketch = feature.kind === "extrude" ? sketchForExtrude(document, feature) : null;
   if (feature.kind === "extrude" && !sketch) return null;
+  // A loft has no single height or primitive-shaped parameter preview.
+  if (feature.kind === "extrude" && feature.endSketchId) return null;
   const sketchSize = sketch ? sketchDimensions(sketch) : null;
   const baseWidth = feature.kind === "primitive" ? feature.width : sketchSize!.width;
   const baseDepth = feature.kind === "primitive" ? feature.depth : sketchSize!.depth;
@@ -759,6 +762,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
   const object = document.objects.find((candidate) => candidate.id === feature.objectId);
   const sketch = feature.kind === "extrude" ? sketchForExtrude(document, feature) : null;
   if (!object || (!includeUnavailable && (!object.visible || object.locked)) || (feature.kind === "extrude" && !sketch)) return null;
+  if (feature.kind === "extrude" && feature.endSketchId) return null;
   const sketchSize = sketch ? sketchDimensions(sketch) : null;
   const textGenerator = sketch?.profile.shape === "drawn" && sketch.profile.geometry.generator?.kind === "text" ? sketch.profile.geometry.generator : null;
   const baseWidth = feature.kind === "primitive" ? feature.width : sketchSize!.width;

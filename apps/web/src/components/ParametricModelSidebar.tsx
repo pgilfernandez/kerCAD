@@ -650,6 +650,10 @@ function ParametricFeatureInspector({
             <OperationModeButtons addOnly={requiresAddOperation(document, feature)} value={feature.operation} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "extrude") draft.operation = operation; })} />
           </div>
           <ShapeParametersSection>
+            {feature.endSketchId ? <>
+              <ReadOnlyField label={t("loft.startProfile")} value={primitiveSketch?.name ?? "—"} />
+              <ReadOnlyField label={t("loft.endProfile")} value={document.features.find((item) => item.id === feature.endSketchId)?.name ?? "—"} />
+            </> : <>
             {primitiveSketch?.purpose !== "user" && primitiveSketch?.profile.shape === "circle" && <CylinderProfileButtons locale={locale} elliptical={Boolean(primitiveSketch.profile.elliptical)} onChange={(elliptical) => onUpdateFeature(primitiveSketch.id, (draft) => {
               if (draft.kind === "sketch" && draft.profile.shape === "circle") {
                 if (elliptical && !draft.profile.elliptical) draft.profile.radius2 = draft.profile.diameter / 2;
@@ -675,6 +679,7 @@ function ParametricFeatureInspector({
               </>
             ) : null}
             <BoundedNumberField label={t("property.height")} value={feature.distance} min={-200} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "extrude" && Math.abs(value) >= 0.01) draft.distance = value; })} />
+            </>}
           </ShapeParametersSection>
           <TransformSection description={uiText("sidebar.position.rotation", {}, locale)}>
             <TransformGroup label={t("property.position")} values={feature.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.transform.position[axis] = value; })} />

@@ -71,6 +71,7 @@ export function parametricObjectFeaturePrefixFingerprint(document: ParametricDoc
   const objectFeatures = document.features.filter((feature) => feature.objectId === objectId);
   const throughIndex = objectFeatures.findIndex((feature) => feature.id === throughFeatureId);
   const features = throughIndex < 0 ? [] : objectFeatures.slice(0, throughIndex + 1);
+  const loftSketchIds = new Set(features.flatMap((feature) => feature.kind === "extrude" && feature.endSketchId ? [feature.sketchId, feature.endSketchId] : []));
   const dependencyIds = dependentObjectIds(document, objectId, features);
   const referenceIds = new Set(features.flatMap((feature) => {
     if (feature.kind === "fillet") return [...(feature.edgeReferenceIds ?? []), ...(feature.selectionReferenceIds ?? [])];
@@ -83,6 +84,7 @@ export function parametricObjectFeaturePrefixFingerprint(document: ParametricDoc
     geometryVersion: PARAMETRIC_GEOMETRY_VERSION,
     object: object ? { id: object.id, transform: object.transform } : null,
     features: features.map(geometryFeature),
+    loftProfiles: document.features.filter((feature) => loftSketchIds.has(feature.id)).map(geometryFeature),
     topologyReferences: document.topologyReferences.filter((reference) => reference.objectId === objectId && referenceIds.has(reference.id)),
     dependencies: objectDependencyState(document, dependencyIds),
   });
