@@ -7,11 +7,12 @@ import { useAccessibleDialog } from "@/components/useAccessibleDialog";
 import type { KercadLocale } from "@/lib/kercadI18n";
 import { uiText } from "@/lib/kercadI18n";
 
-export function ImportDesignDialog({ locale, onClose, onBrowse, onFile, newProject = false }: {
+export function ImportDesignDialog({ locale, onClose, onBrowse, onFile, onFiles, newProject = false }: {
   locale: KercadLocale;
   onClose: () => void;
   onBrowse: () => void;
   onFile: (file: File) => void;
+  onFiles?: (files: File[]) => void;
   newProject?: boolean;
 }) {
   const dialog = useAccessibleDialog<HTMLElement>(true, onClose);
@@ -37,9 +38,11 @@ export function ImportDesignDialog({ locale, onClose, onBrowse, onFile, newProje
         onDrop={(event) => {
           event.preventDefault(); event.stopPropagation(); depth.current = 0; setDragging(false);
           const files = event.dataTransfer.files;
-          if (files.length !== 1) { setError(uiText("ui.importdesigndialog.drop.one.file.at.a.time.bb1eaf", {}, locale)); return; }
-          if (!/\.(kercad|json|step|stp|stl|obj|svg|jpe?g|png)$/i.test(files[0].name)) { setError(uiText("ui.importdesigndialog.unsupported.format.use.one.of.the.formats.listed.c7e9b7", {}, locale)); return; }
-          onFile(files[0]);
+          if (!files.length) return;
+          if (!onFiles && files.length !== 1) { setError(uiText("ui.importdesigndialog.drop.one.file.at.a.time.bb1eaf", {}, locale)); return; }
+          if (Array.from(files).some((file) => !/\.(kercad|json|step|stp|stl|obj|svg|jpe?g|png)$/i.test(file.name))) { setError(uiText("ui.importdesigndialog.unsupported.format.use.one.of.the.formats.listed.c7e9b7", {}, locale)); return; }
+          if (onFiles) onFiles(Array.from(files));
+          else onFile(files[0]);
         }}>
         <ToolbarImportIcon /><strong>{uiText("ui.importdesigndialog.drag.and.drop.a.file.here.e1a775", {}, locale)}</strong><span>{uiText("ui.importdesigndialog.or.click.to.choose.it.from.your.computer.04e7a7", {}, locale)}</span>
       </button>

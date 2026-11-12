@@ -28,13 +28,13 @@ type Props = {
   onShowLanding: () => void;
   onCreate: () => void;
   onOpen: (project: ProjectLibraryEntry) => void;
-  onImport: (file: File) => void;
+  onImport: (files: File[]) => void;
   onDelete: (project: ProjectLibraryEntry) => void;
   onRename: (project: ProjectLibraryEntry, name: string, author: string) => void;
   onDuplicate: (project: ProjectLibraryEntry) => void;
   onExport: (project: ProjectLibraryEntry) => void;
   challenges: KercadChallenge[];
-  onImportChallenge: (file: File) => void;
+  onImportChallenge: (files: File[]) => void;
   onCreateChallenge: () => void;
   onStartChallenge: (challenge: KercadChallenge) => void;
   onEditChallenge: (challenge: KercadChallenge) => void;
@@ -193,8 +193,8 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
         <footer><button type="button" onClick={() => setDeleting(null)}>{t("dashboard.cancel.77dfd2")}</button><button className="danger" type="button" onClick={() => { onDelete(deleting); setDeleting(null); }}>{t("dashboard.delete.f6fdbe")}</button></footer>
       </section>
     </div> : null}
-    {importOpen && <ImportDesignDialog locale={locale} newProject onClose={() => setImportOpen(false)} onBrowse={() => inputRef.current?.click()} onFile={(file) => { setImportOpen(false); onImport(file); }} />}
-    <input ref={inputRef} hidden type="file" accept={".kercad,.kercad.json,.json,.svg,.step,.stp,.stl,.obj,.jpg,.jpeg,.png,application/vnd.kercad.project+zip,application/json,image/svg+xml,model/step,model/stl,model/obj,image/jpeg,image/png ," + LEGACY_PROJECT_ACCEPT} onChange={(event) => { const file = event.target.files?.[0]; if (file) { setImportOpen(false); onImport(file); } event.target.value = ""; }} />
-    <input ref={challengeInputRef} hidden type="file" accept=".zip,application/zip" onChange={(event) => { const file = event.target.files?.[0]; if (file) onImportChallenge(file); event.target.value = ""; }} />
+    {importOpen && <ImportDesignDialog locale={locale} newProject onClose={() => setImportOpen(false)} onBrowse={() => inputRef.current?.click()} onFile={(file) => { setImportOpen(false); onImport([file]); }} onFiles={(files) => { setImportOpen(false); onImport(files); }} />}
+    <input ref={inputRef} hidden multiple type="file" accept={".kercad,.kercad.json,.json,.svg,.step,.stp,.stl,.obj,.jpg,.jpeg,.png,application/vnd.kercad.project+zip,application/json,image/svg+xml,model/step,model/stl,model/obj,image/jpeg,image/png ," + LEGACY_PROJECT_ACCEPT} onChange={(event) => { const files = Array.from(event.target.files ?? []); if (files.length) { setImportOpen(false); onImport(files); } event.target.value = ""; }} />
+    <input ref={challengeInputRef} hidden multiple type="file" accept=".zip,application/zip" onChange={(event) => { const files = Array.from(event.target.files ?? []); if (files.length) onImportChallenge(files); event.target.value = ""; }} />
   </main>;
 }

@@ -175,15 +175,23 @@ export default function Home() {
     setEditingChallenge(structuredClone(challenge));
     openProject({ id: `challenge-editor:${challenge.id}`, name: document.name, createdAt: now, updatedAt: now, document }, true);
   };
-  const installChallenge = async (file: File) => {
+  const installChallenge = async (files: File[]) => {
     setBusy(true);
+    const errors: string[] = [];
     try {
-      const challenge = await importChallengePackage(file);
-      await saveInstalledChallenge(challenge);
+      for (const file of files) {
+        try {
+          const challenge = await importChallengePackage(file);
+          await saveInstalledChallenge(challenge);
+        } catch (error) {
+          errors.push(`${file.name}: ${error instanceof Error ? error.message : libraryText("dashboard.could.not.install.the.challenge.4d97e0")}`);
+        }
+      }
       setChallenges(await listInstalledChallenges());
     } catch (error) {
       window.alert(error instanceof Error ? error.message : libraryText("dashboard.could.not.install.the.challenge.4d97e0"));
     } finally { setBusy(false); }
+    if (errors.length) window.alert(errors.join("\n"));
   };
   const persistActive = useCallback((document: ParametricDocument) => {
     const current = activeRef.current;
@@ -279,48 +287,58 @@ export default function Home() {
       window.alert(error instanceof Error ? error.message : libraryText("dashboard.could.not.duplicate.the.challenge.d1bc5a"));
     } finally { setBusy(false); }
   };
-  const importProject = async (file: File) => {
+  const importProject = async (files: File[]) => {
     setBusy(true);
+    const errors: string[] = [];
     try {
-      let packaged: Awaited<ReturnType<typeof importKercadProject>> | null = null;
-      let document: ParametricDocument;
-      if (PROJECT_FILE_PATTERN.test(file.name) || /\.json$/i.test(file.name)) {
-        if (/\.json$/i.test(file.name)) assertImportByteLimit("project", file.size);
-        const bytes = new Uint8Array(await file.arrayBuffer());
-        packaged = PROJECT_FILE_PATTERN.test(file.name) ? await importKercadProject(bytes) : null;
-        const parsed = packaged?.document ?? JSON.parse(new TextDecoder().decode(bytes)) as unknown;
-        if (!validateDocument(parsed)) throw new Error(libraryText("dashboard.this.is.not.a.valid.kercad.project.329a80"));
-        document = normalizeParametricDocument(parsed);
-      } else {
-        document = createEmptyDocument();
-        document.name = file.name.replace(/\.[^.]+$/, "").trim() || document.name;
-        if (/\.(?:jpe?g|png)$/i.test(file.name)) {
-          const { importReferenceImage } = await import("@/lib/parametricReferenceImport");
-          await importReferenceImage(document, file);
-        } else if (/\.(?:stl|obj)$/i.test(file.name)) {
-          assertImportByteLimit("reference", file.size);
-          const { importReferenceMesh } = await import("@/lib/parametricReferenceImport");
-          importReferenceMesh(document, file.name, await file.arrayBuffer());
-        } else if (/\.(?:step|stp)$/i.test(file.name)) {
-          assertImportByteLimit("STEP", file.size);
-          const { importStepAsParametricObject } = await import("@/lib/parametricStepImport");
-          await importStepAsParametricObject(document, file.name, await file.arrayBuffer());
-        } else if (/\.svg$/i.test(file.name)) {
-          assertImportByteLimit("SVG", file.size);
-          const { importSvgAsParametricExtrusion } = await import("@/lib/svgParametricImport");
-          importSvgAsParametricExtrusion(document, await file.text(), file.name, null);
-        } else throw new Error(libraryText("dashboard.unsupported.file.format.c1a423"));
+      for (const file of files) {
+        try {
+          let packaged: Awaited<ReturnType<typeof importKercadProject>> | null = null;
+          let document: ParametricDocument;
+          if (PROJECT_FILE_PATTERN.test(file.name) || /\.json$/i.test(file.name)) {
+            if (/\.json$/i.test(file.name)) assertImportByteLimit("project", file.size);
+            const bytes = new Uint8Array(await file.arrayBuffer());
+            packaged = PROJECT_FILE_PATTERN.test(file.name) ? await importKercadProject(bytes) : null;
+            const parsed = packaged?.document ?? JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+            if (!validateDocument(parsed)) throw new Error(libraryText("dashboard.this.is.not.a.valid.kercad.project.329a80"));
+            document = normalizeParametricDocument(parsed);
+          } else {
+            document = createEmptyDocument();
+            document.name = file.name.replace(/\.[^.]+$/, "").trim() || document.name;
+            if (/\.(?:jpe?g|png)$/i.test(file.name)) {
+              const { importReferenceImage } = await import("@/lib/parametricReferenceImport");
+              await importReferenceImage(document, file);
+            } else if (/\.(?:stl|obj)$/i.test(file.name)) {
+              assertImportByteLimit("reference", file.size);
+              const { importReferenceMesh } = await import("@/lib/parametricReferenceImport");
+              importReferenceMesh(document, file.name, await file.arrayBuffer());
+            } else if (/\.(?:step|stp)$/i.test(file.name)) {
+              assertImportByteLimit("STEP", file.size);
+              const { importStepAsParametricObject } = await import("@/lib/parametricStepImport");
+              await importStepAsParametricObject(document, file.name, await file.arrayBuffer());
+            } else if (/\.svg$/i.test(file.name)) {
+              assertImportByteLimit("SVG", file.size);
+              const { importSvgAsParametricExtrusion } = await import("@/lib/svgParametricImport");
+              importSvgAsParametricExtrusion(document, await file.text(), file.name, null);
+            } else throw new Error(libraryText("dashboard.unsupported.file.format.c1a423"));
+          }
+          const now = Date.now();
+          const entry = { id: newProjectLibraryId(), name: document.name, createdAt: now, updatedAt: now, document, assets: packaged?.assets };
+          await saveLibraryProject(entry);
+          setProjects((current) => [entry, ...current]);
+          if (files.length === 1) {
+            setActiveChallenge(null);
+            setEditingChallenge(null);
+            openProject(entry);
+          }
+        } catch (error) {
+          errors.push(`${file.name}: ${error instanceof Error ? error.message : libraryText("dashboard.could.not.open.the.project.3f5194")}`);
+        }
       }
-      const now = Date.now();
-      const entry = { id: newProjectLibraryId(), name: document.name, createdAt: now, updatedAt: now, document, assets: packaged?.assets };
-      await saveLibraryProject(entry);
-      setProjects((current) => [entry, ...current]);
-      setActiveChallenge(null);
-      setEditingChallenge(null);
-      openProject(entry);
     } catch (error) {
       window.alert(error instanceof Error ? error.message : libraryText("dashboard.could.not.open.the.project.3f5194"));
     } finally { setBusy(false); }
+    if (errors.length) window.alert(errors.join("\n"));
   };
   const saveActiveShared = async (document: ParametricDocument, fileName: string, author: string) => {
     const current = activeRef.current;
