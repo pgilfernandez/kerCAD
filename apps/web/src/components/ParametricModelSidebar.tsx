@@ -652,7 +652,7 @@ function ParametricFeatureInspector({
           <ShapeParametersSection>
             {primitiveSketch?.purpose !== "user" && primitiveSketch?.profile.shape === "circle" && <CylinderProfileButtons locale={locale} elliptical={Boolean(primitiveSketch.profile.elliptical)} onChange={(elliptical) => onUpdateFeature(primitiveSketch.id, (draft) => {
               if (draft.kind === "sketch" && draft.profile.shape === "circle") {
-                draft.profile.radius2 ??= draft.profile.diameter / 2;
+                if (elliptical && !draft.profile.elliptical) draft.profile.radius2 = draft.profile.diameter / 2;
                 draft.profile.elliptical = elliptical;
               }
             })} />}

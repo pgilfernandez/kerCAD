@@ -4102,7 +4102,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               return <CylinderProfileButtons locale={locale} elliptical={Boolean(profileSketch.profile.elliptical)} onChange={(elliptical) => mutate((draft) => {
                 const sketch = draft.features.find((item) => item.id === profileSketch.id);
                 if (sketch?.kind === "sketch" && sketch.profile.shape === "circle") {
-                  sketch.profile.radius2 ??= sketch.profile.diameter / 2;
+                  if (elliptical && !sketch.profile.elliptical) sketch.profile.radius2 = sketch.profile.diameter / 2;
                   sketch.profile.elliptical = elliptical;
                 }
               })} />;
