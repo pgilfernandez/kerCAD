@@ -47,6 +47,10 @@ delete metadata.scripts;
 await writeFile(path.join(app, 'package.json'), JSON.stringify(metadata, null, 2));
 await writeFile(path.join(app, 'desktop-variant.json'), JSON.stringify({ variant: process.env.KERCAD_DESKTOP_VARIANT === 'legacy' ? 'legacy' : 'current' }));
 await mkdir(path.join(staging, 'icons'), { recursive: true });
-await sharp(path.join(root, 'apps/web/public/assets/kercad/kercad_logo_color.svg'))
-  .resize(1024, 1024).png().toFile(path.join(staging, 'icons/icon.png'));
+// Packaging runs on the target OS. Preserve each platform's artwork and
+// transparent margins; electron-builder derives the native icon sizes.
+const iconPlatform = { darwin: 'macos', win32: 'windows', linux: 'linux' }[process.platform];
+await sharp(path.join(root, `apps/web/public/assets/kercad/kercad_app_${iconPlatform}.svg`))
+  .resize(1024, 1024, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+  .png().toFile(path.join(staging, 'icons/icon.png'));
 console.log('Desktop staging prepared. Packaging must run on its target OS/architecture.');
