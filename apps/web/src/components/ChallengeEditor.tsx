@@ -1,6 +1,8 @@
 "use client";
 
-import { Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, GripHorizontal, ImageUp, PanelLeft, PanelRight, PanelsTopLeft, Plus, ScanLine, SeparatorHorizontal, Star, Trash2, X } from "lucide-react";
+import { ChallengeIcon } from "@/components/ChallengeIcon";
+
+import { Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronUp, GripHorizontal, ImageUp, PanelLeft, PanelRight, PanelsTopLeft, Plus, ScanLine, SeparatorHorizontal, Star, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { KercadChallenge } from "@/lib/challengeLibrary";
 import { uiText } from "@/lib/kercadI18n";
@@ -90,7 +92,7 @@ export function ChallengeEditor({ challenge, dock, capture, selectionParameters 
 
   if (dock.startsWith("compact-")) {
     const compactFrom = dock.replace("compact-", "") as "floating" | "left" | "right";
-    return <aside className={`kercad-challenge-compact ${compactFrom}`} style={compactFrom === "floating" ? { left: position.x, top: position.y } : undefined} aria-label={uiText("ui.challengeeditor.collapsed.challenge.editor.24f7cf")}><button type="button" title={uiText("ui.challengeeditor.expand.challenge.editor.31c0db")} aria-label={uiText("ui.challengeeditor.expand.challenge.editor.31c0db")} onClick={() => onDockChange(compactFrom)}><ChevronsRight size={19} /></button></aside>;
+    return <aside className={`kercad-challenge-compact ${compactFrom}`} style={compactFrom === "floating" ? { left: position.x, top: position.y } : undefined} aria-label={uiText("ui.challengeeditor.collapsed.challenge.editor.24f7cf")}><button type="button" title={uiText("ui.challengeeditor.expand.challenge.editor.31c0db")} aria-label={uiText("ui.challengeeditor.expand.challenge.editor.31c0db")} onClick={() => onDockChange(compactFrom)}><ChallengeIcon size={19} /></button></aside>;
   }
 
   return <aside className={`kercad-challenge-player kercad-challenge-author ${dock}`} style={dock === "floating" ? { left: position.x, top: position.y } : undefined} aria-label={uiText("ui.challengeeditor.challenge.editor.723644")}>

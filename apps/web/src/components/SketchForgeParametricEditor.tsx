@@ -1,9 +1,11 @@
 "use client";
 
+import { ChallengeIcon } from "@/components/ChallengeIcon";
+
 import { DashboardBrandLogo } from "@/components/DashboardBrandLogo";
 
 import { PROJECT_FILE_PATTERN, LEGACY_PROJECT_ACCEPT } from "@/lib/legacyBrand";
-import { Camera, RotateCcw, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, Focus, Grid3X3, Home, Maximize2, Minus, Plus, Trash2, X } from "lucide-react";
+import { Camera, RotateCcw, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, Focus, Home, Maximize2, Minus, Plus, Trash2, X } from "lucide-react";
 import { ChallengeEditor, type ChallengeDock } from "@/components/ChallengeEditor";
 import { captureChallengeParameters } from "@/lib/challengeParameterCapture";
 import { ChallengePlayer } from "@/components/ChallengePlayer";
@@ -4365,7 +4367,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           onSave={(edited) => onSaveChallenge?.(edited, structuredClone(latestDocumentRef.current))}
         /> : null}
         {challenge && challengeOpen && !sketchSession ? <ChallengePlayer challenge={challenge} dock={challengeDock} onDockChange={setChallengeDock} onClose={() => { setChallengeOpen(false); setChallengeDock("left"); }} /> : null}
-        {challenge && !challengeOpen && !sketchSession ? <button className="kercad-challenge-reopen" type="button" onClick={() => { setChallengeDock("left"); setChallengeOpen(true); }}><Grid3X3 size={19} /> {uiText("ui.sketchforgeparametriceditor.challenge.bb9d65", {}, locale)}</button> : null}
+        {challenge && !challengeOpen && !sketchSession ? <button className="kercad-challenge-reopen" type="button" title={uiText("ui.sketchforgeparametriceditor.challenge.bb9d65", {}, locale)} aria-label={uiText("ui.sketchforgeparametriceditor.challenge.bb9d65", {}, locale)} onClick={() => { setChallengeDock("left"); setChallengeOpen(true); }}><ChallengeIcon size={24} /></button> : null}
         <button data-kercad-popup="grid" className={`kercad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label={t("grid.settings")} title={t("grid.title")} onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><GridControlIcon size={22} /></button>
         <button
           className={`kercad-workplane-snap-button ${document.workplane.snapToGrid ? "active" : ""}`}
