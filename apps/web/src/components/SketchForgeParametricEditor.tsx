@@ -100,7 +100,7 @@ import { copySketchSelection, pasteSketchSelection } from "@/lib/sketchClipboard
 import { enableToolbarMouseScroll } from "@/lib/toolbarScroll";
 import { EditorHeaderActions } from "@/components/EditorHeaderActions";
 import { analyzeSketchConstraints } from "@/lib/sketchConstraintAnalysis";
-import { validateDrawnSketchProfile } from "@/lib/sketchProfileValidation";
+import { isOpenSketchProfile, validateDrawnSketchProfile } from "@/lib/sketchProfileValidation";
 import { trimSketchGeometry } from "@/lib/sketchTrim";
 import {
   beginHistoryTransaction,
@@ -1322,7 +1322,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     const sketchSession = sketchSessionRef.current;
     const validation = sketchSession ? validateDrawnSketchProfile(sketchSession.profile) : null;
     const annotationsOnly = Boolean(sketchSession?.annotations.length && !sketchSession.profile.segments.length && !(sketchSession.profile.circles?.length));
-    if (!sketchSession || !validation?.valid && !annotationsOnly) {
+    const openSketch = sketchSession?.mode !== "scribble" && isOpenSketchProfile(validation);
+    if (!sketchSession || !validation?.valid && !annotationsOnly && !openSketch) {
       setNotice({ type: "error", text: validation?.diagnostics[0]?.message ?? t("notice.closeContours") });
       return;
     }

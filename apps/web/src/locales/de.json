@@ -147,6 +147,7 @@
     "sweep.created": "Pfadextrusion erstellt.",
     "sweep.selectFace": "Wähle eine ebene Fläche für die Extrusion entlang der ausgewählten Skizze.",
     "sweep.chooseInputs": "Wähle zwei Skizzen, eine Pfadskizze und danach eine Fläche oder ein Objekt, dessen letzte zwei Operationen Skizzen sind.",
+    "sketch.openDrawing": "Offene Skizze · kann gespeichert werden",
     "common.close": "Schließen",
     "camera.positionTriad": "Positionsachsen",
     "camera.rotationTriad": "Rotationsachsen",

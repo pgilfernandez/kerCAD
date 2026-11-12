@@ -147,6 +147,7 @@
     "sweep.created": "Sweep created.",
     "sweep.selectFace": "Select a planar face to sweep along the selected sketch.",
     "sweep.chooseInputs": "Select two sketches, select one path sketch and then a face, or use an object whose last two operations are sketches.",
+    "sketch.openDrawing": "Open sketch · can be saved",
     "common.close": "Close",
     "camera.positionTriad": "Position triad",
     "camera.rotationTriad": "Rotation triad",

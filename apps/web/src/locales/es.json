@@ -147,6 +147,7 @@
     "sweep.created": "Barrido creado.",
     "sweep.selectFace": "Selecciona una cara plana para extruirla por el boceto seleccionado.",
     "sweep.chooseInputs": "Selecciona dos bocetos, un boceto de camino y después una cara, o un objeto cuyas dos últimas operaciones sean bocetos.",
+    "sketch.openDrawing": "Boceto abierto · se puede guardar",
     "common.close": "Cerrar",
     "camera.positionTriad": "Triada de posición",
     "camera.rotationTriad": "Triada de rotación",

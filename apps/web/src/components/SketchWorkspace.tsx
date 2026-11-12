@@ -19,6 +19,7 @@ import { mirrorSign, resizedImportedMeshPositions } from "@/lib/workplaneShapes"
 import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE, normalizeSnapGrid, normalizeWorkspaceSettings } from "@/lib/workplaneSettings";
 import { SKETCH_ORIGIN_POINT_ID, SKETCH_X_AXIS_ID, SKETCH_Y_AXIS_ID, solveSketchConstraints } from "@/lib/sketchConstraints";
 import type { SketchProfileValidation } from "@/lib/sketchProfileValidation";
+import { isOpenSketchProfile } from "@/lib/sketchProfileValidation";
 import type { KercadLocale } from "@/lib/kercadI18n";
 import type { GridSize, SketchCircle, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchSegment, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
 import { uiText, pluralMessage } from "@/lib/kercadI18n";
@@ -1369,16 +1370,17 @@ export function SketchWorkspace({
   }, [sceneReference]);
   const editingGeometry = Boolean(pointerAction) || !["select", "measure"].includes(tool);
   const visibleValidation = editingGeometry ? null : profileValidation;
+  const openSketch = isOpenSketchProfile(profileValidation);
   const invalidSegmentIds = useMemo(() => new Set(visibleValidation?.diagnostics.flatMap((diagnostic) => diagnostic.segmentIds ?? []) ?? []), [visibleValidation]);
   const invalidCircleIds = useMemo(() => new Set(visibleValidation?.diagnostics.flatMap((diagnostic) => diagnostic.circleIds ?? []) ?? []), [visibleValidation]);
   const invalidPointIds = useMemo(() => new Set(visibleValidation?.diagnostics.flatMap((diagnostic) => diagnostic.pointIds ?? []) ?? []), [visibleValidation]);
 
   return (
     <main className="sketch-workspace-stage">
-      {profileValidation && !editingGeometry ? <aside className={`sketch-profile-status ${profileValidation.valid ? "valid" : "invalid"}`}>
-        <strong>{profileValidation.valid ? uiText(pluralMessage(locale, "sketch.validProfile", profileValidation.closedContourCount), { count: profileValidation.closedContourCount }, locale) : uiText("ui.sketchworkspace.invalid.profile.ef4b23", {}, locale)}</strong>
-        {!profileValidation.valid ? <span>{profileValidation.diagnostics[0]?.message}</span> : null}
-        {profileValidation.diagnostics.length > 1 ? <small>{uiText(pluralMessage(locale, "sketch.moreProblems", profileValidation.diagnostics.length - 1), { count: profileValidation.diagnostics.length - 1 }, locale)}</small> : null}
+      {profileValidation && !editingGeometry ? <aside className={`sketch-profile-status ${profileValidation.valid || openSketch ? "valid" : "invalid"}`}>
+        <strong>{openSketch ? uiText("sketch.openDrawing", {}, locale) : profileValidation.valid ? uiText(pluralMessage(locale, "sketch.validProfile", profileValidation.closedContourCount), { count: profileValidation.closedContourCount }, locale) : uiText("ui.sketchworkspace.invalid.profile.ef4b23", {}, locale)}</strong>
+        {!profileValidation.valid && !openSketch ? <span>{profileValidation.diagnostics[0]?.message}</span> : null}
+        {profileValidation.diagnostics.length > 1 && !openSketch ? <small>{uiText(pluralMessage(locale, "sketch.moreProblems", profileValidation.diagnostics.length - 1), { count: profileValidation.diagnostics.length - 1 }, locale)}</small> : null}
       </aside> : null}
       {operation === "revolve" ? <SketchRevolvePreview positions={revolvePreviewPositions} /> : null}
       <div className="camera-controls sketch-camera-controls" aria-label={uiText("ui.sketchworkspace.sketch.view.controls.909bec", {}, locale)}>

@@ -147,6 +147,7 @@
     "sweep.created": "Balayage créé.",
     "sweep.selectFace": "Sélectionnez une face plane à balayer le long de l’esquisse sélectionnée.",
     "sweep.chooseInputs": "Sélectionnez deux esquisses, une esquisse de chemin puis une face, ou un objet dont les deux dernières opérations sont des esquisses.",
+    "sketch.openDrawing": "Esquisse ouverte · peut être enregistrée",
     "common.close": "Fermer",
     "camera.positionTriad": "Repère de position",
     "camera.rotationTriad": "Repère de rotation",

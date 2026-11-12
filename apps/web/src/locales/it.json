@@ -147,6 +147,7 @@
     "sweep.created": "Scansione creata.",
     "sweep.selectFace": "Seleziona una faccia piana da estrudere lungo lo schizzo selezionato.",
     "sweep.chooseInputs": "Seleziona due schizzi, uno schizzo del percorso e poi una faccia, oppure un oggetto le cui ultime due operazioni siano schizzi.",
+    "sketch.openDrawing": "Schizzo aperto · può essere salvato",
     "common.close": "Vicino",
     "camera.positionTriad": "Terna di posizione",
     "camera.rotationTriad": "Terna di rotazione",

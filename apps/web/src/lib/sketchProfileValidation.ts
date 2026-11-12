@@ -17,6 +17,13 @@ export type SketchProfileValidation = {
   diagnostics: SketchProfileDiagnostic[];
 };
 
+/** An open drawing is a valid sketch, even though it cannot fill a solid profile. */
+export function isOpenSketchProfile(validation: SketchProfileValidation | null | undefined): boolean {
+  return Boolean(validation?.diagnostics.length
+    && validation.diagnostics.every((diagnostic) => diagnostic.code === "open")
+    && validation.diagnostics.some((diagnostic) => diagnostic.pointIds?.length));
+}
+
 export type SketchOutlineIntersection = {
   outlineA: number;
   edgeA: number;
