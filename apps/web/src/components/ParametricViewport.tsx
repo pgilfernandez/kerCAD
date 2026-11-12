@@ -1,5 +1,7 @@
 "use client";
 
+import { closestScreenHandleHit } from "@/lib/parameterHandlePicking";
+
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAppTheme } from "@/lib/useAppTheme";
 import { automaticWorkplaneSize } from "@/lib/workplaneGeometryBounds";
@@ -1580,11 +1582,17 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
         targetSize = Math.min(18, Math.max(8, targetSize));
       }
       for (const target of resizeHitboxesRef.current) {
+        if (target.userData.yellowManipulatorDiameterPixels) {
+          target.userData.yellowManipulatorDiameterPixels = pointerType === "touch" ? 68 : 40;
+          continue;
+        }
         const baseSize = Number(target.userData.hitTargetSize) || 1;
         const scale = pointerType === "touch" ? Math.max(1, targetSize / baseSize) : 1;
         target.scale.setScalar(scale);
         target.updateMatrixWorld(true);
       }
+      updateYellowManipulatorScreenSizes();
+      selectionVisualRootRef.current?.updateWorldMatrix(true, true);
     };
     const originHandleAtPointer = () => {
       const editableId = editableOriginIdRef.current;
@@ -1755,7 +1763,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
         return [];
       }
       updateManipulatorHitTargets(event.pointerType);
-      const resizeHit = raycaster.intersectObjects(resizeHitboxesRef.current, false)[0];
+      const resizeHit = closestScreenHandleHit(raycaster.intersectObjects(resizeHitboxesRef.current, false), camera, event, renderer.domElement.getBoundingClientRect());
       setShapeParameterHandleHover((resizeHit?.object.userData.shapeParameter as ShapeParameter | undefined) ?? null);
       if (resizeHit) {
         const axis = resizeHit.object.userData.dimensionAxis;
@@ -1794,7 +1802,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       setPointer(event); layer.userData.updateBillboards?.(camera); updateYellowManipulatorScreenSizes(); layer.updateWorldMatrix(true, true);
       const handles: THREE.Object3D[] = [];
       layer.traverse((child) => { if (child.visible && (child.userData.annotationRadiusTarget || child.userData.annotationLineWidthTarget || child.userData.annotationHeightTarget)) handles.push(child); });
-      return raycaster.intersectObjects(handles, false)[0]?.object ?? null;
+      return closestScreenHandleHit(raycaster.intersectObjects(handles, false), camera, event, renderer.domElement.getBoundingClientRect())?.object ?? null;
     };
     const setSectionGuideHover = (hovered: boolean) => {
       const guide = modelGroup.userData.sectionGuide as LineSegments2 | undefined;
@@ -2245,7 +2253,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       }
       if (!interaction && selected) {
         const root = selectionRootRef.current;
-        const resizeHit = raycaster.intersectObjects(resizeHitboxes, false)[0];
+        const resizeHit = closestScreenHandleHit(raycaster.intersectObjects(resizeHitboxes, false), camera, event, renderer.domElement.getBoundingClientRect());
         const parameter = resizeHit?.object.userData.shapeParameter as ShapeParameter | undefined;
         if (root && resizeHit && parameter) {
           const center = root.getWorldPosition(new THREE.Vector3());

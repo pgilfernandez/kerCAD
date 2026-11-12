@@ -2,6 +2,7 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import * as THREE from "three";
+import { closestScreenHandleHit } from "@/lib/parameterHandlePicking";
 import { displayLengthToMillimeters, displayUnitLabel, formatDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
 import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
 import { formatViewportDimension } from "@/lib/viewportGeometry";
@@ -201,15 +202,19 @@ export const ParameterHandleLabels = forwardRef<ParameterHandleLabelsApi, Props>
       if (event.target !== canvas) return null;
       const bounds = canvas.getBoundingClientRect();
       raycaster.setFromCamera(new THREE.Vector2((event.clientX - bounds.left) / bounds.width * 2 - 1, -(event.clientY - bounds.top) / bounds.height * 2 + 1), camera.current);
-      let closest: { key: string; distance: number } | null = null;
+      const candidates: THREE.Intersection[] = [];
+      const keys = new Map<THREE.Object3D, string>();
       for (const handle of handles) {
         if (handle.anchor instanceof HTMLElement) continue;
         const targets = handle.targets ?? [handle.anchor];
-        for (const target of targets) target.updateWorldMatrix(true, true);
-        const intersection = raycaster.intersectObjects(targets, false)[0];
-        if (intersection && (!closest || intersection.distance < closest.distance)) closest = { key: handle.key, distance: intersection.distance };
+        for (const target of targets) {
+          target.updateWorldMatrix(true, true);
+          keys.set(target, handle.key);
+        }
+        candidates.push(...raycaster.intersectObjects(targets, false));
       }
-      return closest?.key ?? null;
+      const closest = closestScreenHandleHit(candidates, camera.current, event, bounds);
+      return closest ? keys.get(closest.object) ?? null : null;
     };
     const refresh = () => { updateRef.current(); current.current.invalidate(); };
     const move = (event: PointerEvent) => {
