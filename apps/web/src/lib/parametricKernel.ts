@@ -218,7 +218,9 @@ function solidFromSketch(brep: Brep, sketch: SketchFeature, feature: ExtrudeFeat
       axis.normalize();
       face = brep.rotate(face, angle, { axis: [axis.x, axis.y, axis.z], at: brep.faceCenter(face) }) as Face;
     }
-    const options = { transitionMode: "right" as const, frenet: true, forceProfileSpineOthogonality: true };
+    // Corrected Frenet follows the tangent without the 180-degree normal
+    // flips of strict Frenet at straight sections and curvature inflections.
+    const options = { transitionMode: "right" as const, frenet: false, forceProfileSpineOthogonality: true };
     let solid = brep.unwrap(brep.sweep(brep.outerWire(face), spine, options)) as AnySolid;
     for (const hole of brep.innerWires(face)) {
       const tool = brep.unwrap(brep.sweep(hole, spine, options)) as AnySolid;

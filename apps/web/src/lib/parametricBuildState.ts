@@ -6,7 +6,7 @@ function geometryFeature({ name: _name, ...feature }: ParametricFeature) {
   return feature;
 }
 
-const PARAMETRIC_GEOMETRY_VERSION = 8;
+const PARAMETRIC_GEOMETRY_VERSION = 9;
 
 function dependentObjectIds(document: ParametricDocument, objectId: string, rootFeatures = document.features.filter((feature) => feature.objectId === objectId)) {
   const featureObject = new Map(document.features.map((feature) => [feature.id, feature.objectId]));
