@@ -145,7 +145,15 @@ function circleProfileFace(brep: Brep, profile: Extract<SketchFeature["profile"]
     ? brep.unwrap(brep.ellipse(Math.max(rx, ry), Math.min(rx, ry), { xDir: rx >= ry ? [1, 0, 0] : [0, 1, 0] }))
     : brep.circle(rx);
   const wire = brep.unwrap(brep.wireLoop([edge]));
-  return brep.unwrap(brep.face(wire as Parameters<Brep["face"]>[0])) as Face;
+  const face = brep.unwrap(brep.face(wire as Parameters<Brep["face"]>[0])) as Face;
+  if (profile.elliptical && rx !== ry) {
+    // OcctWasmAdapter currently ignores ellipse's xDir argument. Align the
+    // actual face, rather than assuming which default major axis it chose.
+    const bounds = brep.getBounds(face);
+    const majorAlongX = bounds.xMax - bounds.xMin >= bounds.yMax - bounds.yMin;
+    if (majorAlongX !== (rx >= ry)) return brep.rotate(face, 90, { axis: [0, 0, 1] }) as Face;
+  }
+  return face;
 }
 
 function facesFromSketch(brep: Brep, sketch: SketchFeature): Face[] {
