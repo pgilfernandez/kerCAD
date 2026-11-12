@@ -1,6 +1,7 @@
 import { loadBrepWithOcct, type Brep, type BrepSolid } from "@/lib/brepKernel";
 import type { ParametricBuildProgress } from "@/lib/parametricBuildProgress";
 import { uiText } from "@/lib/kercadI18n";
+import * as THREE from "three";
 import { shellWithCorners } from "@/lib/shellKernel";
 import { gearOutlinePoints } from "@/lib/parametricGearProfile";
 import { orientedMeshNormals } from "@/lib/parametricMeshNormals";
@@ -203,8 +204,21 @@ function solidFromSketch(brep: Brep, sketch: SketchFeature, feature: ExtrudeFeat
       faces = facesFromSketch(brep, sketch).map((face) => profileInOperationSpace(brep, face, sketch.objectId, feature.objectId, document));
     }
     if (faces.length !== 1) throw new Error(uiText("sweep.singleProfile"));
-    const face = faces[0];
-    const options = { transitionMode: "right" as const };
+    let face = faces[0];
+    // The WASM adapter ignores PipeShell's correction flag. Correct the
+    // initial section explicitly before transporting it along the spine.
+    const normal = new THREE.Vector3(...brep.normalAt(face)).normalize();
+    const tangent = new THREE.Vector3(...brep.shape(spine).tangentAt(0)).normalize();
+    // Either normal direction defines the same perpendicular plane; choose
+    // the closest one to preserve the section's in-plane orientation.
+    if (normal.dot(tangent) < 0) tangent.negate();
+    const axis = new THREE.Vector3().crossVectors(normal, tangent);
+    if (axis.lengthSq() > 1e-12) {
+      const angle = THREE.MathUtils.radToDeg(Math.atan2(axis.length(), normal.dot(tangent)));
+      axis.normalize();
+      face = brep.rotate(face, angle, { axis: [axis.x, axis.y, axis.z], at: brep.faceCenter(face) }) as Face;
+    }
+    const options = { transitionMode: "right" as const, frenet: true, forceProfileSpineOthogonality: true };
     let solid = brep.unwrap(brep.sweep(brep.outerWire(face), spine, options)) as AnySolid;
     for (const hole of brep.innerWires(face)) {
       const tool = brep.unwrap(brep.sweep(hole, spine, options)) as AnySolid;
