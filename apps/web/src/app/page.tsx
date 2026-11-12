@@ -323,7 +323,7 @@ export default function Home() {
             } else throw new Error(libraryText("dashboard.unsupported.file.format.c1a423"));
           }
           const now = Date.now();
-          const entry = { id: newProjectLibraryId(), name: document.name, createdAt: now, updatedAt: now, document, assets: packaged?.assets };
+          const entry = { id: newProjectLibraryId(), name: document.name, createdAt: now, updatedAt: now, document, thumbnail: document.thumbnailOverride ?? packaged?.thumbnail, assets: packaged?.assets };
           await saveLibraryProject(entry);
           setProjects((current) => [entry, ...current]);
           if (files.length === 1) {
@@ -397,7 +397,7 @@ export default function Home() {
     try {
       await writeQueueRef.current.catch(() => undefined);
       const source = await getLibraryProject(project.id) ?? project;
-      const bytes = await exportKercadProject(source.document, source.assets);
+      const bytes = await exportKercadProject(source.document, source.assets, 6, source.thumbnail);
       const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: KERCAD_PACKAGE_MEDIA_TYPE }));
       const link = document.createElement("a");
       link.href = url;

@@ -56,6 +56,7 @@ export type KercadPackageManifest = KercadPackageManifestV1 | KercadPackageManif
 
 export type KercadProjectPackage = {
   document: ParametricDocument;
+  thumbnail?: string;
   assets: ProjectAsset[];
   manifest: KercadPackageManifest;
   step?: Uint8Array;
@@ -168,10 +169,13 @@ function parseManifest(raw: unknown): KercadPackageManifest {
   return { ...manifest, schema: KERCAD_PACKAGE_SCHEMA } as KercadPackageManifest;
 }
 
-export async function exportKercadProject(document: ParametricDocument, assets: ProjectAsset[] = [], compressionLevel: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 = 6) {
+export async function exportKercadProject(document: ParametricDocument, assets: ProjectAsset[] = [], compressionLevel: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 = 6, thumbnail?: string) {
   if (!validateDocument(document)) throw new Error("The kerCAD document is invalid.");
   const snapshot = normalizeParametricDocument(structuredClone(document));
-  const projectBytes = strToU8(`${JSON.stringify(snapshot, null, 2)}\n`);
+  // Keep library artwork separate from the manual-cover setting, while covering
+  // it with the existing project.json size limit and integrity hash.
+  const preview = snapshot.thumbnailOverride ?? thumbnail;
+  const projectBytes = strToU8(`${JSON.stringify({ ...snapshot, ...(preview ? { libraryThumbnail: preview } : {}) }, null, 2)}\n`);
   if (projectBytes.byteLength > KERCAD_PACKAGE_LIMITS.projectBytes) throw new Error("The document exceeds the 32 MB limit.");
   const files: Record<string, Uint8Array> = { "project.json": projectBytes };
   let geometry: KercadStepRepresentation | null = null;
@@ -259,5 +263,7 @@ export async function importKercadProject(input: ArrayBuffer | Uint8Array): Prom
     if (!assetBytes || assetBytes.byteLength !== record.byteLength || await sha256Hex(assetBytes) !== record.sha256) throw new Error(`Asset '${record.name}' failed its integrity check.`);
     assets.push({ id: record.id, name: record.name, mediaType: record.mediaType, sourceFormat: record.sourceFormat, bytes: new Uint8Array(assetBytes), byteLength: assetBytes.byteLength, sha256: record.sha256 });
   }
-  return { document: normalizeParametricDocument(documentRaw), assets, manifest, ...(step ? { step } : {}) };
+  const preview = (documentRaw as { libraryThumbnail?: unknown }).libraryThumbnail;
+  const thumbnail = typeof preview === "string" && /^data:image\/(png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(preview) ? preview : undefined;
+  return { document: normalizeParametricDocument(documentRaw), thumbnail, assets, manifest, ...(step ? { step } : {}) };
 }

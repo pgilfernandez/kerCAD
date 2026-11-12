@@ -306,6 +306,7 @@ type SketchForgeParametricEditorProps = {
 
 export function SketchForgeParametricEditor({ initialProject, sharedFileName, onSaveShared, onProjectChange, onProjectThumbnail, onExitToProjects, challenge, challengeEditor, onSaveChallenge, onCancelChallengeEdit }: SketchForgeParametricEditorProps = {}) {
   const initialDocument = useMemo(() => initialProject ? normalizeParametricDocument(structuredClone(initialProject)) : createEmptyDocument(), [initialProject]);
+  const latestProjectThumbnailRef = useRef<string | undefined>(undefined);
   const [history, setHistory] = useState<ParametricHistoryState>(() => createParametricHistory(initialDocument));
   const document = currentHistoryDocument(history);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
@@ -3383,7 +3384,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         saved.creator = saved.creator || saved.author || sharedAuthor.trim();
         saved.author = sharedAuthor.trim();
       }
-      const bytes = await exportKercadProject(saved);
+      const bytes = await exportKercadProject(saved, [], 6, latestProjectThumbnailRef.current);
       const archive = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
       downloadBlob(new Blob([archive], { type: KERCAD_PACKAGE_MEDIA_TYPE }), `${fileName(exportFileName)}.kercad`);
       commit(saved);
@@ -4011,7 +4012,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             if (stepId) {
               challengeCaptureStepRef.current = null;
               setChallengeCapture({ stepId, dataUrl, token: challengeCaptureToken });
-            } else if (!latestDocumentRef.current.thumbnailOverride && !kernelBusy && renderedGeometryFingerprintRef.current === geometryFingerprint && !build.failedFeatureId && !pendingEdgeTreatment && !pendingFaceExtrude && !pendingShell && !pendingRevolve && !(selectedOperationTimeline && selectedOperationTimeline.index < selectedOperationTimeline.count - 1)) onProjectThumbnail?.(dataUrl, document);
+            } else if (!latestDocumentRef.current.thumbnailOverride && !kernelBusy && renderedGeometryFingerprintRef.current === geometryFingerprint && !build.failedFeatureId && !pendingEdgeTreatment && !pendingFaceExtrude && !pendingShell && !pendingRevolve && !(selectedOperationTimeline && selectedOperationTimeline.index < selectedOperationTimeline.count - 1)) {
+              latestProjectThumbnailRef.current = dataUrl;
+              onProjectThumbnail?.(dataUrl, document);
+            }
           }}
           thumbnailRequestToken={challengeCaptureToken}
           captureFrameActive={Boolean(pendingChallengeCapture) || pendingProjectCapture}
