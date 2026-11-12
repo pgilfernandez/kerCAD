@@ -309,14 +309,16 @@ export function deleteParametricFeature(document: ParametricDocument, id: string
   const operations = document.features.filter((candidate) => candidate.objectId === objectId && (candidate.kind !== "sketch" || candidate.purpose === "user"));
   const operationIndex = operations.findIndex((candidate) => candidate.id === id);
   const ids = new Set([id]);
+  const sweepProfileId = feature.kind === "extrude" ? feature.profileFaceReferenceId : undefined;
   const ownedReferenceIds = new Set(feature.kind === "fillet" ? [...(feature.edgeReferenceIds ?? []), ...(feature.selectionReferenceIds ?? [])] : feature.kind === "faceExtrude" ? [feature.faceReferenceId] : feature.kind === "revolve" ? [...(feature.faceReferenceId ? [feature.faceReferenceId] : []), ...(feature.axisReferenceId ? [feature.axisReferenceId] : [])] : feature.kind === "shell" ? feature.faceReferenceIds : []);
+  if (sweepProfileId) ownedReferenceIds.add(sweepProfileId);
   if (feature.kind === "extrude") {
     const sketch = document.features.find((candidate) => candidate.kind === "sketch" && candidate.id === feature.sketchId);
     if (sketch?.kind === "sketch" && sketch.purpose !== "user") ids.add(feature.sketchId);
   }
   if (feature.kind === "sketch") {
     for (const candidate of document.features) {
-      if (candidate.kind === "extrude" && (candidate.sketchId === feature.id || candidate.endSketchId === feature.id)) ids.add(candidate.id);
+      if (candidate.kind === "extrude" && (candidate.sketchId === feature.id || candidate.endSketchId === feature.id || candidate.pathSketchId === feature.id)) ids.add(candidate.id);
       if (candidate.kind === "revolve" && candidate.source === "sketch" && candidate.sketchId === feature.id) ids.add(candidate.id);
     }
   }
@@ -494,6 +496,8 @@ export function duplicateParametricObject(document: ParametricDocument, id: stri
     if (clone.kind === "extrude") {
       clone.sketchId = idMap.get(clone.sketchId) ?? clone.sketchId;
       if (clone.endSketchId) clone.endSketchId = idMap.get(clone.endSketchId) ?? clone.endSketchId;
+      if (clone.pathSketchId) clone.pathSketchId = idMap.get(clone.pathSketchId) ?? clone.pathSketchId;
+      if (clone.profileFaceReferenceId) clone.profileFaceReferenceId = topologyIdMap.get(clone.profileFaceReferenceId) ?? clone.profileFaceReferenceId;
     }
     clone.dependencies = clone.dependencies?.map((reference) => reference.type === "feature"
       ? { ...reference, id: idMap.get(reference.id) ?? reference.id }
@@ -536,6 +540,7 @@ function uniqueDuplicateId(document: ParametricDocument, base: string) {
 }
 
 function topologyIdsForFeature(feature: ParametricFeature) {
+  if (feature.kind === "extrude") return feature.profileFaceReferenceId ? [feature.profileFaceReferenceId] : [];
   if (feature.kind === "fillet") return feature.selectionReferenceIds ?? feature.edgeReferenceIds ?? [];
   if (feature.kind === "faceExtrude") return [feature.faceReferenceId];
   if (feature.kind === "shell") return feature.faceReferenceIds;
@@ -601,6 +606,10 @@ export function duplicateParametricFeature(document: ParametricDocument, feature
       return topologyClone;
     });
 
+  if (clone.kind === "extrude") {
+    if (clone.pathSketchId) clone.pathSketchId = featureIdMap.get(clone.pathSketchId) ?? clone.pathSketchId;
+    if (clone.profileFaceReferenceId) clone.profileFaceReferenceId = topologyIdMap.get(clone.profileFaceReferenceId) ?? clone.profileFaceReferenceId;
+  }
   if (clone.kind === "fillet") {
     clone.edgeReferenceIds = clone.edgeReferenceIds?.map((id) => topologyIdMap.get(id) ?? id);
     clone.selectionReferenceIds = clone.selectionReferenceIds?.map((id) => topologyIdMap.get(id) ?? id);
@@ -677,7 +686,7 @@ export function workplaneShapeForObject(document: ParametricDocument, id: string
   const sketch = feature.kind === "extrude" ? sketchForExtrude(document, feature) : null;
   if (feature.kind === "extrude" && !sketch) return null;
   // A loft has no single height or primitive-shaped parameter preview.
-  if (feature.kind === "extrude" && feature.endSketchId) return null;
+  if (feature.kind === "extrude" && (feature.endSketchId || feature.pathSketchId)) return null;
   const sketchSize = sketch ? sketchDimensions(sketch) : null;
   const baseWidth = feature.kind === "primitive" ? feature.width : sketchSize!.width;
   const baseDepth = feature.kind === "primitive" ? feature.depth : sketchSize!.depth;
@@ -762,7 +771,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
   const object = document.objects.find((candidate) => candidate.id === feature.objectId);
   const sketch = feature.kind === "extrude" ? sketchForExtrude(document, feature) : null;
   if (!object || (!includeUnavailable && (!object.visible || object.locked)) || (feature.kind === "extrude" && !sketch)) return null;
-  if (feature.kind === "extrude" && feature.endSketchId) return null;
+  if (feature.kind === "extrude" && (feature.endSketchId || feature.pathSketchId)) return null;
   const sketchSize = sketch ? sketchDimensions(sketch) : null;
   const textGenerator = sketch?.profile.shape === "drawn" && sketch.profile.geometry.generator?.kind === "text" ? sketch.profile.geometry.generator : null;
   const baseWidth = feature.kind === "primitive" ? feature.width : sketchSize!.width;

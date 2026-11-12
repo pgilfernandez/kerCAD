@@ -650,7 +650,10 @@ function ParametricFeatureInspector({
             <OperationModeButtons addOnly={requiresAddOperation(document, feature)} value={feature.operation} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "extrude") draft.operation = operation; })} />
           </div>
           <ShapeParametersSection>
-            {feature.endSketchId ? <>
+            {feature.pathSketchId ? <>
+              <ReadOnlyField label={t("sweep.path")} value={document.features.find((item) => item.id === feature.pathSketchId)?.name ?? "—"} />
+              <ReadOnlyField label={t("sweep.profile")} value={feature.profileFaceReferenceId ? document.topologyReferences.find((item) => item.id === feature.profileFaceReferenceId)?.name ?? "—" : primitiveSketch?.name ?? "—"} />
+            </> : feature.endSketchId ? <>
               <ReadOnlyField label={t("loft.startProfile")} value={primitiveSketch?.name ?? "—"} />
               <ReadOnlyField label={t("loft.endProfile")} value={document.features.find((item) => item.id === feature.endSketchId)?.name ?? "—"} />
             </> : <>

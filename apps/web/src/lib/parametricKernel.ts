@@ -6,7 +6,7 @@ import { gearOutlinePoints } from "@/lib/parametricGearProfile";
 import { orientedMeshNormals } from "@/lib/parametricMeshNormals";
 import type { AlignmentItem, AlignmentTarget } from "@/lib/parametricAlignment";
 import { parametricReferenceRenderRecords } from "@/lib/parametricReferenceImport";
-import type { Edge, Face } from "brepjs";
+import type { Edge, Face, Wire } from "brepjs";
 import { parametricObjectFeaturePrefixFingerprint, parametricObjectGeometryFingerprint } from "@/lib/parametricBuildState";
 import { topologicallySortedParametricFeatures } from "@/lib/parametricDependencyGraph";
 import { parametricTransformMatrix } from "@/lib/parametricWorkplane";
@@ -115,7 +115,103 @@ function drawnSketchFaces(brep: Brep, sketch: SketchFeature): Face[] {
   return facesFromPlanarProfile(brep, loops, sketch.name);
 }
 
-function solidFromSketch(brep: Brep, sketch: SketchFeature, feature: ExtrudeFeature, document: ParametricDocument): AnySolid {
+function sketchPathEdge(brep: Brep, sketch: SketchFeature, segment: import("@/types/sketchforge").SketchSegment, fromId: string, toId: string): Edge {
+  const from = sketch.profile.shape === "drawn" ? sketch.profile.geometry.points.find((point) => point.id === fromId) : undefined;
+  const to = sketch.profile.shape === "drawn" ? sketch.profile.geometry.points.find((point) => point.id === toId) : undefined;
+  if (!from || !to) throw new Error(`${sketch.name}: sketch contains incomplete references.`);
+  const fromVec: [number, number, number] = [from.x, from.z, 0];
+  const toVec: [number, number, number] = [to.x, to.z, 0];
+  if (segment.kind === "arc" && segment.center) {
+    const radius = Math.hypot(from.x - segment.center.x, from.z - segment.center.z);
+    const startAngle = Math.atan2(from.z - segment.center.z, from.x - segment.center.x);
+    let endAngle = Math.atan2(to.z - segment.center.z, to.x - segment.center.x);
+    const forward = segment.startId === fromId;
+    const positive = forward ? segment.clockwise !== false : segment.clockwise === false;
+    if (positive) while (endAngle <= startAngle) endAngle += Math.PI * 2;
+    else while (endAngle >= startAngle) endAngle -= Math.PI * 2;
+    const sweep = endAngle - startAngle;
+    const atAngle = (angle: number): [number, number, number] => [segment.center!.x + Math.cos(angle) * radius, segment.center!.z + Math.sin(angle) * radius, 0];
+    return brep.threePointArc(fromVec, atAngle(startAngle + sweep / 2), toVec);
+  }
+  if (segment.kind === "line" || (!from.handleIn && !from.handleOut && !to.handleIn && !to.handleOut)) return brep.line(fromVec, toVec);
+  const forward = segment.startId === fromId;
+  const firstHandle = (forward ? from.handleOut : from.handleIn) ?? from;
+  const secondHandle = (forward ? to.handleIn : to.handleOut) ?? to;
+  return brep.unwrap(brep.bezier([
+    fromVec,
+    [firstHandle.x, firstHandle.z, 0],
+    [secondHandle.x, secondHandle.z, 0],
+    toVec,
+  ])) as Edge;
+}
+
+function sweepPathWire(brep: Brep, sketch: SketchFeature): Wire {
+  if (sketch.profile.shape !== "drawn") return brep.outerWire(facesFromSketch(brep, sketch)[0]);
+  const profile = sketch.profile.geometry;
+  const segments = profile.segments.filter((item) => !item.construction);
+  const circles = (profile.circles ?? []).filter((item) => !item.construction);
+  if (!segments.length && circles.length === 1) {
+    const circle = circles[0];
+    return applySketchTransform(brep, brep.unwrap(brep.wireLoop([brep.circle(circle.radius, { at: [circle.x, circle.z, 0] })])), sketch);
+  }
+  if (!segments.length || circles.length) throw new Error(uiText("sweep.singlePath"));
+  const degree = new Map<string, number>();
+  for (const segment of segments) for (const id of [segment.startId, segment.endId]) degree.set(id, (degree.get(id) ?? 0) + 1);
+  if ([...degree.values()].some((count) => count > 2)) throw new Error(uiText("sweep.singlePath"));
+  const ends = [...degree].filter(([, count]) => count === 1);
+  if (ends.length !== 0 && ends.length !== 2) throw new Error(uiText("sweep.singlePath"));
+  const start = ends[0]?.[0] ?? segments[0].startId;
+  let current = start;
+  const unused = new Map(segments.map((segment) => [segment.id, segment]));
+  const edges: Edge[] = [];
+  while (unused.size) {
+    const segment = [...unused.values()].find((item) => item.startId === current || item.endId === current);
+    if (!segment) throw new Error(uiText("sweep.singlePath"));
+    unused.delete(segment.id);
+    const next = segment.startId === current ? segment.endId : segment.startId;
+    edges.push(sketchPathEdge(brep, sketch, segment, current, next));
+    current = next;
+  }
+  const wire = brep.unwrap(current === start ? brep.wireLoop(edges) : brep.wire(edges));
+  return applySketchTransform(brep, wire, sketch);
+}
+
+function profileInOperationSpace<T extends Face | Wire>(brep: Brep, shape: T, sourceId: string | undefined, ownerId: string | undefined, document: ParametricDocument): T {
+  const source = document.objects.find((item) => item.id === sourceId);
+  const owner = document.objects.find((item) => item.id === ownerId);
+  if (!source || !owner || source.id === owner.id) return shape;
+  const e = parametricTransformMatrix(owner.transform).invert().multiply(parametricTransformMatrix(source.transform)).elements;
+  return brep.unwrap(brep.applyMatrix(shape, {
+    linear: [e[0], e[4], e[8], e[1], e[5], e[9], e[2], e[6], e[10]],
+    translation: [e[12], e[13], e[14]],
+  })) as T;
+}
+
+function solidFromSketch(brep: Brep, sketch: SketchFeature, feature: ExtrudeFeature, document: ParametricDocument, sourceSolid?: AnySolid | null): AnySolid {
+  if (feature.pathSketchId) {
+    const path = document.features.find((item): item is SketchFeature => item.kind === "sketch" && item.id === feature.pathSketchId);
+    if (!path || path.suppressed) throw new Error(uiText("sweep.missingPath"));
+    const spine = profileInOperationSpace(brep, sweepPathWire(brep, path), path.objectId, feature.objectId, document);
+    let faces: Face[];
+    if (feature.profileFaceReferenceId) {
+      const stored = document.topologyReferences.find((item) => item.id === feature.profileFaceReferenceId);
+      const current = sourceSolid ?? (stored ? cachedFeatureSolids.get(stored.sourceFeatureId)?.solid : undefined);
+      if (!stored || !current) throw new Error(uiText("sweep.missingFace"));
+      faces = [resolveStoredFace(brep, document, current, stored, feature.name)];
+    } else {
+      if (sketch.suppressed) throw new Error(uiText("loft.missingProfile"));
+      faces = facesFromSketch(brep, sketch).map((face) => profileInOperationSpace(brep, face, sketch.objectId, feature.objectId, document));
+    }
+    if (faces.length !== 1) throw new Error(uiText("sweep.singleProfile"));
+    const face = faces[0];
+    const options = { transitionMode: "right" as const };
+    let solid = brep.unwrap(brep.sweep(brep.outerWire(face), spine, options)) as AnySolid;
+    for (const hole of brep.innerWires(face)) {
+      const tool = brep.unwrap(brep.sweep(hole, spine, options)) as AnySolid;
+      solid = refinedBooleanSolid(brep, brep.cut(solid, tool));
+    }
+    return applyOperationTransform(brep, solid, feature.transform);
+  }
   if (feature.endSketchId) {
     const end = document.features.find((item): item is SketchFeature => item.kind === "sketch" && item.id === feature.endSketchId);
     if (!end || end.suppressed || sketch.suppressed) throw new Error(uiText("loft.missingProfile"));
@@ -201,7 +297,7 @@ function facesFromSketch(brep: Brep, sketch: SketchFeature): Face[] {
   return [applySketchTransform(brep, circleProfileFace(brep, sketch.profile), sketch)];
 }
 
-function applySketchTransform<T extends AnySolid | Face>(brep: Brep, shape: T, sketch: SketchFeature): T {
+function applySketchTransform<T extends AnySolid | Face | Wire>(brep: Brep, shape: T, sketch: SketchFeature): T {
   let transformed = shape;
   if (sketch.rotation.x) transformed = brep.rotate(transformed as AnySolid, sketch.rotation.x, { axis: [1, 0, 0] }) as unknown as T;
   if (sketch.rotation.y) transformed = brep.rotate(transformed as AnySolid, sketch.rotation.y, { axis: [0, 1, 0] }) as unknown as T;
@@ -432,7 +528,7 @@ function textExtrusionDirections(document: ParametricDocument, objectId: string,
   for (const feature of document.features.filter((candidate) => !candidate.suppressed && candidate.objectId === objectId)) {
     if (feature.kind === "extrude") {
       const sketch = sketches.get(feature.sketchId);
-      if (feature.endSketchId || !sketch || !isTextOnlySketch(sketch)) {
+      if (feature.pathSketchId || feature.endSketchId || !sketch || !isTextOnlySketch(sketch)) {
         containsOtherSolidGeometry = true;
         continue;
       }
@@ -905,11 +1001,11 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
       if (feature.kind === "extrude" || feature.kind === "primitive") {
         const sketch = feature.kind === "extrude" ? sketches.get(feature.sketchId) : null;
         if (feature.kind === "extrude" && !sketch) throw new Error(`${feature.name}: source sketch could not be found.`);
-        if (feature.kind === "extrude" && !feature.endSketchId && Math.abs(feature.distance) <= 1e-8) throw new Error(`${feature.name}: distance must not be zero.`);
+        if (feature.kind === "extrude" && !feature.endSketchId && !feature.pathSketchId && Math.abs(feature.distance) <= 1e-8) throw new Error(`${feature.name}: distance must not be zero.`);
         const objectId = feature.objectId ?? "legacy";
         lastObjectId = objectId;
         const current = solids.get(objectId) ?? null;
-        const tool = feature.kind === "primitive" ? solidFromPrimitive(brep, feature) : solidFromSketch(brep, sketch!, feature, document);
+        const tool = feature.kind === "primitive" ? solidFromPrimitive(brep, feature) : solidFromSketch(brep, sketch!, feature, document, current);
         const result = applyBooleanOperation(brep, current, tool, feature);
         solids.set(objectId, result);
         operationStates.set(feature.id, {
@@ -1184,7 +1280,7 @@ export async function exportParametricStep(document: ParametricDocument, objectI
       const objectId = feature.objectId ?? "legacy";
       lastObjectId = objectId;
       const current = solids.get(objectId) ?? null;
-      const tool = feature.kind === "primitive" ? solidFromPrimitive(brep, feature) : solidFromSketch(brep, sketch!, feature, document);
+      const tool = feature.kind === "primitive" ? solidFromPrimitive(brep, feature) : solidFromSketch(brep, sketch!, feature, document, current);
       const result = applyBooleanOperation(brep, current, tool, feature);
       solids.set(objectId, result);
       operationStates.set(feature.id, {

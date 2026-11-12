@@ -183,9 +183,10 @@ export function assertValidParametricTopology(document: ParametricDocument) {
       }
       continue;
     }
-    if (feature.kind === "faceExtrude" || feature.kind === "revolve") {
-      if (!feature.faceReferenceId) throw new ParametricTopologyError(`${feature.name}: referenced face no longer exists.`);
-      const reference = references.get(feature.faceReferenceId);
+    if (feature.kind === "faceExtrude" || feature.kind === "revolve" || feature.kind === "extrude" && feature.profileFaceReferenceId) {
+      const faceReferenceId = feature.kind === "extrude" ? feature.profileFaceReferenceId : feature.faceReferenceId;
+      if (!faceReferenceId) throw new ParametricTopologyError(`${feature.name}: referenced face no longer exists.`);
+      const reference = references.get(faceReferenceId);
       if (!reference) throw new ParametricTopologyError(`${feature.name}: referenced face no longer exists.`);
       if (reference.reference.hint.entityType !== "face") throw new ParametricTopologyError(`${feature.name}: selected reference is not a face.`);
       if (feature.objectId && reference.objectId !== feature.objectId) throw new ParametricTopologyError(`${feature.name}: face belongs to another object.`);

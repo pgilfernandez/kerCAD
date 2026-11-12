@@ -2,6 +2,7 @@
 
 import { ChallengeIcon } from "@/components/ChallengeIcon";
 import { CylinderProfileButtons } from "@/components/CylinderProfileButtons";
+import { ToolbarSweepIcon } from "@/components/icons";
 
 import { DashboardBrandLogo } from "@/components/DashboardBrandLogo";
 
@@ -371,6 +372,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [notice, setNotice] = useState<Notice>(null);
   const [workplaneOpen, setWorkplaneOpen] = useState(false);
   const [snapSpacingOpen, setSnapSpacingOpen] = useState(false);
+  const [pendingSweepPathId, setPendingSweepPathId] = useState<string | null>(null);
   const focusSnapSpacingRef = useRef(false);
   const [workplaneDraft, setWorkplaneDraft] = useState(document.workplane);
   const [placingWorkplane, setPlacingWorkplane] = useState(false);
@@ -629,6 +631,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       setEditingShellId(null);
       setPendingRevolve(null);
       setEditingRevolveId(null);
+      setPendingSweepPathId(null);
       setNotice({ type: "info", text: placingWorkplane || editingMirrorPlaneId ? t("notice.workplaneCancelled") : t("notice.topologyCancelled") });
     };
     window.addEventListener("keydown", cancel);
@@ -1069,6 +1072,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     return true;
   };
 
+  useEffect(() => {
+    if (pendingSweepPathId && (pendingEdgeTreatment || pendingFaceExtrude || pendingShell || pendingRevolve || placingWorkplane || editingMirrorPlaneId || sketchSession)) setPendingSweepPathId(null);
+  }, [pendingSweepPathId, pendingEdgeTreatment, pendingFaceExtrude, pendingShell, pendingRevolve, placingWorkplane, editingMirrorPlaneId, sketchSession]);
   const primarySelection = modelSelection.at(-1) ?? null;
   const challengeSelectionParameters = useMemo(() => challengeEditor && modelSelection.length === 1 ? captureChallengeParameters(document, primarySelection, locale) : [], [challengeEditor, document, modelSelection, locale]);
   // A selected operation exports its owning object's final body, never a
@@ -2453,6 +2459,60 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     if (changed && featureId) { setModelSelection([{ id: featureId, kind: "feature" }]); setNotice({ type: "ok", text: t("notice.sketchExtruded") }); }
   };
 
+  const createSweep = (path: SketchFeature, profile?: SketchFeature, face?: ParametricTopologyReference) => {
+    if (profile?.profile.shape === "drawn") {
+      const validation = validateDrawnSketchProfile(profile.profile.geometry);
+      if (!validation.valid) { setNotice({ type: "error", text: t("sweep.singleProfile") }); return; }
+    }
+    let featureId = "";
+    const changed = mutate((draft) => {
+      const objectId = face?.objectId ?? profile?.objectId ?? path.objectId;
+      if (!objectId || draft.objects.find((object) => object.id === objectId)?.locked) return;
+      const feature = createExtrudeFeature(profile?.id ?? path.id, draft.features.filter((item) => item.kind === "extrude").length + 1, false);
+      feature.objectId = objectId;
+      feature.pathSketchId = path.id;
+      feature.name = `${t("operation.sweep")} ${draft.features.filter((item) => item.kind === "extrude" && item.pathSketchId).length + 1}`;
+      feature.dependencies = [{ type: "feature", id: path.id }, { type: "feature", id: profile?.id ?? face!.sourceFeatureId }];
+      if (face) {
+        const stored = { ...structuredClone(face), id: `${feature.id}:profile` };
+        draft.topologyReferences.push(stored);
+        feature.profileFaceReferenceId = stored.id;
+      }
+      featureId = feature.id;
+      draft.features.push(feature);
+    });
+    if (changed && featureId) {
+      setPendingSweepPathId(null);
+      setSelectingTopologyFaces(false);
+      setSelectedTopologyFaces([]);
+      setModelSelection([{ id: featureId, kind: "feature" }]);
+      setNotice({ type: "ok", text: t("sweep.created") });
+    }
+  };
+  const beginSweep = () => {
+    if (pendingSweepPathId) { setPendingSweepPathId(null); setSelectingTopologyFaces(false); setSelectedTopologyFaces([]); return; }
+    setPendingEdgeTreatment(null); setPendingFaceExtrude(null); setPendingShell(null); setPendingRevolve(null);
+    setEditingEdgeTreatmentId(null); setEditingFaceExtrudeId(null); setEditingShellId(null); setEditingRevolveId(null);
+    setSelectingTopologyEdges(false); setSelectedTopologyEdges([]); setSelectedTopologyFaces([]);
+    setPlacingWorkplane(false); setEditingMirrorPlaneId(null); setOriginEditObjectId(null);
+    if (modelSelection.length === 1 && selectedSketches.length === 1) {
+      setPendingSweepPathId(selectedSketches[0].id);
+      setSelectingTopologyFaces(true);
+      setNotice({ type: "info", text: t("sweep.selectFace") });
+      return;
+    }
+    const candidates = modelSelection.length === 2 && selectedSketches.length === 2
+      ? selectedSketches
+      : document.features.filter((item) => item.objectId === selectedObjectId && (item.kind !== "sketch" || item.purpose === "user")).slice(-2);
+    const ordered = [...candidates].sort((a, b) => document.features.indexOf(a) - document.features.indexOf(b));
+    if (ordered.length !== 2 || ordered[0].kind !== "sketch" || ordered[1].kind !== "sketch") {
+      setNotice({ type: "info", text: t("sweep.chooseInputs") });
+      return;
+    }
+    setSelectingTopologyFaces(false);
+    createSweep(ordered[0], ordered[1]);
+  };
+
   const addRevolveFromSketch = (sketch: SketchFeature) => {
     if (sketch.profile.shape !== "drawn") return;
     const validation = validateDrawnSketchProfile(sketch.profile.geometry);
@@ -3306,7 +3366,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   };
 
   const selectTopologyFace = (face: TopologyFacePick) => {
-    if ((pendingFaceExtrude || pendingRevolve) && !face.planar) {
+    if ((pendingSweepPathId || pendingFaceExtrude || pendingRevolve) && !face.planar) {
       setNotice({ type: "error", text: pendingRevolve ? t("notice.revolvePlanar") : t("notice.faceExtrudePlanar") });
       return;
     }
@@ -3333,6 +3393,11 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         },
       },
     };
+    if (pendingSweepPathId) {
+      const path = document.features.find((item): item is SketchFeature => item.kind === "sketch" && item.id === pendingSweepPathId);
+      if (path) createSweep(path, undefined, reference);
+      return;
+    }
     if (pendingRevolve) {
       setSelectedTopologyFaces(face.selected ? [reference] : []);
       if (face.selected && pendingRevolve.axis === "edge" && selectedTopologyEdges.length !== 1) setSelectingTopologyEdges(true);
@@ -3657,6 +3722,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               <Tool label={t("toolbar.fillet")} active={pendingEdgeTreatment === "fillet"} onClick={() => beginEdgeTreatment("fillet")}><ToolbarFilletIcon /></Tool>
               <Tool label={modelSelection.length === 2 && selectedSketches.length === 2 ? t("operation.loft") : selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? t("toolbar.extrudeSketch") : t("toolbar.extrudeFace")} active={Boolean(pendingFaceExtrude)} onClick={() => modelSelection.length === 2 && selectedSketches.length === 2 ? addExtrudeFromSketch(selectedSketches[0], selectedSketches[1]) : selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? addExtrudeFromSketch(selectedFeature) : beginFaceExtrude("add")}><ToolbarExtrudeIcon /></Tool>
               <Tool label={selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? t("toolbar.revolveSketch") : t("toolbar.revolve")} active={Boolean(pendingRevolve)} onClick={() => selectedFeature?.kind === "sketch" && selectedFeature.profile.shape === "drawn" ? addRevolveFromSketch(selectedFeature) : beginRevolve()}><ToolbarRevolveIcon /></Tool>
+              <Tool label={t("operation.sweep")} active={Boolean(pendingSweepPathId)} onClick={beginSweep}><ToolbarSweepIcon /></Tool>
               <Tool label={t("toolbar.shell")} active={Boolean(pendingShell)} onClick={() => beginShell()}><ToolbarShellIcon /></Tool>
               <Tool label={t("toolbar.mirror")} enabled={Boolean(selectedObjectId)} onClick={addMirrorOperation}><ToolbarMirrorIcon /></Tool>
               <Tool label={t("toolbar.linearPattern")} enabled={Boolean(selectedObjectId)} onClick={addLinearPatternOperation}><ToolbarLinearPatternIcon /></Tool>
@@ -4073,10 +4139,13 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           displayUnit={displayUnit}
           locale={locale}
           parameterHandlesVisible={!alignOpen && showParameterHandles}
-          contextToolbarVisible={editingSection || (pendingFaceExtrude || pendingRevolve || pendingShell ? true : pendingEdgeTreatment
+          contextToolbarVisible={Boolean(pendingSweepPathId) || editingSection || (pendingFaceExtrude || pendingRevolve || pendingShell ? true : pendingEdgeTreatment
             ? selectedTopologyFaces.length + selectedTopologyEdges.length > 0
             : modelSelection.length > 0 || Boolean(selectedAnnotation))}
-          manipulatorControls={editingSection ? <>
+          manipulatorControls={pendingSweepPathId ? <>
+            <span>{t("sweep.selectFace")}</span>
+            <Tool label={t("dashboard.cancel.77dfd2")} onClick={beginSweep}><X /></Tool>
+          </> : editingSection ? <>
             <Tool label={t("camera.positionTriad")} active={sectionPositionVisible} onClick={() => setSectionPositionVisible((value) => !value)}><ToolbarPositionManipulatorIcon /></Tool>
             <Tool label={t("camera.rotationTriad")} active={sectionRotationVisible} onClick={() => setSectionRotationVisible((value) => !value)}><ToolbarRotationManipulatorIcon /></Tool>
             <Tool label={t("camera.reverseSection")} onClick={() => setSectionPose((pose) => ({ ...pose, inverted: !(pose.inverted ?? true) }))}><ViewToolbarIcon file="inverse" /></Tool>
@@ -4221,7 +4290,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           topologyEdgeSelection={selectingTopologyEdges}
           onTopologyEdgeSelect={selectTopologyEdge}
           topologySelections={(editingEdgeTreatmentId || editingFaceExtrudeId || editingShellId || editingRevolveId) && !topologySelectionBuild ? [] : [...selectedTopologyFaces, ...selectedTopologyEdges]}
-          topologyMultiSelection={!pendingFaceExtrude && !pendingRevolve}
+          topologyMultiSelection={!pendingSweepPathId && !pendingFaceExtrude && !pendingRevolve}
           historicalTopologySelections={editingEdgeTreatmentId || editingFaceExtrudeId || editingShellId || editingRevolveId || operationContext?.detailMesh ? [] : historicalTopologyReferences}
           historicalTopologyRecords={editingEdgeTreatmentId || editingFaceExtrudeId || editingShellId || editingRevolveId || operationContext?.detailMesh ? [] : historicalTopologyRecords}
           faceExtrudeHandle={alignOpen ? null : faceExtrudeHandle}

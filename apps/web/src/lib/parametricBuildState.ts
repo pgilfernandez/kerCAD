@@ -71,9 +71,10 @@ export function parametricObjectFeaturePrefixFingerprint(document: ParametricDoc
   const objectFeatures = document.features.filter((feature) => feature.objectId === objectId);
   const throughIndex = objectFeatures.findIndex((feature) => feature.id === throughFeatureId);
   const features = throughIndex < 0 ? [] : objectFeatures.slice(0, throughIndex + 1);
-  const loftSketchIds = new Set(features.flatMap((feature) => feature.kind === "extrude" && feature.endSketchId ? [feature.sketchId, feature.endSketchId] : []));
+  const loftSketchIds = new Set(features.flatMap((feature) => feature.kind === "extrude" ? [feature.sketchId, feature.endSketchId, feature.pathSketchId].filter((id): id is string => Boolean(id)) : []));
   const dependencyIds = dependentObjectIds(document, objectId, features);
   const referenceIds = new Set(features.flatMap((feature) => {
+    if (feature.kind === "extrude" && feature.profileFaceReferenceId) return [feature.profileFaceReferenceId];
     if (feature.kind === "fillet") return [...(feature.edgeReferenceIds ?? []), ...(feature.selectionReferenceIds ?? [])];
     if (feature.kind === "faceExtrude") return [feature.faceReferenceId];
     if (feature.kind === "shell") return feature.faceReferenceIds;

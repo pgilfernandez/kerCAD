@@ -263,6 +263,10 @@ export function ToolbarRevolveIcon() {
   return <KercadOperationImage file="revolve.svg" />;
 }
 
+export function ToolbarSweepIcon() {
+  return <KercadOperationImage file="extrude-along-path.svg" />;
+}
+
 export function ToolbarShellIcon() {
   return <KercadOperationImage file="shell.svg" />;
 }

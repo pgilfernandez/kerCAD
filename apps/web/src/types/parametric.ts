@@ -94,6 +94,9 @@ export type ExtrudeFeature = BaseFeature & {
   sketchId: string;
   /** When set, loft between the two positioned sketches instead of using distance. */
   endSketchId?: string;
+  /** Sweep profile (sketchId, or selected face) along this sketch. */
+  pathSketchId?: string;
+  profileFaceReferenceId?: string;
   distance: number;
   symmetric: boolean;
   operation: "add" | "cut" | "intersect";

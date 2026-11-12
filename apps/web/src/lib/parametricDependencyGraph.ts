@@ -37,6 +37,10 @@ export function parametricFeatureDependencies(document: ParametricDocument) {
     if (feature.kind === "extrude") {
       if (!featureIds.has(feature.sketchId)) throw new ParametricDependencyError(`${feature.name}: source sketch could not be found.`);
       inputs.add(feature.sketchId);
+      if (feature.pathSketchId) {
+        if (!featureIds.has(feature.pathSketchId)) throw new ParametricDependencyError(`${feature.name}: source sketch could not be found.`);
+        inputs.add(feature.pathSketchId);
+      }
       if (feature.endSketchId) {
         if (!featureIds.has(feature.endSketchId)) throw new ParametricDependencyError(`${feature.name}: source sketch could not be found.`);
         inputs.add(feature.endSketchId);
