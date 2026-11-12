@@ -128,6 +128,8 @@ function solidFromSketch(brep: Brep, sketch: SketchFeature, feature: ExtrudeFeat
       centered: true,
       at: [0, 0, centerZ],
     });
+  } else if (profile.elliptical) {
+    solid = extrudePlanarProfile(brep, [circleProfileFace(brep, profile)], feature.distance, feature.symmetric);
   } else {
     solid = brep.cylinder(profile.diameter / 2, extrusionLength, {
       centered: true,
@@ -135,6 +137,15 @@ function solidFromSketch(brep: Brep, sketch: SketchFeature, feature: ExtrudeFeat
     });
   }
   return applyOperationTransform(brep, applySketchTransform(brep, solid, sketch), feature.transform);
+}
+
+function circleProfileFace(brep: Brep, profile: Extract<SketchFeature["profile"], { shape: "circle" }>): Face {
+  const rx = profile.diameter / 2, ry = profile.elliptical ? profile.radius2 ?? rx : rx;
+  const edge = profile.elliptical && rx !== ry
+    ? brep.unwrap(brep.ellipse(Math.max(rx, ry), Math.min(rx, ry), { xDir: rx >= ry ? [1, 0, 0] : [0, 1, 0] }))
+    : brep.circle(rx);
+  const wire = brep.unwrap(brep.wireLoop([edge]));
+  return brep.unwrap(brep.face(wire as Parameters<Brep["face"]>[0])) as Face;
 }
 
 function facesFromSketch(brep: Brep, sketch: SketchFeature): Face[] {
@@ -150,9 +161,7 @@ function facesFromSketch(brep: Brep, sketch: SketchFeature): Face[] {
     ])) as Face;
     return [applySketchTransform(brep, face, sketch)];
   }
-  const edge = brep.circle(sketch.profile.diameter / 2, { at: [0, 0, 0] });
-  const wire = brep.unwrap(brep.wireLoop([edge]));
-  return [applySketchTransform(brep, brep.unwrap(brep.face(wire as Parameters<Brep["face"]>[0])) as Face, sketch)];
+  return [applySketchTransform(brep, circleProfileFace(brep, sketch.profile), sketch)];
 }
 
 function applySketchTransform<T extends AnySolid | Face>(brep: Brep, shape: T, sketch: SketchFeature): T {

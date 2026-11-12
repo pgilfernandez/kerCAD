@@ -1,6 +1,7 @@
 "use client";
 
 import { ChallengeIcon } from "@/components/ChallengeIcon";
+import { CylinderProfileButtons } from "@/components/CylinderProfileButtons";
 
 import { DashboardBrandLogo } from "@/components/DashboardBrandLogo";
 
@@ -4095,6 +4096,17 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
             <Tool label={t("camera.rotationTriad")} active={showRotationTriad} onClick={() => setShowRotationTriad((visible) => !visible)}><ToolbarRotationManipulatorIcon /></Tool>
             {selectionKind === "feature" && <Tool className="kercad-parameter-handles-toggle" label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>}
+            {selectedFeature?.kind === "extrude" && (() => {
+              const profileSketch = document.features.find((item) => item.id === selectedFeature.sketchId);
+              if (profileSketch?.kind !== "sketch" || profileSketch.purpose === "user" || profileSketch.profile.shape !== "circle") return null;
+              return <CylinderProfileButtons locale={locale} elliptical={Boolean(profileSketch.profile.elliptical)} onChange={(elliptical) => mutate((draft) => {
+                const sketch = draft.features.find((item) => item.id === profileSketch.id);
+                if (sketch?.kind === "sketch" && sketch.profile.shape === "circle") {
+                  sketch.profile.radius2 ??= sketch.profile.diameter / 2;
+                  sketch.profile.elliptical = elliptical;
+                }
+              })} />;
+            })()}
             {selectedReferenceObject?.referenceMesh && <>
               <ViewportFloatingNumberInput value={selectedReferenceObject.referenceMesh.opacity * 100} unit="percent" displayUnit={displayUnit} snap={1} label={t("property.opacity")} min={5} max={100} onCommit={(value) => updateObject(selectedReferenceObject.id, (object) => { if (object.referenceMesh) object.referenceMesh.opacity = value / 100; })} />
               <ReferenceDisplayButtons value={selectedReferenceObject.referenceMesh.displayMode} locale={locale} onChange={(mode) => updateObject(selectedReferenceObject.id, (object) => { if (object.referenceMesh) object.referenceMesh.displayMode = mode; })} />

@@ -31,7 +31,7 @@ function isMovableOperation(feature: ParametricFeature): feature is MovableOpera
 
 function sketchDimensions(sketch: SketchFeature) {
   if (sketch.profile.shape === "rectangle") return { width: sketch.profile.width, depth: sketch.profile.depth, centerX: 0, centerY: 0 };
-  if (sketch.profile.shape === "circle") return { width: sketch.profile.diameter, depth: sketch.profile.diameter, centerX: 0, centerY: 0 };
+  if (sketch.profile.shape === "circle") return { width: sketch.profile.diameter, depth: sketch.profile.elliptical ? (sketch.profile.radius2 ?? sketch.profile.diameter / 2) * 2 : sketch.profile.diameter, centerX: 0, centerY: 0 };
   const points = sketch.profile.geometry.points;
   const circles = sketch.profile.geometry.circles ?? [];
   const minX = [...points.map((point) => point.x), ...circles.map((circle) => circle.x - circle.radius)];
@@ -787,7 +787,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
       : feature.kind === "extrude" && sketch!.purpose === "user"
         ? { parameterHandles: ["height" as const] }
         : {}),
-    ...(feature.kind === "extrude" && sketch!.profile.shape === "circle" ? { resizeAspectRatio: 1 } : {}),
+    ...(feature.kind === "extrude" && sketch!.profile.shape === "circle" && !sketch!.profile.elliptical ? { resizeAspectRatio: 1 } : {}),
     ...(feature.kind === "extrude" ? { allowNegativeHeight: true } : {}),
     shapeParameters: feature.kind === "primitive"
       ? feature.primitive === "cone"
@@ -810,7 +810,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
       : textGenerator
         ? { shape: "text", size: textGenerator.size, height: feature.distance }
       : sketch!.profile.shape === "circle"
-        ? { shape: "cylinder", radius: sketch!.profile.diameter / 2, height: feature.distance }
+        ? { shape: "cylinder", radius: sketch!.profile.diameter / 2, radius2: sketch!.profile.radius2 ?? sketch!.profile.diameter / 2, elliptical: Boolean(sketch!.profile.elliptical), height: feature.distance }
         : { shape: "box", width: baseWidth, depth: baseDepth, height: feature.distance },
     operationPreview: {
       shape: feature.kind === "primitive" ? feature.primitive : sketch!.profile.shape === "circle" ? "cylinder" : "box",
@@ -1143,7 +1143,10 @@ export function resizeParametricSelection(
     const widthRatio = width / Math.max(0.01, current.width);
     const depthRatio = depth / Math.max(0.01, current.depth);
     const ratio = Math.abs(widthRatio - 1) >= Math.abs(depthRatio - 1) ? widthRatio : depthRatio;
-    sketch!.profile.diameter = Math.max(0.1, sketch!.profile.diameter * ratio);
+    if (sketch!.profile.elliptical) {
+      sketch!.profile.radius2 = Math.max(0.05, (sketch!.profile.radius2 ?? sketch!.profile.diameter / 2) * depthRatio);
+      sketch!.profile.diameter = Math.max(0.1, sketch!.profile.diameter * widthRatio);
+    } else sketch!.profile.diameter = Math.max(0.1, sketch!.profile.diameter * ratio);
   } else {
     const bounds = sketchDimensions(sketch!);
     const scaleX = width / Math.max(0.1, bounds.width * Math.abs(object.transform.scale.x));
@@ -1183,7 +1186,7 @@ export function resizeParametricHeight(document: ParametricDocument, id: string,
 export function updateParametricShapeParameter(
   document: ParametricDocument,
   id: string,
-  parameter: "width" | "depth" | "height" | "size" | "radius" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "thickness" | "majorRadius" | "tubeRadius" | "cornerRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius",
+  parameter: "width" | "depth" | "height" | "size" | "radius" | "radius2" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "thickness" | "majorRadius" | "tubeRadius" | "cornerRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius",
   value: number,
 ) {
   if (!Number.isFinite(value)) return;
@@ -1297,7 +1300,10 @@ export function updateParametricShapeParameter(
     sketch.profile.width = next;
   } else if (sketch.profile.shape === "rectangle" && parameter === "depth") {
     sketch.profile.depth = next;
+  } else if (sketch.profile.shape === "circle" && parameter === "radius2") {
+    sketch.profile.radius2 = next;
   } else if (sketch.profile.shape === "circle" && parameter === "radius") {
+    if (sketch.profile.elliptical) sketch.profile.radius2 ??= sketch.profile.diameter / 2;
     sketch.profile.diameter = next * 2;
   }
 }

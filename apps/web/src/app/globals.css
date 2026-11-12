@@ -1468,6 +1468,12 @@ button {
 .kercad-operation-mode-buttons { display: grid; width: 100%; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; }
 .kercad-operation-mode-buttons button { min-width: 0; height: 31px; padding: 3px; border-radius: 4px; }
 .kercad-operation-mode-buttons svg { width: 22px; height: 22px; }
+.kercad-cylinder-profile-buttons { display: flex; width: 100%; gap: 4px; margin-bottom: 10px; }
+.kercad-cylinder-profile-buttons button { display: flex; align-items: center; justify-content: center; gap: 5px; flex: 1 1 0; min-width: 0; padding: 6px; border: 1px solid var(--theme-line-c5d6df); border-radius: 5px; background: var(--theme-surface); color: var(--theme-text); font: inherit; cursor: pointer; }
+.kercad-cylinder-profile-buttons button:hover, .kercad-cylinder-profile-buttons button.active { color: var(--theme-link); background: var(--theme-bg-def5fb); border-color: var(--theme-line-6fc8df); }
+.kercad-cylinder-profile-icon { display: block; width: 24px; height: 24px; flex-shrink: 0; background: currentColor; mask-size: contain; mask-position: center; mask-repeat: no-repeat; -webkit-mask-size: contain; -webkit-mask-position: center; -webkit-mask-repeat: no-repeat; }
+.kercad-viewport-context-toolbar .kercad-cylinder-profile-buttons { width: auto; margin: 0; flex-shrink: 0; }
+.kercad-viewport-context-toolbar .kercad-cylinder-profile-buttons button { width: auto; min-width: max-content; padding: 4px 8px; }
 .kercad-operation-mode-buttons .kercad-shell-corner-mode.active { background: var(--theme-bg-ddf1fa); border-color: var(--theme-line-58abc9); }
 .kercad-operation-mode-buttons .kercad-shell-corner-mode img { width: 22px; height: 22px; object-fit: contain; }
 .kercad-feature-card > label.kercad-range-property {

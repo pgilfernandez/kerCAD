@@ -461,6 +461,13 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
       feature.visible = typeof feature.visible === "boolean" ? feature.visible : true;
       feature.purpose ??= feature.profile.shape === "drawn" ? "user" : "primitive";
       feature.rotation ??= { x: 0, y: 0, z: 0 };
+      if (feature.profile.shape === "circle") {
+        feature.profile.elliptical = feature.profile.elliptical === true;
+        if (feature.profile.radius2 !== undefined || feature.profile.elliptical) {
+          const radius2 = feature.profile.radius2;
+          feature.profile.radius2 = typeof radius2 === "number" && Number.isFinite(radius2) && radius2 > 0 ? radius2 : feature.profile.diameter / 2;
+        }
+      }
       if (feature.profile.shape === "drawn") {
         const geometry = feature.profile.geometry;
         geometry.points ??= [];

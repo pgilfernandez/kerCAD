@@ -58,6 +58,8 @@ export type RectangleProfile = {
 export type CircleProfile = {
   shape: "circle";
   diameter: number;
+  elliptical?: boolean;
+  radius2?: number;
 };
 
 export type DrawnProfile = {

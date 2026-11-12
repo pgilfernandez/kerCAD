@@ -39,7 +39,10 @@ export function captureChallengeParameters(document: ParametricDocument, selecti
       if (sketch.profile.shape === "rectangle") {
         add(t("property.width"), sketch.profile.width);
         add(t("property.depth"), sketch.profile.depth);
-      } else if (sketch.profile.shape === "circle") add(t("property.radius"), sketch.profile.diameter / 2);
+      } else if (sketch.profile.shape === "circle") {
+        add(t("property.radius"), sketch.profile.diameter / 2);
+        if (sketch.profile.elliptical) add(t("cylinder.radius2"), sketch.profile.radius2 ?? sketch.profile.diameter / 2);
+      }
       else if (sketch.profile.geometry.generator?.kind === "text") {
         const generator = sketch.profile.geometry.generator;
         values.push({ label: qualify(t("toolbar.text"), prefix), value: generator.text });

@@ -1,5 +1,7 @@
 "use client";
 
+import { CylinderProfileButtons } from "@/components/CylinderProfileButtons";
+
 import { OperationTreeIcon } from "@/components/OperationTreeIcon";
 import { AnnotationIcon } from "@/components/AnnotationIcon";
 import { ShellCornerButtons } from "@/components/ShellCornerButtons";
@@ -648,6 +650,12 @@ function ParametricFeatureInspector({
             <OperationModeButtons addOnly={requiresAddOperation(document, feature)} value={feature.operation} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "extrude") draft.operation = operation; })} />
           </div>
           <ShapeParametersSection>
+            {primitiveSketch?.purpose !== "user" && primitiveSketch?.profile.shape === "circle" && <CylinderProfileButtons locale={locale} elliptical={Boolean(primitiveSketch.profile.elliptical)} onChange={(elliptical) => onUpdateFeature(primitiveSketch.id, (draft) => {
+              if (draft.kind === "sketch" && draft.profile.shape === "circle") {
+                draft.profile.radius2 ??= draft.profile.diameter / 2;
+                draft.profile.elliptical = elliptical;
+              }
+            })} />}
             {textGenerator && primitiveSketch ? <>
               <label><span>{localizedSidebarLiteral(locale, uiText("toolbar.text", {}, locale))}</span><DeferredTextInput value={textGenerator.text} maxLength={40} onCommit={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { text: value }); })} /></label>
               <label><span>{localizedSidebarLiteral(locale, uiText("sidebar.web.font", {}, locale))}</span><select value={textGenerator.font ?? "Sans"} onChange={(event) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { font: event.target.value as typeof textGenerator.font }); })}>{parametricTextFontNames.map((font) => <option key={font} value={font}>{font}</option>)}</select></label>
@@ -661,7 +669,10 @@ function ParametricFeatureInspector({
                 <BoundedNumberField label={t("property.depth")} value={primitiveSketch.profile.depth} min={0.01} max={200} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} />
               </>
             ) : primitiveSketch?.profile.shape === "circle" ? (
-              <BoundedNumberField label={t("property.radius")} value={primitiveSketch.profile.diameter / 2} min={0.01} max={100} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.diameter = Math.max(0.01, value * 2); })} />
+              <>
+                <BoundedNumberField label={t("property.radius")} value={primitiveSketch.profile.diameter / 2} min={0.01} max={100} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") { if (draft.profile.elliptical) draft.profile.radius2 ??= draft.profile.diameter / 2; draft.profile.diameter = Math.max(0.01, value * 2); } })} />
+                {primitiveSketch.profile.elliptical && <BoundedNumberField label={t("cylinder.radius2")} value={primitiveSketch.profile.radius2 ?? primitiveSketch.profile.diameter / 2} min={0.01} max={100} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.radius2 = Math.max(0.01, value); })} />}
+              </>
             ) : null}
             <BoundedNumberField label={t("property.height")} value={feature.distance} min={-200} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "extrude" && Math.abs(value) >= 0.01) draft.distance = value; })} />
           </ShapeParametersSection>
