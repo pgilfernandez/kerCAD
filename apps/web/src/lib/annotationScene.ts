@@ -73,6 +73,17 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
           const material = new THREE.MeshBasicMaterial({ color, depthTest: false, depthWrite: false, transparent: true });
           const handle = new THREE.Mesh(geometry, material);
           handle.renderOrder = pixels === 28 ? PARAMETER_HANDLE_RENDER_ORDER : 100010; handle.userData.yellowManipulatorBaseRadius = 1; handle.userData.yellowManipulatorDiameterPixels = pixels;
+          if (pixels === 28) {
+            material.color.set("#f0b83f");
+            material.opacity = 0.92;
+            const outlineGeometry = new THREE.SphereGeometry(1.12, 18, 12);
+            const outlineMaterial = new THREE.MeshBasicMaterial({ color: "#b67c00", side: THREE.BackSide, depthTest: false, depthWrite: false, transparent: true, opacity: 0.92 });
+            const outline = new THREE.Mesh(outlineGeometry, outlineMaterial);
+            outline.renderOrder = handle.renderOrder - 1;
+            outline.userData.yellowManipulatorOutline = true;
+            handle.add(outline);
+            disposables.push(outlineGeometry, outlineMaterial);
+          }
           circle.add(handle); disposables.push(geometry, material);
           return handle;
         };
@@ -110,7 +121,7 @@ export function createAnnotationScene(annotations: ParametricAnnotation[], unit:
         sphere.userData.annotationPoint = key;
         // Reuse the viewport's pre-render screen-size adjustment for handles.
         sphere.userData.yellowManipulatorBaseRadius = 1;
-        sphere.userData.yellowManipulatorDiameterPixels = active ? 20 : 14;
+        sphere.userData.yellowManipulatorDiameterPixels = active ? 28 : 14;
         group.add(sphere); disposables.push(geometry, material);
       }
     }
