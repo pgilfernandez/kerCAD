@@ -1,6 +1,6 @@
 import { gearOutlinePoints } from "@/lib/parametricGearProfile";
 
-export function operationPreviewWireframePositions(shape: "box" | "roundedBox" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear", width: number, depth: number, height: number, topWidth = width, innerWidth = 0, profileInsetWidth = 0, radialSegments = 64, cornerRadius = 0) {
+export function operationPreviewWireframePositions(shape: "box" | "roundedBox" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear", width: number, depth: number, height: number, topWidth = shape === "pyramid" ? 0 : width, innerWidth = 0, profileInsetWidth = 0, radialSegments = 64, cornerRadius = 0) {
   const positions: number[] = [];
   const addSegment = (x1: number, y1: number, z1: number, x2: number, y2: number, z2: number) => positions.push(x1, y1, z1, x2, y2, z2);
   const halfWidth = width / 2;
@@ -44,11 +44,15 @@ export function operationPreviewWireframePositions(shape: "box" | "roundedBox" |
   }
   if (shape === "pyramid") {
     const base = [[-halfWidth, -halfDepth, bottom], [halfWidth, -halfDepth, bottom], [halfWidth, halfDepth, bottom], [-halfWidth, halfDepth, bottom]] as const;
+    const topHalfWidth = Math.max(0, topWidth) / 2;
+    const topHalfDepth = topHalfWidth * depth / Math.max(0.01, width);
+    const upper = [[-topHalfWidth, -topHalfDepth, top], [topHalfWidth, -topHalfDepth, top], [topHalfWidth, topHalfDepth, top], [-topHalfWidth, topHalfDepth, top]] as const;
     for (let index = 0; index < 4; index += 1) {
       const start = base[index];
       const end = base[(index + 1) % 4];
       addSegment(...start, ...end);
-      addSegment(...start, 0, 0, top);
+      addSegment(...start, ...upper[index]);
+      if (topHalfWidth > 0) addSegment(...upper[index], ...upper[(index + 1) % 4]);
     }
     return positions;
   }

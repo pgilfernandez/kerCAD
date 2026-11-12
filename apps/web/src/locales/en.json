@@ -1914,7 +1914,8 @@
         "parameters": {
           "width": "Width",
           "depth": "Depth",
-          "height": "Height"
+          "height": "Height",
+          "topRadius": "Top radius"
         },
         "roles": {
           "add": "Add",

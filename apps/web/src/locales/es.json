@@ -1914,7 +1914,8 @@
         "parameters": {
           "width": "Ancho",
           "depth": "Largo",
-          "height": "Altura"
+          "height": "Altura",
+          "topRadius": "Radio superior"
         },
         "roles": {
           "add": "Añadir",

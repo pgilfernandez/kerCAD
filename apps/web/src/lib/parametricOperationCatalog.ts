@@ -125,7 +125,7 @@ export const parametricOperationCatalog: ParametricOperationDefinition[] = [
     description: sourcePrimitive("pyramid").description,
     menuIcon: "assets/sketchforge/shape-icons-gray/pyramid.png",
     roles: roles("pyramid"),
-    parameters: [dimension("width", sourceParameter("pyramid", "width")), dimension("depth", sourceParameter("pyramid", "depth")), dimension("height", sourceParameter("pyramid", "height"))],
+    parameters: [dimension("width", sourceParameter("pyramid", "width")), dimension("depth", sourceParameter("pyramid", "depth")), dimension("height", sourceParameter("pyramid", "height")), { ...dimension("topRadius", sourceParameter("pyramid", "topRadius"), 0), min: 0 }],
   },
   {
     kind: "wedge",

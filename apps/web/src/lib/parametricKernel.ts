@@ -200,6 +200,14 @@ function angularPrimitiveSolid(brep: Brep, feature: PrimitiveFeature): AnySolid 
   const halfWidth = feature.width / 2;
   const halfDepth = feature.depth / 2;
   if (feature.primitive === "pyramid") {
+    const topRadius = feature.topRadius ?? 0;
+    if (topRadius > 0) {
+      const topDepth = topRadius * feature.depth / feature.width;
+      return polyhedronSolid(brep, [
+        [-halfWidth, -halfDepth, 0], [halfWidth, -halfDepth, 0], [halfWidth, halfDepth, 0], [-halfWidth, halfDepth, 0],
+        [-topRadius, -topDepth, feature.height], [topRadius, -topDepth, feature.height], [topRadius, topDepth, feature.height], [-topRadius, topDepth, feature.height],
+      ], [[0, 3, 2, 1], [4, 5, 6, 7], [0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7]]);
+    }
     return polyhedronSolid(brep, [
       [-halfWidth, -halfDepth, 0], [halfWidth, -halfDepth, 0], [halfWidth, halfDepth, 0], [-halfWidth, halfDepth, 0], [0, 0, feature.height],
     ], [[0, 3, 2, 1], [0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4]]);
@@ -258,7 +266,7 @@ function solidFromPrimitive(brep: Brep, feature: PrimitiveFeature): AnySolid {
   if (feature.width <= 0 || feature.depth <= 0 || feature.height <= 0) {
     throw new Error(`${feature.name}: all dimensions must be greater than zero.`);
   }
-  if (feature.primitive === "cone" && (feature.topRadius ?? 0) < 0) {
+  if ((feature.primitive === "cone" || feature.primitive === "pyramid") && (!Number.isFinite(feature.topRadius ?? 0) || (feature.topRadius ?? 0) < 0)) {
     throw new Error(`${feature.name}: top radius cannot be negative.`);
   }
   if (feature.primitive === "tube" && ((feature.innerRadius ?? 0) <= 0 || (feature.innerRadius ?? 0) >= feature.width / 2)) {

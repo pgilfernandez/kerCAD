@@ -1914,7 +1914,8 @@
         "parameters": {
           "width": "Largeur",
           "depth": "Profondeur",
-          "height": "Hauteur"
+          "height": "Hauteur",
+          "topRadius": "Rayon supérieur"
         },
         "roles": {
           "add": "Ajouter",

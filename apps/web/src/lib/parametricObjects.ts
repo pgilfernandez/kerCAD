@@ -205,6 +205,7 @@ export function addPrimitive(
     primitive.width = definition.parameters.find((parameter) => parameter.key === "width")?.defaultValue ?? 20;
     primitive.depth = definition.parameters.find((parameter) => parameter.key === "depth")?.defaultValue ?? 20;
     primitive.height = definition.parameters.find((parameter) => parameter.key === "height")?.defaultValue ?? 20;
+    if (kind === "pyramid") primitive.topRadius = 0;
     if (kind === "roundedBox") primitive.cornerRadius = definition.parameters.find((parameter) => parameter.key === "cornerRadius")?.defaultValue ?? 3;
     if (kind === "cone") {
       const baseRadius = definition.parameters.find((parameter) => parameter.key === "baseRadius")?.defaultValue ?? 10;
@@ -799,7 +800,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
           : feature.primitive === "roundedBox"
             ? { shape: "roundedBox", width: feature.width, depth: feature.depth, height: feature.height, cornerRadius: feature.cornerRadius ?? 3 }
           : feature.primitive === "pyramid" || feature.primitive === "wedge" || feature.primitive === "roof" || feature.primitive === "roundRoof"
-            ? { shape: feature.primitive, width: feature.width, depth: feature.depth, height: feature.height }
+            ? { shape: feature.primitive, width: feature.width, depth: feature.depth, height: feature.height, topRadius: feature.topRadius ?? 0 }
           : feature.primitive === "polygon"
             ? { shape: "polygon", radius: feature.width / 2, sides: feature.sides ?? 6, height: feature.height }
           : feature.primitive === "gear"
@@ -814,7 +815,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
         : { shape: "box", width: baseWidth, depth: baseDepth, height: feature.distance },
     operationPreview: {
       shape: feature.kind === "primitive" ? feature.primitive : sketch!.profile.shape === "circle" ? "cylinder" : "box",
-      ...(feature.kind === "primitive" && feature.primitive === "cone" ? { topRadius: feature.topRadius ?? 0 } : {}),
+      ...(feature.kind === "primitive" && (feature.primitive === "cone" || feature.primitive === "pyramid") ? { topRadius: feature.topRadius ?? 0 } : {}),
       ...(feature.kind === "primitive" && feature.primitive === "tube" ? { innerRadius: feature.innerRadius ?? 6 } : {}),
       ...(feature.kind === "primitive" && feature.primitive === "roundedBox" ? { cornerRadius: feature.cornerRadius ?? 3 } : {}),
       ...(feature.kind === "primitive" && feature.primitive === "polygon" ? { sides: feature.sides ?? 6 } : {}),
@@ -1222,7 +1223,7 @@ export function updateParametricShapeParameter(
     } else if (feature.primitive === "cone" && parameter === "baseRadius") {
       feature.width = next * 2;
       feature.depth = next * 2;
-    } else if (feature.primitive === "cone" && parameter === "topRadius") {
+    } else if ((feature.primitive === "cone" || feature.primitive === "pyramid") && parameter === "topRadius") {
       feature.topRadius = Math.max(0, value);
     } else if (feature.primitive === "cone" && parameter === "height") {
       feature.height = next;
