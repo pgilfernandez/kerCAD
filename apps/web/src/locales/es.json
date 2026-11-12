@@ -127,6 +127,7 @@
     "grid.depth": "Profundo (eje Y)",
     "grid.step": "Separación de líneas",
     "grid.snapSpacing": "Separación del ajuste",
+    "grid.customSpacing": "Personalizado",
     "common.close": "Cerrar",
     "camera.positionTriad": "Triada de posición",
     "camera.rotationTriad": "Triada de rotación",

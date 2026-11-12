@@ -127,6 +127,7 @@
     "grid.depth": "Profondità (asse Y)",
     "grid.step": "Spaziatura delle linee",
     "grid.snapSpacing": "Passo di aggancio",
+    "grid.customSpacing": "Personalizzato",
     "common.close": "Vicino",
     "camera.positionTriad": "Terna di posizione",
     "camera.rotationTriad": "Terna di rotazione",

@@ -127,6 +127,7 @@
     "grid.depth": "Tiefe (Y-Achse)",
     "grid.step": "Linienabstand",
     "grid.snapSpacing": "Einrastabstand",
+    "grid.customSpacing": "Benutzerdefiniert",
     "common.close": "Schließen",
     "camera.positionTriad": "Positionsachsen",
     "camera.rotationTriad": "Rotationsachsen",

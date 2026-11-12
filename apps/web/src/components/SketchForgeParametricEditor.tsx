@@ -370,6 +370,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [notice, setNotice] = useState<Notice>(null);
   const [workplaneOpen, setWorkplaneOpen] = useState(false);
   const [snapSpacingOpen, setSnapSpacingOpen] = useState(false);
+  const focusSnapSpacingRef = useRef(false);
   const [workplaneDraft, setWorkplaneDraft] = useState(document.workplane);
   const [placingWorkplane, setPlacingWorkplane] = useState(false);
   const [editingMirrorPlaneId, setEditingMirrorPlaneId] = useState<string | null>(null);
@@ -4389,6 +4390,12 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               const active = Math.abs(document.workplane.snapSpacing - displayLengthToMillimeters(value, displayUnit)) < 0.000001;
               return <button type="button" key={value} className={active ? "active" : ""} aria-pressed={active} onClick={() => { updateGridSettings({ snapSpacing: displayLengthToMillimeters(value, displayUnit) }); setSnapSpacingOpen(false); }}>{value} {displayUnitLabel(displayUnit)}{active && <Check size={15} />}</button>;
             })}
+            <button type="button" onClick={() => {
+              setSnapSpacingOpen(false);
+              setWorkplaneDraft(document.workplane);
+              focusSnapSpacingRef.current = true;
+              setWorkplaneOpen(true);
+            }}>{t("grid.customSpacing")}</button>
           </div>}
         </div>
         {workplaneOpen ? <div data-kercad-popup="grid" className="kercad-workplane-popover">
@@ -4399,7 +4406,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             {(["width", "depth"] as const).map((axis) => <span key={`${axis}-${displayUnit}`} className="kercad-number-input"><input aria-label={t(axis === "width" ? "grid.width" : "grid.depth")} type="text" inputMode="text" min={millimetersToDisplayLength(1, displayUnit)} max={millimetersToDisplayLength(2000, displayUnit)} step={millimetersToDisplayLength(1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft[axis], displayUnit)} onBlur={(event) => commitGridNumber(event, axis, 1, 2000, workplaneDraft[axis])} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span>)}
           </div>
           <label><span>{t("grid.step")}</span><span className="kercad-number-input"><input key={`step-${displayUnit}`} type="text" inputMode="text" min={millimetersToDisplayLength(0.1, displayUnit)} max={millimetersToDisplayLength(200, displayUnit)} step={millimetersToDisplayLength(0.1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.gridStep, displayUnit)} onBlur={(event) => commitGridNumber(event, "gridStep", 0.1, 200, workplaneDraft.gridStep)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
-          <label><span>{t("grid.snapSpacing")}</span><span className="kercad-number-input"><input key={`snap-spacing-${displayUnit}`} type="text" inputMode="text" min={millimetersToDisplayLength(0.1, displayUnit)} max={millimetersToDisplayLength(10000, displayUnit)} step={millimetersToDisplayLength(0.1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.snapSpacing, displayUnit)} onBlur={(event) => commitGridNumber(event, "snapSpacing", 0.1, 10000, workplaneDraft.snapSpacing)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
+          <label><span>{t("grid.snapSpacing")}</span><span className="kercad-number-input"><input ref={(input) => { if (input && focusSnapSpacingRef.current) { focusSnapSpacingRef.current = false; input.focus(); input.select(); } }} aria-label={t("grid.snapSpacing")} key={`snap-spacing-${displayUnit}`} type="text" inputMode="text" min={millimetersToDisplayLength(0.1, displayUnit)} max={millimetersToDisplayLength(10000, displayUnit)} step={millimetersToDisplayLength(0.1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.snapSpacing, displayUnit)} onBlur={(event) => commitGridNumber(event, "snapSpacing", 0.1, 10000, workplaneDraft.snapSpacing)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
         </div> : null}
         <button
           className={`kercad-sidebar-mode-control ${modelSidebarMode}`}

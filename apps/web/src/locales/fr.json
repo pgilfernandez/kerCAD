@@ -127,6 +127,7 @@
     "grid.depth": "Profondeur (axe Y)",
     "grid.step": "Espacement des lignes",
     "grid.snapSpacing": "Pas d'accrochage",
+    "grid.customSpacing": "Personnalisé",
     "common.close": "Fermer",
     "camera.positionTriad": "Repère de position",
     "camera.rotationTriad": "Repère de rotation",

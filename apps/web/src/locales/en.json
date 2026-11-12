@@ -127,6 +127,7 @@
     "grid.depth": "Depth (Y axis)",
     "grid.step": "Line spacing",
     "grid.snapSpacing": "Snap spacing",
+    "grid.customSpacing": "Custom",
     "common.close": "Close",
     "camera.positionTriad": "Position triad",
     "camera.rotationTriad": "Rotation triad",
