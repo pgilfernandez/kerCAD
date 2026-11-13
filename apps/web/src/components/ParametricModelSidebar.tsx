@@ -2,7 +2,7 @@
 
 import { CylinderProfileButtons } from "@/components/CylinderProfileButtons";
 import { normalizeGeneratedPath, spiralTypes } from "@/lib/parametricPaths";
-import { platonicTypes, type PlatonicType } from "@/lib/platonicSolids";
+import { PlatonicTypeButtons } from "@/components/PlatonicTypeButtons";
 import { setSphereEllipsoidal } from "@/lib/parametricObjects";
 import type { GeneratedPath, SpiralType } from "@/types/parametric";
 
@@ -720,7 +720,7 @@ function ParametricFeatureInspector({
             <OperationModeButtons addOnly={requiresAddOperation(document, feature)} value={feature.operation} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "primitive") draft.operation = operation; })} />
           </div>
           <ShapeParametersSection>
-            {feature.primitive === "platonic" && <label><span>{t("platonic.type")}</span><select value={feature.platonicType ?? "tetrahedron"} onChange={(event) => onUpdate((draft) => { if (draft.kind === "primitive") draft.platonicType = event.target.value as PlatonicType; })}>{platonicTypes.map((type) => <option key={type} value={type}>{t(`platonic.${type}`)}</option>)}</select></label>}
+            {feature.primitive === "platonic" && <PlatonicTypeButtons value={feature.platonicType ?? "tetrahedron"} locale={locale} onChange={(type) => onUpdate((draft) => { if (draft.kind === "primitive") draft.platonicType = type; })} />}
             {feature.primitive === "sphere" && <CylinderProfileButtons sphere locale={locale} elliptical={Boolean(feature.ellipsoidal)} onChange={(enabled) => onUpdate((draft) => { if (draft.kind === "primitive") setSphereEllipsoidal(draft, enabled); })} />}
             {localizedParametricOperationDefinition(feature.primitive, locale).parameters.map((parameter) => (
               <BoundedNumberField

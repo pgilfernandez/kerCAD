@@ -1468,6 +1468,11 @@ button {
 .kercad-operation-mode-buttons { display: grid; width: 100%; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; }
 .kercad-operation-mode-buttons button { min-width: 0; height: 31px; padding: 3px; border-radius: 4px; }
 .kercad-operation-mode-buttons svg { width: 22px; height: 22px; }
+.kercad-platonic-type-buttons { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; width: 100%; margin-bottom: 10px; }
+.kercad-platonic-type-buttons button { display: grid; place-items: center; min-width: 0; height: 38px; padding: 3px; color: var(--theme-text); background: var(--theme-surface); border: 1px solid var(--theme-line-c5d6df); border-radius: 5px; cursor: pointer; }
+.kercad-platonic-type-buttons button:hover, .kercad-platonic-type-buttons button.active { color: var(--theme-link); background: var(--theme-bg-def5fb); border-color: var(--theme-line-6fc8df); }
+.kercad-platonic-type-buttons span { width: 100%; height: 100%; background: currentColor; mask: center / contain no-repeat; -webkit-mask: center / contain no-repeat; }
+.kercad-viewport-context-toolbar .kercad-platonic-type-buttons { width: auto; margin: 0; grid-template-columns: repeat(5, 42px); flex-shrink: 0; }
 .kercad-cylinder-profile-buttons { display: flex; width: 100%; gap: 4px; margin-bottom: 10px; }
 .kercad-cylinder-profile-buttons button { display: flex; align-items: center; justify-content: center; gap: 5px; flex: 1 1 0; min-width: 0; padding: 6px; border: 1px solid var(--theme-line-c5d6df); border-radius: 5px; background: var(--theme-surface); color: var(--theme-text); font: inherit; cursor: pointer; }
 .kercad-cylinder-profile-buttons button:hover, .kercad-cylinder-profile-buttons button.active { color: var(--theme-link); background: var(--theme-bg-def5fb); border-color: var(--theme-line-6fc8df); }

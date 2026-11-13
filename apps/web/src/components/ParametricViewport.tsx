@@ -2,6 +2,7 @@
 
 import { closestScreenHandleHit } from "@/lib/parameterHandlePicking";
 import { sketchOverlayPositions } from "@/lib/sketchOverlayGeometry";
+import { platonicPolyhedron, platonicDimensions, type PlatonicType } from "@/lib/platonicSolids";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAppTheme } from "@/lib/useAppTheme";
@@ -106,6 +107,7 @@ export type ViewportSelection = {
   resizeAspectRatio?: number;
   allowNegativeHeight?: boolean;
   shapeParameters?:
+    | { shape: "platonic"; size: number; height: number; platonicType: PlatonicType }
     | { shape: "box"; width: number; depth: number; height: number }
     | { shape: "roundedBox"; width: number; depth: number; height: number; cornerRadius: number }
     | { shape: "text"; size: number; height: number }
@@ -119,7 +121,9 @@ export type ViewportSelection = {
     | { shape: "gear"; outerRadius: number; toothDepth: number; boreRadius: number; teeth: number; height: number }
     | { shape: "halfSphere"; radius: number; height: number };
   operationPreview?: {
-    shape: "box" | "roundedBox" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear";
+    shape: "box" | "roundedBox" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear" | "platonic";
+    platonicType?: PlatonicType;
+    size?: number;
     topRadius?: number;
     innerRadius?: number;
     cornerRadius?: number;
@@ -315,6 +319,17 @@ function previewMaterial(quality: ViewportRenderQuality, shading: ViewportShadin
   return quality === "normal"
     ? new THREE.MeshStandardMaterial({ ...shared, roughness: 0.7 })
     : new THREE.MeshLambertMaterial(shared);
+}
+
+function platonicPreviewGeometry(type: PlatonicType, size: number, width: number, depth: number, height: number) {
+  const mesh = platonicPolyhedron(type, size), bounds = platonicDimensions(type, size);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(mesh.faces.flatMap((face) => face.flatMap((index) => {
+    const p = mesh.vertices[index];
+    return [p[0] * width / bounds.width, p[1] * depth / bounds.depth, (p[2] - bounds.height / 2) * height / bounds.height];
+  })), 3));
+  geometry.computeVertexNormals();
+  return geometry;
 }
 
 function pyramidPreviewGeometry(width: number, depth: number, height: number, topWidth: number) {
@@ -2306,7 +2321,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
             const value = parameter === "width" && boxLikeValues ? values.width
               : parameter === "depth" && boxLikeValues ? values.depth
                 : parameter === "height" && values && values.shape !== "sphere" && values.shape !== "torus" ? values.height
-                  : parameter === "size" && values?.shape === "text" ? values.size
+                  : parameter === "size" && (values?.shape === "text" || values?.shape === "platonic") ? values.size
                   : parameter === "radius3" && values?.shape === "sphere" ? values.radius3 ?? values.radius
                   : parameter === "radius2" && (values?.shape === "cylinder" || values?.shape === "sphere") ? values.radius2 ?? values.radius
                   : parameter === "radius" && (values?.shape === "cylinder" || values?.shape === "sphere" || values?.shape === "halfSphere" || values?.shape === "polygon") ? values.radius
@@ -2645,7 +2660,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
           : parameter === "topRadius" || parameter === "innerRadius" || parameter === "thickness" || parameter === "majorRadius" || parameter === "tubeRadius" || parameter === "cornerRadius" || parameter === "toothDepth" || parameter === "boreRadius"
             ? Math.max(0, Math.round(Math.abs(parameterAdjusted) / parameterStep) * parameterStep)
             : Math.max(parameterStep, Math.round(Math.abs(parameterAdjusted) * 2 / parameterStep) * parameterStep);
-        const startExtent = parameter === "depth" || parameter === "size" || parameter === "radius2" ? resizeStart.depth : parameter === "height" || parameter === "radius3" ? resizeStart.height : resizeStart.width;
+        const startExtent = parameter === "depth" || (parameter === "size" && selected.shapeParameters?.shape !== "platonic") || parameter === "radius2" ? resizeStart.depth : parameter === "height" || parameter === "radius3" ? resizeStart.height : resizeStart.width;
         let ratio = visualExtent / Math.max(0.01, startExtent);
         pendingShapeParameter.value = parameter === "sides" || parameter === "teeth"
           ? visualExtent
@@ -2672,7 +2687,10 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
         root.position.copy(resizeRootStart);
         visualRoot.position.set(0, 0, 0);
         visualRoot.scale.set(1, 1, 1);
-        if (selected.shapeParameters?.shape === "pyramid") {
+        if (selected.shapeParameters?.shape === "platonic") {
+          visualRoot.scale.setScalar(ratio);
+          visualRoot.position.z = resizeStart.height * (ratio - 1) / 2;
+        } else if (selected.shapeParameters?.shape === "pyramid") {
           const values = selected.shapeParameters;
           const width = parameter === "width" ? pendingShapeParameter.value : values.width;
           const depth = parameter === "depth" ? pendingShapeParameter.value : values.depth;
@@ -4095,7 +4113,9 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       const operationPreview = selection.operationPreview;
       const previewStyle = operationPreviewStyle(operationPreview.mode, operationPreview.historical);
       if (displayMode === "solid" && previewStyle.fillOpacity !== null) {
-        const previewGeometry = operationPreview.shape === "cylinder"
+        const previewGeometry = operationPreview.shape === "platonic"
+          ? platonicPreviewGeometry(operationPreview.platonicType ?? "tetrahedron", operationPreview.size ?? 20, selection.width, selection.depth, selection.height)
+          : operationPreview.shape === "cylinder"
           ? new THREE.CylinderGeometry(0.5, 0.5, selection.height, 64)
           : operationPreview.shape === "pyramid"
             ? pyramidPreviewGeometry(selection.width, selection.depth, selection.height, (operationPreview.topRadius ?? 0) * 2 * (selection.shapeParameters?.shape === "pyramid" ? selection.width / Math.max(0.01, selection.shapeParameters.width) : 1))
@@ -4139,7 +4159,12 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
           : 0;
         const radialSegments = previewParameters?.shape === "polygon" ? previewParameters.sides : previewParameters?.shape === "gear" ? previewParameters.teeth : 64;
         const cornerRadius = previewParameters?.shape === "roundedBox" ? previewParameters.cornerRadius * selection.width / Math.max(0.01, previewParameters.width) : 0;
-        lineGeometry.setPositions(operationPreviewWireframePositions(operationPreview.shape, selection.width, selection.depth, selection.height, topWidth, innerWidth, profileInsetWidth, radialSegments, cornerRadius));
+        if (operationPreview.shape === "platonic") {
+          const geometry = platonicPreviewGeometry(operationPreview.platonicType ?? "tetrahedron", operationPreview.size ?? 20, selection.width, selection.depth, selection.height);
+          const edges = new THREE.EdgesGeometry(geometry, 1);
+          lineGeometry.setPositions(Array.from(edges.getAttribute("position").array));
+          edges.dispose(); geometry.dispose();
+        } else lineGeometry.setPositions(operationPreviewWireframePositions(operationPreview.shape, selection.width, selection.depth, selection.height, topWidth, innerWidth, profileInsetWidth, radialSegments, cornerRadius));
         const preview = new LineSegments2(lineGeometry, new LineMaterial({ color: roleColor, linewidth: 2, depthTest: false, transparent: true, opacity: 1 }));
         preview.userData.operationPreviewWireframe = true;
         preview.renderOrder = 18;
@@ -4223,6 +4248,8 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       addParameterHandle("radius", "x", new THREE.Vector3(0, 0, baseZ), new THREE.Vector3(selection.width / 2 + 3, 0, baseZ));
       if (parameters.elliptical) addParameterHandle("radius2", "y", new THREE.Vector3(0, 0, baseZ), new THREE.Vector3(0, selection.depth / 2 + 3, baseZ), "y");
       addParameterHandle("height", "z", new THREE.Vector3(0, 0, baseZ), new THREE.Vector3(0, 0, heightEnd));
+    } else if (parameters?.shape === "platonic") {
+      addParameterHandle("size", "x", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(selection.width / 2 + 3, 0, -selection.height / 2), "x");
     } else if (parameters?.shape === "sphere") {
       addParameterHandle("radius", "x", new THREE.Vector3(0, 0, 0), new THREE.Vector3(selection.width / 2 + 3, 0, 0));
       if (parameters.ellipsoidal) {

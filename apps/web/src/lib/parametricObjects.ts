@@ -9,6 +9,7 @@ import type { WorkplaneShape } from "@/types/sketchforge";
 import { objectPlacementForWorkplane, operationPlacementForWorkplane, parametricRotationFromMatrix, parametricTransformMatrix } from "@/lib/parametricWorkplane";
 import { transformParametricObjectTopologyHints } from "@/lib/parametricTopology";
 import * as THREE from "three";
+import { platonicDimensions } from "@/lib/platonicSolids";
 
 export type SupportedPrimitive = ParametricPrimitiveKind;
 export function setSphereEllipsoidal(feature: PrimitiveFeature, enabled: boolean) {
@@ -778,13 +779,13 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
   const object = document.objects.find((candidate) => candidate.id === feature.objectId);
   const sketch = feature.kind === "extrude" ? sketchForExtrude(document, feature) : null;
   if (!object || (!includeUnavailable && (!object.visible || object.locked)) || (feature.kind === "extrude" && !sketch)) return null;
-  if (feature.kind === "primitive" && feature.primitive === "platonic") return null;
   if (feature.kind === "extrude" && (feature.endSketchId || feature.pathSketchId)) return null;
   const sketchSize = sketch ? sketchDimensions(sketch) : null;
   const textGenerator = sketch?.profile.shape === "drawn" && sketch.profile.geometry.generator?.kind === "text" ? sketch.profile.geometry.generator : null;
-  const baseWidth = feature.kind === "primitive" ? feature.width : sketchSize!.width;
-  const baseDepth = feature.kind === "primitive" ? feature.depth : sketchSize!.depth;
-  const baseHeight = feature.kind === "primitive" ? feature.height : Math.abs(feature.distance);
+  const platonic = feature.kind === "primitive" && feature.primitive === "platonic" ? platonicDimensions(feature.platonicType ?? "tetrahedron", feature.width) : null;
+  const baseWidth = platonic?.width ?? (feature.kind === "primitive" ? feature.width : sketchSize!.width);
+  const baseDepth = platonic?.depth ?? (feature.kind === "primitive" ? feature.depth : sketchSize!.depth);
+  const baseHeight = platonic?.height ?? (feature.kind === "primitive" ? feature.height : Math.abs(feature.distance));
   const world = operationWorldTransform(object, feature, baseHeight, sketchSize ? { x: sketchSize.centerX, y: sketchSize.centerY } : undefined, sketch);
   const width = baseWidth * object.transform.scale.x;
   const depth = baseDepth * object.transform.scale.y;
@@ -812,7 +813,9 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
     ...(feature.kind === "extrude" && sketch!.profile.shape === "circle" && !sketch!.profile.elliptical ? { resizeAspectRatio: 1 } : {}),
     ...(feature.kind === "extrude" ? { allowNegativeHeight: true } : {}),
     shapeParameters: feature.kind === "primitive"
-      ? feature.primitive === "cone"
+      ? feature.primitive === "platonic"
+        ? { shape: "platonic", size: feature.width, height: baseHeight, platonicType: feature.platonicType ?? "tetrahedron" }
+      : feature.primitive === "cone"
         ? { shape: "cone", baseRadius: feature.width / 2, topRadius: feature.topRadius ?? 0, height: feature.height }
         : feature.primitive === "tube"
           ? { shape: "tube", outerRadius: feature.width / 2, innerRadius: feature.innerRadius ?? 6, height: feature.height }
@@ -836,6 +839,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
         : { shape: "box", width: baseWidth, depth: baseDepth, height: feature.distance },
     operationPreview: {
       shape: feature.kind === "primitive" ? feature.primitive : sketch!.profile.shape === "circle" ? "cylinder" : "box",
+      ...(feature.kind === "primitive" && feature.primitive === "platonic" ? { platonicType: feature.platonicType ?? "tetrahedron", size: feature.width } : {}),
       ...(feature.kind === "primitive" && (feature.primitive === "cone" || feature.primitive === "pyramid") ? { topRadius: feature.topRadius ?? 0 } : {}),
       ...(feature.kind === "primitive" && feature.primitive === "tube" ? { innerRadius: feature.innerRadius ?? 6 } : {}),
       ...(feature.kind === "primitive" && feature.primitive === "roundedBox" ? { cornerRadius: feature.cornerRadius ?? 3 } : {}),
@@ -1222,7 +1226,9 @@ export function updateParametricShapeParameter(
   }
   const next = Math.max(0.1, value);
   if (feature.kind === "primitive") {
-    if (feature.primitive === "roundedBox" && parameter === "cornerRadius") {
+    if (feature.primitive === "platonic" && parameter === "size") {
+      feature.width = feature.depth = feature.height = next;
+    } else if (feature.primitive === "roundedBox" && parameter === "cornerRadius") {
       feature.cornerRadius = Math.min(feature.width / 2 - 0.1, feature.depth / 2 - 0.1, next);
     } else if (feature.primitive === "roundedBox" && parameter === "width") {
       feature.width = next;
