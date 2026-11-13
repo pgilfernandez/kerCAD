@@ -786,10 +786,11 @@ function ParametricFeatureInspector({
                     draft.width = (draft.majorRadius + (draft.tubeRadius ?? 4)) * 2;
                     draft.depth = draft.width;
                   } else if (parameter.key === "tubeRadius") {
+                    draft.tubeRadius2 ??= draft.tubeRadius ?? 4;
                     draft.tubeRadius = Math.min((draft.majorRadius ?? 12) - 0.1, Math.max(0.1, value));
                     draft.width = ((draft.majorRadius ?? 12) + draft.tubeRadius) * 2;
                     draft.depth = draft.width;
-                    draft.height = draft.tubeRadius * 2;
+                    draft.height = draft.tubeRadius2 * 2;
                   } else if (parameter.key === "cornerRadius") {
                     draft.cornerRadius = Math.min(draft.width / 2 - 0.1, draft.depth / 2 - 0.1, Math.max(0.1, value));
                   } else if ((parameter.key === "width" || parameter.key === "depth") && draft.primitive === "roundedBox") {
@@ -807,7 +808,10 @@ function ParametricFeatureInspector({
                 })}
               />
             ))}
-            {feature.primitive === "torus" && <BoundedNumberField label={t("property.angle")} value={feature.angle ?? 360} min={0} max={360} step={1} unit="°" onChange={(angle) => onUpdate((draft) => { if (draft.kind === "primitive") draft.angle = angle; })} />}
+            {feature.primitive === "torus" && <>
+              <BoundedNumberField label={t("cylinder.radius2")} value={feature.tubeRadius2 ?? feature.tubeRadius ?? 4} min={.1} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "primitive") { draft.tubeRadius2 = value; draft.height = value * 2; } })} />
+              <BoundedNumberField label={t("property.angle")} value={feature.angle ?? 360} min={0} max={360} step={1} unit="°" onChange={(angle) => onUpdate((draft) => { if (draft.kind === "primitive") draft.angle = angle; })} />
+            </>}
             {(feature.primitive === "sphere" || feature.primitive === "halfSphere") && feature.ellipsoidal && <>
               <BoundedNumberField label={t("cylinder.radius2")} value={feature.depth / 2} min={.1} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "primitive") draft.depth = value * 2; })} />
               <BoundedNumberField label={t("sphere.radius3")} value={feature.primitive === "halfSphere" ? feature.height : feature.height / 2} min={.1} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "primitive") draft.height = draft.primitive === "halfSphere" ? value : value * 2; })} />

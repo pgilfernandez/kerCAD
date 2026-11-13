@@ -91,6 +91,7 @@ export function resetParametricFeature(document: ParametricDocument, featureId: 
     feature.innerRadius = defaults.innerRadius;
     feature.majorRadius = defaults.majorRadius;
     feature.tubeRadius = defaults.tubeRadius;
+    feature.tubeRadius2 = defaults.tubeRadius2;
     feature.cornerRadius = defaults.cornerRadius;
     feature.sides = defaults.sides;
     feature.teeth = defaults.teeth;
@@ -824,7 +825,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
         : feature.primitive === "tube"
           ? { shape: "tube", outerRadius: feature.width / 2, innerRadius: feature.innerRadius ?? 6, height: feature.height }
           : feature.primitive === "torus"
-            ? { shape: "torus", majorRadius: feature.majorRadius ?? 12, tubeRadius: feature.tubeRadius ?? 4, angle: feature.angle ?? 360 }
+            ? { shape: "torus", majorRadius: feature.majorRadius ?? 12, tubeRadius: feature.tubeRadius ?? 4, radius2: feature.tubeRadius2 ?? feature.tubeRadius ?? 4, angle: feature.angle ?? 360 }
           : feature.primitive === "roundedBox"
             ? { shape: "roundedBox", width: feature.width, depth: feature.depth, height: feature.height, cornerRadius: feature.cornerRadius ?? 3 }
           : feature.primitive === "pyramid" || feature.primitive === "wedge" || feature.primitive === "roof" || feature.primitive === "roundRoof"
@@ -1277,11 +1278,15 @@ export function updateParametricShapeParameter(
       feature.majorRadius = Math.max((feature.tubeRadius ?? 4) + 0.1, next);
       feature.width = (feature.majorRadius + (feature.tubeRadius ?? 4)) * 2;
       feature.depth = feature.width;
+    } else if (feature.primitive === "torus" && parameter === "radius2") {
+      feature.tubeRadius2 = next;
+      feature.height = next * 2;
     } else if (feature.primitive === "torus" && parameter === "tubeRadius") {
+      feature.tubeRadius2 ??= feature.tubeRadius ?? 4;
       feature.tubeRadius = Math.min((feature.majorRadius ?? 12) - 0.1, next);
       feature.width = ((feature.majorRadius ?? 12) + feature.tubeRadius) * 2;
       feature.depth = feature.width;
-      feature.height = feature.tubeRadius * 2;
+      feature.height = feature.tubeRadius2 * 2;
     } else if ((feature.primitive === "pyramid" || feature.primitive === "wedge" || feature.primitive === "roof" || feature.primitive === "roundRoof") && parameter === "width") {
       feature.width = next;
     } else if ((feature.primitive === "pyramid" || feature.primitive === "wedge" || feature.primitive === "roof" || feature.primitive === "roundRoof") && parameter === "depth") {

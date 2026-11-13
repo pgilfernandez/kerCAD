@@ -115,7 +115,7 @@ export type ViewportSelection = {
     | { shape: "sphere"; radius: number; radius2?: number; radius3?: number; ellipsoidal?: boolean }
     | { shape: "cone"; baseRadius: number; topRadius: number; height: number }
     | { shape: "tube"; outerRadius: number; innerRadius: number; height: number }
-    | { shape: "torus"; majorRadius: number; tubeRadius: number; angle?: number }
+    | { shape: "torus"; majorRadius: number; tubeRadius: number; radius2: number; angle?: number }
     | { shape: "pyramid" | "wedge" | "roof" | "roundRoof"; width: number; depth: number; height: number; topRadius?: number }
     | { shape: "polygon"; radius: number; sides: number; height: number }
     | { shape: "gear"; outerRadius: number; toothDepth: number; boreRadius: number; teeth: number; height: number }
@@ -1990,15 +1990,15 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
         else if (role === "handle" || role === "target") child.position.copy(end);
       });
     };
-    const updateTorusPreview = (selected: ViewportSelection, majorRadius: number, tubeRadius: number) => {
+    const updateTorusPreview = (selected: ViewportSelection, majorRadius: number, tubeRadius: number, radius2: number) => {
       if (selected.shapeParameters?.shape !== "torus") return;
       const sweepAngle = selected.shapeParameters.angle ?? 360;
       const originalOuterRadius = selected.shapeParameters.majorRadius + selected.shapeParameters.tubeRadius;
       const radialScale = selected.width / Math.max(0.01, originalOuterRadius * 2);
-      const heightScale = selected.height / Math.max(0.01, selected.shapeParameters.tubeRadius * 2);
+      const heightScale = selected.height / Math.max(0.01, selected.shapeParameters.radius2 * 2);
       const worldMajorRadius = majorRadius * radialScale;
       const worldTubeRadius = tubeRadius * radialScale;
-      const worldHalfHeight = tubeRadius * heightScale;
+      const worldHalfHeight = radius2 * heightScale;
       const worldWidth = (worldMajorRadius + worldTubeRadius) * 2;
       const depthScale = selected.depth / Math.max(0.01, originalOuterRadius * 2);
       const worldDepth = (majorRadius + tubeRadius) * depthScale * 2;
@@ -2006,7 +2006,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       if (!visualRoot) return;
       visualRoot.traverse((child) => {
         if (child.userData.operationPreviewWireframe && child instanceof LineSegments2) {
-          child.geometry.setPositions(operationPreviewWireframePositions("torus", worldWidth, worldDepth, worldHalfHeight * 2, worldWidth, 0, 0, 64, 0, sweepAngle));
+          child.geometry.setPositions(operationPreviewWireframePositions("torus", worldWidth, worldDepth, worldHalfHeight * 2, worldWidth, 0, worldTubeRadius * 2, 64, 0, sweepAngle));
         }
         if (child.userData.torusPreviewFill && child instanceof THREE.Mesh) {
           child.geometry.dispose();
@@ -2016,7 +2016,8 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
         const role = child.userData.shapeParameterVisualRole as "guide" | "handle" | "target" | undefined;
         if (!parameter || !role) return;
         const end = parameter === "majorRadius"
-          ? new THREE.Vector3(worldMajorRadius + worldHalfHeight + 3, 0, 0)
+          ? new THREE.Vector3(0, worldMajorRadius + worldTubeRadius + 3, 0)
+          : parameter === "tubeRadius" ? new THREE.Vector3(worldMajorRadius + worldTubeRadius + 3, 0, 0)
           : new THREE.Vector3(worldMajorRadius, 0, worldHalfHeight + 3);
         if (role === "guide" && child instanceof LineSegments2) {
           const start = parameter === "majorRadius" ? new THREE.Vector3(0, 0, 0) : new THREE.Vector3(worldMajorRadius, 0, 0);
@@ -2285,8 +2286,8 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
             const values = selected.shapeParameters;
             shapeParameterWorldScale = (parameter === "sides" && values?.shape === "polygon") || (parameter === "teeth" && values?.shape === "gear")
               ? 1
-              : parameter === "tubeRadius" && values?.shape === "torus"
-              ? selected.height / Math.max(0.01, values.tubeRadius * 2)
+              : parameter === "radius2" && values?.shape === "torus"
+              ? selected.height / Math.max(0.01, values.radius2 * 2)
               : parameter === "cornerRadius" && values?.shape === "roundedBox"
                 ? Math.min(selected.width / Math.max(0.01, values.width), selected.depth / Math.max(0.01, values.depth)) * (Math.SQRT2 - 1)
               : parameter === "topRadius" && values?.shape === "pyramid"
@@ -2318,6 +2319,8 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
                     ? values.majorRadius * shapeParameterWorldScale
                   : parameter === "tubeRadius" && values?.shape === "torus"
                     ? values.tubeRadius * shapeParameterWorldScale
+                  : parameter === "radius2" && values?.shape === "torus"
+                    ? values.radius2 * shapeParameterWorldScale
                   : parameter === "cornerRadius" && values?.shape === "roundedBox"
                     ? values.cornerRadius * shapeParameterWorldScale
                   : parameter === "sides" && values?.shape === "polygon"
@@ -2339,6 +2342,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
                   : parameter === "size" && (values?.shape === "text" || values?.shape === "platonic") ? values.size
                   : parameter === "radius3" && values?.shape === "halfSphere" ? values.height
                   : parameter === "radius3" && values?.shape === "sphere" ? values.radius3 ?? values.radius
+                  : parameter === "radius2" && values?.shape === "torus" ? values.radius2
                   : parameter === "radius2" && (values?.shape === "cylinder" || values?.shape === "sphere" || values?.shape === "halfSphere") ? values.radius2 ?? values.radius
                   : parameter === "radius" && (values?.shape === "cylinder" || values?.shape === "sphere" || values?.shape === "halfSphere" || values?.shape === "polygon") ? values.radius
                     : parameter === "baseRadius" && values?.shape === "cone" ? values.baseRadius
@@ -2673,7 +2677,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
           ? Math.max(parameterStep, Math.round((parameterAdjusted + resizeStart.height / 2) / parameterStep) * parameterStep)
           : signedHeightDrag
             ? Math.abs(parameterAdjusted - signedHeightBaseCoordinate)
-          : parameter === "topRadius" || parameter === "innerRadius" || parameter === "thickness" || parameter === "majorRadius" || parameter === "tubeRadius" || parameter === "cornerRadius" || parameter === "toothDepth" || parameter === "boreRadius"
+          : parameter === "topRadius" || parameter === "innerRadius" || parameter === "thickness" || parameter === "majorRadius" || parameter === "tubeRadius" || (parameter === "radius2" && selected.shapeParameters?.shape === "torus") || parameter === "cornerRadius" || parameter === "toothDepth" || parameter === "boreRadius"
             ? Math.max(0, Math.round(Math.abs(parameterAdjusted) / parameterStep) * parameterStep)
             : Math.max(parameterStep, Math.round(Math.abs(parameterAdjusted) * 2 / parameterStep) * parameterStep);
         const startExtent = parameter === "depth" || (parameter === "size" && selected.shapeParameters?.shape !== "platonic") || parameter === "radius2" ? resizeStart.depth : parameter === "height" || parameter === "radius3" ? resizeStart.height : resizeStart.width;
@@ -2686,7 +2690,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
                 const snapped = Math.round(rawValue / parameterStep) * parameterStep;
                 return Math.abs(snapped) < parameterStep ? (rawValue < 0 ? -parameterStep : parameterStep) : snapped;
               })()
-          : parameter === "topRadius" || parameter === "innerRadius" || parameter === "thickness" || parameter === "majorRadius" || parameter === "tubeRadius" || parameter === "cornerRadius" || parameter === "toothDepth" || parameter === "boreRadius"
+          : parameter === "topRadius" || parameter === "innerRadius" || parameter === "thickness" || parameter === "majorRadius" || parameter === "tubeRadius" || (parameter === "radius2" && selected.shapeParameters?.shape === "torus") || parameter === "cornerRadius" || parameter === "toothDepth" || parameter === "boreRadius"
           ? visualExtent / Math.max(0.0001, shapeParameterWorldScale)
           : Math.max(0.1, shapeParameterStartValue * ratio);
         if (signedHeightDrag) {
@@ -2742,9 +2746,10 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
         } else if (selected.shapeParameters?.shape === "torus") {
           const majorRadius = parameter === "majorRadius" ? Math.max(selected.shapeParameters.tubeRadius + 0.1, pendingShapeParameter.value) : selected.shapeParameters.majorRadius;
           const tubeRadius = parameter === "tubeRadius" ? Math.min(selected.shapeParameters.majorRadius - 0.1, Math.max(0.1, pendingShapeParameter.value)) : selected.shapeParameters.tubeRadius;
-          pendingShapeParameter.value = parameter === "majorRadius" ? majorRadius : tubeRadius;
+          const radius2 = parameter === "radius2" ? Math.max(.1, pendingShapeParameter.value) : selected.shapeParameters.radius2;
+          pendingShapeParameter.value = parameter === "majorRadius" ? majorRadius : parameter === "tubeRadius" ? tubeRadius : radius2;
           shapeParameterPreviewRef.current = pendingShapeParameter;
-          updateTorusPreview(selected, majorRadius, tubeRadius);
+          updateTorusPreview(selected, majorRadius, tubeRadius, radius2);
         } else if (selected.shapeParameters?.shape === "polygon" && parameter === "sides") {
           pendingShapeParameter.value = Math.min(32, Math.max(3, Math.round(pendingShapeParameter.value)));
           shapeParameterPreviewRef.current = pendingShapeParameter;
@@ -4188,6 +4193,8 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
           : 0;
         const profileInsetWidth = previewParameters?.shape === "gear"
           ? previewParameters.toothDepth * selection.width / Math.max(0.01, previewParameters.outerRadius * 2)
+          : previewParameters?.shape === "torus"
+            ? previewParameters.tubeRadius * selection.width / Math.max(.01, previewParameters.majorRadius + previewParameters.tubeRadius)
           : 0;
         const radialSegments = previewParameters?.shape === "polygon" ? previewParameters.sides : previewParameters?.shape === "gear" ? previewParameters.teeth : 64;
         const cornerRadius = previewParameters?.shape === "roundedBox" ? previewParameters.cornerRadius * selection.width / Math.max(0.01, previewParameters.width) : 0;
@@ -4319,8 +4326,10 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
     } else if (parameters?.shape === "torus") {
       const radialScale = selection.width / Math.max(0.01, (parameters.majorRadius + parameters.tubeRadius) * 2);
       const majorRadius = parameters.majorRadius * radialScale;
-      addParameterHandle("majorRadius", "x", new THREE.Vector3(0, 0, 0), new THREE.Vector3(majorRadius + selection.height / 2 + 3, 0, 0));
-      addParameterHandle("tubeRadius", "z", new THREE.Vector3(majorRadius, 0, 0), new THREE.Vector3(majorRadius, 0, selection.height / 2 + 3), "z");
+      const tubeRadius = parameters.tubeRadius * radialScale;
+      addParameterHandle("majorRadius", "y", new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, majorRadius + tubeRadius + 3, 0), "y");
+      addParameterHandle("tubeRadius", "x", new THREE.Vector3(majorRadius, 0, 0), new THREE.Vector3(majorRadius + tubeRadius + 3, 0, 0));
+      addParameterHandle("radius2", "z", new THREE.Vector3(majorRadius, 0, 0), new THREE.Vector3(majorRadius, 0, selection.height / 2 + 3), "z");
     }
     model.add(root);
     selectionRootRef.current = root;

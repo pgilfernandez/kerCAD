@@ -601,7 +601,8 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
         feature.tubeRadius = Math.min(feature.majorRadius - 0.1, Math.max(0.1, Number.isFinite(feature.tubeRadius) ? feature.tubeRadius! : 4));
         feature.width = (feature.majorRadius + feature.tubeRadius) * 2;
         feature.depth = feature.width;
-        feature.height = feature.tubeRadius * 2;
+        feature.tubeRadius2 = Math.max(0.1, Number.isFinite(feature.tubeRadius2) ? feature.tubeRadius2! : feature.tubeRadius);
+        feature.height = feature.tubeRadius2 * 2;
       }
       if (feature.primitive === "polygon") feature.sides = Math.min(32, Math.max(3, Math.round(Number.isFinite(feature.sides) ? feature.sides! : 6)));
       if (feature.primitive === "gear") {

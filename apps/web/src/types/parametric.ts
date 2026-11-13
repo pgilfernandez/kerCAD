@@ -127,6 +127,7 @@ export type PrimitiveFeature = BaseFeature & {
   innerRadius?: number;
   majorRadius?: number;
   tubeRadius?: number;
+  tubeRadius2?: number;
   cornerRadius?: number;
   sides?: number;
   teeth?: number;

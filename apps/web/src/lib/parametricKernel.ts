@@ -461,11 +461,12 @@ function solidFromPrimitive(brep: Brep, feature: PrimitiveFeature): AnySolid {
   } else if (feature.primitive === "torus") {
     const tubeRadius = feature.tubeRadius ?? 4;
     const angle = torusSweepAngle(feature.angle);
-    if (angle === 360) solid = brep.torus(feature.majorRadius ?? 12, tubeRadius, { at: [0, 0, 0] });
+    const radius2 = feature.tubeRadius2 ?? tubeRadius;
+    if (angle === 360 && radius2 === tubeRadius) solid = brep.torus(feature.majorRadius ?? 12, tubeRadius, { at: [0, 0, 0] });
     else {
-      const edge = brep.circle(tubeRadius, { at: [feature.majorRadius ?? 12, 0, 0], axis: [0, 1, 0] });
-      const wire = brep.unwrap(brep.wireLoop([edge]));
-      const face = brep.unwrap(brep.face(wire as Parameters<Brep["face"]>[0]));
+      const profile = circleProfileFace(brep, { shape: "circle", diameter: tubeRadius * 2, elliptical: radius2 !== tubeRadius, radius2 });
+      const upright = brep.rotate(profile, 90, { axis: [1, 0, 0] });
+      const face = brep.translate(upright, [feature.majorRadius ?? 12, 0, 0]);
       solid = brep.unwrap(brep.revolve(face as Parameters<Brep["revolve"]>[0], { axis: [0, 0, 1], at: [0, 0, 0], angle: angle * Math.PI / 180 })) as AnySolid;
     }
   } else if (feature.primitive === "pyramid" || feature.primitive === "wedge" || feature.primitive === "roof") {

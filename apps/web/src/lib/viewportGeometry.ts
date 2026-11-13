@@ -171,8 +171,8 @@ export function operationPreviewWireframePositions(shape: "box" | "roundedBox" |
   if (shape === "torus") {
     const sweep = Math.min(360, Math.max(0, sweepAngle)) * Math.PI / 180;
     if (sweep === 0) return positions;
-    const minorX = height / 2;
-    const minorY = height / 2;
+    const minorX = profileInsetWidth > 0 ? profileInsetWidth / 2 : height / 2;
+    const minorY = minorX * depth / Math.max(.01, width);
     const majorX = Math.max(0.01, halfWidth - minorX);
     const majorY = Math.max(0.01, halfDepth - minorY);
     for (const radialSign of [-1, 1]) {
