@@ -4,6 +4,7 @@ import { ChallengeIcon } from "@/components/ChallengeIcon";
 import { CylinderProfileButtons } from "@/components/CylinderProfileButtons";
 import { ToolbarSweepIcon } from "@/components/icons";
 import { ThemedToolbarImage } from "@/components/ThemedToolbarImage";
+import { sketchOverlayPositions } from "@/lib/sketchOverlayGeometry";
 
 import { DashboardBrandLogo } from "@/components/DashboardBrandLogo";
 
@@ -1224,9 +1225,24 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     const visibleIds = new Set(document.objects.filter((object) => object.visible !== false).map((object) => object.id));
     const records = [...build.objectRecords, ...referenceObjectRecords].filter((record) => visibleIds.has(record.objectId));
     const meshes = records.filter((record) => !record.reference?.image).map((record) => record.mesh);
+    const sketchEdges = document.features.flatMap((candidate) => {
+      if (candidate.kind !== "sketch" || candidate.id === sketchSession.featureId || candidate.purpose !== "user" || candidate.suppressed || !candidate.visible) return [];
+      const owner = document.objects.find((item) => item.id === candidate.objectId);
+      if (owner?.visible === false) return [];
+      const placement = worldToSketch.clone()
+        .multiply(owner ? parametricTransformMatrix(owner.transform) : new THREE.Matrix4())
+        .multiply(parametricTransformMatrix({ position: { x: candidate.x, y: candidate.y, z: candidate.offset }, rotation: candidate.rotation }));
+      const source = sketchOverlayPositions(candidate, 0);
+      const point = new THREE.Vector3();
+      for (let i = 0; i + 2 < source.length; i += 3) {
+        point.set(source[i], source[i + 1], source[i + 2]).applyMatrix4(placement);
+        source[i] = point.x; source[i + 1] = point.y; source[i + 2] = point.z;
+      }
+      return source;
+    });
     const positions = new Float32Array(meshes.reduce((count, mesh) => count + mesh.positions.length, 0));
     const indices = new Uint32Array(meshes.reduce((count, mesh) => count + mesh.indices.length, 0));
-    const edges = new Float32Array(meshes.reduce((count, mesh) => count + mesh.edges.length, 0));
+    const edges = new Float32Array(meshes.reduce((count, mesh) => count + mesh.edges.length, 0) + sketchEdges.length);
     let positionOffset = 0, indexOffset = 0, edgeOffset = 0;
     for (const mesh of meshes) {
       positions.set(transformPositions(mesh.positions), positionOffset);
@@ -1236,6 +1252,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       indexOffset += mesh.indices.length;
       edgeOffset += mesh.edges.length;
     }
+    edges.set(sketchEdges, edgeOffset);
     const images: NonNullable<SketchSceneReference["images"]> = [];
     for (const record of records) {
       const image = record.reference?.image;
