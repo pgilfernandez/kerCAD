@@ -5,8 +5,8 @@ export type ParametricBooleanRole = "add" | "cut" | "intersect";
 
 export const parametricShapeMenuOrder: readonly (ParametricPrimitiveKind | "text" | "spiral" | "helix")[] = [
   "box", "roundedBox", "cylinder", "tube", "cone", "pyramid", "polygon",
-  "wedge", "roof", "roundRoof", "torus", "sphere", "halfSphere", "text", "gear",
-  "spiral", "helix", "platonic",
+  "wedge", "roof", "roundRoof", "torus", "sphere", "halfSphere", "text", "platonic", "gear",
+  "spiral", "helix",
 ];
 
 export type ParametricParameterDefinition = {
