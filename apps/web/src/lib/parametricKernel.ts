@@ -461,7 +461,7 @@ function solidFromPrimitive(brep: Brep, feature: PrimitiveFeature): AnySolid {
   } else if (feature.primitive === "torus") {
     const tubeRadius = feature.tubeRadius ?? 4;
     const angle = torusSweepAngle(feature.angle);
-    const radius2 = feature.tubeRadius2 ?? tubeRadius;
+    const radius2 = feature.ellipsoidal ? feature.tubeRadius2 ?? tubeRadius : tubeRadius;
     if (angle === 360 && radius2 === tubeRadius) solid = brep.torus(feature.majorRadius ?? 12, tubeRadius, { at: [0, 0, 0] });
     else {
       const profile = circleProfileFace(brep, { shape: "circle", diameter: tubeRadius * 2, elliptical: radius2 !== tubeRadius, radius2 });

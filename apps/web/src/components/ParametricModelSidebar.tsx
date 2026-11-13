@@ -3,7 +3,7 @@
 import { CylinderProfileButtons } from "@/components/CylinderProfileButtons";
 import { normalizeGeneratedPath, spiralTypes } from "@/lib/parametricPaths";
 import { PlatonicTypeButtons } from "@/components/PlatonicTypeButtons";
-import { setSphereEllipsoidal } from "@/lib/parametricObjects";
+import { setSphereEllipsoidal, setTorusElliptical } from "@/lib/parametricObjects";
 import type { GeneratedPath, SpiralType } from "@/types/parametric";
 
 import { OperationTreeIcon } from "@/components/OperationTreeIcon";
@@ -721,6 +721,7 @@ function ParametricFeatureInspector({
           </div>
           <ShapeParametersSection>
             {feature.primitive === "platonic" && <PlatonicTypeButtons value={feature.platonicType ?? "tetrahedron"} locale={locale} onChange={(type) => onUpdate((draft) => { if (draft.kind === "primitive") draft.platonicType = type; })} />}
+            {feature.primitive === "torus" && <CylinderProfileButtons locale={locale} elliptical={Boolean(feature.ellipsoidal)} onChange={(enabled) => onUpdate((draft) => { if (draft.kind === "primitive") setTorusElliptical(draft, enabled); })} />}
             {(feature.primitive === "sphere" || feature.primitive === "halfSphere") && <CylinderProfileButtons sphere hemisphere={feature.primitive === "halfSphere"} locale={locale} elliptical={Boolean(feature.ellipsoidal)} onChange={(enabled) => onUpdate((draft) => { if (draft.kind === "primitive") setSphereEllipsoidal(draft, enabled); })} />}
             {localizedParametricOperationDefinition(feature.primitive, locale).parameters.filter((parameter) => !(feature.primitive === "halfSphere" && feature.ellipsoidal && parameter.key === "height")).map((parameter) => (
               <BoundedNumberField
@@ -788,6 +789,7 @@ function ParametricFeatureInspector({
                   } else if (parameter.key === "tubeRadius") {
                     draft.tubeRadius2 ??= draft.tubeRadius ?? 4;
                     draft.tubeRadius = Math.min((draft.majorRadius ?? 12) - 0.1, Math.max(0.1, value));
+                    if (!draft.ellipsoidal) draft.tubeRadius2 = draft.tubeRadius;
                     draft.width = ((draft.majorRadius ?? 12) + draft.tubeRadius) * 2;
                     draft.depth = draft.width;
                     draft.height = draft.tubeRadius2 * 2;
@@ -809,7 +811,7 @@ function ParametricFeatureInspector({
               />
             ))}
             {feature.primitive === "torus" && <>
-              <BoundedNumberField label={t("cylinder.radius2")} value={feature.tubeRadius2 ?? feature.tubeRadius ?? 4} min={.1} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "primitive") { draft.tubeRadius2 = value; draft.height = value * 2; } })} />
+              {feature.ellipsoidal && <BoundedNumberField label={t("cylinder.radius2")} value={feature.tubeRadius2 ?? feature.tubeRadius ?? 4} min={.1} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "primitive") { draft.tubeRadius2 = value; draft.height = value * 2; } })} />}
               <BoundedNumberField label={t("property.angle")} value={feature.angle ?? 360} min={0} max={360} step={1} unit="°" onChange={(angle) => onUpdate((draft) => { if (draft.kind === "primitive") draft.angle = angle; })} />
             </>}
             {(feature.primitive === "sphere" || feature.primitive === "halfSphere") && feature.ellipsoidal && <>

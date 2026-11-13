@@ -115,7 +115,7 @@ export type ViewportSelection = {
     | { shape: "sphere"; radius: number; radius2?: number; radius3?: number; ellipsoidal?: boolean }
     | { shape: "cone"; baseRadius: number; topRadius: number; height: number }
     | { shape: "tube"; outerRadius: number; innerRadius: number; height: number }
-    | { shape: "torus"; majorRadius: number; tubeRadius: number; radius2: number; angle?: number }
+    | { shape: "torus"; majorRadius: number; tubeRadius: number; radius2: number; elliptical: boolean; angle?: number }
     | { shape: "pyramid" | "wedge" | "roof" | "roundRoof"; width: number; depth: number; height: number; topRadius?: number }
     | { shape: "polygon"; radius: number; sides: number; height: number }
     | { shape: "gear"; outerRadius: number; toothDepth: number; boreRadius: number; teeth: number; height: number }
@@ -2746,7 +2746,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
         } else if (selected.shapeParameters?.shape === "torus") {
           const majorRadius = parameter === "majorRadius" ? Math.max(selected.shapeParameters.tubeRadius + 0.1, pendingShapeParameter.value) : selected.shapeParameters.majorRadius;
           const tubeRadius = parameter === "tubeRadius" ? Math.min(selected.shapeParameters.majorRadius - 0.1, Math.max(0.1, pendingShapeParameter.value)) : selected.shapeParameters.tubeRadius;
-          const radius2 = parameter === "radius2" ? Math.max(.1, pendingShapeParameter.value) : selected.shapeParameters.radius2;
+          const radius2 = !selected.shapeParameters.elliptical ? tubeRadius : parameter === "radius2" ? Math.max(.1, pendingShapeParameter.value) : selected.shapeParameters.radius2;
           pendingShapeParameter.value = parameter === "majorRadius" ? majorRadius : parameter === "tubeRadius" ? tubeRadius : radius2;
           shapeParameterPreviewRef.current = pendingShapeParameter;
           updateTorusPreview(selected, majorRadius, tubeRadius, radius2);
@@ -4329,7 +4329,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       const tubeRadius = parameters.tubeRadius * radialScale;
       addParameterHandle("majorRadius", "y", new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, majorRadius + tubeRadius + 3, 0), "y");
       addParameterHandle("tubeRadius", "x", new THREE.Vector3(majorRadius, 0, 0), new THREE.Vector3(majorRadius + tubeRadius + 3, 0, 0));
-      addParameterHandle("radius2", "z", new THREE.Vector3(majorRadius, 0, 0), new THREE.Vector3(majorRadius, 0, selection.height / 2 + 3), "z");
+      if (parameters.elliptical) addParameterHandle("radius2", "z", new THREE.Vector3(majorRadius, 0, 0), new THREE.Vector3(majorRadius, 0, selection.height / 2 + 3), "z");
     }
     model.add(root);
     selectionRootRef.current = root;

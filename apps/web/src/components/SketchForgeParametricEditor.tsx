@@ -6,7 +6,7 @@ import { ToolbarSweepIcon } from "@/components/icons";
 import { ThemedToolbarImage } from "@/components/ThemedToolbarImage";
 import { sketchOverlayPositions } from "@/lib/sketchOverlayGeometry";
 import { adjacentSweepSketchPair } from "@/lib/sweepInputSelection";
-import { setSphereEllipsoidal } from "@/lib/parametricObjects";
+import { setSphereEllipsoidal, setTorusElliptical } from "@/lib/parametricObjects";
 import { PlatonicTypeButtons } from "@/components/PlatonicTypeButtons";
 
 import { DashboardBrandLogo } from "@/components/DashboardBrandLogo";
@@ -4252,7 +4252,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
             <Tool label={t("camera.rotationTriad")} active={showRotationTriad} onClick={() => setShowRotationTriad((visible) => !visible)}><ToolbarRotationManipulatorIcon /></Tool>
             {selectionKind === "feature" && <Tool className="kercad-parameter-handles-toggle" label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>}
-            {selectedFeature?.kind === "primitive" && selectedFeature.primitive === "torus" && <ViewportFloatingNumberInput value={selectedFeature.angle ?? 360} unit="angle" displayUnit={displayUnit} snap={1} label={t("property.angle")} min={0} max={360} onCommit={(angle) => updateFeature(selectedFeature.id, (feature) => { if (feature.kind === "primitive") feature.angle = angle; })} />}
+            {selectedFeature?.kind === "primitive" && selectedFeature.primitive === "torus" && <>
+              <CylinderProfileButtons locale={locale} elliptical={Boolean(selectedFeature.ellipsoidal)} onChange={(enabled) => updateFeature(selectedFeature.id, (feature) => { if (feature.kind === "primitive") setTorusElliptical(feature, enabled); })} />
+              <ViewportFloatingNumberInput value={selectedFeature.angle ?? 360} unit="angle" displayUnit={displayUnit} snap={1} label={t("property.angle")} min={0} max={360} onCommit={(angle) => updateFeature(selectedFeature.id, (feature) => { if (feature.kind === "primitive") feature.angle = angle; })} />
+            </>}
             {selectedFeature?.kind === "primitive" && selectedFeature.primitive === "platonic" && <>
               <PlatonicTypeButtons value={selectedFeature.platonicType ?? "tetrahedron"} locale={locale} onChange={(type) => updateFeature(selectedFeature.id, (feature) => { if (feature.kind === "primitive") feature.platonicType = type; })} />
               <ViewportFloatingNumberInput value={selectedFeature.width} unit="length" displayUnit={displayUnit} snap={document.workplane.snapSpacing} label={t("property.size")} min={.1} max={200} onCommit={(size) => mutate((draft) => updateParametricShapeParameter(draft, selectedFeature.id, "size", size))} />

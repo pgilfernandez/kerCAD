@@ -12,6 +12,12 @@ import * as THREE from "three";
 import { platonicDimensions } from "@/lib/platonicSolids";
 
 export type SupportedPrimitive = ParametricPrimitiveKind;
+export function setTorusElliptical(feature: PrimitiveFeature, enabled: boolean) {
+  if (feature.primitive !== "torus") return;
+  if (!enabled || !feature.ellipsoidal) feature.tubeRadius2 = feature.tubeRadius ?? 4;
+  feature.ellipsoidal = enabled;
+  feature.height = (feature.tubeRadius2 ?? feature.tubeRadius ?? 4) * 2;
+}
 export function setSphereEllipsoidal(feature: PrimitiveFeature, enabled: boolean) {
   if (feature.primitive !== "sphere" && feature.primitive !== "halfSphere") return;
   if (!enabled || !feature.ellipsoidal) {
@@ -825,7 +831,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
         : feature.primitive === "tube"
           ? { shape: "tube", outerRadius: feature.width / 2, innerRadius: feature.innerRadius ?? 6, height: feature.height }
           : feature.primitive === "torus"
-            ? { shape: "torus", majorRadius: feature.majorRadius ?? 12, tubeRadius: feature.tubeRadius ?? 4, radius2: feature.tubeRadius2 ?? feature.tubeRadius ?? 4, angle: feature.angle ?? 360 }
+            ? { shape: "torus", majorRadius: feature.majorRadius ?? 12, tubeRadius: feature.tubeRadius ?? 4, radius2: feature.ellipsoidal ? feature.tubeRadius2 ?? feature.tubeRadius ?? 4 : feature.tubeRadius ?? 4, elliptical: Boolean(feature.ellipsoidal), angle: feature.angle ?? 360 }
           : feature.primitive === "roundedBox"
             ? { shape: "roundedBox", width: feature.width, depth: feature.depth, height: feature.height, cornerRadius: feature.cornerRadius ?? 3 }
           : feature.primitive === "pyramid" || feature.primitive === "wedge" || feature.primitive === "roof" || feature.primitive === "roundRoof"
@@ -1279,11 +1285,13 @@ export function updateParametricShapeParameter(
       feature.width = (feature.majorRadius + (feature.tubeRadius ?? 4)) * 2;
       feature.depth = feature.width;
     } else if (feature.primitive === "torus" && parameter === "radius2") {
+      if (!feature.ellipsoidal) return;
       feature.tubeRadius2 = next;
       feature.height = next * 2;
     } else if (feature.primitive === "torus" && parameter === "tubeRadius") {
       feature.tubeRadius2 ??= feature.tubeRadius ?? 4;
       feature.tubeRadius = Math.min((feature.majorRadius ?? 12) - 0.1, next);
+      if (!feature.ellipsoidal) feature.tubeRadius2 = feature.tubeRadius;
       feature.width = ((feature.majorRadius ?? 12) + feature.tubeRadius) * 2;
       feature.depth = feature.width;
       feature.height = feature.tubeRadius2 * 2;
