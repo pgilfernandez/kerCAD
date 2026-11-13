@@ -140,7 +140,7 @@ export const parametricOperationCatalog: ParametricOperationDefinition[] = [
     kind: "wedge",
     name: sourcePrimitive("wedge").name,
     description: sourcePrimitive("wedge").description,
-    menuIcon: "assets/sketchforge/shape-icons-gray/wedge.png",
+    menuIcon: "assets/kercad/toolbar-3d/shapes/wedge.svg",
     roles: roles("wedge"),
     parameters: [dimension("width", sourceParameter("wedge", "width")), dimension("depth", sourceParameter("wedge", "depth")), dimension("height", sourceParameter("wedge", "height"))],
   },
