@@ -115,11 +115,12 @@ export type ExtrudeFeature = BaseFeature & {
 
 export type PrimitiveFeature = BaseFeature & {
   kind: "primitive";
-  primitive: "roundedBox" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear";
+  primitive: "roundedBox" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear" | "platonic";
   width: number;
   depth: number;
   height: number;
   topRadius?: number;
+  platonicType?: import("@/lib/platonicSolids").PlatonicType;
   innerRadius?: number;
   majorRadius?: number;
   tubeRadius?: number;

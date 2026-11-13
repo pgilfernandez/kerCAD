@@ -165,6 +165,12 @@
     "path.type.fermat": "Fermat",
     "path.onlyPath": "Esta curva es un camino para barridos, no un perfil cerrado para sólidos.",
     "path.editParameters": "Edita esta curva mediante sus parámetros de forma en el panel lateral.",
+    "platonic.type": "Tipo",
+    "platonic.tetrahedron": "Tetraedro",
+    "platonic.cube": "Cubo",
+    "platonic.octahedron": "Octaedro",
+    "platonic.dodecahedron": "Dodecaedro",
+    "platonic.icosahedron": "Icosaedro",
     "common.close": "Cerrar",
     "camera.positionTriad": "Triada de posición",
     "camera.rotationTriad": "Triada de rotación",
@@ -1834,6 +1840,18 @@
       ]
     },
     "primitives": {
+      "platonic": {
+        "name": "Sólido platónico",
+        "description": "Sólido platónico",
+        "parameters": {
+          "width": "Tamaño"
+        },
+        "roles": {
+          "add": "Añadir",
+          "cut": "Hueco",
+          "intersect": "Común"
+        }
+      },
       "box": {
         "name": "Caja",
         "description": "Prisma rectangular paramétrico",

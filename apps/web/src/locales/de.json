@@ -165,6 +165,12 @@
     "path.type.fermat": "Fermat",
     "path.onlyPath": "Diese Kurve ist ein Sweep-Pfad, kein geschlossenes Profil für Volumenkörper.",
     "path.editParameters": "Bearbeite diese Kurve über ihre Formparameter im Seitenbereich.",
+    "platonic.type": "Typ",
+    "platonic.tetrahedron": "Tetraeder",
+    "platonic.cube": "Würfel",
+    "platonic.octahedron": "Oktaeder",
+    "platonic.dodecahedron": "Dodekaeder",
+    "platonic.icosahedron": "Ikosaeder",
     "common.close": "Schließen",
     "camera.positionTriad": "Positionsachsen",
     "camera.rotationTriad": "Rotationsachsen",
@@ -1834,6 +1840,18 @@
       ]
     },
     "primitives": {
+      "platonic": {
+        "name": "Platonischer Körper",
+        "description": "Platonischer Körper",
+        "parameters": {
+          "width": "Größe"
+        },
+        "roles": {
+          "add": "Hinzufügen",
+          "cut": "Bohrung",
+          "intersect": "Schnittmenge"
+        }
+      },
       "box": {
         "name": "Quader",
         "description": "Parametrischer Quader",

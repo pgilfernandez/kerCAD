@@ -165,6 +165,12 @@
     "path.type.fermat": "Fermat",
     "path.onlyPath": "Questa curva è un percorso di scansione, non un profilo chiuso per solidi.",
     "path.editParameters": "Modifica questa curva tramite i parametri della forma nel pannello laterale.",
+    "platonic.type": "Tipo",
+    "platonic.tetrahedron": "Tetraedro",
+    "platonic.cube": "Cubo",
+    "platonic.octahedron": "Ottaedro",
+    "platonic.dodecahedron": "Dodecaedro",
+    "platonic.icosahedron": "Icosaedro",
     "common.close": "Vicino",
     "camera.positionTriad": "Terna di posizione",
     "camera.rotationTriad": "Terna di rotazione",
@@ -1834,6 +1840,18 @@
       ]
     },
     "primitives": {
+      "platonic": {
+        "name": "Solido platonico",
+        "description": "Solido platonico",
+        "parameters": {
+          "width": "Dimensione"
+        },
+        "roles": {
+          "add": "Aggiungere",
+          "cut": "Foro",
+          "intersect": "Intersezione"
+        }
+      },
       "box": {
         "name": "Parallelepipedo",
         "description": "Prisma rettangolare parametrico",

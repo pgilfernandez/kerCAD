@@ -1,5 +1,6 @@
 import { normalizeDisplayUnit } from "@/lib/parametricUnits";
 import { normalizeGeneratedPath } from "@/lib/parametricPaths";
+import { platonicTypes } from "@/lib/platonicSolids";
 import { KERCAD_LOCALES, kercadTranslate, uiText } from "@/lib/kercadI18n";
 import { nextAnnotationName } from "@/lib/annotationNames";
 import { annotationEnding, setAnnotationEnding } from "@/lib/annotationEndings";
@@ -175,6 +176,7 @@ export function createPrimitiveFeature(primitive: PrimitiveFeature["primitive"],
     depth: 20,
     height: 20,
     ...(primitive === "roundedBox" ? { cornerRadius: 3 } : {}),
+    ...(primitive === "platonic" ? { platonicType: "tetrahedron" as const } : {}),
     ...(primitive === "cone" || primitive === "pyramid" ? { topRadius: 0 } : {}),
     ...(primitive === "tube" ? { innerRadius: 6 } : {}),
     ...(primitive === "torus" ? { majorRadius: 12, tubeRadius: 4, width: 32, depth: 32, height: 8 } : {}),
@@ -587,6 +589,7 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
       feature.dependencies = [{ type: "object", id: feature.sourceObjectId }];
     }
     if (feature.kind === "primitive") {
+      if (feature.primitive === "platonic" && !platonicTypes.includes(feature.platonicType!)) feature.platonicType = "tetrahedron";
       feature.width = Math.max(0.1, Number.isFinite(feature.width) ? feature.width : 20);
       feature.depth = Math.max(0.1, Number.isFinite(feature.depth) ? feature.depth : 20);
       feature.height = Math.max(0.1, Number.isFinite(feature.height) ? feature.height : 20);

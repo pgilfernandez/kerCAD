@@ -2,6 +2,7 @@ import { loadBrepWithOcct, type Brep, type BrepSolid } from "@/lib/brepKernel";
 import type { ParametricBuildProgress } from "@/lib/parametricBuildProgress";
 import { uiText } from "@/lib/kercadI18n";
 import * as THREE from "three";
+import { platonicPolyhedron } from "@/lib/platonicSolids";
 import { fibonacciPathArcs, generatedPathPoints, normalizeGeneratedPath } from "@/lib/parametricPaths";
 import { shellWithCorners } from "@/lib/shellKernel";
 import { gearOutlinePoints } from "@/lib/parametricGearProfile";
@@ -439,7 +440,10 @@ function solidFromPrimitive(brep: Brep, feature: PrimitiveFeature): AnySolid {
     throw new Error(`${feature.name}: tooth depth and bore radius do not fit within the outer radius.`);
   }
   let solid: AnySolid;
-  if (feature.primitive === "roundedBox") {
+  if (feature.primitive === "platonic") {
+    const mesh = platonicPolyhedron(feature.platonicType ?? "tetrahedron", feature.width);
+    solid = polyhedronSolid(brep, mesh.vertices, mesh.faces);
+  } else if (feature.primitive === "roundedBox") {
     const cornerRadius = feature.cornerRadius ?? 3;
     if (cornerRadius <= 0 || cornerRadius >= Math.min(feature.width, feature.depth) / 2) throw new Error(`${feature.name}: radius must be smaller than half the width and depth.`);
     solid = brep.sketchRoundedRectangle(feature.width, feature.depth, cornerRadius).extrude(feature.height) as AnySolid;

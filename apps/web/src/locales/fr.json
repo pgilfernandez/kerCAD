@@ -165,6 +165,12 @@
     "path.type.fermat": "Fermat",
     "path.onlyPath": "Cette courbe est un chemin de balayage, pas un profil fermé pour solides.",
     "path.editParameters": "Modifiez cette courbe avec ses paramètres de forme dans le panneau latéral.",
+    "platonic.type": "Type",
+    "platonic.tetrahedron": "Tétraèdre",
+    "platonic.cube": "Cube",
+    "platonic.octahedron": "Octaèdre",
+    "platonic.dodecahedron": "Dodécaèdre",
+    "platonic.icosahedron": "Icosaèdre",
     "common.close": "Fermer",
     "camera.positionTriad": "Repère de position",
     "camera.rotationTriad": "Repère de rotation",
@@ -1834,6 +1840,18 @@
       ]
     },
     "primitives": {
+      "platonic": {
+        "name": "Solide de Platon",
+        "description": "Solide de Platon",
+        "parameters": {
+          "width": "Taille"
+        },
+        "roles": {
+          "add": "Ajouter",
+          "cut": "Trou",
+          "intersect": "Intersection"
+        }
+      },
       "box": {
         "name": "Pavé",
         "description": "Prisme rectangulaire paramétrique",

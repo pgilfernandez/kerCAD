@@ -76,6 +76,7 @@ export function resetParametricFeature(document: ParametricDocument, featureId: 
     feature.operation = defaults.operation;
     feature.transform = defaults.transform;
     feature.topRadius = defaults.topRadius;
+    feature.platonicType = defaults.platonicType;
     feature.innerRadius = defaults.innerRadius;
     feature.majorRadius = defaults.majorRadius;
     feature.tubeRadius = defaults.tubeRadius;
@@ -197,7 +198,7 @@ export function addPrimitive(
   const object = document.objects.find((candidate) => candidate.id === objectId);
   if (!object) return null;
   const count = document.features.filter((feature) => feature.kind !== "sketch").length + 1;
-  if (kind === "roundedBox" || kind === "sphere" || kind === "cone" || kind === "tube" || kind === "halfSphere" || kind === "torus" || kind === "pyramid" || kind === "wedge" || kind === "roof" || kind === "roundRoof" || kind === "polygon" || kind === "gear") {
+  if (kind === "roundedBox" || kind === "sphere" || kind === "cone" || kind === "tube" || kind === "halfSphere" || kind === "torus" || kind === "pyramid" || kind === "wedge" || kind === "roof" || kind === "roundRoof" || kind === "polygon" || kind === "gear" || kind === "platonic") {
     const definition = parametricOperationDefinition(kind);
     const primitive = createPrimitiveFeature(kind, count);
     primitive.objectId = objectId;
@@ -697,7 +698,7 @@ export function workplaneShapeForObject(document: ParametricDocument, id: string
   return {
     id: object.id,
     name: object.name,
-    kind: feature.kind === "primitive" ? feature.primitive === "roundedBox" ? "box" : feature.primitive : sketch!.profile.shape === "rectangle" ? "box" : "cylinder",
+    kind: feature.kind === "primitive" ? (feature.primitive === "roundedBox" || feature.primitive === "platonic") ? "box" : feature.primitive : sketch!.profile.shape === "rectangle" ? "box" : "cylinder",
     color: object.color,
     hole: feature.operation === "cut",
     x: world.x,
@@ -771,6 +772,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
   const object = document.objects.find((candidate) => candidate.id === feature.objectId);
   const sketch = feature.kind === "extrude" ? sketchForExtrude(document, feature) : null;
   if (!object || (!includeUnavailable && (!object.visible || object.locked)) || (feature.kind === "extrude" && !sketch)) return null;
+  if (feature.kind === "primitive" && feature.primitive === "platonic") return null;
   if (feature.kind === "extrude" && (feature.endSketchId || feature.pathSketchId)) return null;
   const sketchSize = sketch ? sketchDimensions(sketch) : null;
   const textGenerator = sketch?.profile.shape === "drawn" && sketch.profile.geometry.generator?.kind === "text" ? sketch.profile.geometry.generator : null;

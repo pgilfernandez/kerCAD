@@ -1,12 +1,12 @@
 import { getLocaleContent, type KercadLocale } from "@/lib/kercadI18n";
 
-export type ParametricPrimitiveKind = "box" | "roundedBox" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear";
+export type ParametricPrimitiveKind = "box" | "roundedBox" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear" | "platonic";
 export type ParametricBooleanRole = "add" | "cut" | "intersect";
 
 export const parametricShapeMenuOrder: readonly (ParametricPrimitiveKind | "text" | "spiral" | "helix")[] = [
   "box", "roundedBox", "cylinder", "tube", "cone", "pyramid", "polygon",
   "wedge", "roof", "roundRoof", "torus", "sphere", "halfSphere", "text", "gear",
-  "spiral", "helix",
+  "spiral", "helix", "platonic",
 ];
 
 export type ParametricParameterDefinition = {
@@ -52,6 +52,14 @@ const count = (key: "sides" | "teeth", label: string, defaultValue: number, min:
 });
 
 export const parametricOperationCatalog: ParametricOperationDefinition[] = [
+  {
+    kind: "platonic",
+    name: sourcePrimitive("platonic").name,
+    description: sourcePrimitive("platonic").description,
+    menuIcon: "assets/kercad/toolbar-3d/shapes/platonic.svg",
+    roles: roles("platonic"),
+    parameters: [dimension("width", sourceParameter("platonic", "width"), 20)],
+  },
   {
     kind: "box",
     name: sourcePrimitive("box").name,

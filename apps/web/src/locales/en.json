@@ -165,6 +165,12 @@
     "path.type.fermat": "Fermat",
     "path.onlyPath": "This curve is a sweep path, not a closed solid profile.",
     "path.editParameters": "Edit this curve using its shape parameters in the side panel.",
+    "platonic.type": "Type",
+    "platonic.tetrahedron": "Tetrahedron",
+    "platonic.cube": "Cube",
+    "platonic.octahedron": "Octahedron",
+    "platonic.dodecahedron": "Dodecahedron",
+    "platonic.icosahedron": "Icosahedron",
     "common.close": "Close",
     "camera.positionTriad": "Position triad",
     "camera.rotationTriad": "Rotation triad",
@@ -1834,6 +1840,18 @@
       ]
     },
     "primitives": {
+      "platonic": {
+        "name": "Platonic solid",
+        "description": "Platonic solid",
+        "parameters": {
+          "width": "Size"
+        },
+        "roles": {
+          "add": "Add",
+          "cut": "Hole",
+          "intersect": "Common"
+        }
+      },
       "box": {
         "name": "Box",
         "description": "Parametric rectangular prism",

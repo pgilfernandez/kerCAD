@@ -2,6 +2,7 @@
 
 import { CylinderProfileButtons } from "@/components/CylinderProfileButtons";
 import { normalizeGeneratedPath, spiralTypes } from "@/lib/parametricPaths";
+import { platonicTypes, type PlatonicType } from "@/lib/platonicSolids";
 import type { GeneratedPath, SpiralType } from "@/types/parametric";
 
 import { OperationTreeIcon } from "@/components/OperationTreeIcon";
@@ -475,7 +476,7 @@ function FeatureIcon({ document, feature }: { document: ParametricDocument; feat
   if (feature.kind === "primitive") {
     const definition = localizedParametricOperationDefinition(feature.primitive, locale);
     const role = feature.operation === "cut" ? "hole" : feature.operation === "intersect" ? "common" : "add";
-    return <span className={`kercad-operation-icon ${role}`} role="img" aria-label={`${definition.name}: ${definition.roles[feature.operation].label}`}><OperationTreeIcon file="circle" size={17} /><small aria-hidden="true"><OperationTreeIcon file={role === "add" ? "add" : role === "hole" ? "cut" : "common"} size={8} /></small></span>;
+    return <span className={`kercad-operation-icon ${role}`} role="img" aria-label={`${definition.name}: ${definition.roles[feature.operation].label}`}><OperationTreeIcon file="circle" src={feature.primitive === "platonic" ? "/assets/kercad/toolbar-3d/shapes/platonic.svg" : undefined} size={17} /><small aria-hidden="true"><OperationTreeIcon file={role === "add" ? "add" : role === "hole" ? "cut" : "common"} size={8} /></small></span>;
   }
   if (feature.kind === "importedStep") return <OperationTreeIcon file="imported-step" className="imported-step" size={16} role="img" aria-label={t("operation.importedStep")} />;
   if (feature.kind === "hole") return <OperationTreeIcon file="hole" className="drill-hole" size={16} role="img" aria-label={t("operation.hole")} />;
@@ -718,6 +719,7 @@ function ParametricFeatureInspector({
             <OperationModeButtons addOnly={requiresAddOperation(document, feature)} value={feature.operation} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "primitive") draft.operation = operation; })} />
           </div>
           <ShapeParametersSection>
+            {feature.primitive === "platonic" && <label><span>{t("platonic.type")}</span><select value={feature.platonicType ?? "tetrahedron"} onChange={(event) => onUpdate((draft) => { if (draft.kind === "primitive") draft.platonicType = event.target.value as PlatonicType; })}>{platonicTypes.map((type) => <option key={type} value={type}>{t(`platonic.${type}`)}</option>)}</select></label>}
             {localizedParametricOperationDefinition(feature.primitive, locale).parameters.map((parameter) => (
               <BoundedNumberField
                 key={parameter.key}
@@ -751,6 +753,7 @@ function ParametricFeatureInspector({
                 unit={parameter.unit}
                 onChange={(value) => onUpdate((draft) => {
                   if (draft.kind !== "primitive") return;
+                  if (draft.primitive === "platonic") { draft.width = value; draft.depth = value; draft.height = value; return; }
                   if (parameter.key === "radius") {
                     draft.width = value * 2;
                     draft.depth = value * 2;
