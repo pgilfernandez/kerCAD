@@ -1953,8 +1953,8 @@
         }
       },
       "torus": {
-        "name": "Toro",
-        "description": "Toro paramétrico exacto con radios mayor y de tubo editables",
+        "name": "Toroide",
+        "description": "Toroide paramétrico exacto con radios mayor y de tubo editables",
         "parameters": {
           "majorRadius": "Radio",
           "tubeRadius": "Espesor"
