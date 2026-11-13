@@ -72,6 +72,18 @@ html[data-theme="dark"] .sketch-constraints text { fill: var(--accent-shade-9ac6
 html[data-theme="dark"] .kercad-toolbar-scroll-indicator { background-color: var(--theme-surface); }
 
 /* Status messages use quiet dark surfaces, with color reserved for accents. */
+html[data-theme="dark"] :is(.kercad-workplane-settings-button, .kercad-workplane-snap-button, .kercad-challenge-reopen) {
+  box-sizing: border-box;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  min-height: 42px;
+  padding: 0;
+}
+html[data-theme="dark"] .kercad-workplane-settings-button > span {
+  width: 24px !important;
+  height: 24px !important;
+}
 html[data-theme="dark"] :is(.kercad-background-process.regenerating, .kercad-topology-selection-status, .editor-toast) {
   color: var(--theme-text);
   background: var(--theme-surface);
