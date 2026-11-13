@@ -173,6 +173,11 @@ function localizeNewDocumentEntries(previous: ParametricDocument, next: Parametr
     const index = next.features.filter((candidate) => candidate.kind === feature.kind).findIndex((candidate) => candidate.id === feature.id) + 1;
     if (feature.kind === "primitive") feature.name = localizedParametricOperationDefinition(feature.primitive, locale).name;
     else if (feature.kind === "sketch") {
+      if (feature.generatedPath) {
+        const pathIndex = next.features.filter((candidate) => candidate.kind === "sketch" && candidate.generatedPath?.kind === feature.generatedPath?.kind).findIndex((candidate) => candidate.id === feature.id) + 1;
+        feature.name = `${uiText(feature.generatedPath.kind === "spiral" ? "path.spiral" : "path.helix", {}, locale)} ${pathIndex}`;
+        return;
+      }
       const generator = feature.profile.shape === "drawn" ? feature.profile.geometry.generator?.kind : null;
       feature.name = generator === "text" ? (uiText("ui.sketchforgeparametriceditor.text.profile.879b35", {}, locale)) : generator === "scribble" ? uiText("operation.scribbleProfile", {}, locale) : `${uiText("operation.sketch", {}, locale)} ${index}`;
     } else if (feature.kind === "extrude") {

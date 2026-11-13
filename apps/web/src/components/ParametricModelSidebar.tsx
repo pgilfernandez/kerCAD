@@ -309,7 +309,7 @@ export function ParametricModelSidebar({
                             <span className="kercad-operation-name"><strong>{feature.name}</strong></span>
                           </button>
                           <div className="kercad-tree-actions">
-                            {feature.kind === "sketch" ? <button aria-label={`${feature.visible ? t("model.hide") : t("model.show")} ${feature.name}`} title={feature.visible ? t("model.hideSketch") : t("model.showSketch")} aria-pressed={!feature.visible} onClick={() => onUpdateFeature(feature.id, (draft) => { if (draft.kind === "sketch") draft.visible = !draft.visible; })}>{feature.visible ? <OperationTreeIcon file="visible" size={15} /> : <OperationTreeIcon file="hidden" size={15} />}</button> : null}
+                            {feature.kind === "sketch" ? <button aria-label={`${feature.visible ? t("model.hide") : t("model.show")} ${feature.name}`} title={feature.generatedPath ? t(feature.visible ? "model.hide" : "model.show") : feature.visible ? t("model.hideSketch") : t("model.showSketch")} aria-pressed={!feature.visible} onClick={() => onUpdateFeature(feature.id, (draft) => { if (draft.kind === "sketch") draft.visible = !draft.visible; })}>{feature.visible ? <OperationTreeIcon file="visible" size={15} /> : <OperationTreeIcon file="hidden" size={15} />}</button> : null}
                             <button aria-label={`${feature.suppressed ? t("model.activate") : t("model.suppress")} ${feature.name}`} title={feature.suppressed ? t("model.activate") : t("model.suppress")} aria-pressed={feature.suppressed} onClick={() => onUpdateFeature(feature.id, (draft) => { draft.suppressed = !draft.suppressed; })}><OperationTreeIcon file="suppressed" size={15} /></button>
                           </div>
                         </div>
@@ -462,6 +462,7 @@ function AnnotationColorPicker({ color, onChange }: { color: string; onChange: (
 function FeatureIcon({ document, feature }: { document: ParametricDocument; feature: ParametricFeature }) {
   const locale = useContext(LocaleContext);
   const t = (key: KercadTranslationKey) => kercadTranslate(locale, key);
+  if (feature.kind === "sketch" && feature.generatedPath) return <OperationTreeIcon file={feature.generatedPath.kind} src={`/assets/kercad/toolbar-3d/shapes/${feature.generatedPath.kind}.svg`} size={17} role="img" aria-label={t(feature.generatedPath.kind === "spiral" ? "path.spiral" : "path.helix")} />;
   if (feature.kind === "sketch") return <OperationTreeIcon file="sketch" className="sketch" size={16} role="img" aria-label={t("operation.sketch")} />;
   if (feature.kind === "extrude") {
     const sketch = sketchForExtrude(document, feature);

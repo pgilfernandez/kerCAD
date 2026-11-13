@@ -1,5 +1,6 @@
 import { normalizeDisplayUnit } from "@/lib/parametricUnits";
 import { normalizeGeneratedPath } from "@/lib/parametricPaths";
+import { KERCAD_LOCALES, kercadTranslate, uiText } from "@/lib/kercadI18n";
 import { nextAnnotationName } from "@/lib/annotationNames";
 import { annotationEnding, setAnnotationEnding } from "@/lib/annotationEndings";
 import type {
@@ -458,7 +459,19 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
 
   for (const feature of next.features) {
     if (feature.kind === "sketch") {
-      if (feature.generatedPath) feature.generatedPath = normalizeGeneratedPath(feature.generatedPath);
+      if (feature.generatedPath) {
+        feature.generatedPath = normalizeGeneratedPath(feature.generatedPath);
+        // Repair names assigned by the old generic sketch localizer, while
+        // leaving custom names untouched.
+        const genericName = KERCAD_LOCALES.some((locale) => {
+          const prefix = `${kercadTranslate(locale, "operation.sketch")} `;
+          return feature.name.startsWith(prefix) && /^\d+$/.test(feature.name.slice(prefix.length));
+        });
+        if (genericName) {
+          const index = next.features.filter((candidate) => candidate.kind === "sketch" && candidate.generatedPath?.kind === feature.generatedPath?.kind).findIndex((candidate) => candidate.id === feature.id) + 1;
+          feature.name = `${uiText(feature.generatedPath.kind === "spiral" ? "path.spiral" : "path.helix")} ${index}`;
+        }
+      }
       feature.annotations = normalizeParametricAnnotations(feature.annotations);
       feature.visible = typeof feature.visible === "boolean" ? feature.visible : true;
       feature.purpose ??= feature.profile.shape === "drawn" ? "user" : "primitive";
