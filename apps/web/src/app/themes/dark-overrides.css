@@ -164,12 +164,21 @@ html[data-theme="dark"] .kercad-challenge-card .challenge-copy > em {
   color: #a5a9b0;
 }
 
-/* Challenge authoring/player: floating, docked and compact share dark surfaces.
+/* Challenge authoring/player: floating and docked share dark surfaces.
    Keep these overrides scoped to dark mode; light artwork and photos stay intact. */
 html[data-theme="dark"] .kercad-challenge-player {
+  --theme-text: #fff;
+  --theme-text-muted: #fff;
+  --theme-dark-link: #fff;
   color: var(--theme-text);
   background: var(--theme-page);
   border-color: var(--theme-border);
+}
+html[data-theme="dark"] :is(.kercad-challenge-player > header strong, .kercad-challenge-step h2, .kercad-challenge-step dt, .kercad-challenge-parameter-separator) {
+  color: #fff;
+}
+html[data-theme="dark"] :is(.kercad-challenge-player > header small, .kercad-challenge-step > small, .kercad-challenge-progress) {
+  color: var(--accent-solid);
 }
 html[data-theme="dark"] .kercad-challenge-player > :is(header, footer) {
   color: var(--theme-text);
@@ -195,9 +204,12 @@ html[data-theme="dark"] :is(.kercad-challenge-player > header nav button, .kerca
   border-color: var(--theme-border);
 }
 html[data-theme="dark"] :is(.kercad-challenge-player > header nav button.active, .kercad-challenge-player > footer button.insert, .kercad-challenge-categories > span) {
-  color: var(--theme-link);
+  color: var(--accent-solid);
   background: var(--theme-active);
   border-color: var(--theme-border);
+}
+html[data-theme="dark"] :is(.kercad-challenge-category-input button, .kercad-challenge-parameter-editor > header button, .kercad-challenge-capture-actions button) {
+  color: var(--accent-solid);
 }
 html[data-theme="dark"] :is(.kercad-challenge-player > header nav button, .kercad-challenge-player > footer button, .kercad-challenge-category-input button, .kercad-challenge-parameter-editor > header button, .kercad-challenge-parameter-controls button, .kercad-challenge-capture-actions button):not(:disabled):hover,
 html[data-theme="dark"] .kercad-challenge-categories > span button:hover {
