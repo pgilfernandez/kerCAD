@@ -184,6 +184,10 @@ function localizeNewDocumentEntries(previous: ParametricDocument, next: Parametr
       feature.name = generator === "text" ? (uiText("ui.sketchforgeparametriceditor.text.profile.879b35", {}, locale)) : generator === "scribble" ? uiText("operation.scribbleProfile", {}, locale) : `${uiText("operation.sketch", {}, locale)} ${index}`;
     } else if (feature.kind === "extrude") {
       const sketch = next.features.find((candidate) => candidate.kind === "sketch" && candidate.id === feature.sketchId);
+      if (!feature.pathSketchId && !feature.endSketchId && sketch?.kind === "sketch" && sketch.purpose === "primitive" && (sketch.profile.shape === "circle" || sketch.profile.shape === "rectangle")) {
+        feature.name = localizedParametricOperationDefinition(sketch.profile.shape === "circle" ? "cylinder" : "box", locale).name;
+        return;
+      }
       const generator = sketch?.kind === "sketch" && sketch.profile.shape === "drawn" ? sketch.profile.geometry.generator?.kind : null;
       feature.name = generator === "text" ? (uiText("sidebar.text", {}, locale)) : generator === "scribble" ? uiText("operation.scribble", {}, locale) : `${uiText("ui.sketchforgeparametriceditor.extrusion.f1a195", {}, locale)} ${index}`;
     }
