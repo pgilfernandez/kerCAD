@@ -2127,7 +2127,9 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
           revolvePointerAngle = THREE.MathUtils.radToDeg(Math.atan2(pointer.dot(tangent), pointer.dot(revolveReferenceWorld)));
           revolveAccumulatedAngle = 0;
           interaction = "revolveAngle";
-          revolveGuideScale = (Number(revolveLayer.userData.radius) || 10) / 0.576;
+          revolveGuideScale = Math.max(0.35, camera instanceof THREE.OrthographicCamera
+            ? orthographicTouchTargetWorldSize(camera.top - camera.bottom, camera.zoom, renderer.domElement.clientHeight, 102)
+            : perspectiveTouchTargetWorldSize(camera.position.distanceTo(revolveOriginWorld), camera.fov, renderer.domElement.clientHeight, 102));
           const guide = rotationGuideAt(revolveOriginWorld, revolveAxisWorld, revolveReferenceWorld, revolveGuideScale);
           revolveGuide = guide.group;
           revolveGuideHighlight = guide.highlight;
@@ -3343,7 +3345,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
     }
     layer.userData.minAngle = revolveHandle.minAngle ?? -360;
     layer.userData.maxAngle = revolveHandle.maxAngle ?? 360;
-    const radius = Math.max(6, revolveHandle.radius);
+    const radius = Math.max(0.01, revolveHandle.radius);
     const arc = new LineSegments2(new LineSegmentsGeometry(), new LineMaterial({ color: 0xd6a600, linewidth: 2, depthTest: false, depthWrite: false, transparent: true, opacity: 0.92 }));
     updateRevolveAngleArc(arc, radius, revolveHandle.angle);
     arc.userData.revolveAngleArc = true;

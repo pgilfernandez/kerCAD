@@ -2668,7 +2668,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       const matrix = parametricTransformMatrix(object.transform).multiply(parametricTransformMatrix(selectedFeature.transform));
       const origin = new THREE.Vector3().applyMatrix4(matrix), axis = new THREE.Vector3(0, 0, 1).transformDirection(matrix);
       const reference = new THREE.Vector3(1, 0, 0).transformDirection(matrix);
-      return { origin, axis, referenceDirection: reference, angle: selectedFeature.angle ?? 360, radius: (selectedBox?.width ?? 32) / 2 + 4, minAngle: 0, maxAngle: 360 };
+      const radius = new THREE.Vector3(selectedFeature.majorRadius ?? 12, 0, 0).applyMatrix4(matrix).distanceTo(origin);
+      return { origin, axis, referenceDirection: reference, angle: selectedFeature.angle ?? 360, radius, minAngle: 0, maxAngle: 360 };
     }
     if (selectedFeature.kind === "polarPattern") {
       const placement = patternHandlePlacement(object, selectedFeature.axis, selectedFeature.center);
