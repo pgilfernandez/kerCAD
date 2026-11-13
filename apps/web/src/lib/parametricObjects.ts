@@ -86,6 +86,7 @@ export function resetParametricFeature(document: ParametricDocument, featureId: 
     feature.transform = defaults.transform;
     feature.topRadius = defaults.topRadius;
     feature.ellipsoidal = defaults.ellipsoidal;
+    feature.angle = defaults.angle;
     feature.platonicType = defaults.platonicType;
     feature.innerRadius = defaults.innerRadius;
     feature.majorRadius = defaults.majorRadius;
@@ -823,7 +824,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
         : feature.primitive === "tube"
           ? { shape: "tube", outerRadius: feature.width / 2, innerRadius: feature.innerRadius ?? 6, height: feature.height }
           : feature.primitive === "torus"
-            ? { shape: "torus", majorRadius: feature.majorRadius ?? 12, tubeRadius: feature.tubeRadius ?? 4 }
+            ? { shape: "torus", majorRadius: feature.majorRadius ?? 12, tubeRadius: feature.tubeRadius ?? 4, angle: feature.angle ?? 360 }
           : feature.primitive === "roundedBox"
             ? { shape: "roundedBox", width: feature.width, depth: feature.depth, height: feature.height, cornerRadius: feature.cornerRadius ?? 3 }
           : feature.primitive === "pyramid" || feature.primitive === "wedge" || feature.primitive === "roof" || feature.primitive === "roundRoof"
@@ -843,6 +844,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
     operationPreview: {
       shape: feature.kind === "primitive" ? feature.primitive : sketch!.profile.shape === "circle" ? "cylinder" : "box",
       ...(feature.kind === "primitive" && feature.primitive === "platonic" ? { platonicType: feature.platonicType ?? "tetrahedron", size: feature.width } : {}),
+      ...(feature.kind === "primitive" && feature.primitive === "torus" ? { angle: feature.angle ?? 360 } : {}),
       ...(feature.kind === "primitive" && (feature.primitive === "cone" || feature.primitive === "pyramid") ? { topRadius: feature.topRadius ?? 0 } : {}),
       ...(feature.kind === "primitive" && feature.primitive === "tube" ? { innerRadius: feature.innerRadius ?? 6 } : {}),
       ...(feature.kind === "primitive" && feature.primitive === "roundedBox" ? { cornerRadius: feature.cornerRadius ?? 3 } : {}),

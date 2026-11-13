@@ -1,6 +1,6 @@
 import { gearOutlinePoints } from "@/lib/parametricGearProfile";
 
-export function operationPreviewWireframePositions(shape: "box" | "roundedBox" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear", width: number, depth: number, height: number, topWidth = shape === "pyramid" ? 0 : width, innerWidth = 0, profileInsetWidth = 0, radialSegments = 64, cornerRadius = 0) {
+export function operationPreviewWireframePositions(shape: "box" | "roundedBox" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear", width: number, depth: number, height: number, topWidth = shape === "pyramid" ? 0 : width, innerWidth = 0, profileInsetWidth = 0, radialSegments = 64, cornerRadius = 0, sweepAngle = 360) {
   const positions: number[] = [];
   const addSegment = (x1: number, y1: number, z1: number, x2: number, y2: number, z2: number) => positions.push(x1, y1, z1, x2, y2, z2);
   const halfWidth = width / 2;
@@ -169,21 +169,23 @@ export function operationPreviewWireframePositions(shape: "box" | "roundedBox" |
     return positions;
   }
   if (shape === "torus") {
+    const sweep = Math.min(360, Math.max(0, sweepAngle)) * Math.PI / 180;
+    if (sweep === 0) return positions;
     const minorX = height / 2;
     const minorY = height / 2;
     const majorX = Math.max(0.01, halfWidth - minorX);
     const majorY = Math.max(0.01, halfDepth - minorY);
     for (const radialSign of [-1, 1]) {
       for (let index = 0; index < segments; index += 1) {
-        const angle = index / segments * Math.PI * 2;
-        const nextAngle = (index + 1) / segments * Math.PI * 2;
+        const angle = index / segments * sweep;
+        const nextAngle = (index + 1) / segments * sweep;
         addSegment(
           Math.cos(angle) * (majorX + radialSign * minorX), Math.sin(angle) * (majorY + radialSign * minorY), 0,
           Math.cos(nextAngle) * (majorX + radialSign * minorX), Math.sin(nextAngle) * (majorY + radialSign * minorY), 0,
         );
       }
     }
-    for (const direction of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
+    for (const direction of [...new Set([0, Math.PI / 2, Math.PI, Math.PI * 1.5, sweep].filter((angle) => angle <= sweep))]) {
       for (let index = 0; index < segments; index += 1) {
         const angle = index / segments * Math.PI * 2;
         const nextAngle = (index + 1) / segments * Math.PI * 2;

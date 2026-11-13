@@ -2661,9 +2661,15 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     };
   }, [document, modelSelection, pendingFaceExtrude, selectedTopologyFaces]);
   const revolveHandle = useMemo(() => {
-    if ((selectedFeature?.kind !== "revolve" && selectedFeature?.kind !== "polarPattern") || !selectedFeature.objectId) return null;
+    if ((selectedFeature?.kind !== "revolve" && selectedFeature?.kind !== "polarPattern" && !(selectedFeature?.kind === "primitive" && selectedFeature.primitive === "torus")) || !selectedFeature.objectId) return null;
     const object = document.objects.find((candidate) => candidate.id === selectedFeature.objectId);
     if (!object || object.visible === false) return null;
+    if (selectedFeature.kind === "primitive") {
+      const matrix = parametricTransformMatrix(object.transform).multiply(parametricTransformMatrix(selectedFeature.transform));
+      const origin = new THREE.Vector3().applyMatrix4(matrix), axis = new THREE.Vector3(0, 0, 1).transformDirection(matrix);
+      const reference = new THREE.Vector3(1, 0, 0).transformDirection(matrix);
+      return { origin, axis, referenceDirection: reference, angle: selectedFeature.angle ?? 360, radius: (selectedBox?.width ?? 32) / 2 + 4, minAngle: 0, maxAngle: 360 };
+    }
     if (selectedFeature.kind === "polarPattern") {
       const placement = patternHandlePlacement(object, selectedFeature.axis, selectedFeature.center);
       return { origin: placement.origin, axis: placement.direction, angle: selectedFeature.angle, radius: 25 };
@@ -4245,6 +4251,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
             <Tool label={t("camera.rotationTriad")} active={showRotationTriad} onClick={() => setShowRotationTriad((visible) => !visible)}><ToolbarRotationManipulatorIcon /></Tool>
             {selectionKind === "feature" && <Tool className="kercad-parameter-handles-toggle" label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>}
+            {selectedFeature?.kind === "primitive" && selectedFeature.primitive === "torus" && <ViewportFloatingNumberInput value={selectedFeature.angle ?? 360} unit="angle" displayUnit={displayUnit} snap={1} label={t("property.angle")} min={0} max={360} onCommit={(angle) => updateFeature(selectedFeature.id, (feature) => { if (feature.kind === "primitive") feature.angle = angle; })} />}
             {selectedFeature?.kind === "primitive" && selectedFeature.primitive === "platonic" && <>
               <PlatonicTypeButtons value={selectedFeature.platonicType ?? "tetrahedron"} locale={locale} onChange={(type) => updateFeature(selectedFeature.id, (feature) => { if (feature.kind === "primitive") feature.platonicType = type; })} />
               <ViewportFloatingNumberInput value={selectedFeature.width} unit="length" displayUnit={displayUnit} snap={document.workplane.snapSpacing} label={t("property.size")} min={.1} max={200} onCommit={(size) => mutate((draft) => updateParametricShapeParameter(draft, selectedFeature.id, "size", size))} />
@@ -4402,16 +4409,17 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           revolveCanAccept={selectedTopologyFaces.length === 1 && (pendingRevolve?.axis !== "edge" || selectedTopologyEdges.length === 1)}
           onRevolveAngleDragStart={beginTransaction}
           onRevolveAnglePreview={(angle) => {
-            if (selectedFeature?.kind !== "revolve" && selectedFeature?.kind !== "polarPattern") return;
+            if (selectedFeature?.kind !== "revolve" && selectedFeature?.kind !== "polarPattern" && !(selectedFeature?.kind === "primitive" && selectedFeature.primitive === "torus")) return;
             mutate((draft) => {
               const feature = draft.features.find((candidate) => candidate.id === selectedFeature.id);
-              if (feature?.kind === "revolve" || feature?.kind === "polarPattern") feature.angle = angle;
+              if (feature?.kind === "revolve" || feature?.kind === "polarPattern" || feature?.kind === "primitive" && feature.primitive === "torus") feature.angle = feature.kind === "primitive" ? Math.min(360, Math.max(0, angle)) : angle;
             });
           }}
           onRevolveAngleChange={(angle) => {
-            if (selectedFeature?.kind === "revolve" || selectedFeature?.kind === "polarPattern") mutate((draft) => {
+            if (selectedFeature?.kind === "revolve" || selectedFeature?.kind === "polarPattern" || selectedFeature?.kind === "primitive" && selectedFeature.primitive === "torus") mutate((draft) => {
               const feature = draft.features.find((candidate) => candidate.id === selectedFeature.id);
-              if (feature?.kind === "revolve" || feature?.kind === "polarPattern") feature.angle = Math.min(360, Math.max(-360, Math.abs(angle) < 1 ? (angle < 0 ? -1 : 1) : angle));
+              if (feature?.kind === "primitive" && feature.primitive === "torus") feature.angle = Math.min(360, Math.max(0, angle));
+              else if (feature?.kind === "revolve" || feature?.kind === "polarPattern") feature.angle = Math.min(360, Math.max(-360, Math.abs(angle) < 1 ? (angle < 0 ? -1 : 1) : angle));
             });
             finishTransaction();
           }}

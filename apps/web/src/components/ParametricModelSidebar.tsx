@@ -807,6 +807,7 @@ function ParametricFeatureInspector({
                 })}
               />
             ))}
+            {feature.primitive === "torus" && <BoundedNumberField label={t("property.angle")} value={feature.angle ?? 360} min={0} max={360} step={1} unit="°" onChange={(angle) => onUpdate((draft) => { if (draft.kind === "primitive") draft.angle = angle; })} />}
             {(feature.primitive === "sphere" || feature.primitive === "halfSphere") && feature.ellipsoidal && <>
               <BoundedNumberField label={t("cylinder.radius2")} value={feature.depth / 2} min={.1} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "primitive") draft.depth = value * 2; })} />
               <BoundedNumberField label={t("sphere.radius3")} value={feature.primitive === "halfSphere" ? feature.height : feature.height / 2} min={.1} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "primitive") draft.height = draft.primitive === "halfSphere" ? value : value * 2; })} />

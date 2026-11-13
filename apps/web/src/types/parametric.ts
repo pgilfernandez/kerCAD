@@ -122,6 +122,8 @@ export type PrimitiveFeature = BaseFeature & {
   topRadius?: number;
   platonicType?: import("@/lib/platonicSolids").PlatonicType;
   ellipsoidal?: boolean;
+  /** Angular extent of a torus in degrees; omitted means a complete ring. */
+  angle?: number;
   innerRadius?: number;
   majorRadius?: number;
   tubeRadius?: number;

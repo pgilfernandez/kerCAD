@@ -5,6 +5,7 @@ import type { ParametricDocument } from "@/types/parametric";
 import type { ProjectAsset, ProjectAssetSourceFormat } from "@/types/sketchforge";
 import { isLegacyProjectSchema } from "@/lib/legacyBrand";
 import { uiText } from "@/lib/kercadI18n";
+import { isEmptyTorus } from "@/lib/parametricTorus";
 
 export const KERCAD_PACKAGE_SCHEMA = "org.kercad.project";
 export const KERCAD_PACKAGE_VERSION = 2;
@@ -179,7 +180,7 @@ export async function exportKercadProject(document: ParametricDocument, assets: 
   if (projectBytes.byteLength > KERCAD_PACKAGE_LIMITS.projectBytes) throw new Error("The document exceeds the 32 MB limit.");
   const files: Record<string, Uint8Array> = { "project.json": projectBytes };
   let geometry: KercadStepRepresentation | null = null;
-  const hasSolids = snapshot.features.some((feature) => !feature.suppressed && (feature.kind === "extrude" || feature.kind === "primitive" || feature.kind === "importedStep" || (feature.kind === "revolve" && feature.source === "sketch")));
+  const hasSolids = snapshot.features.some((feature) => !feature.suppressed && !isEmptyTorus(feature) && (feature.kind === "extrude" || feature.kind === "primitive" || feature.kind === "importedStep" || (feature.kind === "revolve" && feature.source === "sketch")));
   if (hasSolids) {
     let stepBytes: Uint8Array;
     try {

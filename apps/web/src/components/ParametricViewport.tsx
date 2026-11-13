@@ -115,7 +115,7 @@ export type ViewportSelection = {
     | { shape: "sphere"; radius: number; radius2?: number; radius3?: number; ellipsoidal?: boolean }
     | { shape: "cone"; baseRadius: number; topRadius: number; height: number }
     | { shape: "tube"; outerRadius: number; innerRadius: number; height: number }
-    | { shape: "torus"; majorRadius: number; tubeRadius: number }
+    | { shape: "torus"; majorRadius: number; tubeRadius: number; angle?: number }
     | { shape: "pyramid" | "wedge" | "roof" | "roundRoof"; width: number; depth: number; height: number; topRadius?: number }
     | { shape: "polygon"; radius: number; sides: number; height: number }
     | { shape: "gear"; outerRadius: number; toothDepth: number; boreRadius: number; teeth: number; height: number }
@@ -124,6 +124,7 @@ export type ViewportSelection = {
     shape: "box" | "roundedBox" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear" | "platonic";
     platonicType?: PlatonicType;
     size?: number;
+    angle?: number;
     topRadius?: number;
     innerRadius?: number;
     cornerRadius?: number;
@@ -236,7 +237,7 @@ type Props = {
   onEdgeTreatmentAccept?: () => void;
   onEdgeTreatmentCancel?: () => void;
   edgeTreatmentCanAccept?: boolean;
-  revolveHandle?: { origin: { x: number; y: number; z: number }; axis: { x: number; y: number; z: number }; angle: number; radius: number } | null;
+  revolveHandle?: { origin: { x: number; y: number; z: number }; axis: { x: number; y: number; z: number }; angle: number; radius: number; minAngle?: number; maxAngle?: number; referenceDirection?: { x: number; y: number; z: number } } | null;
   onRevolveAngleDragStart?: () => void;
   onRevolveAnglePreview?: (angle: number) => void;
   onRevolveAngleChange?: (angle: number) => void;
@@ -330,6 +331,11 @@ function platonicPreviewGeometry(type: PlatonicType, size: number, width: number
   })), 3));
   geometry.computeVertexNormals();
   return geometry;
+}
+
+function torusPreviewGeometry(major: number, tube: number, width: number, depth: number, height: number, angle: number) {
+  if (angle <= 0) return new THREE.BufferGeometry();
+  return new THREE.TorusGeometry(major, tube, 24, 96, angle * Math.PI / 180).scale(width / (2 * (major + tube)), depth / (2 * (major + tube)), height / (2 * tube));
 }
 
 function pyramidPreviewGeometry(width: number, depth: number, height: number, topWidth: number) {
@@ -1986,6 +1992,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
     };
     const updateTorusPreview = (selected: ViewportSelection, majorRadius: number, tubeRadius: number) => {
       if (selected.shapeParameters?.shape !== "torus") return;
+      const sweepAngle = selected.shapeParameters.angle ?? 360;
       const originalOuterRadius = selected.shapeParameters.majorRadius + selected.shapeParameters.tubeRadius;
       const radialScale = selected.width / Math.max(0.01, originalOuterRadius * 2);
       const heightScale = selected.height / Math.max(0.01, selected.shapeParameters.tubeRadius * 2);
@@ -1999,7 +2006,11 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       if (!visualRoot) return;
       visualRoot.traverse((child) => {
         if (child.userData.operationPreviewWireframe && child instanceof LineSegments2) {
-          child.geometry.setPositions(operationPreviewWireframePositions("torus", worldWidth, worldDepth, worldHalfHeight * 2));
+          child.geometry.setPositions(operationPreviewWireframePositions("torus", worldWidth, worldDepth, worldHalfHeight * 2, worldWidth, 0, 0, 64, 0, sweepAngle));
+        }
+        if (child.userData.torusPreviewFill && child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          child.geometry = torusPreviewGeometry(majorRadius, tubeRadius, worldWidth, worldDepth, worldHalfHeight * 2, sweepAngle);
         }
         const parameter = child.userData.shapeParameterVisual as ShapeParameter | undefined;
         const role = child.userData.shapeParameterVisualRole as "guide" | "handle" | "target" | undefined;
@@ -2120,7 +2131,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
           const guide = rotationGuideAt(revolveOriginWorld, revolveAxisWorld, revolveReferenceWorld, revolveGuideScale);
           revolveGuide = guide.group;
           revolveGuideHighlight = guide.highlight;
-          revolveGuide.userData.updateAngle?.(Math.abs(revolveStartAngle) >= 359.999 ? 0 : revolveStartAngle);
+          revolveGuide.userData.updateAngle?.(Number(revolveLayer.userData.minAngle ?? -360) < 0 && Math.abs(revolveStartAngle) >= 359.999 ? 0 : revolveStartAngle);
           revolveAngleDragStartRef.current?.();
         }
       }
@@ -2412,7 +2423,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
         if (pointerDelta < -180) pointerDelta += 360;
         revolveAccumulatedAngle += pointerDelta;
         revolvePointerAngle = raw;
-        const signedStart = Math.abs(revolveStartAngle) >= 359.999 ? 0 : revolveStartAngle;
+        const signedStart = Number(revolveHandleRef.current?.userData.minAngle ?? -360) < 0 && Math.abs(revolveStartAngle) >= 359.999 ? 0 : revolveStartAngle;
         const pointerRadius = dragPoint.distanceTo(revolveOriginWorld);
         const radialLineDistance = (degrees: number, minimumRadius: number, maximumRadius: number) => {
           const difference = THREE.MathUtils.degToRad(raw - degrees);
@@ -2448,8 +2459,8 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
         const snappedCandidates = activeGuide ? [activeGuide.degrees - 360, activeGuide.degrees, activeGuide.degrees + 360] : [];
         const guidedAngle = snappedCandidates.reduce<number | null>((best, candidate) => best === null || Math.abs(candidate - freeAngle) < Math.abs(best - freeAngle) ? candidate : best, null);
         const previousAngle = pendingRevolveAngle;
-        pendingRevolveAngle = Math.min(360, Math.max(-360, Math.round(guidedAngle ?? freeAngle)));
-        if (Math.abs(pendingRevolveAngle) < 1) pendingRevolveAngle = pendingRevolveAngle < 0 ? -1 : 1;
+        pendingRevolveAngle = Math.min(Number(revolveHandleRef.current?.userData.maxAngle ?? 360), Math.max(Number(revolveHandleRef.current?.userData.minAngle ?? -360), Math.round(guidedAngle ?? freeAngle)));
+        if (Number(revolveHandleRef.current?.userData.minAngle ?? -360) < 0 && Math.abs(pendingRevolveAngle) < 1) pendingRevolveAngle = pendingRevolveAngle < 0 ? -1 : 1;
         revolveGuide?.userData.updateAngle?.(pendingRevolveAngle);
         setRevolveAnglePreview(pendingRevolveAngle);
         if (pendingRevolveAngle !== previousAngle) revolveAnglePreviewRef.current?.(pendingRevolveAngle);
@@ -3324,6 +3335,14 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
     const axis = new THREE.Vector3(revolveHandle.axis.x, revolveHandle.axis.y, revolveHandle.axis.z).normalize();
     layer.position.set(revolveHandle.origin.x, revolveHandle.origin.y, revolveHandle.origin.z);
     layer.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axis);
+    if (revolveHandle.referenceDirection) {
+      const x = new THREE.Vector3(revolveHandle.referenceDirection.x, revolveHandle.referenceDirection.y, revolveHandle.referenceDirection.z);
+      x.addScaledVector(axis, -x.dot(axis)).normalize();
+      const y = new THREE.Vector3().crossVectors(axis, x).normalize();
+      layer.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, axis));
+    }
+    layer.userData.minAngle = revolveHandle.minAngle ?? -360;
+    layer.userData.maxAngle = revolveHandle.maxAngle ?? 360;
     const radius = Math.max(6, revolveHandle.radius);
     const arc = new LineSegments2(new LineSegmentsGeometry(), new LineMaterial({ color: 0xd6a600, linewidth: 2, depthTest: false, depthWrite: false, transparent: true, opacity: 0.92 }));
     updateRevolveAngleArc(arc, radius, revolveHandle.angle);
@@ -4127,6 +4146,8 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
             ? pyramidPreviewGeometry(selection.width, selection.depth, selection.height, (operationPreview.topRadius ?? 0) * 2 * (selection.shapeParameters?.shape === "pyramid" ? selection.width / Math.max(0.01, selection.shapeParameters.width) : 1))
           : operationPreview.shape === "cone"
             ? new THREE.CylinderGeometry(operationPreview.topRadius ?? 0, selection.width / 2, selection.height, 64)
+          : operationPreview.shape === "torus"
+            ? torusPreviewGeometry(selection.shapeParameters?.shape === "torus" ? selection.shapeParameters.majorRadius : 12, selection.shapeParameters?.shape === "torus" ? selection.shapeParameters.tubeRadius : 4, selection.width, selection.depth, selection.height, operationPreview.angle ?? 360)
           : operationPreview.shape === "halfSphere"
             ? new THREE.SphereGeometry(.5, 64, 24, 0, Math.PI * 2, 0, Math.PI / 2).rotateX(Math.PI / 2).scale(selection.width, selection.depth, selection.height * 2).translate(0, 0, -selection.height / 2)
           : operationPreview.shape === "sphere"
@@ -4145,6 +4166,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
         const preview = new THREE.Mesh(previewGeometry, previewMaterial(renderQuality, shadingMode, operationPreview.color, previewStyle.fillOpacity));
         preview.userData.roundedBoxPreviewFill = operationPreview.shape === "roundedBox";
         preview.userData.pyramidPreviewFill = operationPreview.shape === "pyramid";
+        preview.userData.torusPreviewFill = operationPreview.shape === "torus";
         preview.renderOrder = 17;
         previewRoot.add(preview);
       }
@@ -4172,7 +4194,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
           const edges = new THREE.EdgesGeometry(geometry, 1);
           lineGeometry.setPositions(Array.from(edges.getAttribute("position").array));
           edges.dispose(); geometry.dispose();
-        } else lineGeometry.setPositions(operationPreviewWireframePositions(operationPreview.shape, selection.width, selection.depth, selection.height, topWidth, innerWidth, profileInsetWidth, radialSegments, cornerRadius));
+        } else lineGeometry.setPositions(operationPreviewWireframePositions(operationPreview.shape, selection.width, selection.depth, selection.height, topWidth, innerWidth, profileInsetWidth, radialSegments, cornerRadius, previewParameters?.shape === "torus" ? previewParameters.angle ?? 360 : 360));
         const preview = new LineSegments2(lineGeometry, new LineMaterial({ color: roleColor, linewidth: 2, depthTest: false, transparent: true, opacity: 1 }));
         preview.userData.operationPreviewWireframe = true;
         preview.renderOrder = 18;
@@ -4511,7 +4533,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
     });
     if (revolveHandle) addSpecial(revolveHandleRef.current, "revolveAngleHandle", "revolveAngleTarget", {
       name: uiText("sketch.angle", {}, locale), value: revolveAnglePreview ?? revolveHandle.angle,
-      color: "other", unit: "angle", min: -360, max: 360,
+      color: "other", unit: "angle", min: revolveHandle.minAngle ?? -360, max: revolveHandle.maxAngle ?? 360,
       onCommit: (value) => revolveAngleChangeRef.current?.(value),
     });
     if (distanceHandle) addSpecial(distanceHandleRef.current, "distanceParameterHandle", "distanceParameterTarget", {

@@ -3,6 +3,7 @@ import type { ParametricBuildProgress } from "@/lib/parametricBuildProgress";
 import { uiText } from "@/lib/kercadI18n";
 import * as THREE from "three";
 import { platonicPolyhedron } from "@/lib/platonicSolids";
+import { isEmptyTorus, torusSweepAngle } from "@/lib/parametricTorus";
 import { fibonacciPathArcs, generatedPathPoints, normalizeGeneratedPath } from "@/lib/parametricPaths";
 import { shellWithCorners } from "@/lib/shellKernel";
 import { gearOutlinePoints } from "@/lib/parametricGearProfile";
@@ -459,7 +460,14 @@ function solidFromPrimitive(brep: Brep, feature: PrimitiveFeature): AnySolid {
     solid = refinedBooleanSolid(brep, brep.intersect(ellipsoid, clip));
   } else if (feature.primitive === "torus") {
     const tubeRadius = feature.tubeRadius ?? 4;
-    solid = brep.torus(feature.majorRadius ?? 12, tubeRadius, { at: [0, 0, 0] });
+    const angle = torusSweepAngle(feature.angle);
+    if (angle === 360) solid = brep.torus(feature.majorRadius ?? 12, tubeRadius, { at: [0, 0, 0] });
+    else {
+      const edge = brep.circle(tubeRadius, { at: [feature.majorRadius ?? 12, 0, 0], axis: [0, 1, 0] });
+      const wire = brep.unwrap(brep.wireLoop([edge]));
+      const face = brep.unwrap(brep.face(wire as Parameters<Brep["face"]>[0]));
+      solid = brep.unwrap(brep.revolve(face as Parameters<Brep["revolve"]>[0], { axis: [0, 0, 1], at: [0, 0, 0], angle: angle * Math.PI / 180 })) as AnySolid;
+    }
   } else if (feature.primitive === "pyramid" || feature.primitive === "wedge" || feature.primitive === "roof") {
     solid = angularPrimitiveSolid(brep, feature);
   } else if (feature.primitive === "roundRoof") {
@@ -1002,6 +1010,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
   try {
     for (const feature of sortedFeatures) {
       if (feature.suppressed) continue;
+      if (isEmptyTorus(feature)) { markFeatureCompleted(feature.id); continue; }
       activeFeatureId = feature.id;
       if (feature.objectId && reusableObjectIds.has(feature.objectId)) {
         if (feature.kind !== "sketch") lastObjectId = feature.objectId;
@@ -1299,7 +1308,7 @@ export async function exportParametricStep(document: ParametricDocument, objectI
   const operationStates = new Map<string, OperationSolidState>();
   let lastObjectId = "legacy";
   for (const feature of topologicallySortedParametricFeatures(document)) {
-    if (feature.suppressed) continue;
+    if (feature.suppressed || isEmptyTorus(feature)) continue;
     if (feature.kind === "sketch") {
       sketches.set(feature.id, feature);
       continue;

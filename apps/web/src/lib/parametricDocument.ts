@@ -1,6 +1,7 @@
 import { normalizeDisplayUnit } from "@/lib/parametricUnits";
 import { normalizeGeneratedPath } from "@/lib/parametricPaths";
 import { platonicTypes } from "@/lib/platonicSolids";
+import { torusSweepAngle } from "@/lib/parametricTorus";
 import { KERCAD_LOCALES, kercadTranslate, uiText } from "@/lib/kercadI18n";
 import { nextAnnotationName } from "@/lib/annotationNames";
 import { annotationEnding, setAnnotationEnding } from "@/lib/annotationEndings";
@@ -589,6 +590,7 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
       feature.dependencies = [{ type: "object", id: feature.sourceObjectId }];
     }
     if (feature.kind === "primitive") {
+      if (feature.primitive === "torus") feature.angle = torusSweepAngle(feature.angle);
       if (feature.primitive === "platonic" && !platonicTypes.includes(feature.platonicType!)) feature.platonicType = "tetrahedron";
       feature.width = Math.max(0.1, Number.isFinite(feature.width) ? feature.width : 20);
       feature.depth = Math.max(0.1, Number.isFinite(feature.depth) ? feature.depth : 20);
