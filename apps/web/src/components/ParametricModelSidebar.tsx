@@ -3,6 +3,7 @@
 import { CylinderProfileButtons } from "@/components/CylinderProfileButtons";
 import { normalizeGeneratedPath, spiralTypes } from "@/lib/parametricPaths";
 import { platonicTypes, type PlatonicType } from "@/lib/platonicSolids";
+import { setSphereEllipsoidal } from "@/lib/parametricObjects";
 import type { GeneratedPath, SpiralType } from "@/types/parametric";
 
 import { OperationTreeIcon } from "@/components/OperationTreeIcon";
@@ -720,6 +721,7 @@ function ParametricFeatureInspector({
           </div>
           <ShapeParametersSection>
             {feature.primitive === "platonic" && <label><span>{t("platonic.type")}</span><select value={feature.platonicType ?? "tetrahedron"} onChange={(event) => onUpdate((draft) => { if (draft.kind === "primitive") draft.platonicType = event.target.value as PlatonicType; })}>{platonicTypes.map((type) => <option key={type} value={type}>{t(`platonic.${type}`)}</option>)}</select></label>}
+            {feature.primitive === "sphere" && <CylinderProfileButtons sphere locale={locale} elliptical={Boolean(feature.ellipsoidal)} onChange={(enabled) => onUpdate((draft) => { if (draft.kind === "primitive") setSphereEllipsoidal(draft, enabled); })} />}
             {localizedParametricOperationDefinition(feature.primitive, locale).parameters.map((parameter) => (
               <BoundedNumberField
                 key={parameter.key}
@@ -756,8 +758,8 @@ function ParametricFeatureInspector({
                   if (draft.primitive === "platonic") { draft.width = value; draft.depth = value; draft.height = value; return; }
                   if (parameter.key === "radius") {
                     draft.width = value * 2;
-                    draft.depth = value * 2;
-                    if (draft.primitive === "sphere") draft.height = value * 2;
+                    if (draft.primitive !== "sphere" || !draft.ellipsoidal) draft.depth = value * 2;
+                    if (draft.primitive === "sphere" && !draft.ellipsoidal) draft.height = value * 2;
                   } else if (parameter.key === "baseRadius") {
                     draft.width = value * 2;
                     draft.depth = value * 2;
@@ -805,6 +807,10 @@ function ParametricFeatureInspector({
                 })}
               />
             ))}
+            {feature.primitive === "sphere" && feature.ellipsoidal && <>
+              <BoundedNumberField label={t("cylinder.radius2")} value={feature.depth / 2} min={.1} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "primitive") draft.depth = value * 2; })} />
+              <BoundedNumberField label={t("sphere.radius3")} value={feature.height / 2} min={.1} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "primitive") draft.height = value * 2; })} />
+            </>}
           </ShapeParametersSection>
           <TransformSection description={uiText("sidebar.position.rotation", {}, locale)}>
             <TransformGroup label={t("property.position")} values={feature.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "primitive") draft.transform.position[axis] = value; })} />

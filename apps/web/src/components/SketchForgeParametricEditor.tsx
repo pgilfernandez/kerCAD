@@ -6,6 +6,7 @@ import { ToolbarSweepIcon } from "@/components/icons";
 import { ThemedToolbarImage } from "@/components/ThemedToolbarImage";
 import { sketchOverlayPositions } from "@/lib/sketchOverlayGeometry";
 import { adjacentSweepSketchPair } from "@/lib/sweepInputSelection";
+import { setSphereEllipsoidal } from "@/lib/parametricObjects";
 
 import { DashboardBrandLogo } from "@/components/DashboardBrandLogo";
 
@@ -4243,6 +4244,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
             <Tool label={t("camera.rotationTriad")} active={showRotationTriad} onClick={() => setShowRotationTriad((visible) => !visible)}><ToolbarRotationManipulatorIcon /></Tool>
             {selectionKind === "feature" && <Tool className="kercad-parameter-handles-toggle" label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>}
+            {selectedFeature?.kind === "primitive" && selectedFeature.primitive === "sphere" && <CylinderProfileButtons sphere locale={locale} elliptical={Boolean(selectedFeature.ellipsoidal)} onChange={(enabled) => mutate((draft) => {
+              const feature = draft.features.find((item) => item.id === selectedFeature.id);
+              if (feature?.kind === "primitive") setSphereEllipsoidal(feature, enabled);
+            })} />}
             {selectedFeature?.kind === "extrude" && (() => {
               const profileSketch = document.features.find((item) => item.id === selectedFeature.sketchId);
               if (profileSketch?.kind !== "sketch" || profileSketch.purpose === "user" || profileSketch.profile.shape !== "circle") return null;

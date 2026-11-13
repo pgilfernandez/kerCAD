@@ -11,6 +11,11 @@ import { transformParametricObjectTopologyHints } from "@/lib/parametricTopology
 import * as THREE from "three";
 
 export type SupportedPrimitive = ParametricPrimitiveKind;
+export function setSphereEllipsoidal(feature: PrimitiveFeature, enabled: boolean) {
+  if (feature.primitive !== "sphere") return;
+  if (!enabled || !feature.ellipsoidal) feature.depth = feature.height = feature.width;
+  feature.ellipsoidal = enabled;
+}
 export const ANNOTATIONS_GROUP_ID = "$annotations";
 
 function rootObjectIds(document: ParametricDocument) {
@@ -76,6 +81,7 @@ export function resetParametricFeature(document: ParametricDocument, featureId: 
     feature.operation = defaults.operation;
     feature.transform = defaults.transform;
     feature.topRadius = defaults.topRadius;
+    feature.ellipsoidal = defaults.ellipsoidal;
     feature.platonicType = defaults.platonicType;
     feature.innerRadius = defaults.innerRadius;
     feature.majorRadius = defaults.majorRadius;
@@ -822,7 +828,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
             ? { shape: "gear", outerRadius: feature.width / 2, toothDepth: feature.toothDepth ?? 2.5, boreRadius: feature.boreRadius ?? 3, teeth: feature.teeth ?? 12, height: feature.height }
           : feature.primitive === "halfSphere"
             ? { shape: "halfSphere", radius: feature.width / 2, height: feature.height }
-        : { shape: "sphere", radius: feature.width / 2 }
+        : { shape: "sphere", radius: feature.width / 2, radius2: feature.depth / 2, radius3: feature.height / 2, ellipsoidal: Boolean(feature.ellipsoidal) }
       : textGenerator
         ? { shape: "text", size: textGenerator.size, height: feature.distance }
       : sketch!.profile.shape === "circle"
@@ -1202,7 +1208,7 @@ export function resizeParametricHeight(document: ParametricDocument, id: string,
 export function updateParametricShapeParameter(
   document: ParametricDocument,
   id: string,
-  parameter: "width" | "depth" | "height" | "size" | "radius" | "radius2" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "thickness" | "majorRadius" | "tubeRadius" | "cornerRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius",
+  parameter: "width" | "depth" | "height" | "size" | "radius" | "radius2" | "radius3" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "thickness" | "majorRadius" | "tubeRadius" | "cornerRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius",
   value: number,
 ) {
   if (!Number.isFinite(value)) return;
@@ -1228,7 +1234,10 @@ export function updateParametricShapeParameter(
       feature.height = next;
     } else if (feature.primitive === "sphere" && parameter === "radius") {
       feature.width = next * 2;
+      if (!feature.ellipsoidal) feature.depth = feature.height = next * 2;
+    } else if (feature.primitive === "sphere" && parameter === "radius2" && feature.ellipsoidal) {
       feature.depth = next * 2;
+    } else if (feature.primitive === "sphere" && parameter === "radius3" && feature.ellipsoidal) {
       feature.height = next * 2;
     } else if (feature.primitive === "halfSphere" && parameter === "radius") {
       feature.width = next * 2;

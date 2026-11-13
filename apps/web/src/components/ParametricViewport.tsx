@@ -84,7 +84,7 @@ export type TopologyEdgePick = {
   length: number;
   edgeId: number;
 };
-type ShapeParameter = "width" | "depth" | "height" | "size" | "radius" | "radius2" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "thickness" | "majorRadius" | "tubeRadius" | "cornerRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius";
+type ShapeParameter = "width" | "depth" | "height" | "size" | "radius" | "radius2" | "radius3" | "baseRadius" | "topRadius" | "outerRadius" | "innerRadius" | "thickness" | "majorRadius" | "tubeRadius" | "cornerRadius" | "sides" | "teeth" | "toothDepth" | "boreRadius";
 
 function ViewportEdgeRadiusInput({ radius, displayUnit, snap, locale, onCommit }: { radius: number; displayUnit: ParametricDisplayUnit; snap: number; locale: KercadLocale; onCommit: (radius: number) => void }) {
   return <ViewportFloatingNumberInput value={radius} unit="length" displayUnit={displayUnit} snap={snap} label={uiText("sidebar.radius", {}, locale)} min={0.01} max={Infinity} onCommit={onCommit} />;
@@ -110,7 +110,7 @@ export type ViewportSelection = {
     | { shape: "roundedBox"; width: number; depth: number; height: number; cornerRadius: number }
     | { shape: "text"; size: number; height: number }
     | { shape: "cylinder"; radius: number; radius2?: number; elliptical?: boolean; height: number }
-    | { shape: "sphere"; radius: number }
+    | { shape: "sphere"; radius: number; radius2?: number; radius3?: number; ellipsoidal?: boolean }
     | { shape: "cone"; baseRadius: number; topRadius: number; height: number }
     | { shape: "tube"; outerRadius: number; innerRadius: number; height: number }
     | { shape: "torus"; majorRadius: number; tubeRadius: number }
@@ -2267,7 +2267,9 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
               ? selected.width / Math.max(0.01, (values.shape === "cone" ? values.baseRadius : values.shape === "tube" || values.shape === "gear" ? values.outerRadius : values.majorRadius + values.tubeRadius) * 2)
               : parameter === "height" && values && values.shape !== "sphere"
                 ? selected.height / Math.max(0.01, Math.abs(values.height))
-                : parameter === "radius2" && values?.shape === "cylinder"
+                : parameter === "radius3" && values?.shape === "sphere"
+                  ? selected.height / Math.max(.01, (values.radius3 ?? values.radius) * 2)
+                : parameter === "radius2" && (values?.shape === "cylinder" || values?.shape === "sphere")
                   ? selected.depth / Math.max(0.01, (values.radius2 ?? values.radius) * 2)
                 : parameter === "radius" && (values?.shape === "cylinder" || values?.shape === "sphere" || values?.shape === "halfSphere" || values?.shape === "polygon")
                   ? selected.width / Math.max(0.01, values.radius * 2)
@@ -2296,7 +2298,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
                     ? values.toothDepth * shapeParameterWorldScale
                   : parameter === "boreRadius" && values?.shape === "gear"
                     ? values.boreRadius * shapeParameterWorldScale
-                : parameter === "depth" || parameter === "radius2" || (parameter === "size" && values?.shape === "text") ? selected.depth / 2 : parameter === "height" ? selected.height / 2 * (selected.allowNegativeHeight && values && "height" in values && values.height < 0 ? -1 : 1) : selected.width / 2;
+                : parameter === "depth" || parameter === "radius2" || (parameter === "size" && values?.shape === "text") ? selected.depth / 2 : parameter === "radius3" ? selected.height / 2 : parameter === "height" ? selected.height / 2 * (selected.allowNegativeHeight && values && "height" in values && values.height < 0 ? -1 : 1) : selected.width / 2;
             const pointerCoordinate = (shapeParameterDragAxis === "y" ? localPointer.y : shapeParameterDragAxis === "z" ? localPointer.z : localPointer.x) * shapeParameterDragSign;
             parameterPointerOffset = pointerCoordinate - visualHalfExtent;
             signedHeightBaseCoordinate = parameter === "height" && selected.allowNegativeHeight ? -visualHalfExtent : 0;
@@ -2305,7 +2307,8 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
               : parameter === "depth" && boxLikeValues ? values.depth
                 : parameter === "height" && values && values.shape !== "sphere" && values.shape !== "torus" ? values.height
                   : parameter === "size" && values?.shape === "text" ? values.size
-                  : parameter === "radius2" && values?.shape === "cylinder" ? values.radius2 ?? values.radius
+                  : parameter === "radius3" && values?.shape === "sphere" ? values.radius3 ?? values.radius
+                  : parameter === "radius2" && (values?.shape === "cylinder" || values?.shape === "sphere") ? values.radius2 ?? values.radius
                   : parameter === "radius" && (values?.shape === "cylinder" || values?.shape === "sphere" || values?.shape === "halfSphere" || values?.shape === "polygon") ? values.radius
                     : parameter === "baseRadius" && values?.shape === "cone" ? values.baseRadius
                       : parameter === "topRadius" && (values?.shape === "cone" || values?.shape === "pyramid") ? values.topRadius ?? 0
@@ -2642,7 +2645,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
           : parameter === "topRadius" || parameter === "innerRadius" || parameter === "thickness" || parameter === "majorRadius" || parameter === "tubeRadius" || parameter === "cornerRadius" || parameter === "toothDepth" || parameter === "boreRadius"
             ? Math.max(0, Math.round(Math.abs(parameterAdjusted) / parameterStep) * parameterStep)
             : Math.max(parameterStep, Math.round(Math.abs(parameterAdjusted) * 2 / parameterStep) * parameterStep);
-        const startExtent = parameter === "depth" || parameter === "size" || parameter === "radius2" ? resizeStart.depth : parameter === "height" ? resizeStart.height : resizeStart.width;
+        const startExtent = parameter === "depth" || parameter === "size" || parameter === "radius2" ? resizeStart.depth : parameter === "height" || parameter === "radius3" ? resizeStart.height : resizeStart.width;
         let ratio = visualExtent / Math.max(0.01, startExtent);
         pendingShapeParameter.value = parameter === "sides" || parameter === "teeth"
           ? visualExtent
@@ -2724,6 +2727,8 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
           updateGearPreview(selected, outerRadius, toothDepth, boreRadius, teeth, height);
         } else if (parameter === "width") visualRoot.scale.x = ratio;
         else if (parameter === "depth" || parameter === "radius2") visualRoot.scale.y = ratio;
+        else if (parameter === "radius3") visualRoot.scale.z = ratio;
+        else if (parameter === "radius" && selected.shapeParameters?.shape === "sphere" && selected.shapeParameters.ellipsoidal) visualRoot.scale.x = ratio;
         else if (parameter === "radius" && selected.shapeParameters?.shape === "cylinder" && selected.shapeParameters.elliptical) visualRoot.scale.x = ratio;
         else if (parameter === "height") {
           const startDirection = shapeParameterStartValue < 0 ? -1 : 1;
@@ -4220,6 +4225,10 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       addParameterHandle("height", "z", new THREE.Vector3(0, 0, baseZ), new THREE.Vector3(0, 0, heightEnd));
     } else if (parameters?.shape === "sphere") {
       addParameterHandle("radius", "x", new THREE.Vector3(0, 0, 0), new THREE.Vector3(selection.width / 2 + 3, 0, 0));
+      if (parameters.ellipsoidal) {
+        addParameterHandle("radius2", "y", new THREE.Vector3(), new THREE.Vector3(0, selection.depth / 2 + 3, 0), "y");
+        addParameterHandle("radius3", "z", new THREE.Vector3(), new THREE.Vector3(0, 0, selection.height / 2 + 3), "z");
+      }
     } else if (parameters?.shape === "polygon") {
       addParameterHandle("radius", "x", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(selection.width / 2 + 3, 0, -selection.height / 2));
       addParameterHandle("sides", "y", new THREE.Vector3(0, 0, selection.height / 2), new THREE.Vector3(0, selection.depth / 2 + 3, selection.height / 2), "y");
@@ -4434,12 +4443,12 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       const value = preview?.parameter === parameter ? preview.value
         : parameter === "thickness" && parameters?.shape === "tube" ? parameters.outerRadius - parameters.innerRadius
         : values?.[parameter] ?? (parameter === "width" ? selected.width : parameter === "depth" ? selected.depth : parameter === "height" ? selected.height : 0);
-      const dimensional = ["width", "depth", "height", "radius", "radius2", "baseRadius", "topRadius", "outerRadius", "majorRadius", "tubeRadius"].includes(parameter);
+      const dimensional = ["width", "depth", "height", "radius", "radius2", "radius3", "baseRadius", "topRadius", "outerRadius", "majorRadius", "tubeRadius"].includes(parameter);
       const handleAxis = node.userData.dimensionAxis ?? resizeHitboxesRef.current.find((target) => target.userData.shapeParameter === parameter)?.userData.dimensionAxis;
       labels.push({
         key: `shape:${selected.id}:${parameter}`, anchor: node,
         targets: resizeHitboxesRef.current.filter((target) => target.userData.shapeParameter === parameter),
-        name: parameter === "radius2" ? uiText("cylinder.radius2", {}, locale) : definition?.label ?? uiText(parameter === "height" ? "sidebar.height" : "sidebar.size", {}, locale),
+        name: parameter === "radius3" ? uiText("sphere.radius3", {}, locale) : parameter === "radius2" ? uiText("cylinder.radius2", {}, locale) : definition?.label ?? uiText(parameter === "height" ? "sidebar.height" : "sidebar.size", {}, locale),
         value, color: dimensional && (handleAxis === "x" || handleAxis === "y" || handleAxis === "z") ? handleAxis : "other",
         unit: parameter === "sides" || parameter === "teeth" ? "count" : "length",
         min: parameter === "height" && selected.allowNegativeHeight ? -1000 : parameter === "topRadius" || parameter === "boreRadius" ? 0 : definition?.min ?? .01,

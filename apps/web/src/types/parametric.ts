@@ -121,6 +121,7 @@ export type PrimitiveFeature = BaseFeature & {
   height: number;
   topRadius?: number;
   platonicType?: import("@/lib/platonicSolids").PlatonicType;
+  ellipsoidal?: boolean;
   innerRadius?: number;
   majorRadius?: number;
   tubeRadius?: number;
