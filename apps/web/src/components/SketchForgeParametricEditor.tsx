@@ -5,6 +5,7 @@ import { CylinderProfileButtons } from "@/components/CylinderProfileButtons";
 import { ToolbarSweepIcon } from "@/components/icons";
 import { ThemedToolbarImage } from "@/components/ThemedToolbarImage";
 import { sketchOverlayPositions } from "@/lib/sketchOverlayGeometry";
+import { adjacentSweepSketchPair } from "@/lib/sweepInputSelection";
 
 import { DashboardBrandLogo } from "@/components/DashboardBrandLogo";
 
@@ -2527,6 +2528,12 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     setSelectingTopologyEdges(false); setSelectedTopologyEdges([]); setSelectedTopologyFaces([]);
     setPlacingWorkplane(false); setEditingMirrorPlaneId(null); setOriginEditObjectId(null);
     if (modelSelection.length === 1 && selectedSketches.length === 1) {
+      const pair = adjacentSweepSketchPair(document, selectedSketches[0]);
+      if (pair) {
+        setSelectingTopologyFaces(false);
+        createSweep(pair.path, pair.profile);
+        return;
+      }
       setPendingSweepPathId(selectedSketches[0].id);
       setSelectingTopologyFaces(true);
       setNotice({ type: "info", text: t("sweep.selectFace") });
