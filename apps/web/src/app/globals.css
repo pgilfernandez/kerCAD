@@ -750,6 +750,13 @@ button {
 .kercad-sidebar-mode-control:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent-shade-00a6db) 25%, transparent); outline-offset: 2px; }
 
 .kercad-workplane-settings-button,
+.kercad-workplane-snap-button,
+.kercad-challenge-reopen,
+.kercad-snap-spacing-trigger,
+.kercad-snap-spacing-options button {
+  cursor: pointer;
+}
+.kercad-workplane-settings-button,
 .kercad-workplane-snap-button {
   position: absolute;
   bottom: 18px;
