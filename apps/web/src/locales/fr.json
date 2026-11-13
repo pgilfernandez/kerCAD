@@ -134,6 +134,8 @@
     "sphere.sphere": "Sphère",
     "sphere.ellipsoid": "Ellipsoïde",
     "sphere.radius3": "Rayon 3",
+    "halfSphere.sphere": "Hémisphère",
+    "halfSphere.ellipsoid": "Demi-ellipsoïde",
     "operation.loft": "Lissage entre esquisses",
     "loft.startProfile": "Esquisse initiale",
     "loft.endProfile": "Esquisse finale",

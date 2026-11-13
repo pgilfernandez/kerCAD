@@ -134,6 +134,8 @@
     "sphere.sphere": "Esfera",
     "sphere.ellipsoid": "Elipsoide",
     "sphere.radius3": "Radio 3",
+    "halfSphere.sphere": "Semiesfera",
+    "halfSphere.ellipsoid": "Semielipsoide",
     "operation.loft": "Transición entre bocetos",
     "loft.startProfile": "Boceto inicial",
     "loft.endProfile": "Boceto final",

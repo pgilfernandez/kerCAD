@@ -134,6 +134,8 @@
     "sphere.sphere": "Sphere",
     "sphere.ellipsoid": "Ellipsoid",
     "sphere.radius3": "Radius 3",
+    "halfSphere.sphere": "Hemisphere",
+    "halfSphere.ellipsoid": "Half ellipsoid",
     "operation.loft": "Loft",
     "loft.startProfile": "Start sketch",
     "loft.endProfile": "End sketch",

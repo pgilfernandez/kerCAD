@@ -134,6 +134,8 @@
     "sphere.sphere": "Sfera",
     "sphere.ellipsoid": "Ellissoide",
     "sphere.radius3": "Raggio 3",
+    "halfSphere.sphere": "Semisfera",
+    "halfSphere.ellipsoid": "Semiellissoide",
     "operation.loft": "Loft tra schizzi",
     "loft.startProfile": "Schizzo iniziale",
     "loft.endProfile": "Schizzo finale",

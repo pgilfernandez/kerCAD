@@ -119,7 +119,7 @@ export type ViewportSelection = {
     | { shape: "pyramid" | "wedge" | "roof" | "roundRoof"; width: number; depth: number; height: number; topRadius?: number }
     | { shape: "polygon"; radius: number; sides: number; height: number }
     | { shape: "gear"; outerRadius: number; toothDepth: number; boreRadius: number; teeth: number; height: number }
-    | { shape: "halfSphere"; radius: number; height: number };
+    | { shape: "halfSphere"; radius: number; height: number; radius2?: number; radius3?: number; ellipsoidal?: boolean };
   operationPreview?: {
     shape: "box" | "roundedBox" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear" | "platonic";
     platonicType?: PlatonicType;
@@ -2282,9 +2282,11 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
               ? selected.width / Math.max(0.01, (values.shape === "cone" ? values.baseRadius : values.shape === "tube" || values.shape === "gear" ? values.outerRadius : values.majorRadius + values.tubeRadius) * 2)
               : parameter === "height" && values && values.shape !== "sphere"
                 ? selected.height / Math.max(0.01, Math.abs(values.height))
+                : parameter === "radius3" && values?.shape === "halfSphere"
+                  ? selected.height / Math.max(.01, values.height)
                 : parameter === "radius3" && values?.shape === "sphere"
                   ? selected.height / Math.max(.01, (values.radius3 ?? values.radius) * 2)
-                : parameter === "radius2" && (values?.shape === "cylinder" || values?.shape === "sphere")
+                : parameter === "radius2" && (values?.shape === "cylinder" || values?.shape === "sphere" || values?.shape === "halfSphere")
                   ? selected.depth / Math.max(0.01, (values.radius2 ?? values.radius) * 2)
                 : parameter === "radius" && (values?.shape === "cylinder" || values?.shape === "sphere" || values?.shape === "halfSphere" || values?.shape === "polygon")
                   ? selected.width / Math.max(0.01, values.radius * 2)
@@ -2322,8 +2324,9 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
               : parameter === "depth" && boxLikeValues ? values.depth
                 : parameter === "height" && values && values.shape !== "sphere" && values.shape !== "torus" ? values.height
                   : parameter === "size" && (values?.shape === "text" || values?.shape === "platonic") ? values.size
+                  : parameter === "radius3" && values?.shape === "halfSphere" ? values.height
                   : parameter === "radius3" && values?.shape === "sphere" ? values.radius3 ?? values.radius
-                  : parameter === "radius2" && (values?.shape === "cylinder" || values?.shape === "sphere") ? values.radius2 ?? values.radius
+                  : parameter === "radius2" && (values?.shape === "cylinder" || values?.shape === "sphere" || values?.shape === "halfSphere") ? values.radius2 ?? values.radius
                   : parameter === "radius" && (values?.shape === "cylinder" || values?.shape === "sphere" || values?.shape === "halfSphere" || values?.shape === "polygon") ? values.radius
                     : parameter === "baseRadius" && values?.shape === "cone" ? values.baseRadius
                       : parameter === "topRadius" && (values?.shape === "cone" || values?.shape === "pyramid") ? values.topRadius ?? 0
@@ -2745,8 +2748,11 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
           updateGearPreview(selected, outerRadius, toothDepth, boreRadius, teeth, height);
         } else if (parameter === "width") visualRoot.scale.x = ratio;
         else if (parameter === "depth" || parameter === "radius2") visualRoot.scale.y = ratio;
-        else if (parameter === "radius3") visualRoot.scale.z = ratio;
-        else if (parameter === "radius" && selected.shapeParameters?.shape === "sphere" && selected.shapeParameters.ellipsoidal) visualRoot.scale.x = ratio;
+        else if (parameter === "radius3") {
+          visualRoot.scale.z = ratio;
+          if (selected.shapeParameters?.shape === "halfSphere") visualRoot.position.z = resizeStart.height * (ratio - 1) / 2;
+        }
+        else if (parameter === "radius" && (selected.shapeParameters?.shape === "sphere" || selected.shapeParameters?.shape === "halfSphere") && selected.shapeParameters.ellipsoidal) visualRoot.scale.x = ratio;
         else if (parameter === "radius" && selected.shapeParameters?.shape === "cylinder" && selected.shapeParameters.elliptical) visualRoot.scale.x = ratio;
         else if (parameter === "height") {
           const startDirection = shapeParameterStartValue < 0 ? -1 : 1;
@@ -4121,6 +4127,8 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
             ? pyramidPreviewGeometry(selection.width, selection.depth, selection.height, (operationPreview.topRadius ?? 0) * 2 * (selection.shapeParameters?.shape === "pyramid" ? selection.width / Math.max(0.01, selection.shapeParameters.width) : 1))
           : operationPreview.shape === "cone"
             ? new THREE.CylinderGeometry(operationPreview.topRadius ?? 0, selection.width / 2, selection.height, 64)
+          : operationPreview.shape === "halfSphere"
+            ? new THREE.SphereGeometry(.5, 64, 24, 0, Math.PI * 2, 0, Math.PI / 2).rotateX(Math.PI / 2).scale(selection.width, selection.depth, selection.height * 2).translate(0, 0, -selection.height / 2)
           : operationPreview.shape === "sphere"
             ? new THREE.SphereGeometry(0.5, 64, 32)
             : operationPreview.shape === "roundedBox"
@@ -4282,7 +4290,8 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       addParameterHandle("height", "z", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(0, 0, selection.height / 2 + 3));
     } else if (parameters?.shape === "halfSphere") {
       addParameterHandle("radius", "x", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(selection.width / 2 + 3, 0, -selection.height / 2));
-      addParameterHandle("height", "z", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(0, 0, selection.height / 2 + 3));
+      if (parameters.ellipsoidal) addParameterHandle("radius2", "y", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(0, selection.depth / 2 + 3, -selection.height / 2), "y");
+      addParameterHandle(parameters.ellipsoidal ? "radius3" : "height", "z", new THREE.Vector3(0, 0, -selection.height / 2), new THREE.Vector3(0, 0, selection.height / 2 + 3), "z");
     } else if (parameters?.shape === "torus") {
       const radialScale = selection.width / Math.max(0.01, (parameters.majorRadius + parameters.tubeRadius) * 2);
       const majorRadius = parameters.majorRadius * radialScale;

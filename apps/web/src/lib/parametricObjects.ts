@@ -13,8 +13,11 @@ import { platonicDimensions } from "@/lib/platonicSolids";
 
 export type SupportedPrimitive = ParametricPrimitiveKind;
 export function setSphereEllipsoidal(feature: PrimitiveFeature, enabled: boolean) {
-  if (feature.primitive !== "sphere") return;
-  if (!enabled || !feature.ellipsoidal) feature.depth = feature.height = feature.width;
+  if (feature.primitive !== "sphere" && feature.primitive !== "halfSphere") return;
+  if (!enabled || !feature.ellipsoidal) {
+    feature.depth = feature.width;
+    feature.height = feature.primitive === "halfSphere" ? feature.width / 2 : feature.width;
+  }
   feature.ellipsoidal = enabled;
 }
 export const ANNOTATIONS_GROUP_ID = "$annotations";
@@ -830,7 +833,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
           : feature.primitive === "gear"
             ? { shape: "gear", outerRadius: feature.width / 2, toothDepth: feature.toothDepth ?? 2.5, boreRadius: feature.boreRadius ?? 3, teeth: feature.teeth ?? 12, height: feature.height }
           : feature.primitive === "halfSphere"
-            ? { shape: "halfSphere", radius: feature.width / 2, height: feature.height }
+            ? { shape: "halfSphere", radius: feature.width / 2, height: feature.height, radius2: feature.depth / 2, radius3: feature.height, ellipsoidal: Boolean(feature.ellipsoidal) }
         : { shape: "sphere", radius: feature.width / 2, radius2: feature.depth / 2, radius3: feature.height / 2, ellipsoidal: Boolean(feature.ellipsoidal) }
       : textGenerator
         ? { shape: "text", size: textGenerator.size, height: feature.distance }
@@ -1241,13 +1244,13 @@ export function updateParametricShapeParameter(
     } else if (feature.primitive === "sphere" && parameter === "radius") {
       feature.width = next * 2;
       if (!feature.ellipsoidal) feature.depth = feature.height = next * 2;
-    } else if (feature.primitive === "sphere" && parameter === "radius2" && feature.ellipsoidal) {
+    } else if ((feature.primitive === "sphere" || feature.primitive === "halfSphere") && parameter === "radius2" && feature.ellipsoidal) {
       feature.depth = next * 2;
-    } else if (feature.primitive === "sphere" && parameter === "radius3" && feature.ellipsoidal) {
-      feature.height = next * 2;
+    } else if ((feature.primitive === "sphere" || feature.primitive === "halfSphere") && parameter === "radius3" && feature.ellipsoidal) {
+      feature.height = feature.primitive === "halfSphere" ? next : next * 2;
     } else if (feature.primitive === "halfSphere" && parameter === "radius") {
       feature.width = next * 2;
-      feature.depth = next * 2;
+      if (!feature.ellipsoidal) feature.depth = next * 2;
     } else if (feature.primitive === "halfSphere" && parameter === "height") {
       feature.height = next;
     } else if (feature.primitive === "cone" && parameter === "baseRadius") {

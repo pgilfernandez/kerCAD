@@ -134,6 +134,8 @@
     "sphere.sphere": "Kugel",
     "sphere.ellipsoid": "Ellipsoid",
     "sphere.radius3": "Radius 3",
+    "halfSphere.sphere": "Halbkugel",
+    "halfSphere.ellipsoid": "Halbellipsoid",
     "operation.loft": "Übergang zwischen Skizzen",
     "loft.startProfile": "Startskizze",
     "loft.endProfile": "Endskizze",
