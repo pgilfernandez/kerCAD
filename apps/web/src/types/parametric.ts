@@ -69,6 +69,8 @@ export type DrawnProfile = {
 
 export type SketchFeature = BaseFeature & {
   kind: "sketch";
+  /** Parametric reference curves used as sweep spines, never solid profiles. */
+  generatedPath?: GeneratedPath;
   /** Editor-only metadata: never contributes to CAD profiles or the 3D overlay. */
   annotations?: ParametricAnnotation[];
   /** Controls only the 2D overlay; downstream CAD operations still consume the sketch. */
@@ -82,6 +84,11 @@ export type SketchFeature = BaseFeature & {
   rotation: ParametricVector3;
   profile: RectangleProfile | CircleProfile | DrawnProfile;
 };
+
+export type SpiralType = "archimedean" | "logarithmic" | "fibonacci" | "hyperbolic" | "fermat";
+export type GeneratedPath =
+  | { kind: "spiral"; spiralType: SpiralType; innerRadius: number; outerRadius: number; turns: number; clockwise: boolean }
+  | { kind: "helix"; radius: number; pitch: number; turns: number; clockwise: boolean };
 
 export type ParametricVector3 = {
   x: number;

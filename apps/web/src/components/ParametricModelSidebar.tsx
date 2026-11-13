@@ -1,6 +1,8 @@
 "use client";
 
 import { CylinderProfileButtons } from "@/components/CylinderProfileButtons";
+import { normalizeGeneratedPath, spiralTypes } from "@/lib/parametricPaths";
+import type { GeneratedPath, SpiralType } from "@/types/parametric";
 
 import { OperationTreeIcon } from "@/components/OperationTreeIcon";
 import { AnnotationIcon } from "@/components/AnnotationIcon";
@@ -550,6 +552,23 @@ function ShapeParametersSection({ children }: { children: ReactNode }) {
   return <details className="kercad-transform-section kercad-shape-parameters" open><summary><ChevronRight size={16} /><span>{t("model.shapeParameters")}</span></summary><div><div className="kercad-feature-card">{children}</div></div></details>;
 }
 
+function GeneratedPathFields({ path, onChange }: { path: GeneratedPath; onChange: (path: GeneratedPath) => void }) {
+  const t = useSidebarTranslation();
+  const update = (next: GeneratedPath) => onChange(normalizeGeneratedPath(next));
+  return <>
+    {path.kind === "spiral" ? <>
+      <label><span>{t("path.spiralType")}</span><select value={path.spiralType} onChange={(event) => update({ ...path, spiralType: event.target.value as SpiralType })}>{spiralTypes.map((type) => <option key={type} value={type}>{t(`path.type.${type}`)}</option>)}</select></label>
+      {path.spiralType !== "fibonacci" && <BoundedNumberField label={t("path.innerRadius")} value={path.innerRadius} min={.1} max={9999} onChange={(innerRadius) => update({ ...path, innerRadius })} />}
+      <BoundedNumberField label={t("path.outerRadius")} value={path.outerRadius} min={path.spiralType === "fibonacci" ? .1 : path.innerRadius + .1} max={10000} onChange={(outerRadius) => update({ ...path, outerRadius })} />
+    </> : <>
+      <BoundedNumberField label={t("property.radius")} value={path.radius} min={.1} max={10000} onChange={(radius) => update({ ...path, radius })} />
+      <BoundedNumberField label={t("path.pitch")} value={path.pitch} min={.1} max={10000} onChange={(pitch) => update({ ...path, pitch })} />
+    </>}
+    <BoundedNumberField label={t("path.turns")} value={path.turns} min={path.kind === "spiral" ? .25 : .1} max={path.kind === "helix" ? 100 : path.spiralType === "fibonacci" ? 4 : 20} step={.25} unit="" onChange={(turns) => update({ ...path, turns })} />
+    <label><span>{t("path.direction")}</span><select value={path.clockwise ? "clockwise" : "counterclockwise"} onChange={(event) => update({ ...path, clockwise: event.target.value === "clockwise" })}><option value="counterclockwise">{t("path.counterclockwise")}</option><option value="clockwise">{t("path.clockwise")}</option></select></label>
+  </>;
+}
+
 function TransformGroup({
   label,
   showHeading = true,
@@ -629,8 +648,8 @@ function ParametricFeatureInspector({
 
       {feature.kind === "sketch" ? (
         <>
-          <div className="kercad-feature-card"><button className="kercad-edit-topology-selection" type="button" onClick={() => onEditSketch(feature.id)}>{t("operation.editSketch")}</button></div>
-          {feature.profile.shape === "drawn" ? <>
+          {!feature.generatedPath && <div className="kercad-feature-card"><button className="kercad-edit-topology-selection" type="button" onClick={() => onEditSketch(feature.id)}>{t("operation.editSketch")}</button></div>}
+          {feature.generatedPath ? <ShapeParametersSection><GeneratedPathFields path={feature.generatedPath} onChange={(path) => onUpdate((draft) => { if (draft.kind === "sketch") draft.generatedPath = path; })} /></ShapeParametersSection> : feature.profile.shape === "drawn" ? <>
             
           </> : <ShapeParametersSection>
             <ReadOnlyField label={t("property.profile")} value={feature.profile.shape === "rectangle" ? t("value.rectangle") : t("value.circle")} />

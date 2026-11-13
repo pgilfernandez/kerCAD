@@ -3,9 +3,10 @@ import { getLocaleContent, type KercadLocale } from "@/lib/kercadI18n";
 export type ParametricPrimitiveKind = "box" | "roundedBox" | "cylinder" | "sphere" | "cone" | "tube" | "halfSphere" | "torus" | "pyramid" | "wedge" | "roof" | "roundRoof" | "polygon" | "gear";
 export type ParametricBooleanRole = "add" | "cut" | "intersect";
 
-export const parametricShapeMenuOrder: readonly (ParametricPrimitiveKind | "text")[] = [
+export const parametricShapeMenuOrder: readonly (ParametricPrimitiveKind | "text" | "spiral" | "helix")[] = [
   "box", "roundedBox", "cylinder", "tube", "cone", "pyramid", "polygon",
   "wedge", "roof", "roundRoof", "torus", "sphere", "halfSphere", "text", "gear",
+  "spiral", "helix",
 ];
 
 export type ParametricParameterDefinition = {

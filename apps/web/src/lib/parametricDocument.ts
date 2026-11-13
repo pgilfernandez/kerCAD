@@ -1,4 +1,5 @@
 import { normalizeDisplayUnit } from "@/lib/parametricUnits";
+import { normalizeGeneratedPath } from "@/lib/parametricPaths";
 import { nextAnnotationName } from "@/lib/annotationNames";
 import { annotationEnding, setAnnotationEnding } from "@/lib/annotationEndings";
 import type {
@@ -457,6 +458,7 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
 
   for (const feature of next.features) {
     if (feature.kind === "sketch") {
+      if (feature.generatedPath) feature.generatedPath = normalizeGeneratedPath(feature.generatedPath);
       feature.annotations = normalizeParametricAnnotations(feature.annotations);
       feature.visible = typeof feature.visible === "boolean" ? feature.visible : true;
       feature.purpose ??= feature.profile.shape === "drawn" ? "user" : "primitive";

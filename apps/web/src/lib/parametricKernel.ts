@@ -2,6 +2,7 @@ import { loadBrepWithOcct, type Brep, type BrepSolid } from "@/lib/brepKernel";
 import type { ParametricBuildProgress } from "@/lib/parametricBuildProgress";
 import { uiText } from "@/lib/kercadI18n";
 import * as THREE from "three";
+import { fibonacciPathArcs, generatedPathPoints, normalizeGeneratedPath } from "@/lib/parametricPaths";
 import { shellWithCorners } from "@/lib/shellKernel";
 import { gearOutlinePoints } from "@/lib/parametricGearProfile";
 import { orientedMeshNormals } from "@/lib/parametricMeshNormals";
@@ -147,6 +148,23 @@ function sketchPathEdge(brep: Brep, sketch: SketchFeature, segment: import("@/ty
 }
 
 function sweepPathWire(brep: Brep, sketch: SketchFeature): Wire {
+  if (sketch.generatedPath) {
+    const path = normalizeGeneratedPath(sketch.generatedPath);
+    let wire: Wire;
+    if (path.kind === "helix") {
+      wire = brep.helix(path.pitch, path.pitch * path.turns, path.radius, { lefthand: path.clockwise });
+    } else if (path.spiralType === "fibonacci") {
+      wire = brep.unwrap(brep.wire(fibonacciPathArcs(path).map((arc) => {
+        const vec = (t: number): [number, number, number] => { const p = arc.point(t); return [p.x, p.y, p.z]; };
+        return brep.threePointArc(vec(0), vec(.5), vec(1));
+      })));
+    } else {
+      const points = generatedPathPoints(path).map((p): [number, number, number] => [p.x, p.y, p.z]);
+      const edge = brep.unwrap(brep.bsplineApprox(points, { tolerance: .001 }));
+      wire = brep.unwrap(brep.wire([edge]));
+    }
+    return applySketchTransform(brep, wire, sketch);
+  }
   if (sketch.profile.shape !== "drawn") return brep.outerWire(facesFromSketch(brep, sketch)[0]);
   const profile = sketch.profile.geometry;
   const segments = profile.segments.filter((item) => !item.construction);
@@ -298,6 +316,7 @@ function circleProfileFace(brep: Brep, profile: Extract<SketchFeature["profile"]
 }
 
 function facesFromSketch(brep: Brep, sketch: SketchFeature): Face[] {
+  if (sketch.generatedPath) throw new Error(uiText("path.onlyPath"));
   if (sketch.profile.shape === "drawn") return drawnSketchFaces(brep, sketch).map((face) => applySketchTransform(brep, face, sketch));
   if (sketch.profile.shape === "rectangle") {
     const halfWidth = sketch.profile.width / 2;
@@ -1389,7 +1408,7 @@ export async function parametricAlignmentTargets(document: ParametricDocument, s
     let solid: RenderableShape | undefined;
     if (item.kind === "object") { await ensureModel(); solid = cachedObjectSolids.get(object.id)?.solid; }
     else if (feature?.kind === "primitive") solid = solidFromPrimitive(brep, feature);
-    else if (feature?.kind === "sketch") solid = brep.compound(facesFromSketch(brep, feature));
+    else if (feature?.kind === "sketch") solid = brep.compound(feature.generatedPath ? [sweepPathWire(brep, feature)] : facesFromSketch(brep, feature));
     else if (feature?.kind === "extrude") {
       const sketch = document.features.find((candidate): candidate is SketchFeature => candidate.id === feature.sketchId && candidate.kind === "sketch");
       if (sketch) solid = solidFromSketch(brep, sketch, feature, document);
@@ -1433,7 +1452,7 @@ export async function parametricDropToWorkplaneDeltas(document: ParametricDocume
     if (item.kind === "object") solid = cachedObjectSolids.get(object.id)?.solid;
     else if (feature && !feature.suppressed) {
       if (feature.kind === "primitive") solid = solidFromPrimitive(brep, feature);
-      else if (feature.kind === "sketch" && feature.purpose === "user") solid = brep.compound(facesFromSketch(brep, feature));
+      else if (feature.kind === "sketch" && feature.purpose === "user") solid = brep.compound(feature.generatedPath ? [sweepPathWire(brep, feature)] : facesFromSketch(brep, feature));
       else if (feature.kind === "extrude") {
         const sketch = document.features.find((candidate): candidate is SketchFeature => candidate.id === feature.sketchId && candidate.kind === "sketch");
         if (sketch) solid = solidFromSketch(brep, sketch, feature, document);

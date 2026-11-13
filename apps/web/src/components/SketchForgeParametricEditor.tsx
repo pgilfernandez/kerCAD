@@ -3,6 +3,7 @@
 import { ChallengeIcon } from "@/components/ChallengeIcon";
 import { CylinderProfileButtons } from "@/components/CylinderProfileButtons";
 import { ToolbarSweepIcon } from "@/components/icons";
+import { ThemedToolbarImage } from "@/components/ThemedToolbarImage";
 
 import { DashboardBrandLogo } from "@/components/DashboardBrandLogo";
 
@@ -1260,6 +1261,11 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const rebuildSuggestion = build.warning ? t(parametricRebuildSuggestion(failedFeature, build.warning)) : null;
 
   const beginSketch = (featureId: string | null = null) => {
+    if (featureId && document.features.some((item) => item.id === featureId && item.kind === "sketch" && item.generatedPath)) {
+      setModelSidebarMode("normal");
+      setNotice({ type: "info", text: t("path.editParameters") });
+      return;
+    }
     if (!sketchSession) sidebarModeBeforeSketchRef.current = modelSidebarMode;
     setCompactSketchToolbar(modelSidebarMode !== "normal");
     const feature = featureId ? document.features.find((candidate): candidate is SketchFeature => candidate.kind === "sketch" && candidate.id === featureId && candidate.profile.shape === "drawn") : null;
@@ -2442,6 +2448,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
 
   const addExtrudeFromSketch = (sketch: SketchFeature, endSketch?: SketchFeature) => {
     for (const profile of endSketch ? [sketch, endSketch] : [sketch]) {
+      if (profile.generatedPath) { setNotice({ type: "info", text: t("path.onlyPath") }); return; }
       if (profile.profile.shape !== "drawn") continue;
       const validation = validateDrawnSketchProfile(profile.profile.geometry);
       if (!validation.valid) { setNotice({ type: "error", text: `${t("notice.cannotExtrude")}: ${validation.diagnostics[0]?.message ?? t("notice.invalidProfile")}` }); return; }
@@ -2461,6 +2468,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   };
 
   const createSweep = (path: SketchFeature, profile?: SketchFeature, face?: ParametricTopologyReference) => {
+    if (profile?.generatedPath) { setNotice({ type: "info", text: t("path.onlyPath") }); return; }
     if (profile?.profile.shape === "drawn") {
       const validation = validateDrawnSketchProfile(profile.profile.geometry);
       if (!validation.valid) { setNotice({ type: "error", text: t("sweep.singleProfile") }); return; }
@@ -2756,6 +2764,34 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       }
     }
     setShapesOpen((value) => !value);
+  };
+
+  const addPathShape = (kind: "spiral" | "helix") => {
+    let featureId = "";
+    mutate((draft) => {
+      let object = draft.objects.find((item) => item.id === selectedObjectId && item.visible && !item.locked);
+      if (!object) {
+        const id = addParametricObject(draft, draft.workplane.origin);
+        object = draft.objects.find((item) => item.id === id)!;
+        const placement = objectPlacementForWorkplane(draft.workplane);
+        object.transform.position = placement.position;
+        object.transform.rotation = placement.rotation;
+      }
+      const count = draft.features.filter((item) => item.kind === "sketch" && item.generatedPath?.kind === kind).length + 1;
+      const sketch = createDrawnSketchFeature(draft.features.filter((item) => item.kind === "sketch").length + 1);
+      sketch.name = `${t(kind === "spiral" ? "path.spiral" : "path.helix")} ${count}`;
+      sketch.objectId = object.id;
+      const placement = operationPlacementForWorkplane(draft.workplane, object);
+      sketch.x = placement.position.x; sketch.y = placement.position.y; sketch.offset = placement.position.z;
+      sketch.rotation = placement.rotation;
+      sketch.generatedPath = kind === "spiral"
+        ? { kind: "spiral", spiralType: "archimedean", innerRadius: 3, outerRadius: 30, turns: 2, clockwise: false }
+        : { kind: "helix", radius: 15, pitch: 10, turns: 3, clockwise: false };
+      featureId = sketch.id;
+      draft.features.push(sketch);
+    });
+    if (featureId) setModelSelection([{ id: featureId, kind: "feature" }]);
+    setShapesOpen(false);
   };
 
   const addShape = (kind: SupportedPrimitive) => {
@@ -3813,6 +3849,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         <div className="shape-menu-list">
           {parametricShapeMenuOrder.map((kind) => {
             if (kind === "text") return <button className="shape-menu-item" key={kind} onClick={addText}><img src="/assets/sketchforge/shape-icons-gray/raw/text.png" alt="" /><span>{t("toolbar.text")}</span></button>;
+            if (kind === "spiral" || kind === "helix") return <button className="shape-menu-item" key={kind} onClick={() => addPathShape(kind)}><ThemedToolbarImage src={`/assets/kercad/toolbar-3d/shapes/${kind}.svg`} width={40} height={40} alt="" /><span>{t(kind === "spiral" ? "path.spiral" : "path.helix")}</span></button>;
             const asset = parametricOperationDefinition(kind);
             const localized = localizedParametricOperationDefinition(kind, locale);
             return <button className="shape-menu-item" key={kind} onClick={() => addShape(kind)}><img src={asset.menuIcon} alt="" /><span>{localized.name}</span></button>;

@@ -1,6 +1,7 @@
 "use client";
 
 import { closestScreenHandleHit } from "@/lib/parameterHandlePicking";
+import { generatedPathPoints } from "@/lib/parametricPaths";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAppTheme } from "@/lib/useAppTheme";
@@ -358,6 +359,14 @@ function roundedBoxRadiusHandlePoints(width: number, depth: number, height: numb
 
 function sketchOverlayPositions(feature: SketchFeature) {
   const positions: number[] = [];
+  if (feature.generatedPath) {
+    const points = generatedPathPoints(feature.generatedPath);
+    for (let i = 1; i < points.length; i++) {
+      const a = points[i - 1], b = points[i];
+      positions.push(a.x, a.y, a.z, b.x, b.y, b.z);
+    }
+    return positions;
+  }
   const addPolyline = (points: Array<{ x: number; y: number }>) => {
     for (let index = 1; index < points.length; index += 1) positions.push(points[index - 1].x, points[index - 1].y, 0.025, points[index].x, points[index].y, 0.025);
   };
@@ -4714,7 +4723,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
           </select>
         </> : null}
         {floatingBoolean ? <select className="kercad-context-object-select" aria-label={uiText("sidebar.object", {}, locale)} value={floatingBoolean.sourceObjectId} onChange={(event) => onFloatingFeatureChange?.(floatingBoolean.id, { sourceObjectId: event.target.value })}>{booleanObjects.filter((object) => object.id !== floatingBoolean.objectId).map((object) => <option key={object.id} value={object.id}>{object.name}</option>)}</select> : null}
-        {floatingFeature?.kind === "sketch" ? <button type="button" aria-label={uiText("operation.editSketch", {}, locale)} title={uiText("operation.editSketch", {}, locale)} onClick={() => onEditSketch?.(floatingFeature.id)}><ToolbarEditOperationIcon /></button> : null}
+        {floatingFeature?.kind === "sketch" && !floatingFeature.generatedPath ? <button type="button" aria-label={uiText("operation.editSketch", {}, locale)} title={uiText("operation.editSketch", {}, locale)} onClick={() => onEditSketch?.(floatingFeature.id)}><ToolbarEditOperationIcon /></button> : null}
         {floatingFeature?.kind === "faceExtrude" ? <button type="button" aria-label={uiText("operation.editFace", {}, locale)} title={uiText("operation.editFace", {}, locale)} onClick={() => onEditFaceExtrudeSelection?.(floatingFeature.id)}><ToolbarEditOperationIcon /></button> : null}
         {floatingFeature?.kind === "extrude" && !floatingFeature.endSketchId && !floatingFeature.pathSketchId ? <ViewportFloatingNumberInput value={floatingFeature.distance} unit="length" displayUnit={displayUnit} snap={snap} label={uiText("sidebar.depth", {}, locale)} min={-200} max={200} onCommit={(distance) => onFloatingFeatureChange?.(floatingFeature.id, { distance })} /> : null}
         {floatingFeature?.kind === "revolve" ? <><button type="button" aria-label={uiText("operation.editFace", {}, locale)} title={uiText("operation.editFace", {}, locale)} onClick={() => onEditRevolveFace?.(floatingFeature.id)}><ToolbarEditOperationIcon /><small>F</small></button><button type="button" aria-label={uiText("operation.editAxis", {}, locale)} title={uiText("operation.editAxis", {}, locale)} onClick={() => onEditRevolveAxis?.(floatingFeature.id)}><ToolbarEditOperationIcon /><small>A</small></button><ViewportFloatingNumberInput value={revolveAnglePreview ?? floatingFeature.angle} unit="angle" displayUnit={displayUnit} snap={snap} label={uiText("sketch.angle", {}, locale)} min={-360} max={360} onCommit={(angle) => onFloatingFeatureChange?.(floatingFeature.id, { angle: Math.abs(angle) < 1 ? (angle < 0 ? -1 : 1) : angle })} /></> : null}

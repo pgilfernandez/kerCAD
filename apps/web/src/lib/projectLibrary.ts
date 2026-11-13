@@ -24,6 +24,7 @@ export function hasProjectGeometry(document: ParametricDocument): boolean {
       if (feature.kind === "primitive" || feature.kind === "extrude") return true;
       if (feature.kind === "importedStep") return Boolean(feature.stepText.trim());
       if (feature.kind !== "sketch") return false;
+      if (feature.generatedPath) return true;
       if (feature.profile.shape !== "drawn") return true;
       const geometry = feature.profile.geometry;
       return Boolean(geometry.points.length || geometry.segments.length || geometry.circles?.length || geometry.images?.length || geometry.texts?.length);
