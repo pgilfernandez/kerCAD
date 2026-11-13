@@ -606,7 +606,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       const trigger = shapeMenuTriggerRef.current;
       if (!trigger) return;
       const bounds = trigger.getBoundingClientRect();
-      const menuWidth = Math.min(264, window.innerWidth - 20);
+      const menuWidth = Math.min(488, window.innerWidth - 20);
       setShapeMenuPosition({
         top: bounds.bottom,
         left: Math.max(10, Math.min(bounds.left, window.innerWidth - menuWidth - 10)),
@@ -3874,7 +3874,6 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
         })}
       </div> : null}
       {shapesOpen ? <div id="kercad-shape-menu" data-kercad-popup="shapes" className="shape-menu-dropdown detached" style={{ top: shapeMenuPosition.top, left: shapeMenuPosition.left }}>
-        <div className="shape-menu-title">{t("toolbar.shapes")}</div>
         <div className="shape-menu-list">
           {parametricShapeMenuOrder.map((kind) => {
             if (kind === "text") return <button className="shape-menu-item" key={kind} onClick={addText}><img src="/assets/sketchforge/shape-icons-gray/raw/text.png" alt="" /><span>{t("toolbar.text")}</span></button>;

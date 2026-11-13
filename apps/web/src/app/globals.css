@@ -4261,6 +4261,15 @@ button {
   z-index: 95;
 }
 
+#kercad-shape-menu { width: min(488px, calc(100vw - 20px)); }
+#kercad-shape-menu .shape-menu-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-height: min(648px, calc(100dvh - var(--editor-toolbar-height) - 12px));
+}
+#kercad-shape-menu .shape-menu-item { min-width: 0; }
+#kercad-shape-menu .shape-menu-item span { white-space: normal; overflow-wrap: anywhere; }
+
 .shape-menu-title {
   height: 42px;
   padding: 0 15px;
