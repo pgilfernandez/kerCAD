@@ -9524,8 +9524,8 @@ circle.sketch-preview-line {
 .kercad-challenge-player > footer { padding: 12px 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: var(--theme-surface); border-top: 1px solid var(--theme-line-d7e2e9); }
 .kercad-challenge-player > footer button { min-height: 47px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; color: var(--theme-dark-link, #405e75); background: var(--theme-surface); border: 1px solid var(--theme-dark-border, #c8d7e1); border-radius: 9px; font: inherit; font-weight: 800; }
 .kercad-challenge-player > footer button.primary { color: #fff; background: var(--accent-solid); border-color: var(--theme-line-075acb); }.kercad-challenge-player > footer button:disabled { opacity: .42; }
-.kercad-challenge-reopen { position: absolute; left: 20px; bottom: 118px; z-index: 12; width: 42px; height: 42px; padding: 0; display: grid; place-items: center; color: var(--theme-link); background: var(--theme-bg-ffffff-a950); border: 1px solid var(--theme-line-a8c9ef); border-radius: 8px; box-shadow: 0 3px 14px rgba(38,62,79,.14); }
-.kercad-challenge-reopen:hover { background: var(--theme-bg-effafe); border-color: var(--theme-line-83c5d9); }
+.kercad-challenge-reopen { position: absolute; left: 20px; bottom: 118px; z-index: 12; width: 42px; height: 42px; padding: 0; display: grid; place-items: center; color: #fff; background: var(--accent-solid); border: 1px solid var(--accent-solid); border-radius: 8px; box-shadow: 0 3px 14px rgba(38,62,79,.14); }
+.kercad-challenge-reopen:hover { background: color-mix(in srgb, var(--accent-solid) 85%, #000); border-color: color-mix(in srgb, var(--accent-solid) 85%, #000); }
 .kercad-challenge-compact { position: fixed; z-index: 40; overflow: hidden; color: var(--theme-link); background: rgba(255,255,255,.97); border: 1px solid var(--theme-line-a9c8e9); box-shadow: 0 8px 24px rgba(25,54,75,.2); }
 .kercad-challenge-compact.floating { width: 50px; height: 50px; border-radius: 9px; }
 .kercad-challenge-compact.left, .kercad-challenge-compact.right { top: var(--editor-toolbar-height); bottom: 0; width: 30px; height: auto; border-radius: 0; }
