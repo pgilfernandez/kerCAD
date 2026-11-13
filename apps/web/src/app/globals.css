@@ -710,8 +710,6 @@ button {
 .kercad-workplane-stage.challenge-docked-right { right: 380px; }
 .kercad-workplane-stage.challenge-authoring.challenge-docked-left { left: 430px; }
 .kercad-workplane-stage.challenge-authoring.challenge-docked-right { right: 430px; }
-.kercad-workplane-stage.challenge-docked-compact-left { left: 30px; }
-.kercad-workplane-stage.challenge-docked-compact-right { right: 30px; }
 
 .kercad-initial-loading {
   position: absolute;
@@ -9526,12 +9524,6 @@ circle.sketch-preview-line {
 .kercad-challenge-player > footer button.primary { color: #fff; background: var(--accent-solid); border-color: var(--theme-line-075acb); }.kercad-challenge-player > footer button:disabled { opacity: .42; }
 .kercad-challenge-reopen { position: absolute; left: 20px; bottom: 118px; z-index: 12; width: 42px; height: 42px; padding: 0; display: grid; place-items: center; color: #fff; background: var(--accent-solid); border: 1px solid var(--accent-solid); border-radius: 8px; box-shadow: 0 3px 14px rgba(38,62,79,.14); }
 .kercad-challenge-reopen:hover { background: color-mix(in srgb, var(--accent-solid) 85%, #000); border-color: color-mix(in srgb, var(--accent-solid) 85%, #000); }
-.kercad-challenge-compact { position: fixed; z-index: 40; overflow: hidden; color: var(--theme-link); background: rgba(255,255,255,.97); border: 1px solid var(--theme-line-a9c8e9); box-shadow: 0 8px 24px rgba(25,54,75,.2); }
-.kercad-challenge-compact.floating { width: 50px; height: 50px; border-radius: 9px; }
-.kercad-challenge-compact.left, .kercad-challenge-compact.right { top: var(--editor-toolbar-height); bottom: 0; width: 30px; height: auto; border-radius: 0; }
-.kercad-challenge-compact.left { left: 0; border-width: 0 1px 0 0; }.kercad-challenge-compact.right { right: 0; border-width: 0 0 0 1px; }
-.kercad-challenge-compact button { width: 100%; height: 100%; padding: 0; display: grid; place-items: center; color: inherit; background: transparent; border: 0; }
-.kercad-challenge-compact button:hover { color: #fff; background: var(--accent-solid); }
 .kercad-challenge-author { width: min(430px, calc(100vw - 16px)); }
 .kercad-challenge-author.left, .kercad-challenge-author.right { width: 430px; }
 .kercad-challenge-form { display: flex; flex-direction: column; gap: 13px; }

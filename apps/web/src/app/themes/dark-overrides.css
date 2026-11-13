@@ -166,7 +166,7 @@ html[data-theme="dark"] .kercad-challenge-card .challenge-copy > em {
 
 /* Challenge authoring/player: floating, docked and compact share dark surfaces.
    Keep these overrides scoped to dark mode; light artwork and photos stay intact. */
-html[data-theme="dark"] :is(.kercad-challenge-player, .kercad-challenge-compact) {
+html[data-theme="dark"] .kercad-challenge-player {
   color: var(--theme-text);
   background: var(--theme-page);
   border-color: var(--theme-border);
@@ -199,7 +199,7 @@ html[data-theme="dark"] :is(.kercad-challenge-player > header nav button.active,
   background: var(--theme-active);
   border-color: var(--theme-border);
 }
-html[data-theme="dark"] :is(.kercad-challenge-player > header nav button, .kercad-challenge-player > footer button, .kercad-challenge-category-input button, .kercad-challenge-parameter-editor > header button, .kercad-challenge-parameter-controls button, .kercad-challenge-capture-actions button, .kercad-challenge-compact button):not(:disabled):hover,
+html[data-theme="dark"] :is(.kercad-challenge-player > header nav button, .kercad-challenge-player > footer button, .kercad-challenge-category-input button, .kercad-challenge-parameter-editor > header button, .kercad-challenge-parameter-controls button, .kercad-challenge-capture-actions button):not(:disabled):hover,
 html[data-theme="dark"] .kercad-challenge-categories > span button:hover {
   color: var(--theme-link);
   background: var(--theme-active);

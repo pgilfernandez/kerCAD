@@ -584,7 +584,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const t = useCallback((key: KercadTranslationKey) => kercadTranslate(locale, key), [locale]);
 
   useEffect(() => {
-    const preferredDock = challengeDock.startsWith("compact-") ? challengeDock.replace("compact-", "") : challengeDock;
+    const preferredDock = challengeDock;
     if (preferredDock === "floating" || preferredDock === "left" || preferredDock === "right") window.localStorage.setItem("kercad.challenge-dock", preferredDock);
   }, [challengeDock]);
 
@@ -4536,7 +4536,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           </section>
         </aside> : null}
         <ViewCube orientation={cameraOrientation} onDirection={(direction, smooth = true) => setView((current) => ({ name: "custom", direction, smooth, token: current.token + 1 }))} />
-        {challengeEditor && challengeOpen && !sketchSession ? <ChallengeEditor
+        {challengeEditor && !sketchSession ? <div style={{ display: challengeOpen ? "contents" : "none" }}><ChallengeEditor
           challenge={challengeEditor}
           dock={challengeDock}
           capture={challengeCapture}
@@ -4546,10 +4546,11 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             setPendingChallengeCapture(stepId);
           }}
           onCancel={() => onCancelChallengeEdit?.()}
+          onCollapse={() => setChallengeOpen(false)}
           onSave={(edited) => onSaveChallenge?.(edited, structuredClone(latestDocumentRef.current))}
-        /> : null}
-        {challenge && challengeOpen && !sketchSession ? <ChallengePlayer challenge={challenge} dock={challengeDock} onDockChange={setChallengeDock} onClose={() => { setChallengeOpen(false); setChallengeDock("left"); }} /> : null}
-        {challenge && !challengeOpen && !sketchSession ? <button className="kercad-challenge-reopen" type="button" title={uiText("ui.sketchforgeparametriceditor.challenge.bb9d65", {}, locale)} aria-label={uiText("ui.sketchforgeparametriceditor.challenge.bb9d65", {}, locale)} onClick={() => { setChallengeDock("left"); setChallengeOpen(true); }}><ChallengeIcon size={24} /></button> : null}
+        /></div> : null}
+        {challenge && !sketchSession ? <div style={{ display: challengeOpen ? "contents" : "none" }}><ChallengePlayer challenge={challenge} dock={challengeDock} onDockChange={setChallengeDock} onClose={() => setChallengeOpen(false)} /></div> : null}
+        {(challenge || challengeEditor) && !challengeOpen && !sketchSession ? <button className="kercad-challenge-reopen" type="button" title={uiText("ui.challengeplayer.expand.challenge.7b0e39", {}, locale)} aria-label={uiText("ui.challengeplayer.expand.challenge.7b0e39", {}, locale)} onClick={() => setChallengeOpen(true)}><ChallengeIcon size={24} /></button> : null}
         <button data-kercad-popup="grid" className={`kercad-workplane-settings-button ${workplaneOpen ? "active" : ""}`} aria-label={t("grid.settings")} title={t("grid.title")} onClick={() => { setWorkplaneDraft(document.workplane); setWorkplaneOpen((value) => !value); }}><GridControlIcon size={22} /></button>
         <button
           className={`kercad-workplane-snap-button ${document.workplane.snapToGrid ? "active" : ""}`}

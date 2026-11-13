@@ -1,7 +1,5 @@
 "use client";
 
-import { ChallengeIcon } from "@/components/ChallengeIcon";
-
 import { Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronUp, GripHorizontal, ImageUp, PanelLeft, PanelRight, PanelsTopLeft, Plus, ScanLine, SeparatorHorizontal, Star, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { KercadChallenge } from "@/lib/challengeLibrary";
@@ -9,7 +7,7 @@ import { uiText } from "@/lib/kercadI18n";
 import type { CapturedChallengeParameter } from "@/lib/challengeParameterCapture";
 import { joinChallengeParameterGroups } from "@/lib/challengeParameters";
 
-export type ChallengeDock = "floating" | "left" | "right" | "compact-floating" | "compact-left" | "compact-right";
+export type ChallengeDock = "floating" | "left" | "right";
 
 type Props = {
   challenge: KercadChallenge;
@@ -19,6 +17,7 @@ type Props = {
   onDockChange: (dock: ChallengeDock) => void;
   onCapture: (stepId: string) => void;
   onCancel: () => void;
+  onCollapse: () => void;
   onSave: (challenge: KercadChallenge) => void;
 };
 
@@ -26,7 +25,7 @@ function nextStepId() {
   return typeof crypto.randomUUID === "function" ? `step-${crypto.randomUUID()}` : `step-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export function ChallengeEditor({ challenge, dock, capture, selectionParameters = [], onDockChange, onCapture, onCancel, onSave }: Props) {
+export function ChallengeEditor({ challenge, dock, capture, selectionParameters = [], onDockChange, onCapture, onCancel, onCollapse, onSave }: Props) {
   const [draft, setDraft] = useState(() => structuredClone(challenge));
   const [stepIndex, setStepIndex] = useState(0);
   const [editingMetadata, setEditingMetadata] = useState(true);
@@ -90,18 +89,13 @@ export function ChallengeEditor({ challenge, dock, capture, selectionParameters 
     reader.readAsDataURL(file);
   };
 
-  if (dock.startsWith("compact-")) {
-    const compactFrom = dock.replace("compact-", "") as "floating" | "left" | "right";
-    return <aside className={`kercad-challenge-compact ${compactFrom}`} style={compactFrom === "floating" ? { left: position.x, top: position.y } : undefined} aria-label={uiText("ui.challengeeditor.collapsed.challenge.editor.24f7cf")}><button type="button" title={uiText("ui.challengeeditor.expand.challenge.editor.31c0db")} aria-label={uiText("ui.challengeeditor.expand.challenge.editor.31c0db")} onClick={() => onDockChange(compactFrom)}><ChallengeIcon size={19} /></button></aside>;
-  }
-
   return <aside className={`kercad-challenge-player kercad-challenge-author ${dock}`} style={dock === "floating" ? { left: position.x, top: position.y } : undefined} aria-label={uiText("ui.challengeeditor.challenge.editor.723644")}>
     <header onPointerDown={beginDrag} onPointerMove={drag} onPointerUp={endDrag} onPointerCancel={endDrag}>
       <nav aria-label={uiText("ui.challengeeditor.challenge.editor.panel.position.2f13fe")}>
         <button type="button" className={dock === "floating" ? "active" : ""} title={uiText("ui.challengeeditor.float.panel.d20f37")} aria-label={uiText("ui.challengeeditor.float.panel.d20f37")} onClick={() => onDockChange("floating")}><PanelsTopLeft size={17} /></button>
         <button type="button" className={dock === "left" ? "active" : ""} title={uiText("ui.challengeeditor.dock.left.a6cfae")} aria-label={uiText("ui.challengeeditor.dock.left.a6cfae")} onClick={() => onDockChange("left")}><PanelLeft size={17} /></button>
         <button type="button" className={dock === "right" ? "active" : ""} title={uiText("ui.challengeeditor.dock.right.90a15b")} aria-label={uiText("ui.challengeeditor.dock.right.90a15b")} onClick={() => onDockChange("right")}><PanelRight size={17} /></button>
-        <button type="button" title={uiText("ui.challengeeditor.collapse.panel.02d7f3")} aria-label={uiText("ui.challengeeditor.collapse.panel.02d7f3")} onClick={() => onDockChange(`compact-${dock}` as ChallengeDock)}><ChevronsLeft size={17} /></button>
+        <button type="button" title={uiText("model.collapse")} aria-label={uiText("model.collapse")} onClick={onCollapse}><ChevronsLeft size={17} /></button>
         <button type="button" title={uiText("ui.challengeeditor.cancel.editing.26bbc0")} aria-label={uiText("ui.challengeeditor.cancel.editing.26bbc0")} onClick={onCancel}><X size={18} /></button>
       </nav>
       <div><small>{uiText("ui.challengeeditor.challenge.editor.d33237")}</small><strong>{draft.title || uiText("ui.challengeeditor.untitled.challenge.7def40")}</strong></div>

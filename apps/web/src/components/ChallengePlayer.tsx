@@ -1,14 +1,12 @@
 "use client";
 
-import { ChallengeIcon } from "@/components/ChallengeIcon";
-
-import { ChevronLeft, ChevronRight, ChevronsLeft, GripHorizontal, PanelLeft, PanelRight, PanelsTopLeft, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, GripHorizontal, PanelLeft, PanelRight, PanelsTopLeft } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { KercadChallenge } from "@/lib/challengeLibrary";
 import { uiText } from "@/lib/kercadI18n";
 import { groupChallengeParameters } from "@/lib/challengeParameters";
 
-type Dock = "floating" | "left" | "right" | "compact-floating" | "compact-left" | "compact-right";
+type Dock = "floating" | "left" | "right";
 
 export function ChallengePlayer({ challenge, dock, onDockChange, onClose }: { challenge: KercadChallenge; dock: Dock; onDockChange: (dock: Dock) => void; onClose: () => void }) {
   const [stepIndex, setStepIndex] = useState(0);
@@ -35,11 +33,6 @@ export function ChallengePlayer({ challenge, dock, onDockChange, onClose }: { ch
     if (dragRef.current?.pointerId === event.pointerId) dragRef.current = null;
   };
 
-  if (dock.startsWith("compact-")) {
-    const compactFrom = dock.replace("compact-", "") as "floating" | "left" | "right";
-    return <aside className={`kercad-challenge-compact ${compactFrom}`} style={compactFrom === "floating" ? { left: position.x, top: position.y } : undefined} aria-label={uiText("ui.challengeplayer.collapsed.challenge.df28cb", { value0: challenge.title })}><button type="button" title={uiText("ui.challengeplayer.expand.challenge.7b0e39")} aria-label={uiText("ui.challengeplayer.expand.challenge.7b0e39")} onClick={() => onDockChange(compactFrom)}><ChallengeIcon size={19} /></button></aside>;
-  }
-
   return <aside
     className={`kercad-challenge-player ${dock}`}
     style={dock === "floating" ? { left: position.x, top: position.y } : undefined}
@@ -50,8 +43,7 @@ export function ChallengePlayer({ challenge, dock, onDockChange, onClose }: { ch
         <button type="button" className={dock === "floating" ? "active" : ""} title={uiText("ui.challengeeditor.float.panel.d20f37")} aria-label={uiText("ui.challengeeditor.float.panel.d20f37")} onClick={() => onDockChange("floating")}><PanelsTopLeft size={17} /></button>
         <button type="button" className={dock === "left" ? "active" : ""} title={uiText("ui.challengeeditor.dock.left.a6cfae")} aria-label={uiText("ui.challengeeditor.dock.left.a6cfae")} onClick={() => onDockChange("left")}><PanelLeft size={17} /></button>
         <button type="button" className={dock === "right" ? "active" : ""} title={uiText("ui.challengeeditor.dock.right.90a15b")} aria-label={uiText("ui.challengeeditor.dock.right.90a15b")} onClick={() => onDockChange("right")}><PanelRight size={17} /></button>
-        <button type="button" title={uiText("ui.challengeeditor.collapse.panel.02d7f3")} aria-label={uiText("ui.challengeeditor.collapse.panel.02d7f3")} onClick={() => onDockChange(`compact-${dock}` as Dock)}><ChevronsLeft size={17} /></button>
-        <button type="button" title={uiText("ui.challengeplayer.close.challenge.e8b487")} aria-label={uiText("ui.challengeplayer.close.challenge.e8b487")} onClick={onClose}><X size={18} /></button>
+        <button type="button" title={uiText("model.collapse")} aria-label={uiText("model.collapse")} onClick={onClose}><ChevronsLeft size={18} /></button>
       </nav>
       <div><small>{uiText("ui.challengeplayer.challenge.e9166b")}</small><strong>{challenge.title}</strong></div>
       <span className="kercad-challenge-progress">{stepIndex + 1} / {challenge.steps.length}</span>
