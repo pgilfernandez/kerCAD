@@ -785,6 +785,17 @@ function operationWorldTransform(object: ParametricObject, feature: Transformabl
 }
 
 export function viewportSelectionForFeature(document: ParametricDocument, id: string | null, includeUnavailable = false): ViewportSelection | null {
+  const pathFeature = document.features.find((candidate) => candidate.id === id);
+  if (pathFeature?.kind === "sketch" && pathFeature.generatedPath?.kind === "helix" && pathFeature.visible !== false) {
+    const placement = viewportPlacementForSketchFeature(document, id);
+    const owner = document.objects.find((object) => object.id === pathFeature.objectId);
+    if (!placement || !owner) return null;
+    const path = pathFeature.generatedPath;
+    return { id: pathFeature.id, x: placement.position.x, y: placement.position.y, baseZ: placement.position.z,
+      center: placement.position, rotation: placement.rotation.z, rotation3d: placement.rotation,
+      width: path.radius * 2 * owner.transform.scale.x, depth: path.radius * 2 * owner.transform.scale.y, height: path.pitch * path.turns * owner.transform.scale.z,
+      shapeParameters: { shape: "helix", radius: path.radius, height: path.pitch, size: path.turns, clockwise: path.clockwise } };
+  }
   const feature = document.features.find((candidate): candidate is TransformableOperation => candidate.id === id && isTransformableOperation(candidate));
   if (!feature || feature.suppressed) return null;
   const object = document.objects.find((candidate) => candidate.id === feature.objectId);
@@ -1228,6 +1239,12 @@ export function updateParametricShapeParameter(
   value: number,
 ) {
   if (!Number.isFinite(value)) return;
+  const pathFeature = document.features.find((candidate) => candidate.id === id);
+  if (pathFeature?.kind === "sketch" && pathFeature.generatedPath?.kind === "helix") {
+    const key = parameter === "radius" ? "radius" : parameter === "height" ? "pitch" : parameter === "size" ? "turns" : null;
+    if (key) pathFeature.generatedPath[key] = Math.max(.1, Math.min(key === "turns" ? 100 : 10000, value));
+    return;
+  }
   const feature = document.features.find((candidate): candidate is TransformableOperation => candidate.id === id && isTransformableOperation(candidate));
   if (!feature) return;
   const signedExtrusionHeight = feature.kind === "extrude" && parameter === "height";

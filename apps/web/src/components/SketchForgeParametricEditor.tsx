@@ -1111,7 +1111,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const selectedSketchId = selectedFeature?.kind === "sketch" && selectedFeature.purpose === "user" ? selectedFeature.id : null;
   const selectedTransformOperationId = selectedOperationId ?? selectedSketchId;
   const selectedShape = useMemo(() => workplaneShapeForObject(document, selectedObjectId), [document, selectedObjectId]);
-  const selectedBox = useMemo(() => modelSelection.length === 1 ? (selectionKind === "feature" ? selectedOperationId ? viewportSelectionForFeature(document, selectedOperationId) : null : viewportSelectionForObject(document, selectedObjectId)) : null, [document, modelSelection.length, selectedObjectId, selectedOperationId, selectionKind]);
+  const selectedBox = useMemo(() => modelSelection.length === 1 ? (selectionKind === "feature" ? viewportSelectionForFeature(document, selectedId) : viewportSelectionForObject(document, selectedObjectId)) : null, [document, modelSelection.length, selectedObjectId, selectedId, selectionKind]);
   const selectedSketchPlacement = useMemo(() => selectedSketchId ? viewportPlacementForSketchFeature(document, selectedSketchId) : null, [document, selectedSketchId]);
   const selectedOriginObjectId = modelSelection.length === 1 && selectionKind === "object" ? selectedObjectId : null;
   const selectedReferenceObject = selectedOriginObjectId ? document.objects.find((object) => object.id === selectedOriginObjectId && object.referenceMesh) : undefined;
@@ -4287,8 +4287,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           operationModesVisible={Boolean(selectedOperationId && hasPreviousSolidOperation(document, selectedOperationId))}
           onOperationModeChange={setSelectedOperationMode}
           onShapeParameterChange={(parameter, value) => {
-            if (!selectedOperationId) return;
-            mutate((draft) => updateParametricShapeParameter(draft, selectedOperationId, parameter, value));
+            const targetId = selectedOperationId ?? selectedSketchId;
+            if (!targetId) return;
+            mutate((draft) => updateParametricShapeParameter(draft, targetId, parameter, value));
           }}
           onObjectOriginMove={(objectId, position) => mutate((draft) => moveParametricObjectOrigin(draft, objectId, position))}
           onObjectAxisMove={(objectId, position) => {

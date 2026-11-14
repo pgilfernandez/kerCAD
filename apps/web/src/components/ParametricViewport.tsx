@@ -107,6 +107,7 @@ export type ViewportSelection = {
   resizeAspectRatio?: number;
   allowNegativeHeight?: boolean;
   shapeParameters?:
+    | { shape: "helix"; radius: number; height: number; size: number; clockwise: boolean }
     | { shape: "platonic"; size: number; height: number; platonicType: PlatonicType }
     | { shape: "box"; width: number; depth: number; height: number }
     | { shape: "roundedBox"; width: number; depth: number; height: number; cornerRadius: number }
@@ -2361,6 +2362,13 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
             pendingShapeParameter = { parameter, value };
             shapeParameterPreviewRef.current = pendingShapeParameter;
             shapeParameterStartValue = value;
+            if (values?.shape === "helix") {
+              const scaleZ = selected.height / (values.height * values.size);
+              shapeParameterWorldScale = parameter === "radius" ? selected.width / (2 * values.radius) : parameter === "height" ? scaleZ : values.height * scaleZ;
+              shapeParameterStartValue = parameter === "radius" ? values.radius : parameter === "height" ? values.height : values.size;
+              pendingShapeParameter.value = shapeParameterStartValue;
+              parameterPointerOffset = pointerCoordinate - shapeParameterStartValue * shapeParameterWorldScale;
+            }
           }
         }
       }
@@ -2669,6 +2677,34 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
         const pointerCoordinate = (shapeParameterDragAxis === "y" ? localPointer.y : shapeParameterDragAxis === "z" ? localPointer.z : localPointer.x) * shapeParameterDragSign;
         const adjusted = pointerCoordinate - parameterPointerOffset;
         const parameterAdjusted = adjusted;
+        if (selected.shapeParameters?.shape === "helix") {
+          const values = selected.shapeParameters;
+          const step = parameter === "size" ? .25 : grid;
+          pendingShapeParameter.value = Math.max(.1, Math.min(parameter === "size" ? 100 : 10000, Math.round(parameterAdjusted / Math.max(.0001, shapeParameterWorldScale) / step) * step));
+          shapeParameterPreviewRef.current = { ...pendingShapeParameter };
+          const radius = parameter === "radius" ? pendingShapeParameter.value : values.radius;
+          const pitch = parameter === "height" ? pendingShapeParameter.value : values.height;
+          const turns = parameter === "size" ? pendingShapeParameter.value : values.size;
+          const sx = selected.width / (2 * values.radius), sy = selected.depth / (2 * values.radius), sz = selected.height / (values.height * values.size);
+          const positions: number[] = [];
+          const count = Math.min(4096, Math.max(64, Math.ceil(turns * 64)));
+          for (let i = 0; i < count; i++) for (const t of [i / count, (i + 1) / count]) {
+            const angle = t * turns * Math.PI * 2 * (values.clockwise ? -1 : 1);
+            positions.push(Math.cos(angle) * radius * sx, Math.sin(angle) * radius * sy, t * pitch * turns * sz);
+          }
+          visualRoot.traverse((child) => {
+            if (child instanceof LineSegments2 && child.userData.helixPreview) child.geometry.setPositions(positions);
+            const role = child.userData.shapeParameterVisualRole;
+            const key = child.userData.shapeParameterVisual;
+            if (!role) return;
+            const start = key === "height" ? new THREE.Vector3(-radius * sx, 0, 0) : new THREE.Vector3();
+            const end = key === "radius" ? new THREE.Vector3(radius * sx + 3, 0, 0) : key === "height" ? new THREE.Vector3(-radius * sx, 0, pitch * sz + 3) : new THREE.Vector3(0, 0, pitch * turns * sz + 3);
+            if (role === "guide" && child instanceof LineSegments2) updateYellowManipulatorLine(child, start, end);
+            else child.position.copy(end);
+          });
+          requestRender();
+          return;
+        }
         const signedHeightDrag = parameter === "height" && selected.allowNegativeHeight;
         let signedVisualExtent = 0;
         let visualExtent = parameter === "sides" || parameter === "teeth"
@@ -4259,7 +4295,14 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
     const heightDirection = selection.allowNegativeHeight && parameters && "height" in parameters && parameters.height < 0 ? -1 : 1;
     const heightBase = -selection.height / 2 * heightDirection;
     const heightEnd = selection.height / 2 * heightDirection + 3 * heightDirection;
-    if (parameters?.shape === "box" || parameters?.shape === "roundedBox") {
+    if (parameters?.shape === "helix") {
+      addParameterHandle("radius", "x", new THREE.Vector3(), new THREE.Vector3(selection.width / 2 + 3, 0, 0));
+      addParameterHandle("height", "z", new THREE.Vector3(-selection.width / 2, 0, 0), new THREE.Vector3(-selection.width / 2, 0, selection.height / parameters.size + 3));
+      addParameterHandle("size", "z", new THREE.Vector3(), new THREE.Vector3(0, 0, selection.height + 3));
+      const preview = new LineSegments2(new LineSegmentsGeometry(), new LineMaterial({ color: 0xd6a600, linewidth: 2, depthTest: false }));
+      preview.userData.helixPreview = true;
+      visualRoot.add(preview);
+    } else if (parameters?.shape === "box" || parameters?.shape === "roundedBox") {
       const baseZ = heightBase;
       addParameterHandle("width", "x", new THREE.Vector3(0, 0, baseZ), new THREE.Vector3(selection.width / 2 + 3, 0, baseZ));
       addParameterHandle("depth", "y", new THREE.Vector3(0, 0, baseZ), new THREE.Vector3(0, selection.depth / 2 + 3, baseZ));
@@ -4487,7 +4530,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
 
   const labelDefinitions = useMemo(() => {
     const shape = selection?.shapeParameters?.shape;
-    return shape && shape !== "text" ? localizedParametricOperationDefinition(shape, locale).parameters : [];
+    return shape && shape !== "text" && shape !== "helix" ? localizedParametricOperationDefinition(shape, locale).parameters : [];
   }, [selection?.shapeParameters?.shape, locale]);
   const parameterLabelHandles = (): ParameterHandleLabel[] => {
     if (!parameterHandlesVisible) return [];
@@ -4517,9 +4560,9 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       labels.push({
         key: `shape:${selected.id}:${parameter}`, anchor: node,
         targets: resizeHitboxesRef.current.filter((target) => target.userData.shapeParameter === parameter),
-        name: parameter === "radius3" ? uiText("sphere.radius3", {}, locale) : parameter === "radius2" ? uiText("cylinder.radius2", {}, locale) : definition?.label ?? uiText(parameter === "height" ? "sidebar.height" : "sidebar.size", {}, locale),
+        name: parameters?.shape === "helix" ? uiText(parameter === "radius" ? "property.radius" : parameter === "height" ? "path.pitch" : "path.turns", {}, locale) : parameter === "radius3" ? uiText("sphere.radius3", {}, locale) : parameter === "radius2" ? uiText("cylinder.radius2", {}, locale) : definition?.label ?? uiText(parameter === "height" ? "sidebar.height" : "sidebar.size", {}, locale),
         value, color: dimensional && (handleAxis === "x" || handleAxis === "y" || handleAxis === "z") ? handleAxis : "other",
-        unit: parameter === "sides" || parameter === "teeth" ? "count" : "length",
+        unit: parameters?.shape === "helix" && parameter === "size" ? "scalar" : parameter === "sides" || parameter === "teeth" ? "count" : "length",
         min: parameter === "height" && selected.allowNegativeHeight ? -1000 : parameter === "topRadius" || parameter === "boreRadius" ? 0 : definition?.min ?? .01,
         max: parameter === "sides" || parameter === "teeth" ? definition?.max : undefined,
         onCommit: (next) => shapeParameterRef.current?.(parameter, next),
