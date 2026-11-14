@@ -9,7 +9,7 @@ export async function GET() {
   const cwd = process.cwd();
   const webRoot = path.basename(cwd) === "web" && path.basename(path.dirname(cwd)) === "apps"
     ? cwd : path.join(cwd, "apps", "web");
-  const directory = path.join(webRoot, "public", "sponsors");
+  const directory = path.join(webRoot, "public", "assets", "kercad", "sponsors");
   let images: string[] = [];
   try {
     const entries = await fs.readdir(directory, { withFileTypes: true });
@@ -20,7 +20,7 @@ export async function GET() {
         try {
           const stat = await fs.lstat(path.join(directory, entry.name));
           if (!stat.isFile() || stat.isSymbolicLink()) return null;
-          return `/sponsors/${encodeURIComponent(entry.name)}?v=${stat.size}-${Math.trunc(stat.mtimeMs)}`;
+          return `/assets/kercad/sponsors/${encodeURIComponent(entry.name)}?v=${stat.size}-${Math.trunc(stat.mtimeMs)}`;
         } catch { return null; }
       }))).filter((src): src is string => src !== null);
   } catch { /* An absent sponsor folder must not prevent opening projects. */ }

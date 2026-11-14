@@ -2,7 +2,7 @@
 
 Place sponsor images directly in this folder:
 
-`apps/web/public/sponsors/`
+`apps/web/public/assets/kercad/sponsors/`
 
 - Accepted formats: WebP, AVIF, PNG, JPG/JPEG, GIF and SVG.
 - Recommended proportions: 2:1, e.g. **960 × 480 px**.

@@ -8,7 +8,7 @@ export type ProjectLoadingCampaign = {
 /** Used immediately while the sponsor catalogue or its chosen image loads. */
 export const projectLoadingCampaign: ProjectLoadingCampaign = {
   kind: "image",
-  src: "/sponsors/loading-campaign.svg",
+  src: "/assets/kercad/sponsors/loading-campaign.svg",
   supportUrl: "https://github.com/sponsors/pgilfernandez",
 };
 
@@ -54,7 +54,7 @@ export function prepareProjectLoadingCampaign(priority: "high" | "low" = "high")
         const response = await fetch("/api/loading-sponsors", { cache: "no-store" });
         if (!response.ok) throw new Error("Sponsor catalogue unavailable.");
         const body = await response.json() as { images?: unknown };
-        catalogue = Array.isArray(body.images) ? body.images.filter((src): src is string => typeof src === "string" && src.startsWith("/sponsors/")) : [];
+        catalogue = Array.isArray(body.images) ? body.images.filter((src): src is string => typeof src === "string" && src.startsWith("/assets/kercad/sponsors/")) : [];
         catalogueLoadedAt = Date.now();
       }
       const candidates = [...catalogue];
