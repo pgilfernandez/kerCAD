@@ -482,7 +482,7 @@ function FeatureIcon({ document, feature }: { document: ParametricDocument; feat
   if (feature.kind === "importedStep") return <OperationTreeIcon file="imported-step" className="imported-step" size={16} role="img" aria-label={t("operation.importedStep")} />;
   if (feature.kind === "hole") return <OperationTreeIcon file="hole" className="drill-hole" size={16} role="img" aria-label={t("operation.hole")} />;
   if (feature.kind === "faceExtrude") return <span className={`kercad-operation-icon ${feature.operation === "cut" ? "hole" : "add"}`} role="img" aria-label={feature.operation === "cut" ? t("operation.facePocket") : t("operation.faceExtrude")}><OperationTreeIcon file="box" size={17} /><small aria-hidden="true"><OperationTreeIcon file={feature.operation === "cut" ? "cut" : "add"} size={8} /></small></span>;
-  if (feature.kind === "shell") return <img className="kercad-operation-asset-icon" src="/assets/kercad/operations-tree/shell.svg" alt={t("toolbar.shell")} />;
+  if (feature.kind === "shell") return <OperationTreeIcon file="shell" className="shell" aria-label={t("toolbar.shell")} />;
   if (feature.kind === "revolve") return <img className="kercad-operation-asset-icon" src="/assets/kercad/operations-tree/revolve.svg" alt={t("operation.revolve")} />;
   if (feature.kind === "mirror") return <OperationTreeIcon file="mirror" className="mirror" size={16} role="img" aria-label={t("operation.mirror")} />;
   if (feature.kind === "linearPattern") return <OperationTreeIcon file="linear-pattern" className="linear-pattern" size={16} role="img" aria-label={t("operation.linearPattern")} />;
