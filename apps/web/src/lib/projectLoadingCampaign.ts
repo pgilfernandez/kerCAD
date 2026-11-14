@@ -8,7 +8,7 @@ export type ProjectLoadingCampaign = {
 /** Used immediately while the sponsor catalogue or its chosen image loads. */
 export const projectLoadingCampaign: ProjectLoadingCampaign = {
   kind: "image",
-  src: "/assets/kercad/loading-campaign.svg",
+  src: "/sponsors/loading-campaign.svg",
   supportUrl: "https://github.com/sponsors/pgilfernandez",
 };
 
