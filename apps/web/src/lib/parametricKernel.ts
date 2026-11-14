@@ -238,9 +238,11 @@ function solidFromSketch(brep: Brep, sketch: SketchFeature, feature: ExtrudeFeat
       axis.normalize();
       face = brep.rotate(face, angle, { axis: [axis.x, axis.y, axis.z], at: brep.faceCenter(face) }) as Face;
     }
-    // Corrected Frenet follows the tangent without the 180-degree normal
-    // flips of strict Frenet at straight sections and curvature inflections.
-    const options = { transitionMode: "right" as const, frenet: false, forceProfileSpineOthogonality: true };
+    // A helix has continuous, nonzero curvature: its Frenet normal stays
+    // radial and prevents the accumulated section roll of corrected Frenet.
+    // Keep corrected Frenet for arbitrary paths, which may have inflections
+    // or straight segments where strict Frenet would flip the section.
+    const options = { transitionMode: "right" as const, frenet: path.generatedPath?.kind === "helix", forceProfileSpineOthogonality: true };
     let solid = brep.unwrap(brep.sweep(brep.outerWire(face), spine, options)) as AnySolid;
     for (const hole of brep.innerWires(face)) {
       const tool = brep.unwrap(brep.sweep(hole, spine, options)) as AnySolid;
