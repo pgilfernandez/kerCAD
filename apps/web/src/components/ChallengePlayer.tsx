@@ -50,7 +50,7 @@ export function ChallengePlayer({ challenge, dock, onDockChange, onClose }: { ch
       {dock === "floating" ? <GripHorizontal className="kercad-challenge-drag-hint" size={22} aria-hidden="true" /> : null}
     </header>
     <div className="kercad-challenge-step">
-      <small>{step.label || (stepIndex === 0 ? uiText("ui.challengeeditor.before.you.start.c5e2bb") : uiText("ui.challengeeditor.step.0a0a95", { value0: stepIndex }))}</small>
+      <small>{step.label || uiText("ui.challengeeditor.step.0a0a95", { value0: stepIndex + 1 })}</small>
       <h2>{step.title}</h2>
       <p>{step.body}</p>
       {parameterGroups.length ? <div className="kercad-challenge-parameter-groups">{parameterGroups.map((group, groupIndex) => <dl key={`${step.id}:group:${groupIndex}`}>{group.map((value, index) => <div key={`${groupIndex}:${index}`}><dt>{value.label}</dt><dd>{value.value}</dd></div>)}</dl>)}</div> : null}

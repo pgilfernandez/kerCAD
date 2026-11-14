@@ -3,6 +3,7 @@ import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { createEmptyDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import type { ParametricDocument } from "@/types/parametric";
 import { isLegacyChallengeFormat } from "@/lib/legacyBrand";
+import { uiText } from "@/lib/kercadI18n";
 import { createBrandMigrationStore, migrateLegacyLibrary } from "@/lib/libraryBrandMigration";
 
 export type KercadChallengeStep = {
@@ -38,7 +39,7 @@ export function createEmptyChallenge(): KercadChallenge {
     version: 1,
     installedAt: Date.now(),
     workspaceDocument: createEmptyDocument(),
-    steps: [{ id: "step-1", label: "BEFORE YOU START", title: "First step", body: "Describe what the learner should do in this step.", values: [] }],
+    steps: [{ id: "step-1", label: uiText("ui.challengeeditor.step.0a0a95", { value0: 1 }), title: "First step", body: "Describe what the learner should do in this step.", values: [] }],
   };
 }
 

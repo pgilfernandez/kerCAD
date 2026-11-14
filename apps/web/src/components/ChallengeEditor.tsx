@@ -120,7 +120,7 @@ export function ChallengeEditor({ challenge, dock, capture, selectionParameters 
     </div> : <div className="kercad-challenge-step kercad-challenge-form">
       <label><span>{uiText("ui.challengeeditor.step.title.77d7bc")}</span><input value={step.title} maxLength={120} onChange={(event) => updateStep({ title: event.target.value })} /></label>
       <label><span>{uiText("ui.challengeeditor.description.55f8eb")}</span><textarea rows={4} value={step.body} onChange={(event) => updateStep({ body: event.target.value })} /></label>
-      <label><span>{uiText("ui.challengeeditor.step.subtitle.2b531b")}</span><input value={step.label ?? ""} maxLength={80} placeholder={stepIndex === 0 ? uiText("ui.challengeeditor.before.you.start.c5e2bb") : uiText("ui.challengeeditor.step.0a0a95", { value0: stepIndex })} onChange={(event) => updateStep({ label: event.target.value })} /></label>
+      <label><span>{uiText("ui.challengeeditor.step.subtitle.2b531b")}</span><input value={step.label ?? ""} maxLength={80} placeholder={uiText("ui.challengeeditor.step.0a0a95", { value0: stepIndex + 1 })} onChange={(event) => updateStep({ label: event.target.value })} /></label>
       <section className="kercad-challenge-parameter-editor">
         <header><strong>{uiText("operation.parameters")}</strong><div className="kercad-challenge-parameter-actions">
           <button type="button" onClick={() => updateStep({ values: [...(step.values ?? []), { label: uiText("ui.challengeeditor.parameter.f699f2"), value: "1 mm" }] })}><Plus size={16} /> {uiText("model.add")}</button>
