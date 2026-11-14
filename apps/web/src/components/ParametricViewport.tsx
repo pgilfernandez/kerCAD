@@ -1152,6 +1152,8 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
     let rotationGuide: THREE.Group | null = null;
     let rotationGuideHighlight: LineSegments2 | null = null;
     let rotationGuideScale = 1;
+    let helixPointerAngle = 0;
+    let helixDragTurns = 0;
     let rotationPreview: THREE.Group | null = null;
     let referenceDragPreview: ReturnType<typeof referenceTransformPreview> | null = null;
     let pendingRotation: { targetId: string; targetKind: "object" | "feature"; localAxis: "x" | "y" | "z"; axis: { x: number; y: number; z: number }; deltaDegrees: number } | null = null;
@@ -2277,6 +2279,9 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
           if (planeNormal.lengthSq() < 0.0001) planeNormal.crossVectors(axis, new THREE.Vector3(1, 0, 0));
           if (planeNormal.lengthSq() < 0.0001) planeNormal.crossVectors(axis, new THREE.Vector3(0, 1, 0));
           dragPlane.setFromNormalAndCoplanarPoint(planeNormal.normalize(), center);
+          if (selected.shapeParameters?.shape === "helix" && parameter === "size") {
+            dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 0, 1).applyQuaternion(rootQuaternion), resizeHit!.point);
+          }
           if (raycaster.ray.intersectPlane(dragPlane, dragPoint)) {
             interaction = "parameter";
             resizeStart = { ...selected };
@@ -2368,6 +2373,8 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
               shapeParameterStartValue = parameter === "radius" ? values.radius : parameter === "height" ? values.height : values.size;
               pendingShapeParameter.value = shapeParameterStartValue;
               parameterPointerOffset = pointerCoordinate - shapeParameterStartValue * shapeParameterWorldScale;
+              helixPointerAngle = Math.atan2(localPointer.y, localPointer.x);
+              helixDragTurns = values.size;
             }
           }
         }
@@ -2680,7 +2687,15 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
         if (selected.shapeParameters?.shape === "helix") {
           const values = selected.shapeParameters;
           const step = parameter === "size" ? .25 : grid;
-          pendingShapeParameter.value = Math.max(.1, Math.min(parameter === "size" ? 100 : 10000, Math.round(parameterAdjusted / Math.max(.0001, shapeParameterWorldScale) / step) * step));
+          let rawValue = parameterAdjusted / Math.max(.0001, shapeParameterWorldScale);
+          if (parameter === "size") {
+            const angle = Math.atan2(localPointer.y, localPointer.x);
+            const delta = Math.atan2(Math.sin(angle - helixPointerAngle), Math.cos(angle - helixPointerAngle));
+            helixDragTurns += delta / (Math.PI * 2) * (values.clockwise ? -1 : 1);
+            helixPointerAngle = angle;
+            rawValue = helixDragTurns;
+          }
+          pendingShapeParameter.value = Math.max(.1, Math.min(parameter === "size" ? 100 : 10000, Math.round(rawValue / step) * step));
           shapeParameterPreviewRef.current = { ...pendingShapeParameter };
           const radius = parameter === "radius" ? pendingShapeParameter.value : values.radius;
           const pitch = parameter === "height" ? pendingShapeParameter.value : values.height;
@@ -2694,12 +2709,17 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
           }
           visualRoot.traverse((child) => {
             if (child instanceof LineSegments2 && child.userData.helixPreview) child.geometry.setPositions(positions);
+            if (child instanceof LineSegments2 && child.userData.helixPitchMark) child.geometry.setPositions([radius * sx, 0, pitch * sz, radius * sx + 6, 0, pitch * sz]);
             const role = child.userData.shapeParameterVisualRole;
             const key = child.userData.shapeParameterVisual;
             if (!role) return;
-            const start = key === "height" ? new THREE.Vector3(-radius * sx, 0, 0) : new THREE.Vector3();
-            const end = key === "radius" ? new THREE.Vector3(radius * sx + 3, 0, 0) : key === "height" ? new THREE.Vector3(-radius * sx, 0, pitch * sz + 3) : new THREE.Vector3(0, 0, pitch * turns * sz + 3);
-            if (role === "guide" && child instanceof LineSegments2) updateYellowManipulatorLine(child, start, end);
+            const start = key === "height" ? new THREE.Vector3(radius * sx + 3, 0, 0) : new THREE.Vector3();
+            const endAngle = turns * Math.PI * 2 * (values.clockwise ? -1 : 1);
+            const end = key === "radius" ? new THREE.Vector3(radius * sx + 3, 0, 0) : key === "height" ? new THREE.Vector3(radius * sx + 3, 0, pitch * sz + 3) : new THREE.Vector3(Math.cos(endAngle) * radius * sx * .75, Math.sin(endAngle) * radius * sy * .75, pitch * turns * sz);
+            if (role === "guide" && child instanceof LineSegments2) {
+              if (key === "size") child.geometry.setPositions(positions.map((value, index) => index % 3 === 2 ? value : value * .75));
+              else updateYellowManipulatorLine(child, start, end);
+            }
             else child.position.copy(end);
           });
           requestRender();
@@ -4297,8 +4317,17 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
     const heightEnd = selection.height / 2 * heightDirection + 3 * heightDirection;
     if (parameters?.shape === "helix") {
       addParameterHandle("radius", "x", new THREE.Vector3(), new THREE.Vector3(selection.width / 2 + 3, 0, 0));
-      addParameterHandle("height", "z", new THREE.Vector3(-selection.width / 2, 0, 0), new THREE.Vector3(-selection.width / 2, 0, selection.height / parameters.size + 3));
-      addParameterHandle("size", "z", new THREE.Vector3(), new THREE.Vector3(0, 0, selection.height + 3));
+      const pitchHeight = selection.height / parameters.size;
+      addParameterHandle("height", "z", new THREE.Vector3(selection.width / 2 + 3, 0, 0), new THREE.Vector3(selection.width / 2 + 3, 0, pitchHeight + 3));
+      const pitchMark = yellowManipulatorLine(new THREE.Vector3(selection.width / 2, 0, pitchHeight), new THREE.Vector3(selection.width / 2 + 6, 0, pitchHeight), "#d6a600");
+      pitchMark.userData.helixPitchMark = true;
+      visualRoot.add(pitchMark);
+      const angle = parameters.size * Math.PI * 2 * (parameters.clockwise ? -1 : 1);
+      addParameterHandle("size", "z", new THREE.Vector3(), new THREE.Vector3(Math.cos(angle) * selection.width * .375, Math.sin(angle) * selection.depth * .375, selection.height));
+      const innerPositions: number[] = [];
+      const segments = Math.min(4096, Math.max(64, Math.ceil(parameters.size * 64)));
+      for (let i = 0; i < segments; i++) for (const t of [i / segments, (i + 1) / segments]) innerPositions.push(Math.cos(angle * t) * selection.width * .375, Math.sin(angle * t) * selection.depth * .375, selection.height * t);
+      visualRoot.traverse((child) => { if (child instanceof LineSegments2 && child.userData.shapeParameterVisual === "size" && child.userData.shapeParameterVisualRole === "guide") child.geometry.setPositions(innerPositions); });
       const preview = new LineSegments2(new LineSegmentsGeometry(), new LineMaterial({ color: 0xd6a600, linewidth: 2, depthTest: false }));
       preview.userData.helixPreview = true;
       visualRoot.add(preview);
