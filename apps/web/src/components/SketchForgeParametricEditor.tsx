@@ -3693,12 +3693,12 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   };
 
   if (!hydrated) {
-    return <main className="kercad-reference-shell" aria-busy="true"><div className="editor-loading-screen"><div className="editor-loading-toolbar" /><div className="kercad-initial-loading" role="status" aria-live="polite" aria-atomic="true">{t("status.loadingWorkspace")}</div></div></main>;
+    return <main className="kercad-reference-shell" aria-busy="true"><ProjectLoadingDialog key="project-loading" projectName={document.name} locale={locale} ready={false} progress={initialLoadProgress} onFinished={finishProjectLoading} /></main>;
   }
 
   return (
     <main inert={showProjectLoading || undefined} aria-busy={showProjectLoading || undefined} className={`kercad-reference-shell sidebar-${modelSidebarMode} ${sketchSession && compactSketchToolbar ? "sketch-toolbar-compact" : ""}`}>
-      {showProjectLoading && <ProjectLoadingDialog projectName={document.name} locale={locale} ready={initialModelSettled} progress={initialLoadProgress} onFinished={finishProjectLoading} />}
+      {showProjectLoading && <ProjectLoadingDialog key="project-loading" projectName={document.name} locale={locale} ready={initialModelSettled} progress={initialLoadProgress} onFinished={finishProjectLoading} />}
       {hydrated && <EditorGettingStarted locale={locale} active={!showProjectLoading && !sketchSession && !challengeEditor} launchRequest={tutorialLaunchRequest} onShowProperties={() => setModelSidebarMode("normal")} />}
       {hydrated && <EditorGettingStarted locale={locale} mode="sketch" active={Boolean(sketchSession) && !challengeEditor} launchRequest={tutorialLaunchRequest} />}
       <div className="secondary-toolbar">

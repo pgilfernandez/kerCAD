@@ -54,6 +54,8 @@ export function ProjectLoadingDialog({ projectName, locale, ready, progress, onF
 
   const percent = ready ? 100 : progress ? Math.max(10, Math.min(99, Math.round(10 + 90 * progress.completed / Math.max(1, progress.total)))) : 10;
 
+  if (typeof document === "undefined") return null;
+
   return createPortal(<div className="kercad-project-loading-backdrop">
     <section ref={dialogRef} className="kercad-project-loading-dialog" role="dialog" aria-modal="true" aria-labelledby="kercad-project-loading-title" tabIndex={-1} onKeyDown={(event) => event.stopPropagation()} onKeyUp={(event) => event.stopPropagation()}>
       <div className="kercad-project-loading-status" role="status" aria-live="polite" aria-atomic="true">
