@@ -109,6 +109,10 @@ html[data-theme="dark"] :is(.kercad-rebuild-error, .pcad-build-warning, .sketch-
 }
 
 /* Both the operation tree and its parameter editor use neutral text. */
+html[data-theme="dark"] .kercad-sidebar-mode-control,
+html[data-theme="dark"] .kercad-sidebar-mode-control:hover {
+  color: #fff;
+}
 html[data-theme="dark"] .kercad-model-sidebar {
   --theme-text: #e4e6e9;
   --theme-link: #e4e6e9;
