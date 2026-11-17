@@ -1065,7 +1065,7 @@ export function SketchWorkspace({
     }
     if (event.button !== 0 || (event.target !== event.currentTarget && (event.target as Element).closest("[data-sketch-entity]"))) return;
     const freehandTool = tool === "freehand" || tool === "freehandSmooth";
-    const point = pointFromEvent(event, tool !== "select" && !freehandTool, !freehandTool);
+    const point = pointFromEvent(event, tool !== "select" && !freehandTool, true);
     if (!point) return;
     event.preventDefault();
     if (freehandTool) {
@@ -1149,7 +1149,7 @@ export function SketchWorkspace({
       setPointerAction({ ...pointerAction, clientX: event.clientX, clientY: event.clientY });
       return;
     }
-    const point = pointFromEvent(event, pointerAction?.kind !== "marquee" && pointerAction?.kind !== "freehand" && pointerAction?.kind !== "transform-selection" && pointerAction?.kind !== "move-selection-pivot", pointerAction?.kind !== "freehand" && !(pointerAction?.kind === "transform-selection" && pointerAction.handle === "rotate"));
+    const point = pointFromEvent(event, tool !== "freehand" && tool !== "freehandSmooth" && pointerAction?.kind !== "marquee" && pointerAction?.kind !== "freehand" && pointerAction?.kind !== "transform-selection" && pointerAction?.kind !== "move-selection-pivot", pointerAction?.kind !== "freehand" && !(pointerAction?.kind === "transform-selection" && pointerAction.handle === "rotate"));
     setHover(point);
     if (point && pointerAction?.kind === "move-selection-pivot") {
       const pointer = pointFromEvent(event, false, false);
@@ -1776,6 +1776,7 @@ export function SketchWorkspace({
               <circle cx={pointerAction.origin.x} cy={pointerAction.origin.z} r={controlPointRadius} />
             </g>
           ) : null}
+          {hover && !pointerAction && !annotationTool && (exactSnapStep === undefined ? snapStep(snap) : exactSnapStep) > 0 && ["line", "bezier", "smooth", "circle", "arc", "rectangle", "centerRectangle", "roundedRectangle", "ellipse", "polygon", "slot", "arcSlot", "freehand", "freehandSmooth"].includes(tool) ? <circle cx={hover.x} cy={hover.z} r={5 * screenUnit} fill="none" stroke="var(--accent-solid)" strokeWidth={2} vectorEffect="non-scaling-stroke" pointerEvents="none" /> : null}
           {pendingRectangleCorner && hover && tool === "rectangle" ? <rect className="sketch-preview-line" fill="none" x={Math.min(pendingRectangleCorner.x, hover.x)} y={Math.min(pendingRectangleCorner.z, hover.z)} width={Math.abs(hover.x - pendingRectangleCorner.x)} height={Math.abs(hover.z - pendingRectangleCorner.z)} pointerEvents="none" /> : null}
           {pendingRectangleCorner && hover && tool === "ellipse" ? <g pointerEvents="none">
             <rect className="sketch-preview-line" fill="none" opacity={.4} x={Math.min(pendingRectangleCorner.x, hover.x)} y={Math.min(pendingRectangleCorner.z, hover.z)} width={Math.abs(hover.x - pendingRectangleCorner.x)} height={Math.abs(hover.z - pendingRectangleCorner.z)} />
