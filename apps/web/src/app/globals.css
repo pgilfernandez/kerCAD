@@ -13,6 +13,10 @@
   box-sizing: border-box;
 }
 
+:is(a, button):hover .kercad-header-svg-icon[data-icon="donate"] {
+  color: #9f2445;
+}
+
 html,
 body {
   width: 100%;

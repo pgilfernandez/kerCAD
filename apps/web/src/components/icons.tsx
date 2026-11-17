@@ -11,7 +11,7 @@ export function GridControlIcon({ snap = false, size = 22 }: { snap?: boolean; s
 
 export function HeaderToolbarIcon({ file }: { file: "documentation" | "language" | "theme-language" | "information" | "project-overview" | "square-pen" | "donate" | "github" | "menu" }) {
   const mask = `url("/assets/kercad/${file}.svg")`;
-  return <span aria-hidden="true" className="kercad-header-svg-icon" style={{ maskImage: mask, WebkitMaskImage: mask }} />;
+  return <span aria-hidden="true" className="kercad-header-svg-icon" data-icon={file} style={{ maskImage: mask, WebkitMaskImage: mask }} />;
 }
 type SpriteRect = {
   x: number;
