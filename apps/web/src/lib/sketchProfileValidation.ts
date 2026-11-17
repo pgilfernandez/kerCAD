@@ -285,7 +285,8 @@ export function validateDrawnSketchProfile(profile: SketchProfile): SketchProfil
         if (segment.endId === current && !visited.has(segment.startId)) pending.push(segment.startId);
       }
     }
-    if (closed && count >= 3) closedSegmentContours += 1;
+    // Curved contours can close with only two anchors (an arc and its chord).
+    if (closed && count >= 2) closedSegmentContours += 1;
   }
   const closedContourCount = closedSegmentContours + circles.filter((circle) => circle.radius > epsilon).length;
   if (!closedContourCount && !diagnostics.length) diagnostics.push({ code: "open", severity: "error", message: "Dibuja al menos un contorno cerrado." });

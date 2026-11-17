@@ -273,7 +273,7 @@ function orderedSketchPaths(profile: SketchProfile) {
       if (currentId === startId) break;
       points.push(to);
     }
-    paths.push({ points, closed: currentId === startId && points.length >= 3 });
+    paths.push({ points, closed: currentId === startId && points.length >= 2 });
   }
   return paths;
 }
