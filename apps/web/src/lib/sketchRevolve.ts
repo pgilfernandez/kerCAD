@@ -79,7 +79,7 @@ function orderedPaths(profile: SketchProfile): OrderedPath[] {
       currentId = to.id;
       if (currentId === startId) break;
     }
-    if (steps.length > 0) paths.push({ steps, closed: currentId === startId && steps.length >= 3 });
+    if (steps.length > 0) paths.push({ steps, closed: currentId === startId && steps.length >= 2 });
   }
   return paths;
 }

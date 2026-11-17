@@ -1,7 +1,6 @@
 import type { Face } from "brepjs";
 import type { Brep, BrepSolid } from "@/lib/brepKernel";
 import { classifyPlanarProfileLoops, type PlanarProfileLoop } from "@/lib/planarProfile";
-import { findSketchOutlineIntersection } from "@/lib/sketchProfileValidation";
 
 type ProfileWire = Parameters<Brep["face"]>[0];
 
@@ -9,7 +8,7 @@ export type PlanarBrepLoop = PlanarProfileLoop<{ wire: ProfileWire }>;
 export type ProfileBooleanRole = "add" | "cut" | "intersect";
 
 export function facesFromPlanarProfile(brep: Brep, loops: readonly PlanarBrepLoop[], label: string): Face[] {
-  if (loops.length > 1 && findSketchOutlineIntersection(loops.map((loop) => loop.polygon))) {
+  if (loops.length > 1) {
     // Validate each contour independently, then resolve intersecting contours
     // by symmetric difference. Unit slabs preserve exact arcs and Beziers.
     for (const loop of loops) classifyPlanarProfileLoops([loop], label);
@@ -40,7 +39,16 @@ export function extrudePlanarProfile(brep: Brep, faces: readonly Face[], distanc
   const solids = faces.map((sourceFace) => {
     const offset = symmetric ? -length / 2 : distance < 0 ? -length : 0;
     const face = offset ? brep.translate(sourceFace, [0, 0, offset]) as Face : sourceFace;
-    return brep.unwrap(brep.extrude(face as Parameters<Brep["extrude"]>[0], length)) as BrepSolid;
+    // Rebuild the outer region and subtract every inner wire explicitly.
+    // Do not rely on the adapter preserving holes during face extrusion.
+    const outer = brep.unwrap(brep.face(brep.outerWire(face) as ProfileWire)) as Face;
+    let solid = brep.unwrap(brep.extrude(outer as Parameters<Brep["extrude"]>[0], length)) as BrepSolid;
+    for (const wire of brep.innerWires(face)) {
+      const hole = brep.unwrap(brep.face(wire as ProfileWire)) as Face;
+      const tool = brep.unwrap(brep.extrude(hole as Parameters<Brep["extrude"]>[0], length)) as BrepSolid;
+      solid = brep.unwrap(brep.cut(solid, tool)) as BrepSolid;
+    }
+    return solid;
   });
   return combineProfileSolids(brep, solids);
 }
