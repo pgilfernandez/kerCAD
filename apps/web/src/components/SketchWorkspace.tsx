@@ -1203,21 +1203,53 @@ export function SketchWorkspace({
       const minZ = Math.min(action.origin.z, action.current.z);
       const maxZ = Math.max(action.origin.z, action.current.z);
       const contains = (point: { x: number; z: number }) => point.x >= minX && point.x <= maxX && point.z >= minZ && point.z <= maxZ;
+      const crossing = action.current.x < action.origin.x;
+      const crossesBox = (a: { x: number; z: number }, b: { x: number; z: number }) => {
+        let low = 0, high = 1;
+        for (const [start, delta, minimum, maximum] of [[a.x, b.x - a.x, minX, maxX], [a.z, b.z - a.z, minZ, maxZ]]) {
+          if (Math.abs(delta) < 1e-12) { if (start < minimum || start > maximum) return false; }
+          else {
+            const first = (minimum - start) / delta, last = (maximum - start) / delta;
+            low = Math.max(low, Math.min(first, last)); high = Math.min(high, Math.max(first, last));
+            if (low > high) return false;
+          }
+        }
+        return true;
+      };
       const pointIds = profile.points.filter((point) => !point.generatedTextId && contains(point)).map((point) => point.id);
       const segmentIds = profile.segments.filter((segment) => {
         if (segment.generatedTextId) return false;
         const start = pointById.get(segment.startId);
         const end = pointById.get(segment.endId);
-        return Boolean(start && end && (contains(start) || contains(end) || contains({ x: (start.x + end.x) / 2, z: (start.z + end.z) / 2 })));
+        if (!start || !end) return false;
+        const path = Array.from(svgRef.current?.querySelectorAll<SVGPathElement>('path[data-sketch-entity="segment"]') ?? []).find((element) => element.dataset.sketchId === segment.id);
+        if (!path) return crossing ? crossesBox(start, end) : contains(start) && contains(end);
+        const bounds = path.getBBox();
+        if (!crossing) return contains({ x: bounds.x, z: bounds.y }) && contains({ x: bounds.x + bounds.width, z: bounds.y + bounds.height });
+        if (bounds.x > maxX || bounds.x + bounds.width < minX || bounds.y > maxZ || bounds.y + bounds.height < minZ) return false;
+        const length = path.getTotalLength();
+        const steps = segment.kind === "line" ? 1 : Math.min(4096, Math.max(32, Math.ceil(length / Math.max(.001, screenUnit))));
+        let previous = path.getPointAtLength(0);
+        for (let i = 1; i <= steps; i++) {
+          const current = path.getPointAtLength(length * i / steps);
+          if (crossesBox({ x: previous.x, z: previous.y }, { x: current.x, z: current.y })) return true;
+          previous = current;
+        }
+        return false;
       }).map((segment) => segment.id);
       const imageIds = (profile.images ?? []).filter((image) => {
         const imageMinX = image.x - image.width / 2;
         const imageMaxX = image.x + image.width / 2;
         const imageMinZ = image.z - image.depth / 2;
         const imageMaxZ = image.z + image.depth / 2;
-        return imageMaxX >= minX && imageMinX <= maxX && imageMaxZ >= minZ && imageMinZ <= maxZ;
+        return crossing ? imageMaxX >= minX && imageMinX <= maxX && imageMaxZ >= minZ && imageMinZ <= maxZ : imageMinX >= minX && imageMaxX <= maxX && imageMinZ >= minZ && imageMaxZ <= maxZ;
       }).map((image) => image.id);
-      const circleIds = (profile.circles ?? []).filter((circle) => contains({ x: circle.x, z: circle.z }) || contains({ x: circle.x + circle.radius, z: circle.z }) || contains({ x: circle.x - circle.radius, z: circle.z }) || contains({ x: circle.x, z: circle.z + circle.radius }) || contains({ x: circle.x, z: circle.z - circle.radius })).map((circle) => circle.id);
+      const circleIds = (profile.circles ?? []).filter((circle) => {
+        if (!crossing) return circle.x - circle.radius >= minX && circle.x + circle.radius <= maxX && circle.z - circle.radius >= minZ && circle.z + circle.radius <= maxZ;
+        const nearest = Math.hypot(circle.x - Math.max(minX, Math.min(maxX, circle.x)), circle.z - Math.max(minZ, Math.min(maxZ, circle.z)));
+        const farthest = Math.hypot(Math.max(Math.abs(circle.x - minX), Math.abs(circle.x - maxX)), Math.max(Math.abs(circle.z - minZ), Math.abs(circle.z - maxZ)));
+        return nearest <= circle.radius && farthest >= circle.radius;
+      }).map((circle) => circle.id);
       onSelectMany(pointIds, segmentIds, imageIds, circleIds);
       setPointerAction(null);
       return;
