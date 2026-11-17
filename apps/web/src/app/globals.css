@@ -5481,6 +5481,8 @@ button {
   vector-effect: non-scaling-stroke;
 }
 
+.sketch-selection-marquee.window-selection { stroke-dasharray: none; }
+
 .sketch-plate-background {
   fill: var(--accent-shade-ddf8ff);
   stroke: none;

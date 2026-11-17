@@ -1588,7 +1588,7 @@ export function SketchWorkspace({
           <rect className="sketch-plate-border" x={-workspace.width / 2} y={-workspace.depth / 2} width={workspace.width} height={workspace.depth} pointerEvents="none" />
           {pointerAction?.kind === "marquee" ? (
             <rect
-              className="sketch-selection-marquee"
+              className={`sketch-selection-marquee ${pointerAction.current.x >= pointerAction.origin.x ? "window-selection" : "crossing-selection"}`}
               x={Math.min(pointerAction.origin.x, pointerAction.current.x)}
               y={Math.min(pointerAction.origin.z, pointerAction.current.z)}
               width={Math.abs(pointerAction.current.x - pointerAction.origin.x)}
