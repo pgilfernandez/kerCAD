@@ -3766,9 +3766,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           </ToolbarSection>
           <ToolbarSection label={t("sketch.point")}>
             <Tool label={t("sketch.corner")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("corner")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "corner")}><SketchToolbarIcon file="node-corner" /></Tool>
+            <Tool label={t("sketch.splitHandles")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("split")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "split")}><SketchToolbarIcon file="node-split" /></Tool>
             <Tool label={t("sketch.smooth")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("smooth")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "smooth")}><SketchToolbarIcon file="node-smooth" /></Tool>
             <Tool label={t("sketch.autoSmooth")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("autoSmooth")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "autoSmooth")}><SketchToolbarIcon file="node-smooth-auto" /></Tool>
-            <Tool label={t("sketch.splitHandles")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("split")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "split")}><SketchToolbarIcon file="node-split" /></Tool>
           </ToolbarSection>
           <ToolbarSection label={t("sketch.edit")} className="sketch-edit-section">
             <Tool label={t("sketch.construction")} enabled={selectedConstructionIds.segmentIds.length + selectedConstructionIds.circleIds.length > 0} active={selectedConstructionIds.allConstruction} onClick={toggleSketchConstruction}><SketchToolbarIcon file="construction" /></Tool>
