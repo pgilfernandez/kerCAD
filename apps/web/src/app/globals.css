@@ -15,6 +15,8 @@
 
 :is(a, button):hover .kercad-header-svg-icon[data-icon="donate"] {
   color: #9f2445;
+  mask-image: url("/assets/kercad/donate-solid.svg") !important;
+  -webkit-mask-image: url("/assets/kercad/donate-solid.svg") !important;
 }
 
 html,
