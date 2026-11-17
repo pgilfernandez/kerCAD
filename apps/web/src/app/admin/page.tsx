@@ -1,11 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useAppLocale } from "@/lib/useAppLocale";
+import { DashboardBrandLogo } from "@/components/DashboardBrandLogo";
+import { EditorHeaderActions } from "@/components/EditorHeaderActions";
 import { uiText } from "@/lib/kercadI18n";
 import "./admin.css";
 type Metrics = { since: string; active: number; visitors: number; bytes: number; counts: Record<string, number> };
 export default function AdminPage() {
-  const [locale] = useAppLocale();
+  const [locale, setLocale] = useAppLocale();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [error, setError] = useState(false);
   useEffect(() => {
@@ -28,11 +30,17 @@ export default function AdminPage() {
     ["admin.donate", metrics?.counts.donate], ["admin.github", metrics?.counts.github],
   ] as const;
   return <main className="kercad-admin">
-    <header><h1>kerCAD · {uiText("admin.title", {}, locale)}</h1><a href="/">{uiText("admin.back", {}, locale)}</a></header>
+    <header className="kercad-dashboard-topbar">
+      <strong className="kercad-dashboard-brand"><DashboardBrandLogo /><span>{uiText("ui.page.kercad.c0bf6d", {}, locale)}</span></strong>
+      <EditorHeaderActions locale={locale} onLocaleChange={setLocale} onShowLanding={() => { window.location.href = "/?about=1"; }} showDonation />
+    </header>
+    <div className="kercad-admin-content">
+    <h1>{uiText("admin.title", {}, locale)}</h1><a href="/">{uiText("admin.back", {}, locale)}</a>
     <p className="kercad-admin-warning">{uiText("admin.public", {}, locale)}</p>
     <p>{uiText("admin.explanation", {}, locale)}</p>
     {error && <p role="alert">{uiText("admin.error", {}, locale)}</p>}
     <div className="kercad-admin-cards">{cards.map(([key, value]) => <section key={key}><h2>{uiText(key, {}, locale)}</h2><strong>{value ?? "—"}</strong></section>)}</div>
     <footer><p>{uiText("admin.bytesNote", {}, locale)}</p>{metrics && <p>{uiText("admin.since", {}, locale)} {new Date(metrics.since).toLocaleString(locale)}</p>}</footer>
+    </div>
   </main>;
 }

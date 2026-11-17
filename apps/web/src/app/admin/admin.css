@@ -1,7 +1,7 @@
-.kercad-admin { height: 100dvh; overflow-y: auto; padding: clamp(18px, 4vw, 48px); color: var(--theme-text); background: var(--theme-page); }
-.kercad-admin > header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.kercad-admin { height: 100dvh; overflow-y: auto; color: var(--theme-text); background: var(--theme-page); }
+.kercad-admin-content { padding: clamp(18px, 4vw, 48px); }
 .kercad-admin h1 { font-size: 26px; font-weight: 600; }
-.kercad-admin a { color: var(--theme-link); }
+.kercad-admin-content a { color: var(--theme-link); }
 .kercad-admin-warning { padding: 14px; border: 1px solid var(--theme-border); border-radius: 8px; }
 .kercad-admin-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin: 24px 0; }
 .kercad-admin-cards section { padding: 22px; background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: 10px; }
