@@ -3729,6 +3729,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               { tool: "roundedRectangle", label: t("sketch.roundedRectangle"), icon: "rounded-rectangle" },
               { tool: "circle", label: t("sketch.circle"), icon: "circle" },
               { tool: "arc", label: t("sketch.centerArc"), icon: "center-arc" },
+              { tool: "ellipse", label: t("cylinder.ellipse"), icon: "ellipse" },
             ]} />
             <Tool label={t("sketch.bezier")} active={sketchTool === "bezier"} onClick={() => chooseSketchTool("bezier")}><SketchToolbarIcon file="bezier" /></Tool>
             <button ref={polygonMenuTriggerRef} type="button" className={`toolbar-icon ${sketchTool === "polygon" ? "active" : ""}`} aria-label={t("sketch.polygonType")} title={t("sketch.polygonType")} aria-expanded={Boolean(polygonMenuPosition)} aria-controls="sketch-polygon-menu" onClick={() => {

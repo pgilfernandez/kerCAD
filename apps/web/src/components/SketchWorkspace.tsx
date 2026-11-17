@@ -13,6 +13,7 @@ import { lengthDisplayUnit } from "@/lib/measurementUnits";
 import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
 import { sketchSlot } from "@/lib/sketchSlots";
 import { sketchRectangle } from "@/lib/sketchRectangles";
+import { sketchEllipse } from "@/lib/sketchEllipse";
 import { sketchSelectionBounds, transformSketchSelection, type SketchSelectionBounds, type SketchTransformHandle } from "@/lib/sketchSelectionTransform";
 import { WORKPLANE_MAJOR_GRID_INTERVAL } from "@/lib/workplaneGrid";
 import { mirrorSign, resizedImportedMeshPositions } from "@/lib/workplaneShapes";
@@ -24,7 +25,7 @@ import type { KercadLocale } from "@/lib/kercadI18n";
 import type { GridSize, SketchCircle, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchSegment, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
 import { uiText, pluralMessage } from "@/lib/kercadI18n";
 
-export type SketchTool = "line" | "connect" | "rectangle" | "centerRectangle" | "roundedRectangle" | "polygon" | "slot" | "arcSlot" | "bezier" | "smooth" | "freehand" | "freehandSmooth" | "circle" | "arc" | "select" | "refine" | "trim" | "erase" | "measure";
+export type SketchTool = "line" | "connect" | "rectangle" | "centerRectangle" | "roundedRectangle" | "ellipse" | "polygon" | "slot" | "arcSlot" | "bezier" | "smooth" | "freehand" | "freehandSmooth" | "circle" | "arc" | "select" | "refine" | "trim" | "erase" | "measure";
 export type SketchSelection =
   | { kind: "point"; id: string }
   | { kind: "segment"; id: string }
@@ -1082,6 +1083,12 @@ export function SketchWorkspace({
         setSlotPicks(picks);
         setHover(point);
       }
+    } else if (tool === "ellipse") {
+      if (!pendingRectangleCorner) { setPendingRectangleCorner(point); setHover(point); }
+      else {
+        const contour = sketchEllipse(pendingRectangleCorner, point);
+        if (contour) { onAddRectangleVariant?.(contour); setPendingRectangleCorner(null); }
+      }
     } else if (tool === "rectangle" || tool === "centerRectangle" || tool === "roundedRectangle") {
       if (!pendingRectangleCorner) {
         setPendingRectangleCorner(point);
@@ -1426,7 +1433,7 @@ export function SketchWorkspace({
           onPointerLeave={() => !pointerAction && setHover(null)}
           onContextMenu={(event) => {
             if (annotationTool) { event.preventDefault(); setAnnotationPicks([]); setAnnotationHover(null); onCancelActiveTool?.(); return; }
-            if (!["line", "connect", "slot", "arcSlot", "rectangle", "centerRectangle", "roundedRectangle", "polygon"].includes(tool)) return;
+            if (!["line", "connect", "slot", "arcSlot", "rectangle", "centerRectangle", "roundedRectangle", "ellipse", "polygon"].includes(tool)) return;
             event.preventDefault();
             setPointerAction(null);
             setHover(null);
@@ -1770,6 +1777,7 @@ export function SketchWorkspace({
             </g>
           ) : null}
           {pendingRectangleCorner && hover && tool === "rectangle" ? <rect className="sketch-preview-line" fill="none" x={Math.min(pendingRectangleCorner.x, hover.x)} y={Math.min(pendingRectangleCorner.z, hover.z)} width={Math.abs(hover.x - pendingRectangleCorner.x)} height={Math.abs(hover.z - pendingRectangleCorner.z)} pointerEvents="none" /> : null}
+          {pendingRectangleCorner && hover && tool === "ellipse" ? <ellipse className="sketch-preview-line" fill="none" cx={pendingRectangleCorner.x} cy={pendingRectangleCorner.z} rx={Math.abs(hover.x - pendingRectangleCorner.x)} ry={Math.abs(hover.z - pendingRectangleCorner.z)} pointerEvents="none" /> : null}
           {pendingRectangleCorner && hover && (tool === "centerRectangle" || tool === "roundedRectangle") ? (() => {
             const other = tool === "centerRectangle" ? { x: pendingRectangleCorner.x * 2 - hover.x, z: pendingRectangleCorner.z * 2 - hover.z } : pendingRectangleCorner;
             const width = Math.abs(hover.x - other.x), height = Math.abs(hover.z - other.z);
