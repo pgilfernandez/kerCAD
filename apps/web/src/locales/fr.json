@@ -452,6 +452,7 @@
     "sketch.circle": "Cercle",
     "sketch.centerArc": "Arc par son centre",
     "sketch.connectNodes": "Connecter les nœuds",
+    "sketch.deleteNode": "Supprimer le nœud et reconnecter",
     "sketch.select": "Sélectionner",
     "sketch.refine": "Ajouter un nœud",
     "sketch.trim": "Ajuster",

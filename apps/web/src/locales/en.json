@@ -452,6 +452,7 @@
     "sketch.circle": "Circle",
     "sketch.centerArc": "Center arc",
     "sketch.connectNodes": "Connect nodes",
+    "sketch.deleteNode": "Delete node and reconnect",
     "sketch.select": "Select",
     "sketch.refine": "Add node",
     "sketch.trim": "Trim",

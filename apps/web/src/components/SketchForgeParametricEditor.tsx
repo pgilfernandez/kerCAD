@@ -2309,6 +2309,44 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const selectedSketchPoints = sketchSession ? sketchSession.profile.points.filter((point) =>
     sketchSelection?.kind === "point" ? point.id === sketchSelection.id
       : sketchSelection?.kind === "multiple" ? sketchSelection.pointIds.includes(point.id) : false) : [];
+  const deleteSelectedSketchNodes = () => {
+    const ids = new Set(selectedSketchPoints.map((point) => point.id));
+    setSketchProfile((profile) => {
+      const next = cloneSketchProfile(profile);
+      const removedPoints = new Set<string>(), removedSegments = new Set<string>();
+      for (const id of ids) {
+        const incident = next.segments.filter((segment) => segment.startId === id || segment.endId === id);
+        if (incident.length > 2) continue;
+        let replacement: SketchProfile["segments"][number] | undefined;
+        if (incident.length === 2) {
+          const [first, second] = incident;
+          const startId = first.startId === id ? first.endId : first.startId;
+          const endId = second.startId === id ? second.endId : second.startId;
+          if (startId !== endId) {
+            const curved = incident.some((segment) => segment.kind === "bezier" || segment.kind === "smooth");
+            replacement = { id: sketchEntityId("segment"), startId, endId, kind: curved ? "bezier" : "line", construction: incident.every((segment) => segment.construction) };
+            const start = next.points.find((point) => point.id === startId), end = next.points.find((point) => point.id === endId);
+            if (curved && start && end) {
+              start.handleOut = (first.endId === startId ? start.handleIn : start.handleOut) ?? { x: start.x + (end.x - start.x) / 3, z: start.z + (end.z - start.z) / 3 };
+              end.handleIn = (second.startId === endId ? end.handleOut : end.handleIn) ?? { x: end.x + (start.x - end.x) / 3, z: end.z + (start.z - end.z) / 3 };
+            }
+            if (first.kind === "arc" && second.kind === "arc" && first.center && second.center && Math.hypot(first.center.x - second.center.x, first.center.z - second.center.z) < 1e-7) {
+              replacement = { ...replacement, kind: "arc", center: { ...first.center }, clockwise: first.startId === startId ? first.clockwise !== false : first.clockwise === false };
+            }
+          }
+        }
+        for (const segment of incident) removedSegments.add(segment.id);
+        next.segments = next.segments.filter((segment) => !incident.includes(segment));
+        if (replacement) next.segments.push(replacement);
+        next.points = next.points.filter((point) => point.id !== id);
+        removedPoints.add(id);
+      }
+      next.constraints = (next.constraints ?? []).filter((constraint) => ![...removedPoints].some((id) => sketchConstraintUsesPoint(constraint, id)) && ![...removedSegments].some((id) => sketchConstraintUsesSegment(constraint, id)));
+      return next;
+    });
+    setSketchSelection(null);
+    setSketchActivePointId(null);
+  };
   const selectedPointMode = (mode: "corner" | "smooth" | "autoSmooth" | "split") => selectedSketchPoints.length > 0
     && selectedSketchPoints.every((point) => (point.mode ?? "corner") === mode);
 
@@ -3704,6 +3742,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("sketch.refine")} active={sketchTool === "refine"} onClick={refineSketchSelection}><SketchToolbarIcon file="refine" /></Tool>
             <Tool label={t("sketch.connectNodes")} enabled={selectedSketchPoints.length <= 2} active={sketchTool === "connect"} onClick={connectSelectedSketchNodes}><SketchToolbarIcon file="connect-nodes" /></Tool>
             <Tool label={t("sketch.mergePoints")} enabled={mergeableSketchPointIds.length === 2} onClick={mergeSelectedSketchPoints}><SketchToolbarIcon file="merge-points" /></Tool>
+            <Tool label={t("sketch.deleteNode")} enabled={selectedSketchPoints.length > 0} onClick={deleteSelectedSketchNodes}><SketchToolbarIcon file="nodes-delete" /></Tool>
             {/* Temporarily hidden; keep the trim tool implementation available. */}
             <span hidden><Tool label={t("sketch.trim")} active={sketchTool === "trim"} onClick={() => chooseSketchTool("trim")}><SketchToolbarIcon file="trim" /></Tool></span>
           </ToolbarSection>
