@@ -1949,14 +1949,16 @@ export function SketchWorkspace({
           </g> : null}
           <g className="sketch-points">
             {displayProfile.points.filter((point) => !point.generatedTextId).map((point) => (
-              <circle
+              <path
                 data-sketch-entity="point"
                 data-sketch-id={point.id}
                 className={`${isPointSelected(point.id) ? "selected" : ""} ${activePointId === point.id ? "active" : ""} ${invalidPointIds.has(point.id) ? "invalid" : ""} ${point.construction ? "construction" : ""}`}
                 key={point.id}
-                cx={point.x}
-                cy={point.z}
-                r={pointRadius}
+                d={point.mode === "autoSmooth"
+                  ? `M ${point.x - pointRadius} ${point.z} a ${pointRadius} ${pointRadius} 0 1 0 ${pointRadius * 2} 0 a ${pointRadius} ${pointRadius} 0 1 0 ${-pointRadius * 2} 0 Z`
+                  : point.mode === "smooth"
+                    ? `M ${point.x - pointRadius} ${point.z - pointRadius} h ${pointRadius * 2} v ${pointRadius * 2} h ${-pointRadius * 2} Z`
+                    : `M ${point.x} ${point.z - pointRadius} L ${point.x + pointRadius} ${point.z} L ${point.x} ${point.z + pointRadius} L ${point.x - pointRadius} ${point.z} Z`}
                 onPointerDown={(event) => {
                   event.preventDefault();
                   event.stopPropagation();

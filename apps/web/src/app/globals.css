@@ -5880,7 +5880,7 @@ circle.sketch-preview-line {
   cursor: move;
 }
 
-.sketch-points circle {
+.sketch-points path {
   fill: #ffffff;
   stroke: var(--accent-shade-143c5c);
   stroke-width: 1.4;
@@ -5888,32 +5888,32 @@ circle.sketch-preview-line {
   cursor: pointer;
 }
 
-.sketch-points circle:hover,
-.sketch-points circle.active {
+.sketch-points path:hover,
+.sketch-points path.active {
   fill: var(--accent-shade-71d7f0);
   stroke: var(--accent-shade-086f98);
 }
 
-.sketch-points circle.selected {
+.sketch-points path.selected {
   fill: #ffb24b;
   stroke: #9d4d00;
   stroke-width: 2;
 }
 
-.sketch-points circle.invalid {
+.sketch-points path.invalid {
   fill: #ffd6d6;
   stroke: #d42424;
   stroke-width: 2.4;
 }
 
-.sketch-points circle.invalid.selected {
+.sketch-points path.invalid.selected {
   fill: var(--accent-shade-60a5fa);
   stroke: var(--accent-shade-1d4ed8);
   stroke-width: 2.8;
 }
 
 .sketch-arc-center { fill: #fff7d6; stroke: #d18a00; }
-.sketch-points circle.construction:not(.selected):not(:hover) { fill: #eef4f7; stroke: #718b9d; stroke-dasharray: 2 2; }
+.sketch-points path.construction:not(.selected):not(:hover) { fill: #eef4f7; stroke: #718b9d; stroke-dasharray: 2 2; }
 .sketch-arc-center:hover { fill: #fde68a; stroke: #b66c00; }
 .sketch-arc-center.selected { fill: var(--accent-shade-60a5fa); stroke: var(--accent-shade-1d4ed8); }
 
