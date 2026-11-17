@@ -23,17 +23,23 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onL
   const infoTriggerRef = useRef<HTMLButtonElement>(null);
   const root = useRef<HTMLDivElement>(null);
   const [infoTop, setInfoTop] = useState(40);
+  const [languageTop, setLanguageTop] = useState(40);
   useLayoutEffect(() => {
-    if (!infoOpen || !onShowLanding) return;
+    if (!infoOpen && !open) return;
     const header = root.current?.closest("header");
-    if (!header) return;
-    const update = () => setInfoTop(header.getBoundingClientRect().bottom - 8);
+    if (!root.current) return;
+    const update = () => {
+      const top = onShowLanding && header ? header.getBoundingClientRect().bottom - 8 : 40;
+      setInfoTop(top);
+      setLanguageTop(top - (root.current?.getBoundingClientRect().top ?? 0));
+    };
     update();
     const observer = new ResizeObserver(update);
-    observer.observe(header);
+    observer.observe(root.current);
+    if (header) observer.observe(header);
     window.addEventListener("resize", update);
     return () => { observer.disconnect(); window.removeEventListener("resize", update); };
-  }, [infoOpen, onShowLanding]);
+  }, [infoOpen, open, onShowLanding]);
   useEffect(() => {
     if (!open && !infoOpen) return;
     const outside = (event: PointerEvent) => {
@@ -83,7 +89,7 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onL
         <footer><p lang={locale}>{t("about.credit")}</p></footer>
       </section>
     , document.body) : null}
-    {open ? <div id="kercad-header-language-menu" className="kercad-header-language-menu" aria-label={t("settings.appearanceLanguage")}>
+    {open ? <div id="kercad-header-language-menu" className="kercad-header-language-menu" style={{ top: languageTop }} aria-label={t("settings.appearanceLanguage")}>
       <div className="kercad-header-preference-group" role="group" aria-labelledby="kercad-header-theme-heading"><span id="kercad-header-theme-heading" className="kercad-header-preference-heading">{t("settings.theme")}</span>
         <div className="kercad-header-theme-options">{(["light", "dark"] as const).map((option) => <button key={option} type="button" aria-pressed={theme === option} onClick={() => setTheme(option)}>{option === "light" ? <Sun size={16} /> : <Moon size={16} />}<span>{t(option === "light" ? "settings.themeLight" : "settings.themeDark")}</span></button>)}</div>
         <AccentColorOptions locale={locale} />
