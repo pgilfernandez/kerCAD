@@ -15,7 +15,7 @@ export function PopupPointer({ panel, trigger, open }: { panel: string; trigger:
       if (!p.width || !b.width) { setShape(null); return; }
       const x = b.left + b.width / 2, y = b.top + b.height / 2;
       const style = getComputedStyle(popup);
-      const header = popup.querySelector<HTMLElement>(":scope > header, #kercad-header-theme-heading");
+      const header = popup.querySelector<HTMLElement>(":scope > header");
       const headerStyle = header ? getComputedStyle(header) : style;
       const clamp = (value: number, low: number, high: number) => Math.max(low, Math.min(high, value));
       const common = { fill: headerStyle.backgroundColor, stroke: style.borderTopColor, z: Math.max(101, Number(style.zIndex) || 0) + 1 };
