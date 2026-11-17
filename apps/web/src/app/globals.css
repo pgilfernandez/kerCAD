@@ -810,7 +810,7 @@ button {
 .kercad-workplane-popover > header > div { display: flex; flex-direction: column; gap: 2px; }
 .kercad-workplane-popover > header strong { font-size: 16.9px; font-weight: 500; }
 .kercad-workplane-popover > header span { color: var(--theme-dark-muted, #8597a3); font-size: 8px; }
-.kercad-workplane-popover > header button { display: grid; width: 32px; height: 32px; place-items: center; color: var(--theme-text-muted); background: transparent; border: 1px solid transparent; border-radius: 8px; }
+.kercad-workplane-popover > header button { display: grid; width: 32px; height: 32px; place-items: center; color: var(--theme-text-muted); background: transparent; border: 1px solid transparent; border-radius: 8px; cursor: pointer; }
 .kercad-workplane-popover > header button:hover { color: var(--theme-text-0d55bd); background: var(--theme-bg-effafe); border-color: var(--theme-line-83c5d9); }
 .kercad-workplane-popover > label { display: grid; min-height: 48px; grid-template-columns: minmax(100px, 1fr) 120px; align-items: center; gap: 10px; margin: 0 13px; color: var(--theme-text-muted); border-bottom: 1px solid var(--theme-line-edf1f4); font-size: 12px; font-weight: 500; }
 .kercad-workplane-popover > label:last-child { border-bottom: 0; }
