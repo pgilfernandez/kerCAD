@@ -5834,13 +5834,6 @@ button {
 .kercad-polygon-menu button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 12px; color: var(--theme-text); background: transparent; border: 0; border-radius: 4px; text-align: left; }
 .kercad-polygon-menu button:hover, .kercad-polygon-menu button[aria-pressed="true"] { background: var(--theme-active); }
 .kercad-polygon-menu button img { width: 28px; height: 28px; }
-.kercad-sketch-smoothing-overlay { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: flex-end; justify-content: center; padding: 20px; }
-.kercad-sketch-smoothing-panel { display: grid; gap: 12px; width: min(380px, 100%); padding: 16px; border: 1px solid var(--theme-border); border-radius: 8px; background: var(--theme-surface); color: var(--theme-text); box-shadow: 0 6px 20px #173b5a26; }
-.kercad-sketch-smoothing-panel label { display: grid; gap: 6px; font-size: 13px; }
-.kercad-sketch-smoothing-panel input { width: 100%; }
-.kercad-sketch-smoothing-panel small { font-size: 11px; }
-.kercad-sketch-smoothing-panel > div { display: flex; justify-content: flex-end; gap: 8px; }
-.kercad-sketch-smoothing-panel button { padding: 7px 12px; border: 1px solid var(--theme-line-b6cbd6); border-radius: 5px; background: var(--theme-bg-eef5ff); color: var(--theme-text); }
 
 .sketch-preview-line {
   stroke: var(--accent-shade-169fce);
