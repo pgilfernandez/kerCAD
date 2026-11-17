@@ -3877,6 +3877,24 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       </div>
 
 
+      {sketchSession && polygonMenuPosition ? <div ref={polygonMenuRef} id="sketch-polygon-menu" className="kercad-polygon-menu" style={polygonMenuPosition}>
+        {[3, 4, 5, 6, 7, 8].map((sides) => {
+          const names = [uiText("ui.sketchforgeparametriceditor.triangle.73d3ae", {}, locale), uiText("ui.sketchforgeparametriceditor.rhombus.95de17", {}, locale), uiText("ui.sketchforgeparametriceditor.pentagon.a21e71", {}, locale), uiText("ui.sketchforgeparametriceditor.hexagon.08596d", {}, locale), uiText("ui.sketchforgeparametriceditor.heptagon.71d314", {}, locale), uiText("ui.sketchforgeparametriceditor.octagon.4fecd7", {}, locale)];
+          return <button key={sides} type="button" aria-pressed={sketchTool === "polygon" && sketchPolygonSides === sides} onClick={() => { setSketchPolygonSides(sides); chooseSketchTool("polygon"); setPolygonMenuPosition(null); }}><SketchToolbarIcon file={`polygon-${sides}`} /><span>{names[sides - 3]}</span></button>;
+        })}
+      </div> : null}
+      {shapesOpen ? <div id="kercad-shape-menu" data-kercad-popup="shapes" className="shape-menu-dropdown detached" style={{ top: shapeMenuPosition.top, left: shapeMenuPosition.left }}>
+        <div className="shape-menu-list">
+          {parametricShapeMenuOrder.map((kind) => {
+            if (kind === "text") return <button className="shape-menu-item" key={kind} onClick={addText}><img src="/assets/sketchforge/shape-icons-gray/raw/text.png" alt="" /><span>{t("toolbar.text")}</span></button>;
+            if (kind === "spiral" || kind === "helix") return <button className="shape-menu-item" key={kind} onClick={() => addPathShape(kind)}><ThemedToolbarImage src={`/assets/kercad/toolbar-3d/shapes/${kind}.svg`} width={40} height={40} alt="" /><span>{t(kind === "spiral" ? "path.spiral" : "path.helix")}</span></button>;
+            const asset = parametricOperationDefinition(kind);
+            const localized = localizedParametricOperationDefinition(kind, locale);
+            return <button className="shape-menu-item" key={kind} onClick={() => addShape(kind)}><img src={asset.menuIcon} alt="" /><span>{localized.name}</span></button>;
+          })}
+        </div>
+      </div> : null}
+
       <section className={`kercad-workplane-stage ${sketchSession ? "sketch-active" : ""} ${challengeEditor ? "challenge-authoring" : ""} ${(challenge || challengeEditor) && challengeOpen && !sketchSession ? `challenge-docked-${challengeDock}` : ""}`}>
         {showFps ? <FpsCounter sketchMode={Boolean(sketchSession)} /> : null}
         {backgroundProcessLabel ? <BackgroundProcessIndicator label={backgroundProcessLabel} rightOffset={viewportOverlayRightOffset + (showFps ? 90 : 0)} regenerating={!stlExporting && !exporting && !alignmentCalculating && kernelBusy} /> : null}
