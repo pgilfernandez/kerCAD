@@ -2105,7 +2105,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       return;
     }
     if (sketchActivePointId === pointId) return;
-    const duplicate = sketchSession.profile.segments.some((segment) => (segment.startId === sketchActivePointId && segment.endId === pointId) || (segment.startId === pointId && segment.endId === sketchActivePointId));
+    const duplicate = sketchSession.profile.segments.some((segment) => (segment.kind ?? "line") === sketchTool && ((segment.startId === sketchActivePointId && segment.endId === pointId) || (segment.startId === pointId && segment.endId === sketchActivePointId)));
     let closed = false;
     if (!duplicate) setSketchProfile((profile) => {
       const next = { ...profile, segments: [...profile.segments, { id: sketchEntityId("segment"), startId: sketchActivePointId, endId: pointId, kind: sketchTool as "line" | "bezier" | "smooth" }] };
@@ -2236,7 +2236,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const addEdgeBetweenSketchNodes = (startId: string, endId: string) => {
     if (!sketchSession || startId === endId) return;
     if (!sketchSession.profile.points.some((point) => point.id === startId) || !sketchSession.profile.points.some((point) => point.id === endId)) return;
-    const existing = sketchSession.profile.segments.find((segment) => (segment.startId === startId && segment.endId === endId) || (segment.startId === endId && segment.endId === startId));
+    const existing = sketchSession.profile.segments.find((segment) => (segment.kind ?? "line") === "line" && ((segment.startId === startId && segment.endId === endId) || (segment.startId === endId && segment.endId === startId)));
     const id = existing?.id ?? sketchEntityId("segment");
     if (!existing) setSketchProfile((profile) => ({ ...profile, segments: [...profile.segments, { id, startId, endId, kind: "line" }] }));
     chooseSketchTool("select");
@@ -2386,7 +2386,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       const next = cloneSketchProfile(profile);
       const selectedPoints = next.points.filter((point) => mergeableSketchPointIds.includes(point.id));
       if (selectedPoints.length < 2) return profile;
-      const removedIds = new Set(selectedPoints.slice(1).map((point) => point.id));
+      const removedIds = new Set(selectedPoints.filter((point) => point.id !== anchorId).map((point) => point.id));
       const anchor = next.points.find((point) => point.id === anchorId);
       if (!anchor) return profile;
       anchor.x = selectedPoints.reduce((sum, point) => sum + point.x, 0) / selectedPoints.length;

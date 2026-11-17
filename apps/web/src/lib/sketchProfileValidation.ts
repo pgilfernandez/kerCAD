@@ -211,7 +211,10 @@ export function validateDrawnSketchProfile(profile: SketchProfile): SketchProfil
     }
     degree.set(segment.startId, (degree.get(segment.startId) ?? 0) + 1);
     degree.set(segment.endId, (degree.get(segment.endId) ?? 0) + 1);
-    const key = [segment.startId, segment.endId].sort().join(":");
+    const pair = [segment.startId, segment.endId].sort().join(":");
+    const kind = segment.kind ?? "line";
+    const arcDirection = segment.startId < segment.endId ? segment.clockwise !== false : segment.clockwise === false;
+    const key = kind === "arc" ? `${pair}:arc:${segment.center?.x}:${segment.center?.z}:${arcDirection}` : kind === "line" ? `${pair}:line` : `${pair}:${segment.id}`;
     const duplicate = duplicateSegments.get(key);
     if (duplicate) diagnostics.push({ code: "duplicate", severity: "error", message: "Duplicate segments overlap.", segmentIds: [duplicate, segment.id] });
     else duplicateSegments.set(key, segment.id);

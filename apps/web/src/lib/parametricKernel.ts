@@ -62,7 +62,7 @@ function drawnSketchFaces(brep: Brep, sketch: SketchFeature): Face[] {
       currentId = toId;
       if (currentId === startId) break;
     }
-    if (currentId !== startId || path.length < 3) throw new Error(`${sketch.name}: close the profile before using it in a 3D operation.`);
+    if (currentId !== startId || path.length < 2) throw new Error(`${sketch.name}: close the profile before using it in a 3D operation.`);
     paths.push(path);
   }
   const loops: PlanarBrepLoop[] = [...paths.map((path) => {
