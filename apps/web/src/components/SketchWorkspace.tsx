@@ -1958,7 +1958,7 @@ export function SketchWorkspace({
                   ? `M ${point.x - pointRadius} ${point.z} a ${pointRadius} ${pointRadius} 0 1 0 ${pointRadius * 2} 0 a ${pointRadius} ${pointRadius} 0 1 0 ${-pointRadius * 2} 0 Z`
                   : point.mode === "smooth"
                     ? `M ${point.x - pointRadius} ${point.z - pointRadius} h ${pointRadius * 2} v ${pointRadius * 2} h ${-pointRadius * 2} Z`
-                    : `M ${point.x} ${point.z - pointRadius} L ${point.x + pointRadius} ${point.z} L ${point.x} ${point.z + pointRadius} L ${point.x - pointRadius} ${point.z} Z`}
+                    : `M ${point.x} ${point.z - pointRadius * Math.SQRT2} L ${point.x + pointRadius * Math.SQRT2} ${point.z} L ${point.x} ${point.z + pointRadius * Math.SQRT2} L ${point.x - pointRadius * Math.SQRT2} ${point.z} Z`}
                 onPointerDown={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
