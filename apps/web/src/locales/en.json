@@ -3,6 +3,10 @@
   "name": "English",
   "direction": "ltr",
   "messages": {
+    "admin.telemetry": "Telemetry",
+    "admin.enabled": "Enabled",
+    "admin.disabled": "Disabled",
+    "admin.telemetryNote": "Disabled by default. When disabled, the server ignores new usage events and browsers stop sending them within 30 seconds. Existing totals are retained.",
     "admin.title": "Administration",
     "admin.projects": "Projects opened",
     "admin.challenges": "Challenges opened",

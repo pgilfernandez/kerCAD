@@ -3,7 +3,7 @@ import path from "node:path";
 
 export const metricEvents = ["project", "challenge", "documentation", "overview", "donate", "github"] as const;
 type Event = typeof metricEvents[number];
-type State = { since: string; counts: Record<Event, number>; bytes: number; visitors: string[]; checkpoints?: Record<string, { bytes: number; at: number }> };
+type State = { enabled?: boolean; since: string; counts: Record<Event, number>; bytes: number; visitors: string[]; checkpoints?: Record<string, { bytes: number; at: number }> };
 type Runtime = { state: State | null; queue: Promise<unknown>; sessions: Map<string, { at: number; touched: number; bytes: number }>; seen: Set<string> };
 const globalStore = globalThis as typeof globalThis & { kercadMetrics?: Runtime };
 const store = globalStore.kercadMetrics ??= { state: null, queue: Promise.resolve(), sessions: new Map(), seen: new Set() };
@@ -23,6 +23,7 @@ function serial<T>(task: () => Promise<T>): Promise<T> {
 export function recordMetrics(input: { visitor: string; session: string; bytes: number; event?: Event; id?: string; active: boolean }) {
   return serial(async () => {
     const data = await state();
+    if (data.enabled !== true) return;
     const now = Date.now();
     const previous = store.sessions.get(input.session);
     data.checkpoints ??= {};
@@ -44,6 +45,14 @@ export function recordMetrics(input: { visitor: string; session: string; bytes: 
 export function readMetrics() {
   return serial(async () => {
     const data = await state();
-    return { since: data.since, counts: data.counts, bytes: data.bytes, visitors: data.visitors.length, active: [...store.sessions.values()].filter((session) => Date.now() - session.at < 90000).length };
+    return { enabled: data.enabled === true, since: data.since, counts: data.counts, bytes: data.bytes, visitors: data.visitors.length, active: data.enabled ? [...store.sessions.values()].filter((session) => Date.now() - session.at < 90000).length : 0 };
+  });
+}
+export function setMetricsEnabled(enabled: boolean) {
+  return serial(async () => {
+    const data = await state(); data.enabled = enabled;
+    if (!enabled) store.sessions.clear();
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    await fs.writeFile(`${file}.tmp`, JSON.stringify(data)); await fs.rename(`${file}.tmp`, file);
   });
 }

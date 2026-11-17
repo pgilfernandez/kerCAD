@@ -5,11 +5,22 @@ import { DashboardBrandLogo } from "@/components/DashboardBrandLogo";
 import { EditorHeaderActions } from "@/components/EditorHeaderActions";
 import { uiText } from "@/lib/kercadI18n";
 import "./admin.css";
-type Metrics = { since: string; active: number; visitors: number; bytes: number; counts: Record<string, number> };
+type Metrics = { enabled: boolean; since: string; active: number; visitors: number; bytes: number; counts: Record<string, number> };
 export default function AdminPage() {
   const [locale, setLocale] = useAppLocale();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [error, setError] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const toggleTelemetry = async () => {
+    if (!metrics || saving) return;
+    setSaving(true);
+    try {
+      const response = await fetch("/api/admin/metrics", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "telemetry", enabled: !metrics.enabled }) });
+      if (!response.ok) throw new Error();
+      setMetrics(await response.json()); setError(false);
+    } catch { setError(true); }
+    finally { setSaving(false); }
+  };
   useEffect(() => {
     const controller = new AbortController();
     const refresh = async () => {
@@ -35,9 +46,13 @@ export default function AdminPage() {
       <EditorHeaderActions locale={locale} onLocaleChange={setLocale} onShowLanding={() => { window.location.href = "/?about=1"; }} showDonation />
     </header>
     <div className="kercad-admin-content">
+    <button className="kercad-admin-telemetry" type="button" role="switch" aria-checked={metrics?.enabled ?? false} disabled={!metrics || saving} onClick={() => void toggleTelemetry()}>
+      <span className="kercad-admin-switch" aria-hidden="true" />{uiText("admin.telemetry", {}, locale)} · {uiText(metrics?.enabled ? "admin.enabled" : "admin.disabled", {}, locale)}
+    </button>
     <h1>{uiText("admin.title", {}, locale)}</h1><a href="/">{uiText("admin.back", {}, locale)}</a>
     <p className="kercad-admin-warning">{uiText("admin.public", {}, locale)}</p>
     <p>{uiText("admin.explanation", {}, locale)}</p>
+    <p>{uiText("admin.telemetryNote", {}, locale)}</p>
     {error && <p role="alert">{uiText("admin.error", {}, locale)}</p>}
     <div className="kercad-admin-cards">{cards.map(([key, value]) => <section key={key}><h2>{uiText(key, {}, locale)}</h2><strong>{value ?? "—"}</strong></section>)}</div>
     <footer><p>{uiText("admin.bytesNote", {}, locale)}</p>{metrics && <p>{uiText("admin.since", {}, locale)} {new Date(metrics.since).toLocaleString(locale)}</p>}</footer>

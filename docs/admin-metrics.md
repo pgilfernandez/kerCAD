@@ -5,6 +5,14 @@ API are currently public, intentionally; the URL is not an access control.
 Protect this route and `/api/admin/metrics` at the reverse proxy before deploying
 on an untrusted network if these statistics must remain private.
 
+Telemetry is disabled by default, including when upgrading an existing metrics
+file without an explicit enabled flag. The first switch in `/admin` persists
+the server-wide setting. Disabling immediately rejects new usage events; clients
+refresh the flag within 30 seconds and stop transmitting events. Historical
+totals are retained. While authentication is absent, anyone with access to the
+admin API can change this switch too. The preference check itself is an ordinary
+HTTP request, not a recorded usage event.
+
 - Project/challenge counters measure editor openings, not saved files or
   concurrently open documents. Challenge editor openings count as challenges.
 - Active sessions are visible tabs that reported within the previous 90 seconds.

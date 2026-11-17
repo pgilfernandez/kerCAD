@@ -1,4 +1,4 @@
-import { metricEvents, readMetrics, recordMetrics } from "@/lib/adminMetrics";
+import { metricEvents, readMetrics, recordMetrics, setMetricsEnabled } from "@/lib/adminMetrics";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET() {
@@ -11,6 +11,10 @@ export async function POST(request: Request) {
   const text = await request.text(); if (text.length > 2048) return new Response(null, { status: 413 });
   let input;
   try { input = JSON.parse(text); } catch { return new Response(null, { status: 400 }); }
+  if (input?.action === "telemetry" && typeof input.enabled === "boolean") {
+    await setMetricsEnabled(input.enabled);
+    return Response.json(await readMetrics(), { headers: { "Cache-Control": "no-store" } });
+  }
   const validId = (value: unknown) => typeof value === "string" && /^[a-zA-Z0-9-]{1,80}$/.test(value);
   if (!input || !validId(input.visitor) || !validId(input.session) || !Number.isFinite(input.bytes) || input.bytes < 0 || input.bytes > 1e11 || (input.event && (!metricEvents.includes(input.event) || !validId(input.id)))) return new Response(null, { status: 400 });
   await recordMetrics({ ...input, active: input.active === true });

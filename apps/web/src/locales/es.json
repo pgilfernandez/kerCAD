@@ -3,6 +3,10 @@
   "name": "Español",
   "direction": "ltr",
   "messages": {
+    "admin.telemetry": "Telemetría",
+    "admin.enabled": "Activada",
+    "admin.disabled": "Desactivada",
+    "admin.telemetryNote": "Desactivada por defecto. Al desactivarla, el servidor ignora los nuevos eventos y los navegadores dejan de enviarlos en un máximo de 30 segundos. Se conservan los totales anteriores.",
     "admin.title": "Administración",
     "admin.projects": "Proyectos abiertos",
     "admin.challenges": "Retos abiertos",

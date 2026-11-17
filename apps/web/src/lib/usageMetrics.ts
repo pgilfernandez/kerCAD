@@ -1,4 +1,14 @@
 let visitor = "", session = "", bytes = 0;
+let enabled = false, checkedAt = 0;
+let checking: Promise<boolean> | null = null;
+async function telemetryEnabled() {
+  if (Date.now() - checkedAt < 30000) return enabled;
+  checking ??= fetch("/api/admin/metrics", { cache: "no-store" }).then(async (response) => {
+    enabled = response.ok && (await response.json()).enabled === true;
+    checkedAt = Date.now(); return enabled;
+  }).catch(() => { enabled = false; checkedAt = Date.now(); return false; }).finally(() => { checking = null; });
+  return checking;
+}
 function metricId() {
   if (typeof window.crypto?.randomUUID === "function") return window.crypto.randomUUID();
   if (typeof window.crypto?.getRandomValues === "function") {
@@ -12,12 +22,13 @@ function identify() {
   try { visitor = localStorage.getItem("kercad.metrics-browser") ?? metricId(); localStorage.setItem("kercad.metrics-browser", visitor); }
   catch { visitor = metricId(); }
 }
-export function reportUsage(event?: "project" | "challenge" | "documentation" | "overview" | "donate" | "github") {
+export async function reportUsage(event?: "project" | "challenge" | "documentation" | "overview" | "donate" | "github") {
   if (typeof window === "undefined" || location.pathname.startsWith("/admin")) return;
+  if (!await telemetryEnabled()) return;
   try {
     identify();
     const body = JSON.stringify({ visitor, session, bytes, active: document.visibilityState === "visible", ...(event ? { event, id: metricId() } : {}) });
     void fetch("/api/admin/metrics", { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true }).catch(() => {});
   } catch { /* Optional telemetry must never interrupt the editor. */ }
 }
-export function addUsageBytes(size: number) { if (Number.isFinite(size) && size > 0) bytes += size; }
+export function addUsageBytes(size: number) { if (enabled && Number.isFinite(size) && size > 0) bytes += size; }

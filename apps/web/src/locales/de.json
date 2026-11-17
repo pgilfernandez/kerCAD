@@ -3,6 +3,10 @@
   "name": "Deutsch",
   "direction": "ltr",
   "messages": {
+    "admin.telemetry": "Telemetrie",
+    "admin.enabled": "Aktiviert",
+    "admin.disabled": "Deaktiviert",
+    "admin.telemetryNote": "Standardmäßig deaktiviert. Der Server ignoriert neue Ereignisse und Browser stellen das Senden innerhalb von 30 Sekunden ein. Bisherige Gesamtzahlen bleiben erhalten.",
     "admin.title": "Verwaltung",
     "admin.projects": "Geöffnete Projekte",
     "admin.challenges": "Geöffnete Aufgaben",

@@ -3,6 +3,10 @@
   "name": "Italiano",
   "direction": "ltr",
   "messages": {
+    "admin.telemetry": "Telemetria",
+    "admin.enabled": "Attivata",
+    "admin.disabled": "Disattivata",
+    "admin.telemetryNote": "Disattivata per impostazione predefinita. Il server ignora i nuovi eventi e i browser smettono di inviarli entro 30 secondi. I totali esistenti vengono conservati.",
     "admin.title": "Amministrazione",
     "admin.projects": "Progetti aperti",
     "admin.challenges": "Sfide aperte",
