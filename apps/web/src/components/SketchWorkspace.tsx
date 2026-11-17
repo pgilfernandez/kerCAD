@@ -444,7 +444,8 @@ function orderedPaths(profile: SketchProfile): DisplayPath[] {
       if (currentId === startId) break;
       points.push(to);
     }
-    paths.push({ id: seed.id, points, steps, closed: currentId === startId && steps.length >= 3 });
+    // An arc closed by its chord is a complete filled contour with two edges.
+    paths.push({ id: seed.id, points, steps, closed: currentId === startId && steps.length >= 2 });
   }
   return paths;
 }
