@@ -1,6 +1,7 @@
 import type { Face } from "brepjs";
 import type { Brep, BrepSolid } from "@/lib/brepKernel";
 import { classifyPlanarProfileLoops, type PlanarProfileLoop } from "@/lib/planarProfile";
+import { findSketchOutlineIntersection } from "@/lib/sketchProfileValidation";
 
 type ProfileWire = Parameters<Brep["face"]>[0];
 
@@ -8,6 +9,25 @@ export type PlanarBrepLoop = PlanarProfileLoop<{ wire: ProfileWire }>;
 export type ProfileBooleanRole = "add" | "cut" | "intersect";
 
 export function facesFromPlanarProfile(brep: Brep, loops: readonly PlanarBrepLoop[], label: string): Face[] {
+  if (loops.length > 1 && findSketchOutlineIntersection(loops.map((loop) => loop.polygon))) {
+    // Validate each contour independently, then resolve intersecting contours
+    // by symmetric difference. Unit slabs preserve exact arcs and Beziers.
+    for (const loop of loops) classifyPlanarProfileLoops([loop], label);
+    const slabs = loops.map((loop) => {
+      const face = brep.unwrap(brep.face(loop.payload.wire)) as Face;
+      return brep.unwrap(brep.extrude(face as Parameters<Brep["extrude"]>[0], 1)) as BrepSolid;
+    });
+    let filled = slabs[0];
+    for (const slab of slabs.slice(1)) {
+      const outside = brep.unwrap(brep.cut(filled, slab)) as BrepSolid;
+      const inside = brep.unwrap(brep.cut(slab, filled)) as BrepSolid;
+      filled = brep.unwrap(brep.fuse(outside, inside)) as BrepSolid;
+    }
+    return brep.getFaces(filled).filter((face) => {
+      const bounds = brep.getBounds(face);
+      return Math.abs(bounds.zMin) < 1e-6 && Math.abs(bounds.zMax) < 1e-6;
+    });
+  }
   return classifyPlanarProfileLoops(loops, label).map((region) => brep.unwrap(brep.face(
     region.outer.payload.wire,
     region.holes.map((hole) => hole.payload.wire) as Parameters<Brep["face"]>[1],

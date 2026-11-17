@@ -235,6 +235,25 @@ export function validateDrawnSketchProfile(profile: SketchProfile): SketchProfil
   }
 
   const entities = [...segments.map((segment) => sampleSegment(segment, pointById)).filter(Boolean) as SampledEntity[], ...circles.filter((circle) => circle.radius > epsilon).map(sampleCircle)];
+  // Crossings between independent contours are resolved with even-odd fill.
+  // Crossings within a contour remain invalid.
+  const component = new Map<string, string>();
+  const adjacency = new Map<string, string[]>();
+  for (const segment of segments) {
+    adjacency.set(segment.startId, [...(adjacency.get(segment.startId) ?? []), segment.endId]);
+    adjacency.set(segment.endId, [...(adjacency.get(segment.endId) ?? []), segment.startId]);
+  }
+  for (const id of adjacency.keys()) {
+    if (component.has(id)) continue;
+    const pending = [id];
+    while (pending.length) {
+      const current = pending.pop()!;
+      if (component.has(current)) continue;
+      component.set(current, id);
+      pending.push(...(adjacency.get(current) ?? []));
+    }
+  }
+  const contourId = (entity: SampledEntity) => entity.endpointIds ? `path:${component.get(entity.endpointIds[0])}` : `circle:${entity.id}`;
   const scaleEpsilon = outlineEpsilon(entities.map((entity) => entity.points));
   const reportedPairs = new Set<string>();
   for (let firstIndex = 0; firstIndex < entities.length; firstIndex += 1) {
@@ -242,6 +261,7 @@ export function validateDrawnSketchProfile(profile: SketchProfile): SketchProfil
     const firstEdges = first.closed ? first.points.length : first.points.length - 1;
     for (let secondIndex = firstIndex; secondIndex < entities.length; secondIndex += 1) {
       const second = entities[secondIndex];
+      if (contourId(first) !== contourId(second)) continue;
       const secondEdges = second.closed ? second.points.length : second.points.length - 1;
       for (let edgeA = 0; edgeA < firstEdges; edgeA += 1) for (let edgeB = firstIndex === secondIndex ? edgeA + 1 : 0; edgeB < secondEdges; edgeB += 1) {
         if (firstIndex === secondIndex && adjacentEdges(edgeA, edgeB, firstEdges)) continue;
