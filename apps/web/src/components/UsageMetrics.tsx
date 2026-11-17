@@ -4,13 +4,13 @@ import { addUsageBytes, reportUsage } from "@/lib/usageMetrics";
 export function UsageMetrics() {
   useEffect(() => {
     if (location.pathname.startsWith("/admin")) return;
-    const observer = new PerformanceObserver((list) => {
+    const observer = typeof PerformanceObserver === "undefined" ? null : new PerformanceObserver((list) => {
       for (const item of list.getEntries()) {
         const entry = item as PerformanceResourceTiming;
         if (!entry.name.includes("/api/admin/metrics")) addUsageBytes(entry.transferSize);
       }
     });
-    observer.observe({ type: "resource", buffered: true });
+    try { observer?.observe({ type: "resource", buffered: true }); } catch { /* Resource timing is optional. */ }
     addUsageBytes((performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined)?.transferSize ?? 0);
     const click = (event: MouseEvent) => {
       const target = (event.target as Element).closest?.("a,button");
@@ -23,7 +23,7 @@ export function UsageMetrics() {
     const timer = window.setInterval(() => reportUsage(), 30000);
     const visibility = () => reportUsage();
     document.addEventListener("click", click, true); document.addEventListener("visibilitychange", visibility);
-    return () => { observer.disconnect(); clearInterval(timer); document.removeEventListener("click", click, true); document.removeEventListener("visibilitychange", visibility); };
+    return () => { observer?.disconnect(); clearInterval(timer); document.removeEventListener("click", click, true); document.removeEventListener("visibilitychange", visibility); };
   }, []);
   return null;
 }
