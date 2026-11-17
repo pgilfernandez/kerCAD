@@ -3,6 +3,7 @@
   "name": "English",
   "direction": "ltr",
   "messages": {
+    "challenge.exportPrefix": "challenge",
     "admin.telemetry": "Telemetry",
     "admin.enabled": "Enabled",
     "admin.disabled": "Disabled",

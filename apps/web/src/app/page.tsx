@@ -273,7 +273,8 @@ export default function Home() {
     const blob = exportChallengePackage(challenge);
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `${challenge.title.trim().replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "challenge"}.zip`;
+    const prefix = kercadTranslate(getCurrentLocale(), "challenge.exportPrefix");
+    link.download = `${prefix}_${challenge.title.trim().replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || prefix}.zip`;
     link.click();
     window.setTimeout(() => URL.revokeObjectURL(link.href), 1_000);
   };

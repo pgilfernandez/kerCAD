@@ -3,6 +3,7 @@
   "name": "Español",
   "direction": "ltr",
   "messages": {
+    "challenge.exportPrefix": "reto",
     "admin.telemetry": "Telemetría",
     "admin.enabled": "Activada",
     "admin.disabled": "Desactivada",

@@ -3,6 +3,7 @@
   "name": "Français",
   "direction": "ltr",
   "messages": {
+    "challenge.exportPrefix": "defi",
     "admin.telemetry": "Télémétrie",
     "admin.enabled": "Activée",
     "admin.disabled": "Désactivée",

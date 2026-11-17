@@ -3,6 +3,7 @@
   "name": "Italiano",
   "direction": "ltr",
   "messages": {
+    "challenge.exportPrefix": "sfida",
     "admin.telemetry": "Telemetria",
     "admin.enabled": "Attivata",
     "admin.disabled": "Disattivata",
