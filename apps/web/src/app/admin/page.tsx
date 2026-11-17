@@ -49,8 +49,7 @@ export default function AdminPage() {
     <button className="kercad-admin-telemetry" type="button" role="switch" aria-checked={metrics?.enabled ?? false} disabled={!metrics || saving} onClick={() => void toggleTelemetry()}>
       <span className="kercad-admin-switch" aria-hidden="true" />{uiText("admin.telemetry", {}, locale)} · {uiText(metrics?.enabled ? "admin.enabled" : "admin.disabled", {}, locale)}
     </button>
-    <h1>{uiText("admin.title", {}, locale)}</h1><a href="/">{uiText("admin.back", {}, locale)}</a>
-    <p className="kercad-admin-warning">{uiText("admin.public", {}, locale)}</p>
+    <h1>{uiText("admin.title", {}, locale)}</h1>
     <p>{uiText("admin.explanation", {}, locale)}</p>
     <p>{uiText("admin.telemetryNote", {}, locale)}</p>
     {error && <p role="alert">{uiText("admin.error", {}, locale)}</p>}
