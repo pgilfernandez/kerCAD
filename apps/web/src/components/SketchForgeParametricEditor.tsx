@@ -3704,7 +3704,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("sketch.refine")} active={sketchTool === "refine"} onClick={refineSketchSelection}><SketchToolbarIcon file="refine" /></Tool>
             <Tool label={t("sketch.connectNodes")} enabled={selectedSketchPoints.length <= 2} active={sketchTool === "connect"} onClick={connectSelectedSketchNodes}><SketchToolbarIcon file="connect-nodes" /></Tool>
             <Tool label={t("sketch.mergePoints")} enabled={mergeableSketchPointIds.length === 2} onClick={mergeSelectedSketchPoints}><SketchToolbarIcon file="merge-points" /></Tool>
-            <Tool label={t("sketch.trim")} active={sketchTool === "trim"} onClick={() => chooseSketchTool("trim")}><SketchToolbarIcon file="trim" /></Tool>
+            {/* Temporarily hidden; keep the trim tool implementation available. */}
+            <span hidden><Tool label={t("sketch.trim")} active={sketchTool === "trim"} onClick={() => chooseSketchTool("trim")}><SketchToolbarIcon file="trim" /></Tool></span>
           </ToolbarSection>
           <ToolbarSection label={t("annotation.group")} className="sketch-annotations-section">
             <SketchToolMenu initialTool="dimension" activeTool={sketchAnnotationTool} renderIcon={(option) => <AnnotationIcon kind={option.tool} />} options={(["dimension", "arrow", "dashedLine"] as const).map((tool) => ({ tool, label: t(`annotation.${tool}`), icon: tool }))} onChoose={(kind) => { chooseSketchTool("select"); setSketchAnnotationTool(sketchAnnotationTool === kind ? null : kind); }} />
