@@ -3947,6 +3947,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               const arc = segment.kind === "arc" ? segment : next;
               return { id: sketchEntityId("constraint"), kind: "tangentLineArc", lineId: line.id, arcId: arc.id };
             });
+            if (segments[0]?.kind === "arc" && segments[2]?.kind === "arc") {
+              constraints.push({ id: sketchEntityId("constraint"), kind: "coincident", pointIds: [arcSketchPointId(segments[0].id), arcSketchPointId(segments[2].id)] });
+            }
             setSketchProfile((profile) => ({ ...profile, points: [...profile.points, ...points], segments: [...profile.segments, ...segments], constraints: [...(profile.constraints ?? []), ...constraints] }));
             chooseSketchTool("select");
           }}
