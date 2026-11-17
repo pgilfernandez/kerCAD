@@ -3765,16 +3765,16 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             ]} />
           </ToolbarSection>
           <ToolbarSection label={t("sketch.point")}>
-            <Tool label={t("sketch.corner")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("corner")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "corner")}><SketchToolbarIcon file="corner" /></Tool>
-            <Tool label={t("sketch.smooth")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("smooth")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "smooth")}><SketchToolbarIcon file="smooth-point" /></Tool>
-            <Tool label={t("sketch.autoSmooth")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("autoSmooth")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "autoSmooth")}><SketchToolbarIcon file="smooth-auto" /></Tool>
-            <Tool label={t("sketch.splitHandles")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("split")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "split")}><SketchToolbarIcon file="split-handles" /></Tool>
+            <Tool label={t("sketch.corner")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("corner")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "corner")}><SketchToolbarIcon file="node-corner" /></Tool>
+            <Tool label={t("sketch.smooth")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("smooth")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "smooth")}><SketchToolbarIcon file="node-smooth" /></Tool>
+            <Tool label={t("sketch.autoSmooth")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("autoSmooth")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "autoSmooth")}><SketchToolbarIcon file="node-smooth-auto" /></Tool>
+            <Tool label={t("sketch.splitHandles")} enabled={selectedSketchPoints.length > 0} active={selectedPointMode("split")} onClick={() => setSketchPointModes(selectedSketchPoints.map((point) => point.id), "split")}><SketchToolbarIcon file="node-split" /></Tool>
           </ToolbarSection>
           <ToolbarSection label={t("sketch.edit")} className="sketch-edit-section">
             <Tool label={t("sketch.construction")} enabled={selectedConstructionIds.segmentIds.length + selectedConstructionIds.circleIds.length > 0} active={selectedConstructionIds.allConstruction} onClick={toggleSketchConstruction}><SketchToolbarIcon file="construction" /></Tool>
-            <Tool label={t("sketch.refine")} active={sketchTool === "refine"} onClick={refineSketchSelection}><SketchToolbarIcon file="refine" /></Tool>
-            <Tool label={t("sketch.connectNodes")} enabled={selectedSketchPoints.length <= 2} active={sketchTool === "connect"} onClick={connectSelectedSketchNodes}><SketchToolbarIcon file="connect-nodes" /></Tool>
-            <Tool label={t("sketch.mergePoints")} enabled={mergeableSketchPointIds.length === 2} onClick={mergeSelectedSketchPoints}><SketchToolbarIcon file="merge-points" /></Tool>
+            <Tool label={t("sketch.refine")} active={sketchTool === "refine"} onClick={refineSketchSelection}><SketchToolbarIcon file="nodes-refine" /></Tool>
+            <Tool label={t("sketch.connectNodes")} enabled={selectedSketchPoints.length <= 2} active={sketchTool === "connect"} onClick={connectSelectedSketchNodes}><SketchToolbarIcon file="nodes-connect-nodes" /></Tool>
+            <Tool label={t("sketch.mergePoints")} enabled={mergeableSketchPointIds.length === 2} onClick={mergeSelectedSketchPoints}><SketchToolbarIcon file="nodes-merge-points" /></Tool>
             <Tool label={t("sketch.deleteNode")} enabled={selectedSketchPoints.length > 0} onClick={deleteSelectedSketchNodes}><SketchToolbarIcon file="nodes-delete" /></Tool>
             <Tool label={t("sketch.separateNode")} enabled={separableSketchPoints.length > 0} onClick={separateSelectedSketchNodes}><SketchToolbarIcon file="nodes-separate" /></Tool>
             {/* Temporarily hidden; keep the trim tool implementation available. */}
