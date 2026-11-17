@@ -79,7 +79,7 @@ export type SketchPoint = {
   z: number;
   handleIn?: { x: number; z: number };
   handleOut?: { x: number; z: number };
-  mode?: "corner" | "smooth" | "split";
+  mode?: "corner" | "smooth" | "autoSmooth" | "split";
   generatedTextId?: string;
 };
 

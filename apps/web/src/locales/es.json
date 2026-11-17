@@ -461,6 +461,7 @@
     "sketch.mergePoints": "Fusionar vértices abiertos",
     "sketch.corner": "Esquina",
     "sketch.smooth": "Suave",
+    "sketch.autoSmooth": "Suavizado automático",
     "sketch.splitHandles": "Separar tiradores",
     "sketch.undo": "Deshacer boceto",
     "sketch.redo": "Rehacer boceto",

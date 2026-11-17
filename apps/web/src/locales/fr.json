@@ -461,6 +461,7 @@
     "sketch.mergePoints": "Fusionner les sommets ouverts",
     "sketch.corner": "Coin",
     "sketch.smooth": "Lisser",
+    "sketch.autoSmooth": "Lissage automatique",
     "sketch.splitHandles": "Séparer les poignées",
     "sketch.undo": "Annuler l'esquisse",
     "sketch.redo": "Rétablir l'esquisse",

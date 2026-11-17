@@ -884,7 +884,8 @@ export function SketchWorkspace({
           const next = { ...point, handleIn: point.handleIn ? { ...point.handleIn } : undefined, handleOut: point.handleOut ? { ...point.handleOut } : undefined };
           if (pointerAction.handle === "in") next.handleIn = { ...pointerAction.current };
           else next.handleOut = { ...pointerAction.current };
-          if (point.mode === "smooth") {
+          if (point.mode === "autoSmooth") next.mode = "smooth";
+          if (point.mode === "smooth" || point.mode === "autoSmooth") {
             const opposite = { x: point.x * 2 - pointerAction.current.x, z: point.z * 2 - pointerAction.current.z };
             if (pointerAction.handle === "in") next.handleOut = opposite;
             else next.handleIn = opposite;

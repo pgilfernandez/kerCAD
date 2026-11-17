@@ -1,4 +1,5 @@
 import type { SketchConstraint, SketchPoint, SketchProfile } from "@/types/sketchforge";
+import { updateAutoSmoothNodes } from "@/lib/sketchAutoSmooth";
 import { refineSketchConstraintsNumerically, sketchConstraintRankGain } from "@/lib/sketchConstraintAnalysis";
 
 export const SKETCH_ORIGIN_POINT_ID = "reference:origin";
@@ -772,5 +773,5 @@ export function solveSketchConstraints(profile: SketchProfile, drivingPointId?: 
     if (!center || (drivingPointId !== centerId && !constraints.some((constraint) => sketchConstraintUsesPoint(constraint, centerId)))) continue;
     arc.center = { x: center.x, z: center.z };
   }
-  return refineSketchConstraintsNumerically(profile, drivingPointId);
+  return updateAutoSmoothNodes(refineSketchConstraintsNumerically(profile, drivingPointId));
 }

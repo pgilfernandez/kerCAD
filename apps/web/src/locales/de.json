@@ -461,6 +461,7 @@
     "sketch.mergePoints": "Offene Endpunkte zusammenführen",
     "sketch.corner": "Ecke",
     "sketch.smooth": "Glätten",
+    "sketch.autoSmooth": "Automatisch glätten",
     "sketch.splitHandles": "Griffe trennen",
     "sketch.undo": "Skizze rückgängig machen",
     "sketch.redo": "Skizze wiederherstellen",

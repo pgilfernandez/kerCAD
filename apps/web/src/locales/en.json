@@ -461,6 +461,7 @@
     "sketch.mergePoints": "Merge open vertices",
     "sketch.corner": "Corner",
     "sketch.smooth": "Smooth",
+    "sketch.autoSmooth": "Auto-smooth",
     "sketch.splitHandles": "Split handles",
     "sketch.undo": "Undo sketch",
     "sketch.redo": "Redo sketch",
