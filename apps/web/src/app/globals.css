@@ -1646,10 +1646,10 @@ html[data-theme="dark"] .kercad-export-panel .export-format-icon { color: color-
 .kercad-stl-quality-labels small:nth-child(4) { left: 100%; }
 
 .top-action-panel.kercad-settings-panel { padding-bottom: 8px; color: var(--theme-text-muted); background: var(--theme-bg-ffffff-a950); border: 1px solid var(--theme-line-c5d6df); border-radius: 8px; box-shadow: 0 3px 14px rgba(38,62,79,.14); max-height: calc(100dvh - var(--editor-toolbar-height) - 18px); overflow-y: auto; overscroll-behavior: contain; }
-.kercad-settings-panel > header { min-height: 49px; padding-inline: 14px 12px; border-bottom-color: var(--theme-line-e1e8ed); }
-.kercad-settings-panel > header strong { font-size: 13px; font-weight: 600; }
-.kercad-settings-panel > header button { color: var(--theme-text-muted); border: 1px solid transparent; border-radius: 8px; }
-.kercad-settings-panel > header button:hover { color: var(--theme-text-0d55bd); background: var(--theme-bg-effafe); border-color: var(--theme-line-83c5d9); }
+:is(.kercad-settings-panel, .kercad-export-panel) > header { min-height: 49px; padding-inline: 14px 12px; color: var(--theme-text-muted); border-bottom-color: var(--theme-line-e1e8ed); }
+:is(.kercad-settings-panel, .kercad-export-panel) > header strong { font-size: 13px; font-weight: 600; }
+:is(.kercad-settings-panel, .kercad-export-panel) > header button { color: var(--theme-text-muted); border: 1px solid transparent; border-radius: 8px; }
+:is(.kercad-settings-panel, .kercad-export-panel) > header button:hover { color: var(--theme-text-0d55bd); background: var(--theme-bg-effafe); border-color: var(--theme-line-83c5d9); }
 .kercad-settings-panel label { display: flex; min-height: 48px; align-items: center; justify-content: space-between; gap: 12px; margin: 0 14px; color: var(--theme-text-muted); border-bottom: 1px solid var(--theme-line-edf1f4); font-size: 12px; font-weight: 500; }
 .kercad-settings-panel label:last-child { border-bottom: 0; }
 .kercad-settings-panel input[type="text"],
