@@ -1616,8 +1616,8 @@ button {
 .export-format-icon { display: grid; width: 44px; height: 36px; grid-column: 1; grid-row: 1 / 3; place-items: center; color: var(--theme-dark-link, #3f7897); background: var(--theme-dark-active, #e5f3f8); border-radius: 5px; font-size: 9px; font-weight: 900; }
 .export-format-icon.step { color: var(--theme-dark-text, #8d621a); background: var(--theme-bg-fff0cf); }
 .kercad-stl-export-option { overflow: hidden; background: var(--theme-surface); border: 1px solid var(--theme-line-cfdae3); border-radius: 8px; transition: border-color 140ms ease, box-shadow 140ms ease; }
-.kercad-export-panel > header { background: color-mix(in srgb, var(--accent-solid) 8%, #fff); }
-html[data-theme="dark"] .kercad-export-panel > header { background: color-mix(in srgb, var(--accent-solid) 15%, #101820); }
+:is(.kercad-export-panel, .kercad-settings-panel, .kercad-workplane-popover) > header { background: color-mix(in srgb, var(--accent-solid) 8%, #fff); }
+html[data-theme="dark"] :is(.kercad-export-panel, .kercad-settings-panel, .kercad-workplane-popover) > header { background: color-mix(in srgb, var(--accent-solid) 15%, #101820); }
 .kercad-export-panel .kercad-export-option-header { grid-template-rows: auto; }
 .kercad-export-panel .export-format-icon { grid-row: 1; color: color-mix(in srgb, var(--accent-solid) 75%, #243442); background: color-mix(in srgb, var(--accent-solid) 12%, #fff); }
 html[data-theme="dark"] .kercad-export-panel .export-format-icon { color: color-mix(in srgb, var(--accent-solid) 45%, #fff); background: color-mix(in srgb, var(--accent-solid) 18%, #101820); }
