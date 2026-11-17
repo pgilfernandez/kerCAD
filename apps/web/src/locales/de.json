@@ -453,6 +453,7 @@
     "sketch.centerArc": "Mittelpunktbogen",
     "sketch.connectNodes": "Knoten verbinden",
     "sketch.deleteNode": "Knoten löschen und neu verbinden",
+    "sketch.separateNode": "Knoten auftrennen",
     "sketch.select": "Auswählen",
     "sketch.refine": "Knoten hinzufügen",
     "sketch.trim": "Trimmen",

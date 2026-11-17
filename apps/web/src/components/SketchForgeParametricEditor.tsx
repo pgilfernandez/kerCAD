@@ -2309,6 +2309,39 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const selectedSketchPoints = sketchSession ? sketchSession.profile.points.filter((point) =>
     sketchSelection?.kind === "point" ? point.id === sketchSelection.id
       : sketchSelection?.kind === "multiple" ? sketchSelection.pointIds.includes(point.id) : false) : [];
+  const separableSketchPoints = selectedSketchPoints.filter((point) => sketchSession?.profile.segments.filter((segment) => segment.startId === point.id || segment.endId === point.id).length === 2);
+  const separateSelectedSketchNodes = () => {
+    const ids = new Set(separableSketchPoints.map((point) => point.id));
+    const resultingIds: string[] = [];
+    setSketchProfile((profile) => {
+      const next = cloneSketchProfile(profile);
+      const changedSegments = new Set<string>();
+      for (const id of ids) {
+        const point = next.points.find((candidate) => candidate.id === id);
+        const incident = next.segments.filter((segment) => segment.startId === id || segment.endId === id);
+        if (!point || incident.length !== 2) continue;
+        const copy = { ...point, id: sketchEntityId("point"), mode: "split" as const, handleIn: point.handleIn ? { ...point.handleIn } : undefined, handleOut: point.handleOut ? { ...point.handleOut } : undefined };
+        // Each open end retains only the tangent used by its own edge.
+        const retained = incident[0], detached = incident[1];
+        point.mode = "split";
+        if (retained.startId === id) point.handleIn = undefined;
+        else point.handleOut = undefined;
+        if (detached.startId === id) { copy.handleIn = undefined; detached.startId = copy.id; }
+        else { copy.handleOut = undefined; detached.endId = copy.id; }
+        next.points.push(copy);
+        incident.forEach((segment) => changedSegments.add(segment.id));
+        resultingIds.push(id, copy.id);
+      }
+      next.constraints = (next.constraints ?? []).filter((constraint) => {
+        if ([...ids].some((id) => sketchConstraintUsesPoint(constraint, id))) return false;
+        // Tangency/continuity constraints must not reconnect the two new ends.
+        return !("kind" in constraint && constraint.kind.startsWith("tangent") && [...changedSegments].some((id) => sketchConstraintUsesSegment(constraint, id)));
+      });
+      return next;
+    });
+    setSketchSelection(resultingIds.length ? { kind: "multiple", pointIds: resultingIds, segmentIds: [] } : null);
+    setSketchActivePointId(null);
+  };
   const deleteSelectedSketchNodes = () => {
     const ids = new Set(selectedSketchPoints.map((point) => point.id));
     setSketchProfile((profile) => {
@@ -3743,6 +3776,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             <Tool label={t("sketch.connectNodes")} enabled={selectedSketchPoints.length <= 2} active={sketchTool === "connect"} onClick={connectSelectedSketchNodes}><SketchToolbarIcon file="connect-nodes" /></Tool>
             <Tool label={t("sketch.mergePoints")} enabled={mergeableSketchPointIds.length === 2} onClick={mergeSelectedSketchPoints}><SketchToolbarIcon file="merge-points" /></Tool>
             <Tool label={t("sketch.deleteNode")} enabled={selectedSketchPoints.length > 0} onClick={deleteSelectedSketchNodes}><SketchToolbarIcon file="nodes-delete" /></Tool>
+            <Tool label={t("sketch.separateNode")} enabled={separableSketchPoints.length > 0} onClick={separateSelectedSketchNodes}><SketchToolbarIcon file="nodes-separate" /></Tool>
             {/* Temporarily hidden; keep the trim tool implementation available. */}
             <span hidden><Tool label={t("sketch.trim")} active={sketchTool === "trim"} onClick={() => chooseSketchTool("trim")}><SketchToolbarIcon file="trim" /></Tool></span>
           </ToolbarSection>
