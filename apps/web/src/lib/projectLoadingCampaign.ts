@@ -27,7 +27,27 @@ export function consumePreparedLoadingCampaign(campaign: ProjectLoadingCampaign)
   if (prepared === campaign) prepared = null;
 }
 
+export function isSvgCampaign(src: string) {
+  return /\.svg(?:[?#]|$)/i.test(src);
+}
+
+const svgDownloads = new Map<string, Promise<Blob>>();
+
+/** Cache bytes only: creating an Image here would start its SMIL timeline. */
+export function downloadCampaignSvg(src: string): Promise<Blob> {
+  const cached = svgDownloads.get(src);
+  if (cached) return cached;
+  const download = fetch(src).then(async (response) => {
+    if (!response.ok) throw new Error("Could not download sponsor SVG.");
+    return new Blob([await response.arrayBuffer()], { type: "image/svg+xml" });
+  }).catch((error) => { svgDownloads.delete(src); throw error; });
+  if (svgDownloads.size >= 6) svgDownloads.delete(svgDownloads.keys().next().value!);
+  svgDownloads.set(src, download);
+  return download;
+}
+
 function preloadImage(src: string, priority: "high" | "low") {
+  if (isSvgCampaign(src)) return downloadCampaignSvg(src).then(() => {});
   return new Promise<void>((resolve, reject) => {
     const image = new Image();
     image.fetchPriority = priority;
