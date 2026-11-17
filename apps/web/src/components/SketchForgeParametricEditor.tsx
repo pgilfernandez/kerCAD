@@ -2,6 +2,7 @@
 
 import { ChallengeIcon } from "@/components/ChallengeIcon";
 import { CylinderProfileButtons } from "@/components/CylinderProfileButtons";
+import { PopupPointer } from "@/components/PopupPointer";
 import { updateAutoSmoothNodes } from "@/lib/sketchAutoSmooth";
 import { ToolbarSweepIcon } from "@/components/icons";
 import { ThemedToolbarImage } from "@/components/ThemedToolbarImage";
@@ -4676,6 +4677,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       </section>
 
       {importOpen && <ImportDesignDialog locale={locale} onClose={() => setImportOpen(false)} onBrowse={() => importRef.current?.click()} onFile={(file) => { setImportOpen(false); void importManagedFile(file); }} />}
+      <PopupPointer open={exportOpen} panel=".kercad-export-panel" trigger='button[data-kercad-popup="export"]' />
+      <PopupPointer open={settingsOpen} panel=".kercad-settings-panel" trigger='button[data-kercad-popup="settings"]' />
+      <PopupPointer open={workplaneOpen} panel=".kercad-workplane-popover" trigger='button[data-kercad-popup="grid"]' />
       {exportOpen && (
         <aside data-kercad-popup="export" className="top-action-panel export-action-panel kercad-export-panel">
           <header><div className="top-action-heading"><strong>{t("dialog.exportTitle")}</strong></div><button aria-label={t("common.close")} onClick={() => setExportOpen(false)}><X /></button></header>

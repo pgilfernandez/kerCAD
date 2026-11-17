@@ -1,6 +1,7 @@
 "use client";
 
 import { HeaderToolbarIcon } from "@/components/icons";
+import { PopupPointer } from "@/components/PopupPointer";
 import { createPortal } from "react-dom";
 import packageInfo from "../../../../package.json";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -57,6 +58,8 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onL
     </>}
     <button ref={infoTriggerRef} type="button" aria-label={t("about.label")} title={t("about.title")} aria-expanded={infoOpen} aria-controls="kercad-about-panel" onClick={() => { setOpen(false); setInfoOpen((value) => !value); }}><HeaderToolbarIcon file="information" />{onShowLanding && !compactInformation && <span>{t("about.title")}</span>}</button>
     <button data-tutorial="appearance-language" type="button" aria-label={t("settings.appearanceLanguage")} title={t("settings.appearanceLanguage")} aria-expanded={open} aria-controls="kercad-header-language-menu" onClick={() => { setInfoOpen(false); setOpen((value) => !value); }}><HeaderToolbarIcon file="theme-language" /></button>
+    <PopupPointer open={infoOpen} panel="#kercad-about-panel" trigger='button[aria-controls="kercad-about-panel"]' />
+    <PopupPointer open={open} panel="#kercad-header-language-menu" trigger='button[aria-controls="kercad-header-language-menu"]' />
     {infoOpen ? createPortal(
       <section ref={infoRef} id="kercad-about-panel" className="kercad-about-dialog" style={onShowLanding ? { top: infoTop, maxHeight: `calc(100dvh - ${infoTop + 12}px)` } : undefined} role="dialog" aria-modal="false" aria-labelledby="kercad-about-title" tabIndex={-1}>
         <header><h2 id="kercad-about-title">{t("about.title")}</h2><button type="button" aria-label={t("common.close")} onClick={() => setInfoOpen(false)}>×</button></header>
