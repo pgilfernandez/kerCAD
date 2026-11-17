@@ -6,6 +6,7 @@ import { APP_ACCENT_INITIAL_SCRIPT } from "@/lib/appAccent";
 import { APP_THEME_INITIAL_SCRIPT } from "@/lib/appTheme";
 import { BRAND_STORAGE_INITIAL_SCRIPT } from "@/lib/legacyBrand";
 import { AppAccentSync } from "@/components/AppAccentSync";
+import { UsageMetrics } from "@/components/UsageMetrics";
 import { LoadingCampaignPreloader } from "@/components/LoadingCampaignPreloader";
 import { projectLoadingCampaign } from "@/lib/projectLoadingCampaign";
 import { APP_LOCALE_INITIAL_SCRIPT, uiText } from "@/lib/kercadI18n";
@@ -27,7 +28,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: BRAND_STORAGE_INITIAL_SCRIPT + APP_THEME_INITIAL_SCRIPT + APP_ACCENT_INITIAL_SCRIPT + APP_LOCALE_INITIAL_SCRIPT }} />
         {projectLoadingCampaign.kind === "image" && <link rel="preload" as="image" href={projectLoadingCampaign.src} fetchPriority="high" />}
       </head>
-      <body suppressHydrationWarning><AppAccentSync /><LoadingCampaignPreloader />{children}</body>
+      <body suppressHydrationWarning><AppAccentSync /><LoadingCampaignPreloader /><UsageMetrics />{children}</body>
     </html>
   );
 }

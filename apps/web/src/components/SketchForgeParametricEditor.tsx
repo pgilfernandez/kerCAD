@@ -2,6 +2,7 @@
 
 import { ChallengeIcon } from "@/components/ChallengeIcon";
 import { CylinderProfileButtons } from "@/components/CylinderProfileButtons";
+import { reportUsage } from "@/lib/usageMetrics";
 import { PopupPointer } from "@/components/PopupPointer";
 import { updateAutoSmoothNodes } from "@/lib/sketchAutoSmooth";
 import { ToolbarSweepIcon } from "@/components/icons";
@@ -325,6 +326,12 @@ type SketchForgeParametricEditorProps = {
 };
 
 export function SketchForgeParametricEditor({ initialProject, sharedFileName, onSaveShared, onProjectChange, onProjectThumbnail, onExitToProjects, challenge, challengeEditor, onSaveChallenge, onCancelChallengeEdit }: SketchForgeParametricEditorProps = {}) {
+  const reportedOpen = useRef(false);
+  useEffect(() => {
+    if (reportedOpen.current) return;
+    reportedOpen.current = true;
+    reportUsage(challenge || challengeEditor ? "challenge" : "project");
+  }, [challenge, challengeEditor]);
   const initialDocument = useMemo(() => initialProject ? normalizeParametricDocument(structuredClone(initialProject)) : createEmptyDocument(), [initialProject]);
   const latestProjectThumbnailRef = useRef<string | undefined>(undefined);
   const [history, setHistory] = useState<ParametricHistoryState>(() => createParametricHistory(initialDocument));
