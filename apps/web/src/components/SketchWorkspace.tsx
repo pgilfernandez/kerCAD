@@ -1777,7 +1777,10 @@ export function SketchWorkspace({
             </g>
           ) : null}
           {pendingRectangleCorner && hover && tool === "rectangle" ? <rect className="sketch-preview-line" fill="none" x={Math.min(pendingRectangleCorner.x, hover.x)} y={Math.min(pendingRectangleCorner.z, hover.z)} width={Math.abs(hover.x - pendingRectangleCorner.x)} height={Math.abs(hover.z - pendingRectangleCorner.z)} pointerEvents="none" /> : null}
-          {pendingRectangleCorner && hover && tool === "ellipse" ? <ellipse className="sketch-preview-line" fill="none" cx={pendingRectangleCorner.x} cy={pendingRectangleCorner.z} rx={Math.abs(hover.x - pendingRectangleCorner.x)} ry={Math.abs(hover.z - pendingRectangleCorner.z)} pointerEvents="none" /> : null}
+          {pendingRectangleCorner && hover && tool === "ellipse" ? <g pointerEvents="none">
+            <rect className="sketch-preview-line" fill="none" opacity={.4} x={Math.min(pendingRectangleCorner.x, hover.x)} y={Math.min(pendingRectangleCorner.z, hover.z)} width={Math.abs(hover.x - pendingRectangleCorner.x)} height={Math.abs(hover.z - pendingRectangleCorner.z)} />
+            <ellipse className="sketch-preview-line" fill="none" cx={(pendingRectangleCorner.x + hover.x) / 2} cy={(pendingRectangleCorner.z + hover.z) / 2} rx={Math.abs(hover.x - pendingRectangleCorner.x) / 2} ry={Math.abs(hover.z - pendingRectangleCorner.z) / 2} />
+          </g> : null}
           {pendingRectangleCorner && hover && (tool === "centerRectangle" || tool === "roundedRectangle") ? (() => {
             const other = tool === "centerRectangle" ? { x: pendingRectangleCorner.x * 2 - hover.x, z: pendingRectangleCorner.z * 2 - hover.z } : pendingRectangleCorner;
             const width = Math.abs(hover.x - other.x), height = Math.abs(hover.z - other.z);

@@ -1,8 +1,9 @@
 import type { SketchProfile } from "@/types/sketchforge";
 
 /** Editable closed four-cubic approximation of an ellipse. */
-export function sketchEllipse(center: { x: number; z: number }, corner: { x: number; z: number }): SketchProfile | null {
-  const rx = Math.abs(corner.x - center.x), ry = Math.abs(corner.z - center.z);
+export function sketchEllipse(first: { x: number; z: number }, opposite: { x: number; z: number }): SketchProfile | null {
+  const center = { x: (first.x + opposite.x) / 2, z: (first.z + opposite.z) / 2 };
+  const rx = Math.abs(opposite.x - first.x) / 2, ry = Math.abs(opposite.z - first.z) / 2;
   if (rx < .001 || ry < .001) return null;
   const k = 4 * (Math.sqrt(2) - 1) / 3;
   const points = Array.from({ length: 4 }, (_, i) => {
