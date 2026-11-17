@@ -5,38 +5,11 @@ import { createPortal } from "react-dom";
 import { HeaderToolbarIcon } from "@/components/icons";
 import { useAccessibleDialog } from "@/components/useAccessibleDialog";
 import { kercadTranslate, type KercadLocale } from "@/lib/kercadI18n";
-import { consumePreparedLoadingCampaign, downloadCampaignSvg, isSvgCampaign, peekPreparedLoadingCampaign, prepareProjectLoadingCampaign, projectLoadingCampaign } from "@/lib/projectLoadingCampaign";
+import { consumePreparedLoadingCampaign, peekPreparedLoadingCampaign, prepareProjectLoadingCampaign, projectLoadingCampaign } from "@/lib/projectLoadingCampaign";
 import type { ParametricBuildProgress } from "@/lib/parametricBuildProgress";
 import "./projectLoadingDialog.css";
 
 const MINIMUM_LOADING_MS = 2_000;
-
-function CampaignImage({ src, alt, onError }: { src: string; alt: string; onError: () => void }) {
-  const [instance, setInstance] = useState<{ source: string; url: string } | null>(null);
-  useEffect(() => {
-    if (!isSvgCampaign(src)) return;
-    let active = true;
-    let url: string | undefined;
-    let frame = 0;
-    void downloadCampaignSvg(src).then((blob) => {
-      if (!active) return;
-      // A fresh URL gives this visible popup its own animation timeline,
-      // independent of preloading and previous popup instances.
-      url = URL.createObjectURL(blob);
-      frame = window.requestAnimationFrame(() => { if (active) setInstance({ source: src, url: url! }); });
-    }).catch(() => { if (active) onError(); });
-    return () => {
-      active = false;
-      window.cancelAnimationFrame(frame);
-      if (url) URL.revokeObjectURL(url);
-    };
-    // The parent callback may change identity on progress updates; only the
-    // selected artwork should restart its animation.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [src]);
-  const imageSrc = isSvgCampaign(src) ? instance?.source === src ? instance.url : undefined : src;
-  return imageSrc ? <img key={imageSrc} src={imageSrc} alt={alt} width={960} height={480} loading="eager" fetchPriority="high" decoding="async" onError={onError} /> : null;
-}
 
 export function ProjectLoadingDialog({ projectName, locale, ready, progress, onFinished }: {
   projectName: string;
@@ -92,7 +65,7 @@ export function ProjectLoadingDialog({ projectName, locale, ready, progress, onF
       <figure className="kercad-project-loading-campaign">
         {campaign.kind === "video"
           ? <video src={campaign.src} poster={campaign.poster} muted autoPlay loop playsInline preload="metadata" aria-label={t("loading.campaign")} />
-          : <CampaignImage src={campaign.src} alt={t("loading.campaign")} onError={() => setCampaign(projectLoadingCampaign)} />}
+          : <img src={campaign.src} alt={t("loading.campaign")} width={960} height={480} loading="eager" fetchPriority="high" decoding="async" onError={() => setCampaign(projectLoadingCampaign)} />}
       </figure>
       <footer>
         <p>{t("loading.freeOpenSource")}</p>
