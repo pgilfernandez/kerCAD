@@ -3723,6 +3723,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           </ToolbarSection>
           <ToolbarSection label={t("sketch.draw")} className="sketch-draw-section">
             <Tool label={t("sketch.line")} active={sketchTool === "line"} onClick={() => chooseSketchTool("line")}><SketchToolbarIcon file="line" /></Tool>
+            <Tool label={t("sketch.bezier")} active={sketchTool === "bezier"} onClick={() => chooseSketchTool("bezier")}><SketchToolbarIcon file="bezier" /></Tool>
             <SketchToolMenu initialTool="rectangle" activeTool={sketchTool} onChoose={chooseSketchTool} options={[
               { tool: "rectangle", label: t("sketch.rectangle"), icon: "rectangle" },
               { tool: "centerRectangle", label: t("sketch.centerRectangle"), icon: "center-rectangle" },
@@ -3731,7 +3732,6 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
               { tool: "arc", label: t("sketch.centerArc"), icon: "center-arc" },
               { tool: "ellipse", label: t("cylinder.ellipse"), icon: "ellipse" },
             ]} />
-            <Tool label={t("sketch.bezier")} active={sketchTool === "bezier"} onClick={() => chooseSketchTool("bezier")}><SketchToolbarIcon file="bezier" /></Tool>
             <button ref={polygonMenuTriggerRef} type="button" className={`toolbar-icon ${sketchTool === "polygon" ? "active" : ""}`} aria-label={t("sketch.polygonType")} title={t("sketch.polygonType")} aria-expanded={Boolean(polygonMenuPosition)} aria-controls="sketch-polygon-menu" onClick={() => {
               const bounds = polygonMenuTriggerRef.current?.getBoundingClientRect();
               setPolygonMenuPosition(polygonMenuPosition || !bounds ? null : { top: bounds.bottom + 6, left: Math.max(8, Math.min(bounds.left, window.innerWidth - 208)) });
