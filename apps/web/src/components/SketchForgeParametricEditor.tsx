@@ -4673,6 +4673,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           onCancelRevolve={cancelRevolve}
           onUpdateObject={updateObject}
           onUpdateFeature={updateFeature}
+          onUpdateFeatures={(apply) => { mutate((draft) => apply(draft.features)); }}
         /> : null}
       </section>
 
@@ -4981,4 +4982,3 @@ function ViewCube({ orientation, onDirection }: { orientation: CameraOrientation
     </g>)}
   </svg></div>;
 }
-          onUpdateFeatures={(apply) => { mutate((draft) => apply(draft.features)); }}
