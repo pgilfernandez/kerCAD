@@ -10,7 +10,7 @@ import { ViewToolbarIcon } from "@/components/icons";
 import { SnapGridControl } from "@/components/workplane/ShapeInspector";
 import { SketchRevolvePreview } from "@/components/SketchRevolvePreview";
 import { lengthDisplayUnit } from "@/lib/measurementUnits";
-import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
+import { AdvancedNumberInput } from "@/components/AdvancedNumberFields";
 import { sketchSlot } from "@/lib/sketchSlots";
 import { sketchRectangle } from "@/lib/sketchRectangles";
 import { sketchEllipse } from "@/lib/sketchEllipse";
@@ -281,55 +281,32 @@ function SketchDimensionInput({ id, label, indicator, value: storedValue, millim
   const value = storedValue / millimetersPerUnit;
   const onCommit = commitStoredValue ? (key: string, next: number) => commitStoredValue(key, next * millimetersPerUnit) : undefined;
   const formatted = formatDimension(value, accuracy + Math.max(0, Math.ceil(Math.log10(millimetersPerUnit))));
-  const [draft, setDraft] = useState(formatted);
   const [editing, setEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  useEffect(() => setDraft(formatted), [formatted]);
   useEffect(() => {
     if (!editing) return;
-    const acceptOnOutsidePointer = (event: PointerEvent) => {
+    const outside = (event: PointerEvent) => {
       const input = inputRef.current;
-      if (input && event.target !== input) input.blur();
+      if (input && !input.closest(".kercad-advanced-number-group")?.contains(event.target as Node)) input.blur();
     };
-    document.addEventListener("pointerdown", acceptOnOutsidePointer, true);
-    return () => document.removeEventListener("pointerdown", acceptOnOutsidePointer, true);
+    document.addEventListener("pointerdown", outside, true);
+    return () => document.removeEventListener("pointerdown", outside, true);
   }, [editing]);
   const removeWidth = 22 * screenUnit;
   const indicatorWidth = 20 * screenUnit;
   const controlsWidth = removeWidth + indicatorWidth;
-  const pill = dimensionPillSize(draft || formatted, screenUnit, 60);
+  const pill = dimensionPillSize(formatted, screenUnit, editing ? 120 : 60);
   const x = align === "start" ? 0 : -pill.width / 2;
   const borderInset = 0.75 * screenUnit;
   return <g className={`sketch-dimension-editor-group ${editing ? "editing" : ""}`} onPointerDown={(event) => { if (!editing) { event.preventDefault(); event.stopPropagation(); setEditing(true); } }}>
     <rect className="sketch-dimension-editor-background" x={x} y={-pill.height / 2} width={pill.width} height={pill.height} rx={pill.radius} />
-    {editing ? <foreignObject className="sketch-dimension-editor" x={0} y={0} width={pill.width / screenUnit} height={pill.height / screenUnit} transform={`translate(${x} ${-pill.height / 2}) scale(${screenUnit})`}>
-      <div className="sketch-dimension-editor-content">
-        <input
-          ref={inputRef}
-          autoFocus
-        aria-label={label}
-        type="text"
-        inputMode="text"
-        value={draft}
-          style={{ fontSize: 13, padding: "0 25px 0 23px" }}
-        onPointerDown={(event) => event.stopPropagation()}
-        onChange={(event) => setDraft(event.currentTarget.value)}
-        onBlur={(event) => {
-          const parsed = parseNumericExpression(draft, indicator === "A" ? "deg" : millimetersPerUnit);
-          if (!validateNumericExpression(event.currentTarget, parsed)) return;
-          if (Number.isFinite(parsed) && (allowSigned || parsed > 0)) onCommit?.(id, parsed);
-          else setDraft(formatted);
-          setEditing(false);
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") event.currentTarget.blur();
-          if (event.key === "Escape") { setDraft(formatted); event.currentTarget.blur(); }
-        }}
-        />
+    {editing ? <foreignObject className="sketch-dimension-editor" x={0} y={0} width={pill.width / screenUnit} height={32} transform={`translate(${x} ${-14 * screenUnit}) scale(${screenUnit})`}>
+      <div style={{ marginRight: removeWidth / screenUnit }} onPointerDown={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+        <AdvancedNumberInput ariaLabel={label} caption={indicator} value={value} min={allowSigned ? undefined : 0.000001} unit={indicator === "A" ? "°" : ""} expressionUnit={indicator === "A" ? "deg" : millimetersPerUnit} displayUnit="mm" step={10 ** -accuracy} locale={locale} autoFocus inputRef={(input) => { inputRef.current = input; }} format={() => formatted} onEditing={(active) => { if (!active) setEditing(false); }} onCommit={(next) => onCommit?.(id, next)} />
       </div>
     </foreignObject> : null}
-    <text className="sketch-dimension-editor-value" pointerEvents="none" x={x + indicatorWidth + (pill.width - controlsWidth) / 2} y={5 * screenUnit} fontSize={13 * screenUnit}>{draft}</text>
-    <text className="sketch-dimension-editor-indicator" pointerEvents="none" x={x + indicatorWidth / 2} y={5 * screenUnit} fontSize={11 * screenUnit}>{indicator}</text>
+    <text className="sketch-dimension-editor-value" pointerEvents="none" x={x + indicatorWidth + (pill.width - controlsWidth) / 2} y={5 * screenUnit} fontSize={13 * screenUnit}>{editing ? "" : formatted}</text>
+    <text visibility={editing ? "hidden" : undefined} className="sketch-dimension-editor-indicator" pointerEvents="none" x={x + indicatorWidth / 2} y={5 * screenUnit} fontSize={11 * screenUnit}>{indicator}</text>
     <line className="sketch-constraint-remove-separator" pointerEvents="none" x1={x + indicatorWidth} y1={-pill.height / 2 + 4 * screenUnit} x2={x + indicatorWidth} y2={pill.height / 2 - 4 * screenUnit} />
     <line className="sketch-constraint-remove-separator" pointerEvents="none" x1={x + pill.width - removeWidth} y1={-pill.height / 2 + 4 * screenUnit} x2={x + pill.width - removeWidth} y2={pill.height / 2 - 4 * screenUnit} />
     <g className="sketch-constraint-remove" role="button" tabIndex={0} aria-label={`${uiText("ui.sketchworkspace.delete.constraint.0e1bde", {}, locale)} ${label}`} onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); onDelete?.(id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); onDelete?.(id); } }}>
@@ -2176,31 +2153,13 @@ function SketchImageRange({
   onChange: (value: number) => void;
 }) {
   const safeValue = clamp(Number.isFinite(value) ? value : min, min, max);
-  const [draft, setDraft] = useState(formatDimension(safeValue, accuracy));
-  useEffect(() => setDraft(formatDimension(safeValue, accuracy)), [accuracy, safeValue]);
-  const commit = (event: React.FocusEvent<HTMLInputElement>) => {
-    const parsed = parseNumericExpression(draft, suffix);
-    if (!validateNumericExpression(event.currentTarget, parsed)) return;
-    onChange(clamp(Number.isFinite(parsed) ? parsed : safeValue, min, max));
-  };
   const position = ((safeValue - min) / Math.max(0.001, max - min)) * 100;
   return (
-    <label className="range-property sketch-image-range" style={{ "--slider-pos": `${position}%` } as CSSProperties}>
+    <div className="range-property sketch-image-range" style={{ "--slider-pos": `${position}%` } as CSSProperties}>
       <span>{label}</span>
-      <div className="sketch-image-range-row">
-        <input
-          className="sketch-image-number-input"
-          type="text"
-          inputMode="text"
-          value={draft}
-          onChange={(event) => setDraft(event.currentTarget.value)}
-          onBlur={commit}
-          onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}
-        />
-        <span>{suffix}</span>
-      </div>
-      <input type="range" min={min} max={max} step={10 ** -accuracy} value={safeValue} onChange={(event) => onChange(Number(event.currentTarget.value))} />
-    </label>
+      <AdvancedNumberInput ariaLabel={label} value={safeValue} min={min} max={max} unit={suffix} expressionUnit={suffix} displayUnit="mm" step={10 ** -accuracy} format={(next) => formatDimension(next, accuracy)} onCommit={onChange} />
+      <input aria-label={label} type="range" min={min} max={max} step={10 ** -accuracy} value={safeValue} onChange={(event) => onChange(Number(event.currentTarget.value))} />
+    </div>
   );
 }
 
@@ -2215,28 +2174,6 @@ function SketchImagePositionField({
   accuracy: number;
   onChange: (value: number) => void;
 }) {
-  const formatted = formatDimension(value, accuracy);
-  const [draft, setDraft] = useState(formatted);
-  useEffect(() => setDraft(formatted), [formatted]);
-  const commit = (event: React.FocusEvent<HTMLInputElement>) => {
-    const parsed = parseNumericExpression(draft, label.match(/\(([^)]+)\)/)?.[1] ?? "mm");
-    if (!validateNumericExpression(event.currentTarget, parsed)) return;
-    const next = Number.isFinite(parsed) ? parsed : value;
-    onChange(next);
-    setDraft(formatDimension(next, accuracy));
-  };
-
-  return (
-    <label className="sketch-image-position-field">
-      <span>{label}</span>
-      <input
-        type="text"
-        inputMode="text"
-        value={draft}
-        onChange={(event) => setDraft(event.currentTarget.value)}
-        onBlur={commit}
-        onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}
-      />
-    </label>
-  );
+  const unit = label.match(/\(([^)]+)\)/)?.[1] ?? "mm";
+  return <AdvancedNumberInput label={label} value={value} unit={unit} expressionUnit={unit} displayUnit="mm" step={10 ** -accuracy} format={(next) => formatDimension(next, accuracy)} onCommit={onChange} />;
 }

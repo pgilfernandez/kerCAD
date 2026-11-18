@@ -15,20 +15,29 @@
 .kercad-advanced-number-field .kercad-advanced-caption { left: 6px; }
 .kercad-advanced-number-field .kercad-advanced-unit { right: 6px; }
 .kercad-advanced-number-field .kercad-advanced-caption { color: #888; }
-.kercad-model-sidebar .kercad-advanced-number-field input { width: 100%; min-width: 0; height: 24px; padding: 0 28px; margin: 0; border: 0; border-radius: 0; outline: none; background: transparent; box-shadow: none; color: inherit; font: inherit; font-size: 13px; font-weight: 600; text-align: center; cursor: ew-resize; }
-.kercad-model-sidebar .kercad-advanced-number-field input:focus { cursor: text; }
+.kercad-advanced-number-group .kercad-advanced-number-field input { width: 100%; min-width: 0; height: 24px; padding: 0 28px; margin: 0; border: 0; border-radius: 0; outline: none; background: transparent; box-shadow: none; color: inherit; font: inherit; font-size: 13px; font-weight: 600; text-align: center; cursor: ew-resize; }
+.kercad-advanced-number-group .kercad-advanced-number-field input:focus { cursor: text; }
 .kercad-advanced-number-group[data-multi-edit] .selected input { caret-color: transparent; }
 .kercad-advanced-number-group[data-multi-edit] .selected input::selection { background: transparent; color: inherit; }
 .kercad-advanced-mirror { position: absolute; top: 50%; height: 16px; transform: translateY(-50%); pointer-events: none; }
 .kercad-advanced-mirror.caret { background: var(--theme-text); }
 .kercad-advanced-mirror.selection { background: color-mix(in srgb, var(--accent-solid) 30%, transparent); }
-.kercad-model-sidebar .kercad-advanced-number-field > button { position: absolute; top: 1px; z-index: 1; display: grid; place-items: center; width: 20px; height: 22px; padding: 0; border: 0; border-radius: 3px; background: transparent; color: inherit; font-size: 16px; opacity: 0; pointer-events: none; cursor: pointer; }
+.kercad-advanced-number-group .kercad-advanced-number-field > button { position: absolute; top: 1px; z-index: 1; display: grid; place-items: center; width: 20px; height: 22px; padding: 0; border: 0; border-radius: 3px; background: transparent; color: inherit; font-size: 16px; opacity: 0; pointer-events: none; cursor: pointer; }
 .kercad-advanced-number-field > button:first-child { left: 0; }
 .kercad-advanced-number-field > button:last-child { right: 0; }
 .kercad-advanced-direction { display: block; width: 14px; height: 14px; background: currentColor; mask: var(--direction-icon) center / contain no-repeat; -webkit-mask: var(--direction-icon) center / contain no-repeat; }
 .kercad-advanced-direction.left { --direction-icon: url("/assets/kercad/toolbar-horizontal/scroll-left.svg"); }
 .kercad-advanced-direction.right { --direction-icon: url("/assets/kercad/toolbar-horizontal/scroll-right.svg"); }
-.kercad-model-sidebar .kercad-advanced-number-field:hover > button { opacity: 1; pointer-events: auto; }
-.kercad-model-sidebar .kercad-advanced-number-field > button { background: color-mix(in srgb, var(--advanced-field-background) 50%, transparent); }
-.kercad-model-sidebar .kercad-advanced-number-field > button:hover { color: var(--theme-link); }
-@media (hover: none) { .kercad-model-sidebar .kercad-advanced-number-field > button { opacity: 1; pointer-events: auto; } }
+.kercad-advanced-number-group .kercad-advanced-number-field:hover > button { opacity: 1; pointer-events: auto; }
+.kercad-advanced-number-group .kercad-advanced-number-field > button { background: color-mix(in srgb, var(--advanced-field-background) 50%, transparent); }
+.kercad-advanced-number-group .kercad-advanced-number-field > button:hover { color: var(--theme-link); }
+@media (hover: none) { .kercad-advanced-number-group .kercad-advanced-number-field > button { opacity: 1; pointer-events: auto; } }
+
+.kercad-viewport-advanced-number { width: 100px; }
+.kercad-viewport-advanced-number .kercad-advanced-number-row,
+.sketch-dimension-editor .kercad-advanced-number-row,
+.kercad-handle-label-value .kercad-advanced-number-row { margin: 0; }
+.kercad-workplane-popover > .kercad-advanced-number-row { width: auto; margin-inline: 14px; }
+
+.kercad-grid-size-row .kercad-advanced-number-input { padding-inline: 18px; }
+.sketch-image-range .kercad-advanced-number-row { margin-block: 0; }

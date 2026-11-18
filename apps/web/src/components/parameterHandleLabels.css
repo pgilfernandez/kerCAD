@@ -8,10 +8,13 @@
 .kercad-handle-label-name { display: block; height: calc((var(--handle-label-size) - 4px) * .4166667); font-size: calc(var(--handle-label-size) * .32); font-weight: 400; line-height: calc((var(--handle-label-size) - 4px) * .4166667); white-space: nowrap; }
 .kercad-handle-label-value { display: flex; align-items: baseline; gap: 5px; min-width: 64px; height: calc((var(--handle-label-size) - 4px) * .5833333); margin: 0; padding: 0; border: 0; border-radius: 0; color: inherit; background: transparent; font: inherit; font-size: calc(var(--handle-label-size) * .46); font-weight: 700; line-height: calc((var(--handle-label-size) - 4px) * .5833333); text-align: left; white-space: nowrap; }
 button.kercad-handle-label-value { cursor: text; width: 100%; }
-.kercad-parameter-handle-label .kercad-handle-label-value input { width: auto; min-width: 36px; max-width: 180px; height: 100%; padding: 0; margin: 0; border: 0; border-radius: 0; outline: none; box-shadow: none; color: inherit; -webkit-text-fill-color: currentColor; caret-color: currentColor; opacity: 1; background: transparent; font: inherit; line-height: inherit; }
+.kercad-parameter-handle-label .kercad-handle-label-value input:not(.kercad-advanced-number-input) { width: auto; min-width: 36px; max-width: 180px; height: 100%; padding: 0; margin: 0; border: 0; border-radius: 0; outline: none; box-shadow: none; color: inherit; -webkit-text-fill-color: currentColor; caret-color: currentColor; opacity: 1; background: transparent; font: inherit; line-height: inherit; }
 .kercad-handle-label-value input::selection { color: var(--handle-label-bg); background: var(--handle-label-ink); }
 .kercad-handle-label-unit { font-size: inherit; font-weight: 600; }
 html[data-theme="dark"] .kercad-parameter-handle-label { --handle-label-ink: #ffe096; --handle-label-bg: #483a1c; --handle-label-border: #d9af44; }
 html[data-theme="dark"] .kercad-parameter-handle-label.axis-x { --handle-label-ink: #ffb5b5; --handle-label-bg: #4a252a; --handle-label-border: #ea7777; }
 html[data-theme="dark"] .kercad-parameter-handle-label.axis-y { --handle-label-ink: #aff0be; --handle-label-bg: #203d2c; --handle-label-border: #70c88c; }
 html[data-theme="dark"] .kercad-parameter-handle-label.axis-z { --handle-label-ink: #b9d8ff; --handle-label-bg: #21364f; --handle-label-border: #78adee; }
+
+.kercad-handle-label-value:has(.kercad-advanced-number-row) { width: 102px; height: auto; }
+.kercad-parameter-handle-label:has(.kercad-advanced-number-row) { height: calc(var(--handle-label-size) + 17px); }

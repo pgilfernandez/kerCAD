@@ -3,8 +3,8 @@
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import * as THREE from "three";
 import { closestScreenHandleHit } from "@/lib/parameterHandlePicking";
-import { displayLengthToMillimeters, displayUnitLabel, formatDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
-import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
+import { displayUnitLabel, formatDisplayLength, type ParametricDisplayUnit } from "@/lib/parametricUnits";
+import { AdvancedNumberInput } from "@/components/AdvancedNumberFields";
 import { formatViewportDimension } from "@/lib/viewportGeometry";
 import "./parameterHandleLabels.css";
 
@@ -34,72 +34,17 @@ function ValueEditor({ label, displayUnit, snap, onEditing, onRefresh }: { label
   const formatted = label.unit === "length" ? formatDisplayLength(label.value, displayUnit) : formatViewportDimension(label.value);
   const unit = label.unit === "length" ? displayUnitLabel(displayUnit) : label.unit === "angle" ? "°" : label.unit === "scalar" ? "×" : label.unit === "pixels" ? "px" : "";
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(formatted);
-  const draftRef = useRef(draft);
-  const editingRef = useRef(false);
-  const changedRef = useRef(false);
-  const input = useRef<HTMLInputElement>(null);
   const root = useRef<HTMLDivElement>(null);
-  const latest = useRef({ label, displayUnit, formatted }); latest.current = { label, displayUnit, formatted };
-  const updateDraft = (value: string, changed = true) => { changedRef.current = changed; draftRef.current = value; setDraft(value); input.current?.setCustomValidity(""); input.current?.setAttribute("aria-invalid", "false"); onRefresh(); };
-  const finish = (cancel = false) => {
-    if (!editingRef.current) return;
-    const current = latest.current;
-    if (!cancel && changedRef.current) {
-      const parsed = parseNumericExpression(draftRef.current, current.label.unit === "length" ? current.displayUnit : current.label.unit === "angle" ? "deg" : "");
-      const value = current.label.unit === "length" ? displayLengthToMillimeters(parsed, current.displayUnit) : parsed;
-      if (input.current && !validateNumericExpression(input.current, value)) return;
-      if (!Number.isFinite(value)) return;
-      const bounded = Math.max(current.label.min ?? -Infinity, Math.min(current.label.max ?? Infinity, value));
-      editingRef.current = false;
-      onEditing(false); setEditing(false);
-      const next = current.label.unit === "count" ? Math.round(bounded) : bounded;
-      if (Math.abs(next - current.label.value) > 1e-8) current.label.onCommit(next);
-    } else { editingRef.current = false; onEditing(false); setEditing(false); }
-    onRefresh();
-  };
-  const finishRef = useRef(finish); finishRef.current = finish;
-  const increment = (direction: number) => {
-    const parsed = parseNumericExpression(draftRef.current, label.unit === "length" ? displayUnit : label.unit === "angle" ? "deg" : "");
-    const raw = label.unit === "length" ? displayLengthToMillimeters(parsed, displayUnit) : parsed;
-    const step = label.unit === "length" ? Math.max(0.001, snap / 2) : label.unit === "count" || label.unit === "angle" ? 1 : 0.1;
-    const next = Math.max(label.min ?? -Infinity, Math.min(label.max ?? Infinity, (Number.isFinite(raw) ? raw : label.value) + direction * step));
-    updateDraft(label.unit === "length" ? formatDisplayLength(next, displayUnit) : formatViewportDimension(next));
-  };
-  const incrementRef = useRef(increment); incrementRef.current = increment;
-  useEffect(() => {
-    const element = root.current;
-    if (!element) return;
-    const wheel = (event: WheelEvent) => {
-      event.stopPropagation(); event.preventDefault();
-      if (editingRef.current && event.deltaY) incrementRef.current(event.deltaY < 0 ? 1 : -1);
-    };
-    element.addEventListener("wheel", wheel, { passive: false });
-    return () => element.removeEventListener("wheel", wheel);
-  }, []);
+  const input = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
     if (!editing) return;
-    input.current?.focus();
-    input.current?.setSelectionRange(draftRef.current.length, draftRef.current.length);
-  }, [editing]);
-  useEffect(() => {
-    const outside = (event: PointerEvent) => {
-      if (editingRef.current && !root.current?.contains(event.target as Node)) finishRef.current();
-    };
-    // Commit before canvas selection changes can unmount the edited label.
+    const outside = (event: PointerEvent) => { if (!root.current?.contains(event.target as Node)) input.current?.blur(); };
     document.addEventListener("pointerdown", outside, true);
     return () => document.removeEventListener("pointerdown", outside, true);
-  }, []);
-  return <div ref={root} className="kercad-handle-label-content" onClick={() => { if (!editing) { updateDraft(formatted, false); editingRef.current = true; setEditing(true); onEditing(true); } }} onPointerDown={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+  }, [editing]);
+  return <div ref={root} className="kercad-handle-label-content" onClick={() => { if (!editing) { setEditing(true); onEditing(true); } }} onPointerDown={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
     <span className="kercad-handle-label-name">{label.name}</span>
-    {editing ? <div className="kercad-handle-label-value"><input ref={input} type="text" inputMode="text" aria-label={label.name} value={draft} size={Math.max(3, draft.length + 1)} onChange={(event) => updateDraft(event.target.value)} onBlur={() => finish()} onKeyDown={(event) => {
-      if (event.key === "Enter") { event.preventDefault(); input.current?.blur(); }
-      if (event.key === "Escape") { event.preventDefault(); finish(true); }
-      if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-        event.preventDefault();
-        increment(event.key === "ArrowUp" ? 1 : -1);
-      }
-    }} /><span className="kercad-handle-label-unit">{unit}</span></div>
+    {editing ? <div className="kercad-handle-label-value"><AdvancedNumberInput ariaLabel={label.name} value={label.value} min={label.min} max={label.max} unit={label.unit === "length" ? "mm" : unit} displayUnit={displayUnit} step={label.unit === "length" ? Math.max(.001, snap / 2) : label.unit === "angle" || label.unit === "count" ? 1 : .1} round={label.unit === "count"} autoFocus inputRef={(node) => { input.current = node; }} onEditing={(active) => { if (!active) { setEditing(false); onEditing(false); onRefresh(); } }} onCommit={label.onCommit} /></div>
       : <button type="button" className="kercad-handle-label-value" aria-label={[label.name, formatted, unit].filter(Boolean).join(" ")}><span>{formatted}</span><span className="kercad-handle-label-unit">{unit}</span></button>}
   </div>;
 }
@@ -162,7 +107,9 @@ export const ParameterHandleLabels = forwardRef<ParameterHandleLabelsApi, Props>
       const element = elements.current.get(handle.key);
       if (element) {
         element.dataset.dragging = String(dragging.current?.key === handle.key && dragging.current.active);
-        if (element.dataset.diameter !== String(diameter)) {
+        const height = element.offsetHeight;
+        if (element.dataset.diameter !== String(diameter) || element.dataset.height !== String(height)) {
+          element.dataset.height = String(height);
           element.dataset.diameter = String(diameter);
           element.style.setProperty("--handle-label-size", `${diameter}px`);
           // Extend under the right half of the real circle. Cut out its footprint
@@ -170,7 +117,7 @@ export const ParameterHandleLabels = forwardRef<ParameterHandleLabelsApi, Props>
           const radius = diameter / 2;
           const limit = Math.asin(diameter / 2 / radius);
           const edge = Math.sqrt(radius * radius - diameter * diameter / 4);
-          const outline = [`${edge}px 0px`, "100% 0px", "100% 100%", `${edge}px 100%`];
+          const outline = [`${edge}px 0px`, "100% 0px", "100% 100%", `${edge}px 100%`, `${edge}px ${diameter}px`];
           for (let index = 1; index < 24; index += 1) {
             const angle = limit - index / 24 * limit * 2;
             outline.push(`${Math.cos(angle) * radius}px ${diameter / 2 + Math.sin(angle) * radius}px`);

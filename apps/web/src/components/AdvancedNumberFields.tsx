@@ -7,7 +7,10 @@ import { uiText, type KercadLocale } from "@/lib/kercadI18n";
 import "./advancedNumberFields.css";
 
 export type AdvancedNumberField = { key: string; value: number; caption?: string; label: string; min?: number; max?: number };
-type Props = { fields: AdvancedNumberField[]; label?: string; unit: string; displayUnit: ParametricDisplayUnit; step: number; locale: KercadLocale; onCommit: (values: Record<string, number>) => void };
+type Props = { fields: AdvancedNumberField[]; label?: string; unit: string; displayUnit: ParametricDisplayUnit; step: number; locale?: KercadLocale; expressionUnit?: string | number; format?: (value: number) => string; round?: boolean; inputRef?: (element: HTMLInputElement | null) => void; autoFocus?: boolean; onEditing?: (active: boolean) => void; onCommit: (values: Record<string, number>) => void };
+export function AdvancedNumberInput({ value, min, max, caption, ariaLabel, onCommit, ...props }: Omit<Props, "fields" | "onCommit"> & { value: number; min?: number; max?: number; caption?: string; ariaLabel?: string; onCommit: (value: number) => void }) {
+  return <AdvancedNumberFields {...props} fields={[{ key: "value", value, min, max, caption, label: ariaLabel ?? props.label ?? props.unit }]} onCommit={({ value: next }) => { if (next !== undefined && Math.abs(next - value) > 1e-10) onCommit(next); }} />;
+}
 const clean = (value: number) => Number(value.toFixed(10));
 
 function MirroredSelection({ input, text, start, end, visible }: { input: () => HTMLInputElement | undefined; text: string; start: number; end: number; visible: boolean }) {
@@ -28,7 +31,7 @@ function MirroredSelection({ input, text, start, end, visible }: { input: () => 
 }
 
 /** A single field or a contiguous, keyboard-editable group of numeric fields. */
-export function AdvancedNumberFields({ fields, label, unit, displayUnit, step, locale, onCommit }: Props) {
+export function AdvancedNumberFields({ fields, label, unit, displayUnit, step, locale, expressionUnit: parseUnit, format, round, inputRef, autoFocus, onEditing, onCommit }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -51,13 +54,14 @@ export function AdvancedNumberFields({ fields, label, unit, displayUnit, step, l
   const draftRef = useRef(drafts); draftRef.current = drafts;
   const cancelBlur = useRef(false);
   const drag = useRef<{ id: number; x: number; y: number; key: string; mode: "pending" | "select" | "value"; keys: string[]; start: Record<string, number> } | null>(null);
-  const isLength = unit === "mm";
+  const isLength = unit === "mm" && parseUnit === undefined;
   const toDisplay = (value: number) => isLength ? millimetersToDisplayLength(value, displayUnit) : value;
   const toInternal = (value: number) => isLength ? displayLengthToMillimeters(value, displayUnit) : value;
   const visibleUnit = isLength ? displayUnitLabel(displayUnit) : unit;
-  const expressionUnit = isLength ? displayUnit : unit;
+  const expressionUnit = parseUnit ?? (isLength ? displayUnit : unit);
+  const shown = (value: number) => format ? format(value) : String(clean(toDisplay(value)));
   const keysFor = (key: string) => selected.includes(key) ? selected : [key];
-  const clamp = (field: AdvancedNumberField, value: number) => Math.max(field.min ?? -Infinity, Math.min(field.max ?? Infinity, value));
+  const clamp = (field: AdvancedNumberField, value: number) => Math.max(field.min ?? -Infinity, Math.min(field.max ?? Infinity, round ? Math.round(value) : value));
   const inputFor = (key: string) => Array.from(root.current?.querySelectorAll<HTMLInputElement>("input[data-number-key]") ?? []).find((input) => input.dataset.numberKey === key);
   const commit = (keys: string[]) => {
     const values: Record<string, number> = {};
@@ -101,7 +105,7 @@ export function AdvancedNumberFields({ fields, label, unit, displayUnit, step, l
   return <div className="kercad-advanced-number-row">
     {label && <span className="kercad-advanced-external-label">{label}</span>}
     <div ref={root} className="kercad-advanced-number-group" data-multi-edit={selected.length > 1 && caret !== null || undefined} role="group" aria-label={label ?? fields[0]?.label}
-      onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) { setSelected([]); setCaret(null); } }}
+      onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) { setSelected([]); setCaret(null); onEditing?.(false); } }}
       onPointerDown={(event) => {
         if (event.button !== 0 || (event.target as Element).closest("button")) return;
         const key = (event.target as Element).closest<HTMLElement>("[data-field-key]")?.dataset.fieldKey;
@@ -139,8 +143,8 @@ export function AdvancedNumberFields({ fields, label, unit, displayUnit, step, l
       {fields.map((field) => <div key={field.key} className={`kercad-advanced-number-field ${selected.includes(field.key) ? "selected" : ""}`} data-field-key={field.key}>
         <button type="button" tabIndex={-1} aria-label={uiText("input.decrement", {}, locale)} title={uiText("input.decrement", {}, locale)} onPointerDown={(event) => event.preventDefault()} onClick={() => nudge(field.key, -1)}><span className="kercad-advanced-direction left" aria-hidden="true" /></button>
         <span className="kercad-advanced-caption" aria-hidden="true">{field.caption}</span>
-        <input className="kercad-advanced-number-input" data-number-key={field.key} type="text" inputMode="text" aria-label={field.label} value={drafts[field.key] ?? String(clean(toDisplay(field.value)))}
-          onFocus={(event) => { if (!selected.includes(field.key)) setSelected([field.key]); syncCaret(event.currentTarget); }}
+        <input ref={inputRef} autoFocus={autoFocus} className="kercad-advanced-number-input" data-number-key={field.key} type="text" inputMode="text" aria-label={field.label} value={drafts[field.key] ?? shown(field.value)}
+          onFocus={(event) => { if (!selected.includes(field.key)) setSelected([field.key]); syncCaret(event.currentTarget); onEditing?.(true); }}
           onSelect={(event) => syncCaret(event.currentTarget)}
           onChange={(event) => { const next = { ...draftRef.current }; for (const key of keysFor(field.key)) next[key] = event.target.value; draftRef.current = next; setDrafts(next); event.target.setCustomValidity(""); }}
           onBlur={() => { if (cancelBlur.current) { cancelBlur.current = false; return; } commit(keysFor(field.key)); }}
@@ -149,7 +153,7 @@ export function AdvancedNumberFields({ fields, label, unit, displayUnit, step, l
             else if (event.key === "Escape") { setDrafts({}); draftRef.current = {}; event.currentTarget.setCustomValidity(""); cancelBlur.current = true; event.currentTarget.blur(); }
             else if (event.key === "ArrowUp" || event.key === "ArrowDown") { event.preventDefault(); nudge(field.key, event.key === "ArrowUp" ? 1 : -1); }
           }} />
-        {selected.length > 1 && selected.includes(field.key) && caret && <MirroredSelection input={() => inputFor(field.key)} text={drafts[field.key] ?? String(clean(toDisplay(field.value)))} start={caret.start} end={caret.end} visible={caretVisible} />}
+        {selected.length > 1 && selected.includes(field.key) && caret && <MirroredSelection input={() => inputFor(field.key)} text={drafts[field.key] ?? shown(field.value)} start={caret.start} end={caret.end} visible={caretVisible} />}
         <span className="kercad-advanced-unit" aria-hidden="true">{visibleUnit}</span>
         <button type="button" tabIndex={-1} aria-label={uiText("input.increment", {}, locale)} title={uiText("input.increment", {}, locale)} onPointerDown={(event) => event.preventDefault()} onClick={() => nudge(field.key, 1)}><span className="kercad-advanced-direction right" aria-hidden="true" /></button>
       </div>)}

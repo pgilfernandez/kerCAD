@@ -1,5 +1,7 @@
 "use client";
 
+import { AdvancedNumberInput } from "@/components/AdvancedNumberFields";
+
 import { ChallengeIcon } from "@/components/ChallengeIcon";
 import { CylinderProfileButtons } from "@/components/CylinderProfileButtons";
 import { reportUsage } from "@/lib/usageMetrics";
@@ -20,7 +22,7 @@ import { ChallengeEditor, type ChallengeDock } from "@/components/ChallengeEdito
 import { captureChallengeParameters } from "@/lib/challengeParameterCapture";
 import { ChallengePlayer } from "@/components/ChallengePlayer";
 import type { KercadChallenge } from "@/lib/challengeLibrary";
-import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent as ReactFocusEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { workplaneGeometryBounds } from "@/lib/workplaneGeometryBounds";
 import { alignmentGroupBounds, sameAlignmentItem, translateAlignmentTargets, type AlignmentTarget } from "@/lib/parametricAlignment";
@@ -94,7 +96,6 @@ import { importStepAsParametricObject } from "@/lib/parametricStepImport";
 import { importReferenceImage, importReferenceMesh, parametricReferenceRenderRecords } from "@/lib/parametricReferenceImport";
 import { assertImportByteLimit } from "@/lib/parametricImportLimits";
 import { displayLengthToMillimeters, displayUnitLabel, displayUnitWorkspace, millimetersToDisplayLength, normalizeDisplayUnit } from "@/lib/parametricUnits";
-import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
 import { AnnotationIcon } from "@/components/AnnotationIcon";
 import { SketchAnnotationToolbar } from "@/components/SketchAnnotationToolbar";
 import { annotationDimensionPreset, type AnnotationTool } from "@/lib/annotationPresets";
@@ -2800,14 +2801,6 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
     setWorkplaneDraft((current) => ({ ...current, ...patch }));
     mutate((draft) => { Object.assign(draft.workplane, patch); });
   };
-  const commitGridNumber = (event: ReactFocusEvent<HTMLInputElement>, key: "width" | "depth" | "gridStep" | "snapSpacing", minimum: number, maximum: number, fallback: number) => {
-    const parsed = parseNumericExpression(event.currentTarget.value, displayUnit);
-    if (!validateNumericExpression(event.currentTarget, parsed)) return;
-    const entered = displayLengthToMillimeters(parsed, displayUnit);
-    const value = Math.min(maximum, Math.max(minimum, Number.isFinite(entered) ? entered : fallback));
-    event.currentTarget.value = String(millimetersToDisplayLength(value, displayUnit));
-    updateGridSettings({ [key]: value });
-  };
 
   useEffect(() => {
     if (!originEditObjectId) return;
@@ -4594,10 +4587,10 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           <label><span>{t("grid.showFloor")}</span><input type="checkbox" checked={workplaneDraft.gridVisible} onChange={(event) => updateGridSettings({ gridVisible: event.target.checked })} /></label>
           <div className="kercad-grid-size-row" role="group" aria-labelledby="kercad-grid-size-label">
             <span id="kercad-grid-size-label">{t("grid.size")}</span>
-            {(["width", "depth"] as const).map((axis) => <span key={`${axis}-${displayUnit}`} className="kercad-number-input"><input aria-label={t(axis === "width" ? "grid.width" : "grid.depth")} type="text" inputMode="text" min={millimetersToDisplayLength(1, displayUnit)} max={millimetersToDisplayLength(2000, displayUnit)} step={millimetersToDisplayLength(1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft[axis], displayUnit)} onBlur={(event) => commitGridNumber(event, axis, 1, 2000, workplaneDraft[axis])} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span>)}
+            {(["width", "depth"] as const).map((axis) => <AdvancedNumberInput key={axis} ariaLabel={t(axis === "width" ? "grid.width" : "grid.depth")} caption={axis === "width" ? "X" : "Y"} value={workplaneDraft[axis]} min={1} max={2000} step={1} unit="mm" displayUnit={displayUnit} locale={locale} onCommit={(value) => updateGridSettings({ [axis]: value })} />)}
           </div>
-          <label><span>{t("grid.step")}</span><span className="kercad-number-input"><input key={`step-${displayUnit}`} type="text" inputMode="text" min={millimetersToDisplayLength(0.1, displayUnit)} max={millimetersToDisplayLength(200, displayUnit)} step={millimetersToDisplayLength(0.1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.gridStep, displayUnit)} onBlur={(event) => commitGridNumber(event, "gridStep", 0.1, 200, workplaneDraft.gridStep)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
-          <label><span>{t("grid.snapSpacing")}</span><span className="kercad-number-input"><input ref={(input) => { if (input && focusSnapSpacingRef.current) { focusSnapSpacingRef.current = false; input.focus(); input.select(); } }} aria-label={t("grid.snapSpacing")} key={`snap-spacing-${displayUnit}`} type="text" inputMode="text" min={millimetersToDisplayLength(0.1, displayUnit)} max={millimetersToDisplayLength(10000, displayUnit)} step={millimetersToDisplayLength(0.1, displayUnit)} defaultValue={millimetersToDisplayLength(workplaneDraft.snapSpacing, displayUnit)} onBlur={(event) => commitGridNumber(event, "snapSpacing", 0.1, 10000, workplaneDraft.snapSpacing)} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>{displayUnitLabel(displayUnit)}</small></span></label>
+          <AdvancedNumberInput label={t("grid.step")} value={workplaneDraft.gridStep} min={0.1} max={200} step={0.1} unit="mm" displayUnit={displayUnit} locale={locale} onCommit={(gridStep) => updateGridSettings({ gridStep })} />
+          <AdvancedNumberInput label={t("grid.snapSpacing")} value={workplaneDraft.snapSpacing} min={0.1} max={10000} step={0.1} unit="mm" displayUnit={displayUnit} locale={locale} inputRef={(input) => { if (input && focusSnapSpacingRef.current) { focusSnapSpacingRef.current = false; input.focus(); input.select(); } }} onCommit={(snapSpacing) => updateGridSettings({ snapSpacing })} />
         </div> : null}
         <button
           className={`kercad-sidebar-mode-control ${modelSidebarMode}`}

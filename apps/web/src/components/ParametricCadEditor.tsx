@@ -1,7 +1,7 @@
 "use client";
 
 import { LEGACY_PROJECT_ACCEPT } from "@/lib/legacyBrand";
-import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
+import { AdvancedNumberInput } from "@/components/AdvancedNumberFields";
 import {
   ArrowDown,
   ArrowUp,
@@ -89,35 +89,7 @@ function NumberField({ label, value, onChange, min = -1000, max = 1000, step = 1
   step?: number;
   suffix?: string;
 }) {
-  const [draft, setDraft] = useState(String(value));
-  const [editing, setEditing] = useState(false);
-  useEffect(() => { if (!editing) setDraft(String(value)); }, [value, editing]);
-  return (
-    <label className="pcad-number-field">
-      <span>{label}</span>
-      <span className="pcad-input-wrap">
-        <input
-          aria-label={label}
-          type="text"
-          inputMode="text"
-          min={min}
-          max={max}
-          step={step}
-          value={draft}
-          onFocus={() => setEditing(true)}
-          onChange={(event) => setDraft(event.target.value)}
-          onBlur={(event) => {
-            const parsed = parseNumericExpression(draft, suffix);
-            if (!validateNumericExpression(event.currentTarget, parsed)) return;
-            const next = Math.min(max, Math.max(min, parsed));
-            setDraft(String(next)); setEditing(false); onChange(next);
-          }}
-          onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}
-        />
-        {suffix && <small>{suffix}</small>}
-      </span>
-    </label>
-  );
+  return <AdvancedNumberInput label={label} value={value} min={min} max={max} step={step} unit={suffix} displayUnit="mm" onCommit={onChange} />;
 }
 
 export function ParametricCadEditor() {
