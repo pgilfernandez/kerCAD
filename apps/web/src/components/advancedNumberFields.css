@@ -33,7 +33,13 @@
 .kercad-advanced-number-group .kercad-advanced-number-field > button:hover { color: var(--theme-link); }
 @media (hover: none) { .kercad-advanced-number-group .kercad-advanced-number-field > button { opacity: 1; pointer-events: auto; } }
 
-.kercad-viewport-advanced-number { width: 100px; }
+.kercad-viewport-advanced-number {
+  --viewport-number-height: var(--context-control-height, var(--annotation-button-height, 43px));
+  width: 100px;
+}
+.kercad-viewport-advanced-number .kercad-advanced-number-field { height: calc(var(--viewport-number-height) - 2px); }
+.kercad-viewport-advanced-number .kercad-advanced-number-group .kercad-advanced-number-field input { height: 100%; }
+.kercad-viewport-advanced-number .kercad-advanced-number-group .kercad-advanced-number-field > button { bottom: 1px; height: auto; }
 .kercad-viewport-advanced-number .kercad-advanced-number-row,
 .sketch-dimension-editor .kercad-advanced-number-row,
 .kercad-handle-label-value .kercad-advanced-number-row { margin: 0; }

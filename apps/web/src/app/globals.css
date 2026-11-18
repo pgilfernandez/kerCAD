@@ -444,6 +444,7 @@ button {
 .kercad-viewport-feature-actions button small { position: absolute; right: 3px; bottom: 2px; color: var(--theme-text-486779); font-size: 9px; font-weight: 900; }
 .kercad-viewport-feature-actions button strong { font-size: 17px; }
 .kercad-viewport-context-toolbar {
+  --context-control-height: 43px;
   --context-sidebar-width: var(--kercad-model-sidebar-width, 0px);
   position: absolute;
   z-index: 9;
@@ -471,7 +472,7 @@ button {
   position: relative;
   display: grid;
   width: 44px;
-  height: 43px;
+  height: var(--context-control-height);
   flex: 0 0 44px;
   padding: 3px;
   place-items: center;
@@ -509,13 +510,13 @@ button {
     top: 64px;
   }
   .kercad-viewport-context-toolbar {
+    --context-control-height: 37px;
     top: 6px;
     padding: 4px;
     border-radius: 15px;
   }
   .kercad-viewport-context-toolbar button {
     width: 38px;
-    height: 37px;
     flex-basis: 38px;
     border-radius: 10px;
   }
