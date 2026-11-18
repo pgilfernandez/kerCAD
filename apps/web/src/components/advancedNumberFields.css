@@ -2,21 +2,21 @@
 .kercad-advanced-external-label { flex: 0 0 78px; text-align: right; color: var(--theme-text-muted); font-size: 12px; }
 .kercad-advanced-number-group { flex: 1; min-width: 0; overflow: hidden; border: 1px solid var(--theme-border); border-radius: 7px; background: var(--theme-field-surface, var(--theme-surface)); }
 .kercad-advanced-number-group:focus-within { border-color: var(--accent-solid); }
-.kercad-advanced-number-field { --advanced-field-background: var(--theme-field-surface, var(--theme-surface)); position: relative; height: 34px; min-width: 0; color: var(--theme-text); touch-action: none; }
+.kercad-advanced-number-field { --advanced-field-background: var(--theme-field-surface, var(--theme-surface)); position: relative; height: 26px; min-width: 0; color: var(--theme-text); touch-action: none; }
 .kercad-advanced-number-field + .kercad-advanced-number-field { border-top: 1px solid var(--theme-border); }
 .kercad-advanced-number-field.selected { --advanced-field-background: var(--theme-active); background: var(--advanced-field-background); }
 .kercad-advanced-number-field .kercad-advanced-caption, .kercad-advanced-number-field .kercad-advanced-unit { position: absolute; top: 50%; transform: translateY(-50%); color: var(--theme-text-muted); font-size: 11px; font-weight: 400; pointer-events: none; }
 .kercad-advanced-number-field .kercad-advanced-caption { left: 6px; }
 .kercad-advanced-number-field .kercad-advanced-unit { right: 6px; }
 .kercad-advanced-number-field .kercad-advanced-caption { color: #888; }
-.kercad-model-sidebar .kercad-advanced-number-field input { width: 100%; min-width: 0; height: 32px; padding: 0 28px; margin: 0; border: 0; border-radius: 0; outline: none; background: transparent; box-shadow: none; color: inherit; font: inherit; font-size: 13px; text-align: center; cursor: ew-resize; }
+.kercad-model-sidebar .kercad-advanced-number-field input { width: 100%; min-width: 0; height: 24px; padding: 0 28px; margin: 0; border: 0; border-radius: 0; outline: none; background: transparent; box-shadow: none; color: inherit; font: inherit; font-size: 13px; text-align: center; cursor: ew-resize; }
 .kercad-model-sidebar .kercad-advanced-number-field input:focus { cursor: text; }
 .kercad-advanced-number-group[data-multi-edit] .selected input { caret-color: transparent; }
 .kercad-advanced-number-group[data-multi-edit] .selected input::selection { background: transparent; color: inherit; }
 .kercad-advanced-mirror { position: absolute; top: 50%; height: 16px; transform: translateY(-50%); pointer-events: none; }
 .kercad-advanced-mirror.caret { background: var(--theme-text); }
 .kercad-advanced-mirror.selection { background: color-mix(in srgb, var(--accent-solid) 30%, transparent); }
-.kercad-model-sidebar .kercad-advanced-number-field > button { position: absolute; top: 1px; z-index: 1; display: grid; place-items: center; width: 20px; height: 30px; padding: 0; border: 0; border-radius: 3px; background: transparent; color: inherit; font-size: 16px; opacity: 0; pointer-events: none; cursor: pointer; }
+.kercad-model-sidebar .kercad-advanced-number-field > button { position: absolute; top: 1px; z-index: 1; display: grid; place-items: center; width: 20px; height: 22px; padding: 0; border: 0; border-radius: 3px; background: transparent; color: inherit; font-size: 16px; opacity: 0; pointer-events: none; cursor: pointer; }
 .kercad-advanced-number-field > button:first-child { left: 0; }
 .kercad-advanced-number-field > button:last-child { right: 0; }
 .kercad-advanced-direction { display: block; width: 14px; height: 14px; background: currentColor; mask: var(--direction-icon) center / contain no-repeat; -webkit-mask: var(--direction-icon) center / contain no-repeat; }
