@@ -1,6 +1,7 @@
 "use client";
 
 import { CylinderProfileButtons } from "@/components/CylinderProfileButtons";
+import { AdvancedNumberFields } from "@/components/AdvancedNumberFields";
 import { normalizeGeneratedPath, spiralTypes } from "@/lib/parametricPaths";
 import { PlatonicTypeButtons } from "@/components/PlatonicTypeButtons";
 import { setSphereEllipsoidal, setTorusElliptical } from "@/lib/parametricObjects";
@@ -361,7 +362,7 @@ export function ParametricModelSidebar({
         ) : selection.length > 1 ? (
           <div className="kercad-no-selection kercad-multi-selection"><Layers3 size={28} /><strong>{selection.length} {t("model.selected")}</strong><span>{selection.filter((item) => item.kind === "object").length} {t("model.objects")} · {selection.filter((item) => item.kind === "feature").length} {t("model.operations")}</span><small>{t("model.multiSelectionHint")}</small></div>
         ) : selectedObject ? (
-          <ParametricObjectInspector object={selectedObject} onUpdate={(update) => onUpdateObject(selectedObject.id, update)} />
+          <ParametricObjectInspector object={selectedObject} advanced={document.features.some((feature) => feature.objectId === selectedObject.id && isBoxFeature(document, feature))} onUpdate={(update) => onUpdateObject(selectedObject.id, update)} />
         ) : selectedFeature ? (
           <ParametricFeatureInspector
             document={document}
@@ -496,11 +497,19 @@ function operationClass(feature: ParametricFeature) {
   return `operation-${feature.operation === "cut" ? "hole" : feature.operation === "intersect" ? "common" : "add"}`;
 }
 
+function isBoxFeature(document: ParametricDocument, feature: ParametricFeature) {
+  if (feature.kind !== "extrude" || feature.pathSketchId || feature.endSketchId) return false;
+  const sketch = sketchForExtrude(document, feature);
+  return sketch?.purpose === "primitive" && sketch.profile.shape === "rectangle";
+}
+
 function ParametricObjectInspector({
   object,
+  advanced = false,
   onUpdate,
 }: {
   object: ParametricObject;
+  advanced?: boolean;
   onUpdate: (update: (object: ParametricObject) => void) => void;
 }) {
   const t = useSidebarTranslation();
@@ -531,9 +540,9 @@ function ParametricObjectInspector({
         </div> : null}
       </div>}
       <TransformSection>
-        <TransformGroup label={t("property.position")} values={object.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.position[axis] = value; })} />
-        <TransformGroup label={t("property.rotation")} values={object.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.rotation[axis] = value; })} />
-        <TransformGroup label={t("property.scale")} values={object.transform.scale} unit="×" min={0.01} onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.scale[axis] = Math.max(0.01, value); })} />
+        <TransformGroup advanced={advanced} onUpdateMany={(values) => onUpdate((draft) => { Object.assign(draft.transform.position, values); })} label={t("property.position")} values={object.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.position[axis] = value; })} />
+        <TransformGroup advanced={advanced} onUpdateMany={(values) => onUpdate((draft) => { Object.assign(draft.transform.rotation, values); })} label={t("property.rotation")} values={object.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.rotation[axis] = value; })} />
+        <TransformGroup advanced={advanced} onUpdateMany={(values) => onUpdate((draft) => { Object.assign(draft.transform.scale, values); })} label={t("property.scale")} values={object.transform.scale} unit="×" min={0.01} onUpdate={(axis, value) => onUpdate((draft) => { draft.transform.scale[axis] = Math.max(0.01, value); })} />
       </TransformSection>
     </div>
   );
@@ -574,6 +583,8 @@ function GeneratedPathFields({ path, onChange }: { path: GeneratedPath; onChange
 
 function TransformGroup({
   label,
+  advanced = false,
+  onUpdateMany,
   showHeading = true,
   values,
   unit,
@@ -581,14 +592,18 @@ function TransformGroup({
   onUpdate,
 }: {
   label: string;
+  advanced?: boolean;
+  onUpdateMany?: (values: Record<string, number>) => void;
   showHeading?: boolean;
   values: { x: number; y: number; z: number };
   unit: string;
   min?: number;
   onUpdate: (axis: "x" | "y" | "z", value: number) => void;
 }) {
-  const { input: inputStep } = useContext(NumericStepContext);
+  const { input: inputStep, displayUnit } = useContext(NumericStepContext);
+  const locale = useContext(LocaleContext);
   const localizedLabel = useLocalizedSidebarLiteral(label);
+  if (advanced) return <div className="kercad-feature-card kercad-transform-card"><AdvancedNumberFields label={localizedLabel} fields={(["x", "y", "z"] as const).map((axis) => ({ key: axis, caption: axis.toUpperCase(), label: `${localizedLabel} ${axis.toUpperCase()}`, value: values[axis], min }))} unit={unit} displayUnit={displayUnit} step={inputStep} locale={locale} onCommit={(next) => { if (onUpdateMany) onUpdateMany(next); else for (const axis of ["x", "y", "z"] as const) if (next[axis] !== undefined) onUpdate(axis, next[axis]); }} /></div>;
   return (
     <div className="kercad-feature-card kercad-transform-card">
       {showHeading && <h3>{localizedLabel}</h3>}
@@ -694,8 +709,8 @@ function ParametricFeatureInspector({
               <label><span>{localizedSidebarLiteral(locale, uiText("sidebar.vertical.alignment", {}, locale))}</span><select value={textGenerator.verticalAlign ?? "center"} onChange={(event) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { verticalAlign: event.target.value as typeof textGenerator.verticalAlign }); })}><option value="bottom">{uiText("ui.parametricmodelsidebar.bottom.cce7f2", {}, locale)}</option><option value="center">{uiText("align.center", {}, locale)}</option><option value="top">{uiText("ui.parametricmodelsidebar.top.cae043", {}, locale)}</option></select></label>
             </> : scribbleGenerator && primitiveSketch ? <button className="kercad-edit-topology-selection" type="button" onClick={() => onEditSketch(primitiveSketch.id)}>{t("operation.editScribble")}</button> : primitiveSketch?.profile.shape === "rectangle" ? (
               <>
-                <BoundedNumberField label={t("property.width")} value={primitiveSketch.profile.width} min={0.01} max={200} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} />
-                <BoundedNumberField label={t("property.depth")} value={primitiveSketch.profile.depth} min={0.01} max={200} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} />
+                <BoundedNumberField advanced={isBoxFeature(document, feature)} caption="W" label={t("property.width")} value={primitiveSketch.profile.width} min={0.01} max={200} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} />
+                <BoundedNumberField advanced={isBoxFeature(document, feature)} caption="D" label={t("property.depth")} value={primitiveSketch.profile.depth} min={0.01} max={200} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} />
               </>
             ) : primitiveSketch?.profile.shape === "circle" ? (
               <>
@@ -703,12 +718,12 @@ function ParametricFeatureInspector({
                 {primitiveSketch.profile.elliptical && <BoundedNumberField label={t("cylinder.radius2")} value={primitiveSketch.profile.radius2 ?? primitiveSketch.profile.diameter / 2} min={0.01} max={100} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.radius2 = Math.max(0.01, value); })} />}
               </>
             ) : null}
-            <BoundedNumberField label={t("property.height")} value={feature.distance} min={-200} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "extrude" && Math.abs(value) >= 0.01) draft.distance = value; })} />
+            <BoundedNumberField advanced={isBoxFeature(document, feature)} caption="H" label={t("property.height")} value={feature.distance} min={-200} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "extrude" && Math.abs(value) >= 0.01) draft.distance = value; })} />
             </>}
           </ShapeParametersSection>
           <TransformSection description={uiText("sidebar.position.rotation", {}, locale)}>
-            <TransformGroup label={t("property.position")} values={feature.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.transform.position[axis] = value; })} />
-            <TransformGroup label={t("property.rotation")} values={feature.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.transform.rotation[axis] = value; })} />
+            <TransformGroup advanced={isBoxFeature(document, feature)} onUpdateMany={(values) => onUpdate((draft) => { if (draft.kind === "extrude") Object.assign(draft.transform.position, values); })} label={t("property.position")} values={feature.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.transform.position[axis] = value; })} />
+            <TransformGroup advanced={isBoxFeature(document, feature)} onUpdateMany={(values) => onUpdate((draft) => { if (draft.kind === "extrude") Object.assign(draft.transform.rotation, values); })} label={t("property.rotation")} values={feature.transform.rotation} unit="°" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.transform.rotation[axis] = value; })} />
           </TransformSection>
         </>
       ) : null}
@@ -1051,10 +1066,12 @@ function DeferredNumberInput({ value, min, max, step, unit, onCommit }: { value:
   return <span className="kercad-number-input" onWheel={(event) => { event.preventDefault(); nudge(event.deltaY < 0 ? 1 : -1); }}><input ref={inputRef} type="text" inputMode="text" value={draft} onFocus={() => setEditing(true)} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={handleKeyDown} />{visibleUnit ? <small>{visibleUnit}</small> : null}<span className="kercad-number-steppers"><button type="button" tabIndex={-1} aria-label={t("input.increment")} title={t("input.increment")} onPointerDown={(event) => { event.preventDefault(); nudge(1); }}>▲</button><button type="button" tabIndex={-1} aria-label={t("input.decrement")} title={t("input.decrement")} onPointerDown={(event) => { event.preventDefault(); nudge(-1); }}>▼</button></span></span>;
 }
 
-function BoundedNumberField({ label, value, min, max, step, unit = step === undefined ? "mm" : "", onChange }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (value: number) => void }) {
+function BoundedNumberField({ label, value, min, max, step, unit = step === undefined ? "mm" : "", onChange, advanced = false, caption }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (value: number) => void; advanced?: boolean; caption?: string }) {
   const steps = useContext(NumericStepContext);
+  const locale = useContext(LocaleContext);
   const localizedLabel = useLocalizedSidebarLiteral(label);
   const clampedValue = Math.min(max, Math.max(min, value));
+  if (advanced) return <AdvancedNumberFields label={localizedLabel} fields={[{ key: "value", caption, label: localizedLabel, value: clampedValue, min, max }]} unit={unit} displayUnit={steps.displayUnit} step={step ?? steps.input} locale={locale} onCommit={(values) => { if (values.value !== undefined) onChange(values.value); }} />;
   return (
     <label className="kercad-compact-number-property">
       <span>{localizedLabel}</span><DeferredNumberInput value={clampedValue} min={min} max={max} step={step ?? steps.input} unit={unit} onCommit={(next) => onChange(Math.min(max, Math.max(min, next)))} />
