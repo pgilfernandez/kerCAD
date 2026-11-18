@@ -103,7 +103,7 @@ export function AdvancedNumberFields({ fields, label, unit, displayUnit, step, l
       }}
       onPointerCancel={() => { drag.current = null; draftRef.current = {}; setDrafts({}); }}>
       {fields.map((field) => <div key={field.key} className={`kercad-advanced-number-field ${selected.includes(field.key) ? "selected" : ""}`} data-field-key={field.key}>
-        <button type="button" tabIndex={-1} aria-label={uiText("input.decrement", {}, locale)} title={uiText("input.decrement", {}, locale)} onPointerDown={(event) => event.preventDefault()} onClick={() => nudge(field.key, -1)}>−</button>
+        <button type="button" tabIndex={-1} aria-label={uiText("input.decrement", {}, locale)} title={uiText("input.decrement", {}, locale)} onPointerDown={(event) => event.preventDefault()} onClick={() => nudge(field.key, -1)}><span className="kercad-advanced-direction left" aria-hidden="true" /></button>
         <span className="kercad-advanced-caption" aria-hidden="true">{field.caption}</span>
         <input className="kercad-advanced-number-input" data-number-key={field.key} type="text" inputMode="text" aria-label={field.label} value={drafts[field.key] ?? String(clean(toDisplay(field.value)))}
           onFocus={() => { if (!selected.includes(field.key)) setSelected([field.key]); }}
@@ -115,7 +115,7 @@ export function AdvancedNumberFields({ fields, label, unit, displayUnit, step, l
             else if (event.key === "ArrowUp" || event.key === "ArrowDown") { event.preventDefault(); nudge(field.key, event.key === "ArrowUp" ? 1 : -1); }
           }} />
         <span className="kercad-advanced-unit" aria-hidden="true">{visibleUnit}</span>
-        <button type="button" tabIndex={-1} aria-label={uiText("input.increment", {}, locale)} title={uiText("input.increment", {}, locale)} onPointerDown={(event) => event.preventDefault()} onClick={() => nudge(field.key, 1)}>+</button>
+        <button type="button" tabIndex={-1} aria-label={uiText("input.increment", {}, locale)} title={uiText("input.increment", {}, locale)} onPointerDown={(event) => event.preventDefault()} onClick={() => nudge(field.key, 1)}><span className="kercad-advanced-direction right" aria-hidden="true" /></button>
       </div>)}
     </div>
   </div>;
