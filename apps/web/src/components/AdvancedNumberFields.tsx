@@ -68,6 +68,7 @@ export function AdvancedNumberFields({ fields, label, unit, displayUnit, step, l
   return <div className="kercad-advanced-number-row">
     {label && <span className="kercad-advanced-external-label">{label}</span>}
     <div ref={root} className="kercad-advanced-number-group" role="group" aria-label={label ?? fields[0]?.label}
+      onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setSelected([]); }}
       onPointerDown={(event) => {
         if (event.button !== 0 || (event.target as Element).closest("button")) return;
         const key = (event.target as Element).closest<HTMLElement>("[data-field-key]")?.dataset.fieldKey;
