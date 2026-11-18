@@ -20,7 +20,7 @@ function MirroredSelection({ input, text, start, end, visible }: { input: () => 
     const width = context.measureText(text).width;
     const padding = parseFloat(style.paddingLeft) || 0;
     const origin = width <= element.clientWidth - padding * 2 ? (element.clientWidth - width) / 2 : padding - element.scrollLeft;
-    const before = context.measureText(text.slice(0, start)).width;
+    const before = start === end ? width : context.measureText(text.slice(0, start)).width;
     const selection = context.measureText(text.slice(start, end)).width;
     setBounds({ left: element.offsetLeft + origin + before, width: Math.max(1, selection) });
   }, [text, start, end, input]);
@@ -34,7 +34,15 @@ export function AdvancedNumberFields({ fields, label, unit, displayUnit, step, l
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [caret, setCaret] = useState<{ start: number; end: number } | null>(null);
   const [caretVisible, setCaretVisible] = useState(true);
-  const syncCaret = (input: HTMLInputElement) => { setCaret({ start: input.selectionStart ?? 0, end: input.selectionEnd ?? 0 }); setCaretVisible(true); };
+  const syncCaret = (input: HTMLInputElement) => {
+    let start = input.selectionStart ?? 0, end = input.selectionEnd ?? 0;
+    if (selected.length > 1 && start === end && end !== input.value.length) {
+      start = end = input.value.length;
+      input.setSelectionRange(start, end);
+    }
+    setCaret({ start, end });
+    setCaretVisible(true);
+  };
   useEffect(() => {
     if (!caret || selected.length < 2) return;
     const timer = window.setInterval(() => setCaretVisible((value) => !value), 500);
