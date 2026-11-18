@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { parseNumericExpression, validateNumericExpression } from "@/lib/numericExpression";
 import { displayLengthToMillimeters, millimetersToDisplayLength, displayUnitLabel, type ParametricDisplayUnit } from "@/lib/parametricUnits";
 import { uiText, type KercadLocale } from "@/lib/kercadI18n";
@@ -10,11 +10,36 @@ export type AdvancedNumberField = { key: string; value: number; caption?: string
 type Props = { fields: AdvancedNumberField[]; label?: string; unit: string; displayUnit: ParametricDisplayUnit; step: number; locale: KercadLocale; onCommit: (values: Record<string, number>) => void };
 const clean = (value: number) => Number(value.toFixed(10));
 
+function MirroredSelection({ input, text, start, end, visible }: { input: () => HTMLInputElement | undefined; text: string; start: number; end: number; visible: boolean }) {
+  const [bounds, setBounds] = useState({ left: 0, width: 1 });
+  useLayoutEffect(() => {
+    const element = input(); if (!element) return;
+    const style = getComputedStyle(element), context = document.createElement("canvas").getContext("2d");
+    if (!context) return;
+    context.font = style.font;
+    const width = context.measureText(text).width;
+    const padding = parseFloat(style.paddingLeft) || 0;
+    const origin = width <= element.clientWidth - padding * 2 ? (element.clientWidth - width) / 2 : padding - element.scrollLeft;
+    const before = context.measureText(text.slice(0, start)).width;
+    const selection = context.measureText(text.slice(start, end)).width;
+    setBounds({ left: element.offsetLeft + origin + before, width: Math.max(1, selection) });
+  }, [text, start, end, input]);
+  return <span aria-hidden="true" className={`kercad-advanced-mirror ${start === end ? "caret" : "selection"}`} style={{ left: bounds.left, width: bounds.width, visibility: start !== end || visible ? "visible" : "hidden" }} />;
+}
+
 /** A single field or a contiguous, keyboard-editable group of numeric fields. */
 export function AdvancedNumberFields({ fields, label, unit, displayUnit, step, locale, onCommit }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [caret, setCaret] = useState<{ start: number; end: number } | null>(null);
+  const [caretVisible, setCaretVisible] = useState(true);
+  const syncCaret = (input: HTMLInputElement) => { setCaret({ start: input.selectionStart ?? 0, end: input.selectionEnd ?? 0 }); setCaretVisible(true); };
+  useEffect(() => {
+    if (!caret || selected.length < 2) return;
+    const timer = window.setInterval(() => setCaretVisible((value) => !value), 500);
+    return () => window.clearInterval(timer);
+  }, [caret, selected.length]);
   const draftRef = useRef(drafts); draftRef.current = drafts;
   const cancelBlur = useRef(false);
   const drag = useRef<{ id: number; x: number; y: number; key: string; mode: "pending" | "select" | "value"; keys: string[]; start: Record<string, number> } | null>(null);
@@ -67,8 +92,8 @@ export function AdvancedNumberFields({ fields, label, unit, displayUnit, step, l
   }, []);
   return <div className="kercad-advanced-number-row">
     {label && <span className="kercad-advanced-external-label">{label}</span>}
-    <div ref={root} className="kercad-advanced-number-group" role="group" aria-label={label ?? fields[0]?.label}
-      onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setSelected([]); }}
+    <div ref={root} className="kercad-advanced-number-group" data-multi-edit={selected.length > 1 && caret !== null || undefined} role="group" aria-label={label ?? fields[0]?.label}
+      onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) { setSelected([]); setCaret(null); } }}
       onPointerDown={(event) => {
         if (event.button !== 0 || (event.target as Element).closest("button")) return;
         const key = (event.target as Element).closest<HTMLElement>("[data-field-key]")?.dataset.fieldKey;
@@ -107,7 +132,8 @@ export function AdvancedNumberFields({ fields, label, unit, displayUnit, step, l
         <button type="button" tabIndex={-1} aria-label={uiText("input.decrement", {}, locale)} title={uiText("input.decrement", {}, locale)} onPointerDown={(event) => event.preventDefault()} onClick={() => nudge(field.key, -1)}><span className="kercad-advanced-direction left" aria-hidden="true" /></button>
         <span className="kercad-advanced-caption" aria-hidden="true">{field.caption}</span>
         <input className="kercad-advanced-number-input" data-number-key={field.key} type="text" inputMode="text" aria-label={field.label} value={drafts[field.key] ?? String(clean(toDisplay(field.value)))}
-          onFocus={() => { if (!selected.includes(field.key)) setSelected([field.key]); }}
+          onFocus={(event) => { if (!selected.includes(field.key)) setSelected([field.key]); syncCaret(event.currentTarget); }}
+          onSelect={(event) => syncCaret(event.currentTarget)}
           onChange={(event) => { const next = { ...draftRef.current }; for (const key of keysFor(field.key)) next[key] = event.target.value; draftRef.current = next; setDrafts(next); event.target.setCustomValidity(""); }}
           onBlur={() => { if (cancelBlur.current) { cancelBlur.current = false; return; } commit(keysFor(field.key)); }}
           onKeyDown={(event) => {
@@ -115,6 +141,7 @@ export function AdvancedNumberFields({ fields, label, unit, displayUnit, step, l
             else if (event.key === "Escape") { setDrafts({}); draftRef.current = {}; event.currentTarget.setCustomValidity(""); cancelBlur.current = true; event.currentTarget.blur(); }
             else if (event.key === "ArrowUp" || event.key === "ArrowDown") { event.preventDefault(); nudge(field.key, event.key === "ArrowUp" ? 1 : -1); }
           }} />
+        {selected.length > 1 && selected.includes(field.key) && caret && <MirroredSelection input={() => inputFor(field.key)} text={drafts[field.key] ?? String(clean(toDisplay(field.value)))} start={caret.start} end={caret.end} visible={caretVisible} />}
         <span className="kercad-advanced-unit" aria-hidden="true">{visibleUnit}</span>
         <button type="button" tabIndex={-1} aria-label={uiText("input.increment", {}, locale)} title={uiText("input.increment", {}, locale)} onPointerDown={(event) => event.preventDefault()} onClick={() => nudge(field.key, 1)}><span className="kercad-advanced-direction right" aria-hidden="true" /></button>
       </div>)}
