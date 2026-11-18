@@ -108,6 +108,7 @@ type Props = {
   onCancelRevolve: () => void;
   onUpdateObject: (id: string, update: (object: ParametricObject) => void) => void;
   onUpdateFeature: (id: string, update: (feature: ParametricFeature) => void) => void;
+  onUpdateFeatures: (apply: (features: ParametricFeature[]) => void) => void;
 };
 
 export function ParametricModelSidebar({
@@ -157,6 +158,7 @@ export function ParametricModelSidebar({
   onCancelRevolve,
   onUpdateObject,
   onUpdateFeature,
+  onUpdateFeatures,
 }: Props) {
   const objects = parametricObjectTree(document);
   const annotationsExpanded = document.annotationGroup?.expanded !== false;
@@ -367,6 +369,7 @@ export function ParametricModelSidebar({
             document={document}
             feature={selectedFeature}
             onUpdateFeature={onUpdateFeature}
+            onUpdateFeatures={onUpdateFeatures}
           onEditSelection={onEditFeatureSelection}
           onEditSketch={onEditSketch}
             onEditFaceExtrudeSelection={onEditFaceExtrudeSelection}
@@ -597,6 +600,7 @@ function ParametricFeatureInspector({
   document,
   feature,
   onUpdateFeature,
+  onUpdateFeatures,
   onEditSelection,
   onEditSketch,
   onEditFaceExtrudeSelection,
@@ -608,6 +612,7 @@ function ParametricFeatureInspector({
   document: ParametricDocument;
   feature: ParametricFeature;
   onUpdateFeature: (id: string, update: (feature: ParametricFeature) => void) => void;
+  onUpdateFeatures: (apply: (features: ParametricFeature[]) => void) => void;
   onEditSelection: (featureId: string) => void;
   onEditSketch: (featureId: string) => void;
   onEditFaceExtrudeSelection: (featureId: string) => void;
@@ -684,17 +689,18 @@ function ParametricFeatureInspector({
               <label><span>{localizedSidebarLiteral(locale, uiText("annotation.alignment", {}, locale))}</span><select value={textGenerator.align} onChange={(event) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { align: event.target.value as typeof textGenerator.align }); })}><option value="left">{uiText("annotation.left", {}, locale)}</option><option value="center">{uiText("align.center", {}, locale)}</option><option value="right">{uiText("annotation.right", {}, locale)}</option></select></label>
               <label><span>{localizedSidebarLiteral(locale, uiText("sidebar.vertical.alignment", {}, locale))}</span><select value={textGenerator.verticalAlign ?? "center"} onChange={(event) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { verticalAlign: event.target.value as typeof textGenerator.verticalAlign }); })}><option value="bottom">{uiText("ui.parametricmodelsidebar.bottom.cce7f2", {}, locale)}</option><option value="center">{uiText("align.center", {}, locale)}</option><option value="top">{uiText("ui.parametricmodelsidebar.top.cae043", {}, locale)}</option></select></label>
             </> : scribbleGenerator && primitiveSketch ? <button className="kercad-edit-topology-selection" type="button" onClick={() => onEditSketch(primitiveSketch.id)}>{t("operation.editScribble")}</button> : primitiveSketch?.profile.shape === "rectangle" ? (
-              <>
-                <BoundedNumberField caption="W" label={t("property.width")} value={primitiveSketch.profile.width} min={0.01} max={200} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.width = Math.max(0.01, value); })} />
-                <BoundedNumberField caption="D" label={t("property.depth")} value={primitiveSketch.profile.depth} min={0.01} max={200} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "rectangle") draft.profile.depth = Math.max(0.01, value); })} />
-              </>
+              <GroupedShapeFields fields={[
+                { key: "width", label: t("property.width"), value: primitiveSketch.profile.width, min: .01, max: 200, apply: (draft, value) => { const sketch = draft.find((item) => item.id === primitiveSketch.id); if (sketch?.kind === "sketch" && sketch.profile.shape === "rectangle") sketch.profile.width = value; } },
+                { key: "depth", label: t("property.depth"), value: primitiveSketch.profile.depth, min: .01, max: 200, apply: (draft, value) => { const sketch = draft.find((item) => item.id === primitiveSketch.id); if (sketch?.kind === "sketch" && sketch.profile.shape === "rectangle") sketch.profile.depth = value; } },
+                { key: "height", label: t("property.height"), value: feature.distance, min: -200, max: 200, apply: (draft, value) => { const extrusion = draft.find((item) => item.id === feature.id); if (extrusion?.kind === "extrude" && Math.abs(value) >= .01) extrusion.distance = value; } },
+              ] satisfies ShapeField<ParametricFeature[]>[]} onUpdate={onUpdateFeatures} />
             ) : primitiveSketch?.profile.shape === "circle" ? (
-              <>
-                <BoundedNumberField label={t("property.radius")} value={primitiveSketch.profile.diameter / 2} min={0.01} max={100} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") { if (draft.profile.elliptical) draft.profile.radius2 ??= draft.profile.diameter / 2; draft.profile.diameter = Math.max(0.01, value * 2); } })} />
-                {primitiveSketch.profile.elliptical && <BoundedNumberField label={t("cylinder.radius2")} value={primitiveSketch.profile.radius2 ?? primitiveSketch.profile.diameter / 2} min={0.01} max={100} onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.radius2 = Math.max(0.01, value); })} />}
-              </>
+              <GroupedShapeFields fields={[
+                { key: "radius", label: t("property.radius"), value: primitiveSketch.profile.diameter / 2, min: .01, max: 100, apply: (draft, value) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") { if (draft.profile.elliptical) draft.profile.radius2 ??= draft.profile.diameter / 2; draft.profile.diameter = value * 2; } } },
+                ...(primitiveSketch.profile.elliptical ? [{ key: "radius2", label: t("cylinder.radius2"), value: primitiveSketch.profile.radius2 ?? primitiveSketch.profile.diameter / 2, min: .01, max: 100, apply: (draft: ParametricFeature, value: number) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.radius2 = value; } }] : []),
+              ] satisfies ShapeField<ParametricFeature>[]} onUpdate={(apply) => onUpdateFeature(primitiveSketch.id, apply)} />
             ) : null}
-            <BoundedNumberField caption="H" label={t("property.height")} value={feature.distance} min={-200} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "extrude" && Math.abs(value) >= 0.01) draft.distance = value; })} />
+            {primitiveSketch?.profile.shape !== "rectangle" && <BoundedNumberField caption="H" label={t("property.height")} value={feature.distance} min={-200} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "extrude" && Math.abs(value) >= 0.01) draft.distance = value; })} />}
             </>}
           </ShapeParametersSection>
           <TransformSection description={uiText("sidebar.position.rotation", {}, locale)}>
@@ -714,11 +720,11 @@ function ParametricFeatureInspector({
             {feature.primitive === "platonic" && <PlatonicTypeButtons value={feature.platonicType ?? "tetrahedron"} locale={locale} onChange={(type) => onUpdate((draft) => { if (draft.kind === "primitive") draft.platonicType = type; })} />}
             {feature.primitive === "torus" && <CylinderProfileButtons locale={locale} elliptical={Boolean(feature.ellipsoidal)} onChange={(enabled) => onUpdate((draft) => { if (draft.kind === "primitive") setTorusElliptical(draft, enabled); })} />}
             {(feature.primitive === "sphere" || feature.primitive === "halfSphere") && <CylinderProfileButtons sphere hemisphere={feature.primitive === "halfSphere"} locale={locale} elliptical={Boolean(feature.ellipsoidal)} onChange={(enabled) => onUpdate((draft) => { if (draft.kind === "primitive") setSphereEllipsoidal(draft, enabled); })} />}
-            {localizedParametricOperationDefinition(feature.primitive, locale).parameters.filter((parameter) => !(feature.primitive === "halfSphere" && feature.ellipsoidal && parameter.key === "height")).map((parameter) => (
-              <BoundedNumberField
-                key={parameter.key}
-                label={parameter.label}
-                value={parameter.key === "radius" || parameter.key === "baseRadius" || parameter.key === "outerRadius"
+            {(() => {
+              const fields: ShapeField<typeof feature>[] = localizedParametricOperationDefinition(feature.primitive, locale).parameters.filter((parameter) => !(feature.primitive === "halfSphere" && feature.ellipsoidal && parameter.key === "height")).map((parameter) => ({
+                key: parameter.key,
+                label: parameter.label,
+                value: parameter.key === "radius" || parameter.key === "baseRadius" || parameter.key === "outerRadius"
                   ? feature.width / 2
                   : parameter.key === "majorRadius"
                     ? feature.majorRadius ?? 12
@@ -740,13 +746,12 @@ function ParametricFeatureInspector({
                       ? feature.innerRadius ?? 6
                     : parameter.key === "thickness"
                       ? Math.max(0.1, feature.width / 2 - (feature.innerRadius ?? 6))
-                    : feature[parameter.key as "width" | "depth" | "height"]}
-                min={parameter.min}
-                max={parameter.max}
-                step={parameter.step}
-                unit={parameter.unit}
-                onChange={(value) => onUpdate((draft) => {
-                  if (draft.kind !== "primitive") return;
+                    : feature[parameter.key as "width" | "depth" | "height"],
+                min: parameter.min,
+                max: parameter.max,
+                step: parameter.step,
+                unit: parameter.unit,
+                apply: (draft: typeof feature, value: number) => {
                   if (draft.primitive === "platonic") { draft.width = value; draft.depth = value; draft.height = value; return; }
                   if (parameter.key === "radius") {
                     draft.width = value * 2;
@@ -798,17 +803,16 @@ function ParametricFeatureInspector({
                   } else if (parameter.key === "boreRadius") {
                     draft.boreRadius = Math.max(0, Math.min(draft.width / 2 - (draft.toothDepth ?? 2.5) - 0.1, Math.max(0, value)));
                   } else if (parameter.key !== "diameter") draft[parameter.key] = Math.max(parameter.min, value);
-                })}
-              />
-            ))}
-            {feature.primitive === "torus" && <>
-              {feature.ellipsoidal && <BoundedNumberField label={t("cylinder.radius2")} value={feature.tubeRadius2 ?? feature.tubeRadius ?? 4} min={.1} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "primitive") { draft.tubeRadius2 = value; draft.height = value * 2; } })} />}
-              <BoundedNumberField label={t("property.angle")} value={feature.angle ?? 360} min={0} max={360} step={1} unit="°" onChange={(angle) => onUpdate((draft) => { if (draft.kind === "primitive") draft.angle = angle; })} />
-            </>}
-            {(feature.primitive === "sphere" || feature.primitive === "halfSphere") && feature.ellipsoidal && <>
-              <BoundedNumberField label={t("cylinder.radius2")} value={feature.depth / 2} min={.1} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "primitive") draft.depth = value * 2; })} />
-              <BoundedNumberField label={t("sphere.radius3")} value={feature.primitive === "halfSphere" ? feature.height : feature.height / 2} min={.1} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "primitive") draft.height = draft.primitive === "halfSphere" ? value : value * 2; })} />
-            </>}
+                },
+            }));
+              const radiusStep = fields.find(({ key }) => key === "radius" || key === "tubeRadius")?.step;
+              if (feature.ellipsoidal && (feature.primitive === "torus" || feature.primitive === "sphere" || feature.primitive === "halfSphere")) {
+                fields.push({ key: "radius2", label: t("cylinder.radius2"), value: feature.primitive === "torus" ? feature.tubeRadius2 ?? feature.tubeRadius ?? 4 : feature.depth / 2, min: .1, max: 200, step: radiusStep, apply: (draft, value) => { if (draft.primitive === "torus") { draft.tubeRadius2 = value; draft.height = value * 2; } else draft.depth = value * 2; } });
+                if (feature.primitive !== "torus") fields.push({ key: "radius3", label: t("sphere.radius3"), value: feature.primitive === "halfSphere" ? feature.height : feature.height / 2, min: .1, max: 200, step: radiusStep, apply: (draft, value) => { draft.height = draft.primitive === "halfSphere" ? value : value * 2; } });
+              }
+              return <GroupedShapeFields fields={fields} onUpdate={(apply) => onUpdate((draft) => { if (draft.kind === "primitive") apply(draft); })} />;
+            })()}
+            {feature.primitive === "torus" && <BoundedNumberField label={t("property.angle")} value={feature.angle ?? 360} min={0} max={360} step={1} unit="°" onChange={(angle) => onUpdate((draft) => { if (draft.kind === "primitive") draft.angle = angle; })} />}
           </ShapeParametersSection>
           <TransformSection description={uiText("sidebar.position.rotation", {}, locale)}>
             <TransformGroup label={t("property.position")} values={feature.transform.position} unit="mm" onUpdate={(axis, value) => onUpdate((draft) => { if (draft.kind === "primitive") draft.transform.position[axis] = value; })} />
@@ -998,6 +1002,31 @@ function DeferredNumberInput({ value, min, max, step, unit, onCommit }: { value:
   const { displayUnit } = useContext(NumericStepContext);
   const locale = useContext(LocaleContext);
   return <AdvancedNumberInput value={value} min={min} max={max} step={step} unit={unit ?? ""} displayUnit={displayUnit} locale={locale} onCommit={onCommit} />;
+}
+
+type ShapeField<T> = { key: string; label: string; value: number; min: number; max: number; step?: number; unit?: string; apply: (draft: T, value: number) => void };
+
+const shapeFieldFamilies = [
+  { label: "sketch.dimensions", captions: { width: "W", depth: "D", height: "H" } },
+  { label: "property.radius", captions: { radius: "R", radius2: "R2", radius3: "R3", baseRadius: "Rb", topRadius: "Rt", majorRadius: "Rm", tubeRadius: "Rs", outerRadius: "Ro", innerRadius: "Ri", boreRadius: "Ri" } },
+] as const;
+
+function GroupedShapeFields<T>({ fields, onUpdate }: { fields: ShapeField<T>[]; onUpdate: (apply: (draft: T) => void) => void }) {
+  const steps = useContext(NumericStepContext);
+  const locale = useContext(LocaleContext);
+  const t = useSidebarTranslation();
+  const grouped = new Set<string>();
+  return <>{fields.map((field) => {
+    if (grouped.has(field.key)) return null;
+    const family = shapeFieldFamilies.find(({ captions }) => Object.hasOwn(captions, field.key));
+    const siblings = family ? fields.filter((entry) => Object.hasOwn(family.captions, entry.key) && (entry.unit ?? "mm") === (field.unit ?? "mm") && entry.step === field.step) : [field];
+    const commit = (values: Record<string, number>) => onUpdate((draft) => {
+      for (const entry of siblings) if (values[entry.key] !== undefined) entry.apply(draft, values[entry.key]);
+    });
+    if (!family || siblings.length < 2) return <BoundedNumberField key={field.key} label={field.label} value={field.value} min={field.min} max={field.max} step={field.step} unit={field.unit} onChange={(value) => commit({ [field.key]: value })} />;
+    siblings.forEach(({ key }) => grouped.add(key));
+    return <AdvancedNumberFields key={field.key} label={t(family.label)} fields={siblings.map((entry) => ({ key: entry.key, label: entry.label, caption: (family.captions as Record<string, string>)[entry.key], value: entry.value, min: entry.min, max: entry.max }))} unit={field.unit ?? "mm"} step={field.step ?? steps.input} displayUnit={steps.displayUnit} locale={locale} onCommit={commit} />;
+  })}</>;
 }
 
 function BoundedNumberField({ label, value, min, max, step, unit = step === undefined ? "mm" : "", onChange, caption }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (value: number) => void; caption?: string }) {

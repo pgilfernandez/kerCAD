@@ -4981,3 +4981,4 @@ function ViewCube({ orientation, onDirection }: { orientation: CameraOrientation
     </g>)}
   </svg></div>;
 }
+          onUpdateFeatures={(apply) => { mutate((draft) => apply(draft.features)); }}
