@@ -23,7 +23,8 @@ type WorkerLike = Pick<Worker, "postMessage" | "terminate"> & {
 
 type PendingBuild = {
   onProgress?: (progress: ParametricBuildProgress) => void;
-  requestId: number;
+  request: ParametricBuildWorkerRequest;
+  retried: boolean;
   resolve: (result: BuildResult | BuildResult["operationContext"]) => void;
   reject: (error: Error) => void;
 };
@@ -160,7 +161,7 @@ export class ParametricBuildWorkerClient {
     const requestId = ++this.nextRequestId;
     const request = { ...input, requestId } as ParametricBuildWorkerRequest;
     return new Promise<BuildResult | BuildResult["operationContext"]>((resolve, reject) => {
-      this.pending = { requestId, resolve, reject, onProgress };
+      this.pending = { request, retried: false, resolve, reject, onProgress };
       worker.postMessage(request);
     });
   }
@@ -169,7 +170,25 @@ export class ParametricBuildWorkerClient {
     if (this.worker) return this.worker;
     const worker = this.createWorker();
     worker.onmessage = (event) => this.handleMessage(event.data);
-    worker.onerror = (event) => this.failActive(event.message || "The CAD worker failed.");
+    worker.onerror = (event) => {
+      if (worker !== this.worker) return;
+      const message = event.message || "The CAD worker failed.";
+      const location = event.filename ? `${event.filename}:${event.lineno}:${event.colno}` : "";
+      console.warn("[kerCAD] CAD worker error:", message, location);
+      const pending = this.pending;
+      if (pending?.request.type === "build-model" && !pending.retried && message.includes("SyntaxError")) {
+        pending.retried = true;
+        this.restartWorker();
+        try {
+          this.ensureWorker().postMessage(pending.request);
+          return;
+        } catch (error) {
+          this.failActive(error instanceof Error ? error.message : message);
+          return;
+        }
+      }
+      this.failActive(message);
+    };
     worker.onmessageerror = () => this.failActive("The CAD worker returned invalid data.");
     this.worker = worker;
     return worker;
@@ -188,7 +207,7 @@ export class ParametricBuildWorkerClient {
 
   private handleMessage(response: ParametricBuildWorkerResponse) {
     const pending = this.pending;
-    if (!pending || response.requestId !== pending.requestId) return;
+    if (!pending || response.requestId !== pending.request.requestId) return;
     if (response.type === "build-progress") {
       pending.onProgress?.(response.progress);
       return;
