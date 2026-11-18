@@ -15,7 +15,7 @@
 .kercad-advanced-number-field .kercad-advanced-caption { left: 6px; }
 .kercad-advanced-number-field .kercad-advanced-unit { right: 6px; }
 .kercad-advanced-number-field .kercad-advanced-caption { color: #888; }
-.kercad-model-sidebar .kercad-advanced-number-field input { width: 100%; min-width: 0; height: 24px; padding: 0 28px; margin: 0; border: 0; border-radius: 0; outline: none; background: transparent; box-shadow: none; color: inherit; font: inherit; font-size: 13px; text-align: center; cursor: ew-resize; }
+.kercad-model-sidebar .kercad-advanced-number-field input { width: 100%; min-width: 0; height: 24px; padding: 0 28px; margin: 0; border: 0; border-radius: 0; outline: none; background: transparent; box-shadow: none; color: inherit; font: inherit; font-size: 13px; font-weight: 600; text-align: center; cursor: ew-resize; }
 .kercad-model-sidebar .kercad-advanced-number-field input:focus { cursor: text; }
 .kercad-advanced-number-group[data-multi-edit] .selected input { caret-color: transparent; }
 .kercad-advanced-number-group[data-multi-edit] .selected input::selection { background: transparent; color: inherit; }
