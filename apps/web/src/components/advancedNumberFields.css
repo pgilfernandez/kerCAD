@@ -5,6 +5,12 @@
 .kercad-advanced-number-field { --advanced-field-background: var(--theme-field-surface, var(--theme-surface)); position: relative; height: 26px; min-width: 0; color: var(--theme-text); touch-action: none; }
 .kercad-advanced-number-field + .kercad-advanced-number-field { border-top: 1px solid var(--theme-border); }
 .kercad-advanced-number-field.selected { --advanced-field-background: var(--theme-active); background: var(--advanced-field-background); }
+@media (hover: hover) {
+  .kercad-advanced-number-field:hover:not(.selected):not(:focus-within) {
+    --advanced-field-background: color-mix(in srgb, var(--theme-active) 50%, var(--theme-field-surface, var(--theme-surface)));
+    background: var(--advanced-field-background);
+  }
+}
 .kercad-advanced-number-field .kercad-advanced-caption, .kercad-advanced-number-field .kercad-advanced-unit { position: absolute; top: 50%; transform: translateY(-50%); color: var(--theme-text-muted); font-size: 11px; font-weight: 400; pointer-events: none; }
 .kercad-advanced-number-field .kercad-advanced-caption { left: 6px; }
 .kercad-advanced-number-field .kercad-advanced-unit { right: 6px; }
