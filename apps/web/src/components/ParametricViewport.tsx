@@ -4490,16 +4490,32 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       const size = box.getSize(new THREE.Vector3());
       const extent = Math.max(size.x, size.y, size.z, 1);
       const direction = camera.position.clone().sub(target).normalize();
-      controls.target.copy(center);
-      camera.position.copy(center).add(direction.multiplyScalar(Math.max(55, extent * 2.35)));
-      if (camera instanceof THREE.OrthographicCamera) {
-        camera.zoom = Math.min(20, Math.max(0.05, 110 / extent));
-        camera.updateProjectionMatrix();
-      }
-      camera.lookAt(center);
-      controls.update();
-      invalidateRef.current();
-      return;
+      const startTarget = target.clone();
+      const startPosition = camera.position.clone();
+      const endPosition = center.clone().addScaledVector(direction, Math.max(55, extent * 2.35));
+      const startZoom = camera.zoom;
+      const endZoom = camera instanceof THREE.OrthographicCamera ? Math.min(20, Math.max(0.05, 110 / extent)) : startZoom;
+      const duration = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 450;
+      const startedAt = performance.now();
+      const step = (now: number) => {
+        const progress = duration === 0 ? 1 : Math.min(1, (now - startedAt) / duration);
+        const eased = progress * progress * (3 - 2 * progress);
+        target.lerpVectors(startTarget, center, eased);
+        camera.position.lerpVectors(startPosition, endPosition, eased);
+        if (camera instanceof THREE.OrthographicCamera) {
+          camera.zoom = THREE.MathUtils.lerp(startZoom, endZoom, eased);
+          camera.updateProjectionMatrix();
+        }
+        controls.update();
+        invalidateRef.current();
+        cameraTransitionRef.current = progress < 1 ? requestAnimationFrame(step) : null;
+      };
+      if (duration === 0) step(startedAt);
+      else cameraTransitionRef.current = requestAnimationFrame(step);
+      return () => {
+        if (cameraTransitionRef.current !== null) cancelAnimationFrame(cameraTransitionRef.current);
+        cameraTransitionRef.current = null;
+      };
     }
     if (view.name === "custom") {
       if (view.direction && view.smooth === false) {
