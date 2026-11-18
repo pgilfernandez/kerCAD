@@ -1,9 +1,9 @@
 .kercad-advanced-number-row { display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; margin: 7px 0; }
 .kercad-advanced-external-label { flex: 0 0 78px; text-align: right; color: var(--theme-text-muted); font-size: 12px; }
 .kercad-advanced-number-group { flex: 1; min-width: 0; overflow: hidden; border: 1px solid var(--theme-border); border-radius: 7px; background: var(--theme-field-surface, var(--theme-surface)); }
-.kercad-advanced-number-field { position: relative; height: 34px; min-width: 0; color: var(--theme-text); touch-action: none; }
+.kercad-advanced-number-field { --advanced-field-background: var(--theme-field-surface, var(--theme-surface)); position: relative; height: 34px; min-width: 0; color: var(--theme-text); touch-action: none; }
 .kercad-advanced-number-field + .kercad-advanced-number-field { border-top: 1px solid var(--theme-border); }
-.kercad-advanced-number-field.selected { box-shadow: inset 0 0 0 1px var(--accent-solid); background: var(--theme-active); }
+.kercad-advanced-number-field.selected { --advanced-field-background: var(--theme-active); box-shadow: inset 0 0 0 1px var(--accent-solid); background: var(--advanced-field-background); }
 .kercad-advanced-number-field .kercad-advanced-caption, .kercad-advanced-number-field .kercad-advanced-unit { position: absolute; top: 50%; transform: translateY(-50%); color: var(--theme-text-muted); font-size: 11px; font-weight: 400; pointer-events: none; }
 .kercad-advanced-number-field .kercad-advanced-caption { left: 6px; }
 .kercad-advanced-number-field .kercad-advanced-unit { right: 6px; }
@@ -17,5 +17,6 @@
 .kercad-advanced-direction.left { --direction-icon: url("/assets/kercad/toolbar-horizontal/scroll-left.svg"); }
 .kercad-advanced-direction.right { --direction-icon: url("/assets/kercad/toolbar-horizontal/scroll-right.svg"); }
 .kercad-model-sidebar .kercad-advanced-number-field:hover > button { opacity: 1; pointer-events: auto; }
-.kercad-model-sidebar .kercad-advanced-number-field > button:hover { background: transparent; color: var(--theme-link); }
+.kercad-model-sidebar .kercad-advanced-number-field > button { background: color-mix(in srgb, var(--advanced-field-background) 50%, transparent); }
+.kercad-model-sidebar .kercad-advanced-number-field > button:hover { color: var(--theme-link); }
 @media (hover: none) { .kercad-model-sidebar .kercad-advanced-number-field > button { opacity: 1; pointer-events: auto; } }
