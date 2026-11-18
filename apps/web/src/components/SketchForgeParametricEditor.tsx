@@ -2751,11 +2751,18 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       value: selectedFeature.thickness,
     };
   }, [document.objects, document.topologyReferences, selectedFeature]);
+  const selectedExtrudeProfileId = selectedFeature?.kind === "extrude" ? selectedFeature.sketchId : null;
+  const selectedExtrudeProfile = selectedExtrudeProfileId
+    ? document.features.find((feature) => feature.id === selectedExtrudeProfileId)
+    : null;
+  const isBoxOrCylinder = selectedExtrudeProfile?.kind === "sketch"
+    && selectedExtrudeProfile.purpose !== "user"
+    && (selectedExtrudeProfile.profile.shape === "rectangle" || selectedExtrudeProfile.profile.shape === "circle");
   const viewportFloatingFeature = !sketchSession && !pendingEdgeTreatment && !pendingFaceExtrude && !pendingShell && !pendingRevolve && !editingMirrorPlaneId && modelSelection.length === 1 && selectedFeature && selectedObjectVisible && (
     (selectedFeature.kind === "sketch" && selectedFeature.purpose === "user" && selectedFeature.profile.shape === "drawn")
     || selectedFeature.kind === "fillet"
     || selectedFeature.kind === "faceExtrude"
-    || selectedFeature.kind === "extrude"
+    || (selectedFeature.kind === "extrude" && !isBoxOrCylinder)
     || selectedFeature.kind === "revolve"
     || selectedFeature.kind === "shell"
     || selectedFeature.kind === "objectBoolean"
