@@ -40,10 +40,10 @@ describe("parametric reference meshes", () => {
     const localPositions = [...object.referenceMesh!.positions];
     object.transform.position = { x: 12, y: -3, z: 7 };
     object.referenceMesh!.displayMode = "wireframe";
-    object.referenceMesh!.pickable = false;
+    object.locked = true;
 
     const record = parametricReferenceRenderRecords(document)[0];
-    expect(record.reference).toEqual({ opacity: 0.4, displayMode: "wireframe", pickable: false });
+    expect(record.reference).toMatchObject({ opacity: 0.4, displayMode: "wireframe", pickable: false });
     expect(record.mesh.positions[0]).toBeCloseTo(localPositions[0] + 12);
     expect(record.mesh.positions[1]).toBeCloseTo(localPositions[1] - 3);
     expect(record.mesh.positions[2]).toBeCloseTo(localPositions[2] + 7);

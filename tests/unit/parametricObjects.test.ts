@@ -246,7 +246,7 @@ describe("parametric object workflow", () => {
     updateParametricShapeParameter(document, cylinderId, "height", 31);
 
     expect(viewportSelectionForFeature(document, box.id)?.shapeParameters).toEqual({ shape: "box", width: 32, depth: 14, height: 26 });
-    expect(viewportSelectionForFeature(document, cylinderId)?.shapeParameters).toEqual({ shape: "cylinder", radius: 7, height: 31 });
+    expect(viewportSelectionForFeature(document, cylinderId)?.shapeParameters).toEqual({ shape: "cylinder", radius: 7, radius2: 7, elliptical: false, height: 31 });
     expect(viewportSelectionForFeature(document, box.id)?.parameterHandles).toBeUndefined();
     expect(viewportSelectionForFeature(document, cylinderId)?.parameterHandles).toBeUndefined();
   });

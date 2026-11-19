@@ -4278,11 +4278,11 @@ export function KercadParametricEditor({ initialProject, sharedFileName, onSaveS
             {selectedFeature?.kind === "primitive" && selectedFeature.primitive === "tube" && <CylinderProfileButtons locale={locale} elliptical={Boolean(selectedFeature.ellipsoidal)} onChange={(enabled) => updateFeature(selectedFeature.id, (feature) => { if (feature.kind === "primitive") setTubeElliptical(feature, enabled); })} />}
             {selectedFeature?.kind === "primitive" && selectedFeature.primitive === "torus" && <>
               <CylinderProfileButtons locale={locale} elliptical={Boolean(selectedFeature.ellipsoidal)} onChange={(enabled) => updateFeature(selectedFeature.id, (feature) => { if (feature.kind === "primitive") setTorusElliptical(feature, enabled); })} />
-              <ViewportFloatingNumberInput value={selectedFeature.angle ?? 360} unit="angle" displayUnit={displayUnit} snap={1} label={t("property.angle")} min={0} max={360} onCommit={(angle) => updateFeature(selectedFeature.id, (feature) => { if (feature.kind === "primitive") feature.angle = angle; })} />
+              <ViewportFloatingNumberInput locale={locale} value={selectedFeature.angle ?? 360} unit="angle" displayUnit={displayUnit} snap={1} label={t("property.angle")} min={0} max={360} onCommit={(angle) => updateFeature(selectedFeature.id, (feature) => { if (feature.kind === "primitive") feature.angle = angle; })} />
             </>}
             {selectedFeature?.kind === "primitive" && selectedFeature.primitive === "platonic" && <>
               <PlatonicTypeButtons value={selectedFeature.platonicType ?? "tetrahedron"} locale={locale} onChange={(type) => updateFeature(selectedFeature.id, (feature) => { if (feature.kind === "primitive") feature.platonicType = type; })} />
-              <ViewportFloatingNumberInput value={selectedFeature.width} unit="length" displayUnit={displayUnit} snap={document.workplane.snapSpacing} label={t("property.size")} min={.1} max={200} onCommit={(size) => mutate((draft) => updateParametricShapeParameter(draft, selectedFeature.id, "size", size))} />
+              <ViewportFloatingNumberInput locale={locale} value={selectedFeature.width} unit="length" displayUnit={displayUnit} snap={document.workplane.snapSpacing} label={t("property.size")} min={.1} max={200} onCommit={(size) => mutate((draft) => updateParametricShapeParameter(draft, selectedFeature.id, "size", size))} />
             </>}
             {selectedFeature?.kind === "primitive" && (selectedFeature.primitive === "sphere" || selectedFeature.primitive === "halfSphere") && <CylinderProfileButtons sphere hemisphere={selectedFeature.primitive === "halfSphere"} locale={locale} elliptical={Boolean(selectedFeature.ellipsoidal)} onChange={(enabled) => mutate((draft) => {
               const feature = draft.features.find((item) => item.id === selectedFeature.id);
@@ -4300,7 +4300,7 @@ export function KercadParametricEditor({ initialProject, sharedFileName, onSaveS
               })} />;
             })()}
             {selectedReferenceObject?.referenceMesh && <>
-              <ViewportFloatingNumberInput value={selectedReferenceObject.referenceMesh.opacity * 100} unit="percent" displayUnit={displayUnit} snap={1} label={t("property.opacity")} min={5} max={100} onCommit={(value) => updateObject(selectedReferenceObject.id, (object) => { if (object.referenceMesh) object.referenceMesh.opacity = value / 100; })} />
+              <ViewportFloatingNumberInput locale={locale} value={selectedReferenceObject.referenceMesh.opacity * 100} unit="percent" displayUnit={displayUnit} snap={1} label={t("property.opacity")} min={5} max={100} onCommit={(value) => updateObject(selectedReferenceObject.id, (object) => { if (object.referenceMesh) object.referenceMesh.opacity = value / 100; })} />
               <ReferenceDisplayButtons value={selectedReferenceObject.referenceMesh.displayMode} locale={locale} onChange={(mode) => updateObject(selectedReferenceObject.id, (object) => { if (object.referenceMesh) object.referenceMesh.displayMode = mode; })} />
             </>}
           </>}

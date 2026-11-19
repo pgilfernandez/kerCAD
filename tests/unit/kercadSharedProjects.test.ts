@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -18,6 +18,17 @@ async function save(name: string, revision?: string, author?: string) {
   const bytes = await exportKercadProject(document);
   return POST(new Request(url, { method: "POST", body: new Uint8Array(bytes), headers: { ...(revision ? { "if-match": revision } : { "if-none-match": "*" }), ...(author ? { "x-kercad-author": encodeURIComponent(author) } : {}) } }));
 }
+const metricsDirectory = await vi.hoisted(async () => {
+  const { mkdtemp } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const directory = await mkdtemp(join(tmpdir(), "kercad-shared-metrics-test-"));
+  vi.stubEnv("KERCAD_METRICS_DIR", directory);
+  return directory;
+});
+
+afterAll(async () => { await rm(metricsDirectory, { recursive: true, force: true }); });
+
 beforeEach(async () => {
   root = await mkdtemp(path.join(tmpdir(), "kercad-shared-test-"));
   vi.stubEnv("KERCAD_SHARED_PROJECTS_DIR", root);
@@ -35,7 +46,7 @@ describe("kerCAD shared library", () => {
     expect(listing.projects[0]).toMatchObject({ updatedBy: "Álvaro", updatedAt: expect.any(Number) });
   });
   it("rejects oversized author names without writing a project", async () => {
-    expect((await save("Invalid author", undefined, "a".repeat(81))).status).toBe(400);
+    expect((await save("Invalid author", undefined, "a".repeat(161))).status).toBe(400);
   });
   it("preserves a real operation history and packaged source assets", async () => {
     const document = createStarterDocument();

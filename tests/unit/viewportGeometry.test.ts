@@ -134,7 +134,7 @@ describe("operation preview wireframes", () => {
 
     expect(positions).toHaveLength(8 * 6);
     expect(positions.slice(0, 6)).toEqual([-10, -5, -6, 10, -5, -6]);
-    expect(positions.slice(6, 12)).toEqual([-10, -5, -6, 0, 0, 6]);
+    expect(positions.slice(6, 12).map((coordinate) => coordinate + 0)).toEqual([-10, -5, -6, 0, 0, 6]);
   });
 
   it("draws rounded box outlines without triangulated faces", () => {

@@ -11,7 +11,8 @@ describe("Pattern parameter controls", () => {
       mesh: null, color: "#ffffff", view: { name: "home", token: 0 }, locale: "es", floatingFeature: feature,
     }));
     expect(markup).toContain('aria-label="Repeticiones"');
-    expect(markup).toContain('aria-label="Repeticiones +"');
+    expect(markup).toContain('aria-label="Aumentar valor"');
+    expect(markup).toContain('aria-label="Disminuir valor"');
     expect(markup).toContain("×");
     if (feature.kind === "linearPattern") expect(markup).not.toContain('aria-label="Eje X"');
   });

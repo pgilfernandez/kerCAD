@@ -39,7 +39,6 @@ describe("parametric document", () => {
       snapSpacing: 1,
       snapToGrid: true,
       gridVisible: true,
-      activeSizePercent: 20,
       origin: { x: 0, y: 0, z: 0 },
       xAxis: { x: 1, y: 0, z: 0 },
       yAxis: { x: 0, y: 1, z: 0 },
@@ -217,14 +216,13 @@ describe("parametric document", () => {
       snapSpacing: 1,
       snapToGrid: true,
       gridVisible: true,
-      activeSizePercent: 20,
       origin: { x: 0, y: 0, z: 0 },
       normal: { x: 0, y: 0, z: 1 },
     });
 
     const invalid = createStarterDocument(123);
-    invalid.workplane = { width: 10, depth: 9000, gridStep: 0, snapSpacing: 500, snapToGrid: false } as typeof invalid.workplane;
-    expect(normalizeParametricDocument(invalid).workplane).toMatchObject({ width: 10, depth: 2000, gridStep: 0.1, snapSpacing: 200, snapToGrid: false });
+    invalid.workplane = { width: 10, depth: 9000, gridStep: 0, snapSpacing: 15000, snapToGrid: false } as typeof invalid.workplane;
+    expect(normalizeParametricDocument(invalid).workplane).toMatchObject({ width: 10, depth: 2000, gridStep: 0.1, snapSpacing: 10000, snapToGrid: false });
 
     const legacy = createStarterDocument(123);
     delete (legacy.workplane as Partial<typeof legacy.workplane>).snapSpacing;

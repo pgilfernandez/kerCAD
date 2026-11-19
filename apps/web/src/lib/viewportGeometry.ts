@@ -185,7 +185,7 @@ export function operationPreviewWireframePositions(shape: "box" | "roundedBox" |
         );
       }
     }
-    for (const direction of [...new Set([0, Math.PI / 2, Math.PI, Math.PI * 1.5, sweep].filter((angle) => angle <= sweep))]) {
+    for (const direction of [...new Set([0, Math.PI / 2, Math.PI, Math.PI * 1.5, ...(sweepAngle < 360 ? [sweep] : [])].filter((angle) => angle <= sweep))]) {
       for (let index = 0; index < segments; index += 1) {
         const angle = index / segments * Math.PI * 2;
         const nextAngle = (index + 1) / segments * Math.PI * 2;

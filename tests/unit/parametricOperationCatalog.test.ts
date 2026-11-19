@@ -60,14 +60,14 @@ describe("parametric operation catalog", () => {
   });
 
   it.each([
-    ["pyramid", ["width", "depth", "height"]],
+    ["pyramid", ["width", "depth", "height", "topRadius"]],
     ["wedge", ["width", "depth", "height"]],
     ["roof", ["width", "depth", "height"]],
     ["roundRoof", ["width", "depth", "height"]],
   ] as const)("defines the remaining exact %s primitive", (kind, keys) => {
     const parameters = parametricOperationDefinition(kind).parameters;
     expect(parameters.map((parameter) => parameter.key)).toEqual(keys);
-    expect(parameters.map((parameter) => parameter.label)).toEqual(["Ancho", "Largo", "Altura"]);
+    expect(parameters.map((parameter) => parameter.label)).toEqual(["Ancho", "Largo", "Altura", ...(kind === "pyramid" ? ["Radio superior"] : [])]);
   });
 
   it("defines educational polygon and gear generators", () => {

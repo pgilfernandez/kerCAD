@@ -89,6 +89,7 @@ describe("workplane settings helpers", () => {
     expect(parseMeasurementInput("12,5")).toBe(12.5);
     expect(parseMeasurementInput("1.234,5")).toBe(1234.5);
     expect(parseMeasurementInput("1,234.5")).toBe(1234.5);
+    expect(parseMeasurementInput("1.234,5 mm + 1,234.5 mm", "mm")).toBe(2469);
     expect(parseMeasurementInput("not a measurement")).toBeNaN();
   });
 

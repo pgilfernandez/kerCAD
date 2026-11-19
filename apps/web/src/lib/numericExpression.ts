@@ -48,10 +48,15 @@ export function parseNumericExpression(input: string | number, defaultUnit: stri
     } else if (text[position] === "π") {
       position++; result = scalar(Math.PI);
     } else {
-      const match = text.slice(position).match(/^(?:\d+(?:[.,]\d*)?|[.,]\d+)(?:e[+-]?\d+)?/);
+      const match = text.slice(position).match(/^(?:\d{1,3}(?:\.\d{3})+,\d+|\d{1,3}(?:,\d{3})+\.\d+|\d+(?:[.,]\d*)?|[.,]\d+)(?:e[+-]?\d+)?/);
       if (!match) fail();
       position += match[0].length;
-      result = scalar(Number(match[0].replace(",", ".")));
+      const literal = match[0];
+      // With both separators present, the last one is the decimal mark.
+      const normalized = literal.includes(".") && literal.includes(",")
+        ? literal.lastIndexOf(",") > literal.lastIndexOf(".") ? literal.replaceAll(".", "").replace(",", ".") : literal.replaceAll(",", "")
+        : literal.replace(",", ".");
+      result = scalar(Number(normalized));
     }
     skip();
     const suffix = text.slice(position).match(/^[a-zµμ]+|^[°%"']/)?.[0];
