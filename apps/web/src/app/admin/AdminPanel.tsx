@@ -228,7 +228,7 @@ export function AdminPanel({ slug, passwordRequired: initialPasswordRequired }: 
       {uiText("admin.deleteShared", {}, locale)} ({metrics?.sharedProjectCount ?? "—"})
     </button>
     </div>
-    {deleteResult && <p role={deleteResult.failed ? "alert" : "status"}>{uiText("admin.deleteSharedResult", deleteResult, locale)}</p>}
+    {deleteResult && deleteResult.failed > 0 && <p role="alert">{uiText("admin.deleteSharedResult", deleteResult, locale)}</p>}
     {passwordRequired ? <>
       <form className="kercad-admin-access-form" onSubmit={saveSharedDirectory}>
         <label>{uiText("admin.sharedDirectory", {}, locale)}

@@ -7,7 +7,7 @@
     "admin.deleteShared": "Alle geteilten Projekte löschen",
     "admin.deleteSharedConfirmWithoutPath": "{count} Projekte im aktuellen Freigabeordner endgültig löschen? Lokale Kopien bleiben erhalten.",
     "admin.deleteSharedConfirm": "{count} geteilte Projekte in {directory} endgültig löschen? Lokale Kopien bleiben erhalten.",
-    "admin.deleteSharedResult": "Geteilte Projekte gelöscht: {deleted}. Nicht gelöscht: {failed}.",
+    "admin.deleteSharedResult": "{failed} geteilte Projekte konnten nicht gelöscht werden.",
     "admin.sharedDirectory": "Ordner für geteilte Projekte",
     "admin.sharedDirectoryHint": "Gib einen absoluten Serverpfad ein. Leer lassen, um die Servereinstellung oder den Standardordner zu verwenden.",
     "admin.sharedDirectoryInvalid": "Wähle einen vorhandenen Ordner mit Lese- und Schreibzugriff für den Server.",

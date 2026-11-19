@@ -7,7 +7,7 @@
     "admin.deleteShared": "Elimina tutti i progetti condivisi",
     "admin.deleteSharedConfirmWithoutPath": "Eliminare definitivamente {count} progetti della cartella condivisa attuale? Le copie locali non saranno eliminate.",
     "admin.deleteSharedConfirm": "Eliminare definitivamente {count} progetti condivisi in {directory}? Le copie locali non saranno eliminate.",
-    "admin.deleteSharedResult": "Progetti condivisi eliminati: {deleted}. Non eliminati: {failed}.",
+    "admin.deleteSharedResult": "Impossibile eliminare {failed} progetti condivisi.",
     "admin.sharedDirectory": "Cartella dei progetti condivisi",
     "admin.sharedDirectoryHint": "Inserisci un percorso assoluto sul server. Lascialo vuoto per usare l’impostazione del server o la cartella predefinita.",
     "admin.sharedDirectoryInvalid": "Scegli una cartella esistente che il server possa leggere e scrivere.",

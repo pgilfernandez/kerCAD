@@ -7,7 +7,7 @@
     "admin.deleteShared": "Borrar todos los proyectos compartidos",
     "admin.deleteSharedConfirmWithoutPath": "¿Borrar permanentemente {count} proyectos de la carpeta compartida actual? Las copias locales no se borrarán.",
     "admin.deleteSharedConfirm": "¿Borrar permanentemente {count} proyectos compartidos de {directory}? Las copias locales no se borrarán.",
-    "admin.deleteSharedResult": "Proyectos compartidos borrados: {deleted}. No se pudieron borrar: {failed}.",
+    "admin.deleteSharedResult": "No se pudieron borrar {failed} proyectos compartidos.",
     "admin.sharedDirectory": "Carpeta de proyectos compartidos",
     "admin.sharedDirectoryHint": "Introduce una ruta absoluta del servidor. Déjala vacía para usar la configuración del servidor o la carpeta predeterminada.",
     "admin.sharedDirectoryInvalid": "Elige una carpeta existente en la que el servidor pueda leer y escribir.",
