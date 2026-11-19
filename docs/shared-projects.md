@@ -35,7 +35,7 @@ being modified or cannot be deleted, the result reports it as not deleted.
 1. Create or edit a local project and return to the dashboard.
 2. Choose **Save to shared** on the project card and confirm. kerCAD uses the project's existing name and author.
 3. Another browser can open it as a separate local copy.
-4. Use the same button on the local project card to publish changes explicitly. A stale revision is rejected; save under another name or open the current server file as another local copy. Existing local work is preserved.
+4. Use the same button on the local project card to publish changes explicitly. If the shared file was deleted, publishing creates it again. If the name is still in use by a different revision, kerCAD refuses to overwrite it. Existing local work is preserved.
 
 The server validates packages, bounds incoming data, uses atomic replacement and compares content revisions under a per-file lock. A request that cannot acquire the lock must never remove another writer's lock. Additional package assets are retained in local shared copies and subsequent shared saves.
 

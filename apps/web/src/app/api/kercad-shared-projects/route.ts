@@ -252,13 +252,14 @@ export async function POST(request: Request) {
     const currentRevision = currentStat ? revisionForBytes(await fs.readFile(filePath)) : null;
     const expectedRevision = unquoteEtag(request.headers.get("if-match"));
     const createOnly = request.headers.get("if-none-match") === "*";
+    const recreateIfMissing = request.headers.get("x-kercad-recreate-if-missing") === "true";
     if (currentStat && (createOnly || !expectedRevision || expectedRevision !== currentRevision)) {
       return NextResponse.json(
         { error: "The shared project changed after you opened it. Reload it or save under a different name.", currentRevision },
         { status: 409 },
       );
     }
-    if (!currentStat && expectedRevision) {
+    if (!currentStat && expectedRevision && !recreateIfMissing) {
       return NextResponse.json({ error: "The shared project no longer exists. Save it under a different name." }, { status: 409 });
     }
 

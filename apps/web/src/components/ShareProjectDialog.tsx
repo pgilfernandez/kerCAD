@@ -31,7 +31,7 @@ export function ShareProjectDialog({ project, locale, onClose, onSaved }: { proj
       const bytes = await exportKercadProject(entry.document, entry.assets, 6, entry.thumbnail);
       const response = await fetch(fileName ? `/api/kercad-shared-projects?fileName=${encodeURIComponent(fileName)}` : "/api/kercad-shared-projects", {
         method: "POST", body: new Uint8Array(bytes),
-        headers: { "Content-Type": KERCAD_PACKAGE_MEDIA_TYPE, "X-Kercad-Author": encodeURIComponent(author), ...(revision ? { "If-Match": revision } : { "If-None-Match": "*" }) },
+        headers: { "Content-Type": KERCAD_PACKAGE_MEDIA_TYPE, "X-Kercad-Author": encodeURIComponent(author), ...(revision ? { "If-Match": revision, "X-Kercad-Recreate-If-Missing": "true" } : { "If-None-Match": "*" }) },
       });
       const payload = await response.json();
       if (response.status === 409) throw new Error(t("dashboard.the.server.copy.has.changed.or.this.name.is.already.in..0521f7"));

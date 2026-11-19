@@ -368,7 +368,7 @@ export default function Home() {
     const revision = current.sharedSource?.fileName === fileName ? current.sharedSource.revision : undefined;
     const response = await fetch(`/api/kercad-shared-projects?fileName=${encodeURIComponent(fileName)}`, {
       method: "POST", body: new Uint8Array(bytes),
-      headers: { "Content-Type": KERCAD_PACKAGE_MEDIA_TYPE, "X-Kercad-Author": encodeURIComponent(author), ...(revision ? { "If-Match": revision } : { "If-None-Match": "*" }) },
+      headers: { "Content-Type": KERCAD_PACKAGE_MEDIA_TYPE, "X-Kercad-Author": encodeURIComponent(author), ...(revision ? { "If-Match": revision, "X-Kercad-Recreate-If-Missing": "true" } : { "If-None-Match": "*" }) },
     });
     const payload = await response.json();
     if (response.status === 409) throw new Error(libraryText("dashboard.the.shared.file.has.changed.or.this.name.is.already.in..1ad3d9"));
