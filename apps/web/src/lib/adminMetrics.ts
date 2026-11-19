@@ -1,6 +1,7 @@
 import { constants, promises as fs } from "node:fs";
 import path from "node:path";
 import { configuredAdminKey, normalizeAdminSlug } from "@/lib/adminAccess";
+import { clearSharedProjects } from "@/lib/clearSharedProjects";
 
 export const metricEvents = ["project", "challenge", "documentation", "overview", "donate", "donateGithub", "donatePaypal", "github"] as const;
 type Event = typeof metricEvents[number];
@@ -132,6 +133,15 @@ export async function enabledSharedProjectsDirectory() {
     const shared = sharedProjectsSettings(await state());
     return shared.enabled ? shared.directory : null;
   }).catch(() => null);
+}
+
+export function deleteSharedProjects(expectedDirectory: string, expectedPasswordHash: string | undefined) {
+  return serial(async () => {
+    const data = await state();
+    const { directory, enabled } = sharedProjectsSettings(data);
+    if (enabled || directory !== expectedDirectory || data.adminPasswordHash !== expectedPasswordHash) return null;
+    return clearSharedProjects(directory);
+  });
 }
 
 export async function setSharedProjectsDirectory(value: string, expectedPasswordHash: string | undefined) {

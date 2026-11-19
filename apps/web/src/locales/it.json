@@ -3,6 +3,10 @@
   "name": "Italiano",
   "direction": "ltr",
   "messages": {
+    "admin.deleteShared": "Elimina tutti i progetti condivisi",
+    "admin.deleteSharedHint": "Accedi e disattiva la condivisione per poter eliminare i progetti.",
+    "admin.deleteSharedConfirm": "Eliminare definitivamente tutti i progetti condivisi in {directory}? Le copie locali non saranno eliminate.",
+    "admin.deleteSharedResult": "Progetti condivisi eliminati: {deleted}. Non eliminati: {failed}.",
     "admin.sharedDirectory": "Cartella dei progetti condivisi",
     "admin.sharedDirectoryHint": "Inserisci un percorso assoluto sul server. Lascialo vuoto per usare l’impostazione del server o la cartella predefinita.",
     "admin.sharedDirectoryInvalid": "Scegli una cartella esistente che il server possa leggere e scrivere.",

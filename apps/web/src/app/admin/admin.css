@@ -19,6 +19,8 @@ html[data-theme="dark"] .kercad-admin-cards h2 { color: #fff; }
 .kercad-admin-telemetry { display: flex; gap: 12px; align-items: center; padding: 12px 16px; border: 1px solid var(--accent-solid); border-radius: 8px; color: var(--theme-link); background: var(--theme-active); font: inherit; cursor: pointer; }
 .kercad-admin-telemetry:disabled { cursor: default; opacity: .6; }
 .kercad-admin-telemetry:hover:not(:disabled) { color: #fff; background: var(--accent-solid); }
+.kercad-admin-telemetry.kercad-admin-danger { color: var(--theme-text-c62828); border-color: var(--theme-line-efaaaa); background: var(--theme-bg-fff0f0); }
+.kercad-admin-telemetry.kercad-admin-danger:hover:not(:disabled) { color: #fff; border-color: #a42636; background: #a42636; }
 .kercad-admin-switch { position: relative; width: 36px; height: 20px; border-radius: 12px; background: #777; }
 .kercad-admin-switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: white; transition: transform .15s; }
 .kercad-admin-telemetry[aria-checked="true"] .kercad-admin-switch { background: var(--accent-solid); }

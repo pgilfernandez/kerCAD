@@ -25,6 +25,11 @@ there first. Clear and save the field to fall back to the environment setting,
 or to the default folder if no environment setting exists.
 Changing the folder does not move or delete files in the previous one.
 
+To permanently empty the current shared library, sign in to Administration,
+turn off **Shared projects**, then use **Delete all shared projects** and confirm.
+This does not affect local browser copies or other folders. If a project is
+being modified or cannot be deleted, the result reports it as not deleted.
+
 1. Create or edit a local project and return to the dashboard.
 2. Choose **Save to shared** on the project card and confirm the file name and author.
 3. Another browser can open it as a separate local copy.

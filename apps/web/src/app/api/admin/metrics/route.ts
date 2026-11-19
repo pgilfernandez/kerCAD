@@ -1,4 +1,4 @@
-import { adminPasswordRequired, initializeAdminPassword, metricEvents, readAdminPasswordHash, readMetrics, readTelemetryEnabled, recordMetrics, removeAdminPassword, setAdminSlug, setMetricsEnabled, setSharedProjectsDirectory, setSharedProjectsEnabled, setSponsorPopupEnabled } from "@/lib/adminMetrics";
+import { adminPasswordRequired, deleteSharedProjects, initializeAdminPassword, metricEvents, readAdminPasswordHash, readMetrics, readTelemetryEnabled, recordMetrics, removeAdminPassword, setAdminSlug, setMetricsEnabled, setSharedProjectsDirectory, setSharedProjectsEnabled, setSponsorPopupEnabled } from "@/lib/adminMetrics";
 import { configuredAdminKey, hashAdminPassword, isAdminAuthorized, normalizeAdminSlug } from "@/lib/adminAccess";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,6 +20,17 @@ export async function POST(request: Request) {
   const text = await request.text(); if (text.length > 2048) return new Response(null, { status: 413 });
   let input;
   try { input = JSON.parse(text); } catch { return new Response(null, { status: 400 }); }
+  if (input?.action === "delete-shared-projects") {
+    const hash = await readAdminPasswordHash();
+    if ((hash === undefined && !configuredAdminKey()) || !await isAdminAuthorized(request, hash)) return new Response(null, { status: 401, headers });
+    if (typeof input.directory !== "string" || input.confirm !== true) return new Response(null, { status: 400, headers });
+    try {
+      const result = await deleteSharedProjects(input.directory, hash);
+      return result ? Response.json(result, { headers }) : new Response(null, { status: 409, headers });
+    } catch {
+      return new Response(null, { status: 500, headers });
+    }
+  }
   if (input?.action === "remove-password") {
     const hash = await readAdminPasswordHash();
     if (!hash || configuredAdminKey()) return new Response(null, { status: 409, headers });

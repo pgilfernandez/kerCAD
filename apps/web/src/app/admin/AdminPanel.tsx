@@ -34,6 +34,7 @@ export function AdminPanel({ slug, passwordRequired: initialPasswordRequired }: 
   const [pathInput, setPathInput] = useState(`/${slug}`);
   const [directoryInput, setDirectoryInput] = useState<string | null>(null);
   const [directoryInvalid, setDirectoryInvalid] = useState(false);
+  const [deleteResult, setDeleteResult] = useState<{ deleted: number; failed: number } | null>(null);
   const authHeaders = (secret: string): Record<string, string> => secret
     ? { Authorization: `Basic ${btoa(String.fromCharCode(...new TextEncoder().encode(`admin:${secret}`)))}` }
     : {};
@@ -44,6 +45,7 @@ export function AdminPanel({ slug, passwordRequired: initialPasswordRequired }: 
     setMetrics(null);
     setDirectoryInput(null);
     setDirectoryInvalid(false);
+    setDeleteResult(null);
     setError(false);
     setPasswordRequired(required);
   };
@@ -117,6 +119,23 @@ export function AdminPanel({ slug, passwordRequired: initialPasswordRequired }: 
       if (!response.ok) throw new Error();
       setMetrics(await response.json());
       setDirectoryInput(null);
+      setError(false);
+    } catch { setError(true); }
+    finally { setSaving(false); }
+  };
+  const deleteAllSharedProjects = async () => {
+    const directory = metrics?.sharedProjectsEffectiveDirectory;
+    if (!key || !directory || metrics?.sharedProjectsEnabled || saving) return;
+    if (!window.confirm(uiText("admin.deleteSharedConfirm", { directory }, locale))) return;
+    setSaving(true);
+    setDeleteResult(null);
+    try {
+      const response = await fetch("/api/admin/metrics", {
+        method: "POST", headers: { ...authHeaders(key), "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete-shared-projects", directory, confirm: true }),
+      });
+      if (!response.ok) throw new Error();
+      setDeleteResult(await response.json());
       setError(false);
     } catch { setError(true); }
     finally { setSaving(false); }
@@ -195,7 +214,11 @@ export function AdminPanel({ slug, passwordRequired: initialPasswordRequired }: 
     <button className="kercad-admin-telemetry" type="button" role="switch" aria-checked={metrics?.sharedProjectsEnabled ?? false} disabled={!metrics?.sharedProjectsConfigured || saving} onClick={() => void updateSwitch("shared-projects", !metrics?.sharedProjectsEnabled)}>
       <span className="kercad-admin-switch" aria-hidden="true" />{uiText("admin.sharedProjects", {}, locale)} · {uiText(metrics && !metrics.sharedProjectsConfigured ? "admin.sharedProjectsUnconfigured" : metrics?.sharedProjectsEnabled ? "admin.enabled" : "admin.disabled", {}, locale)}
     </button>
+    <button className="kercad-admin-telemetry kercad-admin-danger" type="button" disabled={!key || !metrics?.sharedProjectsEffectiveDirectory || metrics.sharedProjectsEnabled || saving} title={uiText("admin.deleteSharedHint", {}, locale)} onClick={() => void deleteAllSharedProjects()}>
+      {uiText("admin.deleteShared", {}, locale)}
+    </button>
     </div>
+    {deleteResult && <p role={deleteResult.failed ? "alert" : "status"}>{uiText("admin.deleteSharedResult", deleteResult, locale)}</p>}
     {passwordRequired ? <>
       <form className="kercad-admin-access-form" onSubmit={saveSharedDirectory}>
         <label>{uiText("admin.sharedDirectory", {}, locale)}

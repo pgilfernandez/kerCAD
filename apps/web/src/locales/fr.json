@@ -3,6 +3,10 @@
   "name": "Français",
   "direction": "ltr",
   "messages": {
+    "admin.deleteShared": "Supprimer tous les projets partagés",
+    "admin.deleteSharedHint": "Connectez-vous et désactivez le partage pour pouvoir les supprimer.",
+    "admin.deleteSharedConfirm": "Supprimer définitivement tous les projets partagés de {directory} ? Les copies locales seront conservées.",
+    "admin.deleteSharedResult": "Projets partagés supprimés : {deleted}. Non supprimés : {failed}.",
     "admin.sharedDirectory": "Dossier des projets partagés",
     "admin.sharedDirectoryHint": "Saisissez un chemin absolu sur le serveur. Laissez vide pour utiliser le réglage du serveur ou le dossier par défaut.",
     "admin.sharedDirectoryInvalid": "Choisissez un dossier existant accessible en lecture et en écriture par le serveur.",
