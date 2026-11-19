@@ -6,7 +6,7 @@ import { DashboardBrandLogo } from "@/components/DashboardBrandLogo";
 import { EditorHeaderActions } from "@/components/EditorHeaderActions";
 import { uiText, type KercadLocale } from "@/lib/kercadI18n";
 import "./admin.css";
-type Metrics = { enabled: boolean; sponsorPopupEnabled: boolean; sharedProjectsEnabled: boolean; sharedProjectsConfigured: boolean; adminPasswordManagedByServer: boolean; since: string; active: number; visitors: number; bytes: number; counts: Record<string, number> };
+type Metrics = { enabled: boolean; sponsorPopupEnabled: boolean; sharedProjectsEnabled: boolean; sharedProjectsConfigured: boolean; sharedProjectsDirectory?: string; sharedProjectsEffectiveDirectory?: string | null; adminPasswordManagedByServer: boolean; since: string; active: number; visitors: number; bytes: number; counts: Record<string, number> };
 
 function AdminPasswordField({ label, locale, title, ...inputProps }: ComponentPropsWithoutRef<"input"> & { label: string; locale: KercadLocale }) {
   const id = useId();
@@ -32,6 +32,8 @@ export function AdminPanel({ slug, passwordRequired: initialPasswordRequired }: 
   const [confirmation, setConfirmation] = useState("");
   const [key, setKey] = useState("");
   const [pathInput, setPathInput] = useState(`/${slug}`);
+  const [directoryInput, setDirectoryInput] = useState<string | null>(null);
+  const [directoryInvalid, setDirectoryInvalid] = useState(false);
   const authHeaders = (secret: string): Record<string, string> => secret
     ? { Authorization: `Basic ${btoa(String.fromCharCode(...new TextEncoder().encode(`admin:${secret}`)))}` }
     : {};
@@ -40,6 +42,8 @@ export function AdminPanel({ slug, passwordRequired: initialPasswordRequired }: 
     setKeyInput("");
     setConfirmation("");
     setMetrics(null);
+    setDirectoryInput(null);
+    setDirectoryInvalid(false);
     setError(false);
     setPasswordRequired(required);
   };
@@ -96,6 +100,24 @@ export function AdminPanel({ slug, passwordRequired: initialPasswordRequired }: 
       });
       if (!response.ok) throw new Error();
       resetAccess(false);
+    } catch { setError(true); }
+    finally { setSaving(false); }
+  };
+  const saveSharedDirectory = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!key || saving || directoryInput === null) return;
+    setSaving(true);
+    setDirectoryInvalid(false);
+    try {
+      const response = await fetch("/api/admin/metrics", {
+        method: "POST", headers: { ...authHeaders(key), "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "shared-projects-directory", directory: directoryInput }),
+      });
+      if (response.status === 400) { setDirectoryInvalid(true); return; }
+      if (!response.ok) throw new Error();
+      setMetrics(await response.json());
+      setDirectoryInput(null);
+      setError(false);
     } catch { setError(true); }
     finally { setSaving(false); }
   };
@@ -174,6 +196,16 @@ export function AdminPanel({ slug, passwordRequired: initialPasswordRequired }: 
       <span className="kercad-admin-switch" aria-hidden="true" />{uiText("admin.sharedProjects", {}, locale)} · {uiText(metrics && !metrics.sharedProjectsConfigured ? "admin.sharedProjectsUnconfigured" : metrics?.sharedProjectsEnabled ? "admin.enabled" : "admin.disabled", {}, locale)}
     </button>
     </div>
+    {passwordRequired ? <>
+      <form className="kercad-admin-access-form" onSubmit={saveSharedDirectory}>
+        <label>{uiText("admin.sharedDirectory", {}, locale)}
+          <input type="text" size={38} maxLength={450} spellCheck={false} value={directoryInput ?? metrics?.sharedProjectsDirectory ?? ""} placeholder={metrics?.sharedProjectsEffectiveDirectory ?? undefined} onChange={(event) => { setDirectoryInput(event.target.value); setDirectoryInvalid(false); }} />
+        </label>
+        <button className="kercad-admin-telemetry" type="submit" disabled={saving || directoryInput === null || directoryInput.trim() === (metrics?.sharedProjectsDirectory ?? "")}>{uiText("admin.savePath", {}, locale)}</button>
+      </form>
+      <p>{uiText("admin.sharedDirectoryHint", {}, locale)}</p>
+      {directoryInvalid && <p role="alert">{uiText("admin.sharedDirectoryInvalid", {}, locale)}</p>}
+    </> : <p>{uiText("admin.sharedDirectoryProtected", {}, locale)}</p>}
     <div className="kercad-admin-cards">{cards.map(([key, value]) => <section key={key}><h2>{uiText(key, {}, locale)}</h2><strong>{value ?? "—"}</strong></section>)}</div>
     <footer><p>{uiText("admin.bytesNote", {}, locale)}</p>{metrics && <p>{uiText("admin.since", {}, locale)} {new Date(metrics.since).toLocaleString(locale)}</p>}</footer>
     </>}

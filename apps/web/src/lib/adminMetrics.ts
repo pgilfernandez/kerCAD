@@ -1,10 +1,10 @@
-import { promises as fs } from "node:fs";
+import { constants, promises as fs } from "node:fs";
 import path from "node:path";
 import { configuredAdminKey, normalizeAdminSlug } from "@/lib/adminAccess";
 
 export const metricEvents = ["project", "challenge", "documentation", "overview", "donate", "donateGithub", "donatePaypal", "github"] as const;
 type Event = typeof metricEvents[number];
-type State = { enabled?: boolean; sponsorPopupEnabled?: boolean; sharedProjectsEnabled?: boolean; adminSlug?: string; adminPasswordHash?: string; since: string; counts: Record<Event, number>; bytes: number; visitors: string[]; checkpoints?: Record<string, { bytes: number; at: number }> };
+type State = { enabled?: boolean; sponsorPopupEnabled?: boolean; sharedProjectsEnabled?: boolean; sharedProjectsDirectory?: string; adminSlug?: string; adminPasswordHash?: string; since: string; counts: Record<Event, number>; bytes: number; visitors: string[]; checkpoints?: Record<string, { bytes: number; at: number }> };
 type Runtime = { state: State | null; queue: Promise<unknown>; sessions: Map<string, { at: number; touched: number; bytes: number }>; seen: Set<string> };
 const globalStore = globalThis as typeof globalThis & { kercadMetrics?: Runtime };
 const store = globalStore.kercadMetrics ??= { state: null, queue: Promise.resolve(), sessions: new Map(), seen: new Set() };
@@ -95,11 +95,12 @@ export function recordMetrics(input: { visitor: string; session: string; bytes: 
     await fs.writeFile(`${file}.tmp`, JSON.stringify(data)); await fs.rename(`${file}.tmp`, file);
   });
 }
-export function readMetrics() {
+export function readMetrics(includeDirectory = false) {
   return serial(async () => {
     const data = await state();
-    const sharedProjectsConfigured = Boolean(configuredSharedProjectsDirectory());
-    return { enabled: data.enabled === true, sponsorPopupEnabled: data.sponsorPopupEnabled !== false, sharedProjectsConfigured, sharedProjectsEnabled: sharedProjectsConfigured && data.sharedProjectsEnabled !== false, since: data.since, counts: data.counts, bytes: data.bytes, visitors: data.visitors.length, active: data.enabled ? [...store.sessions.values()].filter((session) => Date.now() - session.at < 90000).length : 0 };
+    const directory = configuredSharedProjectsDirectory(data);
+    const sharedProjectsConfigured = Boolean(directory);
+    return { enabled: data.enabled === true, sponsorPopupEnabled: data.sponsorPopupEnabled !== false, sharedProjectsConfigured, sharedProjectsEnabled: sharedProjectsConfigured && data.sharedProjectsEnabled !== false, ...(includeDirectory ? { sharedProjectsDirectory: data.sharedProjectsDirectory ?? "", sharedProjectsEffectiveDirectory: directory } : {}), since: data.since, counts: data.counts, bytes: data.bytes, visitors: data.visitors.length, active: data.enabled ? [...store.sessions.values()].filter((session) => Date.now() - session.at < 90000).length : 0 };
   });
 }
 export function readSponsorPopupEnabled() {
@@ -118,15 +119,39 @@ function setFeatureEnabled(key: "sponsorPopupEnabled" | "sharedProjectsEnabled",
 export const setSponsorPopupEnabled = (enabled: boolean) => setFeatureEnabled("sponsorPopupEnabled", enabled);
 export const setSharedProjectsEnabled = (enabled: boolean) => setFeatureEnabled("sharedProjectsEnabled", enabled);
 
-function configuredSharedProjectsDirectory() {
+function configuredSharedProjectsDirectory(data: State) {
+  if (data.sharedProjectsDirectory) return data.sharedProjectsDirectory;
   const configured = (process.env.KERCAD_SHARED_PROJECTS_DIR ?? process.env.SKETCHFORGE_SHARED_PROJECTS_DIR)?.trim();
   return configured ? path.resolve(configured) : null;
 }
 
 export async function enabledSharedProjectsDirectory() {
-  const directory = configuredSharedProjectsDirectory();
-  if (!directory) return null;
-  return serial(async () => (await state()).sharedProjectsEnabled === false ? null : directory).catch(() => null);
+  return serial(async () => {
+    const data = await state();
+    return data.sharedProjectsEnabled === false ? null : configuredSharedProjectsDirectory(data);
+  }).catch(() => null);
+}
+
+export async function setSharedProjectsDirectory(value: string, expectedPasswordHash: string | undefined) {
+  let directory: string | undefined;
+  if (value) {
+    if (!path.isAbsolute(value) || value.includes("\0")) return "invalid";
+    try {
+      const resolved = await fs.realpath(value);
+      if (resolved === path.parse(resolved).root || !(await fs.stat(resolved)).isDirectory()) return "invalid";
+      await fs.access(resolved, constants.R_OK | constants.W_OK | constants.X_OK);
+      directory = resolved;
+    } catch { return "invalid"; }
+  }
+  return serial(async () => {
+    const current = await state();
+    if (current.adminPasswordHash !== expectedPasswordHash) return "conflict";
+    const data = { ...current, sharedProjectsDirectory: directory };
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    await fs.writeFile(`${file}.tmp`, JSON.stringify(data)); await fs.rename(`${file}.tmp`, file);
+    store.state = data;
+    return "saved";
+  });
 }
 export function setMetricsEnabled(enabled: boolean) {
   return serial(async () => {

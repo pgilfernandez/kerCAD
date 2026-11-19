@@ -3,6 +3,10 @@
   "name": "Deutsch",
   "direction": "ltr",
   "messages": {
+    "admin.sharedDirectory": "Ordner für geteilte Projekte",
+    "admin.sharedDirectoryHint": "Gib einen absoluten Serverpfad ein. Leer lassen, um die Serverumgebung zu verwenden.",
+    "admin.sharedDirectoryInvalid": "Wähle einen vorhandenen Ordner mit Lese- und Schreibzugriff für den Server.",
+    "admin.sharedDirectoryProtected": "Lege ein Admin-Passwort fest, um den Ordner zu konfigurieren.",
     "admin.donateGithub": "Spenden GitHub",
     "admin.donatePaypal": "Spenden Paypal",
     "admin.showPassword": "Passwort anzeigen",

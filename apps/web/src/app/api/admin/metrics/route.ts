@@ -1,12 +1,17 @@
-import { adminPasswordRequired, initializeAdminPassword, metricEvents, readAdminPasswordHash, readMetrics, readTelemetryEnabled, recordMetrics, removeAdminPassword, setAdminSlug, setMetricsEnabled, setSharedProjectsEnabled, setSponsorPopupEnabled } from "@/lib/adminMetrics";
+import { adminPasswordRequired, initializeAdminPassword, metricEvents, readAdminPasswordHash, readMetrics, readTelemetryEnabled, recordMetrics, removeAdminPassword, setAdminSlug, setMetricsEnabled, setSharedProjectsDirectory, setSharedProjectsEnabled, setSponsorPopupEnabled } from "@/lib/adminMetrics";
 import { configuredAdminKey, hashAdminPassword, isAdminAuthorized, normalizeAdminSlug } from "@/lib/adminAccess";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const headers = { "Cache-Control": "no-store" };
+async function adminMetricsResponse(hash: string | undefined) {
+  const managed = Boolean(configuredAdminKey());
+  return Response.json({ ...await readMetrics(managed || hash !== undefined), adminPasswordManagedByServer: managed }, { headers });
+}
 export async function GET(request: Request) {
   if (new URL(request.url).searchParams.has("status")) return Response.json({ enabled: await readTelemetryEnabled() }, { headers });
-  if (!await isAdminAuthorized(request, await readAdminPasswordHash())) return new Response(null, { status: 401, headers });
-  return Response.json({ ...await readMetrics(), adminPasswordManagedByServer: Boolean(configuredAdminKey()) }, { headers });
+  const hash = await readAdminPasswordHash();
+  if (!await isAdminAuthorized(request, hash)) return new Response(null, { status: 401, headers });
+  return adminMetricsResponse(hash);
 }
 export async function POST(request: Request) {
   const origin = request.headers.get("origin");
@@ -38,11 +43,20 @@ export async function POST(request: Request) {
     if (!await setAdminSlug(slug, hash)) return new Response(null, { status: 409, headers });
     return Response.json({ path: `/${slug}` }, { headers });
   }
+  if (input?.action === "shared-projects-directory") {
+    const hash = await readAdminPasswordHash();
+    if ((hash === undefined && !configuredAdminKey()) || !await isAdminAuthorized(request, hash)) return new Response(null, { status: 401, headers });
+    if (typeof input.directory !== "string") return new Response(null, { status: 400, headers });
+    const result = await setSharedProjectsDirectory(input.directory.trim(), hash);
+    if (result !== "saved") return new Response(null, { status: result === "invalid" ? 400 : 409, headers });
+    return adminMetricsResponse(hash);
+  }
   if ((input?.action === "telemetry" || input?.action === "sponsor-popup" || input?.action === "shared-projects") && typeof input.enabled === "boolean") {
-    if (!await isAdminAuthorized(request, await readAdminPasswordHash())) return new Response(null, { status: 401, headers });
+    const hash = await readAdminPasswordHash();
+    if (!await isAdminAuthorized(request, hash)) return new Response(null, { status: 401, headers });
     const update = input.action === "telemetry" ? setMetricsEnabled : input.action === "sponsor-popup" ? setSponsorPopupEnabled : setSharedProjectsEnabled;
     await update(input.enabled);
-    return Response.json({ ...await readMetrics(), adminPasswordManagedByServer: Boolean(configuredAdminKey()) }, { headers });
+    return adminMetricsResponse(hash);
   }
   const validId = (value: unknown) => typeof value === "string" && /^[a-zA-Z0-9-]{1,80}$/.test(value);
   if (!input || !validId(input.visitor) || !validId(input.session) || !Number.isFinite(input.bytes) || input.bytes < 0 || input.bytes > 1e11 || (input.event && (!metricEvents.includes(input.event) || !validId(input.id)))) return new Response(null, { status: 400 });

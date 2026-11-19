@@ -12,6 +12,13 @@ The existing Docker Compose environment variable `SKETCHFORGE_SHARED_PROJECTS_DI
 
 Use the **Shared projects** switch in `/admin` to disable or re-enable access without restarting the server. The switch requires a configured directory, preserves existing shared files and local copies, and is stored with the other admin settings. It does not add authentication.
 
+After setting an admin password or configuring `KERCAD_ADMIN_KEY`, sign in
+and use **Shared projects folder** to override the environment setting without
+restarting. Enter the absolute path of an existing directory writable by the
+server. With Docker, use the path inside the container and mount the directory
+there first. Clear and save the field to fall back to the environment setting.
+Changing the folder does not move or delete files in the previous one.
+
 1. Create or edit a local project and return to the dashboard.
 2. Open **Shared**, select the local project and choose **Save to shared**.
 3. Another browser can open it as a separate local copy.

@@ -3,6 +3,10 @@
   "name": "Italiano",
   "direction": "ltr",
   "messages": {
+    "admin.sharedDirectory": "Cartella dei progetti condivisi",
+    "admin.sharedDirectoryHint": "Inserisci un percorso assoluto sul server. Lascialo vuoto per usare l’impostazione dell’ambiente.",
+    "admin.sharedDirectoryInvalid": "Scegli una cartella esistente che il server possa leggere e scrivere.",
+    "admin.sharedDirectoryProtected": "Imposta una password di amministrazione per configurare la cartella condivisa.",
     "admin.donateGithub": "Dona GitHub",
     "admin.donatePaypal": "Dona Paypal",
     "admin.showPassword": "Mostra password",

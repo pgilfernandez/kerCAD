@@ -3,6 +3,10 @@
   "name": "Français",
   "direction": "ltr",
   "messages": {
+    "admin.sharedDirectory": "Dossier des projets partagés",
+    "admin.sharedDirectoryHint": "Saisissez un chemin absolu sur le serveur. Laissez vide pour utiliser le réglage de l’environnement.",
+    "admin.sharedDirectoryInvalid": "Choisissez un dossier existant accessible en lecture et en écriture par le serveur.",
+    "admin.sharedDirectoryProtected": "Définissez un mot de passe administrateur pour configurer le dossier partagé.",
     "admin.donateGithub": "Don GitHub",
     "admin.donatePaypal": "Don Paypal",
     "admin.showPassword": "Afficher le mot de passe",
