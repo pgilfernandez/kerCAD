@@ -1280,7 +1280,7 @@
     "ui.page.copiando.proyectos.f63870": "Copiando {value0} proyectos…",
     "ui.page.proyectos.copiados.c952dc": "{value0} proyectos copiados.{value1}",
     "ui.page.la.copia.no.pudo.completarse.ee67f9": "La copia no pudo completarse: {value0}",
-    "ui.challengeeditor.step.0a0a95": "STEP {value0}",
+    "ui.challengeeditor.step.0a0a95": "PASO {value0}",
     "ui.challengeeditor.remove.a2d40d": "Eliminar {value0}",
     "ui.challengeeditor.parameter.name.978a9c": "Nombre del parámetro {value0}",
     "ui.challengeeditor.parameter.value.1bc9f6": "Valor del parámetro {value0}",

@@ -164,7 +164,7 @@ export default function Home() {
     if (!sourceChallenge) {
       const locale = getCurrentLocale();
       challenge.title = kercadTranslate(locale, "challenge.new");
-      challenge.steps[0].label = kercadTranslate(locale, "challenge.beforeStart");
+      challenge.steps[0].label = kercadTranslate(locale, "ui.challengeeditor.step.0a0a95", { value0: 1 });
       challenge.steps[0].title = kercadTranslate(locale, "challenge.firstStep");
       challenge.steps[0].body = kercadTranslate(locale, "challenge.firstStepBody");
     }
