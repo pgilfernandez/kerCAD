@@ -9359,8 +9359,8 @@ circle.sketch-preview-line {
 .dashboard-header-actions > button:hover, .dashboard-header-actions > a:hover { color: var(--accent-solid); background: rgba(255,255,255,.8); }
 .dashboard-header-actions > button:focus-visible, .dashboard-header-actions > a:focus-visible { outline: 2px solid white; outline-offset: 2px; }
 .dashboard-header-actions > button:disabled { opacity: .55; cursor: default; pointer-events: none; }
-.dashboard-header-actions > button.kercad-header-start-designing { color: var(--theme-link); background: var(--theme-surface); border-color: var(--theme-dark-border, #fff); }
-.dashboard-header-actions > button.kercad-header-start-designing:hover { background: var(--theme-active); }
+.dashboard-header-actions > button.kercad-header-start-designing { color: var(--accent-link-light); background: #fff; border-color: #fff; }
+.dashboard-header-actions > button.kercad-header-start-designing:hover { background: color-mix(in srgb, var(--accent-link-light) 10%, #fff); }
 @media (min-width: 621px) {
   .dashboard-header-actions > button, .dashboard-header-actions > a { border-color: white; background: rgba(255,255,255,.2); }
   .dashboard-header-actions > button:hover, .dashboard-header-actions > a:hover { background: rgba(255,255,255,.8); }
