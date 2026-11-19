@@ -21,7 +21,7 @@ export function attachScaleManipulator(model: THREE.Group, camera: THREE.Camera,
   const group = new THREE.Group();
   group.matrixAutoUpdate = false;
   group.matrix.copy(target.matrix);
-  const outline = new LineSegments2(new LineSegmentsGeometry(), new LineMaterial({ color: 0x000000, linewidth: 2, opacity: .3, transparent: true, depthTest: false, depthWrite: false }));
+  const outline = new LineSegments2(new LineSegmentsGeometry(), new LineMaterial({ color: 0x000000, linewidth: 2, dashed: true, dashSize: 3, gapSize: 2, opacity: .25, transparent: true, depthTest: false, depthWrite: false }));
   outline.renderOrder = 40;
   const handleMaterial = () => new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, depthTest: false, depthWrite: false, toneMapped: false });
   // Both layers follow the same transforms; the inset fill leaves a coplanar border.
@@ -90,6 +90,7 @@ export function attachScaleManipulator(model: THREE.Group, camera: THREE.Camera,
       if (!(i & mask)) edges.push(...vertices[i].toArray(), ...vertices[i | mask].toArray());
     }
     outline.geometry.setPositions(edges);
+    outline.computeLineDistances();
     bounds.getSize(dimensions);
     positionSquares();
   };
