@@ -1521,6 +1521,8 @@
     "challenge.new": "New challenge",
     "challenge.firstStep": "First step",
     "challenge.beforeStart": "BEFORE YOU START",
+    "challenge.previewDraft": "Preview challenge",
+    "challenge.resumeEditing": "Return to editing",
     "challenge.firstStepBody": "Describe what the learner should do in this step.",
     "welcome.greeting": "hello",
     "challenge.captureParameters": "Capture",

@@ -12,8 +12,6 @@ export function ChallengePlayer({ challenge, dock, onDockChange, onClose }: { ch
   const [stepIndex, setStepIndex] = useState(0);
   const [position, setPosition] = useState({ x: 28, y: 96 });
   const dragRef = useRef<{ pointerId: number; x: number; y: number; left: number; top: number } | null>(null);
-  const step = challenge.steps[stepIndex];
-  const parameterGroups = groupChallengeParameters(step.values);
   useEffect(() => { setStepIndex(0); }, [challenge.id]);
 
   const beginDrag = (event: React.PointerEvent<HTMLElement>) => {
@@ -49,7 +47,15 @@ export function ChallengePlayer({ challenge, dock, onDockChange, onClose }: { ch
       <span className="kercad-challenge-progress">{stepIndex + 1} / {challenge.steps.length}</span>
       {dock === "floating" ? <GripHorizontal className="kercad-challenge-drag-hint" size={22} aria-hidden="true" /> : null}
     </header>
-    <div className="kercad-challenge-step">
+    <ChallengeStepPreview challenge={challenge} stepIndex={stepIndex} onStepChange={setStepIndex} onFinish={onClose} />
+  </aside>;
+}
+
+export function ChallengeStepPreview({ challenge, stepIndex, onStepChange, onFinish }: { challenge: KercadChallenge; stepIndex: number; onStepChange: (index: number) => void; onFinish: () => void }) {
+  const step = challenge.steps[stepIndex];
+  const parameterGroups = groupChallengeParameters(step.values);
+  return <>
+    <div key={step.id} className="kercad-challenge-step">
       <small>{step.label || uiText("ui.challengeeditor.step.0a0a95", { value0: stepIndex + 1 })}</small>
       <h2>{step.title}</h2>
       <p>{step.body}</p>
@@ -57,10 +63,10 @@ export function ChallengePlayer({ challenge, dock, onDockChange, onClose }: { ch
       {step.image ? <img src={step.image} alt="" /> : null}
     </div>
     <footer>
-      <button type="button" disabled={stepIndex === 0} onClick={() => setStepIndex((current) => Math.max(0, current - 1))}><ChevronLeft size={20} /> {uiText("ui.challengeeditor.previous.50f942")}</button>
+      <button type="button" disabled={stepIndex === 0} onClick={() => onStepChange(stepIndex - 1)}><ChevronLeft size={20} /> {uiText("ui.challengeeditor.previous.50f942")}</button>
       {stepIndex < challenge.steps.length - 1
-        ? <button className="primary" type="button" onClick={() => setStepIndex((current) => Math.min(challenge.steps.length - 1, current + 1))}>{uiText("ui.challengeeditor.next.bc9819")}{" "}<ChevronRight size={20} /></button>
-        : <button className="primary" type="button" onClick={onClose}>{uiText("ui.challengeeditor.finish.b74bde")}</button>}
+        ? <button className="primary" type="button" onClick={() => onStepChange(stepIndex + 1)}>{uiText("ui.challengeeditor.next.bc9819")}{" "}<ChevronRight size={20} /></button>
+        : <button className="primary" type="button" onClick={onFinish}>{uiText("ui.challengeeditor.finish.b74bde")}</button>}
     </footer>
-  </aside>;
+  </>;
 }

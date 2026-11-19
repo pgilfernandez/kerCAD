@@ -1521,6 +1521,8 @@
     "challenge.new": "Nuevo reto",
     "challenge.firstStep": "Primer paso",
     "challenge.beforeStart": "ANTES DE EMPEZAR",
+    "challenge.previewDraft": "Previsualizar reto",
+    "challenge.resumeEditing": "Volver a la edición",
     "challenge.firstStepBody": "Describe lo que debe hacer el estudiante en este paso.",
     "welcome.greeting": "hola",
     "challenge.captureParameters": "Capturar",
