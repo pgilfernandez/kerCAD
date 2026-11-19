@@ -9065,7 +9065,7 @@ function SketchReferenceIcon({ name }: { name: SketchReferenceIconName }) {
       className="sketch-reference-icon"
       data-sketch-icon={name}
       draggable={false}
-      src={`/assets/sketchforge/${sketchReferenceIcons[name]}`}
+      src={`/assets/old/${sketchReferenceIcons[name]}`}
       alt=""
     />
   );

@@ -3908,7 +3908,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       {shapesOpen ? <div id="kercad-shape-menu" data-kercad-popup="shapes" className="shape-menu-dropdown detached" style={{ top: shapeMenuPosition.top, left: shapeMenuPosition.left }}>
         <div className="shape-menu-list">
           {parametricShapeMenuOrder.map((kind) => {
-            if (kind === "text") return <button className="shape-menu-item" key={kind} onClick={addText}><img src="/assets/sketchforge/shape-icons-gray/raw/text.png" alt="" /><span>{t("toolbar.text")}</span></button>;
+            if (kind === "text") return <button className="shape-menu-item" key={kind} onClick={addText}><img src="/assets/old/shape-icons-gray/raw/text.png" alt="" /><span>{t("toolbar.text")}</span></button>;
             if (kind === "spiral" || kind === "helix") return <button className="shape-menu-item" key={kind} onClick={() => addPathShape(kind)}><ThemedToolbarImage src={`/assets/kercad/toolbar-3d/shapes/${kind}.svg`} width={40} height={40} alt="" /><span>{t(kind === "spiral" ? "path.spiral" : "path.helix")}</span></button>;
             const asset = parametricOperationDefinition(kind);
             const localized = localizedParametricOperationDefinition(kind, locale);

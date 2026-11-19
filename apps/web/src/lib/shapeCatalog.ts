@@ -6,18 +6,18 @@ import type { ShapeAsset, WorkplaneShape } from "@/types/sketchforge";
 export type ToolbarShapeAsset = ShapeAsset & { menuIcon: string };
 
 export const toolbarShapeAssets: ToolbarShapeAsset[] = [
-  { id: "box", name: "Box", src: "assets/sketchforge/shape-icons-gray/box.png", menuIcon: "assets/sketchforge/shape-icons-gray/box.png", kind: "box", color: "#d41721" },
-  { id: "cylinder", name: "Cylinder", src: "assets/sketchforge/shape-icons-gray/cylinder.png", menuIcon: "assets/sketchforge/shape-icons-gray/cylinder.png", kind: "cylinder", color: "#d97813" },
-  { id: "sphere", name: "Sphere", src: "assets/sketchforge/shape-icons-gray/sphere.png", menuIcon: "assets/sketchforge/shape-icons-gray/sphere.png", kind: "sphere", color: "#0098c7" },
-  { id: "cone", name: "Cone", src: "assets/sketchforge/shape-icons-gray/cone.png", menuIcon: "assets/sketchforge/shape-icons-gray/cone.png", kind: "cone", color: "#6e2786" },
-  { id: "pyramid", name: "Pyramid", src: "assets/sketchforge/shape-icons-gray/pyramid.png", menuIcon: "assets/sketchforge/shape-icons-gray/pyramid.png", kind: "pyramid", color: "#f2cf10" },
+  { id: "box", name: "Box", src: "assets/old/shape-icons-gray/box.png", menuIcon: "assets/old/shape-icons-gray/box.png", kind: "box", color: "#d41721" },
+  { id: "cylinder", name: "Cylinder", src: "assets/old/shape-icons-gray/cylinder.png", menuIcon: "assets/old/shape-icons-gray/cylinder.png", kind: "cylinder", color: "#d97813" },
+  { id: "sphere", name: "Sphere", src: "assets/old/shape-icons-gray/sphere.png", menuIcon: "assets/old/shape-icons-gray/sphere.png", kind: "sphere", color: "#0098c7" },
+  { id: "cone", name: "Cone", src: "assets/old/shape-icons-gray/cone.png", menuIcon: "assets/old/shape-icons-gray/cone.png", kind: "cone", color: "#6e2786" },
+  { id: "pyramid", name: "Pyramid", src: "assets/old/shape-icons-gray/pyramid.png", menuIcon: "assets/old/shape-icons-gray/pyramid.png", kind: "pyramid", color: "#f2cf10" },
   { id: "wedge", name: "Wedge", src: "assets/kercad/toolbar-3d/shapes/wedge.svg", menuIcon: "assets/kercad/toolbar-3d/shapes/wedge.svg", kind: "wedge", color: "#33983d" },
-  { id: "text", name: "Text", src: "assets/sketchforge/shape-icons-gray/text.png", menuIcon: "assets/sketchforge/shape-icons-gray/text.png", kind: "text", color: "#cf101b" },
-  { id: "round-roof", name: "Round Roof", src: "assets/sketchforge/shape-icons-gray/round-roof.png", menuIcon: "assets/sketchforge/shape-icons-gray/round-roof.png", kind: "roundRoof", color: "#67c4ce" },
-  { id: "half-sphere", name: "Half Sphere", src: "assets/sketchforge/shape-icons-gray/half-sphere.png", menuIcon: "assets/sketchforge/shape-icons-gray/half-sphere.png", kind: "halfSphere", color: "#c9009a" },
-  { id: "torus", name: "Torus", src: "assets/sketchforge/shape-icons-gray/torus.png", menuIcon: "assets/sketchforge/shape-icons-gray/torus.png", kind: "torus", color: "#0098c7" },
-  { id: "tube", name: "Tube", src: "assets/sketchforge/shape-icons-gray/tube.png", menuIcon: "assets/sketchforge/shape-icons-gray/tube.png", kind: "tube", color: "#ce7013" },
-  { id: "gear", name: "Gear", src: "assets/sketchforge/gear-types/spur.png", menuIcon: "assets/sketchforge/gear-types/spur.png", kind: "gear", color: "#6f7f8d" },
+  { id: "text", name: "Text", src: "assets/old/shape-icons-gray/text.png", menuIcon: "assets/old/shape-icons-gray/text.png", kind: "text", color: "#cf101b" },
+  { id: "round-roof", name: "Round Roof", src: "assets/old/shape-icons-gray/round-roof.png", menuIcon: "assets/old/shape-icons-gray/round-roof.png", kind: "roundRoof", color: "#67c4ce" },
+  { id: "half-sphere", name: "Half Sphere", src: "assets/old/shape-icons-gray/half-sphere.png", menuIcon: "assets/old/shape-icons-gray/half-sphere.png", kind: "halfSphere", color: "#c9009a" },
+  { id: "torus", name: "Torus", src: "assets/old/shape-icons-gray/torus.png", menuIcon: "assets/old/shape-icons-gray/torus.png", kind: "torus", color: "#0098c7" },
+  { id: "tube", name: "Tube", src: "assets/old/shape-icons-gray/tube.png", menuIcon: "assets/old/shape-icons-gray/tube.png", kind: "tube", color: "#ce7013" },
+  { id: "gear", name: "Gear", src: "assets/old/gear-types/spur.png", menuIcon: "assets/old/gear-types/spur.png", kind: "gear", color: "#6f7f8d" },
 ];
 
 export function sceneShape(shape: Partial<WorkplaneShape> & Pick<WorkplaneShape, "name" | "kind" | "color">): WorkplaneShape {

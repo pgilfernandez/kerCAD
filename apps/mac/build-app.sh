@@ -130,7 +130,7 @@ ditto "$MAC_WEB_ROOT/public/" "$CONTENTS/Resources/server/apps/web/public/"
 ICONSET="$CACHE_DIR/AppIcon.iconset"
 rm -rf "$ICONSET"
 mkdir -p "$ICONSET"
-ICON_SOURCE="$REPO_ROOT/apps/web/public/assets/sketchforge/sketchforge-logo.png"
+ICON_SOURCE="$REPO_ROOT/apps/web/public/assets/old/sketchforge-logo.png"
 for size in 16 32 128 256 512; do
   sips -z "$size" "$size" "$ICON_SOURCE" --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
   double_size=$((size * 2))

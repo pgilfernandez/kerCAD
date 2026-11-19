@@ -20,8 +20,8 @@ type SpriteRect = {
   height: number;
 };
 
-const toolbarSprite = "assets/sketchforge/toolbar-sprite.svg?v=2";
-const vectorToolbarSprite = "assets/sketchforge/vector-toolbar-icons.svg?v=1";
+const toolbarSprite = "assets/old/toolbar-sprite.svg?v=2";
+const vectorToolbarSprite = "assets/old/vector-toolbar-icons.svg?v=1";
 
 function ToolbarSpriteIcon({ rect, className, style }: IconProps & { rect: SpriteRect }) {
   const size = 35;
@@ -75,7 +75,7 @@ type ToolbarCommandImageProps = { file: string; className?: string };
 
 function ToolbarCommandImage({ file, className }: ToolbarCommandImageProps) {
   const assetClassName = `toolbar-art-${file.replace(/\.png$/i, "")}`;
-  return <img aria-hidden="true" className={["toolbar-command-icon", assetClassName, className].filter(Boolean).join(" ")} src={"/assets/sketchforge/" + file} alt="" draggable={false} />;
+  return <img aria-hidden="true" className={["toolbar-command-icon", assetClassName, className].filter(Boolean).join(" ")} src={"/assets/old/" + file} alt="" draggable={false} />;
 }
 
 type KercadOperationImageProps = { file: string; className?: string };
