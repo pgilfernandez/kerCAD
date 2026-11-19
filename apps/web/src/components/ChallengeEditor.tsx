@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronUp, Download, Eye, GripHorizontal, ImageUp, PanelLeft, PanelRight, PanelsTopLeft, Pencil, Plus, ScanLine, SeparatorHorizontal, Star, Trash2, X } from "lucide-react";
+import { Camera, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronUp, Eye, GripHorizontal, ImageDown, ImageUp, PanelLeft, PanelRight, PanelsTopLeft, Pencil, Plus, ScanLine, SeparatorHorizontal, Star, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { KercadChallenge } from "@/lib/challengeLibrary";
 import { uiText } from "@/lib/kercadI18n";
@@ -92,7 +92,7 @@ export function ChallengeEditor({ challenge, dock, capture, selectionParameters 
       link.href = source;
       link.download = `${title}-${suffix}.${extension}`;
       link.click();
-    }}><Download size={19} /></button>;
+    }}><ImageDown size={19} /></button>;
   };
   const addCategory = () => {
     const category = categoryDraft.trim();
