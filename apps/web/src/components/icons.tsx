@@ -154,19 +154,19 @@ export function ToolbarSketchIcon() {
 }
 
 export function ToolbarPositionManipulatorIcon() {
-  return <ThemedToolbarImage aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/manipulator-position.svg" alt="" draggable={false} />;
+  return <ThemedToolbarImage aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-horizontal/manipulator-position.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarRotationManipulatorIcon() {
-  return <ThemedToolbarImage aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/manipulator-rotation.svg" alt="" draggable={false} />;
+  return <ThemedToolbarImage aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-horizontal/manipulator-rotation.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarParameterManipulatorIcon() {
-  return <ThemedToolbarImage aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/manipulator-parameters.svg" alt="" draggable={false} />;
+  return <ThemedToolbarImage aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-horizontal/manipulator-parameters.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarScaleManipulatorIcon() {
-  return <ThemedToolbarImage aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/manipulator-scale.svg" alt="" draggable={false} />;
+  return <ThemedToolbarImage aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-horizontal/manipulator-scale.svg" alt="" draggable={false} />;
 }
 
 export function ToolbarBooleanModeIcon({ mode }: { mode: "add" | "hole" | "common" }) {
