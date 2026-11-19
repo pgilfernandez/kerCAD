@@ -36,6 +36,12 @@ beforeEach(async () => {
 afterEach(async () => { vi.unstubAllEnvs(); await rm(root, { recursive: true, force: true }); });
 
 describe("kerCAD shared library", () => {
+  it("disables sharing on desktop even when a shared directory is configured", async () => {
+    vi.stubEnv("KERCAD_DESKTOP_BUILD", "true");
+    expect((await (await GET(new Request(url.split("?")[0]))).json()).enabled).toBe(false);
+    expect((await save("Desktop project")).status).toBe(404);
+  });
+
   it("lists the last author and timestamp, and keeps attribution on conflicts", async () => {
     const first = await save("Original", undefined, "María López");
     const revision = first.headers.get("etag")!;

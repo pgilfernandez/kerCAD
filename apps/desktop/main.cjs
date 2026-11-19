@@ -37,7 +37,7 @@ function external(raw) {
 }
 async function startServer() {
   const data = app.getPath('userData');
-  for (const dir of ['SharedProjects', 'Challenges', 'Logs']) await mkdir(path.join(data, dir), { recursive: true });
+  for (const dir of ['Challenges', 'Logs']) await mkdir(path.join(data, dir), { recursive: true });
   // Seed bundled packages without replacing teachers' installed/edited ZIPs.
   const bundled = path.join(serverRoot, 'bundled-challenges');
   const { constants } = require('node:fs');
@@ -51,7 +51,7 @@ async function startServer() {
   log.on('error', (error) => console.error(error));
   const env = { ...process.env, NODE_ENV: 'production', NEXT_TELEMETRY_DISABLED: '1',
     HOSTNAME: '127.0.0.1', PORT: '0', KERCAD_CANONICAL_HOST: 'off', SKETCHFORGE_ENABLE_MCP: 'false',
-    KERCAD_SHARED_PROJECTS_DIR: path.join(data, 'SharedProjects'), KERCAD_CHALLENGES_DIR: path.join(data, 'Challenges'),
+    KERCAD_DESKTOP_BUILD: 'true', KERCAD_CHALLENGES_DIR: path.join(data, 'Challenges'),
   };
   for (const key of ['NODE_OPTIONS', 'NODE_PATH', 'ELECTRON_RUN_AS_NODE', 'ELECTRON_NO_ASAR']) delete env[key];
   server = utilityProcess.fork(path.join(__dirname, 'server.cjs'), [path.join(serverRoot, 'apps/web/server.js')], {

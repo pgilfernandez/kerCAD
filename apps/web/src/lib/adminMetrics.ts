@@ -97,12 +97,15 @@ export function recordMetrics(input: { visitor: string; session: string; bytes: 
     await fs.writeFile(`${file}.tmp`, JSON.stringify(data)); await fs.rename(`${file}.tmp`, file);
   });
 }
+const sharedProjectsAvailable = () => process.env.KERCAD_DESKTOP_BUILD !== "true";
+
 export function readMetrics(includeDirectory = false) {
   return serial(async () => {
     const data = await state();
     const shared = sharedProjectsSettings(data);
-    const sharedProjectCount = await countSharedProjects(shared.directory);
-    return { enabled: data.enabled === true, sponsorPopupEnabled: data.sponsorPopupEnabled !== false, sharedProjectsConfigured: true, sharedProjectsEnabled: shared.enabled, sharedProjectCount, ...(includeDirectory ? { sharedProjectsDirectory: data.sharedProjectsDirectory ?? "", sharedProjectsEffectiveDirectory: shared.directory } : {}), since: data.since, counts: data.counts, bytes: data.bytes, visitors: data.visitors.length, active: data.enabled ? [...store.sessions.values()].filter((session) => Date.now() - session.at < 90000).length : 0 };
+    const available = sharedProjectsAvailable();
+    const sharedProjectCount = available ? await countSharedProjects(shared.directory) : null;
+    return { enabled: data.enabled === true, sponsorPopupEnabled: data.sponsorPopupEnabled !== false, sharedProjectsConfigured: available, sharedProjectsEnabled: shared.enabled, sharedProjectCount, ...(available && includeDirectory ? { sharedProjectsDirectory: data.sharedProjectsDirectory ?? "", sharedProjectsEffectiveDirectory: shared.directory } : {}), since: data.since, counts: data.counts, bytes: data.bytes, visitors: data.visitors.length, active: data.enabled ? [...store.sessions.values()].filter((session) => Date.now() - session.at < 90000).length : 0 };
   });
 }
 export function readSponsorPopupEnabled() {
@@ -119,13 +122,13 @@ function setFeatureEnabled(key: "sponsorPopupEnabled" | "sharedProjectsEnabled",
 }
 
 export const setSponsorPopupEnabled = (enabled: boolean) => setFeatureEnabled("sponsorPopupEnabled", enabled);
-export const setSharedProjectsEnabled = (enabled: boolean) => setFeatureEnabled("sharedProjectsEnabled", enabled);
+export const setSharedProjectsEnabled = (enabled: boolean) => sharedProjectsAvailable() ? setFeatureEnabled("sharedProjectsEnabled", enabled) : Promise.resolve();
 
 function sharedProjectsSettings(data: State) {
   const configured = data.sharedProjectsDirectory ?? (process.env.KERCAD_SHARED_PROJECTS_DIR ?? process.env.SKETCHFORGE_SHARED_PROJECTS_DIR)?.trim();
   return {
     directory: configured ? path.resolve(configured) : defaultSharedProjectsDirectory,
-    enabled: data.sharedProjectsEnabled ?? Boolean(configured),
+    enabled: sharedProjectsAvailable() && (data.sharedProjectsEnabled ?? Boolean(configured)),
   };
 }
 
@@ -137,6 +140,7 @@ export async function enabledSharedProjectsDirectory() {
 }
 
 export function deleteSharedProjects(expectedDirectory: string | null, expectedCount: number, expectedPasswordHash: string | undefined) {
+  if (!sharedProjectsAvailable()) return Promise.resolve(null);
   return serial(async () => {
     const data = await state();
     const { directory } = sharedProjectsSettings(data);
@@ -147,6 +151,7 @@ export function deleteSharedProjects(expectedDirectory: string | null, expectedC
 }
 
 export async function setSharedProjectsDirectory(value: string, expectedPasswordHash: string | undefined) {
+  if (!sharedProjectsAvailable()) return "invalid";
   let directory: string | undefined;
   if (value) {
     if (!path.isAbsolute(value) || value.includes("\0")) return "invalid";

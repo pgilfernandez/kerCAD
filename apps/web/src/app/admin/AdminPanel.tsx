@@ -221,15 +221,15 @@ export function AdminPanel({ slug, passwordRequired: initialPasswordRequired }: 
     <button className="kercad-admin-telemetry" type="button" role="switch" aria-checked={metrics?.sponsorPopupEnabled ?? false} disabled={!metrics || saving} onClick={() => void updateSwitch("sponsor-popup", !metrics?.sponsorPopupEnabled)}>
       <span className="kercad-admin-switch" aria-hidden="true" />{uiText("admin.sponsorPopup", {}, locale)} · {uiText(metrics?.sponsorPopupEnabled ? "admin.enabled" : "admin.disabled", {}, locale)}
     </button>
-    <button className="kercad-admin-telemetry" type="button" role="switch" aria-checked={metrics?.sharedProjectsEnabled ?? false} disabled={!metrics?.sharedProjectsConfigured || saving} onClick={() => void updateSwitch("shared-projects", !metrics?.sharedProjectsEnabled)}>
+    {metrics?.sharedProjectsConfigured && <><button className="kercad-admin-telemetry" type="button" role="switch" aria-checked={metrics?.sharedProjectsEnabled ?? false} disabled={!metrics?.sharedProjectsConfigured || saving} onClick={() => void updateSwitch("shared-projects", !metrics?.sharedProjectsEnabled)}>
       <span className="kercad-admin-switch" aria-hidden="true" />{uiText("admin.sharedProjects", {}, locale)} · {uiText(metrics && !metrics.sharedProjectsConfigured ? "admin.sharedProjectsUnconfigured" : metrics?.sharedProjectsEnabled ? "admin.enabled" : "admin.disabled", {}, locale)}
     </button>
     <button className="kercad-admin-telemetry kercad-admin-danger" type="button" disabled={!metrics?.sharedProjectCount || saving} onClick={() => void deleteAllSharedProjects()}>
       {uiText("admin.deleteShared", {}, locale)} ({metrics?.sharedProjectCount ?? "—"})
-    </button>
+    </button></>}
     </div>
     {deleteResult && deleteResult.failed > 0 && <p role="alert">{uiText("admin.deleteSharedResult", deleteResult, locale)}</p>}
-    {passwordRequired ? <>
+    {passwordRequired && metrics?.sharedProjectsConfigured ? <>
       <form className="kercad-admin-access-form" onSubmit={saveSharedDirectory}>
         <label>{uiText("admin.sharedDirectory", {}, locale)}
           <input type="text" size={38} maxLength={450} spellCheck={false} value={directoryInput ?? metrics?.sharedProjectsDirectory ?? ""} placeholder={metrics?.sharedProjectsEffectiveDirectory ?? undefined} onChange={(event) => { setDirectoryInput(event.target.value); setDirectoryInvalid(false); }} />

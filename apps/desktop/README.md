@@ -69,8 +69,9 @@ when ports are busy. The profile is fixed under the OS application-data folder:
 - Linux: `$XDG_CONFIG_HOME/kerCAD-Desktop` (normally `~/.config/kerCAD-Desktop`)
 
 Projects, installed challenges and preferences retain their existing IndexedDB/
-localStorage implementation in the persistent Electron session. `SharedProjects`,
-`Challenges` (ZIP packages) and `Logs/server.log` are separate subdirectories.
+localStorage implementation in the persistent Electron session. `Challenges`
+(ZIP packages) and `Logs/server.log` are stored separately. Shared Projects is
+available only in web deployments; desktop does not delete existing shared files.
 Bundled challenge packages are seeded only when a file with that name is absent.
 Clearing the profile can still erase browser databases: export `.kercad` backups.
 Browser/Safari/Swift-host libraries are not migrated automatically; use explicit
