@@ -4,6 +4,7 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import { APP_ACCENT_CHANGE_EVENT } from "@/lib/appAccent";
+import { PARAMETER_HANDLE_RENDER_ORDER } from "@/lib/viewportRenderOrder";
 import type { ParametricScaleTarget, ScaleAxis } from "@/lib/parametricScaleManipulator";
 
 const axes = ["x", "y", "z"] as const;
@@ -19,11 +20,14 @@ const handleSizePx = 34;
 
 export function attachScaleManipulator(model: THREE.Group, camera: THREE.Camera, canvas: HTMLCanvasElement, controls: OrbitControls, target: ParametricScaleTarget, snap: number, invalidate: () => void, onCommit: (factors: THREE.Vector3, pivot: THREE.Vector3) => void) {
   const group = new THREE.Group();
+  group.renderOrder = PARAMETER_HANDLE_RENDER_ORDER;
   group.matrixAutoUpdate = false;
   group.matrix.copy(target.matrix);
   const outline = new LineSegments2(new LineSegmentsGeometry(), new LineMaterial({ color: 0x000000, linewidth: 2, dashed: true, dashSize: 2, gapSize: 2, opacity: .25, transparent: true, depthTest: false, depthWrite: false }));
   outline.renderOrder = 40;
-  const handleMaterial = () => new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, depthTest: false, depthWrite: false, toneMapped: false });
+  // Use the overlay pass so the translucent grid cannot tint the handles.
+  // NoBlending keeps their fill fully opaque in that pass.
+  const handleMaterial = () => new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 1, blending: THREE.NoBlending, depthTest: false, depthWrite: false, toneMapped: false, forceSinglePass: true });
   // Both layers follow the same transforms; the inset fill leaves a coplanar border.
   const squares = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), handleMaterial(), handles.length);
   const fills = new THREE.InstancedMesh(new THREE.PlaneGeometry(.87, .87), handleMaterial(), handles.length);
