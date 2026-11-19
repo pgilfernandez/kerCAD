@@ -4,7 +4,7 @@ import { CylinderProfileButtons } from "@/components/CylinderProfileButtons";
 import { AdvancedNumberFields, AdvancedNumberInput } from "@/components/AdvancedNumberFields";
 import { normalizeGeneratedPath, spiralTypes } from "@/lib/parametricPaths";
 import { PlatonicTypeButtons } from "@/components/PlatonicTypeButtons";
-import { setSphereEllipsoidal, setTorusElliptical } from "@/lib/parametricObjects";
+import { setSphereEllipsoidal, setTorusElliptical, setTubeElliptical, setTubeSectionParameter } from "@/lib/parametricObjects";
 import type { GeneratedPath, SpiralType } from "@/types/parametric";
 
 import { OperationTreeIcon } from "@/components/OperationTreeIcon";
@@ -719,6 +719,7 @@ function ParametricFeatureInspector({
           <ShapeParametersSection>
             {feature.primitive === "platonic" && <PlatonicTypeButtons value={feature.platonicType ?? "tetrahedron"} locale={locale} onChange={(type) => onUpdate((draft) => { if (draft.kind === "primitive") draft.platonicType = type; })} />}
             {feature.primitive === "torus" && <CylinderProfileButtons locale={locale} elliptical={Boolean(feature.ellipsoidal)} onChange={(enabled) => onUpdate((draft) => { if (draft.kind === "primitive") setTorusElliptical(draft, enabled); })} />}
+            {feature.primitive === "tube" && <CylinderProfileButtons locale={locale} elliptical={Boolean(feature.ellipsoidal)} onChange={(enabled) => onUpdate((draft) => { if (draft.kind === "primitive") setTubeElliptical(draft, enabled); })} />}
             {(feature.primitive === "sphere" || feature.primitive === "halfSphere") && <CylinderProfileButtons sphere hemisphere={feature.primitive === "halfSphere"} locale={locale} elliptical={Boolean(feature.ellipsoidal)} onChange={(enabled) => onUpdate((draft) => { if (draft.kind === "primitive") setSphereEllipsoidal(draft, enabled); })} />}
             {(() => {
               const fields: ShapeField<typeof feature>[] = localizedParametricOperationDefinition(feature.primitive, locale).parameters.filter((parameter) => !(feature.primitive === "halfSphere" && feature.ellipsoidal && parameter.key === "height")).map((parameter) => ({
@@ -763,21 +764,19 @@ function ParametricFeatureInspector({
                   } else if (parameter.key === "topRadius") {
                     draft.topRadius = Math.max(0, value);
                   } else if (parameter.key === "outerRadius") {
+                    if (draft.primitive === "tube") { setTubeSectionParameter(draft, "outerRadius", value); return; }
                     const radius = draft.primitive === "gear"
                       ? Math.max((draft.toothDepth ?? 2.5) + (draft.boreRadius ?? 3) + 0.1, value)
                       : Math.max(0.2, value);
-                    const thickness = draft.primitive === "tube" ? Math.max(0.1, draft.width / 2 - (draft.innerRadius ?? 6)) : 0;
                     draft.width = radius * 2;
                     draft.depth = radius * 2;
-                    if (draft.primitive === "tube") draft.innerRadius = Math.max(0.1, radius - Math.min(thickness, radius - 0.1));
                   } else if (parameter.key === "innerRadius") {
                     const thickness = Math.max(0.1, draft.width / 2 - (draft.innerRadius ?? 6));
                     draft.innerRadius = Math.max(0.1, value);
                     draft.width = (draft.innerRadius + thickness) * 2;
                     draft.depth = draft.width;
                   } else if (parameter.key === "thickness") {
-                    const outerRadius = draft.width / 2;
-                    draft.innerRadius = Math.max(0.1, outerRadius - Math.min(Math.max(0.1, value), outerRadius - 0.1));
+                    if (draft.primitive === "tube") setTubeSectionParameter(draft, "thickness", value);
                   } else if (parameter.key === "majorRadius") {
                     draft.majorRadius = Math.max((draft.tubeRadius ?? 4) + 0.1, value);
                     draft.width = (draft.majorRadius + (draft.tubeRadius ?? 4)) * 2;
@@ -805,7 +804,10 @@ function ParametricFeatureInspector({
                   } else if (parameter.key !== "diameter") draft[parameter.key] = Math.max(parameter.min, value);
                 },
             }));
-              const radiusStep = fields.find(({ key }) => key === "radius" || key === "tubeRadius")?.step;
+              const radiusStep = fields.find(({ key }) => key === "radius" || key === "tubeRadius" || key === "outerRadius")?.step;
+              if (feature.primitive === "tube" && feature.ellipsoidal) {
+                fields.splice(1, 0, { key: "radius2", label: t("cylinder.radius2"), value: feature.depth / 2, min: .1, max: 200, step: radiusStep, apply: (draft, value) => setTubeSectionParameter(draft, "radius2", value) });
+              }
               if (feature.ellipsoidal && (feature.primitive === "torus" || feature.primitive === "sphere" || feature.primitive === "halfSphere")) {
                 fields.push({ key: "radius2", label: t("cylinder.radius2"), value: feature.primitive === "torus" ? feature.tubeRadius2 ?? feature.tubeRadius ?? 4 : feature.depth / 2, min: .1, max: 200, step: radiusStep, apply: (draft, value) => { if (draft.primitive === "torus") { draft.tubeRadius2 = value; draft.height = value * 2; } else draft.depth = value * 2; } });
                 if (feature.primitive !== "torus") fields.push({ key: "radius3", label: t("sphere.radius3"), value: feature.primitive === "halfSphere" ? feature.height : feature.height / 2, min: .1, max: 200, step: radiusStep, apply: (draft, value) => { draft.height = draft.primitive === "halfSphere" ? value : value * 2; } });

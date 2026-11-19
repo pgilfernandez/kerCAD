@@ -3,6 +3,7 @@
   "name": "Français",
   "direction": "ltr",
   "messages": {
+    "tube.invalidThickness": "La paroi du tube est trop épaisse pour ces rayons de l’ellipse.",
     "dashboard.confirmShareProject": "Voulez-vous vraiment enregistrer ce projet dans le <strong>dossier des projets partagés</strong> ?",
     "admin.deleteShared": "Supprimer tous les projets partagés",
     "admin.deleteSharedConfirmWithoutPath": "Supprimer définitivement {count} projets du dossier partagé actuel ? Les copies locales seront conservées.",

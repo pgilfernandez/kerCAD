@@ -3,6 +3,7 @@
   "name": "Italiano",
   "direction": "ltr",
   "messages": {
+    "tube.invalidThickness": "La parete del tubo è troppo spessa per questi raggi dell’ellisse.",
     "dashboard.confirmShareProject": "Vuoi davvero salvare questo progetto nella <strong>cartella dei progetti condivisi</strong>?",
     "admin.deleteShared": "Elimina tutti i progetti condivisi",
     "admin.deleteSharedConfirmWithoutPath": "Eliminare definitivamente {count} progetti della cartella condivisa attuale? Le copie locali non saranno eliminate.",

@@ -595,6 +595,7 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
       feature.width = Math.max(0.1, Number.isFinite(feature.width) ? feature.width : 20);
       feature.depth = Math.max(0.1, Number.isFinite(feature.depth) ? feature.depth : 20);
       feature.height = Math.max(0.1, Number.isFinite(feature.height) ? feature.height : 20);
+      if (feature.primitive === "tube" && !feature.ellipsoidal) feature.depth = feature.width;
       if (feature.primitive === "roundedBox") feature.cornerRadius = Math.min(feature.width / 2 - 0.1, feature.depth / 2 - 0.1, Math.max(0.1, Number.isFinite(feature.cornerRadius) ? feature.cornerRadius! : 3));
       if (feature.primitive === "torus") {
         feature.majorRadius = Math.max(0.2, Number.isFinite(feature.majorRadius) ? feature.majorRadius! : 12);

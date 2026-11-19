@@ -10,8 +10,22 @@ import { objectPlacementForWorkplane, operationPlacementForWorkplane, parametric
 import { transformParametricObjectTopologyHints } from "@/lib/parametricTopology";
 import * as THREE from "three";
 import { platonicDimensions } from "@/lib/platonicSolids";
+import { resizeTubeSection, type TubeSectionParameter } from "@/lib/tubeGeometry";
 
 export type SupportedPrimitive = ParametricPrimitiveKind;
+export function setTubeElliptical(feature: PrimitiveFeature, enabled: boolean) {
+  if (feature.primitive !== "tube") return;
+  if (!enabled || !feature.ellipsoidal) feature.depth = feature.width;
+  feature.ellipsoidal = enabled;
+}
+
+export function setTubeSectionParameter(feature: PrimitiveFeature, parameter: TubeSectionParameter, value: number) {
+  const outerRadius = feature.width / 2;
+  const section = resizeTubeSection({ outerRadius, radius2: feature.ellipsoidal ? feature.depth / 2 : outerRadius, innerRadius: feature.innerRadius ?? 6, elliptical: Boolean(feature.ellipsoidal) }, parameter, value);
+  feature.width = section.outerRadius * 2;
+  feature.depth = section.radius2 * 2;
+  feature.innerRadius = section.innerRadius;
+}
 export function setTorusElliptical(feature: PrimitiveFeature, enabled: boolean) {
   if (feature.primitive !== "torus") return;
   if (!enabled || !feature.ellipsoidal) feature.tubeRadius2 = feature.tubeRadius ?? 4;
@@ -840,7 +854,7 @@ export function viewportSelectionForFeature(document: ParametricDocument, id: st
       : feature.primitive === "cone"
         ? { shape: "cone", baseRadius: feature.width / 2, topRadius: feature.topRadius ?? 0, height: feature.height }
         : feature.primitive === "tube"
-          ? { shape: "tube", outerRadius: feature.width / 2, innerRadius: feature.innerRadius ?? 6, height: feature.height }
+          ? { shape: "tube", outerRadius: feature.width / 2, radius2: feature.ellipsoidal ? feature.depth / 2 : feature.width / 2, innerRadius: feature.innerRadius ?? 6, elliptical: Boolean(feature.ellipsoidal), height: feature.height }
           : feature.primitive === "torus"
             ? { shape: "torus", majorRadius: feature.majorRadius ?? 12, tubeRadius: feature.tubeRadius ?? 4, radius2: feature.ellipsoidal ? feature.tubeRadius2 ?? feature.tubeRadius ?? 4 : feature.tubeRadius ?? 4, elliptical: Boolean(feature.ellipsoidal), angle: feature.angle ?? 360 }
           : feature.primitive === "roundedBox"
@@ -1286,15 +1300,8 @@ export function updateParametricShapeParameter(
       feature.topRadius = Math.max(0, value);
     } else if (feature.primitive === "cone" && parameter === "height") {
       feature.height = next;
-    } else if (feature.primitive === "tube" && parameter === "outerRadius") {
-      const thickness = Math.max(0.1, feature.width / 2 - (feature.innerRadius ?? 6));
-      const outerRadius = Math.max(thickness + 0.1, next);
-      feature.width = outerRadius * 2;
-      feature.depth = feature.width;
-      feature.innerRadius = outerRadius - thickness;
-    } else if (feature.primitive === "tube" && parameter === "thickness") {
-      const outerRadius = feature.width / 2;
-      feature.innerRadius = Math.max(0.1, outerRadius - Math.min(next, outerRadius - 0.1));
+    } else if (feature.primitive === "tube" && (parameter === "outerRadius" || parameter === "radius2" || parameter === "thickness")) {
+      setTubeSectionParameter(feature, parameter, next);
     } else if (feature.primitive === "tube" && parameter === "height") {
       feature.height = next;
     } else if (feature.primitive === "torus" && parameter === "majorRadius") {

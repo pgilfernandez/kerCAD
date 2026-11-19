@@ -8,6 +8,7 @@ import { fibonacciPathArcs, generatedPathPoints, normalizeGeneratedPath } from "
 import { shellWithCorners } from "@/lib/shellKernel";
 import { gearOutlinePoints } from "@/lib/parametricGearProfile";
 import { orientedMeshNormals } from "@/lib/parametricMeshNormals";
+import { tubeMinimumCurvatureRadius, tubeSectionPoint } from "@/lib/tubeGeometry";
 import type { AlignmentItem, AlignmentTarget } from "@/lib/parametricAlignment";
 import { parametricReferenceRenderRecords } from "@/lib/parametricReferenceImport";
 import type { Edge, Face, Wire } from "brepjs";
@@ -319,6 +320,31 @@ function circleProfileFace(brep: Brep, profile: Extract<SketchFeature["profile"]
   return face;
 }
 
+function ellipticalTubeSolid(brep: Brep, rx: number, ry: number, height: number, thickness: number): AnySolid {
+  const outerFace = circleProfileFace(brep, { shape: "circle", diameter: rx * 2, radius2: ry, elliptical: true });
+  const outer = brep.unwrap(brep.extrude(outerFace as Parameters<Brep["extrude"]>[0], height)) as AnySolid;
+  let innerFace: Face;
+  try {
+    const offset = brep.unwrap(brep.offsetWire2D(brep.outerWire(outerFace), -thickness));
+    innerFace = brep.unwrap(brep.face(offset as Parameters<Brep["face"]>[0])) as Face;
+    const bounds = brep.getBounds(innerFace);
+    if (Math.abs(bounds.xMax - bounds.xMin - 2 * (rx - thickness)) > 0.01 ||
+        Math.abs(bounds.yMax - bounds.yMin - 2 * (ry - thickness)) > 0.01) throw new Error("Invalid inward ellipse offset");
+  } catch {
+    // Some OCCT adapters return a compound from the planar offset builder.
+    // Reconstruct a smooth periodic wire through points on the parallel curve.
+    const points = Array.from({ length: 128 }, (_, index): [number, number, number] => {
+      const [x, y] = tubeSectionPoint(rx, ry, index / 128 * Math.PI * 2, thickness);
+      return [x, y, 0];
+    });
+    const edge = brep.unwrap(brep.interpolateCurve(points, { periodic: true }));
+    const wire = brep.unwrap(brep.wireLoop([edge]));
+    innerFace = brep.unwrap(brep.face(wire as Parameters<Brep["face"]>[0])) as Face;
+  }
+  const inner = brep.unwrap(brep.extrude(brep.translate(innerFace, [0, 0, -1]) as Parameters<Brep["extrude"]>[0], height + 2)) as AnySolid;
+  return refinedBooleanSolid(brep, brep.cut(outer, inner));
+}
+
 function facesFromSketch(brep: Brep, sketch: SketchFeature): Face[] {
   if (sketch.generatedPath) throw new Error(uiText("path.onlyPath"));
   if (sketch.profile.shape === "drawn") return drawnSketchFaces(brep, sketch).map((face) => applySketchTransform(brep, face, sketch));
@@ -453,9 +479,17 @@ function solidFromPrimitive(brep: Brep, feature: PrimitiveFeature): AnySolid {
   } else if (feature.primitive === "cone") {
     solid = brep.cone(feature.width / 2, feature.topRadius ?? 0, feature.height, { at: [0, 0, 0] });
   } else if (feature.primitive === "tube") {
-    const outer = brep.cylinder(feature.width / 2, feature.height, { at: [0, 0, 0] });
-    const inner = brep.cylinder(feature.innerRadius ?? 0, feature.height + 2, { at: [0, 0, -1] });
-    solid = refinedBooleanSolid(brep, brep.cut(outer, inner));
+    const rx = feature.width / 2, ry = feature.ellipsoidal ? feature.depth / 2 : rx;
+    const innerRadius = feature.innerRadius ?? 0;
+    if (Math.abs(rx - ry) > 1e-8) {
+      const thickness = rx - innerRadius;
+      if (thickness >= tubeMinimumCurvatureRadius(rx, ry)) throw new Error(uiText("tube.invalidThickness"));
+      solid = ellipticalTubeSolid(brep, rx, ry, feature.height, thickness);
+    } else {
+      const outer = brep.cylinder(rx, feature.height, { at: [0, 0, 0] });
+      const inner = brep.cylinder(innerRadius, feature.height + 2, { at: [0, 0, -1] });
+      solid = refinedBooleanSolid(brep, brep.cut(outer, inner));
+    }
   } else if (feature.primitive === "halfSphere") {
     const ellipsoid = brep.ellipsoid(feature.width / 2, feature.depth / 2, feature.height, { at: [0, 0, 0] });
     const clip = brep.box(feature.width + 2, feature.depth + 2, feature.height + 1, { centered: true, at: [0, 0, (feature.height + 1) / 2] });

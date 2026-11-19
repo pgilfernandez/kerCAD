@@ -3,6 +3,7 @@
   "name": "Deutsch",
   "direction": "ltr",
   "messages": {
+    "tube.invalidThickness": "Die Rohrwand ist für diese Ellipsenradien zu dick.",
     "dashboard.confirmShareProject": "Möchtest du dieses Projekt wirklich im <strong>Ordner für geteilte Projekte</strong> speichern?",
     "admin.deleteShared": "Alle geteilten Projekte löschen",
     "admin.deleteSharedConfirmWithoutPath": "{count} Projekte im aktuellen Freigabeordner endgültig löschen? Lokale Kopien bleiben erhalten.",
