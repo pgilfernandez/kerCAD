@@ -7,6 +7,7 @@ import { APP_THEME_INITIAL_SCRIPT } from "@/lib/appTheme";
 import { BRAND_STORAGE_INITIAL_SCRIPT } from "@/lib/legacyBrand";
 import { AppAccentSync } from "@/components/AppAccentSync";
 import { UsageMetrics } from "@/components/UsageMetrics";
+import { DonationPopupProvider } from "@/components/DonationPopup";
 import { LoadingCampaignPreloader } from "@/components/LoadingCampaignPreloader";
 import { APP_LOCALE_INITIAL_SCRIPT, uiText } from "@/lib/kercadI18n";
 
@@ -26,7 +27,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: BRAND_STORAGE_INITIAL_SCRIPT + APP_THEME_INITIAL_SCRIPT + APP_ACCENT_INITIAL_SCRIPT + APP_LOCALE_INITIAL_SCRIPT }} />
       </head>
-      <body suppressHydrationWarning><AppAccentSync /><LoadingCampaignPreloader /><UsageMetrics />{children}</body>
+      <body suppressHydrationWarning><AppAccentSync /><LoadingCampaignPreloader /><UsageMetrics /><DonationPopupProvider>{children}</DonationPopupProvider></body>
     </html>
   );
 }

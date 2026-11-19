@@ -1,0 +1,17 @@
+.kercad-donation-dialog {
+  width: min(320px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--theme-border);
+  border-radius: 14px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  box-shadow: 0 16px 48px rgb(0 0 0 / 24%);
+}
+.kercad-donation-dialog::backdrop { background: rgb(10 24 40 / 24%); }
+.kercad-donation-dialog section { padding: 16px; }
+.kercad-donation-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.kercad-donation-dialog h2 { margin: 0; font-size: 18px; font-weight: 650; }
+.kercad-donation-dialog header button { padding: 2px 8px; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; font-size: 22px; cursor: pointer; }
+.kercad-donation-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.kercad-donation-options a { padding: 9px; border: 1px solid var(--theme-border); border-radius: 7px; color: var(--theme-link); font-weight: 650; text-align: center; text-decoration: none; }
+.kercad-donation-dialog header button:hover, .kercad-donation-options a:hover { background: var(--theme-active); }

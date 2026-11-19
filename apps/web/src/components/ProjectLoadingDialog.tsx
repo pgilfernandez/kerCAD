@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { HeaderToolbarIcon } from "@/components/icons";
 import { useAccessibleDialog } from "@/components/useAccessibleDialog";
+import { useDonationPopup } from "@/components/DonationPopup";
 import { kercadTranslate, type KercadLocale } from "@/lib/kercadI18n";
 import { consumePreparedLoadingCampaign, isSponsorPopupEnabled, prepareProjectLoadingCampaign, projectLoadingCampaign } from "@/lib/projectLoadingCampaign";
 import type { ParametricBuildProgress } from "@/lib/parametricBuildProgress";
@@ -22,7 +23,8 @@ export function ProjectLoadingDialog({ projectName, locale, ready, progress, onF
   const [minimumElapsed, setMinimumElapsed] = useState(false);
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [campaign, setCampaign] = useState(projectLoadingCampaign);
-  const dialogRef = useAccessibleDialog<HTMLElement>(enabled === true, () => {});
+  const donation = useDonationPopup();
+  const dialogRef = useAccessibleDialog<HTMLElement>(enabled === true && !donation.open, () => {});
   useEffect(() => {
     const controller = new AbortController();
     void isSponsorPopupEnabled(controller.signal).then((value) => {
@@ -71,10 +73,7 @@ export function ProjectLoadingDialog({ projectName, locale, ready, progress, onF
       </figure>
       <footer>
         <p>{t("loading.freeOpenSource")}</p>
-        {campaign.supportUrl
-          ? <a href={campaign.supportUrl} target="_blank" rel="noopener noreferrer"><HeaderToolbarIcon file="donate" />{t("loading.support")}</a>
-          : <button type="button" disabled title={t("about.donatePending")}><HeaderToolbarIcon file="donate" />{t("loading.support")}</button>}
-        {!campaign.supportUrl && <small>{t("about.donatePending")}</small>}
+        <button type="button" aria-haspopup="dialog" onClick={() => donation.show(locale)}><HeaderToolbarIcon file="donate" />{t("loading.support")}</button>
       </footer>
     </section>
   </div>, document.body);

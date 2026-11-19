@@ -2,14 +2,12 @@ export type ProjectLoadingCampaign = {
   kind: "image" | "video";
   src: string;
   poster?: string;
-  supportUrl: string | null;
 };
 
 /** Used immediately while the sponsor catalogue or its chosen image loads. */
 export const projectLoadingCampaign: ProjectLoadingCampaign = {
   kind: "image",
   src: "/assets/kercad/sponsors/loading-campaign.svg",
-  supportUrl: "https://github.com/sponsors/pgilfernandez",
 };
 
 let prepared: ProjectLoadingCampaign | null = null;
@@ -74,7 +72,7 @@ export function prepareProjectLoadingCampaign(priority: "high" | "low" = "high")
         const [src] = candidates.splice(index, 1);
         try {
           await preloadImage(src, priority);
-          prepared = { kind: "image", src, supportUrl: projectLoadingCampaign.supportUrl };
+          prepared = { kind: "image", src };
           preparedAt = Date.now();
           return prepared;
         } catch { /* Try another image if an added file cannot be decoded. */ }
