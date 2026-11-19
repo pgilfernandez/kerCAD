@@ -23,7 +23,7 @@ export function attachScaleManipulator(model: THREE.Group, camera: THREE.Camera,
   group.renderOrder = PARAMETER_HANDLE_RENDER_ORDER;
   group.matrixAutoUpdate = false;
   group.matrix.copy(target.matrix);
-  const outline = new LineSegments2(new LineSegmentsGeometry(), new LineMaterial({ color: 0x000000, linewidth: 2, dashed: true, dashSize: 2, gapSize: 2, opacity: .25, transparent: true, depthTest: false, depthWrite: false }));
+  const outline = new LineSegments2(new LineSegmentsGeometry(), new LineMaterial({ color: 0x000000, linewidth: 2, opacity: .15, transparent: true, depthTest: false, depthWrite: false }));
   outline.renderOrder = 40;
   // Use the overlay pass so the translucent grid cannot tint the handles.
   // NoBlending keeps their fill fully opaque in that pass.
@@ -94,7 +94,6 @@ export function attachScaleManipulator(model: THREE.Group, camera: THREE.Camera,
       if (!(i & mask)) edges.push(...vertices[i].toArray(), ...vertices[i | mask].toArray());
     }
     outline.geometry.setPositions(edges);
-    outline.computeLineDistances();
     bounds.getSize(dimensions);
     positionSquares();
   };
