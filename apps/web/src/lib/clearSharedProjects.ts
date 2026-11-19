@@ -24,7 +24,7 @@ export async function clearSharedProjects(directory: string, expectedCount: numb
   if (root === path.parse(root).root) throw new Error("Refusing to clear the filesystem root");
   const files = (await fs.readdir(root, { withFileTypes: true })).filter(isSharedProject);
   if (files.length !== expectedCount) return null;
-  const sidecars = await Promise.all([[".authors", ".json"], [".thumbnails", ".jpg"]].map(async ([folder, suffix]) => {
+  const sidecars = await Promise.all(([[".authors", /\.json$/], [".thumbnails", /\.(jpg|png|webp)$/]] as const).map(async ([folder, suffix]) => {
     const dir = path.join(root, folder);
     const stat = await fs.lstat(dir).catch(() => null);
     const entries = stat?.isDirectory() ? await fs.readdir(dir, { withFileTypes: true }).catch(() => []) : [];
@@ -45,7 +45,7 @@ export async function clearSharedProjects(directory: string, expectedCount: numb
       const prefix = `${createHash("sha256").update(entry.name).digest("hex")}-`;
       for (const { dir, suffix, entries } of sidecars) {
         for (const sidecar of entries) {
-          if (sidecar.isFile() && sidecar.name.startsWith(prefix) && sidecar.name.endsWith(suffix)) {
+          if (sidecar.isFile() && sidecar.name.startsWith(prefix) && suffix.test(sidecar.name)) {
             await fs.unlink(path.join(dir, sidecar.name)).catch(() => undefined);
           }
         }

@@ -37,9 +37,9 @@ export function SharedProjects({ onOpen, locale = "en" }: {
       if (!response.ok) throw new Error(t("dashboard.could.not.open.the.shared.project.refresh.the.library.a.2cc45c"));
       const revision = response.headers.get("etag");
       if (!revision) throw new Error(t("dashboard.the.server.did.not.provide.a.project.revision.2d0b2d"));
-      const { document, assets } = await importKercadProject(await response.arrayBuffer());
+      const { document, assets, thumbnail } = await importKercadProject(await response.arrayBuffer());
       const now = Date.now();
-      const entry: ProjectLibraryEntry = { id: newProjectLibraryId(), name: document.name, document, assets, createdAt: now, updatedAt: now, sharedSource: { fileName: file.fileName, revision } };
+      const entry: ProjectLibraryEntry = { id: newProjectLibraryId(), name: document.name, document, assets, thumbnail, createdAt: now, updatedAt: now, sharedSource: { fileName: file.fileName, revision } };
       await saveLibraryProject(entry);
       onOpen(entry);
     } catch (error) { setMessage(error instanceof Error ? error.message : t("dashboard.could.not.open.project.2eb0be")); }

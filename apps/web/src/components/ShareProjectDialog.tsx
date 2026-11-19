@@ -7,7 +7,6 @@ import { dashboardTranslate, type DashboardTranslationKey } from "@/lib/dashboar
 import { exportKercadProject, KERCAD_PACKAGE_MEDIA_TYPE } from "@/lib/kercadProject";
 import type { KercadLocale } from "@/lib/kercadI18n";
 import { getLibraryProject, saveLibraryProject, type ProjectLibraryEntry } from "@/lib/projectLibrary";
-import { uploadSharedThumbnail } from "@/lib/sharedProjectThumbnail";
 
 export function ShareProjectDialog({ project, locale, onClose, onSaved }: { project: ProjectLibraryEntry; locale: KercadLocale; onClose: () => void; onSaved: () => void }) {
   const t = (key: DashboardTranslationKey) => dashboardTranslate(locale, key);
@@ -29,7 +28,7 @@ export function ShareProjectDialog({ project, locale, onClose, onSaved }: { proj
       const fileName = entry.sharedSource?.fileName;
       const revision = entry.sharedSource?.revision;
       const author = entry.document.author?.trim() || entry.document.creator?.trim() || "";
-      const bytes = await exportKercadProject(entry.document, entry.assets);
+      const bytes = await exportKercadProject(entry.document, entry.assets, 6, entry.thumbnail);
       const response = await fetch(fileName ? `/api/kercad-shared-projects?fileName=${encodeURIComponent(fileName)}` : "/api/kercad-shared-projects", {
         method: "POST", body: new Uint8Array(bytes),
         headers: { "Content-Type": KERCAD_PACKAGE_MEDIA_TYPE, "X-Kercad-Author": encodeURIComponent(author), ...(revision ? { "If-Match": revision } : { "If-None-Match": "*" }) },
@@ -38,7 +37,6 @@ export function ShareProjectDialog({ project, locale, onClose, onSaved }: { proj
       if (response.status === 409) throw new Error(t("dashboard.the.server.copy.has.changed.or.this.name.is.already.in..0521f7"));
       if (!response.ok) throw new Error(payload.error || t("dashboard.could.not.share.the.project.6edd4f"));
       await saveLibraryProject({ ...entry, sharedSource: { fileName: payload.project.fileName, revision: payload.project.revision } });
-      await uploadSharedThumbnail(payload.project.fileName, payload.project.revision, entry.document, entry.thumbnail, entry.thumbnailDocumentKey);
       onSaved();
     } catch (failure) { setError(failure instanceof Error ? failure.message : t("dashboard.could.not.share.project.d19698")); }
     finally { setBusy(false); }

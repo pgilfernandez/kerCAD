@@ -11,7 +11,7 @@ import { createEmptyChallenge, deleteInstalledChallenge, duplicateChallenge, exp
 import { exportKercadProject, importKercadProject, KERCAD_PACKAGE_MEDIA_TYPE } from "@/lib/kercadProject";
 import { createEmptyDocument, normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { deleteLibraryProject, getLibraryProject, hasProjectGeometry, listLibraryProjects, newProjectLibraryId, saveLibraryProject, updateLibraryProjectThumbnail, type ProjectLibraryEntry } from "@/lib/projectLibrary";
-import { thumbnailDocumentKey, uploadSharedThumbnail } from "@/lib/sharedProjectThumbnail";
+import { thumbnailDocumentKey } from "@/lib/sharedProjectThumbnail";
 import type { ParametricDocument } from "@/types/parametric";
 import { dashboardTranslate, type DashboardTranslationKey } from "@/lib/dashboardI18n";
 import { getCurrentLocale, kercadTranslate } from "@/lib/kercadI18n";
@@ -364,7 +364,7 @@ export default function Home() {
     // Keep the editable local copy even if publishing fails or conflicts.
     persistActive(document);
     await saveLatestActive();
-    const bytes = await exportKercadProject(document, current.assets);
+    const bytes = await exportKercadProject(document, current.assets, 6, current.thumbnail);
     const revision = current.sharedSource?.fileName === fileName ? current.sharedSource.revision : undefined;
     const response = await fetch(`/api/kercad-shared-projects?fileName=${encodeURIComponent(fileName)}`, {
       method: "POST", body: new Uint8Array(bytes),
@@ -373,7 +373,6 @@ export default function Home() {
     const payload = await response.json();
     if (response.status === 409) throw new Error(libraryText("dashboard.the.shared.file.has.changed.or.this.name.is.already.in..1ad3d9"));
     if (!response.ok) throw new Error(payload.error || libraryText("dashboard.could.not.save.the.shared.project.a18f08"));
-    await uploadSharedThumbnail(payload.project.fileName, payload.project.revision, document, current.thumbnail, current.thumbnailDocumentKey);
     if (activeRef.current?.id === current.id) {
       activeRef.current = { ...activeRef.current, sharedSource: { fileName: payload.project.fileName, revision: payload.project.revision } };
       await enqueueLibraryWrite(async () => {

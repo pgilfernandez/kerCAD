@@ -65,9 +65,9 @@ Open **Export → Save to shared**, enter the shared file name and your name, th
 
 ## Shared previews
 
-The editor associates its generated JPEG preview with the captured document. Shared saves upload it only when it matches the document being published. Preview storage is optional: an image upload failure does not undo a successful project save. Older local thumbnails without a document association are not uploaded; reopen the project to generate a new one.
+Publishing uses the project's custom cover or its last saved thumbnail, just as the local project card does. The image is included in the `.kercad` package, so it also travels with downloaded or opened copies.
 
-The server bounds preview uploads to 1 MiB, checks the saved project revision under the same lock as writes/deletes, and stores images in `.thumbnails`. A later project revision without an image shows a placeholder instead of its predecessor's preview. Deleting a shared project removes its previews. Include `.thumbnails` in backups if you want to retain them.
+The server stores a revision-matched JPEG, PNG or WebP preview of up to 4 MiB in `.thumbnails` when publishing. The older JPEG upload endpoint remains available for compatibility. A revision without a preview shows a placeholder instead of its predecessor's image. Deleting a shared project removes its previews. Include `.thumbnails` in backups to retain the dashboard previews.
 
 
 Lock recovery implementation was added without running tests or a build, as requested. This does not constitute verification of recovery after an actual crash.

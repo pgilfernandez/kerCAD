@@ -46,9 +46,40 @@ function projectRecord(fileName: string, stat: { size: number; mtimeMs: number }
   };
 }
 
-function thumbnailPath(root: string, fileName: string, revision: string) {
+const thumbnailFormats = { jpg: "image/jpeg", png: "image/png", webp: "image/webp" } as const;
+type ThumbnailFormat = keyof typeof thumbnailFormats;
+
+function thumbnailPath(root: string, fileName: string, revision: string, format: ThumbnailFormat = "jpg") {
   const key = createHash("sha256").update(fileName).digest("hex");
-  return path.join(root, ".thumbnails", `${key}-${revision}.jpg`);
+  return path.join(root, ".thumbnails", `${key}-${revision}.${format}`);
+}
+
+async function findThumbnail(root: string, fileName: string, revision: string) {
+  for (const format of Object.keys(thumbnailFormats) as ThumbnailFormat[]) {
+    const file = thumbnailPath(root, fileName, revision, format);
+    if (await regularFileStat(file)) return { file, contentType: thumbnailFormats[format] };
+  }
+  return null;
+}
+
+async function savePackagedThumbnail(root: string, fileName: string, revision: string, preview?: string) {
+  const match = preview?.match(/^data:image\/(jpeg|png|webp);base64,([a-z0-9+/=]+)$/i);
+  if (!match || match[2].length > Math.ceil(4 * 1024 * 1024 / 3) * 4) return;
+  const bytes = Buffer.from(match[2], "base64");
+  const kind = match[1].toLowerCase();
+  if (kind === "jpeg" && (bytes[0] !== 0xff || bytes[1] !== 0xd8)) return;
+  if (kind === "png" && bytes.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a") return;
+  if (kind === "webp" && (bytes.toString("ascii", 0, 4) !== "RIFF" || bytes.toString("ascii", 8, 12) !== "WEBP")) return;
+  const format = (kind === "jpeg" ? "jpg" : kind) as ThumbnailFormat;
+  const destination = thumbnailPath(root, fileName, revision, format);
+  const temporary = `${destination}.${randomUUID()}.tmp`;
+  try {
+    await fs.mkdir(path.dirname(destination), { recursive: true });
+    await fs.writeFile(temporary, bytes, { flag: "wx" });
+    await fs.rename(temporary, destination);
+  } catch {
+    await fs.unlink(temporary).catch(() => undefined);
+  }
 }
 
 function authorPath(root: string, fileName: string, revision: string) {
@@ -119,9 +150,9 @@ export async function GET(request: Request) {
       if (thumbnailRevision !== null) {
         const current = await sharedProjectRevision(filePath);
         if (!current || thumbnailRevision !== current.revision) return new Response(null, { status: 404 });
-        const imagePath = thumbnailPath(root, fileName, thumbnailRevision);
-        if (!await regularFileStat(imagePath)) return new Response(null, { status: 404 });
-        return new Response(await fs.readFile(imagePath), { headers: { "Content-Type": "image/jpeg", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
+        const thumbnail = await findThumbnail(root, fileName, thumbnailRevision);
+        if (!thumbnail) return new Response(null, { status: 404 });
+        return new Response(await fs.readFile(thumbnail.file), { headers: { "Content-Type": thumbnail.contentType, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
       }
       const bytes = await fs.readFile(filePath);
       return new Response(bytes, {
@@ -145,7 +176,7 @@ export async function GET(request: Request) {
         if (!current) return null;
         const { stat, revision } = current;
         return { ...projectRecord(fileName, stat, revision), updatedBy: await readAuthor(root, fileName, revision),
-          thumbnailUrl: await regularFileStat(thumbnailPath(root, fileName, revision)) ? `/api/kercad-shared-projects?fileName=${encodeURIComponent(fileName)}&thumbnail=${revision}` : undefined };
+          thumbnailUrl: await findThumbnail(root, fileName, revision) ? `/api/kercad-shared-projects?fileName=${encodeURIComponent(fileName)}&thumbnail=${revision}` : undefined };
       }));
       projects.push(...batch.filter((entry): entry is SharedProjectFile => entry !== null));
     }
@@ -240,12 +271,14 @@ export async function POST(request: Request) {
     }
     // Store attribution keyed to these exact bytes before publishing the file.
     // Older attribution cannot accidentally describe a different revision.
+    const revision = revisionForBytes(bytes);
     await fs.mkdir(path.join(root, ".authors"), { recursive: true });
-    await fs.writeFile(authorPath(root, fileName, revisionForBytes(bytes)), JSON.stringify({ updatedBy: updatedBy || undefined }));
+    await fs.writeFile(authorPath(root, fileName, revision), JSON.stringify({ updatedBy: updatedBy || undefined }));
+    await savePackagedThumbnail(root, fileName, revision, summary.thumbnail);
     await fs.rename(temporaryPath, filePath);
     temporaryPath = "";
     const savedStat = await fs.stat(filePath);
-    const project = projectRecord(fileName, savedStat, revisionForBytes(bytes));
+    const project = projectRecord(fileName, savedStat, revision);
     rememberSharedRevision(filePath, savedStat, project.revision);
     return NextResponse.json(
       { project: { ...project, name: summary.document.name, updatedBy: updatedBy || undefined } },
@@ -290,7 +323,7 @@ export async function DELETE(request: Request) {
     await Promise.all(entries.filter(name => name.startsWith(`${key}-`) && name.endsWith(".json"))
       .map(name => fs.unlink(path.join(metadataDirectory, name)).catch(() => undefined)));
     const previews = await fs.readdir(path.join(root, ".thumbnails")).catch(() => [] as string[]);
-    await Promise.all(previews.filter(name => name.startsWith(`${key}-`) && name.endsWith(".jpg"))
+    await Promise.all(previews.filter(name => name.startsWith(`${key}-`) && /\.(jpg|png|webp)$/.test(name))
       .map(name => fs.unlink(path.join(root, ".thumbnails", name)).catch(() => undefined)));
     return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
