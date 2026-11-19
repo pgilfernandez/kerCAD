@@ -5,7 +5,7 @@ import { DashboardBrandLogo } from "@/components/DashboardBrandLogo";
 import { EditorHeaderActions } from "@/components/EditorHeaderActions";
 import { uiText } from "@/lib/kercadI18n";
 import "./admin.css";
-type Metrics = { enabled: boolean; sponsorPopupEnabled: boolean; sharedProjectsEnabled: boolean; sharedProjectsConfigured: boolean; since: string; active: number; visitors: number; bytes: number; counts: Record<string, number> };
+type Metrics = { enabled: boolean; sponsorPopupEnabled: boolean; sharedProjectsEnabled: boolean; sharedProjectsConfigured: boolean; adminPasswordManagedByServer: boolean; since: string; active: number; visitors: number; bytes: number; counts: Record<string, number> };
 export function AdminPanel({ slug, passwordRequired }: { slug: string; passwordRequired: boolean }) {
   const [locale, setLocale] = useAppLocale();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
@@ -58,6 +58,18 @@ export function AdminPanel({ slug, passwordRequired }: { slug: string; passwordR
       if (!response.ok) throw new Error();
       const { path } = await response.json() as { path: string };
       window.location.replace(path);
+    } catch { setError(true); setSaving(false); }
+  };
+  const removePassword = async () => {
+    if (!key || saving || metrics?.adminPasswordManagedByServer || !window.confirm(uiText("admin.removePasswordConfirm", {}, locale))) return;
+    setSaving(true);
+    try {
+      const response = await fetch("/api/admin/metrics", {
+        method: "POST", headers: { ...authHeaders(key), "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "remove-password" }),
+      });
+      if (!response.ok) throw new Error();
+      window.location.reload();
     } catch { setError(true); setSaving(false); }
   };
   const updateSwitch = async (action: "telemetry" | "sponsor-popup" | "shared-projects", enabled: boolean) => {
@@ -118,6 +130,9 @@ export function AdminPanel({ slug, passwordRequired }: { slug: string; passwordR
       <label>{uiText("admin.accessPath", {}, locale)}<input type="text" required maxLength={65} value={pathInput} onChange={(event) => setPathInput(event.target.value)} /></label>
       <button className="kercad-admin-telemetry" type="submit" disabled={saving || !pathInput.trim() || pathInput.trim().replace(/^\//, "") === slug}>{uiText("admin.savePath", {}, locale)}</button>
     </form>}
+    {passwordRequired && (metrics?.adminPasswordManagedByServer
+      ? <p>{uiText("admin.passwordManagedByServer", {}, locale)}</p>
+      : <button className="kercad-admin-telemetry" type="button" disabled={!metrics || saving} onClick={() => void removePassword()}>{uiText("admin.removePassword", {}, locale)}</button>)}
     <div className="kercad-admin-switches">
     <button className="kercad-admin-telemetry" type="button" role="switch" aria-checked={metrics?.enabled ?? false} disabled={!metrics || saving} onClick={() => void updateSwitch("telemetry", !metrics?.enabled)}>
       <span className="kercad-admin-switch" aria-hidden="true" />{uiText("admin.telemetry", {}, locale)} · {uiText(metrics?.enabled ? "admin.enabled" : "admin.disabled", {}, locale)}

@@ -3,6 +3,9 @@
   "name": "Français",
   "direction": "ltr",
   "messages": {
+    "admin.removePassword": "Supprimer le mot de passe",
+    "admin.removePasswordConfirm": "Supprimer le mot de passe et ouvrir l’administration à toute personne ayant accès au serveur ?",
+    "admin.passwordManagedByServer": "Le mot de passe est géré sur le serveur par KERCAD_ADMIN_KEY.",
     "admin.newPassword": "Nouveau mot de passe (8 caractères minimum)",
     "admin.confirmPassword": "Répéter le mot de passe",
     "admin.savePassword": "Définir le mot de passe",

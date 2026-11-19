@@ -3,6 +3,9 @@
   "name": "English",
   "direction": "ltr",
   "messages": {
+    "admin.removePassword": "Remove password",
+    "admin.removePasswordConfirm": "Remove the password and allow anyone with access to the server to use Administration?",
+    "admin.passwordManagedByServer": "The password is managed by KERCAD_ADMIN_KEY on the server.",
     "admin.newPassword": "New password (at least 8 characters)",
     "admin.confirmPassword": "Repeat password",
     "admin.savePassword": "Set password",

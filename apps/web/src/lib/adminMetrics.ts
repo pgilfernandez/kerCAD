@@ -45,6 +45,19 @@ export function initializeAdminPassword(adminPasswordHash: string) {
   });
 }
 
+export function removeAdminPassword(expectedHash: string) {
+  return serial(async () => {
+    const current = await state();
+    if (configuredAdminKey() || current.adminPasswordHash !== expectedHash) return false;
+    const data = { ...current };
+    delete data.adminPasswordHash;
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    await fs.writeFile(`${file}.tmp`, JSON.stringify(data)); await fs.rename(`${file}.tmp`, file);
+    store.state = data;
+    return true;
+  });
+}
+
 export function setAdminSlug(adminSlug: string) {
   return serial(async () => {
     const data = { ...await state(), adminSlug };

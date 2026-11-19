@@ -1,12 +1,12 @@
-import { adminPasswordRequired, initializeAdminPassword, metricEvents, readAdminPasswordHash, readMetrics, readTelemetryEnabled, recordMetrics, setAdminSlug, setMetricsEnabled, setSharedProjectsEnabled, setSponsorPopupEnabled } from "@/lib/adminMetrics";
-import { hashAdminPassword, isAdminAuthorized, normalizeAdminSlug } from "@/lib/adminAccess";
+import { adminPasswordRequired, initializeAdminPassword, metricEvents, readAdminPasswordHash, readMetrics, readTelemetryEnabled, recordMetrics, removeAdminPassword, setAdminSlug, setMetricsEnabled, setSharedProjectsEnabled, setSponsorPopupEnabled } from "@/lib/adminMetrics";
+import { configuredAdminKey, hashAdminPassword, isAdminAuthorized, normalizeAdminSlug } from "@/lib/adminAccess";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const headers = { "Cache-Control": "no-store" };
 export async function GET(request: Request) {
   if (new URL(request.url).searchParams.has("status")) return Response.json({ enabled: await readTelemetryEnabled() }, { headers });
   if (!await isAdminAuthorized(request, await readAdminPasswordHash())) return new Response(null, { status: 401, headers });
-  return Response.json(await readMetrics(), { headers });
+  return Response.json({ ...await readMetrics(), adminPasswordManagedByServer: Boolean(configuredAdminKey()) }, { headers });
 }
 export async function POST(request: Request) {
   const origin = request.headers.get("origin");
@@ -15,6 +15,12 @@ export async function POST(request: Request) {
   const text = await request.text(); if (text.length > 2048) return new Response(null, { status: 413 });
   let input;
   try { input = JSON.parse(text); } catch { return new Response(null, { status: 400 }); }
+  if (input?.action === "remove-password") {
+    const hash = await readAdminPasswordHash();
+    if (!hash || configuredAdminKey()) return new Response(null, { status: 409, headers });
+    if (!await isAdminAuthorized(request, hash)) return new Response(null, { status: 401, headers });
+    return new Response(null, { status: await removeAdminPassword(hash) ? 204 : 409, headers });
+  }
   if (input?.action === "setup-password") {
     if (await adminPasswordRequired()) return new Response(null, { status: 409, headers });
     const password = input.password;
@@ -35,7 +41,7 @@ export async function POST(request: Request) {
     if (!await isAdminAuthorized(request, await readAdminPasswordHash())) return new Response(null, { status: 401, headers });
     const update = input.action === "telemetry" ? setMetricsEnabled : input.action === "sponsor-popup" ? setSponsorPopupEnabled : setSharedProjectsEnabled;
     await update(input.enabled);
-    return Response.json(await readMetrics(), { headers: { "Cache-Control": "no-store" } });
+    return Response.json({ ...await readMetrics(), adminPasswordManagedByServer: Boolean(configuredAdminKey()) }, { headers });
   }
   const validId = (value: unknown) => typeof value === "string" && /^[a-zA-Z0-9-]{1,80}$/.test(value);
   if (!input || !validId(input.visitor) || !validId(input.session) || !Number.isFinite(input.bytes) || input.bytes < 0 || input.bytes > 1e11 || (input.event && (!metricEvents.includes(input.event) || !validId(input.id)))) return new Response(null, { status: 400 });
