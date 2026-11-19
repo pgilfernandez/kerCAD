@@ -22,8 +22,9 @@ function AdminPasswordField({ label, locale, title, ...inputProps }: ComponentPr
     </div>
   </div>;
 }
-export function AdminPanel({ slug, passwordRequired }: { slug: string; passwordRequired: boolean }) {
+export function AdminPanel({ slug, passwordRequired: initialPasswordRequired }: { slug: string; passwordRequired: boolean }) {
   const [locale, setLocale] = useAppLocale();
+  const [passwordRequired, setPasswordRequired] = useState(initialPasswordRequired);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -34,6 +35,14 @@ export function AdminPanel({ slug, passwordRequired }: { slug: string; passwordR
   const authHeaders = (secret: string): Record<string, string> => secret
     ? { Authorization: `Basic ${btoa(String.fromCharCode(...new TextEncoder().encode(`admin:${secret}`)))}` }
     : {};
+  const resetAccess = (required: boolean) => {
+    setKey("");
+    setKeyInput("");
+    setConfirmation("");
+    setMetrics(null);
+    setError(false);
+    setPasswordRequired(required);
+  };
   const setupPassword = async (event: React.FormEvent) => {
     event.preventDefault();
     if (passwordRequired || saving || keyInput.length < 8 || !keyInput.trim() || keyInput !== confirmation) return;
@@ -44,8 +53,9 @@ export function AdminPanel({ slug, passwordRequired }: { slug: string; passwordR
         body: JSON.stringify({ action: "setup-password", password: keyInput, confirmation }),
       });
       if (!response.ok && response.status !== 409) throw new Error();
-      window.location.reload();
-    } catch { setError(true); setSaving(false); }
+      resetAccess(true);
+    } catch { setError(true); }
+    finally { setSaving(false); }
   };
   const signIn = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -85,8 +95,9 @@ export function AdminPanel({ slug, passwordRequired }: { slug: string; passwordR
         body: JSON.stringify({ action: "remove-password" }),
       });
       if (!response.ok) throw new Error();
-      window.location.reload();
-    } catch { setError(true); setSaving(false); }
+      resetAccess(false);
+    } catch { setError(true); }
+    finally { setSaving(false); }
   };
   const updateSwitch = async (action: "telemetry" | "sponsor-popup" | "shared-projects", enabled: boolean) => {
     if (!metrics || saving) return;
@@ -104,7 +115,8 @@ export function AdminPanel({ slug, passwordRequired }: { slug: string; passwordR
     const refresh = async () => {
       try {
         const response = await fetch("/api/admin/metrics", { cache: "no-store", signal: controller.signal, headers: authHeaders(key) });
-        if (response.status === 401 && !passwordRequired) { window.location.reload(); return; }
+        if (controller.signal.aborted) return;
+        if (response.status === 401) { resetAccess(true); return; }
         if (!response.ok) throw new Error();
         setMetrics(await response.json()); setError(false);
       } catch { if (!controller.signal.aborted) setError(true); }
