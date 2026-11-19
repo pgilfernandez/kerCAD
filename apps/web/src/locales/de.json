@@ -3,6 +3,7 @@
   "name": "Deutsch",
   "direction": "ltr",
   "messages": {
+    "challenge.imageEditor.download": "Bild herunterladen",
     "challenge.imageEditor.title": "Bild bearbeiten",
     "challenge.imageEditor.brush": "Pinsel",
     "challenge.imageEditor.line": "Linie",

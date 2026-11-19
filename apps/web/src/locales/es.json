@@ -3,6 +3,7 @@
   "name": "Español",
   "direction": "ltr",
   "messages": {
+    "challenge.imageEditor.download": "Descargar imagen",
     "challenge.imageEditor.title": "Editar imagen",
     "challenge.imageEditor.brush": "Pincel",
     "challenge.imageEditor.line": "Línea",
