@@ -10,6 +10,8 @@ KERCAD_SHARED_PROJECTS_DIR=/absolute/path/to/projects npm run dev -- --hostname 
 
 The existing Docker Compose environment variable `SKETCHFORGE_SHARED_PROJECTS_DIR` remains a fallback, preserving existing volume configuration. `.skf` files are left untouched; the separate kerCAD endpoint lists and validates only `.kercad` packages.
 
+Use the **Shared projects** switch in `/admin` to disable or re-enable access without restarting the server. The switch requires a configured directory, preserves existing shared files and local copies, and is stored with the other admin settings. It does not add authentication.
+
 1. Create or edit a local project and return to the dashboard.
 2. Open **Shared**, select the local project and choose **Save to shared**.
 3. Another browser can open it as a separate local copy.

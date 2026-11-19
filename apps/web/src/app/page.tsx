@@ -42,10 +42,27 @@ export default function Home() {
   const [dashboardSection, setDashboardSection] = useState<"home" | "challenges" | "shared">("home");
   const [sharedEnabled, setSharedEnabled] = useState(false);
   useEffect(() => {
-    void fetch("/api/kercad-shared-projects", { cache: "no-store" })
-      .then(response => response.ok ? response.json() : null)
-      .then(payload => setSharedEnabled(payload?.enabled === true))
-      .catch(() => setSharedEnabled(false));
+    let controller: AbortController | undefined;
+    const refreshSharedStatus = () => {
+      controller?.abort();
+      controller = new AbortController();
+      const { signal } = controller;
+      void fetch("/api/kercad-shared-projects?status", { cache: "no-store", signal })
+        .then(response => response.ok ? response.json() : null)
+        .then(payload => {
+          if (signal.aborted) return;
+          const enabled = payload?.enabled === true;
+          setSharedEnabled(enabled);
+          if (!enabled) setDashboardSection((section) => section === "shared" ? "home" : section);
+        })
+        .catch(() => { if (!signal.aborted) setSharedEnabled(false); });
+    };
+    refreshSharedStatus();
+    window.addEventListener("focus", refreshSharedStatus);
+    return () => {
+      controller?.abort();
+      window.removeEventListener("focus", refreshSharedStatus);
+    };
   }, []);
   const [challenges, setChallenges] = useState<KercadChallenge[]>([]);
   const [activeChallenge, setActiveChallenge] = useState<KercadChallenge | null>(null);

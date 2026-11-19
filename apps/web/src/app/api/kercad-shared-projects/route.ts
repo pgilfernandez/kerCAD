@@ -1,4 +1,5 @@
 import { PROJECT_FILE_PATTERN } from "@/lib/legacyBrand";
+import { enabledSharedProjectsDirectory } from "@/lib/adminMetrics";
 import { forgetSharedRevision, rememberSharedRevision, sharedProjectRevision } from "@/lib/sharedProjectRevision";
 import { acquireSharedProjectLock } from "@/lib/sharedProjectLock";
 import { createHash, randomUUID } from "crypto";
@@ -10,8 +11,6 @@ import { importKercadProject, KERCAD_PACKAGE_LIMITS, KERCAD_PACKAGE_MEDIA_TYPE }
 export const runtime = "nodejs";
 export const revalidate = false;
 
-const SHARED_PROJECTS_ENV = "KERCAD_SHARED_PROJECTS_DIR";
-
 type SharedProjectFile = {
   fileName: string;
   name: string;
@@ -21,11 +20,6 @@ type SharedProjectFile = {
   updatedBy?: string;
   thumbnailUrl?: string;
 };
-
-function sharedProjectsDirectory() {
-  const configured = (process.env[SHARED_PROJECTS_ENV] ?? process.env.SKETCHFORGE_SHARED_PROJECTS_DIR)?.trim();
-  return configured ? path.resolve(configured) : null;
-}
 
 function safeProjectFileName(requestedName: string) {
   const extension = requestedName.match(PROJECT_FILE_PATTERN)?.[0].toLowerCase() ?? ".kercad";
@@ -102,17 +96,18 @@ async function regularFileStat(filePath: string) {
 
 function disabledResponse() {
   return NextResponse.json(
-    { enabled: false, projects: [], error: `${SHARED_PROJECTS_ENV} is not configured` },
+    { enabled: false, projects: [], error: "Shared project storage is disabled or not configured" },
     { headers: { "Cache-Control": "no-store" } },
   );
 }
 
 export async function GET(request: Request) {
-  const root = sharedProjectsDirectory();
+  const root = await enabledSharedProjectsDirectory();
   if (!root) return disabledResponse();
+  const requestUrl = new URL(request.url);
+  if (requestUrl.searchParams.has("status")) return NextResponse.json({ enabled: true }, { headers: { "Cache-Control": "no-store" } });
   try {
     await fs.mkdir(root, { recursive: true });
-    const requestUrl = new URL(request.url);
     const requestedFile = requestUrl.searchParams.get("fileName");
     if (requestedFile) {
       const fileName = safeProjectFileName(requestedFile);
@@ -164,7 +159,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const root = sharedProjectsDirectory();
+  const root = await enabledSharedProjectsDirectory();
   if (!root) return NextResponse.json({ error: "Shared project storage is disabled" }, { status: 404 });
   if (!sameOriginRequest(request)) return NextResponse.json({ error: "Shared projects only accept same-origin saves" }, { status: 403 });
 
@@ -265,7 +260,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const root = sharedProjectsDirectory();
+  const root = await enabledSharedProjectsDirectory();
   if (!root) return NextResponse.json({ error: "Shared project storage is disabled" }, { status: 404 });
   if (!sameOriginRequest(request)) return NextResponse.json({ error: "Shared projects only accept same-origin deletes" }, { status: 403 });
   const fileName = new URL(request.url).searchParams.get("fileName");
@@ -308,7 +303,7 @@ export async function DELETE(request: Request) {
 
 
 export async function PUT(request: Request) {
-  const root = sharedProjectsDirectory();
+  const root = await enabledSharedProjectsDirectory();
   if (!root) return new Response(null, { status: 404 });
   if (!sameOriginRequest(request)) return new Response(null, { status: 403 });
   const fileName = new URL(request.url).searchParams.get("fileName");

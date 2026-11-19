@@ -3,6 +3,8 @@
   "name": "Deutsch",
   "direction": "ltr",
   "messages": {
+    "admin.sharedProjects": "Geteilte Projekte",
+    "admin.sharedProjectsUnconfigured": "Speicher nicht konfiguriert",
     "admin.sponsorPopup": "Sponsoren-Popup",
     "challenge.exportPrefix": "aufgabe",
     "admin.telemetry": "Telemetrie",

@@ -5,13 +5,13 @@ import { DashboardBrandLogo } from "@/components/DashboardBrandLogo";
 import { EditorHeaderActions } from "@/components/EditorHeaderActions";
 import { uiText } from "@/lib/kercadI18n";
 import "./admin.css";
-type Metrics = { enabled: boolean; sponsorPopupEnabled: boolean; since: string; active: number; visitors: number; bytes: number; counts: Record<string, number> };
+type Metrics = { enabled: boolean; sponsorPopupEnabled: boolean; sharedProjectsEnabled: boolean; sharedProjectsConfigured: boolean; since: string; active: number; visitors: number; bytes: number; counts: Record<string, number> };
 export default function AdminPage() {
   const [locale, setLocale] = useAppLocale();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
-  const updateSwitch = async (action: "telemetry" | "sponsor-popup", enabled: boolean) => {
+  const updateSwitch = async (action: "telemetry" | "sponsor-popup" | "shared-projects", enabled: boolean) => {
     if (!metrics || saving) return;
     setSaving(true);
     try {
@@ -56,6 +56,9 @@ export default function AdminPage() {
     </button>
     <button className="kercad-admin-telemetry" type="button" role="switch" aria-checked={metrics?.sponsorPopupEnabled ?? false} disabled={!metrics || saving} onClick={() => void updateSwitch("sponsor-popup", !metrics?.sponsorPopupEnabled)}>
       <span className="kercad-admin-switch" aria-hidden="true" />{uiText("admin.sponsorPopup", {}, locale)} · {uiText(metrics?.sponsorPopupEnabled ? "admin.enabled" : "admin.disabled", {}, locale)}
+    </button>
+    <button className="kercad-admin-telemetry" type="button" role="switch" aria-checked={metrics?.sharedProjectsEnabled ?? false} disabled={!metrics?.sharedProjectsConfigured || saving} onClick={() => void updateSwitch("shared-projects", !metrics?.sharedProjectsEnabled)}>
+      <span className="kercad-admin-switch" aria-hidden="true" />{uiText("admin.sharedProjects", {}, locale)} · {uiText(metrics && !metrics.sharedProjectsConfigured ? "admin.sharedProjectsUnconfigured" : metrics?.sharedProjectsEnabled ? "admin.enabled" : "admin.disabled", {}, locale)}
     </button>
     </div>
     <div className="kercad-admin-cards">{cards.map(([key, value]) => <section key={key}><h2>{uiText(key, {}, locale)}</h2><strong>{value ?? "—"}</strong></section>)}</div>

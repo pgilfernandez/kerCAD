@@ -116,7 +116,7 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
         {sharedEnabled ? <button className={section === "shared" ? "active" : ""} type="button" onClick={() => onSectionChange("shared")}><Upload size={23} /><span>{t("dashboard.shared.50d0d8")}</span></button> : null}
       </aside>
       <section className="kercad-dashboard-main">
-        {section === "shared" ? <SharedProjects locale={locale} projects={projects} onOpen={onOpen} onSaved={onSharedSaved} /> : section === "challenges" ? <>
+        {sharedEnabled && section === "shared" ? <SharedProjects locale={locale} projects={projects} onOpen={onOpen} onSaved={onSharedSaved} /> : section === "challenges" ? <>
           <header className="kercad-dashboard-project-heading kercad-challenges-heading">
             <div><h1>{t("dashboard.challenges.ff3876")}</h1><span>{t("dashboard.visible.4cd4ed", { count: visibleChallenges.length })} · {t("dashboard.installed.25f009", { count: challenges.length })}</span></div>
             <div className="kercad-dashboard-project-controls">
