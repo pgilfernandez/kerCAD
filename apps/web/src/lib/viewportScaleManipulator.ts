@@ -14,6 +14,7 @@ const planes = {
 const normal = (axis: ScaleAxis) => new THREE.Vector3().setComponent(axes.indexOf(axis), 1);
 const corners = Array.from({ length: 8 }, (_, index) => new THREE.Vector3(index & 1 ? 1 : -1, index & 2 ? 1 : -1, index & 4 ? 1 : -1));
 const handles = corners.flatMap((corner) => axes.map((axis) => ({ corner, axis })));
+const handleSizePx = 12;
 
 export function attachScaleManipulator(model: THREE.Group, camera: THREE.Camera, canvas: HTMLCanvasElement, controls: OrbitControls, target: ParametricScaleTarget, snap: number, invalidate: () => void, onCommit: (factors: THREE.Vector3, pivot: THREE.Vector3) => void) {
   const group = new THREE.Group();
@@ -38,21 +39,24 @@ export function attachScaleManipulator(model: THREE.Group, camera: THREE.Camera,
     if (squares.instanceColor) squares.instanceColor.needsUpdate = true;
     invalidate();
   };
-  const draw = (bounds: THREE.Box3) => {
-    const vertices = corners.map((sign) => new THREE.Vector3(...axes.map((axis) => sign[axis] > 0 ? bounds.max[axis] : bounds.min[axis]) as [number, number, number]));
-    const edges: number[] = [];
-    for (let i = 0; i < 8; i++) for (const mask of [1, 2, 4]) {
-      if (!(i & mask)) edges.push(...vertices[i].toArray(), ...vertices[i | mask].toArray());
-    }
-    outline.geometry.setPositions(edges);
-    const dimensions = bounds.getSize(new THREE.Vector3());
-    const instance = new THREE.Object3D();
+  const vertices = corners.map(() => new THREE.Vector3());
+  const dimensions = new THREE.Vector3();
+  const instance = new THREE.Object3D(), cameraPoint = new THREE.Vector3();
+  const positionSquares = () => {
+    group.updateWorldMatrix(true, false);
+    camera.updateMatrixWorld();
+    const unitsPerPixel = 2 / (Math.max(1, canvas.clientHeight) * Math.abs(camera.projectionMatrix.elements[5]));
+    const sizes = vertices.map((vertex) => {
+      const depth = camera instanceof THREE.PerspectiveCamera ? -cameraPoint.copy(vertex).applyMatrix4(group.matrixWorld).applyMatrix4(camera.matrixWorldInverse).z : 1;
+      return handleSizePx * unitsPerPixel * Math.max(.001, depth);
+    });
     handles.forEach(({ corner, axis }, index) => {
       const [u, v] = planes[axis].axes;
-      const size = Math.min(dimensions[u] * axisLength[u], dimensions[v] * axisLength[v]) * .115;
-      instance.position.copy(vertices[Math.floor(index / 3)]);
-      instance.position[u] -= corner[u] * size / axisLength[u] * .62;
-      instance.position[v] -= corner[v] * size / axisLength[v] * .62;
+      const vertexIndex = Math.floor(index / 3);
+      const size = sizes[vertexIndex];
+      instance.position.copy(vertices[vertexIndex]);
+      instance.position[u] -= corner[u] * Math.min(size / axisLength[u] * .62, dimensions[u] / 4);
+      instance.position[v] -= corner[v] * Math.min(size / axisLength[v] * .62, dimensions[v] / 4);
       instance.rotation.copy(planes[axis].rotation);
       instance.scale.set(size / axisLength[u], size / axisLength[v], 1);
       instance.updateMatrix();
@@ -63,7 +67,19 @@ export function attachScaleManipulator(model: THREE.Group, camera: THREE.Camera,
     group.updateWorldMatrix(true, true);
     invalidate();
   };
-  const raycaster = new THREE.Raycaster(), dimensions = target.bounds.getSize(new THREE.Vector3());
+  const draw = (bounds: THREE.Box3) => {
+    corners.forEach((sign, i) => {
+      for (const axis of axes) vertices[i][axis] = sign[axis] > 0 ? bounds.max[axis] : bounds.min[axis];
+    });
+    const edges: number[] = [];
+    for (let i = 0; i < 8; i++) for (const mask of [1, 2, 4]) {
+      if (!(i & mask)) edges.push(...vertices[i].toArray(), ...vertices[i | mask].toArray());
+    }
+    outline.geometry.setPositions(edges);
+    bounds.getSize(dimensions);
+    positionSquares();
+  };
+  const raycaster = new THREE.Raycaster(), initialDimensions = target.bounds.getSize(new THREE.Vector3());
   let drag: { id: number; index: number; plane: THREE.Plane; inverse: THREE.Matrix4; start: THREE.Vector3; pivot: THREE.Vector3; factors: THREE.Vector3; controlsEnabled: boolean; damping: boolean } | null = null;
   const setRay = (event: PointerEvent) => {
     const rect = canvas.getBoundingClientRect();
@@ -105,10 +121,10 @@ export function attachScaleManipulator(model: THREE.Group, camera: THREE.Camera,
     const factors = new THREE.Vector3(1, 1, 1);
     for (const key of planes[axis].axes) {
       if (target.linkedXY && axis !== "z" && key !== "z") continue;
-      const size = dimensions[key] + delta[key] * corner[key];
-      if (Math.abs(size - dimensions[key]) < 1e-8) continue;
+      const size = initialDimensions[key] + delta[key] * corner[key];
+      if (Math.abs(size - initialDimensions[key]) < 1e-8) continue;
       const step = snap / axisLength[key];
-      factors[key] = Math.max(target.minimum[key], (step > 0 ? Math.round(size / step) * step : size) / dimensions[key]);
+      factors[key] = Math.max(target.minimum[key], (step > 0 ? Math.round(size / step) * step : size) / initialDimensions[key]);
     }
     if (target.linkedXY && axis === "z") {
       const factor = Math.abs(factors.x - 1) >= Math.abs(factors.y - 1) ? factors.x : factors.y;
@@ -149,9 +165,14 @@ export function attachScaleManipulator(model: THREE.Group, camera: THREE.Camera,
   canvas.addEventListener("lostpointercapture", finish, true);
   canvas.addEventListener("pointerleave", leave);
   window.addEventListener("keydown", escape, true);
+  controls.addEventListener("change", positionSquares);
+  const resize = new ResizeObserver(positionSquares);
+  resize.observe(canvas);
   draw(target.bounds);
   return { group, dispose: () => {
     settle(false);
+    resize.disconnect();
+    controls.removeEventListener("change", positionSquares);
     window.removeEventListener("keydown", escape, true);
     canvas.removeEventListener("pointerdown", down, true);
     canvas.removeEventListener("pointermove", move, true);
