@@ -6,7 +6,6 @@
     "admin.sharedDirectory": "Shared projects folder",
     "admin.sharedDirectoryHint": "Enter an absolute path on the server. Leave it empty to use the server setting or default folder.",
     "admin.sharedDirectoryInvalid": "Choose an existing folder the server can read and write.",
-    "admin.sharedDirectoryProtected": "Set an admin password to configure the shared projects folder.",
     "admin.donateGithub": "Donate GitHub",
     "admin.donatePaypal": "Donate Paypal",
     "admin.showPassword": "Show password",

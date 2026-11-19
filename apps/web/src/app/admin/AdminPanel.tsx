@@ -205,7 +205,7 @@ export function AdminPanel({ slug, passwordRequired: initialPasswordRequired }: 
       </form>
       <p>{uiText("admin.sharedDirectoryHint", {}, locale)}</p>
       {directoryInvalid && <p role="alert">{uiText("admin.sharedDirectoryInvalid", {}, locale)}</p>}
-    </> : <p>{uiText("admin.sharedDirectoryProtected", {}, locale)}</p>}
+    </> : null}
     <div className="kercad-admin-cards">{cards.map(([key, value]) => <section key={key}><h2>{uiText(key, {}, locale)}</h2><strong>{value ?? "—"}</strong></section>)}</div>
     <footer><p>{uiText("admin.bytesNote", {}, locale)}</p>{metrics && <p>{uiText("admin.since", {}, locale)} {new Date(metrics.since).toLocaleString(locale)}</p>}</footer>
     </>}
