@@ -21,12 +21,12 @@ const handles = corners.flatMap((corner, vertexIndex) => handleAxes.map((axis) =
 const handleSizePx = 34;
 const cornerHandleSizePx = 33.15;
 
-export function attachScaleManipulator(model: THREE.Group, camera: THREE.Camera, canvas: HTMLCanvasElement, controls: OrbitControls, target: ParametricScaleTarget, snap: number, invalidate: () => void, onCommit: (factors: THREE.Vector3, pivot: THREE.Vector3) => void) {
+export function attachScaleManipulator(model: THREE.Group, camera: THREE.Camera, canvas: HTMLCanvasElement, controls: OrbitControls, target: ParametricScaleTarget, snap: number, dark: boolean, invalidate: () => void, onCommit: (factors: THREE.Vector3, pivot: THREE.Vector3) => void) {
   const group = new THREE.Group();
   group.renderOrder = PARAMETER_HANDLE_RENDER_ORDER;
   group.matrixAutoUpdate = false;
   group.matrix.copy(target.matrix);
-  const outline = new LineSegments2(new LineSegmentsGeometry(), new LineMaterial({ color: 0x000000, linewidth: 2, opacity: .15, transparent: true, depthTest: false, depthWrite: false }));
+  const outline = new LineSegments2(new LineSegmentsGeometry(), new LineMaterial({ color: dark ? 0xffffff : 0x000000, linewidth: 2, opacity: .15, transparent: true, depthTest: false, depthWrite: false }));
   outline.renderOrder = 40;
   // Use the overlay pass so the translucent grid cannot tint the handles.
   // NoBlending keeps their fill fully opaque in that pass.

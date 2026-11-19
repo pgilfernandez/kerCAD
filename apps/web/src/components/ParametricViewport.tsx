@@ -4579,13 +4579,13 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
     const model = modelRef.current, camera = cameraRef.current, controls = controlsRef.current;
     const canvas = rendererRef.current?.domElement;
     if (!scaleTarget || !model || !camera || !controls || !canvas) return;
-    const handle = attachScaleManipulator(model, camera, canvas, controls, scaleTarget, workplane.snapToGrid ? workplane.snapSpacing : 0, () => invalidateRef.current(), (factors, pivot) => scaleCommitRef.current?.(scaleTarget, factors, pivot));
+    const handle = attachScaleManipulator(model, camera, canvas, controls, scaleTarget, workplane.snapToGrid ? workplane.snapSpacing : 0, theme === "dark", () => invalidateRef.current(), (factors, pivot) => scaleCommitRef.current?.(scaleTarget, factors, pivot));
     scaleManipulatorRef.current = handle;
     return () => {
       if (scaleManipulatorRef.current === handle) scaleManipulatorRef.current = null;
       handle.dispose();
     };
-  }, [scaleTarget, workplane.snapToGrid, workplane.snapSpacing, projection, renderQuality, shadingMode]);
+  }, [scaleTarget, workplane.snapToGrid, workplane.snapSpacing, projection, renderQuality, shadingMode, theme]);
 
   const faceExtrudeControls = faceExtrudeDraft ?? faceExtrudeHandle;
   const floatingBoolean = floatingFeature?.kind === "objectBoolean" ? floatingFeature : null;
