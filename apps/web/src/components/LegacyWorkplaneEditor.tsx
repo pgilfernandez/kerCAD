@@ -6278,6 +6278,7 @@ export function LegacyWorkplaneEditor({
       freehand: uiText("ui.legacyworkplaneeditor.freehand.drag.to.draw.a.closed.contour.2c1eb0"),
       freehandSmooth: uiText("ui.legacyworkplaneeditor.smooth.freehand.drag.to.draw.a.closed.b.zier..401363"),
       circle: uiText("ui.legacyworkplaneeditor.circle.drag.from.the.centre.to.define.the.rad.e8055c"),
+      ellipse: uiText("cylinder.ellipse"),
       arc: uiText("ui.legacyworkplaneeditor.arc.choose.the.centre.start.point.and.end.poi.439ea9"),
       select: uiText("ui.legacyworkplaneeditor.select.edit.sketch.geometry.or.place.and.scal.58cff7"),
       refine: uiText("ui.legacyworkplaneeditor.refine.click.a.segment.to.add.a.point.or.a.po.257bb2"),

@@ -22,7 +22,7 @@ export function facesFromPlanarProfile(brep: Brep, loops: readonly PlanarBrepLoo
       const inside = brep.unwrap(brep.cut(slab, filled)) as BrepSolid;
       filled = brep.unwrap(brep.fuse(outside, inside)) as BrepSolid;
     }
-    return brep.getFaces(filled).filter((face) => {
+    return brep.getFaces<"3D">(filled).filter((face) => {
       const bounds = brep.getBounds(face);
       return Math.abs(bounds.zMin) < 1e-6 && Math.abs(bounds.zMax) < 1e-6;
     });
