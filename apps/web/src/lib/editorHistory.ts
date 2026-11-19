@@ -1,4 +1,4 @@
-import type { WorkplaneShape } from "@/types/sketchforge";
+import type { WorkplaneShape } from "@/types/workplane";
 import { canonicalizeShape } from "@/lib/workplaneShapes";
 
 export const MAX_EDITOR_HISTORY_ENTRIES = 5000;

@@ -1,5 +1,5 @@
 import type { ManifoldToplevel } from "manifold-3d";
-import type { SketchPoint, SketchProfile, SketchRevolveSettings, SketchSegment } from "@/types/sketchforge";
+import type { SketchPoint, SketchProfile, SketchRevolveSettings, SketchSegment } from "@/types/workplane";
 
 export const DEFAULT_SKETCH_REVOLVE_SETTINGS: SketchRevolveSettings = {
   startAngle: 0,

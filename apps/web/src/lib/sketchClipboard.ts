@@ -1,5 +1,5 @@
 import type { SketchSelection } from "@/components/SketchWorkspace";
-import type { SketchConstraint, SketchProfile } from "@/types/sketchforge";
+import type { SketchConstraint, SketchProfile } from "@/types/workplane";
 
 export function copySketchSelection(profile: SketchProfile, selection: SketchSelection): SketchProfile | null {
   if (!selection) return null;

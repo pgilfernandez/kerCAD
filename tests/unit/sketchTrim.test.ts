@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { trimSketchGeometry } from "@/lib/sketchTrim";
-import type { SketchProfile } from "@/types/sketchforge";
+import type { SketchProfile } from "@/types/workplane";
 
 function ids() {
   let index = 0;

@@ -120,7 +120,7 @@ function drawnSketchFaces(brep: Brep, sketch: SketchFeature): Face[] {
   return facesFromPlanarProfile(brep, loops, sketch.name);
 }
 
-function sketchPathEdge(brep: Brep, sketch: SketchFeature, segment: import("@/types/sketchforge").SketchSegment, fromId: string, toId: string): Edge {
+function sketchPathEdge(brep: Brep, sketch: SketchFeature, segment: import("@/types/workplane").SketchSegment, fromId: string, toId: string): Edge {
   const from = sketch.profile.shape === "drawn" ? sketch.profile.geometry.points.find((point) => point.id === fromId) : undefined;
   const to = sketch.profile.shape === "drawn" ? sketch.profile.geometry.points.find((point) => point.id === toId) : undefined;
   if (!from || !to) throw new Error(`${sketch.name}: sketch contains incomplete references.`);

@@ -4,7 +4,7 @@ import { objectPlacementForWorkplane } from "@/lib/parametricWorkplane";
 import { sketchProfileFromSvg } from "@/lib/svgImport";
 import { validateDrawnSketchProfile } from "@/lib/sketchProfileValidation";
 import type { ParametricDocument } from "@/types/parametric";
-import type { SketchProfile } from "@/types/sketchforge";
+import type { SketchProfile } from "@/types/workplane";
 
 function svgOperationName(fileName: string) {
   const withoutExtension = fileName.replace(/\.svg$/i, "").trim();

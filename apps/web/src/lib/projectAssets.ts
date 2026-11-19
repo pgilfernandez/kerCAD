@@ -1,4 +1,4 @@
-import type { ProjectAsset, ProjectAssetSourceFormat, WorkplaneShape } from "@/types/sketchforge";
+import type { ProjectAsset, ProjectAssetSourceFormat, WorkplaneShape } from "@/types/workplane";
 
 function exactArrayBuffer(bytes: Uint8Array) {
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;

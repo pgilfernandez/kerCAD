@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { compactEdgeTreatmentHistory, edgeTreatmentAppliedFrame, restoreShapeBeforeEdgeTreatment } from "@/lib/edgeTreatmentHistory";
-import type { EdgeTreatmentHistoryEntry, WorkplaneShape } from "@/types/sketchforge";
+import type { EdgeTreatmentHistoryEntry, WorkplaneShape } from "@/types/workplane";
 
 function box(overrides: Partial<WorkplaneShape> = {}): WorkplaneShape {
   return {

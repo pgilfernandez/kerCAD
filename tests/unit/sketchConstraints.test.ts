@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { sketchConstraintConflict, solveSketchConstraints } from "@/lib/sketchConstraints";
-import type { SketchProfile } from "@/types/sketchforge";
+import type { SketchProfile } from "@/types/workplane";
 
 function arcProfile(): SketchProfile {
   return {

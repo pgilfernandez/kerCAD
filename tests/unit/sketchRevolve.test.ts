@@ -5,7 +5,7 @@ import {
   normalizeSketchRevolveSettings,
   sketchProfileToRevolvePolygons,
 } from "@/lib/sketchRevolve";
-import type { SketchProfile } from "@/types/sketchforge";
+import type { SketchProfile } from "@/types/workplane";
 
 function rectangleProfile(innerRadius = 5, outerRadius = 10, height = 20): SketchProfile {
   return {

@@ -112,7 +112,7 @@ import {
   type SketchForgeMcpViewFace,
 } from "@/lib/sketchforgeMcpProtocol";
 import type { CadModifierComponentMesh, CadModifierDisplayEdge, CadModifierEdge, CadModifierKind, CadModifierMeshPart, CadModifierPrimitivePart, CadModifierQuality, CadModifierWorkerRequest, CadModifierWorkerResponse } from "@/lib/cadModifierTypes";
-import type { AlignAxis, AlignHandleStatus, AlignTarget, GridSize, ProjectAsset, ShapeAsset, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchRevolveSettings, SketchSegment, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
+import type { AlignAxis, AlignHandleStatus, AlignTarget, GridSize, ProjectAsset, ShapeAsset, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchRevolveSettings, SketchSegment, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/workplane";
 export { importedShapeFromStl, importedShapeFromSvg };
 import { uiText } from "@/lib/kercadI18n";
 
@@ -355,12 +355,12 @@ async function shapeFromResolvedSketchProfile(
     );
     const simplified = section.simplify(Math.max(1e-7, coordinateScale * 1e-8));
     disposable.push(simplified);
-    if (simplified.toPolygons().length === 0) throw new Error(uiText("ui.sketchforgeeditor.the.sketch.has.no.filled.area.after.resolving.it.f66663"));
+    if (simplified.toPolygons().length === 0) throw new Error(uiText("ui.legacyworkplaneeditor.the.sketch.has.no.filled.area.after.resolving.it.f66663"));
 
     const solid = simplified.extrude(height);
     disposable.push(solid);
     if (solid.status() !== "NoError" || solid.numTri() < 1) {
-      throw new Error(uiText("ui.sketchforgeeditor.the.crossing.sketch.could.not.be.converted.into..3e683b"));
+      throw new Error(uiText("ui.legacyworkplaneeditor.the.crossing.sketch.could.not.be.converted.into..3e683b"));
     }
 
     const manifoldPositions = manifoldMeshToPositions(solid.getMesh());
@@ -1008,7 +1008,7 @@ function booleanAutomationDynamicScene(caseId: string): { label: string; shapes:
       const solid = automationShape(key);
       return solid
         ? {
-            label: uiText("ui.sketchforgeeditor.rotated.hole.cube.c0b971", { value0: solid.name }),
+            label: uiText("ui.legacyworkplaneeditor.rotated.hole.cube.c0b971", { value0: solid.name }),
             shapes: [solid, automationHoleBox({ rotation: 32 })],
           }
         : null;
@@ -1018,7 +1018,7 @@ function booleanAutomationDynamicScene(caseId: string): { label: string; shapes:
       const hole = automationHoleShape(key);
       return hole
         ? {
-            label: uiText("ui.sketchforgeeditor.hole.solid.cube.e7b0d3", { value0: hole.name }),
+            label: uiText("ui.legacyworkplaneeditor.hole.solid.cube.e7b0d3", { value0: hole.name }),
             shapes: [automationSolidBox({ width: 36, depth: 36, height: 30 }), hole],
           }
         : null;
@@ -1028,7 +1028,7 @@ function booleanAutomationDynamicScene(caseId: string): { label: string; shapes:
       const hole = automationHoleShape(key);
       return hole
         ? {
-            label: uiText("ui.sketchforgeeditor.hole.imported.stl.4d6902", { value0: hole.name }),
+            label: uiText("ui.legacyworkplaneeditor.hole.imported.stl.4d6902", { value0: hole.name }),
             shapes: [automationImportedStlBox({ width: 36, depth: 36, height: 30 }), hole],
           }
         : null;
@@ -1040,7 +1040,7 @@ function booleanAutomationDynamicScene(caseId: string): { label: string; shapes:
       const solid = automationShape(key, { width: key === "text" ? 42 : undefined, depth: key === "text" ? 20 : undefined });
       return solid
         ? {
-            label: uiText("ui.sketchforgeeditor.rotated.hole.stl.2992e9", { value0: solid.name }),
+            label: uiText("ui.legacyworkplaneeditor.rotated.hole.stl.2992e9", { value0: solid.name }),
             shapes: [
               solid,
               automationHoleStlBox({
@@ -1057,7 +1057,7 @@ function booleanAutomationDynamicScene(caseId: string): { label: string; shapes:
       const solid = automationShape(key, { width: key === "text" ? 42 : undefined, depth: key === "text" ? 20 : undefined });
       return solid
         ? {
-            label: uiText("ui.sketchforgeeditor.non.rotated.hole.stl.4acefa", { value0: solid.name }),
+            label: uiText("ui.legacyworkplaneeditor.non.rotated.hole.stl.4acefa", { value0: solid.name }),
             shapes: [
               solid,
               automationHoleStlBox({
@@ -1078,13 +1078,13 @@ function booleanAutomationScene(caseId: string): { label: string; shapes: Workpl
   const rotatedHole = () => automationHoleBox({ rotation: 32 });
   if (caseId === "selection-outline-regression") {
     return {
-      label: uiText("ui.sketchforgeeditor.segmented.rounded.mesh.selection.outline.35946e"),
+      label: uiText("ui.legacyworkplaneeditor.segmented.rounded.mesh.selection.outline.35946e"),
       shapes: [automationSelectionOutlineRegressionShape()],
     };
   }
   if (caseId === "locked-align-pair") {
     return {
-      label: uiText("ui.sketchforgeeditor.locked.alignment.reference.pair.90c523"),
+      label: uiText("ui.legacyworkplaneeditor.locked.alignment.reference.pair.90c523"),
       shapes: [
         sceneShape({ id: "locked-anchor", name: "Locked cube", kind: "box", color: "#d41721", x: 24, z: 10, width: 20, depth: 20, height: 20, locked: true }),
         sceneShape({ id: "moving-cube", name: "Moving cube", kind: "box", color: "#ef7f1a", x: -24, z: -18, width: 12, depth: 12, height: 12 }),
@@ -1097,13 +1097,13 @@ function booleanAutomationScene(caseId: string): { label: string; shapes: Workpl
       sceneShape({ id: "modifier-upright", name: "Upright", kind: "box", color: "#d41721", x: 8, width: 14, depth: 14, height: 40, elevation: 4 }),
       sceneShape({ id: "modifier-rail", name: "Rail", kind: "box", color: "#d41721", x: -7, z: 5, width: 32, depth: 10, height: 13, elevation: 4 }),
     ]);
-    return group ? { label: uiText("ui.sketchforgeeditor.overlapping.normal.solid.group.8f4cbd"), shapes: [group] } : null;
+    return group ? { label: uiText("ui.legacyworkplaneeditor.overlapping.normal.solid.group.8f4cbd"), shapes: [group] } : null;
   }
   if (caseId === "straight-hole-stl-group") {
     const group = automationNormalGroupedObject();
     return group
       ? {
-          label: uiText("ui.sketchforgeeditor.normal.grouped.object.non.rotated.hole.stl.307299"),
+          label: uiText("ui.legacyworkplaneeditor.normal.grouped.object.non.rotated.hole.stl.307299"),
           shapes: [group, automationHoleStlBox({ id: "straight-hole-stl-group", width: 24, depth: 42 })],
         }
       : null;
@@ -1113,14 +1113,14 @@ function booleanAutomationScene(caseId: string): { label: string; shapes: Workpl
     const cube = automationShape("cube", { id: "mixed-solid-cube", x: -14, width: 24, depth: 26, height: 28 });
     return group && cube
       ? {
-          label: uiText("ui.sketchforgeeditor.cube.normal.grouped.object.non.rotated.hole.stl.e4ba53"),
+          label: uiText("ui.legacyworkplaneeditor.cube.normal.grouped.object.non.rotated.hole.stl.e4ba53"),
           shapes: [cube, group, automationHoleStlBox({ id: "straight-hole-stl-mixed-group", width: 48, depth: 42 })],
         }
       : null;
   }
   if (caseId === "raspi-stl-hole") {
     return {
-      label: uiText("ui.sketchforgeeditor.raspberry.pi.like.stl.non.rotated.hole.cube.db793a"),
+      label: uiText("ui.legacyworkplaneeditor.raspberry.pi.like.stl.non.rotated.hole.cube.db793a"),
       shapes: [
         automationRaspberryPiStl(),
         automationHoleBox({ id: "raspi-hole-cube", x: -2, z: 2, width: 18, depth: 56, height: 20, elevation: -2, rotation: 0, rotationZ: 0 }),
@@ -1129,7 +1129,7 @@ function booleanAutomationScene(caseId: string): { label: string; shapes: Workpl
   }
   if (caseId === "raspi-stl-rot-hole") {
     return {
-      label: uiText("ui.sketchforgeeditor.raspberry.pi.like.stl.rotated.hole.cube.6f36fb"),
+      label: uiText("ui.legacyworkplaneeditor.raspberry.pi.like.stl.rotated.hole.cube.6f36fb"),
       shapes: [
         automationRaspberryPiStl(),
         automationHoleBox({ id: "raspi-rot-hole-cube", x: -2, z: 2, width: 18, depth: 56, height: 20, elevation: -2, rotation: 28, rotationZ: 8 }),
@@ -1138,7 +1138,7 @@ function booleanAutomationScene(caseId: string): { label: string; shapes: Workpl
   }
   if (caseId === "raspi-stl-hole-stl") {
     return {
-      label: uiText("ui.sketchforgeeditor.raspberry.pi.like.stl.non.rotated.hole.stl.ef6946"),
+      label: uiText("ui.legacyworkplaneeditor.raspberry.pi.like.stl.non.rotated.hole.stl.ef6946"),
       shapes: [
         automationRaspberryPiStl(),
         automationHoleStlBox({ id: "raspi-hole-stl", x: -2, z: 2, width: 18, depth: 56, height: 20, elevation: -2, rotation: 0, rotationZ: 0 }),
@@ -1147,7 +1147,7 @@ function booleanAutomationScene(caseId: string): { label: string; shapes: Workpl
   }
   if (caseId === "raspi-stl-rot-hole-stl") {
     return {
-      label: uiText("ui.sketchforgeeditor.raspberry.pi.like.stl.rotated.hole.stl.d25085"),
+      label: uiText("ui.legacyworkplaneeditor.raspberry.pi.like.stl.rotated.hole.stl.d25085"),
       shapes: [
         automationRaspberryPiStl(),
         automationHoleStlBox({ id: "raspi-rot-hole-stl", x: -2, z: 2, width: 18, depth: 56, height: 20, elevation: -2, rotation: 28, rotationZ: 8 }),
@@ -1156,46 +1156,46 @@ function booleanAutomationScene(caseId: string): { label: string; shapes: Workpl
   }
   const cases: Record<string, { label: string; shapes: WorkplaneShape[] }> = {
     "cube-hole": {
-      label: uiText("ui.sketchforgeeditor.solid.cube.non.rotated.hole.cube.0a895c"),
+      label: uiText("ui.legacyworkplaneeditor.solid.cube.non.rotated.hole.cube.0a895c"),
       shapes: [automationSolidBox(), automationHoleBox()],
     },
     "cube-rot-hole": {
-      label: uiText("ui.sketchforgeeditor.solid.cube.rotated.hole.cube.20024b"),
+      label: uiText("ui.legacyworkplaneeditor.solid.cube.rotated.hole.cube.20024b"),
       shapes: [automationSolidBox(), rotatedHole()],
     },
     "stl-hole": {
-      label: uiText("ui.sketchforgeeditor.stl.non.rotated.hole.cube.a6b8c6"),
+      label: uiText("ui.legacyworkplaneeditor.stl.non.rotated.hole.cube.a6b8c6"),
       shapes: [automationImportedStlBox(), automationHoleBox()],
     },
     "stl-rot-hole": {
-      label: uiText("ui.sketchforgeeditor.stl.rotated.hole.cube.8b028f"),
+      label: uiText("ui.legacyworkplaneeditor.stl.rotated.hole.cube.8b028f"),
       shapes: [automationImportedStlBox(), rotatedHole()],
     },
     "rot-stl-hole": {
-      label: uiText("ui.sketchforgeeditor.rotated.stl.hole.cube.236aa1"),
+      label: uiText("ui.legacyworkplaneeditor.rotated.stl.hole.cube.236aa1"),
       shapes: [automationImportedStlBox({ rotation: 28, rotationZ: 8 }), automationHoleBox()],
     },
     "rot-stl-rot-hole": {
-      label: uiText("ui.sketchforgeeditor.rotated.stl.rotated.hole.cube.5d9da8"),
+      label: uiText("ui.legacyworkplaneeditor.rotated.stl.rotated.hole.cube.5d9da8"),
       shapes: [automationImportedStlBox({ rotation: 28, rotationZ: 8 }), rotatedHole()],
     },
     "cylinder-rot-hole": {
-      label: uiText("ui.sketchforgeeditor.cylinder.rotated.hole.cube.ef47a5"),
+      label: uiText("ui.legacyworkplaneeditor.cylinder.rotated.hole.cube.ef47a5"),
       shapes: [automationSolidBox({ id: "solid-cylinder", name: "Cylinder", kind: "cylinder", color: "#d97813", sides: 48 }), rotatedHole()],
     },
     "sphere-rot-hole": {
-      label: uiText("ui.sketchforgeeditor.sphere.rotated.hole.cube.5dcb3c"),
+      label: uiText("ui.legacyworkplaneeditor.sphere.rotated.hole.cube.5dcb3c"),
       shapes: [automationSolidBox({ id: "solid-sphere", name: "Sphere", kind: "sphere", color: "#0098c7", sides: 48 }), rotatedHole()],
     },
     "cone-rot-hole": {
-      label: uiText("ui.sketchforgeeditor.cone.rotated.hole.cube.2f89bc"),
+      label: uiText("ui.legacyworkplaneeditor.cone.rotated.hole.cube.2f89bc"),
       shapes: [
         automationSolidBox({ id: "solid-cone", name: "Cone", kind: "cone", color: "#6e2786", sides: 64, topRadius: 0, baseRadius: 14 }),
         rotatedHole(),
       ],
     },
     "pyramid-rot-hole": {
-      label: uiText("ui.sketchforgeeditor.pyramid.rotated.hole.cube.2aa446"),
+      label: uiText("ui.legacyworkplaneeditor.pyramid.rotated.hole.cube.2aa446"),
       shapes: [automationSolidBox({ id: "solid-pyramid", name: "Pyramid", kind: "pyramid", color: "#f2cf10", sides: 4 }), rotatedHole()],
     },
   };
@@ -2352,10 +2352,10 @@ function readFileAsDataUrl(file: File) {
       if (typeof reader.result === "string") {
         resolve(reader.result);
       } else {
-        reject(new Error(uiText("ui.sketchforgeeditor.image.could.not.be.read.3b6b48")));
+        reject(new Error(uiText("ui.legacyworkplaneeditor.image.could.not.be.read.3b6b48")));
       }
     });
-    reader.addEventListener("error", () => reject(new Error(uiText("ui.sketchforgeeditor.image.could.not.be.read.3b6b48"))));
+    reader.addEventListener("error", () => reject(new Error(uiText("ui.legacyworkplaneeditor.image.could.not.be.read.3b6b48"))));
     reader.readAsDataURL(file);
   });
 }
@@ -2364,7 +2364,7 @@ function loadImageElement(dataUrl: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
     image.addEventListener("load", () => resolve(image));
-    image.addEventListener("error", () => reject(new Error(uiText("ui.sketchforgeeditor.image.could.not.be.decoded.ac3009"))));
+    image.addEventListener("error", () => reject(new Error(uiText("ui.legacyworkplaneeditor.image.could.not.be.decoded.ac3009"))));
     image.src = dataUrl;
   });
 }
@@ -2376,7 +2376,7 @@ async function prepareImportedImage(file: File) {
   const pixelHeight = image.naturalHeight || image.height;
 
   if (!pixelWidth || !pixelHeight) {
-    throw new Error(uiText("ui.sketchforgeeditor.image.has.no.readable.dimensions.53410e"));
+    throw new Error(uiText("ui.legacyworkplaneeditor.image.has.no.readable.dimensions.53410e"));
   }
 
   const maxTextureSide = 2048;
@@ -2395,7 +2395,7 @@ async function prepareImportedImage(file: File) {
   canvas.height = Math.max(1, Math.round(pixelHeight * textureScale));
   const context = canvas.getContext("2d");
   if (!context) {
-    throw new Error(uiText("ui.sketchforgeeditor.image.could.not.be.prepared.2ad832"));
+    throw new Error(uiText("ui.legacyworkplaneeditor.image.could.not.be.prepared.2ad832"));
   }
   context.drawImage(image, 0, 0, canvas.width, canvas.height);
   const mimeType = file.type === "image/jpeg" || file.type === "image/webp" ? file.type : "image/png";
@@ -2519,7 +2519,7 @@ async function toSvg(shapes: WorkplaneShape[], title: string) {
     try {
       const solid = shapeToManifoldSolid(runtime, shape, created);
       if (!solid || solid.status() !== "NoError" || solid.numTri() < 1) {
-        throw new Error(uiText("ui.sketchforgeeditor.could.not.convert.into.a.watertight.svg.outline.933605", { value0: shape.name }));
+        throw new Error(uiText("ui.legacyworkplaneeditor.could.not.convert.into.a.watertight.svg.outline.933605", { value0: shape.name }));
       }
 
       const topView = solid.rotate([90, 0, 0]);
@@ -2529,7 +2529,7 @@ async function toSvg(shapes: WorkplaneShape[], title: string) {
       const simplified = projection.simplify(0.00001);
       if (simplified !== projection) projectedObjects.push(simplified);
       const polygons = simplified.toPolygons();
-      if (!polygons.length) throw new Error(uiText("ui.sketchforgeeditor.top.view.of.has.no.exportable.area.ab4af6", { value0: shape.name }));
+      if (!polygons.length) throw new Error(uiText("ui.legacyworkplaneeditor.top.view.of.has.no.exportable.area.ab4af6", { value0: shape.name }));
       layers.push({ name: shape.name, color: shape.color, polygons });
     } finally {
       [...new Set([...projectedObjects, ...created])].reverse().forEach(disposeManifold);
@@ -2563,7 +2563,7 @@ async function downloadTextFile(filename: string, content: string, type: string)
     });
     const payload = (await response.json().catch(() => null)) as { error?: string; path?: string } | null;
     if (!response.ok || !payload?.path) {
-      throw new Error(payload?.error ?? uiText("ui.sketchforgeeditor.could.not.save.export.1b8af7"));
+      throw new Error(payload?.error ?? uiText("ui.legacyworkplaneeditor.could.not.save.export.1b8af7"));
     }
     return { mode: "folder", path: payload.path };
   }
@@ -2582,7 +2582,7 @@ async function downloadBlobFile(filename: string, blob: Blob): Promise<DownloadR
     formData.set("folder", folder);
     const response = await fetch("/api/local-download", { method: "POST", body: formData });
     const payload = (await response.json().catch(() => null)) as { error?: string; path?: string } | null;
-    if (!response.ok || !payload?.path) throw new Error(payload?.error ?? uiText("ui.sketchforgeeditor.could.not.save.export.1b8af7"));
+    if (!response.ok || !payload?.path) throw new Error(payload?.error ?? uiText("ui.legacyworkplaneeditor.could.not.save.export.1b8af7"));
     return { mode: "folder", path: payload.path };
   }
   const url = URL.createObjectURL(blob);
@@ -2717,7 +2717,7 @@ function alignmentStatuses(selection: WorkplaneShape[], anchorId: string | null)
         target,
         aligned,
         disabled: !wouldMove,
-        title: aligned ? uiText("ui.sketchforgeeditor.already.aligned.1f7a0f", { value0: label }) : uiText("ui.sketchforgeeditor.align.426374", { value0: label }),
+        title: aligned ? uiText("ui.legacyworkplaneeditor.already.aligned.1f7a0f", { value0: label }) : uiText("ui.legacyworkplaneeditor.align.426374", { value0: label }),
       };
     }),
   );
@@ -5261,7 +5261,7 @@ function readMcpEditorIdentity() {
   return identity;
 }
 
-export function SketchForgeEditor({
+export function LegacyWorkplaneEditor({
   initialAssets = [],
   initialShapes = [],
   initialHistory,
@@ -5277,7 +5277,7 @@ export function SketchForgeEditor({
   onProjectSnapshot,
   onProjectWorkspaceChange,
   projectId,
-  projectName = uiText("ui.sketchforgeeditor.sketchforge.design.46933a"),
+  projectName = uiText("ui.legacyworkplaneeditor.sketchforge.design.46933a"),
   projectCreatedAt = Date.now(),
   projectModifiedAt = Date.now(),
   projectRevision = 0,
@@ -5535,7 +5535,7 @@ export function SketchForgeEditor({
           componentPreviews: [],
           error: message.selectableEdgeIds.length ? null : "No sharp manifold edges were found at this threshold",
         } : current);
-        if (message.selectableEdgeIds.length) setNotice(uiText("ui.sketchforgeeditor.select.highlighted.edges.then.adjust.the.preview.da270e"));
+        if (message.selectableEdgeIds.length) setNotice(uiText("ui.legacyworkplaneeditor.select.highlighted.edges.then.adjust.the.preview.da270e"));
         return;
       }
       if (message.type === "preview") {
@@ -5556,7 +5556,7 @@ export function SketchForgeEditor({
           busy: false,
           error: preview ? null : "The CAD kernel returned an empty edge treatment",
         } : current);
-        if (preview) setNotice(uiText("ui.sketchforgeeditor.edge.treatment.preview.ready.1ad292"));
+        if (preview) setNotice(uiText("ui.legacyworkplaneeditor.edge.treatment.preview.ready.1ad292"));
         return;
       }
       if (message.type === "error") {
@@ -5574,7 +5574,7 @@ export function SketchForgeEditor({
           return;
         }
         setEdgeModifier((current) => current ? { ...current, busy: false, preview: null, error: message.message } : current);
-        setNotice(uiText("ui.sketchforgeeditor.edge.treatment.needs.adjustment.5428b0"));
+        setNotice(uiText("ui.legacyworkplaneeditor.edge.treatment.needs.adjustment.5428b0"));
       }
     }
     cadModifierWorkerRestartRef.current = createWorker;
@@ -6096,28 +6096,28 @@ export function SketchForgeEditor({
 
   const removeEdgeTreatment = useCallback(async (optionId: string) => {
     if (!selectedShape) {
-      setNotice(uiText("ui.sketchforgeeditor.select.a.shape.with.an.edge.feature.first.159ad5"));
+      setNotice(uiText("ui.legacyworkplaneeditor.select.a.shape.with.an.edge.feature.first.159ad5"));
       return;
     }
     if (selectedShape.locked) {
-      setNotice(uiText("ui.sketchforgeeditor.unlock.the.shape.before.removing.an.edge.feature.07aae5"));
+      setNotice(uiText("ui.legacyworkplaneeditor.unlock.the.shape.before.removing.an.edge.feature.07aae5"));
       return;
     }
     const option = selectedEdgeHistoryOptions.find((candidate) => candidate.id === optionId);
     if (!option) {
-      setNotice(uiText("ui.sketchforgeeditor.choose.an.edge.feature.to.remove.b0fee0"));
+      setNotice(uiText("ui.legacyworkplaneeditor.choose.an.edge.feature.to.remove.b0fee0"));
       return;
     }
     const sourceFingerprint = projectShapesFingerprint([selectedShape]);
     const sourceProjectId = projectInfoRef.current.projectId;
     const restored = await restoreEdgeTreatmentInShape(selectedShape, option.path, option.entryId);
     if (!restored) {
-      setNotice(selectedEdgeFeatureCount > 0 ? uiText("ui.sketchforgeeditor.this.edge.feature.has.no.stored.undo.history.f47744") : uiText("ui.sketchforgeeditor.no.edge.feature.to.remove.58ccf0"));
+      setNotice(selectedEdgeFeatureCount > 0 ? uiText("ui.legacyworkplaneeditor.this.edge.feature.has.no.stored.undo.history.f47744") : uiText("ui.legacyworkplaneeditor.no.edge.feature.to.remove.58ccf0"));
       return;
     }
     const currentTarget = shapesRef.current.find((shape) => shape.id === selectedShape.id);
     if (projectInfoRef.current.projectId !== sourceProjectId || !currentTarget || projectShapesFingerprint([currentTarget]) !== sourceFingerprint) {
-      setNotice(uiText("ui.sketchforgeeditor.the.object.changed.while.removing.the.edge.featu.80ef8b"));
+      setNotice(uiText("ui.legacyworkplaneeditor.the.object.changed.while.removing.the.edge.featu.80ef8b"));
       return;
     }
     invalidateCadModifierSession();
@@ -6126,7 +6126,7 @@ export function SketchForgeEditor({
       restored.shape.id,
       `Removed ${restored.label}`,
     );
-    setNotice(uiText("ui.sketchforgeeditor.removed.a1f370", { value0: restored.label }));
+    setNotice(uiText("ui.legacyworkplaneeditor.removed.a1f370", { value0: restored.label }));
   }, [commitShapes, invalidateCadModifierSession, selectedEdgeFeatureCount, selectedEdgeHistoryOptions, selectedShape]);
 
   const commitSketchProfile = useCallback(
@@ -6177,12 +6177,12 @@ export function SketchForgeEditor({
     setSketchMeasureStart(null);
     setSketchMeasurement(null);
     setEditingSketchShapeId(editingId);
-    setNotice(editingId ? uiText("ui.sketchforgeeditor.editing.sketch.profile.64d512", { value0: operation }) : operation === "revolve" ? uiText("ui.sketchforgeeditor.revolve.sketch.started.draw.on.the.left.side..2a7b4c") : uiText("ui.sketchforgeeditor.sketch.started.place.the.first.point.679664"));
+    setNotice(editingId ? uiText("ui.legacyworkplaneeditor.editing.sketch.profile.64d512", { value0: operation }) : operation === "revolve" ? uiText("ui.legacyworkplaneeditor.revolve.sketch.started.draw.on.the.left.side..2a7b4c") : uiText("ui.legacyworkplaneeditor.sketch.started.place.the.first.point.679664"));
   }, []);
 
   const beginSketchEdit = useCallback(() => {
     if (selectedShapes.length !== 1 || !selectedShape?.sketchProfile) {
-      setNotice(uiText("ui.sketchforgeeditor.select.one.shape.created.from.a.sketch.to.edit.i.be796a"));
+      setNotice(uiText("ui.legacyworkplaneeditor.select.one.shape.created.from.a.sketch.to.edit.i.be796a"));
       return;
     }
     const operation = selectedShape.sketchOperation ?? (selectedShape.sketchRevolve ? "revolve" : "extrude");
@@ -6224,14 +6224,14 @@ export function SketchForgeEditor({
     setSketchMeasurement(null);
     setEditingSketchShapeId(null);
     setSketchRevolvePreview(null);
-    setNotice(uiText("ui.sketchforgeeditor.sketch.cancelled.05c4db"));
+    setNotice(uiText("ui.legacyworkplaneeditor.sketch.cancelled.05c4db"));
   }, []);
 
   const sketchUndo = useCallback(() => {
     const currentHistory = sketchHistoryRef.current;
     const currentIndex = sketchHistoryIndexRef.current;
     if (currentIndex <= 0) {
-      setNotice(uiText("ui.sketchforgeeditor.nothing.to.undo.in.this.sketch.2b863c"));
+      setNotice(uiText("ui.legacyworkplaneeditor.nothing.to.undo.in.this.sketch.2b863c"));
       return;
     }
     const nextIndex = currentIndex - 1;
@@ -6240,14 +6240,14 @@ export function SketchForgeEditor({
     setSketchProfile(cloneSketchProfile(currentHistory[nextIndex] ?? emptySketchProfile()));
     setSketchActivePointId(null);
     setSketchSelection(null);
-    setNotice(uiText("ui.sketchforgeeditor.sketch.undo.b7b3e8"));
+    setNotice(uiText("ui.legacyworkplaneeditor.sketch.undo.b7b3e8"));
   }, []);
 
   const sketchRedo = useCallback(() => {
     const currentHistory = sketchHistoryRef.current;
     const currentIndex = sketchHistoryIndexRef.current;
     if (currentIndex >= currentHistory.length - 1) {
-      setNotice(uiText("ui.sketchforgeeditor.nothing.to.redo.in.this.sketch.6c5794"));
+      setNotice(uiText("ui.legacyworkplaneeditor.nothing.to.redo.in.this.sketch.6c5794"));
       return;
     }
     const nextIndex = currentIndex + 1;
@@ -6256,7 +6256,7 @@ export function SketchForgeEditor({
     setSketchProfile(cloneSketchProfile(currentHistory[nextIndex] ?? emptySketchProfile()));
     setSketchActivePointId(null);
     setSketchSelection(null);
-    setNotice(uiText("ui.sketchforgeeditor.sketch.redo.3a1025"));
+    setNotice(uiText("ui.legacyworkplaneeditor.sketch.redo.3a1025"));
   }, []);
 
   const setActiveSketchTool = useCallback((tool: SketchTool) => {
@@ -6265,25 +6265,25 @@ export function SketchForgeEditor({
     setSketchSelection(null);
     if (tool !== "measure") setSketchMeasureStart(null);
     const messages: Record<SketchTool, string> = {
-      line: uiText("ui.sketchforgeeditor.line.click.points.to.draw.straight.segments.371d3e"),
-      rectangle: uiText("ui.sketchforgeeditor.rectangle.click.opposite.corners.to.create.a..65e673"),
-      centerRectangle: uiText("ui.sketchforgeeditor.centered.rectangle.choose.the.centre.and.a.co.2fbde4"),
-      roundedRectangle: uiText("ui.sketchforgeeditor.rounded.rectangle.choose.opposite.corners.the.120d1e"),
-      polygon: uiText("ui.sketchforgeeditor.polygon.choose.the.centre.and.circumcircle.ra.251e41"),
-      connect: uiText("ui.sketchforgeeditor.connect.nodes.choose.two.existing.nodes.3b2770"),
-      slot: uiText("ui.sketchforgeeditor.slot.choose.both.end.centres.then.the.width.ae47b7"),
-      arcSlot: uiText("ui.sketchforgeeditor.arc.slot.choose.the.arc.centre.start.end.then.73d277"),
-      bezier: uiText("ui.sketchforgeeditor.b.zier.click.and.drag.points.to.pull.curve.ha.5299f5"),
-      smooth: uiText("ui.sketchforgeeditor.smooth.curve.click.points.to.build.a.flowing..c8d7e9"),
-      freehand: uiText("ui.sketchforgeeditor.freehand.drag.to.draw.a.closed.contour.2c1eb0"),
-      freehandSmooth: uiText("ui.sketchforgeeditor.smooth.freehand.drag.to.draw.a.closed.b.zier..401363"),
-      circle: uiText("ui.sketchforgeeditor.circle.drag.from.the.centre.to.define.the.rad.e8055c"),
-      arc: uiText("ui.sketchforgeeditor.arc.choose.the.centre.start.point.and.end.poi.439ea9"),
-      select: uiText("ui.sketchforgeeditor.select.edit.sketch.geometry.or.place.and.scal.58cff7"),
-      refine: uiText("ui.sketchforgeeditor.refine.click.a.segment.to.add.a.point.or.a.po.257bb2"),
-      trim: uiText("ui.sketchforgeeditor.trim.click.a.line.arc.or.circle.section.betwe.6d779b"),
-      erase: uiText("ui.sketchforgeeditor.erase.click.a.point.or.segment.to.remove.it.cc013d"),
-      measure: uiText("ui.sketchforgeeditor.measure.choose.two.points.72d997"),
+      line: uiText("ui.legacyworkplaneeditor.line.click.points.to.draw.straight.segments.371d3e"),
+      rectangle: uiText("ui.legacyworkplaneeditor.rectangle.click.opposite.corners.to.create.a..65e673"),
+      centerRectangle: uiText("ui.legacyworkplaneeditor.centered.rectangle.choose.the.centre.and.a.co.2fbde4"),
+      roundedRectangle: uiText("ui.legacyworkplaneeditor.rounded.rectangle.choose.opposite.corners.the.120d1e"),
+      polygon: uiText("ui.legacyworkplaneeditor.polygon.choose.the.centre.and.circumcircle.ra.251e41"),
+      connect: uiText("ui.legacyworkplaneeditor.connect.nodes.choose.two.existing.nodes.3b2770"),
+      slot: uiText("ui.legacyworkplaneeditor.slot.choose.both.end.centres.then.the.width.ae47b7"),
+      arcSlot: uiText("ui.legacyworkplaneeditor.arc.slot.choose.the.arc.centre.start.end.then.73d277"),
+      bezier: uiText("ui.legacyworkplaneeditor.b.zier.click.and.drag.points.to.pull.curve.ha.5299f5"),
+      smooth: uiText("ui.legacyworkplaneeditor.smooth.curve.click.points.to.build.a.flowing..c8d7e9"),
+      freehand: uiText("ui.legacyworkplaneeditor.freehand.drag.to.draw.a.closed.contour.2c1eb0"),
+      freehandSmooth: uiText("ui.legacyworkplaneeditor.smooth.freehand.drag.to.draw.a.closed.b.zier..401363"),
+      circle: uiText("ui.legacyworkplaneeditor.circle.drag.from.the.centre.to.define.the.rad.e8055c"),
+      arc: uiText("ui.legacyworkplaneeditor.arc.choose.the.centre.start.point.and.end.poi.439ea9"),
+      select: uiText("ui.legacyworkplaneeditor.select.edit.sketch.geometry.or.place.and.scal.58cff7"),
+      refine: uiText("ui.legacyworkplaneeditor.refine.click.a.segment.to.add.a.point.or.a.po.257bb2"),
+      trim: uiText("ui.legacyworkplaneeditor.trim.click.a.line.arc.or.circle.section.betwe.6d779b"),
+      erase: uiText("ui.legacyworkplaneeditor.erase.click.a.point.or.segment.to.remove.it.cc013d"),
+      measure: uiText("ui.legacyworkplaneeditor.measure.choose.two.points.72d997"),
     };
     setNotice(messages[tool]);
   }, []);
@@ -6293,13 +6293,13 @@ export function SketchForgeEditor({
       if (!sketchMeasureStart) {
         setSketchMeasureStart({ ...point });
         setSketchMeasurement(null);
-        setNotice(uiText("ui.sketchforgeeditor.choose.the.second.measurement.point.a1637e"));
+        setNotice(uiText("ui.legacyworkplaneeditor.choose.the.second.measurement.point.a1637e"));
         return;
       }
       const measurement = { start: { ...sketchMeasureStart }, end: { ...point } };
       setSketchMeasurement(measurement);
       setSketchMeasureStart(null);
-      setNotice(uiText("ui.sketchforgeeditor.measured.mm.2ff082", { value0: Number(Math.hypot(measurement.end.x - measurement.start.x, measurement.end.z - measurement.start.z).toFixed(2)) }));
+      setNotice(uiText("ui.legacyworkplaneeditor.measured.mm.2ff082", { value0: Number(Math.hypot(measurement.end.x - measurement.start.x, measurement.end.z - measurement.start.z).toFixed(2)) }));
     },
     [sketchMeasureStart],
   );
@@ -6307,7 +6307,7 @@ export function SketchForgeEditor({
   const clearSketchMeasurement = useCallback(() => {
     setSketchMeasureStart(null);
     setSketchMeasurement(null);
-    setNotice(uiText("ui.sketchforgeeditor.sketch.measurement.removed.469639"));
+    setNotice(uiText("ui.legacyworkplaneeditor.sketch.measurement.removed.469639"));
   }, []);
 
   const connectSketchPoint = useCallback(
@@ -6333,7 +6333,7 @@ export function SketchForgeEditor({
           };
       const smoothed = sketchTool === "smooth" ? withSmoothSketchHandles(next) : next;
       const closed = orderedSketchPaths(smoothed).some((path) => path.closed && path.steps.some((step) => step.segment.startId === sketchActivePointId || step.segment.endId === sketchActivePointId));
-      if (!duplicate) commitSketchProfile(smoothed, closed ? uiText("ui.sketchforgeeditor.profile.closed.edit.the.path.or.finish.the.sk.6964c0") : uiText("ui.sketchforgeeditor.sketch.segment.added.700c7b"));
+      if (!duplicate) commitSketchProfile(smoothed, closed ? uiText("ui.legacyworkplaneeditor.profile.closed.edit.the.path.or.finish.the.sk.6964c0") : uiText("ui.legacyworkplaneeditor.sketch.segment.added.700c7b"));
       setSketchActivePointId(closed ? null : pointId);
       setSketchSelection({ kind: "point", id: pointId });
       if (closed) setSketchTool("select");
@@ -6366,7 +6366,7 @@ export function SketchForgeEditor({
         next.segments = [...next.segments, { id: createLocalId("sketch-segment"), startId: sketchActivePointId, endId: point.id, kind: curveKind }];
       }
       const prepared = sketchTool === "smooth" ? withSmoothSketchHandles(next) : next;
-      commitSketchProfile(prepared, sketchActivePointId ? uiText("ui.sketchforgeeditor.sketch.point.and.segment.added.90d001") : uiText("ui.sketchforgeeditor.sketch.point.added.8ab0dd"));
+      commitSketchProfile(prepared, sketchActivePointId ? uiText("ui.legacyworkplaneeditor.sketch.point.and.segment.added.90d001") : uiText("ui.legacyworkplaneeditor.sketch.point.added.8ab0dd"));
       setSketchActivePointId(point.id);
       setSketchSelection({ kind: "point", id: point.id });
     },
@@ -6416,7 +6416,7 @@ export function SketchForgeEditor({
         points: sketchProfile.points.filter((point) => point.id !== id),
         segments: remainingSegments,
       };
-      commitSketchProfile(next.segments.some((segment) => segment.kind === "smooth") ? withSmoothSketchHandles(next) : next, uiText("ui.sketchforgeeditor.sketch.point.removed.670851"));
+      commitSketchProfile(next.segments.some((segment) => segment.kind === "smooth") ? withSmoothSketchHandles(next) : next, uiText("ui.legacyworkplaneeditor.sketch.point.removed.670851"));
       if (sketchActivePointId === id) setSketchActivePointId(null);
       setSketchSelection(null);
     },
@@ -6425,7 +6425,7 @@ export function SketchForgeEditor({
 
   const deleteSketchSegment = useCallback(
     (id: string) => {
-      commitSketchProfile({ ...sketchProfile, segments: sketchProfile.segments.filter((segment) => segment.id !== id) }, uiText("ui.sketchforgeeditor.sketch.line.removed.2cc1f0"));
+      commitSketchProfile({ ...sketchProfile, segments: sketchProfile.segments.filter((segment) => segment.id !== id) }, uiText("ui.legacyworkplaneeditor.sketch.line.removed.2cc1f0"));
       setSketchActivePointId(null);
       setSketchSelection(null);
     },
@@ -6448,17 +6448,17 @@ export function SketchForgeEditor({
     commitSketchProfile({
       ...sketchProfile,
       images: (sketchProfile.images ?? []).filter((image) => image.id !== id),
-    }, uiText("ui.sketchforgeeditor.sketch.image.removed.5d6a04"));
+    }, uiText("ui.legacyworkplaneeditor.sketch.image.removed.5d6a04"));
     setSketchSelection(null);
   }, [commitSketchProfile, sketchProfile]);
 
   const addSketchImageFile = useCallback(async (file: File) => {
     if (!sketchActive || sketchTool !== "select") {
-      setNotice(uiText("ui.sketchforgeeditor.choose.select.before.adding.a.sketch.image.4e7833"));
+      setNotice(uiText("ui.legacyworkplaneeditor.choose.select.before.adding.a.sketch.image.4e7833"));
       return;
     }
     if (!file.type.startsWith("image/")) {
-      setNotice(uiText("ui.sketchforgeeditor.choose.a.png.jpg.webp.gif.or.other.image.file.08648c"));
+      setNotice(uiText("ui.legacyworkplaneeditor.choose.a.png.jpg.webp.gif.or.other.image.file.08648c"));
       return;
     }
     try {
@@ -6475,24 +6475,24 @@ export function SketchForgeEditor({
         opacity: 0.55,
         lockAspect: true,
       };
-      commitSketchProfile({ ...sketchProfile, images: [...(sketchProfile.images ?? []), image] }, uiText("ui.sketchforgeeditor.added.to.the.sketch.d7296c", { value0: file.name }));
+      commitSketchProfile({ ...sketchProfile, images: [...(sketchProfile.images ?? []), image] }, uiText("ui.legacyworkplaneeditor.added.to.the.sketch.d7296c", { value0: file.name }));
       setSketchSelection({ kind: "image", id: image.id });
       setSketchActivePointId(null);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : uiText("ui.sketchforgeeditor.the.sketch.image.could.not.be.added.4f35f4"));
+      setNotice(error instanceof Error ? error.message : uiText("ui.legacyworkplaneeditor.the.sketch.image.could.not.be.added.4f35f4"));
     }
   }, [commitSketchProfile, sketchActive, sketchProfile, sketchTool]);
 
   const deleteSelectedSketchEntity = useCallback(() => {
     if (!sketchSelection) {
-      setNotice(uiText("ui.sketchforgeeditor.select.a.sketch.point.or.segment.to.remove.it.05e208"));
+      setNotice(uiText("ui.legacyworkplaneeditor.select.a.sketch.point.or.segment.to.remove.it.05e208"));
       return;
     }
     if (sketchSelection.kind === "point") deleteSketchPoint(sketchSelection.id);
     else if (sketchSelection.kind === "segment") deleteSketchSegment(sketchSelection.id);
     else if (sketchSelection.kind === "image") deleteSketchImage(sketchSelection.id);
     else if (sketchSelection.kind === "circle") {
-      commitSketchProfile({ ...sketchProfile, circles: (sketchProfile.circles ?? []).filter((circle) => circle.id !== sketchSelection.id) }, uiText("ui.sketchforgeeditor.sketch.circle.removed.1d0556"));
+      commitSketchProfile({ ...sketchProfile, circles: (sketchProfile.circles ?? []).filter((circle) => circle.id !== sketchSelection.id) }, uiText("ui.legacyworkplaneeditor.sketch.circle.removed.1d0556"));
       setSketchSelection(null);
     }
     else if (sketchSelection.kind === "multiple") {
@@ -6506,11 +6506,11 @@ export function SketchForgeEditor({
         segments: sketchProfile.segments.filter((segment) => !segmentIds.has(segment.id) && !pointIds.has(segment.startId) && !pointIds.has(segment.endId)),
         circles: (sketchProfile.circles ?? []).filter((circle) => !circleIds.has(circle.id)),
         images: (sketchProfile.images ?? []).filter((image) => !imageIds.has(image.id)),
-      }, uiText("ui.sketchforgeeditor.selected.sketch.geometry.removed.1ccc5f"));
+      }, uiText("ui.legacyworkplaneeditor.selected.sketch.geometry.removed.1ccc5f"));
       setSketchActivePointId(null);
       setSketchSelection(null);
     }
-    else setNotice(uiText("ui.sketchforgeeditor.select.the.circle.to.remove.it.c1bd0d"));
+    else setNotice(uiText("ui.legacyworkplaneeditor.select.the.circle.to.remove.it.c1bd0d"));
   }, [commitSketchProfile, deleteSketchImage, deleteSketchPoint, deleteSketchSegment, sketchProfile, sketchSelection]);
 
   const moveSketchPoint = useCallback((id: string, position: { x: number; z: number }) => {
@@ -6527,7 +6527,7 @@ export function SketchForgeEditor({
         handleOut: point.handleOut ? { x: point.handleOut.x + deltaX, z: point.handleOut.z + deltaZ } : undefined,
       } : point),
     };
-    commitSketchProfile(next, uiText("ui.sketchforgeeditor.sketch.point.moved.a91a91"));
+    commitSketchProfile(next, uiText("ui.legacyworkplaneeditor.sketch.point.moved.a91a91"));
   }, [commitSketchProfile, sketchProfile]);
 
   const moveSketchHandle = useCallback((id: string, handle: "in" | "out", position: { x: number; z: number }) => {
@@ -6541,7 +6541,7 @@ export function SketchForgeEditor({
       if (handle === "in") point.handleOut = opposite;
       else point.handleIn = opposite;
     }
-    commitSketchProfile(next, uiText("ui.sketchforgeeditor.curve.handle.adjusted.9e1881"));
+    commitSketchProfile(next, uiText("ui.legacyworkplaneeditor.curve.handle.adjusted.9e1881"));
   }, [commitSketchProfile, sketchProfile]);
 
   const setSketchPointMode = useCallback((id: string, mode: "corner" | "smooth" | "split") => {
@@ -6565,7 +6565,7 @@ export function SketchForgeEditor({
       const updated = next.points.find((entry) => entry.id === id);
       if (updated) updated.mode = mode;
     }
-    commitSketchProfile(next, mode === "corner" ? uiText("ui.sketchforgeeditor.made.corner.5bacde") : mode === "smooth" ? uiText("ui.sketchforgeeditor.made.smooth.0fc460") : uiText("ui.sketchforgeeditor.curve.handles.split.e46f54"));
+    commitSketchProfile(next, mode === "corner" ? uiText("ui.legacyworkplaneeditor.made.corner.5bacde") : mode === "smooth" ? uiText("ui.legacyworkplaneeditor.made.smooth.0fc460") : uiText("ui.legacyworkplaneeditor.curve.handles.split.e46f54"));
   }, [commitSketchProfile, sketchProfile]);
 
   const insertSketchPoint = useCallback((segmentId: string, position: { x: number; z: number }) => {
@@ -6581,7 +6581,7 @@ export function SketchForgeEditor({
       ] : [entry]),
     };
     if (segment.kind === "smooth") next = withSmoothSketchHandles(next);
-    commitSketchProfile(next, uiText("ui.sketchforgeeditor.point.added.to.path.714e27"));
+    commitSketchProfile(next, uiText("ui.legacyworkplaneeditor.point.added.to.path.714e27"));
     setSketchSelection({ kind: "point", id: point.id });
     setSketchTool("select");
   }, [commitSketchProfile, sketchProfile]);
@@ -6598,11 +6598,11 @@ export function SketchForgeEditor({
         resolved = extrusion ? placeSketchExtrusion(extrusion, activeSketchWorkplane, existing) : null;
       }
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : uiText("ui.sketchforgeeditor.the.sketch.profile.cannot.be.to.3d.02f37a", { value0: sketchOperation === "revolve" ? "revolved" : "extruded" }));
+      setNotice(error instanceof Error ? error.message : uiText("ui.legacyworkplaneeditor.the.sketch.profile.cannot.be.to.3d.02f37a", { value0: sketchOperation === "revolve" ? "revolved" : "extruded" }));
       return;
     }
     if (!resolved) {
-      setNotice(uiText("ui.sketchforgeeditor.close.at.least.one.profile.before.finishing.the..fef487"));
+      setNotice(uiText("ui.legacyworkplaneeditor.close.at.least.one.profile.before.finishing.the..fef487"));
       return;
     }
     const nextShapes = existing ? shapes.map((shape) => (shape.id === existing.id ? resolved : shape)) : [...shapes, resolved];
@@ -6666,7 +6666,7 @@ export function SketchForgeEditor({
     setSelectedIds([]);
     setHistory(hydratedHistory.entries);
     setHistoryIndex(hydratedHistory.index);
-    setNotice(uiText("ui.sketchforgeeditor.ready.20c7c5"));
+    setNotice(uiText("ui.legacyworkplaneeditor.ready.20c7c5"));
   }, [initialAssets, initialHistory, initialHistoryIndex, initialPlacementElevation, initialPlacementWorkplane, initialShapes, projectId, projectRevision]);
 
   useEffect(() => {
@@ -6714,7 +6714,7 @@ export function SketchForgeEditor({
       sketchRevolveUpdateTimerRef.current.delete(id);
       const source = shapesRef.current.find((shape) => shape.id === id);
       if (!source?.sketchProfile || source.sketchOperation !== "revolve") return;
-      setNotice(uiText("ui.sketchforgeeditor.updating.revolve.preview.d9425f"));
+      setNotice(uiText("ui.legacyworkplaneeditor.updating.revolve.preview.d9425f"));
       void shapeFromRevolvedSketchProfile(source.sketchProfile, settings, source)
         .then((generated) => {
           if (sketchRevolveUpdateRequestRef.current.get(id) !== requestId) return;
@@ -6753,7 +6753,7 @@ export function SketchForgeEditor({
         })
         .catch((error) => {
           if (sketchRevolveUpdateRequestRef.current.get(id) === requestId) {
-            setNotice(error instanceof Error ? error.message : uiText("ui.sketchforgeeditor.the.revolve.settings.could.not.be.applied.4bfd45"));
+            setNotice(error instanceof Error ? error.message : uiText("ui.legacyworkplaneeditor.the.revolve.settings.could.not.be.applied.4bfd45"));
           }
         });
     }, 120);
@@ -6813,7 +6813,7 @@ export function SketchForgeEditor({
 
   const deleteSelected = useCallback(() => {
     if (!hasSelection) {
-      setNotice(uiText("ui.sketchforgeeditor.select.a.shape.first.714155"));
+      setNotice(uiText("ui.legacyworkplaneeditor.select.a.shape.first.714155"));
       return;
     }
     const selected = new Set(selectedIds);
@@ -6826,7 +6826,7 @@ export function SketchForgeEditor({
 
   const duplicateSelected = useCallback(() => {
     if (!hasSelection) {
-      setNotice(uiText("ui.sketchforgeeditor.select.a.shape.first.714155"));
+      setNotice(uiText("ui.legacyworkplaneeditor.select.a.shape.first.714155"));
       return;
     }
     const duplicates = selectedShapes.map((shape) => ({
@@ -6840,12 +6840,12 @@ export function SketchForgeEditor({
 
   const copySelected = useCallback(() => {
     if (!hasSelection) {
-      setNotice(uiText("ui.sketchforgeeditor.select.a.shape.first.714155"));
+      setNotice(uiText("ui.legacyworkplaneeditor.select.a.shape.first.714155"));
       return;
     }
     setClipboard(selectedShapes);
     writeSharedClipboard(selectedShapes);
-    setNotice(uiText("ui.sketchforgeeditor.copied.shape.5694eb", { value0: selectedShapes.length, value1: selectedShapes.length === 1 ? "" : "s" }));
+    setNotice(uiText("ui.legacyworkplaneeditor.copied.shape.5694eb", { value0: selectedShapes.length, value1: selectedShapes.length === 1 ? "" : "s" }));
   }, [hasSelection, selectedShapes]);
 
   const pasteShape = useCallback(async () => {
@@ -6854,11 +6854,11 @@ export function SketchForgeEditor({
     const sharedClipboard = readSharedClipboard();
     const sourceClipboard = systemClipboard.length > 0 ? systemClipboard : sharedClipboard.length > 0 ? sharedClipboard : clipboard;
     if (sourceClipboard.length === 0) {
-      setNotice(uiText("ui.sketchforgeeditor.sketchforge.clipboard.is.empty.18952d"));
+      setNotice(uiText("ui.legacyworkplaneeditor.sketchforge.clipboard.is.empty.18952d"));
       return;
     }
     if (projectInfoRef.current.projectId !== sourceProjectId) {
-      setNotice(uiText("ui.sketchforgeeditor.paste.cancelled.because.the.project.changed.e68adf"));
+      setNotice(uiText("ui.legacyworkplaneeditor.paste.cancelled.because.the.project.changed.e68adf"));
       return;
     }
     if (serializeShapesForSync(sourceClipboard) !== serializeShapesForSync(clipboard)) {
@@ -6875,14 +6875,14 @@ export function SketchForgeEditor({
 
   const undo = useCallback(() => {
     if (projectInteractionActiveRef.current) {
-      setNotice(uiText("ui.sketchforgeeditor.finish.the.current.drag.or.transform.before.undo.994f0b"));
+      setNotice(uiText("ui.legacyworkplaneeditor.finish.the.current.drag.or.transform.before.undo.994f0b"));
       return;
     }
     const modifierCancelled = invalidateCadModifierSession();
     const currentHistory = historyRef.current;
     const currentIndex = historyIndexRef.current;
     if (currentIndex <= 0) {
-      setNotice(modifierCancelled ? uiText("ui.sketchforgeeditor.edge.modifier.cancelled.b65ef2") : uiText("ui.sketchforgeeditor.nothing.to.undo.93509b"));
+      setNotice(modifierCancelled ? uiText("ui.legacyworkplaneeditor.edge.modifier.cancelled.b65ef2") : uiText("ui.legacyworkplaneeditor.nothing.to.undo.93509b"));
       return;
     }
     const nextIndex = currentIndex - 1;
@@ -6896,18 +6896,18 @@ export function SketchForgeEditor({
     setShapes(nextShapes);
     setSelectedIds(nextSelection);
     syncProjectShapes(nextShapes);
-    setNotice(modifierCancelled ? uiText("ui.sketchforgeeditor.edge.modifier.cancelled.undo.4bba55") : uiText("toolbar.undo"));
+    setNotice(modifierCancelled ? uiText("ui.legacyworkplaneeditor.edge.modifier.cancelled.undo.4bba55") : uiText("toolbar.undo"));
   }, [invalidateCadModifierSession, syncProjectShapes]);
 
   const redo = useCallback(() => {
     if (projectInteractionActiveRef.current) {
-      setNotice(uiText("ui.sketchforgeeditor.finish.the.current.drag.or.transform.before.redo.92be06"));
+      setNotice(uiText("ui.legacyworkplaneeditor.finish.the.current.drag.or.transform.before.redo.92be06"));
       return;
     }
     const currentHistory = historyRef.current;
     const currentIndex = historyIndexRef.current;
     if (currentIndex >= currentHistory.length - 1) {
-      setNotice(uiText("ui.sketchforgeeditor.nothing.to.redo.97c7f3"));
+      setNotice(uiText("ui.legacyworkplaneeditor.nothing.to.redo.97c7f3"));
       return;
     }
     const modifierCancelled = invalidateCadModifierSession();
@@ -6922,12 +6922,12 @@ export function SketchForgeEditor({
     setShapes(nextShapes);
     setSelectedIds(nextSelection);
     syncProjectShapes(nextShapes);
-    setNotice(modifierCancelled ? uiText("ui.sketchforgeeditor.edge.modifier.cancelled.redo.8991d6") : uiText("toolbar.redo"));
+    setNotice(modifierCancelled ? uiText("ui.legacyworkplaneeditor.edge.modifier.cancelled.redo.8991d6") : uiText("toolbar.redo"));
   }, [invalidateCadModifierSession, syncProjectShapes]);
 
   const toggleAlignMode = useCallback(() => {
     if (selectedShapes.length < 2) {
-      setNotice(uiText("ui.sketchforgeeditor.select.at.least.two.shapes.to.align.4bc119"));
+      setNotice(uiText("ui.legacyworkplaneeditor.select.at.least.two.shapes.to.align.4bc119"));
       return;
     }
     setAlignMode((active) => {
@@ -6937,7 +6937,7 @@ export function SketchForgeEditor({
         setMirrorMode(false);
         setMirrorPreviewAxis(null);
       }
-      setNotice(next ? uiText("ui.sketchforgeeditor.align.choose.a.dot.or.click.a.selected.shape..852b16") : uiText("ui.sketchforgeeditor.align.cancelled.c04c4b"));
+      setNotice(next ? uiText("ui.legacyworkplaneeditor.align.choose.a.dot.or.click.a.selected.shape..852b16") : uiText("ui.legacyworkplaneeditor.align.cancelled.c04c4b"));
       return next;
     });
   }, [selectedShapes.length]);
@@ -6950,12 +6950,12 @@ export function SketchForgeEditor({
       const shape = shapes.find((entry) => entry.id === id);
       const lockedAnchor = selectedShapes.find((entry) => entry.locked);
       if (lockedAnchor && lockedAnchor.id !== id) {
-        setNotice(uiText("ui.sketchforgeeditor.align.anchor.locked.595f95", { value0: lockedAnchor.name }));
+        setNotice(uiText("ui.legacyworkplaneeditor.align.anchor.locked.595f95", { value0: lockedAnchor.name }));
         return;
       }
       setAlignAnchorId(id);
       setAlignPreview(null);
-      setNotice(shape ? uiText("ui.sketchforgeeditor.align.anchor.0b4b29", { value0: shape.name }) : uiText("ui.sketchforgeeditor.align.anchor.set.ca203b"));
+      setNotice(shape ? uiText("ui.legacyworkplaneeditor.align.anchor.0b4b29", { value0: shape.name }) : uiText("ui.legacyworkplaneeditor.align.anchor.set.ca203b"));
     },
     [selectedIds, selectedShapes, shapes],
   );
@@ -6963,7 +6963,7 @@ export function SketchForgeEditor({
   const alignSelectionTo = useCallback(
     (axis: AlignAxis, target: AlignTarget) => {
       if (selectedShapes.length < 2) {
-        setNotice(uiText("ui.sketchforgeeditor.select.at.least.two.shapes.to.align.4bc119"));
+        setNotice(uiText("ui.legacyworkplaneeditor.select.at.least.two.shapes.to.align.4bc119"));
         return;
       }
 
@@ -6971,7 +6971,7 @@ export function SketchForgeEditor({
       setAlignPreview(null);
 
       if (moved === 0) {
-        setNotice(uiText("ui.sketchforgeeditor.already.aligned.f48e9f"));
+        setNotice(uiText("ui.legacyworkplaneeditor.already.aligned.f48e9f"));
         return;
       }
 
@@ -6990,7 +6990,7 @@ export function SketchForgeEditor({
 
   const toggleMirrorMode = useCallback(() => {
     if (!hasSelection) {
-      setNotice(uiText("ui.sketchforgeeditor.select.a.shape.first.714155"));
+      setNotice(uiText("ui.legacyworkplaneeditor.select.a.shape.first.714155"));
       return;
     }
     setMirrorMode((active) => {
@@ -7001,7 +7001,7 @@ export function SketchForgeEditor({
         setAlignAnchorId(null);
         setAlignPreview(null);
       }
-      setNotice(next ? uiText("ui.sketchforgeeditor.mirror.choose.an.axis.arrow.c003e0") : uiText("ui.sketchforgeeditor.mirror.cancelled.330685"));
+      setNotice(next ? uiText("ui.legacyworkplaneeditor.mirror.choose.an.axis.arrow.c003e0") : uiText("ui.legacyworkplaneeditor.mirror.cancelled.330685"));
       return next;
     });
   }, [hasSelection]);
@@ -7009,13 +7009,13 @@ export function SketchForgeEditor({
   const mirrorSelectionAcross = useCallback(
     (axis: AlignAxis) => {
       if (!hasSelection) {
-        setNotice(uiText("ui.sketchforgeeditor.select.a.shape.first.714155"));
+        setNotice(uiText("ui.legacyworkplaneeditor.select.a.shape.first.714155"));
         return;
       }
       const { nextShapes, moved } = mirroredShapesForSelection(shapes, selectedIds, selectedShapes, axis);
       setMirrorPreviewAxis(null);
       if (moved === 0) {
-        setNotice(uiText("ui.sketchforgeeditor.nothing.to.mirror.bb4dcd"));
+        setNotice(uiText("ui.legacyworkplaneeditor.nothing.to.mirror.bb4dcd"));
         return;
       }
       commitShapes(nextShapes, selectedIds, `Mirrored ${moved} shape${moved === 1 ? "" : "s"} ${mirrorAxisLabel(axis)}`);
@@ -7049,7 +7049,7 @@ export function SketchForgeEditor({
   const postCadModifierRequestAsync = useCallback((request: CadModifierWorkerPayload, transfer: Transferable[] = [], timeoutMs = 20000) => {
     const worker = cadModifierWorkerRef.current ?? cadModifierWorkerRestartRef.current();
     if (!worker) {
-      return Promise.reject(new Error(uiText("ui.sketchforgeeditor.the.cad.worker.is.not.ready.d8adf0")));
+      return Promise.reject(new Error(uiText("ui.legacyworkplaneeditor.the.cad.worker.is.not.ready.d8adf0")));
     }
     const requestId = cadModifierRequestRef.current + 1;
     cadModifierRequestRef.current = requestId;
@@ -7070,7 +7070,7 @@ export function SketchForgeEditor({
         cadModifierSourcePartsRef.current = [];
         setEdgeModifier(null);
         cadModifierWorkerRestartRef.current();
-        pendingRequests.forEach((pending) => pending.reject(new Error(uiText("ui.sketchforgeeditor.timed.out.waiting.for.the.cad.worker.the.worker..f0fdbf"))));
+        pendingRequests.forEach((pending) => pending.reject(new Error(uiText("ui.legacyworkplaneeditor.timed.out.waiting.for.the.cad.worker.the.worker..f0fdbf"))));
       }, timeoutMs);
       cadModifierPendingRef.current.set(requestId, { resolve, reject, timer });
       try {
@@ -7078,19 +7078,19 @@ export function SketchForgeEditor({
       } catch (error) {
         window.clearTimeout(timer);
         cadModifierPendingRef.current.delete(requestId);
-        reject(error instanceof Error ? error : new Error(uiText("ui.sketchforgeeditor.the.cad.worker.rejected.the.request.f5d315")));
+        reject(error instanceof Error ? error : new Error(uiText("ui.legacyworkplaneeditor.the.cad.worker.rejected.the.request.f5d315")));
       }
     });
   }, []);
 
   const cancelEdgeModifier = useCallback(() => {
     invalidateCadModifierSession();
-    setNotice(uiText("ui.sketchforgeeditor.edge.modifier.cancelled.b65ef2"));
+    setNotice(uiText("ui.legacyworkplaneeditor.edge.modifier.cancelled.b65ef2"));
   }, [invalidateCadModifierSession]);
 
   const startEdgeModifier = useCallback((kind: CadModifierKind) => {
     if (selectedShapes.length !== 1 || !selectedShape || selectedShape.locked || selectedShape.hole) {
-      setNotice(uiText("ui.sketchforgeeditor.select.one.unlocked.solid.to.3ccb67", { value0: kind }));
+      setNotice(uiText("ui.legacyworkplaneeditor.select.one.unlocked.solid.to.3ccb67", { value0: kind }));
       return;
     }
     invalidateCadModifierSession();
@@ -7112,11 +7112,11 @@ export function SketchForgeEditor({
     });
     const triangleCount = partInputs.reduce((total, part) => total + (part.mesh?.faces.length ?? 0), 0);
     if (triangleCount === 0 && partInputs.every((part) => !part.brep && !part.primitive)) {
-      setNotice(uiText("ui.sketchforgeeditor.the.selected.object.has.no.printable.surface.624fe8"));
+      setNotice(uiText("ui.legacyworkplaneeditor.the.selected.object.has.no.printable.surface.624fe8"));
       return;
     }
     if (triangleCount > 180_000) {
-      setNotice(uiText("ui.sketchforgeeditor.this.mesh.is.too.dense.for.interactive.edge.trea.fc6d89"));
+      setNotice(uiText("ui.legacyworkplaneeditor.this.mesh.is.too.dense.for.interactive.edge.trea.fc6d89"));
       return;
     }
     const amount = Math.max(MIN_EDGE_MODIFIER_AMOUNT, Math.min(1, shapeWidth(selectedShape) / 6, shapeDepth(selectedShape) / 6, selectedShape.height / 6));
@@ -7141,7 +7141,7 @@ export function SketchForgeEditor({
       preview: null,
       componentPreviews: [],
     });
-    setNotice(uiText("ui.sketchforgeeditor.preparing.edges.in.the.cad.worker.5716fb", { value0: kind }));
+    setNotice(uiText("ui.legacyworkplaneeditor.preparing.edges.in.the.cad.worker.5716fb", { value0: kind }));
     const parts: CadModifierMeshPart[] = partInputs.map((part) => {
       if (part.brep) return { brep: part.brep, brepTransform: part.brepTransform, hole: Boolean(part.shape.hole) };
       if (part.primitive) return { primitive: part.primitive, hole: Boolean(part.shape.hole) };
@@ -7165,7 +7165,7 @@ export function SketchForgeEditor({
 
   const prepareCadModifierForMcp = useCallback(async (shape: WorkplaneShape, sharpAngle: number) => {
     if (shape.locked || shape.hole) {
-      throw new Error(uiText("ui.sketchforgeeditor.select.one.unlocked.solid.object.for.edge.treatm.dbd267"));
+      throw new Error(uiText("ui.legacyworkplaneeditor.select.one.unlocked.solid.object.for.edge.treatm.dbd267"));
     }
     const appliedEdgeTreatmentCount = edgeTreatmentFeatureCount(shape);
     const hasAppliedEdgeTreatment = Boolean(shape.importedMesh && shape.edgeTreatments?.length);
@@ -7185,10 +7185,10 @@ export function SketchForgeEditor({
     });
     const triangleCount = partInputs.reduce((total, part) => total + (part.mesh?.faces.length ?? 0), 0);
     if (triangleCount === 0 && partInputs.every((part) => !part.brep && !part.primitive)) {
-      throw new Error(uiText("ui.sketchforgeeditor.the.selected.object.has.no.printable.surface.624fe8"));
+      throw new Error(uiText("ui.legacyworkplaneeditor.the.selected.object.has.no.printable.surface.624fe8"));
     }
     if (triangleCount > 180_000) {
-      throw new Error(uiText("ui.sketchforgeeditor.this.mesh.is.too.dense.for.interactive.edge.trea.fc6d89"));
+      throw new Error(uiText("ui.legacyworkplaneeditor.this.mesh.is.too.dense.for.interactive.edge.trea.fc6d89"));
     }
     const parts: CadModifierMeshPart[] = partInputs.map((part) => {
       if (part.brep) return { brep: part.brep, brepTransform: part.brepTransform, hole: Boolean(part.shape.hole) };
@@ -7203,7 +7203,7 @@ export function SketchForgeEditor({
       suppressTreatmentDetailEdges: appliedEdgeTreatmentCount > 0,
     }, transfer, cadModifierPrepareTimeoutMs(triangleCount));
     if (response.type !== "ready") {
-      throw new Error(uiText("ui.sketchforgeeditor.the.cad.worker.did.not.return.an.edge.list.1ddaf5"));
+      throw new Error(uiText("ui.legacyworkplaneeditor.the.cad.worker.did.not.return.an.edge.list.1ddaf5"));
     }
     return { response, sourceParts };
   }, [postCadModifierRequestAsync]);
@@ -7227,10 +7227,10 @@ export function SketchForgeEditor({
     const selectedEdgeIds = params.edgeIds === "all" || params.allEdges === true ? selectableIds : requestedIds.filter((edgeId) => selectableIds.includes(edgeId));
     const missingIds = requestedIds.filter((edgeId) => !selectableIds.includes(edgeId));
     if (selectedEdgeIds.length === 0) {
-      throw new Error(uiText("ui.sketchforgeeditor.select.at.least.one.valid.highlighted.edge.id.3af542"));
+      throw new Error(uiText("ui.legacyworkplaneeditor.select.at.least.one.valid.highlighted.edge.id.3af542"));
     }
     if (missingIds.length > 0) {
-      throw new Error(uiText("ui.sketchforgeeditor.these.edge.ids.are.not.selectable.at.the.current.106fa4", { value0: missingIds.join(", ") }));
+      throw new Error(uiText("ui.legacyworkplaneeditor.these.edge.ids.are.not.selectable.at.the.current.106fa4", { value0: missingIds.join(", ") }));
     }
     const previewResponse = await postCadModifierRequestAsync({
       type: "preview",
@@ -7241,11 +7241,11 @@ export function SketchForgeEditor({
       chamferAngle,
     }, [], 30000);
     if (previewResponse.type !== "preview") {
-      throw new Error(uiText("ui.sketchforgeeditor.the.cad.worker.did.not.return.an.edge.preview.6c1dc8"));
+      throw new Error(uiText("ui.legacyworkplaneeditor.the.cad.worker.did.not.return.an.edge.preview.6c1dc8"));
     }
     const rawPreview = shapeFromCadMesh(shape, previewResponse.positions, previewResponse.normals, previewResponse.indices, previewResponse.brep);
     if (!rawPreview) {
-      throw new Error(uiText("ui.sketchforgeeditor.the.cad.kernel.returned.an.empty.edge.treatment.28d12c"));
+      throw new Error(uiText("ui.legacyworkplaneeditor.the.cad.kernel.returned.an.empty.edge.treatment.28d12c"));
     }
     const preview = canonicalizeShape({
       ...rawPreview,
@@ -7289,7 +7289,7 @@ export function SketchForgeEditor({
       !currentTarget ||
       projectShapesFingerprint([currentTarget]) !== sourceFingerprint
     ) {
-      throw new Error(uiText("ui.sketchforgeeditor.the.target.object.or.project.changed.while.the.e.0fce84"));
+      throw new Error(uiText("ui.legacyworkplaneeditor.the.target.object.or.project.changed.while.the.e.0fce84"));
     }
     commitShapes(
       shapesRef.current.map((candidate) => candidate.id === shape.id ? modifiedShape : candidate),
@@ -7309,13 +7309,13 @@ export function SketchForgeEditor({
     const current = shapes.find((shape) => shape.id === base.id);
     if (current && projectShapesFingerprint([current]) === cadModifierBaseFingerprintRef.current) return;
     invalidateCadModifierSession();
-    setNotice(uiText("ui.sketchforgeeditor.edge.modifier.cancelled.because.the.object.chang.3adae7"));
+    setNotice(uiText("ui.legacyworkplaneeditor.edge.modifier.cancelled.because.the.object.chang.3adae7"));
   }, [edgeModifier, invalidateCadModifierSession, shapes]);
 
   const applyEdgeModifier = useCallback(() => {
     const base = cadModifierBaseShapeRef.current;
     if (!edgeModifier?.preview || !base) {
-      setNotice(uiText("ui.sketchforgeeditor.wait.for.a.valid.edge.preview.before.applying.c0e517"));
+      setNotice(uiText("ui.legacyworkplaneeditor.wait.for.a.valid.edge.preview.before.applying.c0e517"));
       return;
     }
     const label = edgeModifier.kind === "fillet" ? "Filleted" : "Chamfered";
@@ -7399,7 +7399,7 @@ export function SketchForgeEditor({
 
   const snapSelected = useCallback(() => {
     if (!hasSelection) {
-      setNotice(uiText("ui.sketchforgeeditor.select.a.shape.first.714155"));
+      setNotice(uiText("ui.legacyworkplaneeditor.select.a.shape.first.714155"));
       return;
     }
     const selected = new Set(selectedIds);
@@ -7417,7 +7417,7 @@ export function SketchForgeEditor({
 
   const toggleHidden = useCallback(() => {
     if (!hasSelection) {
-      setNotice(uiText("ui.sketchforgeeditor.select.a.shape.first.714155"));
+      setNotice(uiText("ui.legacyworkplaneeditor.select.a.shape.first.714155"));
       return;
     }
     const selected = new Set(selectedIds);
@@ -7432,7 +7432,7 @@ export function SketchForgeEditor({
   const showHidden = useCallback(() => {
     const hiddenCount = shapes.filter((shape) => shape.hidden).length;
     if (hiddenCount === 0) {
-      setNotice(uiText("ui.sketchforgeeditor.no.hidden.shapes.c88739"));
+      setNotice(uiText("ui.legacyworkplaneeditor.no.hidden.shapes.c88739"));
       return;
     }
     commitShapes(
@@ -7444,7 +7444,7 @@ export function SketchForgeEditor({
 
   const toggleLocked = useCallback(() => {
     if (!hasSelection) {
-      setNotice(uiText("ui.sketchforgeeditor.select.a.shape.first.714155"));
+      setNotice(uiText("ui.legacyworkplaneeditor.select.a.shape.first.714155"));
       return;
     }
     const selected = new Set(selectedIds);
@@ -7459,7 +7459,7 @@ export function SketchForgeEditor({
   const setSelectionHoleMode = useCallback(
     (hole: boolean) => {
       if (!hasSelection) {
-        setNotice(uiText("ui.sketchforgeeditor.select.a.shape.first.714155"));
+        setNotice(uiText("ui.legacyworkplaneeditor.select.a.shape.first.714155"));
         return;
       }
       const selected = new Set(selectedIds);
@@ -7478,7 +7478,7 @@ export function SketchForgeEditor({
 
   const cutSelected = useCallback(() => {
     if (!hasSelection) {
-      setNotice(uiText("ui.sketchforgeeditor.select.a.shape.first.714155"));
+      setNotice(uiText("ui.legacyworkplaneeditor.select.a.shape.first.714155"));
       return;
     }
     const selected = new Set(selectedIds);
@@ -7518,7 +7518,7 @@ export function SketchForgeEditor({
 
   const dropSelectedToWorkplane = useCallback(() => {
     if (!hasSelection) {
-      setNotice(uiText("ui.sketchforgeeditor.select.a.shape.first.714155"));
+      setNotice(uiText("ui.legacyworkplaneeditor.select.a.shape.first.714155"));
       return;
     }
     const selected = new Set(selectedIds);
@@ -7544,7 +7544,7 @@ export function SketchForgeEditor({
   const activateWorkplaneTool = useCallback(() => {
     setWorkplaneMode((active) => {
       const next = !active;
-      setNotice(next ? uiText("ui.sketchforgeeditor.workplane.tool.click.a.face.or.empty.grid.hol.05abd4") : uiText("ui.sketchforgeeditor.workplane.tool.cancelled.ea9188"));
+      setNotice(next ? uiText("ui.legacyworkplaneeditor.workplane.tool.click.a.face.or.empty.grid.hol.05abd4") : uiText("ui.legacyworkplaneeditor.workplane.tool.cancelled.ea9188"));
       return next;
     });
   }, []);
@@ -7559,8 +7559,8 @@ export function SketchForgeEditor({
       : 0;
     setPlacementElevation(horizontalElevation);
     setNotice(source === "shape"
-      ? uiText("ui.sketchforgeeditor.workplane.set.to.selected.face.a80526")
-      : placementWorkplaneIsBase(next) ? uiText("ui.sketchforgeeditor.workplane.reset.to.base.1bb196") : uiText("ui.sketchforgeeditor.workplane.updated.70d478"));
+      ? uiText("ui.legacyworkplaneeditor.workplane.set.to.selected.face.a80526")
+      : placementWorkplaneIsBase(next) ? uiText("ui.legacyworkplaneeditor.workplane.reset.to.base.1bb196") : uiText("ui.legacyworkplaneeditor.workplane.updated.70d478"));
   }, []);
 
   const setViewportPlacementWorkplane = useCallback((next: PlacementWorkplane, source: "shape" | "base") => {
@@ -7573,12 +7573,12 @@ export function SketchForgeEditor({
 
   const groupSelected = useCallback(async () => {
     if (selectedShapes.length < 2) {
-      setNotice(uiText("ui.sketchforgeeditor.select.at.least.two.shapes.to.group.496536"));
+      setNotice(uiText("ui.legacyworkplaneeditor.select.at.least.two.shapes.to.group.496536"));
       return;
     }
 
     if (selectedShapes.some((shape) => shape.locked)) {
-      setNotice(uiText("ui.sketchforgeeditor.unlock.every.selected.shape.before.grouping.02180c"));
+      setNotice(uiText("ui.legacyworkplaneeditor.unlock.every.selected.shape.before.grouping.02180c"));
       return;
     }
 
@@ -7586,7 +7586,7 @@ export function SketchForgeEditor({
     const sourceProjectId = projectInfoRef.current.projectId;
     const result = await buildGroupedShapeFromSelection(selectedShapes);
     if (projectInfoRef.current.projectId !== sourceProjectId || projectShapesFingerprint(shapesRef.current) !== sourceFingerprint) {
-      setNotice(uiText("ui.sketchforgeeditor.the.scene.changed.while.grouping.select.the.obje.75dd47"));
+      setNotice(uiText("ui.legacyworkplaneeditor.the.scene.changed.while.grouping.select.the.obje.75dd47"));
       return;
     }
     const { group } = result;
@@ -7609,7 +7609,7 @@ export function SketchForgeEditor({
     const hasSolid = groupable.some((shape) => !shape.hole);
     const hasHole = groupable.some((shape) => shape.hole);
     if (!hasSolid || !hasHole) {
-      setNotice(uiText("ui.sketchforgeeditor.select.at.least.one.solid.and.one.hole.for.inter.71432e"));
+      setNotice(uiText("ui.legacyworkplaneeditor.select.at.least.one.solid.and.one.hole.for.inter.71432e"));
       return;
     }
 
@@ -7617,7 +7617,7 @@ export function SketchForgeEditor({
     const sourceProjectId = projectInfoRef.current.projectId;
     const result = await buildIntersectionShapeFromSelection(groupable);
     if (projectInfoRef.current.projectId !== sourceProjectId || projectShapesFingerprint(shapesRef.current) !== sourceFingerprint) {
-      setNotice(uiText("ui.sketchforgeeditor.the.scene.changed.while.intersecting.select.the..e65ebe"));
+      setNotice(uiText("ui.legacyworkplaneeditor.the.scene.changed.while.intersecting.select.the..e65ebe"));
       return;
     }
     if (!result.group && !result.empty) {
@@ -7642,7 +7642,7 @@ export function SketchForgeEditor({
   const ungroupSelected = useCallback(() => {
     const groups = selectedShapes.filter((shape) => shape.groupedShapes?.length);
     if (groups.length === 0) {
-      setNotice(uiText("ui.sketchforgeeditor.select.a.group.first.754baf"));
+      setNotice(uiText("ui.legacyworkplaneeditor.select.a.group.first.754baf"));
       return;
     }
     const groupIds = new Set(groups.map((shape) => shape.id));
@@ -7652,16 +7652,16 @@ export function SketchForgeEditor({
 
   const separateSelectedParts = useCallback(() => {
     if (selectedShapes.length !== 1 || !selectedShape) {
-      setNotice(uiText("ui.sketchforgeeditor.select.one.object.to.separate.9c516f"));
+      setNotice(uiText("ui.legacyworkplaneeditor.select.one.object.to.separate.9c516f"));
       return;
     }
     if (selectedShape.locked) {
-      setNotice(uiText("ui.sketchforgeeditor.unlock.the.object.before.separating.parts.e9ee9a"));
+      setNotice(uiText("ui.legacyworkplaneeditor.unlock.the.object.before.separating.parts.e9ee9a"));
       return;
     }
     const parts = separateShapeParts(selectedShape);
     if (parts.length <= 1) {
-      setNotice(uiText("ui.sketchforgeeditor.the.selected.object.has.only.one.connected.part.365996"));
+      setNotice(uiText("ui.legacyworkplaneeditor.the.selected.object.has.only.one.connected.part.365996"));
       return;
     }
     commitShapes(
@@ -7707,7 +7707,7 @@ export function SketchForgeEditor({
         const validIds = requestedIds.filter((id) => currentShapes().some((shape) => shape.id === id));
         setSelectedIds(validIds);
         selectedIdsRef.current = validIds;
-        setNotice(validIds.length ? uiText("ui.sketchforgeeditor.mcp.selected.object.1fe67b", { value0: validIds.length, value1: validIds.length === 1 ? "" : "s" }) : uiText("ui.sketchforgeeditor.mcp.cleared.selection.3b74a9"));
+        setNotice(validIds.length ? uiText("ui.legacyworkplaneeditor.mcp.selected.object.1fe67b", { value0: validIds.length, value1: validIds.length === 1 ? "" : "s" }) : uiText("ui.legacyworkplaneeditor.mcp.cleared.selection.3b74a9"));
         return { selectedIds: validIds, objects: currentShapes().filter((shape) => validIds.includes(shape.id)).map(mcpShapeSummary) };
       }
 
@@ -7715,7 +7715,7 @@ export function SketchForgeEditor({
         const requestedIds = mcpStringArray(params.ids ?? params.id);
         const ids = requestedIds.length ? new Set(requestedIds) : new Set(selectedIdsRef.current);
         const deleted = currentShapes().filter((shape) => ids.has(shape.id));
-        if (deleted.length === 0) throw new Error(uiText("ui.sketchforgeeditor.no.matching.objects.to.delete.b5d2d6"));
+        if (deleted.length === 0) throw new Error(uiText("ui.legacyworkplaneeditor.no.matching.objects.to.delete.b5d2d6"));
         commitShapes(currentShapes().filter((shape) => !ids.has(shape.id)), [], `MCP deleted ${deleted.length} object${deleted.length === 1 ? "" : "s"}`);
         selectedIdsRef.current = [];
         return { deletedIds: deleted.map((shape) => shape.id), deletedCount: deleted.length };
@@ -7736,7 +7736,7 @@ export function SketchForgeEditor({
         if (kind === "sketch") {
           const profile = defaultMcpSketchProfile(width, depth);
           const extruded = await shapeFromSketchProfile(profile, height);
-          if (!extruded) throw new Error(uiText("ui.sketchforgeeditor.could.not.create.the.sketch.profile.c44e15"));
+          if (!extruded) throw new Error(uiText("ui.legacyworkplaneeditor.could.not.create.the.sketch.profile.c44e15"));
           shape = canonicalizeShape({
             ...extruded,
             name,
@@ -7766,7 +7766,7 @@ export function SketchForgeEditor({
             sides: kind === "cylinder" ? Math.max(3, Math.floor(mcpNumber(params.sides, 96))) : undefined,
           });
         } else {
-          throw new Error(uiText("ui.sketchforgeeditor.mcp.create.shape.currently.supports.box.cube.cyl.d5f4d0"));
+          throw new Error(uiText("ui.legacyworkplaneeditor.mcp.create.shape.currently.supports.box.cube.cyl.d5f4d0"));
         }
         const committedShape = canonicalizeShape(bakeShapeTransformIntoMesh(shape));
         commitShapes([...currentShapes(), committedShape], committedShape.id, `${committedShape.name} added by MCP`);
@@ -7777,7 +7777,7 @@ export function SketchForgeEditor({
         const positions = mcpFiniteNumberArray(params.positions);
         const normals = mcpFiniteNumberArray(params.normals);
         if (positions.length < 9 || positions.length % 9 !== 0) {
-          throw new Error(uiText("ui.sketchforgeeditor.import.mesh.requires.positions.as.triangle.xyz.v.b20410"));
+          throw new Error(uiText("ui.legacyworkplaneeditor.import.mesh.requires.positions.as.triangle.xyz.v.b20410"));
         }
         let minX = Number.POSITIVE_INFINITY;
         let maxX = Number.NEGATIVE_INFINITY;
@@ -7832,8 +7832,8 @@ export function SketchForgeEditor({
 
       if (command.action === "update_object") {
         const target = findShape(params.id);
-        if (!target) throw new Error(uiText("ui.sketchforgeeditor.object.not.found.e21821"));
-        if (target.locked) throw new Error(uiText("ui.sketchforgeeditor.unlock.the.object.before.updating.it.b0ce44"));
+        if (!target) throw new Error(uiText("ui.legacyworkplaneeditor.object.not.found.e21821"));
+        if (target.locked) throw new Error(uiText("ui.legacyworkplaneeditor.unlock.the.object.before.updating.it.b0ce44"));
         const patch: ShapeUpdatePatch = {};
         const rotationWasRequested = [params.rotation, params.rotationX, params.rotationZ].some(
           (value) => typeof value === "number" && Number.isFinite(value),
@@ -7862,11 +7862,11 @@ export function SketchForgeEditor({
       if (command.action === "align_objects") {
         const axis = params.axis === "x" || params.axis === "y" || params.axis === "z" ? params.axis : null;
         const target = params.target === "min" || params.target === "center" || params.target === "max" ? params.target : null;
-        if (!axis || !target) throw new Error(uiText("ui.sketchforgeeditor.align.objects.requires.axis.x.y.z.and.target.min.5b7403"));
+        if (!axis || !target) throw new Error(uiText("ui.legacyworkplaneeditor.align.objects.requires.axis.x.y.z.and.target.min.5b7403"));
         const requestedIds = mcpStringArray(params.ids);
         const ids = requestedIds.length ? requestedIds : selectedIdsRef.current;
         const selectedForAlign = currentShapes().filter((shape) => ids.includes(shape.id));
-        if (selectedForAlign.length < 2) throw new Error(uiText("ui.sketchforgeeditor.select.at.least.two.objects.to.align.f59f53"));
+        if (selectedForAlign.length < 2) throw new Error(uiText("ui.legacyworkplaneeditor.select.at.least.two.objects.to.align.f59f53"));
         const validIds = selectedForAlign.map((shape) => shape.id);
         const requestedAnchorId = typeof params.anchorId === "string" ? params.anchorId : null;
         const anchorId = effectiveAlignmentAnchorId(selectedForAlign, requestedAnchorId);
@@ -7874,7 +7874,7 @@ export function SketchForgeEditor({
         if (moved === 0) {
           setSelectedIds(validIds);
           selectedIdsRef.current = validIds;
-          setNotice(uiText("ui.sketchforgeeditor.mcp.alignment.already.aed090", { value0: alignmentLabel(axis, target) }));
+          setNotice(uiText("ui.legacyworkplaneeditor.mcp.alignment.already.aed090", { value0: alignmentLabel(axis, target) }));
           return {
             moved,
             selectedIds: validIds,
@@ -7894,13 +7894,13 @@ export function SketchForgeEditor({
       if (command.action === "group_objects") {
         const ids = new Set(mcpStringArray(params.ids));
         const groupable = currentShapes().filter((shape) => ids.has(shape.id));
-        if (groupable.length < 2) throw new Error(uiText("ui.sketchforgeeditor.select.at.least.two.objects.to.group.b0d6db"));
-        if (groupable.some((shape) => shape.locked)) throw new Error(uiText("ui.sketchforgeeditor.unlock.every.selected.object.before.grouping.63bec5"));
+        if (groupable.length < 2) throw new Error(uiText("ui.legacyworkplaneeditor.select.at.least.two.objects.to.group.b0d6db"));
+        if (groupable.some((shape) => shape.locked)) throw new Error(uiText("ui.legacyworkplaneeditor.unlock.every.selected.object.before.grouping.63bec5"));
         const sourceFingerprint = projectShapesFingerprint(currentShapes());
         const sourceProjectId = projectInfoRef.current.projectId;
         const result = await buildGroupedShapeFromSelection(groupable);
         if (projectInfoRef.current.projectId !== sourceProjectId || projectShapesFingerprint(currentShapes()) !== sourceFingerprint) {
-          throw new Error(uiText("ui.sketchforgeeditor.the.scene.changed.while.grouping.run.the.command.a01a83"));
+          throw new Error(uiText("ui.legacyworkplaneeditor.the.scene.changed.while.grouping.run.the.command.a01a83"));
         }
         if (!result.group) {
           if (result.consumed) {
@@ -7918,7 +7918,7 @@ export function SketchForgeEditor({
         const requestedIds = mcpStringArray(params.ids ?? params.id);
         const ids = requestedIds.length ? new Set(requestedIds) : new Set(selectedIdsRef.current);
         const groups = currentShapes().filter((shape) => ids.has(shape.id) && shape.groupedShapes?.length);
-        if (groups.length === 0) throw new Error(uiText("ui.sketchforgeeditor.select.at.least.one.group.to.ungroup.8ca770"));
+        if (groups.length === 0) throw new Error(uiText("ui.legacyworkplaneeditor.select.at.least.one.group.to.ungroup.8ca770"));
         const groupIds = new Set(groups.map((shape) => shape.id));
         const restored = groups.flatMap(restoreGroupedChildren);
         commitShapes([...currentShapes().filter((shape) => !groupIds.has(shape.id)), ...restored], restored.map((shape) => shape.id), `MCP ungrouped ${groups.length} group${groups.length === 1 ? "" : "s"}`);
@@ -7933,16 +7933,16 @@ export function SketchForgeEditor({
           .filter((shape) => operandIds.has(shape.id))
           .map((shape) => holeIds.has(shape.id) ? withHoleMode(shape, true) : withHoleMode(shape, false));
         if (!operands.some((shape) => !shape.hole) || !operands.some((shape) => shape.hole)) {
-          throw new Error(uiText("ui.sketchforgeeditor.provide.at.least.one.solidid.and.one.holeid.for..e3bc41"));
+          throw new Error(uiText("ui.legacyworkplaneeditor.provide.at.least.one.solidid.and.one.holeid.for..e3bc41"));
         }
         if (operands.some((shape) => shape.locked)) {
-          throw new Error(uiText("ui.sketchforgeeditor.unlock.every.boolean.operand.before.cutting.88ea8c"));
+          throw new Error(uiText("ui.legacyworkplaneeditor.unlock.every.boolean.operand.before.cutting.88ea8c"));
         }
         const sourceFingerprint = projectShapesFingerprint(currentShapes());
         const sourceProjectId = projectInfoRef.current.projectId;
         const result = await buildGroupedShapeFromSelection(operands);
         if (projectInfoRef.current.projectId !== sourceProjectId || projectShapesFingerprint(currentShapes()) !== sourceFingerprint) {
-          throw new Error(uiText("ui.sketchforgeeditor.the.scene.changed.while.cutting.run.the.command..f7da61"));
+          throw new Error(uiText("ui.legacyworkplaneeditor.the.scene.changed.while.cutting.run.the.command..f7da61"));
         }
         const remainingShapes = currentShapes().filter((shape) => !operandIds.has(shape.id));
         if (result.consumed) {
@@ -7959,17 +7959,17 @@ export function SketchForgeEditor({
 
       if (command.action === "separate_parts") {
         const target = findShape(params.id) ?? (selectedIdsRef.current.length === 1 ? findShape(selectedIdsRef.current[0]) : null);
-        if (!target) throw new Error(uiText("ui.sketchforgeeditor.select.one.object.to.separate.9c516f"));
-        if (target.locked) throw new Error(uiText("ui.sketchforgeeditor.unlock.the.object.before.separating.parts.e9ee9a"));
+        if (!target) throw new Error(uiText("ui.legacyworkplaneeditor.select.one.object.to.separate.9c516f"));
+        if (target.locked) throw new Error(uiText("ui.legacyworkplaneeditor.unlock.the.object.before.separating.parts.e9ee9a"));
         const parts = separateShapeParts(target);
-        if (parts.length <= 1) throw new Error(uiText("ui.sketchforgeeditor.the.selected.object.has.only.one.connected.part.365996"));
+        if (parts.length <= 1) throw new Error(uiText("ui.legacyworkplaneeditor.the.selected.object.has.only.one.connected.part.365996"));
         commitShapes([...currentShapes().filter((shape) => shape.id !== target.id), ...parts], parts.map((shape) => shape.id), `MCP separated ${parts.length} parts`);
         return { objects: parts.map(mcpShapeSummary) };
       }
 
       if (command.action === "list_edges") {
         const target = findShape(params.id);
-        if (!target) throw new Error(uiText("ui.sketchforgeeditor.object.not.found.e21821"));
+        if (!target) throw new Error(uiText("ui.legacyworkplaneeditor.object.not.found.e21821"));
         invalidateCadModifierSession();
         const sharpAngle = Math.max(1, Math.min(CAD_MODIFIER_MAX_SHARP_ANGLE, mcpNumber(params.sharpAngle, 25)));
         const { response } = await prepareCadModifierForMcp(target, sharpAngle);
@@ -7979,7 +7979,7 @@ export function SketchForgeEditor({
 
       if (command.action === "apply_edge_treatment") {
         const target = findShape(params.id);
-        if (!target) throw new Error(uiText("ui.sketchforgeeditor.object.not.found.e21821"));
+        if (!target) throw new Error(uiText("ui.legacyworkplaneeditor.object.not.found.e21821"));
         return applyCadModifierForMcp(target, params);
       }
 
@@ -7995,12 +7995,12 @@ export function SketchForgeEditor({
         const face = mcpString(params.face, "current") as SketchForgeMcpViewFace;
         const image = await (window.sketchforgeCaptureView?.(face) ?? window.sketchforgeCaptureCanvas?.() ?? "");
         if (!image || image.length < 100) {
-          throw new Error(uiText("ui.sketchforgeeditor.the.sketchforge.viewport.did.not.return.an.image.34a9bd"));
+          throw new Error(uiText("ui.legacyworkplaneeditor.the.sketchforge.viewport.did.not.return.an.image.34a9bd"));
         }
         return { face, dataUrl: image, bytesApprox: Math.floor(image.length * 0.75) };
       }
 
-      throw new Error(uiText("ui.sketchforgeeditor.unknown.mcp.command.b5c218", { value0: command.action }));
+      throw new Error(uiText("ui.legacyworkplaneeditor.unknown.mcp.command.b5c218", { value0: command.action }));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       lastMcpErrorRef.current = message;
@@ -8180,7 +8180,7 @@ export function SketchForgeEditor({
         finish({
           ok: false,
           caseId,
-          label: uiText("ui.sketchforgeeditor.unknown.boolean.test.218b04"),
+          label: uiText("ui.legacyworkplaneeditor.unknown.boolean.test.218b04"),
           mode,
           notice: "Unknown boolean automation case",
           shapeCount: 0,
@@ -8267,7 +8267,7 @@ export function SketchForgeEditor({
     const sourceShapes = hasSelection ? selectedShapes : shapes;
     const exportable = sourceShapes.filter((shape) => !shape.hole);
     if (exportable.length === 0) {
-      setNotice(hasSelection ? uiText("ui.sketchforgeeditor.select.at.least.one.solid.shape.before.export.d5193f") : uiText("ui.sketchforgeeditor.add.a.solid.shape.before.exporting.49168a"));
+      setNotice(hasSelection ? uiText("ui.legacyworkplaneeditor.select.at.least.one.solid.shape.before.export.d5193f") : uiText("ui.legacyworkplaneeditor.add.a.solid.shape.before.exporting.49168a"));
       return;
     }
     const invalidSvg = exportable.map(invalidSvgMeshReason).find((reason): reason is string => Boolean(reason));
@@ -8278,16 +8278,16 @@ export function SketchForgeEditor({
     const selectedNotice = `Exported ${exportable.length} selected shape${exportable.length === 1 ? "" : "s"}`;
     const finishNotice = (label: string, result: DownloadResult) => {
       if (result.mode === "folder") {
-        setNotice(uiText("ui.sketchforgeeditor.saved.to.a56aa0", { value0: label, value1: result.path }));
+        setNotice(uiText("ui.legacyworkplaneeditor.saved.to.a56aa0", { value0: label, value1: result.path }));
         return;
       }
-      setNotice(hasSelection ? uiText("ui.sketchforgeeditor.as.3559b1", { value0: selectedNotice, value1: label }) : uiText("ui.sketchforgeeditor.exported.7b272c", { value0: label }));
+      setNotice(hasSelection ? uiText("ui.legacyworkplaneeditor.as.3559b1", { value0: selectedNotice, value1: label }) : uiText("ui.legacyworkplaneeditor.exported.7b272c", { value0: label }));
     };
     const failNotice = (label: string, error: unknown) => {
-      setNotice(error instanceof Error ? error.message : uiText("ui.sketchforgeeditor.could.not.export.208deb", { value0: label }));
+      setNotice(error instanceof Error ? error.message : uiText("ui.legacyworkplaneeditor.could.not.export.208deb", { value0: label }));
     };
     if (format === "svg") {
-      setNotice(uiText("ui.sketchforgeeditor.building.svg.top.view.projection.8651e4"));
+      setNotice(uiText("ui.legacyworkplaneeditor.building.svg.top.view.projection.8651e4"));
       void toSvg(exportable, exportName.trim() || projectName)
         .then((content) => downloadTextFile(projectExportFileName(exportName, "svg"), content, "image/svg+xml;charset=utf-8"))
         .then((result) => finishNotice("SVG", result))
@@ -8312,11 +8312,11 @@ export function SketchForgeEditor({
     }
     const sourceShapes = hasSelection ? selectedShapes : shapes;
     if (sourceShapes.some((shape) => shape.hole) && !sourceShapes.some((shape) => !shape.hole)) {
-      setNotice(uiText("ui.sketchforgeeditor.select.at.least.one.solid.shape.before.exporting.e49d7e"));
+      setNotice(uiText("ui.legacyworkplaneeditor.select.at.least.one.solid.shape.before.exporting.e49d7e"));
       return;
     }
     setStepExporting(true);
-    setNotice(uiText("ui.sketchforgeeditor.building.b.rep.first.step.export.loads.the.openc.1fdf36"));
+    setNotice(uiText("ui.legacyworkplaneeditor.building.b.rep.first.step.export.loads.the.openc.1fdf36"));
     try {
       const { exportShapesToStep } = await import("@/lib/stepExport");
       const { blob, exportedCount, skipped } = await exportShapesToStep(sourceShapes);
@@ -8324,12 +8324,12 @@ export function SketchForgeEditor({
       const result = await downloadTextFile(projectExportFileName(exportName, "step"), text, "application/step");
       const skipNote = skipped.length > 0 ? `; skipped ${skipped.length} non-primitive shape${skipped.length === 1 ? "" : "s"}` : "";
       if (result.mode === "folder") {
-        setNotice(uiText("ui.sketchforgeeditor.saved.step.bod.to.f77db4", { value0: exportedCount, value1: exportedCount === 1 ? "y" : "ies", value2: result.path, value3: skipNote }));
+        setNotice(uiText("ui.legacyworkplaneeditor.saved.step.bod.to.f77db4", { value0: exportedCount, value1: exportedCount === 1 ? "y" : "ies", value2: result.path, value3: skipNote }));
       } else {
-        setNotice(uiText("ui.sketchforgeeditor.exported.step.b.rep.with.bod.063abd", { value0: exportedCount, value1: exportedCount === 1 ? "y" : "ies", value2: skipNote }));
+        setNotice(uiText("ui.legacyworkplaneeditor.exported.step.b.rep.with.bod.063abd", { value0: exportedCount, value1: exportedCount === 1 ? "y" : "ies", value2: skipNote }));
       }
     } catch (error: unknown) {
-      setNotice(error instanceof Error ? error.message : uiText("ui.sketchforgeeditor.could.not.export.step.44a1e4"));
+      setNotice(error instanceof Error ? error.message : uiText("ui.legacyworkplaneeditor.could.not.export.step.44a1e4"));
     } finally {
       setStepExporting(false);
     }
@@ -8338,15 +8338,15 @@ export function SketchForgeEditor({
   const exportSkfDesign = useCallback(async (exportName: string, historyLimit: SkfHistoryLimit, target: SkfExportTarget = "download") => {
     if (skfExporting) return;
     if (target === "shared" && !onSaveSharedProject) {
-      setNotice(uiText("ui.sketchforgeeditor.shared.project.storage.is.not.available.in.this..ec4eba"));
+      setNotice(uiText("ui.legacyworkplaneeditor.shared.project.storage.is.not.available.in.this..ec4eba"));
       return;
     }
     if (projectInteractionActiveRef.current) {
-      setNotice(uiText("ui.sketchforgeeditor.finish.the.current.drag.or.transform.before.savi.175f31"));
+      setNotice(uiText("ui.legacyworkplaneeditor.finish.the.current.drag.or.transform.before.savi.175f31"));
       return;
     }
     setSkfExporting(true);
-    setNotice(target === "shared" ? uiText("ui.sketchforgeeditor.packaging.project.for.docker.shared.storage.942e47") : uiText("ui.sketchforgeeditor.packaging.editable.project.history.and.dedupl.aa7faa"));
+    setNotice(target === "shared" ? uiText("ui.legacyworkplaneeditor.packaging.project.for.docker.shared.storage.942e47") : uiText("ui.legacyworkplaneeditor.packaging.editable.project.history.and.dedupl.aa7faa"));
     try {
       const exportedHistory = editorHistoryForExport(historyRef.current, historyIndexRef.current, historyLimit);
       const bytes = await exportSkfProject({
@@ -8369,10 +8369,10 @@ export function SketchForgeEditor({
       } else {
         const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
         const result = await downloadBlobFile(projectExportFileName(exportName, "skf"), new Blob([buffer], { type: SKF_MEDIA_TYPE }));
-        setNotice(result.mode === "folder" ? uiText("ui.sketchforgeeditor.saved.editable.sketchforge.project.to.c2e145", { value0: result.path }) : uiText("ui.sketchforgeeditor.saved.editable.sketchforge.project.skf.6cf72f"));
+        setNotice(result.mode === "folder" ? uiText("ui.legacyworkplaneeditor.saved.editable.sketchforge.project.to.c2e145", { value0: result.path }) : uiText("ui.legacyworkplaneeditor.saved.editable.sketchforge.project.skf.6cf72f"));
       }
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : uiText("ui.sketchforgeeditor.could.not.save.sketchforge.project.cbc593"));
+      setNotice(error instanceof Error ? error.message : uiText("ui.legacyworkplaneeditor.could.not.save.sketchforge.project.cbc593"));
     } finally {
       setSkfExporting(false);
     }
@@ -8409,13 +8409,13 @@ export function SketchForgeEditor({
   );
 
   const saveDesign = useCallback(() => {
-    setNotice(uiText("ui.sketchforgeeditor.saved.design.with.shape.fc5b9e", { value0: shapes.length, value1: shapes.length === 1 ? "" : "s" }));
+    setNotice(uiText("ui.legacyworkplaneeditor.saved.design.with.shape.fc5b9e", { value0: shapes.length, value1: shapes.length === 1 ? "" : "s" }));
     setMenuOpen(false);
   }, [shapes.length]);
 
   const makeCopy = useCallback(() => {
     if (shapes.length === 0) {
-      setNotice(uiText("ui.sketchforgeeditor.nothing.to.copy.yet.a43aaa"));
+      setNotice(uiText("ui.legacyworkplaneeditor.nothing.to.copy.yet.a43aaa"));
       setMenuOpen(false);
       return;
     }
@@ -8434,14 +8434,14 @@ export function SketchForgeEditor({
     const projectFiles = files.filter((file) => /\.skf$/i.test(file.name));
     if (projectFiles.length) {
       if (files.length !== 1) {
-        setNotice(uiText("ui.sketchforgeeditor.open.one.skf.project.at.a.time.import.stl.step.a.780e27"));
+        setNotice(uiText("ui.legacyworkplaneeditor.open.one.skf.project.at.a.time.import.stl.step.a.780e27"));
         return;
       }
       if (!onOpenSkfProjectFile) {
-        setNotice(uiText("ui.sketchforgeeditor.opening.sketchforge.project.files.is.unavailable.77acd6"));
+        setNotice(uiText("ui.legacyworkplaneeditor.opening.sketchforge.project.files.is.unavailable.77acd6"));
         return;
       }
-      setNotice(uiText("ui.sketchforgeeditor.validating.before.opening.it.as.a.new.project.ad87fb", { value0: projectFiles[0].name }));
+      setNotice(uiText("ui.legacyworkplaneeditor.validating.before.opening.it.as.a.new.project.ad87fb", { value0: projectFiles[0].name }));
       const result = await onOpenSkfProjectFile(projectFiles[0]);
       if (result?.message) setNotice(result.message);
       if (result?.ok !== false) setTopPanel(null);
@@ -8455,7 +8455,7 @@ export function SketchForgeEditor({
     for (let index = 0; index < files.length; index += 1) {
       const file = files[index];
       if (projectInfoRef.current.projectId !== sourceProjectId) {
-        setNotice(uiText("ui.sketchforgeeditor.import.of.files.cancelled.because.the.project.ch.72fe71", { value0: files.length }));
+        setNotice(uiText("ui.legacyworkplaneeditor.import.of.files.cancelled.because.the.project.ch.72fe71", { value0: files.length }));
         return;
       }
 
@@ -8463,11 +8463,11 @@ export function SketchForgeEditor({
       const isStep = sourceFormat === "step";
       const isSvg = sourceFormat === "svg";
       if (!sourceFormat || sourceFormat === "obj" || (!isStep && !isSvg && !importExtensionSupported(file.name))) {
-        failures.push({ fileName: file.name, reason: uiText("ui.sketchforgeeditor.unsupported.file.type.5606cd") });
+        failures.push({ fileName: file.name, reason: uiText("ui.legacyworkplaneeditor.unsupported.file.type.5606cd") });
         continue;
       }
 
-      setNotice(uiText("ui.sketchforgeeditor.importing.of.222d68", { value0: index + 1, value1: files.length, value2: file.name, value3: isStep ? uiText("ui.sketchforgeeditor.first.step.import.loads.the.opencascade.kerne.f0eac1") : "" }));
+      setNotice(uiText("ui.legacyworkplaneeditor.importing.of.222d68", { value0: index + 1, value1: files.length, value2: file.name, value3: isStep ? uiText("ui.legacyworkplaneeditor.first.step.import.loads.the.opencascade.kerne.f0eac1") : "" }));
       try {
         const bytes = new Uint8Array(await file.arrayBuffer());
         const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
@@ -8486,13 +8486,13 @@ export function SketchForgeEditor({
       } catch (error) {
         failures.push({
           fileName: file.name,
-          reason: error instanceof Error ? error.message : uiText("ui.sketchforgeeditor.could.not.read.file.67c016"),
+          reason: error instanceof Error ? error.message : uiText("ui.legacyworkplaneeditor.could.not.read.file.67c016"),
         });
       }
     }
 
     if (projectInfoRef.current.projectId !== sourceProjectId) {
-      setNotice(uiText("ui.sketchforgeeditor.import.of.files.cancelled.because.the.project.ch.72fe71", { value0: files.length }));
+      setNotice(uiText("ui.legacyworkplaneeditor.import.of.files.cancelled.because.the.project.ch.72fe71", { value0: files.length }));
       return;
     }
 
@@ -8506,7 +8506,7 @@ export function SketchForgeEditor({
       : "";
 
     if (!importedShapes.length) {
-      setNotice(files.length === 1 && failures[0] ? failures[0].reason : uiText("ui.sketchforgeeditor.could.not.import.any.of.the.selected.files.f130f0", { value0: files.length, value1: failureSummary }));
+      setNotice(files.length === 1 && failures[0] ? failures[0].reason : uiText("ui.legacyworkplaneeditor.could.not.import.any.of.the.selected.files.f130f0", { value0: files.length, value1: failureSummary }));
       return;
     }
 
@@ -8598,7 +8598,7 @@ export function SketchForgeEditor({
           event.preventDefault();
           setSketchActivePointId(null);
           setSketchSelection(null);
-          setNotice(uiText("ui.sketchforgeeditor.current.sketch.chain.cleared.7babe8"));
+          setNotice(uiText("ui.legacyworkplaneeditor.current.sketch.chain.cleared.7babe8"));
         } else if (event.key === "Delete" || event.key === "Backspace") {
           event.preventDefault();
           if (sketchSelection) deleteSelectedSketchEntity();
@@ -8617,7 +8617,7 @@ export function SketchForgeEditor({
 
       if (event.key === "Escape") {
         setSelectedIds([]);
-        setNotice(uiText("ui.sketchforgeeditor.selection.cleared.05230e"));
+        setNotice(uiText("ui.legacyworkplaneeditor.selection.cleared.05230e"));
         return;
       }
 
@@ -8670,7 +8670,7 @@ export function SketchForgeEditor({
       if (shortcut && key === "a") {
         event.preventDefault();
         setSelectedIds(shapes.filter((shape) => !shape.hidden).map((shape) => shape.id));
-        setNotice(uiText("ui.sketchforgeeditor.selected.all.visible.shapes.f2a4f4"));
+        setNotice(uiText("ui.legacyworkplaneeditor.selected.all.visible.shapes.f2a4f4"));
         return;
       }
 
@@ -8805,7 +8805,7 @@ export function SketchForgeEditor({
         onSketchTool={setActiveSketchTool}
         onSketchImage={() => {
           if (sketchTool !== "select") {
-            setNotice(uiText("ui.sketchforgeeditor.choose.select.before.adding.a.sketch.image.4e7833"));
+            setNotice(uiText("ui.legacyworkplaneeditor.choose.select.before.adding.a.sketch.image.4e7833"));
             return;
           }
           sketchImageInputRef.current?.click();
@@ -8866,12 +8866,12 @@ export function SketchForgeEditor({
               setSketchSelection(pointIds.length || segmentIds.length || imageIds.length ? { kind: "multiple", pointIds, segmentIds, imageIds } : null);
               setSketchActivePointId(null);
               const count = pointIds.length + segmentIds.length + imageIds.length;
-              setNotice(count ? uiText("ui.sketchforgeeditor.selected.sketch.item.310e54", { value0: count, value1: count === 1 ? "" : "s" }) : uiText("ui.sketchforgeeditor.sketch.selection.cleared.b2c9dc"));
+              setNotice(count ? uiText("ui.legacyworkplaneeditor.selected.sketch.item.310e54", { value0: count, value1: count === 1 ? "" : "s" }) : uiText("ui.legacyworkplaneeditor.sketch.selection.cleared.b2c9dc"));
             }}
             onSelectImage={(id) => {
               setSketchSelection({ kind: "image", id });
               setSketchActivePointId(null);
-              setNotice(uiText("ui.sketchforgeeditor.sketch.image.selected.8de873"));
+              setNotice(uiText("ui.legacyworkplaneeditor.sketch.image.selected.8de873"));
             }}
             onUpdateImage={updateSketchImage}
             onDeleteImage={deleteSketchImage}
@@ -9270,7 +9270,7 @@ function SecondaryToolbar({
   ];
   const visibilityTools = [
     {
-      label: selectionHidden ? uiText("ui.sketchforgeeditor.show.selected.ed3a19") : uiText("ui.sketchforgeeditor.hide.selected.5472f9"),
+      label: selectionHidden ? uiText("ui.legacyworkplaneeditor.show.selected.ed3a19") : uiText("ui.legacyworkplaneeditor.hide.selected.5472f9"),
       icon: ToolbarHideSelectedIcon,
       action: () => {
         setVisibilityOpen(false);
@@ -9280,9 +9280,9 @@ function SecondaryToolbar({
     },
   ];
   const combineTools = [
-    { label: uiText("ui.sketchforgeeditor.group.171a06"), icon: ToolbarGroupIcon, action: onGroup, enabled: canGroup },
-    { label: uiText("ui.sketchforgeeditor.ungroup.2b31e9"), icon: ToolbarUngroupIcon, action: onUngroup, enabled: canUngroup },
-    { label: uiText("ui.sketchforgeeditor.boolean.intersection.18f7c2"), icon: ToolbarIntersectionIcon, action: onIntersect, enabled: canIntersect },
+    { label: uiText("ui.legacyworkplaneeditor.group.171a06"), icon: ToolbarGroupIcon, action: onGroup, enabled: canGroup },
+    { label: uiText("ui.legacyworkplaneeditor.ungroup.2b31e9"), icon: ToolbarUngroupIcon, action: onUngroup, enabled: canUngroup },
+    { label: uiText("ui.legacyworkplaneeditor.boolean.intersection.18f7c2"), icon: ToolbarIntersectionIcon, action: onIntersect, enabled: canIntersect },
   ];
   const modifyTools = [
     { label: uiText("operation.chamfer"), icon: ToolbarChamferIcon, action: onChamfer, enabled: canEdgeModify, active: edgeModifierKind === "chamfer" },
@@ -9312,9 +9312,9 @@ function SecondaryToolbar({
       {onHome ? (
         <div className="tool-group editor-nav-group">
           <div className="toolbar-section toolbar-home-section">
-            <div className="toolbar-section-label">{uiText("ui.sketchforgeeditor.home.70f8bb")}</div>
+            <div className="toolbar-section-label">{uiText("ui.legacyworkplaneeditor.home.70f8bb")}</div>
             <div className="toolbar-section-tools">
-              <button className="toolbar-icon editor-home-control" aria-label={uiText("ui.sketchforgeeditor.home.dashboard.ec88d4")} title={uiText("ui.sketchforgeeditor.home.dashboard.ec88d4")} onClick={onHome}>
+              <button className="toolbar-icon editor-home-control" aria-label={uiText("ui.legacyworkplaneeditor.home.dashboard.ec88d4")} title={uiText("ui.legacyworkplaneeditor.home.dashboard.ec88d4")} onClick={onHome}>
                 <ToolbarHomeIcon />
               </button>
             </div>
@@ -9331,7 +9331,7 @@ function SecondaryToolbar({
           <div className="toolbar-section-tools">{leftTools.slice(4).map(renderToolButton)}</div>
         </div>
         <div className="toolbar-section toolbar-shapes-section">
-          <div className="toolbar-section-label">{uiText("ui.sketchforgeeditor.shapes.b1985e")}</div>
+          <div className="toolbar-section-label">{uiText("ui.legacyworkplaneeditor.shapes.b1985e")}</div>
           <div className="toolbar-section-tools">
             <button
               className={`shape-menu-trigger ${shapesOpen ? "active" : ""}`}
@@ -9347,7 +9347,7 @@ function SecondaryToolbar({
           </div>
           {shapesOpen ? (
             <div className="shape-menu-dropdown">
-              <div className="shape-menu-title">{uiText("ui.sketchforgeeditor.basic.shapes.ce65b7")}</div>
+              <div className="shape-menu-title">{uiText("ui.legacyworkplaneeditor.basic.shapes.ce65b7")}</div>
               <div className="shape-menu-list">
                 {toolbarShapeAssets.map((shape) => (
                   <button
@@ -9420,14 +9420,14 @@ function SecondaryToolbar({
       <div className="toolbar-spacer" />
       <div className="tool-group right">
         <div className="toolbar-section compact toolbar-visibility-section" ref={visibilityMenuRef}>
-          <div className="toolbar-section-label">{uiText("ui.sketchforgeeditor.visibility.7d9ff4")}</div>
+          <div className="toolbar-section-label">{uiText("ui.legacyworkplaneeditor.visibility.7d9ff4")}</div>
           <div className="toolbar-section-tools">
             {visibilityTools.map(renderToolButton)}
             <button
               className={`toolbar-icon visibility-menu-trigger ${visibilityOpen ? "active" : ""}`}
               type="button"
-              aria-label={uiText("ui.sketchforgeeditor.visibility.options.22c5b3")}
-              title={uiText("ui.sketchforgeeditor.visibility.options.22c5b3")}
+              aria-label={uiText("ui.legacyworkplaneeditor.visibility.options.22c5b3")}
+              title={uiText("ui.legacyworkplaneeditor.visibility.options.22c5b3")}
               aria-haspopup="menu"
               aria-expanded={visibilityOpen}
               onClick={toggleVisibilityMenu}
@@ -9439,7 +9439,7 @@ function SecondaryToolbar({
             <div
               className="visibility-dropdown"
               role="menu"
-              aria-label={uiText("ui.sketchforgeeditor.visibility.options.22c5b3")}
+              aria-label={uiText("ui.legacyworkplaneeditor.visibility.options.22c5b3")}
               style={visibilityMenuPosition}
             >
               <button
@@ -9453,12 +9453,12 @@ function SecondaryToolbar({
                 }}
               >
                 <Eye size={20} aria-hidden="true" />
-                <strong>{hiddenShapeCount === 0 ? uiText("ui.sketchforgeeditor.nothing.hidden.fd1cdd") : uiText("ui.sketchforgeeditor.show.all.hidden.0d2486", { value0: hiddenShapeCount })}</strong>
+                <strong>{hiddenShapeCount === 0 ? uiText("ui.legacyworkplaneeditor.nothing.hidden.fd1cdd") : uiText("ui.legacyworkplaneeditor.show.all.hidden.0d2486", { value0: hiddenShapeCount })}</strong>
               </button>
               <div className="visibility-dropdown-help">
-                <span>{uiText("ui.sketchforgeeditor.eye.again.selected.febd6e")}</span>
+                <span>{uiText("ui.legacyworkplaneeditor.eye.again.selected.febd6e")}</span>
                 <span aria-hidden="true">·</span>
-                <span><kbd>Ctrl/Cmd</kbd> + <kbd>{uiText("ui.sketchforgeeditor.shift.469d5b")}</kbd> + <kbd>H</kbd>{uiText("ui.sketchforgeeditor.all.05211a")}</span>
+                <span><kbd>Ctrl/Cmd</kbd> + <kbd>{uiText("ui.legacyworkplaneeditor.shift.469d5b")}</kbd> + <kbd>H</kbd>{uiText("ui.legacyworkplaneeditor.all.05211a")}</span>
               </div>
             </div>
           ) : null}
@@ -9468,7 +9468,7 @@ function SecondaryToolbar({
           <div className="toolbar-section-tools">{modifyTools.map(renderToolButton)}</div>
         </div>
         <div className="toolbar-section">
-          <div className="toolbar-section-label">{uiText("ui.sketchforgeeditor.combine.30d04e")}</div>
+          <div className="toolbar-section-label">{uiText("ui.legacyworkplaneeditor.combine.30d04e")}</div>
           <div className="toolbar-section-tools">{combineTools.map(renderToolButton)}</div>
         </div>
         <div className="toolbar-section">
@@ -9485,14 +9485,14 @@ function SecondaryToolbar({
           <button className="action-icon-button" aria-label={uiText("toolbar.export")} title={uiText("toolbar.export")} onClick={() => onTopPanel("export")}>
             <ToolbarVectorExportIcon />
           </button>
-          <button className="action-icon-button" aria-label={uiText("ui.sketchforgeeditor.workspace.settings.432fa1")} title={uiText("ui.sketchforgeeditor.workspace.settings.432fa1")} onClick={() => window.dispatchEvent(new Event("sketchforge:open-workspace-settings"))}>
+          <button className="action-icon-button" aria-label={uiText("ui.legacyworkplaneeditor.workspace.settings.432fa1")} title={uiText("ui.legacyworkplaneeditor.workspace.settings.432fa1")} onClick={() => window.dispatchEvent(new Event("sketchforge:open-workspace-settings"))}>
             <ToolbarSettingsIcon />
           </button>
         </div>
       </div>
           </>
         ) : (
-          <div className="sketch-toolbar-ribbon" aria-label={uiText("ui.sketchforgeeditor.sketch.toolbar.26c14a")}>
+          <div className="sketch-toolbar-ribbon" aria-label={uiText("ui.legacyworkplaneeditor.sketch.toolbar.26c14a")}>
             {sketchActive ? (
               <>
                 <div className="toolbar-section sketch-create-section">
@@ -9501,10 +9501,10 @@ function SecondaryToolbar({
                     <button className={`toolbar-icon sketch-tool-icon ${sketchTool === "line" ? "active" : ""}`} type="button" aria-label={uiText("sketch.line")} title={uiText("sketch.line")} onClick={() => onSketchTool("line")}>
                       <SketchReferenceIcon name="line" />
                     </button>
-                    <button className={`toolbar-icon sketch-tool-icon ${sketchTool === "bezier" ? "active" : ""}`} type="button" aria-label={uiText("ui.sketchforgeeditor.bezier.curve.06ccd0")} title={uiText("ui.sketchforgeeditor.bezier.curve.06ccd0")} onClick={() => onSketchTool("bezier")}>
+                    <button className={`toolbar-icon sketch-tool-icon ${sketchTool === "bezier" ? "active" : ""}`} type="button" aria-label={uiText("ui.legacyworkplaneeditor.bezier.curve.06ccd0")} title={uiText("ui.legacyworkplaneeditor.bezier.curve.06ccd0")} onClick={() => onSketchTool("bezier")}>
                       <SketchReferenceIcon name="bezier" />
                     </button>
-                    <button className={`toolbar-icon sketch-tool-icon ${sketchTool === "smooth" ? "active" : ""}`} type="button" aria-label={uiText("ui.sketchforgeeditor.smooth.curve.a382a6")} title={uiText("ui.sketchforgeeditor.smooth.curve.a382a6")} onClick={() => onSketchTool("smooth")}>
+                    <button className={`toolbar-icon sketch-tool-icon ${sketchTool === "smooth" ? "active" : ""}`} type="button" aria-label={uiText("ui.legacyworkplaneeditor.smooth.curve.a382a6")} title={uiText("ui.legacyworkplaneeditor.smooth.curve.a382a6")} onClick={() => onSketchTool("smooth")}>
                       <SketchReferenceIcon name="smooth" />
                     </button>
                   </div>
@@ -9518,14 +9518,14 @@ function SecondaryToolbar({
                     <button
                       className={`toolbar-icon sketch-tool-icon ${sketchTool === "select" ? "" : "disabled"}`}
                       type="button"
-                      aria-label={uiText("ui.sketchforgeeditor.add.image.5655ec")}
-                      title={sketchTool === "select" ? uiText("ui.sketchforgeeditor.add.image.537563") : uiText("ui.sketchforgeeditor.choose.select.to.add.an.image.778dba")}
+                      aria-label={uiText("ui.legacyworkplaneeditor.add.image.5655ec")}
+                      title={sketchTool === "select" ? uiText("ui.legacyworkplaneeditor.add.image.537563") : uiText("ui.legacyworkplaneeditor.choose.select.to.add.an.image.778dba")}
                       onClick={onSketchImage}
                       disabled={sketchTool !== "select"}
                     >
                       <SketchReferenceIcon name="image" />
                     </button>
-                    <button className={`toolbar-icon sketch-tool-icon ${sketchTool === "refine" ? "active" : ""}`} type="button" aria-label={uiText("ui.sketchforgeeditor.add.or.remove.points.5020e7")} title={uiText("ui.sketchforgeeditor.add.or.remove.points.5020e7")} onClick={() => onSketchTool("refine")}>
+                    <button className={`toolbar-icon sketch-tool-icon ${sketchTool === "refine" ? "active" : ""}`} type="button" aria-label={uiText("ui.legacyworkplaneeditor.add.or.remove.points.5020e7")} title={uiText("ui.legacyworkplaneeditor.add.or.remove.points.5020e7")} onClick={() => onSketchTool("refine")}>
                       <SketchReferenceIcon name="refine" />
                     </button>
                     <button className={`toolbar-icon sketch-tool-icon ${sketchTool === "erase" ? "active" : ""}`} type="button" aria-label={uiText("sketch.erase")} title={uiText("sketch.erase")} onClick={() => onSketchTool("erase")}>
@@ -9536,10 +9536,10 @@ function SecondaryToolbar({
                 <div className="toolbar-section sketch-history-section">
                   <div className="toolbar-section-label">{uiText("sketch.history")}</div>
                   <div className="toolbar-section-tools">
-                    <button className={`toolbar-icon ${sketchCanUndo ? "" : "disabled"}`} type="button" aria-label={uiText("ui.sketchforgeeditor.sketch.undo.b7b3e8")} title={uiText("toolbar.undo")} onClick={onSketchUndo} disabled={!sketchCanUndo}>
+                    <button className={`toolbar-icon ${sketchCanUndo ? "" : "disabled"}`} type="button" aria-label={uiText("ui.legacyworkplaneeditor.sketch.undo.b7b3e8")} title={uiText("toolbar.undo")} onClick={onSketchUndo} disabled={!sketchCanUndo}>
                       <ToolbarUndoIcon />
                     </button>
-                    <button className={`toolbar-icon ${sketchCanRedo ? "" : "disabled"}`} type="button" aria-label={uiText("ui.sketchforgeeditor.sketch.redo.3a1025")} title={uiText("toolbar.redo")} onClick={onSketchRedo} disabled={!sketchCanRedo}>
+                    <button className={`toolbar-icon ${sketchCanRedo ? "" : "disabled"}`} type="button" aria-label={uiText("ui.legacyworkplaneeditor.sketch.redo.3a1025")} title={uiText("toolbar.redo")} onClick={onSketchRedo} disabled={!sketchCanRedo}>
                       <ToolbarRedoIcon />
                     </button>
                   </div>
@@ -9558,7 +9558,7 @@ function SecondaryToolbar({
                   <div className="toolbar-section-tools">
                     <button className="sketch-command-button primary" type="button" onClick={onSketchFinish}>
                       <Check />
-                      <span>{sketchOperation === "revolve" ? uiText("ui.sketchforgeeditor.finish.revolve.d53ac0") : uiText("ui.sketchforgeeditor.finish.sketch.f28863")}</span>
+                      <span>{sketchOperation === "revolve" ? uiText("ui.legacyworkplaneeditor.finish.revolve.d53ac0") : uiText("ui.legacyworkplaneeditor.finish.sketch.f28863")}</span>
                     </button>
                     <button className="sketch-command-button cancel" type="button" onClick={onSketchCancel}>
                       <X />
@@ -9575,29 +9575,29 @@ function SecondaryToolbar({
                     <button
                       className={`sketch-command-button primary sketch-create-menu-trigger ${sketchCreateOpen ? "active" : ""}`}
                       type="button"
-                      aria-label={uiText("ui.sketchforgeeditor.sketch.to.3d.options.68afc6")}
+                      aria-label={uiText("ui.legacyworkplaneeditor.sketch.to.3d.options.68afc6")}
                       aria-haspopup="menu"
                       aria-expanded={sketchCreateOpen}
                       onClick={() => setSketchCreateOpen((open) => !open)}
                     >
                       <SketchReferenceIcon name="sketchTo3d" />
-                      <span>{uiText("ui.sketchforgeeditor.sketch.to.3d.33fc42")}</span>
+                      <span>{uiText("ui.legacyworkplaneeditor.sketch.to.3d.33fc42")}</span>
                       <ToolbarCaretDownIcon className="sketch-create-menu-chevron" />
                     </button>
                     {sketchCreateOpen ? (
-                      <div className="sketch-create-dropdown" role="menu" aria-label={uiText("ui.sketchforgeeditor.sketch.to.3d.method.87c7f5")}>
+                      <div className="sketch-create-dropdown" role="menu" aria-label={uiText("ui.legacyworkplaneeditor.sketch.to.3d.method.87c7f5")}>
                         <button type="button" role="menuitem" onClick={() => startSketch("extrude")}>
                           <strong>{uiText("toolbar.extrudeSketch")}</strong>
-                          <span>{uiText("ui.sketchforgeeditor.raise.the.profile.into.a.3d.shape.f8974a")}</span>
+                          <span>{uiText("ui.legacyworkplaneeditor.raise.the.profile.into.a.3d.shape.f8974a")}</span>
                         </button>
                         <button type="button" role="menuitem" onClick={() => startSketch("revolve")}>
                           <strong>{uiText("toolbar.revolveSketch")}</strong>
-                          <span>{uiText("ui.sketchforgeeditor.rotate.the.profile.around.an.axis.85a9fe")}</span>
+                          <span>{uiText("ui.legacyworkplaneeditor.rotate.the.profile.around.an.axis.85a9fe")}</span>
                         </button>
                       </div>
                     ) : null}
                   </div>
-                  <button className={`sketch-command-button ${canEditSketch ? "" : "disabled"}`} type="button" aria-label={uiText("ui.sketchforgeeditor.edit.sketch.to.3d.956c6b")} title={uiText("ui.sketchforgeeditor.edit.sketch.to.3d.956c6b")} onClick={onEditSketch} disabled={!canEditSketch}>
+                  <button className={`sketch-command-button ${canEditSketch ? "" : "disabled"}`} type="button" aria-label={uiText("ui.legacyworkplaneeditor.edit.sketch.to.3d.956c6b")} title={uiText("ui.legacyworkplaneeditor.edit.sketch.to.3d.956c6b")} onClick={onEditSketch} disabled={!canEditSketch}>
                     <SketchReferenceIcon name="editSketchTo3d" />
                     <span>{uiText("sketch.edit")}</span>
                   </button>
@@ -9607,7 +9607,7 @@ function SecondaryToolbar({
           </div>
         )}
       </div>
-      <div className="toolbar-workspace-tabs" role="tablist" aria-label={uiText("ui.sketchforgeeditor.editor.mode.6a4f8c")}>
+      <div className="toolbar-workspace-tabs" role="tablist" aria-label={uiText("ui.legacyworkplaneeditor.editor.mode.6a4f8c")}>
         <button
           className={toolbarMode === "geometry" ? "active" : ""}
           type="button"
@@ -9678,29 +9678,29 @@ function TopActionPanel({
 
   const exportDetails: Record<ExportFormat, { label: string; description: string; note: string }> = {
     stl: {
-      label: uiText("ui.sketchforgeeditor.stl.735c11"),
-      description: uiText("ui.sketchforgeeditor.3d.print.mesh.8cb468"),
-      note: uiText("ui.sketchforgeeditor.best.for.slicers.and.3d.printing.geometry.is.exp.2e9a72"),
+      label: uiText("ui.legacyworkplaneeditor.stl.735c11"),
+      description: uiText("ui.legacyworkplaneeditor.3d.print.mesh.8cb468"),
+      note: uiText("ui.legacyworkplaneeditor.best.for.slicers.and.3d.printing.geometry.is.exp.2e9a72"),
     },
     obj: {
-      label: uiText("ui.sketchforgeeditor.obj.2f1e50"),
-      description: uiText("ui.sketchforgeeditor.universal.3d.mesh.2c8a73"),
-      note: uiText("ui.sketchforgeeditor.a.broadly.compatible.mesh.format.for.modeling.re.6290d4"),
+      label: uiText("ui.legacyworkplaneeditor.obj.2f1e50"),
+      description: uiText("ui.legacyworkplaneeditor.universal.3d.mesh.2c8a73"),
+      note: uiText("ui.legacyworkplaneeditor.a.broadly.compatible.mesh.format.for.modeling.re.6290d4"),
     },
     step: {
       label: uiText("ui.parametriccadeditor.step.0c9b85"),
-      description: uiText("ui.sketchforgeeditor.cad.b.rep.34cfa7"),
-      note: uiText("ui.sketchforgeeditor.keeps.supported.boxes.cylinders.spheres.and.cone.5cae9e"),
+      description: uiText("ui.legacyworkplaneeditor.cad.b.rep.34cfa7"),
+      note: uiText("ui.legacyworkplaneeditor.keeps.supported.boxes.cylinders.spheres.and.cone.5cae9e"),
     },
     svg: {
-      label: uiText("ui.sketchforgeeditor.svg.50fce6"),
-      description: uiText("ui.sketchforgeeditor.top.view.vector.040b6b"),
-      note: uiText("ui.sketchforgeeditor.exports.a.clean.top.view.silhouette.in.millimete.978190"),
+      label: uiText("ui.legacyworkplaneeditor.svg.50fce6"),
+      description: uiText("ui.legacyworkplaneeditor.top.view.vector.040b6b"),
+      note: uiText("ui.legacyworkplaneeditor.exports.a.clean.top.view.silhouette.in.millimete.978190"),
     },
     skf: {
-      label: uiText("ui.sketchforgeeditor.skf.46a311"),
-      description: uiText("ui.sketchforgeeditor.editable.project.7a5698"),
-      note: uiText("ui.sketchforgeeditor.preserves.the.editable.project.undo.redo.history.146184"),
+      label: uiText("ui.legacyworkplaneeditor.skf.46a311"),
+      description: uiText("ui.legacyworkplaneeditor.editable.project.7a5698"),
+      note: uiText("ui.legacyworkplaneeditor.preserves.the.editable.project.undo.redo.history.146184"),
     },
   };
   const selectedExport = exportDetails[exportFormat];
@@ -9720,7 +9720,7 @@ function TopActionPanel({
         <div className="top-action-heading">
           <strong>{title}</strong>
         </div>
-        <button aria-label={uiText("ui.sketchforgeeditor.close.15e237", { value0: title })} onClick={onClose}>
+        <button aria-label={uiText("ui.legacyworkplaneeditor.close.15e237", { value0: title })} onClick={onClose}>
           <X size={18} />
         </button>
       </header>
@@ -9729,11 +9729,11 @@ function TopActionPanel({
           <button className="open-skf-project-button" type="button" onClick={onPickProjectFile}>
             <span className="open-skf-project-icon"><FolderOpen size={18} /></span>
             <span>
-              <strong>{uiText("ui.sketchforgeeditor.open.sketchforge.project.27bde2")}</strong>
-              <small>{uiText("ui.sketchforgeeditor.restore.an.editable.skf.file.as.a.new.local.proj.452f7b")}</small>
+              <strong>{uiText("ui.legacyworkplaneeditor.open.sketchforge.project.27bde2")}</strong>
+              <small>{uiText("ui.legacyworkplaneeditor.restore.an.editable.skf.file.as.a.new.local.proj.452f7b")}</small>
             </span>
           </button>
-          <div className="import-kind-divider"><span>{uiText("ui.sketchforgeeditor.or.add.geometry.333cf0")}</span></div>
+          <div className="import-kind-divider"><span>{uiText("ui.legacyworkplaneeditor.or.add.geometry.333cf0")}</span></div>
           <button
             className="import-drop-zone"
             onClick={onPickFile}
@@ -9749,8 +9749,8 @@ function TopActionPanel({
             }}
           >
             <ToolbarImportIcon />
-            <strong>{uiText("ui.sketchforgeeditor.drop.stl.step.or.svg.files.1e3a55")}</strong>
-            <span>{uiText("ui.sketchforgeeditor.or.click.to.choose.from.your.computer.35851e")}</span>
+            <strong>{uiText("ui.legacyworkplaneeditor.drop.stl.step.or.svg.files.1e3a55")}</strong>
+            <span>{uiText("ui.legacyworkplaneeditor.or.click.to.choose.from.your.computer.35851e")}</span>
           </button>
         </div>
       ) : null}
@@ -9780,9 +9780,9 @@ function TopActionPanel({
               <div>
                 <strong>{uiText("sidebar.format")}</strong>
               </div>
-              <span className="export-scope-badge">{exportFormat === "skf" ? uiText("ui.sketchforgeeditor.full.project.94c15c") : `${shapeCount} ${scopeLabel}`}</span>
+              <span className="export-scope-badge">{exportFormat === "skf" ? uiText("ui.legacyworkplaneeditor.full.project.94c15c") : `${shapeCount} ${scopeLabel}`}</span>
             </div>
-            <div className="export-format-slider" data-format={exportFormat} role="radiogroup" aria-label={uiText("ui.sketchforgeeditor.export.format.483a5d")}>
+            <div className="export-format-slider" data-format={exportFormat} role="radiogroup" aria-label={uiText("ui.legacyworkplaneeditor.export.format.483a5d")}>
               {(["stl", "obj", "step", "svg", "skf"] as const).map((format) => (
                 <button
                   key={format}
@@ -9802,8 +9802,8 @@ function TopActionPanel({
             <section className="export-setting-section skf-history-section">
               <div className="export-section-heading">
                 <div>
-                  <strong>{uiText("ui.sketchforgeeditor.saved.action.history.7eb8e7")}</strong>
-                  <span>{uiText("ui.sketchforgeeditor.choose.how.many.recent.undo.actions.travel.with..325ce4")}</span>
+                  <strong>{uiText("ui.legacyworkplaneeditor.saved.action.history.7eb8e7")}</strong>
+                  <span>{uiText("ui.legacyworkplaneeditor.choose.how.many.recent.undo.actions.travel.with..325ce4")}</span>
                 </div>
               </div>
               <div className="skf-history-range-control" data-limit={String(skfHistoryLimit)}>
@@ -9814,15 +9814,15 @@ function TopActionPanel({
                   max={skfHistoryLimits.length - 1}
                   step={1}
                   value={skfHistoryLimitIndex}
-                  aria-label={uiText("ui.sketchforgeeditor.saved.skf.action.history.5ebea1")}
-                  aria-valuetext={skfHistoryLimit === "unlimited" ? uiText("ui.sketchforgeeditor.unlimited.b8bef3") : uiText("ui.sketchforgeeditor.actions.3503fd", { value0: skfHistoryLimit })}
+                  aria-label={uiText("ui.legacyworkplaneeditor.saved.skf.action.history.5ebea1")}
+                  aria-valuetext={skfHistoryLimit === "unlimited" ? uiText("ui.legacyworkplaneeditor.unlimited.b8bef3") : uiText("ui.legacyworkplaneeditor.actions.3503fd", { value0: skfHistoryLimit })}
                   onChange={(event) => setSkfHistoryLimit(skfHistoryLimits[Number(event.currentTarget.value)] ?? "unlimited")}
                 />
               </div>
               <div className="skf-history-range-labels" aria-hidden="true">
                 {skfHistoryLimits.map((limit) => (
                   <span key={limit} className={skfHistoryLimit === limit ? "active" : undefined}>
-                    {limit === "unlimited" ? uiText("ui.sketchforgeeditor.unlimited.b8bef3") : limit}
+                    {limit === "unlimited" ? uiText("ui.legacyworkplaneeditor.unlimited.b8bef3") : limit}
                   </span>
                 ))}
               </div>
@@ -9852,9 +9852,9 @@ function TopActionPanel({
               ) : null}
               <button className="export-primary-button" onClick={runSelectedExport} disabled={(shapeCount === 0 && exportFormat !== "skf") || stepExporting || skfExporting}>
                 <Download />
-                {exportFormat === "skf" ? (skfExporting ? uiText("ui.sketchforgeeditor.saving.project.69e697") : uiText("ui.sketchforgeeditor.save.sketchforge.project.18329b")) : null}
+                {exportFormat === "skf" ? (skfExporting ? uiText("ui.legacyworkplaneeditor.saving.project.69e697") : uiText("ui.legacyworkplaneeditor.save.sketchforge.project.18329b")) : null}
                 <span hidden={exportFormat === "skf"}>
-                {stepExporting && exportFormat === "step" ? uiText("ui.sketchforgeeditor.building.step.594c92") : uiText("ui.sketchforgeeditor.export.695f84", { value0: selectedExport.label })}
+                {stepExporting && exportFormat === "step" ? uiText("ui.legacyworkplaneeditor.building.step.594c92") : uiText("ui.legacyworkplaneeditor.export.695f84", { value0: selectedExport.label })}
                 </span>
               </button>
             </div>
@@ -9863,17 +9863,17 @@ function TopActionPanel({
       ) : null}
       {panel === "settings" ? (
         <div className="top-action-body">
-          <p>{uiText("ui.sketchforgeeditor.workspace.preferences.24bc3a")}</p>
-          <button onClick={() => onNotice(uiText("ui.sketchforgeeditor.grid.display.is.controlled.from.the.bottom.right.d5ea3c"))}>{uiText("ui.sketchforgeeditor.grid.and.snapping.b2ea87")}</button>
-          <button onClick={() => onNotice(uiText("ui.sketchforgeeditor.units.are.set.to.millimeters.7d5bcf"))}>{uiText("ui.sketchforgeeditor.units.millimeters.b140d3")}</button>
-          <button onClick={() => onNotice(uiText("ui.sketchforgeeditor.shadows.and.ray.traced.lighting.are.enabled.cbcbd5"))}>{uiText("ui.sketchforgeeditor.lighting.and.shadows.ff2064")}</button>
+          <p>{uiText("ui.legacyworkplaneeditor.workspace.preferences.24bc3a")}</p>
+          <button onClick={() => onNotice(uiText("ui.legacyworkplaneeditor.grid.display.is.controlled.from.the.bottom.right.d5ea3c"))}>{uiText("ui.legacyworkplaneeditor.grid.and.snapping.b2ea87")}</button>
+          <button onClick={() => onNotice(uiText("ui.legacyworkplaneeditor.units.are.set.to.millimeters.7d5bcf"))}>{uiText("ui.legacyworkplaneeditor.units.millimeters.b140d3")}</button>
+          <button onClick={() => onNotice(uiText("ui.legacyworkplaneeditor.shadows.and.ray.traced.lighting.are.enabled.cbcbd5"))}>{uiText("ui.legacyworkplaneeditor.lighting.and.shadows.ff2064")}</button>
         </div>
       ) : null}
       {panel === "profile" ? (
         <div className="top-action-body">
-          <button onClick={() => onNotice(uiText("ui.sketchforgeeditor.account.menu.opened.2b2a8c"))}>{uiText("ui.sketchforgeeditor.account.85dfa3")}</button>
-          <button onClick={() => onNotice(uiText("ui.sketchforgeeditor.dashboard.opened.5664f3"))}>{uiText("ui.sketchforgeeditor.dashboard.d87f47")}</button>
-          <button onClick={() => onNotice(uiText("ui.sketchforgeeditor.sign.out.selected.20c543"))}>{uiText("ui.sketchforgeeditor.sign.out.dc1649")}</button>
+          <button onClick={() => onNotice(uiText("ui.legacyworkplaneeditor.account.menu.opened.2b2a8c"))}>{uiText("ui.legacyworkplaneeditor.account.85dfa3")}</button>
+          <button onClick={() => onNotice(uiText("ui.legacyworkplaneeditor.dashboard.opened.5664f3"))}>{uiText("ui.legacyworkplaneeditor.dashboard.d87f47")}</button>
+          <button onClick={() => onNotice(uiText("ui.legacyworkplaneeditor.sign.out.selected.20c543"))}>{uiText("ui.legacyworkplaneeditor.sign.out.dc1649")}</button>
         </div>
       ) : null}
     </div>

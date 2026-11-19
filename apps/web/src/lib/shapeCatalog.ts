@@ -1,7 +1,7 @@
 import { canonicalizeShape } from "@/lib/workplaneShapes";
 import { createLocalId } from "@/lib/localIds";
 import { DEFAULT_GEAR_CENTER_HOLE_SIZE, DEFAULT_GEAR_HELIX_ANGLE, DEFAULT_GEAR_HELIX_QUALITY, DEFAULT_GEAR_TEETH, DEFAULT_GEAR_TOOTH_SIZE, DEFAULT_GEAR_TYPE } from "@/lib/gearGeometry";
-import type { ShapeAsset, WorkplaneShape } from "@/types/sketchforge";
+import type { ShapeAsset, WorkplaneShape } from "@/types/workplane";
 
 export type ToolbarShapeAsset = ShapeAsset & { menuIcon: string };
 

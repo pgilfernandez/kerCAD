@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { WorkplaneShape } from "@/types/sketchforge";
+import type { WorkplaneShape } from "@/types/workplane";
 import { aabbsOverlap, shapeYawDegrees, worldAabb } from "@/lib/stepExport";
 
 function shape(overrides: Partial<WorkplaneShape> = {}): WorkplaneShape {

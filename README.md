@@ -47,7 +47,7 @@ Piezas principales:
 - `apps/web/src/lib/parametricDocument.ts`: creación, validación y dependencias del historial.
 - `apps/web/src/lib/parametricObjects.ts`: traducción entre la interacción sencilla de formas y las operaciones paramétricas.
 - `apps/web/src/lib/parametricKernel.ts`: reconstrucción B-Rep, métricas, malla de visualización y STEP.
-- `apps/web/src/components/SketchForgeParametricEditor.tsx`: entorno educativo compatible visualmente con el flujo de SketchForge.
+- `apps/web/src/components/KercadParametricEditor.tsx`: entorno educativo compatible visualmente con el flujo de SketchForge.
 - `apps/web/src/components/ParametricViewport.tsx`: visor Three.js; no contiene la geometría maestra.
 
 ## Flujo de aprendizaje

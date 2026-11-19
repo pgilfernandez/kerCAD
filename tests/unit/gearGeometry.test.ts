@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createGearGeometry, gearSettings, normalizeGearTeeth, normalizeGearToothSize } from "@/lib/gearGeometry";
-import type { GearType } from "@/types/sketchforge";
+import type { GearType } from "@/types/workplane";
 
 function edgeUseCounts(position: { count: number; getX: (index: number) => number; getY: (index: number) => number; getZ: (index: number) => number }) {
   const uses = new Map<string, number>();

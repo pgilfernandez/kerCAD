@@ -1,4 +1,4 @@
-import type { WorkplaneShape } from "@/types/sketchforge";
+import type { WorkplaneShape } from "@/types/workplane";
 
 export function normalizeDegrees(value: number) {
   return ((value % 360) + 360) % 360;

@@ -14,7 +14,7 @@ import {
   type SkfProjectExportInput,
 } from "@/lib/skfProject";
 import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
-import type { ShapeKind, WorkplaneShape } from "@/types/sketchforge";
+import type { ShapeKind, WorkplaneShape } from "@/types/workplane";
 
 function shape(kind: ShapeKind, id = `${kind}-1`, overrides: Partial<WorkplaneShape> = {}): WorkplaneShape {
   return {

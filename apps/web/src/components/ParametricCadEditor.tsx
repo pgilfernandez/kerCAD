@@ -75,7 +75,7 @@ function featureIcon(feature: ParametricFeature) {
 
 function featureLabel(feature: ParametricFeature) {
   if (feature.kind === "sketch") return uiText("ui.parametriccadeditor.boceto.2d.a48b0e");
-  if (feature.kind === "extrude") return uiText("ui.sketchforgeparametriceditor.extrusion.f1a195");
+  if (feature.kind === "extrude") return uiText("ui.kercadparametriceditor.extrusion.f1a195");
   if (feature.kind === "hole") return uiText("operation.hole");
   return uiText("toolbar.fillet");
 }

@@ -1,4 +1,4 @@
-import type { SketchCircle, SketchPoint, SketchProfile, SketchSegment } from "@/types/sketchforge";
+import type { SketchCircle, SketchPoint, SketchProfile, SketchSegment } from "@/types/workplane";
 
 export type SketchOutlinePoint = Readonly<{ x: number; y: number }>;
 

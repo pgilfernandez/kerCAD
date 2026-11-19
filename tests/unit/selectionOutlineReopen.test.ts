@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { bakedBoxSelectionFrame, bakeCadMetadataForShapeTransform } from "@/lib/cadBakeMetadata";
 import { exportSkfProject, importSkfProject } from "@/lib/skfProject";
 import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
-import type { WorkplaneShape } from "@/types/sketchforge";
+import type { WorkplaneShape } from "@/types/workplane";
 
 function cube(): WorkplaneShape {
   return {

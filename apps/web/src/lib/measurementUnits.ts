@@ -1,4 +1,4 @@
-import type { MeasurementAccuracy, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
+import type { MeasurementAccuracy, WorkplaneWorkspaceSettings } from "@/types/workplane";
 import { parseNumericExpression } from "@/lib/numericExpression";
 
 const MILLIMETERS_PER_INCH = 25.4;

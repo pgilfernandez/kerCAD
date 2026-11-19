@@ -9,7 +9,7 @@ export type ProjectLibraryEntry = {
   document: ParametricDocument;
   thumbnail?: string;
   thumbnailDocumentKey?: string;
-  assets?: import("@/types/sketchforge").ProjectAsset[];
+  assets?: import("@/types/workplane").ProjectAsset[];
   sharedSource?: { fileName: string; revision: string };
 };
 

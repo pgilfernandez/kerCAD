@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { WorkplaneShape } from "@/types/sketchforge";
+import type { WorkplaneShape } from "@/types/workplane";
 
 export type PlacementPoint = { x: number; y: number; z: number };
 

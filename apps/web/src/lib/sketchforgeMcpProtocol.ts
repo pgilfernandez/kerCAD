@@ -1,4 +1,4 @@
-import type { GridSize, ShapeKind, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
+import type { GridSize, ShapeKind, WorkplaneWorkspaceSettings } from "@/types/workplane";
 
 export const SKETCHFORGE_MCP_ROUTE = "/api/sketchforge-mcp";
 export const SKETCHFORGE_MCP_STALE_MS = 6500;

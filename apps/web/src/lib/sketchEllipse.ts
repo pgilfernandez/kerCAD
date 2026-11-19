@@ -1,4 +1,4 @@
-import type { SketchProfile } from "@/types/sketchforge";
+import type { SketchProfile } from "@/types/workplane";
 
 /** Editable closed four-cubic approximation of an ellipse. */
 export function sketchEllipse(first: { x: number; z: number }, opposite: { x: number; z: number }): SketchProfile | null {

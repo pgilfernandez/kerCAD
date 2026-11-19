@@ -6,7 +6,7 @@ import {
   cadModifierPrimitiveForBakedShape,
 } from "@/lib/cadBakeMetadata";
 import { cadTransformRequiresGeneralTransform } from "@/lib/cadModifierRuntime";
-import type { WorkplaneShape } from "@/types/sketchforge";
+import type { WorkplaneShape } from "@/types/workplane";
 
 function expectTransformClose(actual: number[] | undefined, expected: number[]) {
   expect(actual).toHaveLength(expected.length);

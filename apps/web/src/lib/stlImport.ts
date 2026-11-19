@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import { createLocalId } from "@/lib/localIds";
-import type { WorkplaneShape } from "@/types/sketchforge";
+import type { WorkplaneShape } from "@/types/workplane";
 
 const stlLoader = new STLLoader();
 const SUPPORTED_IMPORT_EXTENSIONS = new Set(["stl", "svg"]);

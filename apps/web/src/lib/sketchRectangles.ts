@@ -1,4 +1,4 @@
-import type { SketchConstraint, SketchPoint, SketchProfile } from "@/types/sketchforge";
+import type { SketchConstraint, SketchPoint, SketchProfile } from "@/types/workplane";
 
 type Point = { x: number; z: number };
 export type RectangleVariant = "centerRectangle" | "roundedRectangle";

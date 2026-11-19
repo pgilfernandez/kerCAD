@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { WorkplaneWorkspaceSettings } from "@/types/sketchforge";
+import type { WorkplaneWorkspaceSettings } from "@/types/workplane";
 import { formatMeasurementNumber, lengthDisplayUnit, millimetersToDisplay, normalizeScaleForUnits, parseMeasurementInput, scaleOptionsForUnits } from "@/lib/measurementUnits";
 import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE, normalizeSnapGrid, normalizeWorkspaceSettings, workplaneSettingsFingerprint, workspaceHydrationSyncDecision } from "@/lib/workplaneSettings";
 

@@ -1,5 +1,5 @@
 import { canonicalizeShape } from "@/lib/workplaneShapes";
-import type { EdgeTreatmentHistoryEntry, WorkplaneShape } from "@/types/sketchforge";
+import type { EdgeTreatmentHistoryEntry, WorkplaneShape } from "@/types/workplane";
 
 export function edgeTreatmentAppliedFrame(shape: WorkplaneShape): NonNullable<EdgeTreatmentHistoryEntry["appliedFrame"]> {
   return {

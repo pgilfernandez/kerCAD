@@ -1,4 +1,4 @@
-import type { SketchConstraint, SketchPoint, SketchProfile, SketchSegment } from "@/types/sketchforge";
+import type { SketchConstraint, SketchPoint, SketchProfile, SketchSegment } from "@/types/workplane";
 
 const SKETCH_REFERENCE_POINTS: SketchPoint[] = [
   { id: "reference:origin", x: 0, z: 0 },

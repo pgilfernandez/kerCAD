@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ShapeAsset } from "@/types/sketchforge";
+import type { ShapeAsset } from "@/types/workplane";
 import { makeShapeFromAsset, sceneShape, toolbarShapeAssets } from "@/lib/shapeCatalog";
 
 describe("shape catalog", () => {

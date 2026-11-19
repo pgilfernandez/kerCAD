@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { WorkplaneShape } from "@/types/sketchforge";
+import type { WorkplaneShape } from "@/types/workplane";
 import type { CadModifierPrimitivePart } from "@/lib/cadModifierTypes";
 import { mirrorSign, resizedImportedCoordinates, shapeDepth, shapeWidth } from "@/lib/workplaneShapes";
 

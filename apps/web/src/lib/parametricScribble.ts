@@ -1,5 +1,5 @@
 import { createLocalId } from "@/lib/localIds";
-import type { SketchProfile } from "@/types/sketchforge";
+import type { SketchProfile } from "@/types/workplane";
 
 export type ScribblePoint = { x: number; z: number };
 

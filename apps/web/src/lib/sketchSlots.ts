@@ -1,4 +1,4 @@
-import type { SketchProfile } from "@/types/sketchforge";
+import type { SketchProfile } from "@/types/workplane";
 
 type Point = { x: number; z: number };
 

@@ -59,7 +59,7 @@ import {
   type TransformHandleKind,
   type TransformOverlayState,
 } from "@/components/workplane/TransformOverlay";
-import type { AlignAxis, AlignHandleStatus, AlignTarget, GridSize, MeasurementAccuracy, ShapeAsset, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
+import type { AlignAxis, AlignHandleStatus, AlignTarget, GridSize, MeasurementAccuracy, ShapeAsset, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/workplane";
 import type { CadModifierEdge } from "@/lib/cadModifierTypes";
 import { uiText } from "@/lib/kercadI18n";
 
@@ -4780,7 +4780,7 @@ export function WorkplaneViewport({
             <button className="camera-controls-toggle" aria-label={uiText("ui.workplaneviewport.hide.camera.controls.d243cf")} title={uiText("ui.workplaneviewport.hide.controls.6fb371")} aria-expanded={true} onClick={collapseCameraControls}>
               <ChevronLeft size={24} strokeWidth={2.25} aria-hidden="true" />
             </button>
-            <button aria-label={uiText("ui.sketchforgeeditor.home.70f8bb")} onClick={resetView}>
+            <button aria-label={uiText("ui.legacyworkplaneeditor.home.70f8bb")} onClick={resetView}>
               <Home size={24} strokeWidth={2.25} />
             </button>
             <button aria-label={uiText("camera.zoomIn")} onClick={() => zoomCamera(0.7)}>

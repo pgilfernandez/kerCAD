@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { analyzeSketchConstraints, sketchConstraintRankGain } from "@/lib/sketchConstraintAnalysis";
 import { solveSketchConstraints } from "@/lib/sketchConstraints";
-import type { SketchProfile } from "@/types/sketchforge";
+import type { SketchProfile } from "@/types/workplane";
 
 function lineProfile(): SketchProfile {
   return {

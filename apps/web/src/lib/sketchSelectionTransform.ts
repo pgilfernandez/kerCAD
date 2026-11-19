@@ -1,5 +1,5 @@
 import type { SketchSelection } from "@/components/SketchWorkspace";
-import type { SketchProfile } from "@/types/sketchforge";
+import type { SketchProfile } from "@/types/workplane";
 import { solveSketchConstraints } from "@/lib/sketchConstraints";
 
 export type SketchSelectionBounds = { minX: number; maxX: number; minZ: number; maxZ: number };

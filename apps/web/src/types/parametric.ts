@@ -64,7 +64,7 @@ export type CircleProfile = {
 
 export type DrawnProfile = {
   shape: "drawn";
-  geometry: import("@/types/sketchforge").SketchProfile;
+  geometry: import("@/types/workplane").SketchProfile;
 };
 
 export type SketchFeature = BaseFeature & {

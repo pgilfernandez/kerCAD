@@ -1,4 +1,4 @@
-import type { WorkplaneShape } from "@/types/sketchforge";
+import type { WorkplaneShape } from "@/types/workplane";
 import { importedShapeFromTriangleSoup } from "@/lib/stlImport";
 import { loadBrepWithOcct } from "@/lib/brepKernel";
 

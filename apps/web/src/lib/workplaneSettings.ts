@@ -1,4 +1,4 @@
-import type { GridSize, HistoryRetentionLimit, MeasurementAccuracy, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
+import type { GridSize, HistoryRetentionLimit, MeasurementAccuracy, WorkplaneWorkspaceSettings } from "@/types/workplane";
 import { normalizeScaleForUnits } from "@/lib/measurementUnits";
 import { DEFAULT_WORKPLANE_GRID_COLOR } from "@/lib/workplaneGrid";
 

@@ -3,7 +3,7 @@ import { createLocalId } from "@/lib/localIds";
 import { addParametricObject } from "@/lib/parametricObjects";
 import { objectPlacementForWorkplane } from "@/lib/parametricWorkplane";
 import type { ParametricDocument, SketchFeature } from "@/types/parametric";
-import type { SketchPoint, SketchProfile } from "@/types/sketchforge";
+import type { SketchPoint, SketchProfile } from "@/types/workplane";
 import { CubicBezierCurve, LineCurve, QuadraticBezierCurve, type Curve, type Vector2 } from "three";
 import { FontLoader, type Font, type FontData } from "three/examples/jsm/loaders/FontLoader.js";
 import { textFonts, textFontNames } from "@/lib/textFonts";

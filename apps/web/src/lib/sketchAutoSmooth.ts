@@ -1,4 +1,4 @@
-import type { SketchProfile } from "@/types/sketchforge";
+import type { SketchProfile } from "@/types/workplane";
 
 /** Recompute automatic tangents from neighbouring anchors, not old handles. */
 export function updateAutoSmoothNodes(profile: SketchProfile): SketchProfile {

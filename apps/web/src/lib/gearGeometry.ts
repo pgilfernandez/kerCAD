@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { toCreasedNormals } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import type { GearType, WorkplaneShape } from "@/types/sketchforge";
+import type { GearType, WorkplaneShape } from "@/types/workplane";
 
 export const DEFAULT_GEAR_TEETH = 12;
 export const DEFAULT_GEAR_TOOTH_SIZE = 2.5;

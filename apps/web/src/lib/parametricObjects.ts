@@ -5,7 +5,7 @@ import type { ViewportSelection } from "@/components/ParametricViewport";
 import type { ExtrudeFeature, ParametricDocument, ParametricFeature, ParametricObject, PrimitiveFeature, SketchFeature } from "@/types/parametric";
 import type { ParametricPrimitiveKind } from "@/lib/parametricOperationCatalog";
 import { parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
-import type { WorkplaneShape } from "@/types/sketchforge";
+import type { WorkplaneShape } from "@/types/workplane";
 import { objectPlacementForWorkplane, operationPlacementForWorkplane, parametricRotationFromMatrix, parametricTransformMatrix } from "@/lib/parametricWorkplane";
 import { transformParametricObjectTopologyHints } from "@/lib/parametricTopology";
 import * as THREE from "three";

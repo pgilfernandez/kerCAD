@@ -1,4 +1,4 @@
-import type { SketchConstraint, SketchPoint, SketchProfile } from "@/types/sketchforge";
+import type { SketchConstraint, SketchPoint, SketchProfile } from "@/types/workplane";
 import { updateAutoSmoothNodes } from "@/lib/sketchAutoSmooth";
 import { refineSketchConstraintsNumerically, sketchConstraintRankGain } from "@/lib/sketchConstraintAnalysis";
 

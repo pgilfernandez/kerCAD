@@ -1,4 +1,4 @@
-import type { WorkplaneShape } from "@/types/sketchforge";
+import type { WorkplaneShape } from "@/types/workplane";
 import { shapeDepth, shapeWidth } from "@/lib/workplaneShapes";
 import { loadBrepWithOcct, type Brep, type BrepSolid } from "@/lib/brepKernel";
 

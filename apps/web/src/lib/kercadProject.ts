@@ -2,7 +2,7 @@ import { strFromU8, strToU8, unzip, zip, type AsyncZippable } from "fflate";
 import { normalizeParametricDocument, validateDocument } from "@/lib/parametricDocument";
 import { defaultMediaTypeForSource, normalizeProjectAsset, sha256Hex } from "@/lib/projectAssets";
 import type { ParametricDocument } from "@/types/parametric";
-import type { ProjectAsset, ProjectAssetSourceFormat } from "@/types/sketchforge";
+import type { ProjectAsset, ProjectAssetSourceFormat } from "@/types/workplane";
 import { isLegacyProjectSchema } from "@/lib/legacyBrand";
 import { uiText } from "@/lib/kercadI18n";
 import { isEmptyTorus } from "@/lib/parametricTorus";

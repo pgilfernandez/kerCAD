@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { appendEditorHistorySnapshot, boundedEditorHistory, editorHistoryEntry, editorHistoryForExport, hydrateEditorHistoryState, projectShapesFingerprint } from "@/lib/editorHistory";
-import type { WorkplaneShape } from "@/types/sketchforge";
+import type { WorkplaneShape } from "@/types/workplane";
 
 function box(overrides: Partial<WorkplaneShape> = {}): WorkplaneShape {
   return {

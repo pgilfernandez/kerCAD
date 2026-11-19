@@ -1,5 +1,5 @@
 import { immutableResourceFingerprint, type EditorHistoryEntry } from "@/lib/editorHistory";
-import type { WorkplaneShape } from "@/types/sketchforge";
+import type { WorkplaneShape } from "@/types/workplane";
 
 export type ImportedMeshResource = NonNullable<WorkplaneShape["importedMesh"]>;
 

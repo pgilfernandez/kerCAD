@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { SVGLoader } from "three/examples/jsm/loaders/SVGLoader.js";
 import { createLocalId } from "@/lib/localIds";
-import type { SketchPoint, SketchProfile, WorkplaneShape } from "@/types/sketchforge";
+import type { SketchPoint, SketchProfile, WorkplaneShape } from "@/types/workplane";
 
 export const MAX_SVG_BYTES = 2 * 1024 * 1024;
 export const MAX_SVG_XML_ELEMENTS = 10_000;

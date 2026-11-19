@@ -1,4 +1,4 @@
-import type { WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
+import type { WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/workplane";
 
 const MIN_VISIBLE_GRID_STEP = 1;
 const MAX_VISIBLE_GRID_STEP = 200;

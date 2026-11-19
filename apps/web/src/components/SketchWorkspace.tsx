@@ -22,7 +22,7 @@ import { SKETCH_ORIGIN_POINT_ID, SKETCH_X_AXIS_ID, SKETCH_Y_AXIS_ID, solveSketch
 import type { SketchProfileValidation } from "@/lib/sketchProfileValidation";
 import { isOpenSketchProfile } from "@/lib/sketchProfileValidation";
 import type { KercadLocale } from "@/lib/kercadI18n";
-import type { GridSize, SketchCircle, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchSegment, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
+import type { GridSize, SketchCircle, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchSegment, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/workplane";
 import { uiText, pluralMessage } from "@/lib/kercadI18n";
 
 export type SketchTool = "line" | "connect" | "rectangle" | "centerRectangle" | "roundedRectangle" | "ellipse" | "polygon" | "slot" | "arcSlot" | "bezier" | "smooth" | "freehand" | "freehandSmooth" | "circle" | "arc" | "select" | "refine" | "trim" | "erase" | "measure";

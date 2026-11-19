@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { AlignAxis, AlignHandleStatus, AlignTarget } from "@/types/sketchforge";
+import type { AlignAxis, AlignHandleStatus, AlignTarget } from "@/types/workplane";
 import { uiText } from "@/lib/kercadI18n";
 
 export type AlignOverlayState = {

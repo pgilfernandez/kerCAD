@@ -8,7 +8,7 @@ import { AccentColorOptions } from "@/components/AccentColorOptions";
 import { APP_THEME_OPTIONS, type AppThemePreference } from "@/lib/appTheme";
 import { normalizeScaleForUnits, parseMeasurementInput, scaleOptionsForUnits, WORKSPACE_UNIT_OPTIONS } from "@/lib/measurementUnits";
 import { DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
-import type { GridSize, WorkplaneWorkspaceSettings } from "@/types/sketchforge";
+import type { GridSize, WorkplaneWorkspaceSettings } from "@/types/workplane";
 import { translateSourceText, uiText } from "@/lib/kercadI18n";
 
 type WorkspaceSettings = WorkplaneWorkspaceSettings;
@@ -148,10 +148,10 @@ export function WorkspaceSettingsModal({
   };
 
   return (
-    <div className="workspace-modal" role="dialog" aria-modal="true" aria-label={uiText("ui.sketchforgeeditor.workspace.settings.432fa1")}>
+    <div className="workspace-modal" role="dialog" aria-modal="true" aria-label={uiText("ui.legacyworkplaneeditor.workspace.settings.432fa1")}>
       <div className="workspace-modal-card" onPointerDown={(event) => event.stopPropagation()}>
         <header className="workspace-modal-header">
-          <strong>{uiText("ui.sketchforgeeditor.workspace.settings.432fa1")}</strong>
+          <strong>{uiText("ui.legacyworkplaneeditor.workspace.settings.432fa1")}</strong>
           <button aria-label={uiText("ui.workspacesettingsmodal.close.settings.6bf9c4")} onClick={onClose}>
             <X size={18} />
           </button>
@@ -350,14 +350,14 @@ export function WorkspaceSettingsModal({
                         step={1}
                         value={historyLimitIndex}
                         aria-label={uiText("ui.workspacesettingsmodal.saved.history.actions.81157c")}
-                        aria-valuetext={historyLimitMode === "unlimited" ? uiText("ui.sketchforgeeditor.unlimited.b8bef3") : historyLimitMode === "custom" ? uiText("ui.sketchforgeeditor.actions.3503fd", { value0: workspace.historyLimit }) : uiText("ui.sketchforgeeditor.actions.3503fd", { value0: historyLimitMode })}
+                        aria-valuetext={historyLimitMode === "unlimited" ? uiText("ui.legacyworkplaneeditor.unlimited.b8bef3") : historyLimitMode === "custom" ? uiText("ui.legacyworkplaneeditor.actions.3503fd", { value0: workspace.historyLimit }) : uiText("ui.legacyworkplaneeditor.actions.3503fd", { value0: historyLimitMode })}
                         onChange={(event) => setHistoryLimitMode(HISTORY_LIMIT_OPTIONS[Number(event.currentTarget.value)] ?? "unlimited")}
                       />
                     </div>
                     <div className="workspace-history-labels" aria-hidden="true">
                       {HISTORY_LIMIT_OPTIONS.map((option) => (
                         <span key={option} className={historyLimitMode === option ? "active" : undefined}>
-                          {option === "unlimited" ? uiText("ui.sketchforgeeditor.unlimited.b8bef3") : option === "custom" ? uiText("ui.shapeinspector.custom.081ae3") : option}
+                          {option === "unlimited" ? uiText("ui.legacyworkplaneeditor.unlimited.b8bef3") : option === "custom" ? uiText("ui.shapeinspector.custom.081ae3") : option}
                         </span>
                       ))}
                     </div>

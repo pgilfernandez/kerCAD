@@ -6,7 +6,7 @@ import { displayStepFromMillimeters, displayToMillimeters, formatMeasurementNumb
 import { validateNumericExpression } from "@/lib/numericExpression";
 import type { CadModifierKind, CadModifierQuality } from "@/lib/cadModifierTypes";
 import { CAD_MODIFIER_MAX_SHARP_ANGLE, edgeModifierSelectionStatus } from "@/lib/cadModifierRuntime";
-import type { WorkplaneWorkspaceSettings } from "@/types/sketchforge";
+import type { WorkplaneWorkspaceSettings } from "@/types/workplane";
 import { uiText } from "@/lib/kercadI18n";
 
 const MIN_EDGE_MODIFIER_AMOUNT = 0.001;

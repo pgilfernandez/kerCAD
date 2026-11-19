@@ -4,7 +4,7 @@ import {
   type PlacementWorkplane,
 } from "@/lib/placementWorkplane";
 import { canonicalizeShape } from "@/lib/workplaneShapes";
-import type { WorkplaneShape } from "@/types/sketchforge";
+import type { WorkplaneShape } from "@/types/workplane";
 
 export function placeSketchExtrusion(
   shape: WorkplaneShape,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { placementWorkplaneFromSurface } from "@/lib/placementWorkplane";
 import { placeSketchExtrusion } from "@/lib/sketchPlacement";
-import type { WorkplaneShape } from "@/types/sketchforge";
+import type { WorkplaneShape } from "@/types/workplane";
 
 function extrusion(overrides: Partial<WorkplaneShape> = {}): WorkplaneShape {
   return {

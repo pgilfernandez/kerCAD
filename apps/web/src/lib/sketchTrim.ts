@@ -1,5 +1,5 @@
 import { circleSketchPointId, sketchConstraintUsesPoint, sketchConstraintUsesSegment } from "@/lib/sketchConstraints";
-import type { SketchCircle, SketchPoint, SketchProfile, SketchSegment } from "@/types/sketchforge";
+import type { SketchCircle, SketchPoint, SketchProfile, SketchSegment } from "@/types/workplane";
 
 type PlanePoint = { x: number; z: number };
 type TrimTarget = { kind: "segment" | "circle"; id: string };

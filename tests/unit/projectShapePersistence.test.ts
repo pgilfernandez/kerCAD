@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { editorHistoryEntry } from "@/lib/editorHistory";
 import { compactProjectShapeState, hydrateProjectShapeState } from "@/lib/projectShapePersistence";
-import type { WorkplaneShape } from "@/types/sketchforge";
+import type { WorkplaneShape } from "@/types/workplane";
 
 function importedShape(): WorkplaneShape {
   return {
