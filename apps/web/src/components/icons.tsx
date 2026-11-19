@@ -165,6 +165,10 @@ export function ToolbarParameterManipulatorIcon() {
   return <ThemedToolbarImage aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/manipulator-parameters.svg" alt="" draggable={false} />;
 }
 
+export function ToolbarScaleManipulatorIcon() {
+  return <ThemedToolbarImage aria-hidden="true" className="toolbar-command-icon toolbar-user-art-icon" src="/assets/kercad/toolbar-3d/manipulator-scale.svg" alt="" draggable={false} />;
+}
+
 export function ToolbarBooleanModeIcon({ mode }: { mode: "add" | "hole" | "common" }) {
   return <KercadOperationImage file={`boolean-${mode}.svg`} />;
 }

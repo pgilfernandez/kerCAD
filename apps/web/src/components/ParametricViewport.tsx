@@ -29,6 +29,8 @@ import { ParameterHandleLabels, type ParameterHandleLabel, type ParameterHandleL
 import { localizedParametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import { createAnnotationScene } from "@/lib/annotationScene";
 import { attachReferenceImageHandle } from "@/lib/referenceImageHandle";
+import { attachScaleManipulator } from "@/lib/viewportScaleManipulator";
+import type { ParametricScaleTarget } from "@/lib/parametricScaleManipulator";
 import { referenceTransformPreview } from "@/lib/referenceTransformPreview";
 import { AnnotationInteraction } from "@/components/AnnotationInteraction";
 import { ViewportFloatingNumberInput } from "@/components/ViewportFloatingNumberInput";
@@ -198,6 +200,8 @@ type Props = {
   onCancelAnnotationTool?: () => void;
   locale?: KercadLocale;
   parameterHandlesVisible?: boolean;
+  scaleTarget?: ParametricScaleTarget | null;
+  onParametricScale?: (target: ParametricScaleTarget, factors: THREE.Vector3, pivot: THREE.Vector3) => void;
   selection?: ViewportSelection | null;
   snap?: number;
   onShapeParameterChange?: (parameter: ShapeParameter, value: number) => void;
@@ -588,7 +592,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = null, referenceImageSelection = null, onReferenceImageScale, onSectionPlaneSelect, captureFrameActive = false, onCaptureFrame, onCancelCaptureFrame, visualSection = null, onUpdateAnnotation, onCircleAnnotationRadius, onAnnotationSelect, annotationsVisible = true, onMoveAnnotationEndpoint, selectedAnnotationEndpoint = null, onSelectAnnotationEndpoint, annotationTool = null, editingAnnotationId = null, onPlaceAnnotation, onFinishAnnotation, onEditAnnotation, onCancelAnnotationTool, annotations, selectedAnnotationId = null, onProjectRename, mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, faceExtrudeDraft = null, onFaceExtrudeAccept, onFaceExtrudeCancel, faceExtrudeCanAccept = true, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, revolveDraft = null, onRevolveDraftChange, onRevolveAccept, onRevolveCancel, revolveCanAccept = true, distanceHandle = null, onDistanceParameterDragStart, onDistanceParameterPreview, onDistanceParameterChange, onDistanceParameterCancel, shellDraft = null, onShellDraftChange, onShellCornerTypeChange, onShellAccept, onShellCancel, shellCanAccept = true, floatingFeature = null, booleanObjects = [], patternSources = [], booleanAddOnly = false, operationModesVisible = true, contextToolbarVisible, manipulatorControls, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = uiText("ui.parametricviewport.untitled.design.13ef08", {}, locale), onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions, alignmentActive = false, alignmentBusy = false, alignmentTargets = [], alignmentReference = null, onAlignmentSelect, onAlign }: Props) {
+export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = null, referenceImageSelection = null, onReferenceImageScale, onSectionPlaneSelect, captureFrameActive = false, onCaptureFrame, onCancelCaptureFrame, visualSection = null, onUpdateAnnotation, onCircleAnnotationRadius, onAnnotationSelect, annotationsVisible = true, onMoveAnnotationEndpoint, selectedAnnotationEndpoint = null, onSelectAnnotationEndpoint, annotationTool = null, editingAnnotationId = null, onPlaceAnnotation, onFinishAnnotation, onEditAnnotation, onCancelAnnotationTool, annotations, selectedAnnotationId = null, onProjectRename, mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, scaleTarget = null, onParametricScale, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, faceExtrudeDraft = null, onFaceExtrudeAccept, onFaceExtrudeCancel, faceExtrudeCanAccept = true, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, revolveDraft = null, onRevolveDraftChange, onRevolveAccept, onRevolveCancel, revolveCanAccept = true, distanceHandle = null, onDistanceParameterDragStart, onDistanceParameterPreview, onDistanceParameterChange, onDistanceParameterCancel, shellDraft = null, onShellDraftChange, onShellCornerTypeChange, onShellAccept, onShellCancel, shellCanAccept = true, floatingFeature = null, booleanObjects = [], patternSources = [], booleanAddOnly = false, operationModesVisible = true, contextToolbarVisible, manipulatorControls, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = uiText("ui.parametricviewport.untitled.design.13ef08", {}, locale), onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions, alignmentActive = false, alignmentBusy = false, alignmentTargets = [], alignmentReference = null, onAlignmentSelect, onAlign }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const presentationRef = useRef({ locale, displayUnit });
   presentationRef.current = { locale, displayUnit };
@@ -639,6 +643,9 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
   const projectionChangeRef = useRef<((projection: CameraProjection) => void) | null>(null);
   const cameraTransitionRef = useRef<number | null>(null);
   const referenceImageHandleRef = useRef<ReturnType<typeof attachReferenceImageHandle> | null>(null);
+  const scaleManipulatorRef = useRef<ReturnType<typeof attachScaleManipulator> | null>(null);
+  const scaleCommitRef = useRef(onParametricScale);
+  scaleCommitRef.current = onParametricScale;
   const referenceImageScaleCallbackRef = useRef(onReferenceImageScale);
   referenceImageScaleCallbackRef.current = onReferenceImageScale;
   const modelRef = useRef<THREE.Group | null>(null);
@@ -981,6 +988,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
           faceHighlightRef.current,
           edgeHighlightRef.current,
           referenceImageHandleRef.current?.group ?? null,
+          scaleManipulatorRef.current?.group ?? null,
         ];
         const thumbnailOverlays = captureOptions?.includeOverlays ? [] : thumbnailOverlayCandidates.filter((item): item is THREE.Object3D => item !== null);
         const overlayVisibility = thumbnailOverlays.map((item) => item.visible);
@@ -4566,6 +4574,18 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
     referenceImageHandleRef.current = handle;
     return () => { if (referenceImageHandleRef.current === handle) referenceImageHandleRef.current = null; handle.dispose(); };
   }, [referenceImageSelection, snap, parameterHandlesVisible, projection, renderQuality, shadingMode]);
+
+  useEffect(() => {
+    const model = modelRef.current, camera = cameraRef.current, controls = controlsRef.current;
+    const canvas = rendererRef.current?.domElement;
+    if (!scaleTarget || !model || !camera || !controls || !canvas) return;
+    const handle = attachScaleManipulator(model, camera, canvas, controls, scaleTarget, workplane.snapToGrid ? workplane.snapSpacing : 0, () => invalidateRef.current(), (factors, pivot) => scaleCommitRef.current?.(scaleTarget, factors, pivot));
+    scaleManipulatorRef.current = handle;
+    return () => {
+      if (scaleManipulatorRef.current === handle) scaleManipulatorRef.current = null;
+      handle.dispose();
+    };
+  }, [scaleTarget, workplane.snapToGrid, workplane.snapSpacing, projection, renderQuality, shadingMode]);
 
   const faceExtrudeControls = faceExtrudeDraft ?? faceExtrudeHandle;
   const floatingBoolean = floatingFeature?.kind === "objectBoolean" ? floatingFeature : null;

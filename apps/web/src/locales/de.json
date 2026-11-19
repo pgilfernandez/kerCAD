@@ -3,6 +3,9 @@
   "name": "Deutsch",
   "direction": "ltr",
   "messages": {
+    "challenge.previewDraft": "Herausforderung ansehen",
+    "challenge.resumeEditing": "Zur Bearbeitung zurückkehren",
+    "camera.scaleManipulator": "Skalierungsgriff",
     "tube.invalidThickness": "Die Rohrwand ist für diese Ellipsenradien zu dick.",
     "dashboard.confirmShareProject": "Möchtest du dieses Projekt wirklich im <strong>Ordner für geteilte Projekte</strong> speichern?",
     "admin.deleteShared": "Alle geteilten Projekte löschen",

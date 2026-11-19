@@ -3,6 +3,7 @@
   "name": "English",
   "direction": "ltr",
   "messages": {
+    "camera.scaleManipulator": "Scale manipulator",
     "tube.invalidThickness": "The tube wall is too thick for these ellipse radii.",
     "dashboard.confirmShareProject": "Are you sure you want to save this project to the <strong>shared projects folder</strong>?",
     "admin.deleteShared": "Delete all shared projects",

@@ -3,6 +3,9 @@
   "name": "Italiano",
   "direction": "ltr",
   "messages": {
+    "challenge.previewDraft": "Visualizza anteprima della sfida",
+    "challenge.resumeEditing": "Torna alla modifica",
+    "camera.scaleManipulator": "Manipolatore di scala",
     "tube.invalidThickness": "La parete del tubo è troppo spessa per questi raggi dell’ellisse.",
     "dashboard.confirmShareProject": "Vuoi davvero salvare questo progetto nella <strong>cartella dei progetti condivisi</strong>?",
     "admin.deleteShared": "Elimina tutti i progetti condivisi",

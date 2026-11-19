@@ -3,6 +3,9 @@
   "name": "Français",
   "direction": "ltr",
   "messages": {
+    "challenge.previewDraft": "Prévisualiser le défi",
+    "challenge.resumeEditing": "Revenir à la modification",
+    "camera.scaleManipulator": "Manipulateur d’échelle",
     "tube.invalidThickness": "La paroi du tube est trop épaisse pour ces rayons de l’ellipse.",
     "dashboard.confirmShareProject": "Voulez-vous vraiment enregistrer ce projet dans le <strong>dossier des projets partagés</strong> ?",
     "admin.deleteShared": "Supprimer tous les projets partagés",

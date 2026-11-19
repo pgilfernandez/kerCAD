@@ -60,6 +60,7 @@ import {
   ToolbarParameterManipulatorIcon,
   ToolbarPasteIcon,
   ToolbarPositionManipulatorIcon,
+  ToolbarScaleManipulatorIcon,
   ToolbarEditOperationIcon,
   ToolbarPerspectiveIcon,
   ToolbarRedoIcon,
@@ -158,6 +159,7 @@ import {
 } from "@/lib/parametricObjects";
 import { globalParametricWorkplanePlacement, objectPlacementForWorkplane, operationPlacementForWorkplane, parametricTransformMatrix, parametricWorkplaneFromFace, parametricWorkplaneIsGlobal } from "@/lib/parametricWorkplane";
 import { patternHandlePlacement } from "@/lib/parametricPatternHandles";
+import { applyParametricScale, createParametricScaleTarget } from "@/lib/parametricScaleManipulator";
 import { localizedParametricOperationDefinition, parametricShapeMenuOrder, parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
 import type { ViewportRenderQuality } from "@/lib/viewportPerformance";
 import type { BuildResult, ExtrudeFeature, ParametricAnnotation, ParametricDocument, ParametricFeature, ParametricObject, ParametricObjectRenderRecord, ParametricTopologyReference, PrimitiveFeature, RevolveFeature, SketchFeature } from "@/types/parametric";
@@ -170,6 +172,7 @@ const FPS_VISIBLE_STORAGE_KEY = "kercad.viewport.show-fps";
 const POSITION_TRIAD_VISIBLE_STORAGE_KEY = "kercad.viewport.position-triad";
 const ROTATION_TRIAD_VISIBLE_STORAGE_KEY = "kercad.viewport.rotation-triad";
 const PARAMETER_HANDLES_VISIBLE_STORAGE_KEY = "kercad.viewport.parameter-handles";
+const SCALE_MANIPULATOR_VISIBLE_STORAGE_KEY = "kercad.viewport.scale-manipulator";
 const DISPLAY_MODE_STORAGE_KEY = "kercad.viewport.display-mode";
 const SHADING_MODE_STORAGE_KEY = "kercad.viewport.shading-mode";
 
@@ -436,6 +439,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const [showPositionTriad, setShowPositionTriad] = useState(true);
   const [showRotationTriad, setShowRotationTriad] = useState(false);
   const [showParameterHandles, setShowParameterHandles] = useState(true);
+  const [showScaleManipulator, setShowScaleManipulator] = useState(false);
   const [challengeOpen, setChallengeOpen] = useState(Boolean(challenge || challengeEditor));
   const [challengeDock, setChallengeDock] = useState<ChallengeDock>(() => {
     if (typeof window === "undefined") return "left";
@@ -772,6 +776,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
       setShowPositionTriad(localStorage.getItem(POSITION_TRIAD_VISIBLE_STORAGE_KEY) !== "false");
       setShowRotationTriad(localStorage.getItem(ROTATION_TRIAD_VISIBLE_STORAGE_KEY) === "true");
       setShowParameterHandles(localStorage.getItem(PARAMETER_HANDLES_VISIBLE_STORAGE_KEY) !== "false");
+      setShowScaleManipulator(localStorage.getItem(SCALE_MANIPULATOR_VISIBLE_STORAGE_KEY) === "true");
     } catch {}
     setHydrated(true);
   }, [initialProject]);
@@ -807,6 +812,9 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   useEffect(() => {
     if (hydrated) localStorage.setItem(PARAMETER_HANDLES_VISIBLE_STORAGE_KEY, String(showParameterHandles));
   }, [hydrated, showParameterHandles]);
+  useEffect(() => {
+    if (hydrated) localStorage.setItem(SCALE_MANIPULATOR_VISIBLE_STORAGE_KEY, String(showScaleManipulator));
+  }, [hydrated, showScaleManipulator]);
 
   useEffect(() => {
     const createWorker = () => new Worker(new URL("../workers/parametricBuild.worker.ts", import.meta.url), { type: "module" });
@@ -1119,6 +1127,12 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
   const selectedTransformOperationId = selectedOperationId ?? selectedSketchId;
   const selectedShape = useMemo(() => workplaneShapeForObject(document, selectedObjectId), [document, selectedObjectId]);
   const selectedBox = useMemo(() => modelSelection.length === 1 ? (selectionKind === "feature" ? viewportSelectionForFeature(document, selectedId) : viewportSelectionForObject(document, selectedObjectId)) : null, [document, modelSelection.length, selectedObjectId, selectedId, selectionKind]);
+  const scaleTarget = useMemo(() => {
+    if (!selectedId || modelSelection.length !== 1 || (selectionKind !== "object" && selectionKind !== "feature")) return null;
+    const record = selectionKind === "object" ? build.objectRecords.find((entry) => entry.objectId === selectedId) : undefined;
+    const positions = record?.geometryFingerprint === parametricObjectGeometryFingerprint(document, selectedId) ? record?.mesh.positions : undefined;
+    return createParametricScaleTarget(document, { id: selectedId, kind: selectionKind }, positions);
+  }, [build.objectRecords, document, modelSelection.length, selectedId, selectionKind]);
   const selectedSketchPlacement = useMemo(() => selectedSketchId ? viewportPlacementForSketchFeature(document, selectedSketchId) : null, [document, selectedSketchId]);
   const selectedOriginObjectId = modelSelection.length === 1 && selectionKind === "object" ? selectedObjectId : null;
   const selectedReferenceObject = selectedOriginObjectId ? document.objects.find((object) => object.id === selectedOriginObjectId && object.referenceMesh) : undefined;
@@ -4259,6 +4273,7 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
           </> : selectedEdgeTreatmentFeature || pendingEdgeTreatment || pendingShell || editingMirrorPlaneId || selectedFeature?.kind === "shell" || selectedFeature?.kind === "mirror" || selectedFeature?.kind === "linearPattern" ? null : <>
             <Tool label={t("camera.positionTriad")} active={showPositionTriad} onClick={() => setShowPositionTriad((visible) => !visible)}><ToolbarPositionManipulatorIcon /></Tool>
             <Tool label={t("camera.rotationTriad")} active={showRotationTriad} onClick={() => setShowRotationTriad((visible) => !visible)}><ToolbarRotationManipulatorIcon /></Tool>
+            {scaleTarget && <Tool label={t("camera.scaleManipulator")} active={showScaleManipulator} onClick={() => setShowScaleManipulator((visible) => !visible)}><ToolbarScaleManipulatorIcon /></Tool>}
             {selectionKind === "feature" && <Tool className="kercad-parameter-handles-toggle" label={t("camera.parameterHandles")} active={showParameterHandles} onClick={() => setShowParameterHandles((visible) => !visible)}><ToolbarParameterManipulatorIcon /></Tool>}
             {selectedFeature?.kind === "primitive" && selectedFeature.primitive === "tube" && <CylinderProfileButtons locale={locale} elliptical={Boolean(selectedFeature.ellipsoidal)} onChange={(enabled) => updateFeature(selectedFeature.id, (feature) => { if (feature.kind === "primitive") setTubeElliptical(feature, enabled); })} />}
             {selectedFeature?.kind === "primitive" && selectedFeature.primitive === "torus" && <>
@@ -4290,6 +4305,8 @@ export function SketchForgeParametricEditor({ initialProject, sharedFileName, on
             </>}
           </>}
           selection={editingSection || placingSection || alignOpen || originEditObjectId || placingWorkplane || editingMirrorPlaneId || selectingTopologyFaces || selectingTopologyEdges ? null : selectedBox}
+          scaleTarget={showScaleManipulator && !selectedAnnotation && !editingSection && !placingSection && !alignOpen && !originEditObjectId && !placingWorkplane && !editingMirrorPlaneId && !selectingTopologyFaces && !selectingTopologyEdges && !pendingSweepPathId ? scaleTarget : null}
+          onParametricScale={(target, factors, pivot) => mutate((draft) => applyParametricScale(draft, target, factors, pivot))}
           referenceImageSelection={modelSelection.length === 1 && selectionKind === "object" && !editingSection && !placingSection && !alignOpen && !originEditObjectId && !placingWorkplane && !editingMirrorPlaneId && !selectingTopologyFaces && !selectingTopologyEdges ? document.objects.find((object) => object.id === selectedObjectId && object.referenceMesh?.image) : null}
           onReferenceImageScale={(id, factor) => updateObject(id, (object) => { object.transform.scale.x *= factor; object.transform.scale.y *= factor; })}
           snap={snapAmount}
