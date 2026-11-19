@@ -52,3 +52,4 @@ Thumbs.db
 apps/web/public/occt/
 apps/desktop/staging/
 **/.local-data/admin/
+**/.local-data/shared-projects/

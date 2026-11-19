@@ -9,6 +9,7 @@ type Runtime = { state: State | null; queue: Promise<unknown>; sessions: Map<str
 const globalStore = globalThis as typeof globalThis & { kercadMetrics?: Runtime };
 const store = globalStore.kercadMetrics ??= { state: null, queue: Promise.resolve(), sessions: new Map(), seen: new Set() };
 const file = path.join(process.env.KERCAD_METRICS_DIR ?? path.join(process.cwd(), ".local-data", "admin"), "metrics.json");
+const defaultSharedProjectsDirectory = path.join(process.cwd(), ".local-data", "shared-projects");
 async function state() {
   if (store.state) return store.state;
   try { store.state = JSON.parse(await fs.readFile(file, "utf8")) as State; }
@@ -98,9 +99,8 @@ export function recordMetrics(input: { visitor: string; session: string; bytes: 
 export function readMetrics(includeDirectory = false) {
   return serial(async () => {
     const data = await state();
-    const directory = configuredSharedProjectsDirectory(data);
-    const sharedProjectsConfigured = Boolean(directory);
-    return { enabled: data.enabled === true, sponsorPopupEnabled: data.sponsorPopupEnabled !== false, sharedProjectsConfigured, sharedProjectsEnabled: sharedProjectsConfigured && data.sharedProjectsEnabled !== false, ...(includeDirectory ? { sharedProjectsDirectory: data.sharedProjectsDirectory ?? "", sharedProjectsEffectiveDirectory: directory } : {}), since: data.since, counts: data.counts, bytes: data.bytes, visitors: data.visitors.length, active: data.enabled ? [...store.sessions.values()].filter((session) => Date.now() - session.at < 90000).length : 0 };
+    const shared = sharedProjectsSettings(data);
+    return { enabled: data.enabled === true, sponsorPopupEnabled: data.sponsorPopupEnabled !== false, sharedProjectsConfigured: true, sharedProjectsEnabled: shared.enabled, ...(includeDirectory ? { sharedProjectsDirectory: data.sharedProjectsDirectory ?? "", sharedProjectsEffectiveDirectory: shared.directory } : {}), since: data.since, counts: data.counts, bytes: data.bytes, visitors: data.visitors.length, active: data.enabled ? [...store.sessions.values()].filter((session) => Date.now() - session.at < 90000).length : 0 };
   });
 }
 export function readSponsorPopupEnabled() {
@@ -119,16 +119,18 @@ function setFeatureEnabled(key: "sponsorPopupEnabled" | "sharedProjectsEnabled",
 export const setSponsorPopupEnabled = (enabled: boolean) => setFeatureEnabled("sponsorPopupEnabled", enabled);
 export const setSharedProjectsEnabled = (enabled: boolean) => setFeatureEnabled("sharedProjectsEnabled", enabled);
 
-function configuredSharedProjectsDirectory(data: State) {
-  if (data.sharedProjectsDirectory) return data.sharedProjectsDirectory;
-  const configured = (process.env.KERCAD_SHARED_PROJECTS_DIR ?? process.env.SKETCHFORGE_SHARED_PROJECTS_DIR)?.trim();
-  return configured ? path.resolve(configured) : null;
+function sharedProjectsSettings(data: State) {
+  const configured = data.sharedProjectsDirectory ?? (process.env.KERCAD_SHARED_PROJECTS_DIR ?? process.env.SKETCHFORGE_SHARED_PROJECTS_DIR)?.trim();
+  return {
+    directory: configured ? path.resolve(configured) : defaultSharedProjectsDirectory,
+    enabled: data.sharedProjectsEnabled ?? Boolean(configured),
+  };
 }
 
 export async function enabledSharedProjectsDirectory() {
   return serial(async () => {
-    const data = await state();
-    return data.sharedProjectsEnabled === false ? null : configuredSharedProjectsDirectory(data);
+    const shared = sharedProjectsSettings(await state());
+    return shared.enabled ? shared.directory : null;
   }).catch(() => null);
 }
 

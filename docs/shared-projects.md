@@ -1,6 +1,11 @@
 # Shared kerCAD projects — first implementation
 
-The dashboard shows **Shared** when `/api/kercad-shared-projects` reports configured storage. This is a common file library for users of the server, not live collaborative editing or private student storage.
+The dashboard shows **Shared** when sharing is enabled. This is a common file library for users of the server, not live collaborative editing or private student storage.
+
+No environment variable is required. Turn on **Shared projects** in Administration
+to use `.local-data/shared-projects/` relative to the server's working directory.
+kerCAD creates it on first use. This default location is not shared until you
+enable it. Existing explicit directory settings and saved switch states are preserved.
 
 Run a development server with a persistent directory (macOS/Linux):
 
@@ -10,13 +15,14 @@ KERCAD_SHARED_PROJECTS_DIR=/absolute/path/to/projects npm run dev -- --hostname 
 
 The existing Docker Compose environment variable `SKETCHFORGE_SHARED_PROJECTS_DIR` remains a fallback, preserving existing volume configuration. `.skf` files are left untouched; the separate kerCAD endpoint lists and validates only `.kercad` packages.
 
-Use the **Shared projects** switch in `/admin` to disable or re-enable access without restarting the server. The switch requires a configured directory, preserves existing shared files and local copies, and is stored with the other admin settings. It does not add authentication.
+Use the **Shared projects** switch in `/admin` to disable or re-enable access without restarting the server. The switch preserves existing shared files and local copies and is stored with the other admin settings. It does not add authentication.
 
 After setting an admin password or configuring `KERCAD_ADMIN_KEY`, sign in
 and use **Shared projects folder** to override the environment setting without
 restarting. Enter the absolute path of an existing directory writable by the
 server. With Docker, use the path inside the container and mount the directory
-there first. Clear and save the field to fall back to the environment setting.
+there first. Clear and save the field to fall back to the environment setting,
+or to the default folder if no environment setting exists.
 Changing the folder does not move or delete files in the previous one.
 
 1. Create or edit a local project and return to the dashboard.

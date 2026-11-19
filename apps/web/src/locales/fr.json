@@ -4,7 +4,7 @@
   "direction": "ltr",
   "messages": {
     "admin.sharedDirectory": "Dossier des projets partagés",
-    "admin.sharedDirectoryHint": "Saisissez un chemin absolu sur le serveur. Laissez vide pour utiliser le réglage de l’environnement.",
+    "admin.sharedDirectoryHint": "Saisissez un chemin absolu sur le serveur. Laissez vide pour utiliser le réglage du serveur ou le dossier par défaut.",
     "admin.sharedDirectoryInvalid": "Choisissez un dossier existant accessible en lecture et en écriture par le serveur.",
     "admin.sharedDirectoryProtected": "Définissez un mot de passe administrateur pour configurer le dossier partagé.",
     "admin.donateGithub": "Don GitHub",
