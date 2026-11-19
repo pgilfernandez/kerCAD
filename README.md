@@ -1,118 +1,116 @@
 # kerCAD
 
-CAD paramétrico en el navegador, local-first y open source, pensado para aprender diseño y fabricación digital.
+Browser-based, local-first, open-source parametric CAD for learning design and digital fabrication.
 
-kerCAD conserva el flujo directo de SketchForge —formas sencillas, botones grandes, arrastre sobre el plano e inspector visual— pero el documento no es una colección de mallas. Cada objeto es un contenedor de transformación y su geometría procede de una secuencia de operaciones CAD reconstruida con un núcleo OpenCascade B-Rep.
+kerCAD keeps SketchForge's direct workflow—simple shapes, large buttons, dragging on the workplane, and a visual inspector—but its documents are not collections of meshes. Each object has its own transform, and its geometry is rebuilt from a sequence of CAD operations using an OpenCascade B-Rep kernel.
 
-## Qué puedes hacer
+## What you can do
 
-El editor permite:
+- Create a container with `New Object`, then add boxes or cylinders as operations on the active object.
+- Move the selected shape by dragging it on the workplane or using the arrow keys, and edit its dimensions in the inspector.
+- Switch an operation between `Add`, `Hole`, and `Common` while keeping the Boolean operation editable.
+- Duplicate, copy and paste, hide, delete, undo, and redo from the toolbar.
+- Expand each object in the right panel to see its CAD tree: `Object (transform) → Box/Cylinder → modifiers`.
+- Create fully constrained rectangular and circular sketches on the XY plane.
+- Extrude to create a new solid, add material, or remove material.
+- Create through or blind holes by specifying their position and diameter.
+- Fillet vertical edges or all edges.
+- Suppress, delete, and reorder operations in the history.
+- Edit dimensions and rebuild subsequent operations.
+- Save automatically to browser storage.
+- Save and reopen `.kercad` packages containing the parametric document and its assets.
+- Export exact B-Rep geometry as STEP or triangulated geometry as STL.
+- Use face extrusion, shell, revolve, mirror, and linear or polar patterns.
+- Place a workplane, drop parts onto it, and align objects or operations to a reference or to the group.
+- Create and follow Challenges with instructions and resources, and import or export them as ZIP files.
+- Publish projects to a shared library when server storage is configured.
 
-- crear primero un contenedor con `New Object` y añadir después cajas o cilindros como operaciones del objeto activo;
-- mover la forma seleccionada arrastrándola por el plano o con las flechas y editar sus cotas desde el inspector;
-- cambiar una operación entre `Añadir`, `Hueco` y `Común`, manteniendo una booleana paramétrica y editable;
-- duplicar, copiar/pegar, ocultar, eliminar, deshacer y rehacer con la barra visual heredada de SketchForge;
-- desplegar en el panel derecho cada objeto como un árbol CAD: `Objeto (transformación) → Caja/Cilindro → modificadores`;
-- crear bocetos rectangulares y circulares totalmente acotados en el plano XY;
-- extruir como sólido nuevo, añadir material o quitar material;
-- crear taladros pasantes o ciegos por posición y diámetro;
-- redondear aristas verticales o todas las aristas;
-- suprimir, eliminar y reordenar operaciones del historial;
-- editar cualquier cota y reconstruir las operaciones posteriores;
-- guardar automáticamente en el almacenamiento local del navegador;
-- guardar y reabrir paquetes `.kercad` con el documento paramétrico y sus recursos;
-- exportar el resultado como STEP B-Rep o STL para fabricación;
-- trabajar con extrusión de caras, vaciado, revolución, simetría y patrones lineales o polares;
-- colocar un plano de trabajo, dejar caer piezas sobre él y alinear objetos u operaciones respecto a una referencia o al grupo;
-- crear y seguir Retos con instrucciones y recursos, importarlos y exportarlos como ZIP;
-- publicar proyectos en una biblioteca compartida cuando el servidor tiene almacenamiento configurado.
+Triangulation is generated for display in Three.js. The exact B-Rep geometry is the source of truth for the 3D model and the basis for STEP export.
 
-La triangulación solo se genera como representación visual para Three.js. La fuente de verdad y el archivo STEP se obtienen de la geometría B-Rep exacta.
-
-## Arquitectura
+## Architecture
 
 ```text
-Documento JSON paramétrico
-  └─ objeto (posición, rotación, escala)
-       └─ caja/cilindro → taladro → redondeo
-       └─ reconstrucción secuencial
-            └─ brepjs + OpenCascade WASM (B-Rep exacto)
+Parametric JSON document
+  └─ object (position, rotation, scale)
+       ├─ box/cylinder → hole → fillet
+       └─ sequential rebuild
+            └─ brepjs + OpenCascade WASM (exact B-Rep)
                  ├─ STEP
-                 └─ triangulación temporal → visor Three.js
+                 └─ temporary triangulation → Three.js viewport
 ```
 
-Piezas principales:
+Key files:
 
-- `apps/web/src/types/parametric.ts`: esquema del documento y las operaciones.
-- `apps/web/src/lib/parametricDocument.ts`: creación, validación y dependencias del historial.
-- `apps/web/src/lib/parametricObjects.ts`: traducción entre la interacción sencilla de formas y las operaciones paramétricas.
-- `apps/web/src/lib/parametricKernel.ts`: reconstrucción B-Rep, métricas, malla de visualización y STEP.
-- `apps/web/src/components/KercadParametricEditor.tsx`: entorno educativo compatible visualmente con el flujo de SketchForge.
-- `apps/web/src/components/ParametricViewport.tsx`: visor Three.js; no contiene la geometría maestra.
+- `apps/web/src/types/parametric.ts`: document and operation schemas.
+- `apps/web/src/lib/parametricDocument.ts`: document creation, validation, and history dependencies.
+- `apps/web/src/lib/parametricObjects.ts`: maps shape interactions to parametric operations.
+- `apps/web/src/lib/parametricKernel.ts`: B-Rep reconstruction, metrics, display meshes, and STEP export.
+- `apps/web/src/components/KercadParametricEditor.tsx`: the learning environment, which follows the SketchForge workflow.
+- `apps/web/src/components/ParametricViewport.tsx`: the Three.js viewport; it does not own the source geometry.
 
-## Flujo de aprendizaje
+## Learning workflow
 
-1. Desde el dashboard, crea o abre un proyecto privado, o entra en Retos para seguir una actividad.
-2. Crea un objeto y añade formas o un boceto que puedas extruir.
-3. Selecciona una operación en el árbol para cambiar sus dimensiones. Las operaciones posteriores se reconstruyen a partir de esos cambios.
-4. Coloca las piezas con los manipuladores, el plano de trabajo y la herramienta de alineación.
-5. Exporta `.kercad` para continuar el diseño en otro equipo, STEP para intercambio CAD o STL para imprimir.
+1. From the dashboard, create or open a private project, or go to Challenges to follow an activity.
+2. Create an object and add shapes or a sketch you can extrude.
+3. Select an operation in the tree to edit its dimensions. Later operations rebuild from those changes.
+4. Position parts with the manipulators, workplane, and alignment tool.
+5. Export `.kercad` to continue designing on another device, STEP for CAD exchange, or STL for 3D printing.
 
-La interfaz principal mantiene la baja barrera de entrada del proyecto de referencia. Seleccionar el objeto permite editar únicamente posición, rotación y escala; seleccionar la primera operación permite cambiar las dimensiones de la caja o el cilindro. Los perfiles técnicos internos necesarios para construir el B-Rep no se duplican en el árbol del alumno.
+Select an object to edit its position, rotation, and scale. Select an operation to edit the shape's dimensions. The internal profiles used to build the B-Rep do not appear as extra entries in the tree.
 
-## Retos para profesores
+## Challenges for teachers
 
-1. Crea una actividad en Retos y prepara sus instrucciones, imágenes y modelo inicial cuando proceda.
-2. Exporta el reto como ZIP y distribúyelo mediante el aula virtual, o coloca el paquete en la biblioteca del servidor.
-3. Los alumnos importan o abren el reto y trabajan en proyectos locales independientes.
-4. Para entregar su trabajo editable, exportan su proyecto `.kercad`.
+1. Create a challenge and prepare its instructions, images, and any starter model.
+2. Export it as a ZIP file and distribute it through your learning platform, or place it in the server library.
+3. Students import or open the challenge and work in independent local projects.
+4. Students can submit editable work by exporting a `.kercad` file.
 
-El profesor sigue creando y editando localmente; el servidor distribuye los ZIP. Una actualización de un reto del servidor no sobrescribe automáticamente una actividad local con el mismo identificador. Consulta [configuración de la biblioteca y actualizaciones](docs/classroom-challenges.md).
+Teachers create and edit challenges locally; the server distributes the ZIP files. Updating a challenge on the server does not automatically overwrite a local challenge with the same ID. See [library setup and updates](docs/classroom-challenges.md).
 
-## Dónde se guardan los proyectos
+## Where projects are stored
 
-**Mis proyectos** utiliza el almacenamiento del navegador. Cambiar de navegador o equipo no traslada esos datos; borrar los datos del sitio puede eliminarlos. Exporta regularmente los proyectos importantes como `.kercad`, especialmente en equipos compartidos del aula.
+**My Projects** uses browser storage. Switching browsers or devices does not transfer this data, and clearing site data can delete it. Export important projects regularly as `.kercad` files, especially on shared classroom devices.
 
-**Compartidos** aparece cuando el servidor dispone de una biblioteca configurada. Abrir un proyecto compartido crea una copia local; publicar los cambios es una acción explícita desde el dashboard o desde Exportar. El control de revisiones rechaza sobrescrituras si otra persona ha guardado entretanto y permite conservar el trabajo con otro nombre.
+**Shared** appears when the server has a library configured. Opening a shared project creates a local copy. Publishing changes is an explicit action from the dashboard or the Export dialog. Revision checks prevent overwrites if someone else has saved in the meantime; you can keep your work under a different name.
 
-Es una biblioteca común, sin cuentas, permisos individuales ni edición simultánea. La fecha y el autor muestran la última modificación; el nombre lo introduce el usuario y se recuerda en ese navegador. **No se conservan versiones antiguas recuperables en el servidor.** Borrar un compartido lo elimina para todos, aunque las copias locales permanecen. Consulta [guardado, conflictos, borrado y copias](docs/shared-projects.md).
+The shared library has no accounts, per-user permissions, or simultaneous editing. The date and author identify the last edit. The user supplies the author name, which the browser remembers. **The server does not keep recoverable versions.** Deleting a shared project removes it for everyone, but local copies remain. See [saving, conflicts, deletion, and backups](docs/shared-projects.md).
 
-## Desarrollo local
+## Local development
 
-Para distribución en el aula, consulta [Docker: configuración, persistencia y copias de seguridad](docs/docker.md), [proyectos compartidos](docs/shared-projects.md) y [distribución de Retos](docs/classroom-challenges.md). La adaptación Docker está pendiente de validación; no hay una imagen propia comprobada ni un DMG validado en esta fase.
+For classroom deployment, see [Docker setup, persistence, and backups](docs/docker.md), [shared projects](docs/shared-projects.md), and [challenge distribution](docs/classroom-challenges.md).
 
-Requisitos recomendados:
+Recommended requirements:
 
-- Node.js 24 o posterior;
-- npm;
-- un navegador moderno con WebAssembly y WebGL 2.
+- Node.js 24 or later
+- npm
+- A modern browser with WebAssembly and WebGL 2
 
 ```bash
 npm ci
 npm run dev
 ```
 
-Abre `http://127.0.0.1:3000`.
+Open `http://127.0.0.1:3000`.
 
-Para que otros equipos de la red accedan al servidor de desarrollo:
+To let other devices access the development server over the network:
 
 ```sh
 npm run dev -- --hostname 0.0.0.0
 ```
 
-En macOS, abre `http://NOMBRE_BONJOUR_DEL_MAC.local:3000`: se obtiene con `scutil --get LocalHostName`. Los accesos por IP o localhost se redirigen a ese nombre estable para no crear bibliotecas diferentes al cambiar la IP. Cada navegador y perfil conserva sus propios proyectos. En otros servidores, configura un nombre DNS estable con `KERCAD_CANONICAL_HOST`; consulta [biblioteca y dirección estable](docs/stable-project-origin.md).
+On macOS, open `http://YOUR_MAC_BONJOUR_NAME.local:3000`. Run `scutil --get LocalHostName` to find the hostname. Requests made by IP or through localhost are redirected to this stable hostname so an IP change does not create a separate project library. Each browser profile keeps its own projects. On other servers, configure a stable DNS name with `KERCAD_CANONICAL_HOST`. See [the project library and stable addresses](docs/stable-project-origin.md).
 
-Para habilitar bibliotecas persistentes en macOS/Linux, crea los directorios y arranca con rutas absolutas:
+To enable persistent libraries on macOS or Linux, create the directories and start the server with absolute paths:
 
 ```sh
-KERCAD_SHARED_PROJECTS_DIR=/ruta/absoluta/proyectos KERCAD_CHALLENGES_DIR=/ruta/absoluta/retos npm run dev -- --hostname 0.0.0.0
+KERCAD_SHARED_PROJECTS_DIR=/absolute/path/to/projects KERCAD_CHALLENGES_DIR=/absolute/path/to/challenges npm run dev -- --hostname 0.0.0.0
 ```
 
-El uso privado y la importación manual de Retos no requieren activar la biblioteca compartida.
+Private projects and manual challenge imports do not require the shared library.
 
-Comandos de verificación disponibles para desarrollo (su presencia no certifica una distribución):
+CI also builds a [standalone Linux x64 artifact](docs/production-artifact.md) with the server, its assets, and commit metadata. It includes a basic startup check outside the repository checkout.
 
-La CI también prepara un [artefacto standalone Linux x64](docs/production-artifact.md) con el servidor y sus recursos, comprobación básica de arranque fuera del checkout y metadatos del commit. Este nuevo job está pendiente de su primera ejecución.
+Development verification commands:
 
 ```bash
 npm run typecheck
@@ -121,18 +119,20 @@ npm run test:browser
 npm run build
 ```
 
-La matriz automatizada y las comprobaciones manuales recomendadas para Chrome/Edge, Android, Safari/iPadOS y Firefox se describen en [Browser and device compatibility](docs/browser-compatibility.md).
+See [Browser and device compatibility](docs/browser-compatibility.md) for the automated test matrix and recommended manual checks for Chrome/Edge, Android, Safari/iPadOS, and Firefox.
 
-El núcleo OpenCascade pesa aproximadamente 22 MB y se carga de forma diferida la primera vez que se reconstruye una pieza. Después queda reutilizado durante la sesión.
+The OpenCascade kernel is about 22 MB. It loads on demand the first time a part is rebuilt and is reused for the rest of the session.
 
-## Modelo de documento
+## Document model
 
-El archivo `.kercad` es un paquete ZIP que contiene el documento paramétrico versionado y los recursos necesarios para reabrirlo. La versión 2 incorpora también `model.step` con la geometría final de los sólidos para intercambio y conservación independiente del historial. Se siguen importando los paquetes de versión 1. La [especificación del formato](docs/KERCAD_PROJECT_FORMAT.md) detalla el manifiesto, las comprobaciones de integridad y la representación STEP. El JSON del historial sigue siendo la fuente de verdad; STL contiene geometría triangulada y no sustituye esa copia editable. El siguiente fragmento ilustra el documento interno, no un paquete completo importable:
+A `.kercad` file is a ZIP package containing the versioned parametric document and the assets needed to reopen it. Version 2 also includes `model.step` with the final solid geometry for exchange and preservation independently of the operation history. Version 1 packages can still be imported. The [file format specification](docs/KERCAD_PROJECT_FORMAT.md) describes the manifest, integrity checks, and STEP representation.
+
+The JSON operation history remains the source of truth; an STL contains triangulated geometry and is not a substitute for an editable project. This excerpt illustrates the internal document, not a complete importable package:
 
 ```json
 {
   "schema": "kercad-parametric/v1",
-  "name": "Mi primera pieza paramétrica",
+  "name": "My first parametric part",
   "units": "mm",
   "features": [
     { "kind": "sketch", "profile": { "shape": "rectangle", "width": 80, "depth": 52 } },
@@ -142,26 +142,21 @@ El archivo `.kercad` es un paquete ZIP que contiene el documento paramétrico ve
 }
 ```
 
-Los identificadores completos, nombres, estados de supresión y metadatos se incluyen en el archivo real.
+The actual file includes full identifiers, names, suppression states, and metadata.
 
-## Distribución y próximos pasos
+## Distribution and next steps
 
-- Escritorio Electron: encapsulación común para macOS, Windows y Linux en
-  [`apps/desktop`](apps/desktop/README.md), con perfil persistente independiente
-  del puerto y workflow manual para generar instaladores como artefactos.
-  Implementación inicial pendiente de compilación, firma y validación por plataforma.
+- Electron desktop: [the desktop wrapper](apps/desktop/README.md) packages kerCAD for macOS, Windows, and Linux. The desktop profile persists independently of the server port. A manually triggered GitHub Actions workflow builds installers as downloadable artifacts. Packaging does not establish signing or runtime compatibility on every platform.
+- Docker: the GitHub Actions workflow publishes compressed image archives for Linux amd64 and arm64. LAN access and backup restoration should still be verified in the target deployment. For prebuilt Compose deployments, use an image verified by the administrator.
+- Selection export: in Export, choose **Entire project** or **Selection** for STEP and STL. Selected operations export their object's final body only once, even if you select several operations from the same object. Positions and history dependencies are preserved. The `.kercad` format always saves the entire project. Selection export still needs functional validation.
+- Static export and the legacy MCP integration are not supported by the current parametric editor.
 
-- Docker: configuración adaptada a kerCAD; pendientes construcción real, comprobación desde la LAN, restauración y validación amd64/arm64. El Compose precompilado requiere una imagen propia comprobada por el administrador.
-- macOS: existen herramientas heredadas de empaquetado, pero todavía no se ofrece una aplicación o DMG kerCAD validado y autocontenido.
-- Exportación de selección: en Exportar, elige «Proyecto completo / Selección» para STEP/STL. Las operaciones seleccionadas representan el cuerpo final de su objeto, sin duplicarlo si seleccionas varias operaciones del mismo. Se conservan las posiciones y dependencias del historial; `.kercad` siempre guarda el proyecto completo. Implementación pendiente de validación funcional.
-- La exportación estática y la integración MCP heredada no son vías soportadas del editor paramétrico actual.
+kerCAD does not include accounts, grades, centralized submissions, or real-time collaboration. Schools can continue using their learning platform to manage submissions and assessment.
 
-No se incluyen cuentas, calificaciones, entregas centralizadas ni colaboración en directo. El aula virtual del centro puede seguir gestionando las entregas y la evaluación.
+## Origins and licensing
 
-## Origen y licencias
+This checkout is derived from `Orbiter/SketchForge-3D-App`. Its local history starts at `0dbefbd`, and the first kerCAD parametric change is `8e11cb9`. These references do not identify an equivalent commit in the original upstream repository. The license retains attribution to SketchForge and kerCAD. Before incorporating changes from another upstream, verify that revision and its license rather than assuming they match this checkout.
 
-Este checkout procede del repositorio `Orbiter/SketchForge-3D-App`. Su historial local comienza en `0dbefbd` y el primer incremento paramétrico kerCAD está en `8e11cb9`; eso no identifica por sí solo un commit equivalente del upstream original. El archivo LICENSE de este checkout contiene la licencia MIT y conserva atribuciones a SketchForge y kerCAD. Antes de incorporar cambios de otro upstream, queda pendiente contrastar su revisión concreta y licencia; no se presupone que coincidan con las de este checkout.
+The parametric kernel uses [brepjs](https://github.com/andymai/brepjs) and `occt-wasm`, which are based on OpenCascade. See each dependency's package for its license.
 
-El núcleo paramétrico utiliza [brepjs](https://github.com/andymai/brepjs) y `occt-wasm`, basados en OpenCascade. Consulta las licencias de cada dependencia en sus respectivos paquetes.
-
-Este repositorio se distribuye bajo la licencia MIT incluida en [LICENSE](LICENSE). Las contribuciones son bienvenidas.
+This repository is distributed under the MIT license included in [LICENSE](LICENSE). Contributions are welcome.
