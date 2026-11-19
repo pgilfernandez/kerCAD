@@ -91,7 +91,7 @@ jobs:
           mkdir -p dist
           docker pull --platform "linux/$ARCH" "$IMAGE"
           docker tag "$IMAGE" kercad:local
-          docker save kercad:local | gzip -1 > dist/kerCAD.tar.gz
+          docker image save --platform "linux/$ARCH" kercad:local | gzip -1 > dist/kerCAD.tar.gz
           cd dist
           sha256sum kerCAD.tar.gz > kerCAD.tar.gz.sha256
 
