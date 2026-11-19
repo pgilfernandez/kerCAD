@@ -1,11 +1,27 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState, type ComponentPropsWithoutRef } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { useAppLocale } from "@/lib/useAppLocale";
 import { DashboardBrandLogo } from "@/components/DashboardBrandLogo";
 import { EditorHeaderActions } from "@/components/EditorHeaderActions";
-import { uiText } from "@/lib/kercadI18n";
+import { uiText, type KercadLocale } from "@/lib/kercadI18n";
 import "./admin.css";
 type Metrics = { enabled: boolean; sponsorPopupEnabled: boolean; sharedProjectsEnabled: boolean; sharedProjectsConfigured: boolean; adminPasswordManagedByServer: boolean; since: string; active: number; visitors: number; bytes: number; counts: Record<string, number> };
+
+function AdminPasswordField({ label, locale, title, ...inputProps }: ComponentPropsWithoutRef<"input"> & { label: string; locale: KercadLocale }) {
+  const id = useId();
+  const [visible, setVisible] = useState(false);
+  const toggleLabel = uiText(visible ? "admin.hidePassword" : "admin.showPassword", {}, locale);
+  return <div className="kercad-admin-password-field">
+    <label htmlFor={id} title={title}>{label}</label>
+    <div className="kercad-admin-password-input">
+      <input {...inputProps} id={id} title={title} type={visible ? "text" : "password"} />
+      <button type="button" aria-controls={id} aria-label={toggleLabel} title={toggleLabel} onClick={() => setVisible((value) => !value)}>
+        {visible ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}
+      </button>
+    </div>
+  </div>;
+}
 export function AdminPanel({ slug, passwordRequired }: { slug: string; passwordRequired: boolean }) {
   const [locale, setLocale] = useAppLocale();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
@@ -111,7 +127,7 @@ export function AdminPanel({ slug, passwordRequired }: { slug: string; passwordR
     <div className="kercad-admin-content">
     <h1>{uiText("admin.title", {}, locale)}</h1>
     {passwordRequired && !key ? <form className="kercad-admin-access-form" onSubmit={signIn}>
-      <label>{uiText("admin.accessKey", {}, locale)}<input type="password" required autoComplete="current-password" value={keyInput} onChange={(event) => setKeyInput(event.target.value)} /></label>
+      <AdminPasswordField locale={locale} label={uiText("admin.accessKey", {}, locale)} required autoComplete="current-password" value={keyInput} onChange={(event) => setKeyInput(event.target.value)} />
       <button className="kercad-admin-telemetry" type="submit" disabled={saving}>{uiText("admin.signIn", {}, locale)}</button>
       {error && <p role="alert">{uiText("admin.signInError", {}, locale)}</p>}
     </form> : <>
@@ -121,8 +137,8 @@ export function AdminPanel({ slug, passwordRequired }: { slug: string; passwordR
     {!passwordRequired ? <>
       <p>{uiText("admin.unprotected", {}, locale)}</p>
       <form className="kercad-admin-access-form kercad-admin-password-setup" onSubmit={setupPassword}>
-        <label title={uiText("admin.passwordMinLength", {}, locale)}>{uiText("admin.newPassword", {}, locale)}<input type="password" required minLength={8} maxLength={128} autoComplete="new-password" value={keyInput} onChange={(event) => setKeyInput(event.target.value)} /></label>
-        <label>{uiText("admin.confirmPassword", {}, locale)}<input type="password" required minLength={8} maxLength={128} autoComplete="new-password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} /></label>
+        <AdminPasswordField locale={locale} label={uiText("admin.newPassword", {}, locale)} title={uiText("admin.passwordMinLength", {}, locale)} required minLength={8} maxLength={128} autoComplete="new-password" value={keyInput} onChange={(event) => setKeyInput(event.target.value)} />
+        <AdminPasswordField locale={locale} label={uiText("admin.confirmPassword", {}, locale)} required minLength={8} maxLength={128} autoComplete="new-password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} />
         <button className="kercad-admin-telemetry" type="submit" disabled={saving || keyInput !== confirmation}>{uiText("admin.savePassword", {}, locale)}</button>
         {confirmation && keyInput !== confirmation && <p role="status">{uiText("admin.passwordMismatch", {}, locale)}</p>}
       </form>

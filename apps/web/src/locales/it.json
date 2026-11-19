@@ -3,6 +3,8 @@
   "name": "Italiano",
   "direction": "ltr",
   "messages": {
+    "admin.showPassword": "Mostra password",
+    "admin.hidePassword": "Nascondi password",
     "admin.removePassword": "Rimuovi password",
     "admin.removePasswordConfirm": "Rimuovere la password e consentire a chiunque abbia accesso al server di usare l’amministrazione?",
     "admin.passwordManagedByServer": "La password è gestita sul server tramite KERCAD_ADMIN_KEY.",

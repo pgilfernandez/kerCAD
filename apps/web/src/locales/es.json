@@ -3,6 +3,8 @@
   "name": "Español",
   "direction": "ltr",
   "messages": {
+    "admin.showPassword": "Mostrar contraseña",
+    "admin.hidePassword": "Ocultar contraseña",
     "admin.removePassword": "Quitar contraseña",
     "admin.removePasswordConfirm": "¿Quitar la contraseña y permitir que cualquiera con acceso al servidor use Administración?",
     "admin.passwordManagedByServer": "La contraseña se gestiona en el servidor con KERCAD_ADMIN_KEY.",

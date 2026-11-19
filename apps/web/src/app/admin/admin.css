@@ -3,7 +3,11 @@
 .kercad-admin-switches { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
 .kercad-admin-access-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin: 16px 0; }
 .kercad-admin-access-form label { display: grid; gap: 5px; }
-.kercad-admin-password-setup label { width: min(16rem, 100%); }
+.kercad-admin-password-field { display: grid; gap: 5px; width: min(16rem, 100%); }
+.kercad-admin-password-input { position: relative; }
+.kercad-admin-access-form .kercad-admin-password-input input { box-sizing: border-box; width: 100%; padding-inline-end: 42px; }
+.kercad-admin-password-input button { position: absolute; inset-block: 3px; inset-inline-end: 3px; width: 34px; display: grid; place-items: center; border: 0; border-radius: 5px; color: var(--theme-text); background: transparent; cursor: pointer; }
+.kercad-admin-password-input button:hover { background: var(--theme-active); }
 .kercad-admin-access-form input { min-width: 0; padding: 11px; border: 1px solid var(--theme-border); border-radius: 8px; background: var(--theme-surface); color: var(--theme-text); font: inherit; }
 html[data-theme="dark"] .kercad-admin-content {
   --theme-text: #fff;
