@@ -3,11 +3,12 @@
 import { createContext, useContext, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { kercadTranslate, type KercadLocale } from "@/lib/kercadI18n";
+import { reportUsage } from "@/lib/usageMetrics";
 import "./donationPopup.css";
 
 const options = [
-  { name: "GitHub", url: "https://github.com/sponsors/pgilfernandez" },
-  { name: "PayPal", url: "https://www.paypal.com/donate?hosted_button_id=6N7UZHDQW3J6A" },
+  { name: "GitHub", event: "donateGithub", url: "https://github.com/sponsors/pgilfernandez" },
+  { name: "PayPal", event: "donatePaypal", url: "https://www.paypal.com/donate?hosted_button_id=6N7UZHDQW3J6A" },
 ] as const;
 
 const DonationContext = createContext({ open: false, show: (_locale: KercadLocale, _anchor: HTMLButtonElement) => {} });
@@ -57,10 +58,13 @@ export function DonationPopupProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("scroll", update, true);
     };
   }, [popup]);
-  return <DonationContext.Provider value={{ open: popup !== null, show: (locale, anchor) => setPopup((current) => current?.anchor === anchor ? null : { locale, anchor }) }}>
+  return <DonationContext.Provider value={{ open: popup !== null, show: (locale, anchor) => {
+    void reportUsage("donate");
+    setPopup((current) => current?.anchor === anchor ? null : { locale, anchor });
+  } }}>
     {children}
     {popup && createPortal(<section ref={ref} role="dialog" aria-label={kercadTranslate(popup.locale, "about.donate")} className={`kercad-donation-dialog${position.above ? " above" : ""}`} style={{ top: position.top, left: position.left, "--donation-pointer": `${position.pointer}px` } as CSSProperties}>
-      {options.map(({ name, url }) => <a key={name} href={url} target="_blank" rel="noopener noreferrer" onClick={() => { setPopup(null); popup.anchor.focus(); }}>{name}</a>)}
+      {options.map(({ name, event, url }) => <a key={name} href={url} target="_blank" rel="noopener noreferrer" onClick={() => { void reportUsage(event); setPopup(null); popup.anchor.focus(); }}>{name}</a>)}
     </section>, document.body)}
   </DonationContext.Provider>;
 }

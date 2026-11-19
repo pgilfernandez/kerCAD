@@ -3,6 +3,8 @@
   "name": "Italiano",
   "direction": "ltr",
   "messages": {
+    "admin.donateGithub": "Dona GitHub",
+    "admin.donatePaypal": "Dona Paypal",
     "admin.showPassword": "Mostra password",
     "admin.hidePassword": "Nascondi password",
     "admin.removePassword": "Rimuovi password",

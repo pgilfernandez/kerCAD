@@ -22,8 +22,9 @@ function identify() {
   try { visitor = localStorage.getItem("kercad.metrics-browser") ?? metricId(); localStorage.setItem("kercad.metrics-browser", visitor); }
   catch { visitor = metricId(); }
 }
-export async function reportUsage(event?: "project" | "challenge" | "documentation" | "overview" | "donate" | "github") {
-  if (typeof window === "undefined" || location.pathname.startsWith("/admin")) return;
+export async function reportUsage(event?: "project" | "challenge" | "documentation" | "overview" | "donate" | "donateGithub" | "donatePaypal" | "github") {
+  const donation = event === "donate" || event === "donateGithub" || event === "donatePaypal";
+  if (typeof window === "undefined" || (!donation && location.pathname.startsWith("/admin"))) return;
   if (!await telemetryEnabled()) return;
   try {
     identify();

@@ -16,7 +16,7 @@ export function UsageMetrics() {
       const target = (event.target as Element).closest?.("a,button");
       if (!target) return;
       const icon = target.querySelector("[data-icon]")?.getAttribute("data-icon");
-      if (icon === "donate" || icon === "github" || icon === "project-overview") reportUsage(icon === "project-overview" ? "overview" : icon);
+      if (icon === "github" || icon === "project-overview") reportUsage(icon === "project-overview" ? "overview" : icon);
       else if (target instanceof HTMLAnchorElement && target.pathname.startsWith("/documentation")) reportUsage("documentation");
     };
     reportUsage();

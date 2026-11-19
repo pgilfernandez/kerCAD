@@ -129,7 +129,8 @@ export function AdminPanel({ slug, passwordRequired: initialPasswordRequired }: 
     ["admin.active", metrics?.active], ["admin.visitors", metrics?.visitors],
     ["admin.megabytes", metrics ? (metrics.bytes / 1e6).toFixed(2) : undefined],
     ["admin.documentation", metrics?.counts.documentation], ["admin.overview", metrics?.counts.overview],
-    ["admin.donate", metrics?.counts.donate], ["admin.github", metrics?.counts.github],
+    ["admin.donate", metrics?.counts.donate], ["admin.donateGithub", metrics ? metrics.counts.donateGithub ?? 0 : undefined],
+    ["admin.donatePaypal", metrics ? metrics.counts.donatePaypal ?? 0 : undefined], ["admin.github", metrics?.counts.github],
   ] as const;
   return <main className="kercad-admin">
     <header className="kercad-dashboard-topbar">

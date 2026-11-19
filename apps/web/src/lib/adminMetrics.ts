@@ -2,7 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { configuredAdminKey, normalizeAdminSlug } from "@/lib/adminAccess";
 
-export const metricEvents = ["project", "challenge", "documentation", "overview", "donate", "github"] as const;
+export const metricEvents = ["project", "challenge", "documentation", "overview", "donate", "donateGithub", "donatePaypal", "github"] as const;
 type Event = typeof metricEvents[number];
 type State = { enabled?: boolean; sponsorPopupEnabled?: boolean; sharedProjectsEnabled?: boolean; adminSlug?: string; adminPasswordHash?: string; since: string; counts: Record<Event, number>; bytes: number; visitors: string[]; checkpoints?: Record<string, { bytes: number; at: number }> };
 type Runtime = { state: State | null; queue: Promise<unknown>; sessions: Map<string, { at: number; touched: number; bytes: number }>; seen: Set<string> };
@@ -86,7 +86,7 @@ export function recordMetrics(input: { visitor: string; session: string; bytes: 
     store.sessions.set(input.session, { at: input.active ? now : 0, touched: now, bytes: Math.max(previousBytes, input.bytes) });
     if (!data.visitors.includes(input.visitor)) data.visitors.push(input.visitor);
     if (input.event && input.id && !store.seen.has(input.id)) {
-      data.counts[input.event]++; store.seen.add(input.id);
+      data.counts[input.event] = (data.counts[input.event] ?? 0) + 1; store.seen.add(input.id);
       if (store.seen.size > 20000) store.seen.delete(store.seen.values().next().value!);
     }
     for (const [key, session] of store.sessions) if (now - session.touched > 3600000) store.sessions.delete(key);

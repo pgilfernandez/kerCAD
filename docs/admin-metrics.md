@@ -42,6 +42,8 @@ HTTP request, not a recorded usage event.
   identify people, and clearing browser storage creates a new identifier.
 - Documentation, project overview, donation and GitHub counts measure button
   clicks, not successful visits or donations. Blockers/offline use may omit events.
+- Donation counts distinguish clicks on the Donate button from clicks on the
+  GitHub Sponsors and PayPal options, including from the administration header.
 - MB are decimal browser-reported transfer sizes, not the server's total traffic.
   Cache hits, cross-origin resources, workers and non-browser clients may not be
   measured. They must not be used for bandwidth billing or capacity planning.
