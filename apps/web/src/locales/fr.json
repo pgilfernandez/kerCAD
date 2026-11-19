@@ -3,6 +3,11 @@
   "name": "Français",
   "direction": "ltr",
   "messages": {
+    "admin.accessKey": "Clé d’administration",
+    "admin.signIn": "Se connecter",
+    "admin.signInError": "Connexion impossible. Vérifiez la clé et la configuration du serveur.",
+    "admin.accessPath": "Chemin d’administration",
+    "admin.savePath": "Enregistrer le chemin",
     "admin.sharedProjects": "Projets partagés",
     "admin.sharedProjectsUnconfigured": "Stockage non configuré",
     "admin.sponsorPopup": "Fenêtre des sponsors",

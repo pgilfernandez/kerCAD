@@ -3,7 +3,7 @@ let enabled = false, checkedAt = 0;
 let checking: Promise<boolean> | null = null;
 async function telemetryEnabled() {
   if (Date.now() - checkedAt < 30000) return enabled;
-  checking ??= fetch("/api/admin/metrics", { cache: "no-store" }).then(async (response) => {
+  checking ??= fetch("/api/admin/metrics?status", { cache: "no-store" }).then(async (response) => {
     enabled = response.ok && (await response.json()).enabled === true;
     checkedAt = Date.now(); return enabled;
   }).catch(() => { enabled = false; checkedAt = Date.now(); return false; }).finally(() => { checking = null; });

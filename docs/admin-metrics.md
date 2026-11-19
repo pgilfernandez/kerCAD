@@ -1,16 +1,22 @@
 # Administration metrics
 
-Open `/admin` on the application origin. The page and its read-only statistics
-API are currently public, intentionally; the URL is not an access control.
-Protect this route and `/api/admin/metrics` at the reverse proxy before deploying
-on an untrusted network if these statistics must remain private.
+Set `KERCAD_ADMIN_KEY` in the server environment to a strong random secret,
+then open `/admin` on the application origin and enter the key. Without a key
+configured on the server, administrative access is disabled. Use HTTPS outside
+localhost and consider rate limiting at the reverse proxy.
+
+**Admin path** accepts a single URL segment of lowercase letters, digits and
+hyphens (for example, `/manage-academy`). Saving it invalidates the previous
+page URL immediately. The key continues to protect statistics and settings
+regardless of the chosen path. To recover a forgotten path, stop the server,
+back up `metrics.json`, remove only its `adminSlug` property, then restart;
+the panel will be back at `/admin`.
 
 Telemetry is disabled by default, including when upgrading an existing metrics
 file without an explicit enabled flag. The first switch in `/admin` persists
 the server-wide setting. Disabling immediately rejects new usage events; clients
 refresh the flag within 30 seconds and stop transmitting events. Historical
-totals are retained. While authentication is absent, anyone with access to the
-admin API can change this switch too. The preference check itself is an ordinary
+totals are retained. The public preference check is an ordinary
 HTTP request, not a recorded usage event.
 
 - Project/challenge counters measure editor openings, not saved files or

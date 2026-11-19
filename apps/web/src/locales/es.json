@@ -3,6 +3,11 @@
   "name": "Español",
   "direction": "ltr",
   "messages": {
+    "admin.accessKey": "Clave de administración",
+    "admin.signIn": "Acceder",
+    "admin.signInError": "No se ha podido acceder. Comprueba la clave y la configuración del servidor.",
+    "admin.accessPath": "Ruta de administración",
+    "admin.savePath": "Guardar ruta",
     "admin.sharedProjects": "Proyectos compartidos",
     "admin.sharedProjectsUnconfigured": "Almacenamiento sin configurar",
     "admin.sponsorPopup": "Popup de patrocinadores",

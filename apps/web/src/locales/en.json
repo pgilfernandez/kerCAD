@@ -3,6 +3,11 @@
   "name": "English",
   "direction": "ltr",
   "messages": {
+    "admin.accessKey": "Admin key",
+    "admin.signIn": "Sign in",
+    "admin.signInError": "Could not sign in. Check the admin key and server settings.",
+    "admin.accessPath": "Admin path",
+    "admin.savePath": "Save path",
     "admin.sharedProjects": "Shared projects",
     "admin.sharedProjectsUnconfigured": "Storage not configured",
     "admin.sponsorPopup": "Sponsor popup",

@@ -3,6 +3,11 @@
   "name": "Italiano",
   "direction": "ltr",
   "messages": {
+    "admin.accessKey": "Chiave di amministrazione",
+    "admin.signIn": "Accedi",
+    "admin.signInError": "Accesso non riuscito. Verifica la chiave e la configurazione del server.",
+    "admin.accessPath": "Percorso di amministrazione",
+    "admin.savePath": "Salva percorso",
     "admin.sharedProjects": "Progetti condivisi",
     "admin.sharedProjectsUnconfigured": "Archiviazione non configurata",
     "admin.sponsorPopup": "Popup degli sponsor",
