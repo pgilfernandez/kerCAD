@@ -16,10 +16,12 @@ function focusableDialogElements(dialog: HTMLElement) {
     .filter((element) => !element.hidden && element.getAttribute("aria-hidden") !== "true");
 }
 
-export function useAccessibleDialog<T extends HTMLElement = HTMLElement>(open: boolean, onClose: () => void, initialFocusRef?: RefObject<HTMLElement | null>): RefObject<T | null> {
+export function useAccessibleDialog<T extends HTMLElement = HTMLElement>(open: boolean, onClose: () => void, initialFocusRef?: RefObject<HTMLElement | null>, active = true): RefObject<T | null> {
   const dialogRef = useRef<T>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
+  const activeRef = useRef(active);
+  activeRef.current = active;
 
   useEffect(() => {
     if (!open) return;
@@ -30,6 +32,7 @@ export function useAccessibleDialog<T extends HTMLElement = HTMLElement>(open: b
       (initialFocusRef?.current ?? focusableDialogElements(dialog)[0] ?? dialog).focus();
     });
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (!activeRef.current) return;
       const dialog = dialogRef.current;
       if (!dialog) return;
       if (event.key === "Escape") {
@@ -59,7 +62,7 @@ export function useAccessibleDialog<T extends HTMLElement = HTMLElement>(open: b
     return () => {
       window.cancelAnimationFrame(frame);
       document.removeEventListener("keydown", handleKeyDown, true);
-      if (opener?.isConnected) window.requestAnimationFrame(() => opener.focus());
+      if (activeRef.current && opener?.isConnected) window.requestAnimationFrame(() => opener.focus());
     };
   }, [open]);
 

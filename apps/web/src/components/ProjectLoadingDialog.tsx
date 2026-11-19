@@ -24,7 +24,7 @@ export function ProjectLoadingDialog({ projectName, locale, ready, progress, onF
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [campaign, setCampaign] = useState(projectLoadingCampaign);
   const donation = useDonationPopup();
-  const dialogRef = useAccessibleDialog<HTMLElement>(enabled === true && !donation.open, () => {});
+  const dialogRef = useAccessibleDialog<HTMLElement>(enabled === true, () => {}, undefined, !donation.open);
   useEffect(() => {
     const controller = new AbortController();
     void isSponsorPopupEnabled(controller.signal).then((value) => {
@@ -73,7 +73,7 @@ export function ProjectLoadingDialog({ projectName, locale, ready, progress, onF
       </figure>
       <footer>
         <p>{t("loading.freeOpenSource")}</p>
-        <button type="button" aria-haspopup="dialog" onClick={() => donation.show(locale)}><HeaderToolbarIcon file="donate" />{t("loading.support")}</button>
+        <button type="button" aria-haspopup="dialog" onClick={(event) => donation.show(locale, event.currentTarget)}><HeaderToolbarIcon file="donate" />{t("loading.support")}</button>
       </footer>
     </section>
   </div>, document.body);
