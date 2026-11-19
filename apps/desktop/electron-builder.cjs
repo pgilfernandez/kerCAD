@@ -19,6 +19,6 @@ module.exports = {
   artifactName: 'kerCAD.${ext}',
   mac: { target: ['dmg'], minimumSystemVersion: legacy ? '12.0' : '13.0', category: 'public.app-category.graphics-design' },
   win: { target: ['nsis'] },
-  nsis: { oneClick: false, perMachine: false, allowToChangeInstallationDirectory: true },
+  nsis: { artifactName: 'kerCAD installer.exe', oneClick: false, perMachine: false, allowToChangeInstallationDirectory: true },
   linux: { target: ['AppImage', 'deb'], category: 'Graphics', maintainer: 'kerCAD contributors' },
 };
