@@ -120,7 +120,7 @@ export function AdminPanel({ slug, passwordRequired }: { slug: string; passwordR
     {error && <p role="alert">{uiText("admin.error", {}, locale)}</p>}
     {!passwordRequired ? <>
       <p>{uiText("admin.unprotected", {}, locale)}</p>
-      <form className="kercad-admin-access-form" onSubmit={setupPassword}>
+      <form className="kercad-admin-access-form kercad-admin-password-setup" onSubmit={setupPassword}>
         <label>{uiText("admin.newPassword", {}, locale)}<input type="password" required minLength={8} maxLength={128} autoComplete="new-password" value={keyInput} onChange={(event) => setKeyInput(event.target.value)} /></label>
         <label>{uiText("admin.confirmPassword", {}, locale)}<input type="password" required minLength={8} maxLength={128} autoComplete="new-password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} /></label>
         <button className="kercad-admin-telemetry" type="submit" disabled={saving || keyInput !== confirmation}>{uiText("admin.savePassword", {}, locale)}</button>
