@@ -6,7 +6,7 @@ import { DashboardBrandLogo } from "@/components/DashboardBrandLogo";
 
 import { CreateDesignIcon } from "@/components/CreateDesignIcon";
 import { LEGACY_PROJECT_ACCEPT } from "@/lib/legacyBrand";
-import { Copy, Download, FileArchive, Grid3X3, Home, List, Search, Trash2, Upload, X } from "lucide-react";
+import { Copy, Download, FileArchive, Grid3X3, List, PencilRuler, Search, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ToolbarEditOperationIcon } from "@/components/icons";
 import { SharedProjects } from "@/components/SharedProjects";
@@ -106,14 +106,14 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
     <EditorGettingStarted locale={locale} onLocaleChange={changeLocale} active={!busy} mode="dashboard" dashboardSection={section} launchRequest={tutorialLaunchRequest} />
     <header className="kercad-dashboard-topbar">
       <strong className="kercad-dashboard-brand"><DashboardBrandLogo /><span>{uiText("ui.page.kercad.c0bf6d", {}, locale)}</span></strong>
-      <nav className="kercad-dashboard-mobile-nav" aria-label={t("dashboard.dashboard.sections.385166")}><button data-tutorial="dashboard-projects" className={section === "home" ? "active" : ""} type="button" onClick={() => onSectionChange("home")}><Home size={18} /> {t("dashboard.projects.53e890")}</button><button data-tutorial="dashboard-challenges" className={section === "challenges" ? "active" : ""} type="button" onClick={() => onSectionChange("challenges")}><ChallengeIcon size={18} /> {t("dashboard.challenges.ff3876")}</button>{sharedEnabled ? <button className={section === "shared" ? "active" : ""} type="button" onClick={() => onSectionChange("shared")}><Upload size={18} /> {t("dashboard.shared.50d0d8")}</button> : null}</nav>
+      <nav className="kercad-dashboard-mobile-nav" aria-label={t("dashboard.dashboard.sections.385166")}><button data-tutorial="dashboard-projects" className={section === "home" ? "active" : ""} type="button" onClick={() => onSectionChange("home")}><PencilRuler size={18} /> {t("dashboard.projects.53e890")}</button><button data-tutorial="dashboard-challenges" className={section === "challenges" ? "active" : ""} type="button" onClick={() => onSectionChange("challenges")}><ChallengeIcon size={18} /> {t("dashboard.challenges.ff3876")}</button>{sharedEnabled ? <button className={section === "shared" ? "active" : ""} type="button" onClick={() => onSectionChange("shared")}><PencilRuler size={18} /> {t("dashboard.shared.50d0d8")}</button> : null}</nav>
       <EditorHeaderActions locale={locale} onLocaleChange={changeLocale} onShowLanding={onShowLanding} onLaunchTutorial={() => { resetStartupTutorials(); setTutorialLaunchRequest((request) => request + 1); }} showDonation />
     </header>
     <div className="kercad-dashboard-layout">
       <aside className="kercad-dashboard-sidebar">
-        <button data-tutorial="dashboard-projects" className={section === "home" ? "active" : ""} type="button" onClick={() => onSectionChange("home")}><Home size={23} /><span>{t("dashboard.projects.53e890")}</span></button>
+        <button data-tutorial="dashboard-projects" className={section === "home" ? "active" : ""} type="button" onClick={() => onSectionChange("home")}><PencilRuler size={23} /><span>{t("dashboard.projects.53e890")}</span></button>
+        {sharedEnabled ? <button className={section === "shared" ? "active" : ""} type="button" onClick={() => onSectionChange("shared")}><PencilRuler size={23} /><span>{t("dashboard.shared.50d0d8")}</span></button> : null}
         <button data-tutorial="dashboard-challenges" className={section === "challenges" ? "active" : ""} type="button" onClick={() => onSectionChange("challenges")}><ChallengeIcon size={23} /><span>{t("dashboard.challenges.ff3876")}</span></button>
-        {sharedEnabled ? <button className={section === "shared" ? "active" : ""} type="button" onClick={() => onSectionChange("shared")}><Upload size={23} /><span>{t("dashboard.shared.50d0d8")}</span></button> : null}
       </aside>
       <section className="kercad-dashboard-main">
         {sharedEnabled && section === "shared" ? <SharedProjects locale={locale} projects={projects} onOpen={onOpen} onSaved={onSharedSaved} /> : section === "challenges" ? <>
