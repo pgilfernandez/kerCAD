@@ -3,6 +3,11 @@
   "name": "English",
   "direction": "ltr",
   "messages": {
+    "admin.newPassword": "New password (at least 8 characters)",
+    "admin.confirmPassword": "Repeat password",
+    "admin.savePassword": "Set password",
+    "admin.passwordMismatch": "Passwords do not match.",
+    "admin.unprotected": "Administration is open until you set a password.",
     "admin.accessKey": "Admin key",
     "admin.signIn": "Sign in",
     "admin.signInError": "Could not sign in. Check the admin key and server settings.",

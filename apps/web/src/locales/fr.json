@@ -3,6 +3,11 @@
   "name": "Français",
   "direction": "ltr",
   "messages": {
+    "admin.newPassword": "Nouveau mot de passe (8 caractères minimum)",
+    "admin.confirmPassword": "Répéter le mot de passe",
+    "admin.savePassword": "Définir le mot de passe",
+    "admin.passwordMismatch": "Les mots de passe ne correspondent pas.",
+    "admin.unprotected": "L’administration reste accessible tant qu’aucun mot de passe n’est défini.",
     "admin.accessKey": "Clé d’administration",
     "admin.signIn": "Se connecter",
     "admin.signInError": "Connexion impossible. Vérifiez la clé et la configuration du serveur.",

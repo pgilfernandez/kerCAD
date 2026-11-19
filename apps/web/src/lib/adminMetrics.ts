@@ -1,10 +1,10 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { normalizeAdminSlug } from "@/lib/adminAccess";
+import { configuredAdminKey, normalizeAdminSlug } from "@/lib/adminAccess";
 
 export const metricEvents = ["project", "challenge", "documentation", "overview", "donate", "github"] as const;
 type Event = typeof metricEvents[number];
-type State = { enabled?: boolean; sponsorPopupEnabled?: boolean; sharedProjectsEnabled?: boolean; adminSlug?: string; since: string; counts: Record<Event, number>; bytes: number; visitors: string[]; checkpoints?: Record<string, { bytes: number; at: number }> };
+type State = { enabled?: boolean; sponsorPopupEnabled?: boolean; sharedProjectsEnabled?: boolean; adminSlug?: string; adminPasswordHash?: string; since: string; counts: Record<Event, number>; bytes: number; visitors: string[]; checkpoints?: Record<string, { bytes: number; at: number }> };
 type Runtime = { state: State | null; queue: Promise<unknown>; sessions: Map<string, { at: number; touched: number; bytes: number }>; seen: Set<string> };
 const globalStore = globalThis as typeof globalThis & { kercadMetrics?: Runtime };
 const store = globalStore.kercadMetrics ??= { state: null, queue: Promise.resolve(), sessions: new Map(), seen: new Set() };
@@ -23,6 +23,26 @@ function serial<T>(task: () => Promise<T>): Promise<T> {
 }
 export function readAdminSlug() {
   return serial(async () => normalizeAdminSlug((await state()).adminSlug ?? "") ?? "admin");
+}
+
+export function readAdminPasswordHash() {
+  return serial(async () => (await state()).adminPasswordHash);
+}
+
+export async function adminPasswordRequired() {
+  return Boolean(configuredAdminKey()) || (await readAdminPasswordHash()) !== undefined;
+}
+
+export function initializeAdminPassword(adminPasswordHash: string) {
+  return serial(async () => {
+    const current = await state();
+    if (configuredAdminKey() || current.adminPasswordHash !== undefined) return false;
+    const data = { ...current, adminPasswordHash };
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    await fs.writeFile(`${file}.tmp`, JSON.stringify(data)); await fs.rename(`${file}.tmp`, file);
+    store.state = data;
+    return true;
+  });
 }
 
 export function setAdminSlug(adminSlug: string) {

@@ -3,6 +3,11 @@
   "name": "Español",
   "direction": "ltr",
   "messages": {
+    "admin.newPassword": "Nueva contraseña (mínimo 8 caracteres)",
+    "admin.confirmPassword": "Repetir contraseña",
+    "admin.savePassword": "Definir contraseña",
+    "admin.passwordMismatch": "Las contraseñas no coinciden.",
+    "admin.unprotected": "La administración está abierta hasta que definas una contraseña.",
     "admin.accessKey": "Clave de administración",
     "admin.signIn": "Acceder",
     "admin.signInError": "No se ha podido acceder. Comprueba la clave y la configuración del servidor.",

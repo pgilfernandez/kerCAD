@@ -1,11 +1,19 @@
 # Administration metrics
 
-Set `KERCAD_ADMIN_KEY` in the server environment to a strong random secret,
-then open `/admin` on the application origin and enter the key. Without a key
-configured on the server, administrative access is disabled. Use HTTPS outside
-localhost and consider rate limiting at the reverse proxy.
+Open `/admin` and set a password using the two password fields. Until someone
+sets it, anyone with access to the server can see and operate the panel and
+claim its first password. Complete setup before exposing the service to an
+untrusted network, or set `KERCAD_ADMIN_KEY` in the server environment to
+require authentication from first startup. The environment key takes precedence
+over the password set in the panel. Use HTTPS outside localhost and consider
+rate limiting at the reverse proxy.
 
-**Admin path** accepts a single URL segment of lowercase letters, digits and
+The server stores a salted password hash, not the password itself. If you forget
+it, set `KERCAD_ADMIN_KEY` to recover access, or stop the server, back up
+`metrics.json`, remove only `adminPasswordHash`, and restart. Removing the
+hash without an environment key opens the panel again for initial setup.
+
+After signing in, **Admin path** accepts a single URL segment of lowercase letters, digits and
 hyphens (for example, `/manage-academy`). Saving it invalidates the previous
 page URL immediately. The key continues to protect statistics and settings
 regardless of the chosen path. To recover a forgotten path, stop the server,

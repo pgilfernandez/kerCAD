@@ -3,6 +3,11 @@
   "name": "Italiano",
   "direction": "ltr",
   "messages": {
+    "admin.newPassword": "Nuova password (almeno 8 caratteri)",
+    "admin.confirmPassword": "Ripeti la password",
+    "admin.savePassword": "Imposta password",
+    "admin.passwordMismatch": "Le password non coincidono.",
+    "admin.unprotected": "L’amministrazione resta accessibile finché non imposti una password.",
     "admin.accessKey": "Chiave di amministrazione",
     "admin.signIn": "Accedi",
     "admin.signInError": "Accesso non riuscito. Verifica la chiave e la configurazione del server.",

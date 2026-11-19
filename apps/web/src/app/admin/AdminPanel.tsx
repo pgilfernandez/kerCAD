@@ -6,19 +6,35 @@ import { EditorHeaderActions } from "@/components/EditorHeaderActions";
 import { uiText } from "@/lib/kercadI18n";
 import "./admin.css";
 type Metrics = { enabled: boolean; sponsorPopupEnabled: boolean; sharedProjectsEnabled: boolean; sharedProjectsConfigured: boolean; since: string; active: number; visitors: number; bytes: number; counts: Record<string, number> };
-export function AdminPanel({ slug }: { slug: string }) {
+export function AdminPanel({ slug, passwordRequired }: { slug: string; passwordRequired: boolean }) {
   const [locale, setLocale] = useAppLocale();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [keyInput, setKeyInput] = useState("");
+  const [confirmation, setConfirmation] = useState("");
   const [key, setKey] = useState("");
   const [pathInput, setPathInput] = useState(`/${slug}`);
-  const authHeaders = (secret: string) => ({ Authorization: `Bearer ${secret}` });
+  const authHeaders = (secret: string): Record<string, string> => secret
+    ? { Authorization: `Basic ${btoa(String.fromCharCode(...new TextEncoder().encode(`admin:${secret}`)))}` }
+    : {};
+  const setupPassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (passwordRequired || saving || keyInput.length < 8 || !keyInput.trim() || keyInput !== confirmation) return;
+    setSaving(true);
+    try {
+      const response = await fetch("/api/admin/metrics", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "setup-password", password: keyInput, confirmation }),
+      });
+      if (!response.ok && response.status !== 409) throw new Error();
+      window.location.reload();
+    } catch { setError(true); setSaving(false); }
+  };
   const signIn = async (event: React.FormEvent) => {
     event.preventDefault();
     if (saving || !keyInput.trim()) return;
-    const secret = keyInput.trim();
+    const secret = keyInput;
     setSaving(true);
     try {
       const response = await fetch("/api/admin/metrics", { cache: "no-store", headers: authHeaders(secret) });
@@ -55,18 +71,19 @@ export function AdminPanel({ slug }: { slug: string }) {
     finally { setSaving(false); }
   };
   useEffect(() => {
-    if (!key) return;
+    if (passwordRequired && !key) return;
     const controller = new AbortController();
     const refresh = async () => {
       try {
         const response = await fetch("/api/admin/metrics", { cache: "no-store", signal: controller.signal, headers: authHeaders(key) });
+        if (response.status === 401 && !passwordRequired) { window.location.reload(); return; }
         if (!response.ok) throw new Error();
         setMetrics(await response.json()); setError(false);
       } catch { if (!controller.signal.aborted) setError(true); }
     };
     void refresh(); const timer = setInterval(() => void refresh(), 10000);
     return () => { controller.abort(); clearInterval(timer); };
-  }, [key]);
+  }, [key, passwordRequired]);
   const cards = [
     ["admin.projects", metrics?.counts.project], ["admin.challenges", metrics?.counts.challenge],
     ["admin.active", metrics?.active], ["admin.visitors", metrics?.visitors],
@@ -81,18 +98,26 @@ export function AdminPanel({ slug }: { slug: string }) {
     </header>
     <div className="kercad-admin-content">
     <h1>{uiText("admin.title", {}, locale)}</h1>
-    {!key ? <form className="kercad-admin-access-form" onSubmit={signIn}>
-      <label>{uiText("admin.accessKey", {}, locale)}<input type="password" required autoComplete="off" value={keyInput} onChange={(event) => setKeyInput(event.target.value)} /></label>
+    {passwordRequired && !key ? <form className="kercad-admin-access-form" onSubmit={signIn}>
+      <label>{uiText("admin.accessKey", {}, locale)}<input type="password" required autoComplete="current-password" value={keyInput} onChange={(event) => setKeyInput(event.target.value)} /></label>
       <button className="kercad-admin-telemetry" type="submit" disabled={saving}>{uiText("admin.signIn", {}, locale)}</button>
       {error && <p role="alert">{uiText("admin.signInError", {}, locale)}</p>}
     </form> : <>
     <p>{uiText("admin.explanation", {}, locale)}</p>
     <p>{uiText("admin.telemetryNote", {}, locale)}</p>
     {error && <p role="alert">{uiText("admin.error", {}, locale)}</p>}
-    <form className="kercad-admin-access-form" onSubmit={savePath}>
+    {!passwordRequired ? <>
+      <p>{uiText("admin.unprotected", {}, locale)}</p>
+      <form className="kercad-admin-access-form" onSubmit={setupPassword}>
+        <label>{uiText("admin.newPassword", {}, locale)}<input type="password" required minLength={8} maxLength={128} autoComplete="new-password" value={keyInput} onChange={(event) => setKeyInput(event.target.value)} /></label>
+        <label>{uiText("admin.confirmPassword", {}, locale)}<input type="password" required minLength={8} maxLength={128} autoComplete="new-password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} /></label>
+        <button className="kercad-admin-telemetry" type="submit" disabled={saving || keyInput !== confirmation}>{uiText("admin.savePassword", {}, locale)}</button>
+        {confirmation && keyInput !== confirmation && <p role="status">{uiText("admin.passwordMismatch", {}, locale)}</p>}
+      </form>
+    </> : <form className="kercad-admin-access-form" onSubmit={savePath}>
       <label>{uiText("admin.accessPath", {}, locale)}<input type="text" required maxLength={65} value={pathInput} onChange={(event) => setPathInput(event.target.value)} /></label>
       <button className="kercad-admin-telemetry" type="submit" disabled={saving || !pathInput.trim() || pathInput.trim().replace(/^\//, "") === slug}>{uiText("admin.savePath", {}, locale)}</button>
-    </form>
+    </form>}
     <div className="kercad-admin-switches">
     <button className="kercad-admin-telemetry" type="button" role="switch" aria-checked={metrics?.enabled ?? false} disabled={!metrics || saving} onClick={() => void updateSwitch("telemetry", !metrics?.enabled)}>
       <span className="kercad-admin-switch" aria-hidden="true" />{uiText("admin.telemetry", {}, locale)} · {uiText(metrics?.enabled ? "admin.enabled" : "admin.disabled", {}, locale)}

@@ -3,6 +3,11 @@
   "name": "Deutsch",
   "direction": "ltr",
   "messages": {
+    "admin.newPassword": "Neues Passwort (mindestens 8 Zeichen)",
+    "admin.confirmPassword": "Passwort wiederholen",
+    "admin.savePassword": "Passwort festlegen",
+    "admin.passwordMismatch": "Die Passwörter stimmen nicht überein.",
+    "admin.unprotected": "Die Verwaltung ist offen, bis du ein Passwort festlegst.",
     "admin.accessKey": "Admin-Schlüssel",
     "admin.signIn": "Anmelden",
     "admin.signInError": "Anmeldung fehlgeschlagen. Prüfe den Schlüssel und die Serverkonfiguration.",
