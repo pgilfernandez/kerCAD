@@ -43,9 +43,13 @@
 .group > button.swatch { min-width: 18px; min-height: 22px; padding: 0; }
 .group > button.swatch[aria-pressed="true"] { outline-offset: 1px; }
 .group > button.primary { background: var(--accent-solid); color: white; }
-.custom { position: relative; padding: 2px; }
-.custom input { width: 26px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; }
-.customPlus { position: absolute; right: 2px; bottom: 2px; border-radius: 3px; background: var(--theme-surface); color: var(--theme-text); pointer-events: none; }
+.custom { position: relative; min-width: 18px; min-height: 22px; width: 18px; height: 22px; padding: 0; overflow: hidden; }
+.custom input { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: none; background: none; cursor: pointer; }
+.custom input::-webkit-color-swatch-wrapper { padding: 0; }
+.custom input::-webkit-color-swatch { border: none; }
+.custom input::-moz-color-swatch { border: none; }
+.custom:focus-within { outline: 2px solid var(--theme-link); outline-offset: 1px; }
+.customPlus { position: absolute; inset: 0; width: 100%; height: 100%; color: white; filter: drop-shadow(0 0 1px black) drop-shadow(0 0 1px black); pointer-events: none; }
 .width { width: 76px; }
 .opacity { width: 100px; }
 .viewport {
