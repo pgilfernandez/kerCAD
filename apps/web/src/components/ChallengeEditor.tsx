@@ -7,6 +7,7 @@ import { uiText } from "@/lib/kercadI18n";
 import type { CapturedChallengeParameter } from "@/lib/challengeParameterCapture";
 import { joinChallengeParameterGroups } from "@/lib/challengeParameters";
 import { ChallengeStepPreview } from "@/components/ChallengePlayer";
+import { ChallengeImageEditor } from "@/components/ChallengeImageEditor";
 
 export type ChallengeDock = "floating" | "left" | "right";
 
@@ -29,6 +30,7 @@ function nextStepId() {
 export function ChallengeEditor({ challenge, dock, capture, selectionParameters = [], onDockChange, onCapture, onCancel, onCollapse, onSave }: Props) {
   const [draft, setDraft] = useState(() => structuredClone(challenge));
   const [stepIndex, setStepIndex] = useState(0);
+  const [imageEdit, setImageEdit] = useState<{ stepId: string; source: string } | null>(null);
   const [editingMetadata, setEditingMetadata] = useState(true);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const previewLabel = uiText(previewIndex === null ? "challenge.previewDraft" : "challenge.resumeEditing");
@@ -92,7 +94,7 @@ export function ChallengeEditor({ challenge, dock, capture, selectionParameters 
     reader.readAsDataURL(file);
   };
 
-  return <aside className={`kercad-challenge-player kercad-challenge-author ${dock}`} style={dock === "floating" ? { left: position.x, top: position.y } : undefined} aria-label={uiText("ui.challengeeditor.challenge.editor.723644")}>
+  return <><aside className={`kercad-challenge-player kercad-challenge-author ${dock}`} style={dock === "floating" ? { left: position.x, top: position.y } : undefined} aria-label={uiText("ui.challengeeditor.challenge.editor.723644")}>
     <header onPointerDown={beginDrag} onPointerMove={drag} onPointerUp={endDrag} onPointerCancel={endDrag}>
       <nav aria-label={uiText("ui.challengeeditor.challenge.editor.panel.position.2f13fe")}>
         <button type="button" className={dock === "floating" ? "active" : ""} title={uiText("ui.challengeeditor.float.panel.d20f37")} aria-label={uiText("ui.challengeeditor.float.panel.d20f37")} onClick={() => onDockChange("floating")}><PanelsTopLeft size={17} /></button>
@@ -143,7 +145,7 @@ export function ChallengeEditor({ challenge, dock, capture, selectionParameters 
       </section>
       <section className="kercad-challenge-capture">
         {step.image ? <img src={step.image} alt={uiText("ui.challengeeditor.current.step.capture.c78cb1")} /> : <div className="kercad-challenge-capture-placeholder"><Camera size={35} /><span>{uiText("ui.challengeeditor.3d.view.capture.1d5d32")}</span></div>}
-        <div className="kercad-challenge-capture-actions"><button type="button" title={uiText("ui.challengeeditor.capture.3d.view.7e66f5")} aria-label={uiText("ui.challengeeditor.capture.3d.view.7e66f5")} onClick={() => onCapture(step.id)}><Camera size={19} /></button><button type="button" title={uiText("ui.challengeeditor.upload.image.f35dec")} aria-label={uiText("ui.challengeeditor.upload.image.f35dec")} onClick={() => imageInputRef.current?.click()}><ImageUp size={19} /></button><button type="button" title={uiText("ui.challengeeditor.use.this.image.as.the.challenge.cover.50e2e7")} aria-label={uiText("ui.challengeeditor.use.this.image.as.the.challenge.cover.50e2e7")} disabled={!step.image} onClick={() => setDraft((current) => ({ ...current, cover: step.image }))}><Star size={19} /></button></div>
+        <div className="kercad-challenge-capture-actions">{step.image && <button type="button" title={uiText("challenge.imageEditor.title")} aria-label={uiText("challenge.imageEditor.title")} onClick={() => setImageEdit({ stepId: step.id, source: step.image! })}><Pencil size={19} /></button>}<button type="button" title={uiText("ui.challengeeditor.capture.3d.view.7e66f5")} aria-label={uiText("ui.challengeeditor.capture.3d.view.7e66f5")} onClick={() => onCapture(step.id)}><Camera size={19} /></button><button type="button" title={uiText("ui.challengeeditor.upload.image.f35dec")} aria-label={uiText("ui.challengeeditor.upload.image.f35dec")} onClick={() => imageInputRef.current?.click()}><ImageUp size={19} /></button><button type="button" title={uiText("ui.challengeeditor.use.this.image.as.the.challenge.cover.50e2e7")} aria-label={uiText("ui.challengeeditor.use.this.image.as.the.challenge.cover.50e2e7")} disabled={!step.image} onClick={() => setDraft((current) => ({ ...current, cover: step.image }))}><Star size={19} /></button></div>
         <small>{uiText("ui.challengeeditor.recommended.image.size.1200.750.px.3f3182")}</small>
         <input ref={imageInputRef} hidden type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" onChange={(event) => { loadImage(event.target.files?.[0], "step"); event.target.value = ""; }} />
       </section>
@@ -156,5 +158,8 @@ export function ChallengeEditor({ challenge, dock, capture, selectionParameters 
         : <button className="primary" type="button" disabled={!valid} onClick={() => onSave({ ...draft, installedAt: Date.now() })}>{uiText("ui.challengeeditor.finish.b74bde")}</button>}
     </footer>}
     </>}
-  </aside>;
+  </aside>{imageEdit && <ChallengeImageEditor image={imageEdit.source} onCancel={() => setImageEdit(null)} onSave={(image) => {
+    setDraft((current) => ({ ...current, steps: current.steps.map((candidate) => candidate.id === imageEdit.stepId ? { ...candidate, image } : candidate) }));
+    setImageEdit(null);
+  }} />}</>;
 }

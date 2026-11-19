@@ -1,0 +1,63 @@
+.dialog {
+  width: min(1000px, calc(100vw - 24px));
+  height: min(760px, calc(100dvh - 24px));
+  max-width: none;
+  max-height: none;
+  box-sizing: border-box;
+  padding: 0;
+  margin: auto;
+  border: 1px solid var(--theme-line-cbd7df);
+  border-radius: 12px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  box-shadow: 0 16px 56px #0005;
+}
+.dialog[open] { display: flex; flex-direction: column; }
+.dialog::backdrop { background: #0006; backdrop-filter: blur(3px); }
+.bar, .group { display: flex; align-items: center; gap: 6px; }
+.bar {
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--theme-line-cbd7df);
+}
+.dialog > header, .dialog > footer { justify-content: space-between; }
+.dialog > footer { border-bottom: none; border-top: 1px solid var(--theme-line-cbd7df); }
+.bar > button, .group > button, .custom {
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 3px 7px;
+  border: 1px solid var(--theme-line-cbd7df);
+  border-radius: 5px;
+  background: var(--theme-surface);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.bar button:disabled { cursor: default; opacity: .4; }
+.group > button:hover:not(:disabled), .bar > button:hover:not(:disabled), .group > button[aria-pressed="true"] { border-color: var(--theme-link); }
+.group > button[aria-pressed="true"] { outline: 2px solid var(--theme-link); outline-offset: -2px; }
+.group > button.swatch { min-width: 18px; min-height: 22px; padding: 0; }
+.group > button.swatch[aria-pressed="true"] { outline-offset: 1px; }
+.group > button.primary { background: var(--accent-solid); color: white; }
+.custom { padding: 2px; }
+.custom input { width: 26px; height: 24px; padding: 0; border: none; background: none; cursor: pointer; }
+.width { width: 76px; }
+.viewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  touch-action: none;
+  background: var(--theme-canvas);
+}
+.viewport canvas { position: absolute; top: 50%; left: 50%; cursor: crosshair; box-shadow: 0 0 0 1px #0003; }
+.viewport[data-pan="true"], .viewport[data-pan="true"] canvas { cursor: grab; }
+.viewport[data-pan="true"]:active, .viewport[data-pan="true"]:active canvas { cursor: grabbing; }
+.error { position: absolute; z-index: 1; inset: 0 0 auto; padding: 10px; background: var(--theme-surface); text-align: center; }
+@media (max-height: 480px) {
+  .dialog > .bar:not(header, footer) { max-height: 34dvh; overflow-y: auto; }
+}
