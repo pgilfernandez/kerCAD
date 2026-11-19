@@ -116,7 +116,7 @@ CLANG_MODULE_CACHE_PATH="$CACHE_DIR/clang-module-cache" xcrun swiftc \
   -target "$SWIFT_ARCH-apple-macos13.0" \
   -framework AppKit \
   -framework WebKit \
-  "$SCRIPT_DIR/SketchForgeApp.swift" \
+  "$SCRIPT_DIR/KercadApp.swift" \
   -o "$CONTENTS/MacOS/kerCAD"
 
 cp "$RUNTIME_ROOT/bin/node" "$CONTENTS/Resources/runtime/node"
@@ -130,7 +130,12 @@ ditto "$MAC_WEB_ROOT/public/" "$CONTENTS/Resources/server/apps/web/public/"
 ICONSET="$CACHE_DIR/AppIcon.iconset"
 rm -rf "$ICONSET"
 mkdir -p "$ICONSET"
-ICON_SOURCE="$REPO_ROOT/apps/web/public/assets/old/sketchforge-logo.png"
+ICON_SOURCE="$CACHE_DIR/kercad-macos-icon.png"
+(cd "$REPO_ROOT" && node -e '
+  const sharp = require("sharp");
+  sharp(process.argv[1]).resize(1024, 1024, { fit: "contain", background: "#00000000" })
+    .png().toFile(process.argv[2]).catch((error) => { console.error(error); process.exitCode = 1; });
+' "$REPO_ROOT/apps/web/public/assets/kercad/kercad_app_macos.svg" "$ICON_SOURCE")
 for size in 16 32 128 256 512; do
   sips -z "$size" "$size" "$ICON_SOURCE" --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
   double_size=$((size * 2))

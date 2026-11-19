@@ -2,7 +2,7 @@
 
 const DEFAULT_BASE_URL = "http://127.0.0.1:3000";
 const MCP_ROUTE = "/api/sketchforge-mcp";
-const baseUrl = process.env.SKETCHFORGE_URL || DEFAULT_BASE_URL;
+const baseUrl = process.env.KERCAD_URL || process.env.SKETCHFORGE_URL || DEFAULT_BASE_URL;
 
 const editorTargetSchema = {
   type: "object",

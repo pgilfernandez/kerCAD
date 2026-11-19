@@ -29,7 +29,7 @@ function canonicalDevelopmentHost() {
   } catch { return ""; }
 }
 const canonicalHost = canonicalDevelopmentHost();
-const extraAllowedDevOrigins = (process.env.SKETCHFORGE_ALLOWED_DEV_ORIGINS ?? "")
+const extraAllowedDevOrigins = (process.env.KERCAD_ALLOWED_DEV_ORIGINS ?? process.env.SKETCHFORGE_ALLOWED_DEV_ORIGINS ?? "")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
