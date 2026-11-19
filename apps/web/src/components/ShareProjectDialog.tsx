@@ -11,6 +11,7 @@ import { uploadSharedThumbnail } from "@/lib/sharedProjectThumbnail";
 
 export function ShareProjectDialog({ project, locale, onClose, onSaved }: { project: ProjectLibraryEntry; locale: KercadLocale; onClose: () => void; onSaved: () => void }) {
   const t = (key: DashboardTranslationKey) => dashboardTranslate(locale, key);
+  const [beforeFolder, folder, afterFolder] = t("dashboard.confirmShareProject").split(/<\/?strong>/);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const cancelRef = useRef<HTMLButtonElement>(null);
@@ -46,7 +47,7 @@ export function ShareProjectDialog({ project, locale, onClose, onSaved }: { proj
   return <div className="kercad-dialog-backdrop" role="presentation" onPointerDown={close}>
     <form ref={dialogRef} className="kercad-new-document-dialog kercad-share-project-dialog" role="dialog" aria-modal="true" aria-labelledby="kercad-share-project-title" aria-busy={busy} tabIndex={-1} onPointerDown={(event) => event.stopPropagation()} onSubmit={publish}>
       <header><strong id="kercad-share-project-title">{t("dashboard.save.a.local.project.to.shared.9c6513")}</strong><button type="button" disabled={busy} aria-label={t("dashboard.cancel.77dfd2")} onClick={close}><X size={18} /></button></header>
-      <p><strong>{project.name}</strong><br />{t("dashboard.files.available.to.everyone.using.this.server.opening.a.05eff1")}</p>
+      <p>{beforeFolder}<strong>{folder}</strong>{afterFolder}</p>
       {error && <p role="alert">{error}</p>}
       <footer><button ref={cancelRef} type="button" disabled={busy} onClick={close}>{t("dashboard.cancel.77dfd2")}</button><button className="primary" type="submit" disabled={busy}>{t("dashboard.save.to.shared.5476e1")}</button></footer>
     </form>

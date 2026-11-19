@@ -3,6 +3,7 @@
   "name": "Español",
   "direction": "ltr",
   "messages": {
+    "dashboard.confirmShareProject": "¿Seguro que quieres guardar este proyecto en la <strong>carpeta de proyectos compartidos</strong>?",
     "admin.deleteShared": "Borrar todos los proyectos compartidos",
     "admin.deleteSharedConfirmWithoutPath": "¿Borrar permanentemente {count} proyectos de la carpeta compartida actual? Las copias locales no se borrarán.",
     "admin.deleteSharedConfirm": "¿Borrar permanentemente {count} proyectos compartidos de {directory}? Las copias locales no se borrarán.",

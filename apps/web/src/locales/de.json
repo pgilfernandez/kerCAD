@@ -3,6 +3,7 @@
   "name": "Deutsch",
   "direction": "ltr",
   "messages": {
+    "dashboard.confirmShareProject": "Möchtest du dieses Projekt wirklich im <strong>Ordner für geteilte Projekte</strong> speichern?",
     "admin.deleteShared": "Alle geteilten Projekte löschen",
     "admin.deleteSharedConfirmWithoutPath": "{count} Projekte im aktuellen Freigabeordner endgültig löschen? Lokale Kopien bleiben erhalten.",
     "admin.deleteSharedConfirm": "{count} geteilte Projekte in {directory} endgültig löschen? Lokale Kopien bleiben erhalten.",

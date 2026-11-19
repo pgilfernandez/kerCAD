@@ -3,6 +3,7 @@
   "name": "Français",
   "direction": "ltr",
   "messages": {
+    "dashboard.confirmShareProject": "Voulez-vous vraiment enregistrer ce projet dans le <strong>dossier des projets partagés</strong> ?",
     "admin.deleteShared": "Supprimer tous les projets partagés",
     "admin.deleteSharedConfirmWithoutPath": "Supprimer définitivement {count} projets du dossier partagé actuel ? Les copies locales seront conservées.",
     "admin.deleteSharedConfirm": "Supprimer définitivement {count} projets partagés de {directory} ? Les copies locales seront conservées.",
