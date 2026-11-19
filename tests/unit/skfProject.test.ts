@@ -12,7 +12,7 @@ import {
   SKF_SCHEMA_ID,
   type SkfProjectDocumentV1,
   type SkfProjectExportInput,
-} from "@/lib/skfProject";
+} from "@/lib/legacySkfProject";
 import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import type { ShapeKind, WorkplaneShape } from "@/types/workplane";
 

@@ -132,7 +132,7 @@ const tools = [
   },
   {
     name: "sketchforge_align_objects",
-    description: "Align two or more SketchForge objects using the same alignment logic as the editor Alignment button.",
+    description: "Align two or more kerCAD objects using the same alignment logic as the editor Alignment button.",
     inputSchema: {
       ...editorTargetSchema,
       required: ["axis", "target"],

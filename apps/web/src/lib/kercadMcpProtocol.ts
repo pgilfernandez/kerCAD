@@ -1,12 +1,12 @@
 import type { GridSize, ShapeKind, WorkplaneWorkspaceSettings } from "@/types/workplane";
 
-export const SKETCHFORGE_MCP_ROUTE = "/api/sketchforge-mcp";
-export const SKETCHFORGE_MCP_STALE_MS = 6500;
-export const SKETCHFORGE_MCP_POLL_MS = 220;
+export const KERCAD_MCP_ROUTE = "/api/sketchforge-mcp";
+export const KERCAD_MCP_STALE_MS = 6500;
+export const KERCAD_MCP_POLL_MS = 220;
 
-export type SketchForgeMcpViewFace = "current" | "home" | "top" | "bottom" | "front" | "back" | "right" | "left";
+export type KercadMcpViewFace = "current" | "home" | "top" | "bottom" | "front" | "back" | "right" | "left";
 
-export type SketchForgeMcpShapeSummary = {
+export type KercadMcpShapeSummary = {
   id: string;
   name: string;
   kind: ShapeKind;
@@ -41,10 +41,10 @@ export type SketchForgeMcpShapeSummary = {
   cadDisplayEdgeCount: number | null;
   sketchPointCount: number;
   sketchSegmentCount: number;
-  children?: SketchForgeMcpShapeSummary[];
+  children?: KercadMcpShapeSummary[];
 };
 
-export type SketchForgeMcpSceneSummary = {
+export type KercadMcpSceneSummary = {
   projectId: string | null;
   projectName: string;
   notice: string;
@@ -52,10 +52,10 @@ export type SketchForgeMcpSceneSummary = {
   shapeCount: number;
   workspace: WorkplaneWorkspaceSettings;
   snap: GridSize | null;
-  shapes: SketchForgeMcpShapeSummary[];
+  shapes: KercadMcpShapeSummary[];
 };
 
-export type SketchForgeMcpEditorSummary = {
+export type KercadMcpEditorSummary = {
   editorId: string;
   editorNumber: number;
   projectId: string | null;
@@ -69,7 +69,7 @@ export type SketchForgeMcpEditorSummary = {
   lastSeen: number;
 };
 
-export type SketchForgeMcpCommandName =
+export type KercadMcpCommandName =
   | "get_scene"
   | "list_objects"
   | "select_objects"
@@ -87,14 +87,14 @@ export type SketchForgeMcpCommandName =
   | "inspect_errors"
   | "capture_image";
 
-export type SketchForgeMcpCommand = {
+export type KercadMcpCommand = {
   id: string;
-  action: SketchForgeMcpCommandName;
+  action: KercadMcpCommandName;
   params: Record<string, unknown>;
   createdAt: number;
 };
 
-export type SketchForgeMcpCommandResult = {
+export type KercadMcpCommandResult = {
   commandId: string;
   ok: boolean;
   data?: unknown;
@@ -102,33 +102,33 @@ export type SketchForgeMcpCommandResult = {
   completedAt?: number;
 };
 
-export type SketchForgeMcpHeartbeatPayload = {
+export type KercadMcpHeartbeatPayload = {
   type: "heartbeat";
-  editor: Omit<SketchForgeMcpEditorSummary, "lastSeen">;
+  editor: Omit<KercadMcpEditorSummary, "lastSeen">;
 };
 
-export type SketchForgeMcpPollPayload = {
+export type KercadMcpPollPayload = {
   type: "poll";
   editorId: string;
 };
 
-export type SketchForgeMcpResultPayload = {
+export type KercadMcpResultPayload = {
   type: "result";
   editorId: string;
-  result: SketchForgeMcpCommandResult;
+  result: KercadMcpCommandResult;
 };
 
-export type SketchForgeMcpDispatchPayload = {
+export type KercadMcpDispatchPayload = {
   type: "command";
   editorId?: string;
   editorNumber?: number;
-  action: SketchForgeMcpCommandName;
+  action: KercadMcpCommandName;
   params?: Record<string, unknown>;
   timeoutMs?: number;
 };
 
-export type SketchForgeMcpApiPayload =
-  | SketchForgeMcpHeartbeatPayload
-  | SketchForgeMcpPollPayload
-  | SketchForgeMcpResultPayload
-  | SketchForgeMcpDispatchPayload;
+export type KercadMcpApiPayload =
+  | KercadMcpHeartbeatPayload
+  | KercadMcpPollPayload
+  | KercadMcpResultPayload
+  | KercadMcpDispatchPayload;

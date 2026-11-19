@@ -43,7 +43,7 @@ import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE, normalizeSnapGrid, norm
 import { interiorWorkplaneGridCoordinates, workplaneThemePalette, WORKPLANE_LINE_ELEVATION, WORKPLANE_MAJOR_GRID_INTERVAL } from "@/lib/workplaneGrid";
 import { cleanNearZero, cleanRotationDegrees, fallbackSolidColor, mirroredAxisCount, mirrorSign, preservesEdgeTreatmentSize, proportionalResizeScale, resizedImportedCoordinates, resizedImportedMeshPositions, resizedShapeSize, shapeDepth, shapeWidth } from "@/lib/workplaneShapes";
 import { sphereTessellation } from "@/lib/sphereTessellation";
-import type { SketchForgeMcpViewFace } from "@/lib/sketchforgeMcpProtocol";
+import type { KercadMcpViewFace } from "@/lib/kercadMcpProtocol";
 import {
   TransformOverlay,
   getElevationMeasureKey,
@@ -291,7 +291,7 @@ declare global {
     };
     sketchforgeCaptureCanvas?: () => string;
     sketchforgeCaptureCanvasAsync?: () => Promise<string>;
-    sketchforgeCaptureView?: (face?: SketchForgeMcpViewFace) => Promise<string> | string;
+    sketchforgeCaptureView?: (face?: KercadMcpViewFace) => Promise<string> | string;
   }
 }
 

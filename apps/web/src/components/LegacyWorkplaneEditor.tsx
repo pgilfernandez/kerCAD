@@ -86,7 +86,7 @@ import { projectExportFileName } from "@/lib/exportNames";
 import { attachProjectAsset, dedupeProjectAssets, projectAssetFromBytes, sourceFormatForFileName } from "@/lib/projectAssets";
 import { findSketchOutlineIntersection } from "@/lib/sketchProfileValidation";
 import { buildSketchRevolveMesh, DEFAULT_SKETCH_REVOLVE_SETTINGS, normalizeSketchRevolveSettings, type SketchRevolveMesh } from "@/lib/sketchRevolve";
-import { exportSkfProject, SKF_MEDIA_TYPE } from "@/lib/skfProject";
+import { exportSkfProject, SKF_MEDIA_TYPE } from "@/lib/legacySkfProject";
 import { makeShapeFromAsset, sceneShape, toolbarShapeAssets, type ToolbarShapeAsset } from "@/lib/shapeCatalog";
 import { importedShapeFromStl, importExtensionSupported } from "@/lib/stlImport";
 import { importedShapeFromSvg, invalidSvgMeshReason } from "@/lib/svgImport";
@@ -104,13 +104,13 @@ import {
 } from "@/lib/placementWorkplane";
 import { placeSketchExtrusion } from "@/lib/sketchPlacement";
 import {
-  SKETCHFORGE_MCP_POLL_MS,
-  SKETCHFORGE_MCP_ROUTE,
-  type SketchForgeMcpCommand,
-  type SketchForgeMcpSceneSummary,
-  type SketchForgeMcpShapeSummary,
-  type SketchForgeMcpViewFace,
-} from "@/lib/sketchforgeMcpProtocol";
+  KERCAD_MCP_POLL_MS,
+  KERCAD_MCP_ROUTE,
+  type KercadMcpCommand,
+  type KercadMcpSceneSummary,
+  type KercadMcpShapeSummary,
+  type KercadMcpViewFace,
+} from "@/lib/kercadMcpProtocol";
 import type { CadModifierComponentMesh, CadModifierDisplayEdge, CadModifierEdge, CadModifierKind, CadModifierMeshPart, CadModifierPrimitivePart, CadModifierQuality, CadModifierWorkerRequest, CadModifierWorkerResponse } from "@/lib/cadModifierTypes";
 import type { AlignAxis, AlignHandleStatus, AlignTarget, GridSize, ProjectAsset, ShapeAsset, SketchImage, SketchOperation, SketchPoint, SketchProfile, SketchRevolveSettings, SketchSegment, WorkplaneShape, WorkplaneWorkspaceSettings } from "@/types/workplane";
 export { importedShapeFromStl, importedShapeFromSvg };
@@ -204,7 +204,7 @@ declare global {
     __sketchforgeBooleanTestImage?: string;
     sketchforgeCaptureCanvas?: () => string;
     sketchforgeCaptureCanvasAsync?: () => Promise<string>;
-    sketchforgeCaptureView?: (face?: SketchForgeMcpViewFace) => Promise<string> | string;
+    sketchforgeCaptureView?: (face?: KercadMcpViewFace) => Promise<string> | string;
   }
 }
 
@@ -2477,7 +2477,7 @@ function normalFor(a: Vec3, b: Vec3, c: Vec3): Vec3 {
 }
 
 function toStl(meshes: MeshData[]) {
-  const lines = ["solid sketchforge_design"];
+  const lines = ["solid kercad_design"];
   meshes.forEach((mesh) => {
     mesh.faces.forEach(([ai, bi, ci]) => {
       const a = mesh.vertices[ai];
@@ -2493,12 +2493,12 @@ function toStl(meshes: MeshData[]) {
       lines.push("  endfacet");
     });
   });
-  lines.push("endsolid sketchforge_design");
+  lines.push("endsolid kercad_design");
   return lines.join("\n");
 }
 
 function toObj(meshes: MeshData[]) {
-  const lines = ["# SketchForge OBJ export"];
+  const lines = ["# kerCAD OBJ export"];
   let offset = 1;
   meshes.forEach((mesh) => {
     lines.push(`o ${mesh.name}`);
@@ -5153,7 +5153,7 @@ function compactShapeSummary(shape: WorkplaneShape, index: number) {
   ].join(",");
 }
 
-function mcpShapeSummary(shape: WorkplaneShape): SketchForgeMcpShapeSummary {
+function mcpShapeSummary(shape: WorkplaneShape): KercadMcpShapeSummary {
   return {
     id: shape.id,
     name: shape.name,
@@ -5435,7 +5435,7 @@ export function LegacyWorkplaneEditor({
   const cadModifierWatchdogRef = useRef<{ requestId: number; phase: CadModifierRequestPhase; timer: number } | null>(null);
   const cadModifierWorkerRestartRef = useRef<() => Worker | null>(() => null);
   const lastMcpErrorRef = useRef<string | null>(null);
-  const executeMcpCommandRef = useRef<((command: SketchForgeMcpCommand) => Promise<unknown>) | null>(null);
+  const executeMcpCommandRef = useRef<((command: KercadMcpCommand) => Promise<unknown>) | null>(null);
 
   const clearCadModifierWatchdog = useCallback((requestId?: number) => {
     const active = cadModifierWatchdogRef.current;
@@ -7671,7 +7671,7 @@ export function LegacyWorkplaneEditor({
     );
   }, [commitShapes, selectedShape, selectedShapes.length, shapes]);
 
-  const mcpSceneSnapshot = useCallback((includeRawShapes = false): SketchForgeMcpSceneSummary & { rawShapes?: WorkplaneShape[] } => {
+  const mcpSceneSnapshot = useCallback((includeRawShapes = false): KercadMcpSceneSummary & { rawShapes?: WorkplaneShape[] } => {
     const projectInfo = projectInfoRef.current;
     const currentShapes = shapesRef.current;
     return {
@@ -7687,7 +7687,7 @@ export function LegacyWorkplaneEditor({
     };
   }, [initialSnap]);
 
-  const executeMcpCommand = useCallback(async (command: SketchForgeMcpCommand): Promise<unknown> => {
+  const executeMcpCommand = useCallback(async (command: KercadMcpCommand): Promise<unknown> => {
     const params = command.params ?? {};
     const currentShapes = () => shapesRef.current;
     const findShape = (id: unknown) => (typeof id === "string" ? currentShapes().find((shape) => shape.id === id) ?? null : null);
@@ -7992,7 +7992,7 @@ export function LegacyWorkplaneEditor({
       }
 
       if (command.action === "capture_image") {
-        const face = mcpString(params.face, "current") as SketchForgeMcpViewFace;
+        const face = mcpString(params.face, "current") as KercadMcpViewFace;
         const image = await (window.sketchforgeCaptureView?.(face) ?? window.sketchforgeCaptureCanvas?.() ?? "");
         if (!image || image.length < 100) {
           throw new Error(uiText("ui.legacyworkplaneeditor.the.sketchforge.viewport.did.not.return.an.image.34a9bd"));
@@ -8036,7 +8036,7 @@ export function LegacyWorkplaneEditor({
     const heartbeat = () => {
       const projectInfo = projectInfoRef.current;
       const currentShapes = shapesRef.current;
-      void fetch(SKETCHFORGE_MCP_ROUTE, {
+      void fetch(KERCAD_MCP_ROUTE, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -8057,7 +8057,7 @@ export function LegacyWorkplaneEditor({
     };
 
     const submitResult = (commandId: string, ok: boolean, data?: unknown, error?: string) => {
-      void fetch(SKETCHFORGE_MCP_ROUTE, {
+      void fetch(KERCAD_MCP_ROUTE, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -8072,12 +8072,12 @@ export function LegacyWorkplaneEditor({
       if (polling || stopped) return;
       polling = true;
       try {
-        const response = await fetch(SKETCHFORGE_MCP_ROUTE, {
+        const response = await fetch(KERCAD_MCP_ROUTE, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ type: "poll", editorId: identity.editorId }),
         });
-        const payload = (await response.json().catch(() => null)) as { command?: SketchForgeMcpCommand | null } | null;
+        const payload = (await response.json().catch(() => null)) as { command?: KercadMcpCommand | null } | null;
         const command = payload?.command;
         if (command) {
           try {
@@ -8097,7 +8097,7 @@ export function LegacyWorkplaneEditor({
     heartbeat();
     void poll();
     const heartbeatTimer = window.setInterval(heartbeat, 1000);
-    const pollTimer = window.setInterval(() => void poll(), SKETCHFORGE_MCP_POLL_MS);
+    const pollTimer = window.setInterval(() => void poll(), KERCAD_MCP_POLL_MS);
     window.addEventListener("focus", heartbeat);
     document.addEventListener("visibilitychange", heartbeat);
     return () => {

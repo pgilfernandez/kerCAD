@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import type { SketchForgeMcpApiPayload } from "@/lib/sketchforgeMcpProtocol";
+import type { KercadMcpApiPayload } from "@/lib/kercadMcpProtocol";
 import {
-  completeSketchForgeMcpCommand,
-  dispatchSketchForgeMcpCommand,
-  listSketchForgeMcpEditors,
-  pollSketchForgeMcpCommand,
-  registerSketchForgeMcpEditor,
-} from "@/lib/sketchforgeMcpStore";
+  completeKercadMcpCommand,
+  dispatchKercadMcpCommand,
+  listKercadMcpEditors,
+  pollKercadMcpCommand,
+  registerKercadMcpEditor,
+} from "@/lib/kercadMcpStore";
 
 export const revalidate = false;
 
@@ -51,16 +51,16 @@ function isObject(value: unknown): value is Record<string, unknown> {
 export async function GET(request: Request) {
   const blocked = localOnly(request);
   if (blocked) return blocked;
-  return NextResponse.json({ editors: listSketchForgeMcpEditors() });
+  return NextResponse.json({ editors: listKercadMcpEditors() });
 }
 
 export async function POST(request: Request) {
   const blocked = localOnly(request);
   if (blocked) return blocked;
 
-  let body: SketchForgeMcpApiPayload;
+  let body: KercadMcpApiPayload;
   try {
-    body = (await request.json()) as SketchForgeMcpApiPayload;
+    body = (await request.json()) as KercadMcpApiPayload;
   } catch {
     return NextResponse.json({ error: "Invalid SketchForge MCP request." }, { status: 400 });
   }
@@ -73,29 +73,29 @@ export async function POST(request: Request) {
     if (!isObject(body.editor)) {
       return NextResponse.json({ error: "Invalid editor heartbeat." }, { status: 400 });
     }
-    registerSketchForgeMcpEditor(body.editor);
-    return NextResponse.json({ ok: true, editors: listSketchForgeMcpEditors() });
+    registerKercadMcpEditor(body.editor);
+    return NextResponse.json({ ok: true, editors: listKercadMcpEditors() });
   }
 
   if (body.type === "poll") {
     if (typeof body.editorId !== "string") {
       return NextResponse.json({ error: "Invalid editor poll." }, { status: 400 });
     }
-    return NextResponse.json({ command: pollSketchForgeMcpCommand(body.editorId) });
+    return NextResponse.json({ command: pollKercadMcpCommand(body.editorId) });
   }
 
   if (body.type === "result") {
     if (typeof body.editorId !== "string" || !isObject(body.result) || typeof body.result.commandId !== "string" || typeof body.result.ok !== "boolean") {
       return NextResponse.json({ error: "Invalid command result." }, { status: 400 });
     }
-    return NextResponse.json({ ok: completeSketchForgeMcpCommand(body.editorId, body.result) });
+    return NextResponse.json({ ok: completeKercadMcpCommand(body.editorId, body.result) });
   }
 
   if (body.type === "command") {
     if (typeof body.action !== "string") {
       return NextResponse.json({ error: "Invalid command action." }, { status: 400 });
     }
-    const result = await dispatchSketchForgeMcpCommand({
+    const result = await dispatchKercadMcpCommand({
       editorId: typeof body.editorId === "string" ? body.editorId : undefined,
       editorNumber: typeof body.editorNumber === "number" ? body.editorNumber : undefined,
       action: body.action,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as THREE from "three";
 import { bakedBoxSelectionFrame, bakeCadMetadataForShapeTransform } from "@/lib/cadBakeMetadata";
-import { exportSkfProject, importSkfProject } from "@/lib/skfProject";
+import { exportSkfProject, importSkfProject } from "@/lib/legacySkfProject";
 import { DEFAULT_SNAP_GRID, DEFAULT_WORKPLANE_WORKSPACE } from "@/lib/workplaneSettings";
 import type { WorkplaneShape } from "@/types/workplane";
 
