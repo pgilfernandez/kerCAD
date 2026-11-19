@@ -6,7 +6,7 @@ import { DashboardBrandLogo } from "@/components/DashboardBrandLogo";
 
 import { CreateDesignIcon } from "@/components/CreateDesignIcon";
 import { LEGACY_PROJECT_ACCEPT } from "@/lib/legacyBrand";
-import { Copy, Download, FileArchive, Grid3X3, List, PencilRuler, Search, Trash2, Upload, X } from "lucide-react";
+import { Copy, Download, FileArchive, Grid3X3, List, PencilRuler, Search, Share2, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ToolbarEditOperationIcon } from "@/components/icons";
 import { SharedProjects } from "@/components/SharedProjects";
@@ -175,7 +175,7 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
               <span className="card-copy"><strong>{project.name}</strong><small>{updatedLabel(project.updatedAt, locale)} · {project.document.author?.trim() || project.document.creator?.trim() || t("dashboard.author.not.provided.a749ef")}</small></span>
             </button>
             <button className="card-rename" type="button" aria-label={t("dashboard.rename.c2729b", { name: project.name })} title={t("dashboard.rename.project.633018")} onClick={() => beginRename(project)}><ToolbarEditOperationIcon inheritColor /></button>
-            {sharedEnabled && <button className="card-share" type="button" disabled={busy} aria-label={`${t("dashboard.save.to.shared.5476e1")}: ${project.name}`} title={t("dashboard.save.to.shared.5476e1")} onClick={() => { setSharedNotice(false); setSharing(project); }}><Upload size={17} /></button>}
+            {sharedEnabled && <button className="card-share" type="button" disabled={busy} aria-label={`${t("dashboard.save.to.shared.5476e1")}: ${project.name}`} title={t("dashboard.save.to.shared.5476e1")} onClick={() => { setSharedNotice(false); setSharing(project); }}><Share2 size={17} /></button>}
             <button className="card-duplicate" type="button" disabled={busy} aria-label={t("dashboard.duplicate.a4f35f", { name: project.name })} title={t("dashboard.duplicate.project.7c2f4c")} onClick={() => onDuplicate(project)}><Copy size={17} /></button>
             <button className="card-export" type="button" disabled={busy} aria-label={t("dashboard.export.63638e", { name: project.name })} title={t("dashboard.export.project.5eff3a")} onClick={() => onExport(project)}><Download size={17} /></button>
             <button className="card-delete" type="button" aria-label={t("dashboard.delete.1164a6", { name: project.name })} title={t("dashboard.delete.project.af1456")} onClick={() => setDeleting(project)}><Trash2 size={17} /></button>
