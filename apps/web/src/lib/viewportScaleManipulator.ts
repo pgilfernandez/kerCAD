@@ -3,6 +3,7 @@ import type { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
+import { APP_ACCENT_CHANGE_EVENT } from "@/lib/appAccent";
 import type { ParametricScaleTarget, ScaleAxis } from "@/lib/parametricScaleManipulator";
 
 const axes = ["x", "y", "z"] as const;
@@ -14,7 +15,7 @@ const planes = {
 const normal = (axis: ScaleAxis) => new THREE.Vector3().setComponent(axes.indexOf(axis), 1);
 const corners = Array.from({ length: 8 }, (_, index) => new THREE.Vector3(index & 1 ? 1 : -1, index & 2 ? 1 : -1, index & 4 ? 1 : -1));
 const handles = corners.flatMap((corner) => axes.map((axis) => ({ corner, axis })));
-const handleSizePx = 12;
+const handleSizePx = 30;
 
 export function attachScaleManipulator(model: THREE.Group, camera: THREE.Camera, canvas: HTMLCanvasElement, controls: OrbitControls, target: ParametricScaleTarget, snap: number, invalidate: () => void, onCommit: (factors: THREE.Vector3, pivot: THREE.Vector3) => void) {
   const group = new THREE.Group();
@@ -22,21 +23,34 @@ export function attachScaleManipulator(model: THREE.Group, camera: THREE.Camera,
   group.matrix.copy(target.matrix);
   const outline = new LineSegments2(new LineSegmentsGeometry(), new LineMaterial({ color: 0x000000, linewidth: 2, opacity: .3, transparent: true, depthTest: false, depthWrite: false }));
   outline.renderOrder = 40;
-  const squares = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, depthTest: false, depthWrite: false }), handles.length);
+  const handleMaterial = () => new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, depthTest: false, depthWrite: false, toneMapped: false });
+  // Both layers follow the same transforms; the inset fill leaves a coplanar border.
+  const squares = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), handleMaterial(), handles.length);
+  const fills = new THREE.InstancedMesh(new THREE.PlaneGeometry(.87, .87), handleMaterial(), handles.length);
   squares.renderOrder = 41;
+  fills.renderOrder = 42;
   squares.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  group.add(outline, squares);
+  fills.instanceMatrix = squares.instanceMatrix;
+  fills.frustumCulled = false;
+  group.add(outline, squares, fills);
   model.add(group);
-  const tint = new THREE.Color(0x495561), highlight = new THREE.Color(0xf2c42b);
-  handles.forEach((_, index) => squares.setColorAt(index, tint));
+  const tint = new THREE.Color(), highlight = new THREE.Color(), white = new THREE.Color(0xffffff);
   const axisLength = new THREE.Vector3(...axes.map((axis) => normal(axis).applyMatrix3(new THREE.Matrix3().setFromMatrix4(target.matrix)).length()) as [number, number, number]);
   let hover = -1;
+  const refreshAccent = () => {
+    tint.set(getComputedStyle(canvas).getPropertyValue("--accent-solid").trim() || "#1269eb");
+    squares.material.color.copy(tint).multiplyScalar(.68);
+    highlight.copy(tint).lerp(white, .18);
+    handles.forEach((_, index) => fills.setColorAt(index, index === hover ? highlight : tint));
+    if (fills.instanceColor) fills.instanceColor.needsUpdate = true;
+    invalidate();
+  };
   const colorHandle = (index: number) => {
     if (hover === index) return;
-    if (hover >= 0) squares.setColorAt(hover, tint);
-    if (index >= 0) squares.setColorAt(index, highlight);
+    if (hover >= 0) fills.setColorAt(hover, tint);
+    if (index >= 0) fills.setColorAt(index, highlight);
     hover = index;
-    if (squares.instanceColor) squares.instanceColor.needsUpdate = true;
+    if (fills.instanceColor) fills.instanceColor.needsUpdate = true;
     invalidate();
   };
   const vertices = corners.map(() => new THREE.Vector3());
@@ -165,15 +179,18 @@ export function attachScaleManipulator(model: THREE.Group, camera: THREE.Camera,
   canvas.addEventListener("lostpointercapture", finish, true);
   canvas.addEventListener("pointerleave", leave);
   window.addEventListener("keydown", escape, true);
+  window.addEventListener(APP_ACCENT_CHANGE_EVENT, refreshAccent);
   controls.addEventListener("change", positionSquares);
   const resize = new ResizeObserver(positionSquares);
   resize.observe(canvas);
+  refreshAccent();
   draw(target.bounds);
   return { group, dispose: () => {
     settle(false);
     resize.disconnect();
     controls.removeEventListener("change", positionSquares);
     window.removeEventListener("keydown", escape, true);
+    window.removeEventListener(APP_ACCENT_CHANGE_EVENT, refreshAccent);
     canvas.removeEventListener("pointerdown", down, true);
     canvas.removeEventListener("pointermove", move, true);
     canvas.removeEventListener("pointerup", finish, true);
@@ -186,6 +203,9 @@ export function attachScaleManipulator(model: THREE.Group, camera: THREE.Camera,
     squares.geometry.dispose();
     squares.material.dispose();
     squares.dispose();
+    fills.geometry.dispose();
+    fills.material.dispose();
+    fills.dispose();
     invalidate();
   } };
 }
