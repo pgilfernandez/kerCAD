@@ -31,10 +31,11 @@ export async function POST(request: Request) {
     return new Response(null, { status: saved ? 204 : 409, headers });
   }
   if (input?.action === "admin-route") {
-    if (!await adminPasswordRequired() || !await isAdminAuthorized(request, await readAdminPasswordHash())) return new Response(null, { status: 401, headers });
+    const hash = await readAdminPasswordHash();
+    if (!await isAdminAuthorized(request, hash)) return new Response(null, { status: 401, headers });
     const slug = typeof input.slug === "string" ? normalizeAdminSlug(input.slug) : null;
     if (!slug) return new Response(null, { status: 400, headers });
-    await setAdminSlug(slug);
+    if (!await setAdminSlug(slug, hash)) return new Response(null, { status: 409, headers });
     return Response.json({ path: `/${slug}` }, { headers });
   }
   if ((input?.action === "telemetry" || input?.action === "sponsor-popup" || input?.action === "shared-projects") && typeof input.enabled === "boolean") {

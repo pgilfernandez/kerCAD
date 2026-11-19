@@ -18,7 +18,9 @@ password. This preserves the current URL and other settings. If
 `KERCAD_ADMIN_KEY` is set, access remains protected and the panel cannot remove
 that server-side key.
 
-After signing in, **Admin path** accepts a single URL segment of lowercase letters, digits and
+**Admin path** is also available before a password has been set. In that case,
+anyone who can use the unprotected panel can change its path. It accepts a
+single URL segment of lowercase letters, digits and
 hyphens (for example, `/manage-academy`). Saving it invalidates the previous
 page URL immediately. The key continues to protect statistics and settings
 regardless of the chosen path. To recover a forgotten path, stop the server,

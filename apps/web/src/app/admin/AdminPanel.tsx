@@ -74,7 +74,7 @@ export function AdminPanel({ slug, passwordRequired: initialPasswordRequired }: 
   };
   const savePath = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!key || saving) return;
+    if ((passwordRequired && !key) || saving) return;
     setSaving(true);
     try {
       const response = await fetch("/api/admin/metrics", {
@@ -154,10 +154,11 @@ export function AdminPanel({ slug, passwordRequired: initialPasswordRequired }: 
         <button className="kercad-admin-telemetry" type="submit" disabled={saving || keyInput !== confirmation}>{uiText("admin.savePassword", {}, locale)}</button>
         {confirmation && keyInput !== confirmation && <p role="status">{uiText("admin.passwordMismatch", {}, locale)}</p>}
       </form>
-    </> : <form className="kercad-admin-access-form" onSubmit={savePath}>
+    </> : null}
+    <form className="kercad-admin-access-form" onSubmit={savePath}>
       <label>{uiText("admin.accessPath", {}, locale)}<input type="text" required maxLength={65} value={pathInput} onChange={(event) => setPathInput(event.target.value)} /></label>
       <button className="kercad-admin-telemetry" type="submit" disabled={saving || !pathInput.trim() || pathInput.trim().replace(/^\//, "") === slug}>{uiText("admin.savePath", {}, locale)}</button>
-    </form>}
+    </form>
     {passwordRequired && (metrics?.adminPasswordManagedByServer
       ? <p>{uiText("admin.passwordManagedByServer", {}, locale)}</p>
       : <button className="kercad-admin-telemetry" type="button" disabled={!metrics || saving} onClick={() => void removePassword()}>{uiText("admin.removePassword", {}, locale)}</button>)}
