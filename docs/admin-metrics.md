@@ -13,7 +13,7 @@ it, set `KERCAD_ADMIN_KEY` to recover access, or stop the server, back up
 `metrics.json`, remove only `adminPasswordHash`, and restart. Removing the
 hash without an environment key opens the panel again for initial setup.
 
-After signing in, use **Remove password** to reopen the panel without a
+After signing in, use **Remove admin password** to reopen the panel without a
 password. This preserves the current URL and other settings. If
 `KERCAD_ADMIN_KEY` is set, access remains protected and the panel cannot remove
 that server-side key.

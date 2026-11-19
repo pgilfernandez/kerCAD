@@ -7,7 +7,7 @@
     "admin.donatePaypal": "Spenden Paypal",
     "admin.showPassword": "Passwort anzeigen",
     "admin.hidePassword": "Passwort ausblenden",
-    "admin.removePassword": "Passwort entfernen",
+    "admin.removePassword": "Admin-Passwort entfernen",
     "admin.removePasswordConfirm": "Passwort entfernen und die Verwaltung für alle mit Serverzugriff öffnen?",
     "admin.passwordManagedByServer": "Das Passwort wird auf dem Server mit KERCAD_ADMIN_KEY verwaltet.",
     "admin.newPassword": "Admin-Passwort erstellen",
