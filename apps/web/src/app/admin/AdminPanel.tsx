@@ -106,7 +106,7 @@ export function AdminPanel({ slug, passwordRequired }: { slug: string; passwordR
   return <main className="kercad-admin">
     <header className="kercad-dashboard-topbar">
       <strong className="kercad-dashboard-brand"><DashboardBrandLogo /><span>{uiText("ui.page.kercad.c0bf6d", {}, locale)}</span></strong>
-      <EditorHeaderActions locale={locale} onLocaleChange={setLocale} onShowLanding={() => { window.location.href = "/?about=1"; }} showDonation />
+      <EditorHeaderActions locale={locale} onLocaleChange={setLocale} onShowLanding={() => { window.location.href = "/"; }} showDocumentation={false} showDonation startDesigning />
     </header>
     <div className="kercad-admin-content">
     <h1>{uiText("admin.title", {}, locale)}</h1>
