@@ -4,6 +4,8 @@ import { PROJECT_FILE_PATTERN } from "@/lib/legacyBrand";
 import { dashboardTranslate, type DashboardTranslationKey } from "@/lib/dashboardI18n";
 import type { KercadLocale } from "@/lib/kercadI18n";
 import { uploadSharedThumbnail } from "@/lib/sharedProjectThumbnail";
+import { useAccessibleDialog } from "@/components/useAccessibleDialog";
+import { Box, RefreshCw, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { exportKercadProject, importKercadProject, KERCAD_PACKAGE_MEDIA_TYPE } from "@/lib/kercadProject";
 import { getLibraryProject, newProjectLibraryId, saveLibraryProject, type ProjectLibraryEntry } from "@/lib/projectLibrary";
@@ -24,6 +26,9 @@ export function SharedProjects({ projects, onOpen, onSaved, locale = "en" }: {
   const [selected, setSelected] = useState("");
   const [name, setName] = useState("");
   const [author, setAuthor] = useState("");
+  const [deleting, setDeleting] = useState<SharedFile | null>(null);
+  const [failedThumbnails, setFailedThumbnails] = useState<Set<string>>(() => new Set());
+  const deleteDialog = useAccessibleDialog(Boolean(deleting), () => setDeleting(null));
   useEffect(() => {
     try { setAuthor(localStorage.getItem("kercad.shared-author") ?? ""); } catch {}
   }, []);
@@ -51,7 +56,7 @@ export function SharedProjects({ projects, onOpen, onSaved, locale = "en" }: {
     finally { setBusy(false); }
   };
   const remove = async (file: SharedFile) => {
-    if (!window.confirm(t("dashboard.delete.shared.project.this.removes.it.from.the.server.f.5d7d0e", { name: file.name }))) return;
+    setDeleting(null);
     setBusy(true); setMessage(""); setConflict(false);
     try {
       const response = await fetch(`${endpoint}?fileName=${encodeURIComponent(file.fileName)}`, {
@@ -96,8 +101,12 @@ export function SharedProjects({ projects, onOpen, onSaved, locale = "en" }: {
     finally { setBusy(false); }
   };
   return <div className="kercad-shared-library" aria-busy={busy}>
-    <header><h1>{t("dashboard.shared.projects.d9f6f7")}</h1><p>{t("dashboard.files.available.to.everyone.using.this.server.opening.a.05eff1")}</p><button type="button" disabled={busy} onClick={() => { void refresh().catch(error => setMessage(error.message)); }}>{t("dashboard.refresh.library.564fe5")}</button></header>
-    <form onSubmit={event => { event.preventDefault(); void save(); }}>
+    <header className="kercad-dashboard-project-heading">
+      <div><h1>{t("dashboard.shared.projects.d9f6f7")}</h1><span>{t("dashboard.visible.4cd4ed", { count: files.length })}</span></div>
+      <div className="kercad-dashboard-project-controls"><button className="kercad-import-project" type="button" disabled={busy} onClick={() => { void refresh().catch(error => setMessage(error.message)); }}><RefreshCw size={18} />{t("dashboard.refresh.library.564fe5")}</button></div>
+    </header>
+    <p className="kercad-shared-description">{t("dashboard.files.available.to.everyone.using.this.server.opening.a.05eff1")}</p>
+    <form className="kercad-shared-publish" onSubmit={event => { event.preventDefault(); void save(); }}>
       <h2>{t("dashboard.save.a.local.project.to.shared.9c6513")}</h2>
       <label>{t("dashboard.local.project.3ca6ec")}<select value={selected} disabled={busy} onChange={event => {
         setSelected(event.target.value); setConflict(false); setMessage("");
@@ -106,10 +115,30 @@ export function SharedProjects({ projects, onOpen, onSaved, locale = "en" }: {
       }}><option value="">{t("dashboard.choose.a.project.26ab25")}</option>{projects.map(entry => <option value={entry.id} key={entry.id}>{entry.name}</option>)}</select></label>
       <label>{t("dashboard.shared.file.name.930b6b")}<input value={name} maxLength={100} required pattern={'[^<>:"/\\\\|?*]+'} disabled={busy} onChange={event => setName(event.target.value)} /></label>
       <label>{t("dashboard.your.name.ab4229")}<input value={author} maxLength={80} required disabled={busy} autoComplete="nickname" onChange={event => setAuthor(event.target.value)} /><small>{t("dashboard.shown.with.your.shared.changes.remembered.in.this.brows.8e36c8")}</small></label>
-      <button type="submit" disabled={busy || !selected || !name.trim() || !author.trim()}>{t("dashboard.save.to.shared.5476e1")}</button>
+      <button className="kercad-import-project" type="submit" disabled={busy || !selected || !name.trim() || !author.trim()}><Upload size={18} />{t("dashboard.save.to.shared.5476e1")}</button>
     </form>
     {message ? <p role={conflict ? "alert" : "status"}>{message}</p> : null}
-    <div className="kercad-shared-files">{files.map(file => <article key={file.fileName}>{file.thumbnailUrl ? <img className="kercad-shared-thumbnail" src={file.thumbnailUrl} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = "none"; }} /> : <span className="kercad-shared-thumbnail placeholder" aria-hidden="true">3D</span>}<div className="kercad-shared-file-details"><strong>{file.name}</strong><small>{t("dashboard.last.modified.42a3d4")}: <time dateTime={new Date(file.updatedAt).toISOString()}>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(file.updatedAt)}</time> · {file.updatedBy || t("dashboard.author.not.provided.a749ef")}</small></div><div className="kercad-shared-file-actions"><button type="button" disabled={busy} onClick={() => void open(file)}>{t("dashboard.open.local.copy.09f82d")}</button><button className="delete-shared" type="button" disabled={busy} aria-label={t("dashboard.delete.shared.project.c74851", { name: file.name })} onClick={() => void remove(file)}>{t("dashboard.delete.shared.c57ada")}</button></div></article>)}</div>
-    {!files.length ? <p>{t("dashboard.no.shared.projects.yet.choose.a.local.project.above.to..806f11")}</p> : null}
+    <div className="kercad-dashboard-projects grid">{files.map((file, index) => {
+      const thumbnail = file.thumbnailUrl;
+      const openLabel = t("dashboard.open.local.copy.09f82d");
+      return <article className="kercad-dashboard-card" key={file.fileName}>
+        <button className="card-open" type="button" disabled={busy} title={openLabel} aria-label={`${openLabel}: ${file.name}`} onClick={() => void open(file)}>
+          <span className={`card-preview accent-${index % 4}`}>
+            {thumbnail && !failedThumbnails.has(thumbnail) ? <img src={thumbnail} alt="" loading="lazy" onError={() => setFailedThumbnails((failed) => new Set(failed).add(thumbnail))} />
+              : <><span className="preview-grid" /><Box size={32} className="kercad-shared-preview-icon" aria-hidden="true" /></>}
+          </span>
+          <span className="card-copy"><strong>{file.name}</strong><small>{t("dashboard.last.modified.42a3d4")}: <time dateTime={new Date(file.updatedAt).toISOString()}>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(file.updatedAt)}</time> · {file.updatedBy || t("dashboard.author.not.provided.a749ef")}</small></span>
+        </button>
+        <button className="card-delete" type="button" disabled={busy} title={t("dashboard.delete.shared.c57ada")} aria-label={t("dashboard.delete.shared.project.c74851", { name: file.name })} onClick={() => setDeleting(file)}><Trash2 size={17} /></button>
+      </article>;
+    })}</div>
+    {!files.length && <div className="kercad-dashboard-empty">{t("dashboard.no.shared.projects.yet.choose.a.local.project.above.to..806f11")}</div>}
+    {deleting && <div className="kercad-dialog-backdrop" role="presentation" onPointerDown={() => setDeleting(null)}>
+      <section ref={deleteDialog} className="kercad-rename-dialog kercad-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="kercad-shared-delete-title" onPointerDown={(event) => event.stopPropagation()}>
+        <header><strong id="kercad-shared-delete-title">{t("dashboard.delete.shared.c57ada")}</strong><button type="button" aria-label={t("dashboard.cancel.77dfd2")} onClick={() => setDeleting(null)}><X size={18} /></button></header>
+        <p>{t("dashboard.delete.shared.project.this.removes.it.from.the.server.f.5d7d0e", { name: deleting.name })}</p>
+        <footer><button type="button" onClick={() => setDeleting(null)}>{t("dashboard.cancel.77dfd2")}</button><button className="danger" type="button" onClick={() => void remove(deleting)}>{t("dashboard.delete.f6fdbe")}</button></footer>
+      </section>
+    </div>}
   </div>;
 }
