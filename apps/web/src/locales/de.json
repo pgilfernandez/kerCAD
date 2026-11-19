@@ -8,7 +8,7 @@
     "challenge.imageEditor.line": "Linie",
     "challenge.imageEditor.arrow": "Pfeil",
     "challenge.imageEditor.rectangle": "Rechteck",
-    "challenge.imageEditor.circle": "Kreis",
+    "challenge.imageEditor.ellipse": "Ellipse",
     "challenge.imageEditor.width": "Strichstärke",
     "challenge.imageEditor.custom": "Benutzerdefinierte Farbe",
     "challenge.imageEditor.opacity": "Deckkraft",

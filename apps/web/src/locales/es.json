@@ -8,7 +8,7 @@
     "challenge.imageEditor.line": "Línea",
     "challenge.imageEditor.arrow": "Flecha",
     "challenge.imageEditor.rectangle": "Rectángulo",
-    "challenge.imageEditor.circle": "Círculo",
+    "challenge.imageEditor.ellipse": "Elipse",
     "challenge.imageEditor.width": "Grosor del trazo",
     "challenge.imageEditor.custom": "Color personalizado",
     "challenge.imageEditor.opacity": "Opacidad",

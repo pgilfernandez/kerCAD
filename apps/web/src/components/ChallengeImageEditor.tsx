@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, Brush, Circle, Hand, Maximize, Minus, Redo2, Square, Trash2, Undo2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowUpRight, Brush, createLucideIcon, Hand, Maximize, Minus, Redo2, Square, Trash2, Undo2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from "react";
 import { ACCENT_COLOR_PRESETS } from "@/components/AccentColorOptions";
 import { AdvancedNumberInput } from "@/components/AdvancedNumberFields";
@@ -8,7 +8,8 @@ import { uiText } from "@/lib/kercadI18n";
 import { useAppAccent } from "@/lib/useAppAccent";
 import styles from "./ChallengeImageEditor.module.css";
 
-const tools = { brush: Brush, line: Minus, arrow: ArrowUpRight, rectangle: Square, circle: Circle };
+const Ellipse = createLucideIcon("Ellipse", [["ellipse", { cx: "12", cy: "12", rx: "10", ry: "7", key: "ellipse" }]]);
+const tools = { brush: Brush, line: Minus, arrow: ArrowUpRight, rectangle: Square, ellipse: Ellipse };
 type Tool = keyof typeof tools;
 type Point = { x: number; y: number };
 type Mark = { tool: Tool; points: Point[]; color: string; alpha: number; width: number };
@@ -49,9 +50,8 @@ function paint(ctx: CanvasRenderingContext2D, { tool, points, color, alpha, widt
   ctx.beginPath();
   if (tool === "rectangle") {
     ctx.rect(first.x, first.y, dx, dy);
-  } else if (tool === "circle") {
-    const radius = Math.hypot(dx, dy);
-    if (radius) ctx.arc(first.x, first.y, radius, 0, 2 * Math.PI);
+  } else if (tool === "ellipse") {
+    if (dx && dy) ctx.ellipse(first.x + dx / 2, first.y + dy / 2, Math.abs(dx) / 2, Math.abs(dy) / 2, 0, 0, 2 * Math.PI);
   } else if (tool === "brush" && points.length === 1) {
     ctx.arc(first.x, first.y, width / 2, 0, 2 * Math.PI);
     ctx.fill();
@@ -196,7 +196,10 @@ export function ChallengeImageEditor({ image, onCancel, onSave }: { image: strin
       const { mark } = active;
       if (mark.tool === "brush") appendBrushPoint(active, event);
       else mark.points[1] = point(event, active.bounds);
-      if (mark.tool === "brush" || mark.points[0].x !== mark.points[1].x || mark.points[0].y !== mark.points[1].y) commit([...marks, mark]);
+      const start = mark.points[0], end = mark.points[1];
+      if (mark.tool === "brush" || (mark.tool === "ellipse"
+        ? start.x !== end.x && start.y !== end.y
+        : start.x !== end.x || start.y !== end.y)) commit([...marks, mark]);
     }
     drag.current = null;
     cancelAnimationFrame(frame.current);
