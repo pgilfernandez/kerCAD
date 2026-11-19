@@ -3,6 +3,7 @@ import { applyParametricSelectionWorldDelta } from "@/lib/parametricObjects";
 import { gearOutlinePoints } from "@/lib/parametricGearProfile";
 import { torusSweepAngle } from "@/lib/parametricTorus";
 import { parametricTransformMatrix } from "@/lib/parametricWorkplane";
+import { transformParametricObjectTopologyHints } from "@/lib/parametricTopology";
 import { tubeMinimumCurvatureRadius } from "@/lib/tubeGeometry";
 import type { ExtrudeFeature, ParametricDocument, PrimitiveFeature, SketchFeature } from "@/types/parametric";
 
@@ -102,34 +103,20 @@ export function createParametricScaleTarget(document: ParametricDocument, select
   const objectId = selection.kind === "object" ? selection.id : selected?.objectId;
   const object = document.objects.find((entry) => entry.id === objectId);
   if (!object?.visible || object.locked || object.referenceMesh || !axes.every((axis) => object.transform.scale[axis] > 1e-6)) return null;
-  const entries = selected ? [selected] : document.features.filter((entry) => entry.objectId === object.id && entry.kind !== "sketch" && !entry.suppressed);
-  if (!entries.length || entries.some((entry) => !isScaleFeature(entry) || entry.suppressed)) return null;
-  const features = entries as ScaleFeature[];
   const matrix = parametricTransformMatrix(object.transform);
-  const selectedBodyId = selection.kind === "object" ? object.id : undefined;
-  if (features.length === 1) {
-    const geometry = itemGeometry(document, features[0]);
-    if (!geometry) return null;
-    matrix.multiply(geometry.frame);
-    return { matrix, bounds: geometry.bounds, minimum: geometry.minimum, linkedXY: geometry.linkedXY, items: [{ id: features[0].id, origin: new THREE.Vector3() }], objectId: selectedBodyId };
+  if (selection.kind === "object") {
+    if (!bodyPositions?.length) return null;
+    const bounds = boundsInObjectFrame(bodyPositions, matrix);
+    const size = bounds.getSize(new THREE.Vector3());
+    if (bounds.isEmpty() || !axes.every((axis) => Number.isFinite(size[axis]) && size[axis] > 1e-6)) return null;
+    const minimum = new THREE.Vector3(...axes.map((axis) => Math.min(1, .01 / (size[axis] * object.transform.scale[axis]))) as [number, number, number]);
+    return { matrix, bounds, minimum, linkedXY: false, items: [], objectId: object.id };
   }
-  if (!bodyPositions?.length) return null;
-  const minimum = new THREE.Vector3(), items: TargetItem[] = [];
-  let linkedXY = false;
-  for (const feature of features) {
-    const geometry = itemGeometry(document, feature);
-    if (!geometry) return null;
-    // With differently oriented operations, a non-uniform body resize would
-    // introduce shear that cannot be represented by dimensions and positions.
-    const rotation = new THREE.Matrix4().extractRotation(geometry.frame).elements;
-    if (![0, 1, 2, 4, 5, 6, 8, 9, 10].every((i) => Math.abs(rotation[i] - (i % 5 === 0 ? 1 : 0)) < 1e-7)) return null;
-    items.push({ id: feature.id, origin: new THREE.Vector3().setFromMatrixPosition(geometry.frame) });
-    minimum.max(geometry.minimum);
-    linkedXY ||= geometry.linkedXY;
-  }
-  const bounds = boundsInObjectFrame(bodyPositions, matrix);
-  const size = bounds.getSize(new THREE.Vector3());
-  return bounds.isEmpty() || !axes.every((axis) => Number.isFinite(size[axis]) && size[axis] > 1e-6) ? null : { matrix, bounds, minimum, linkedXY, items, objectId: selectedBodyId };
+  if (!selected || selected.suppressed || !isScaleFeature(selected)) return null;
+  const geometry = itemGeometry(document, selected);
+  if (!geometry) return null;
+  matrix.multiply(geometry.frame);
+  return { matrix, bounds: geometry.bounds, minimum: geometry.minimum, linkedXY: geometry.linkedXY, items: [{ id: selected.id, origin: new THREE.Vector3() }] };
 }
 
 function resizePrimitive(feature: PrimitiveFeature, factors: THREE.Vector3) {
@@ -165,13 +152,17 @@ export function applyParametricScale(document: ParametricDocument, target: Param
   if (!axes.every((axis) => Number.isFinite(factors[axis]) && factors[axis] > 0)) return;
   const basis = new THREE.Matrix3().setFromMatrix4(target.matrix);
   const change = factors.clone().subScalar(1);
-  let anchor = pivot;
   if (target.objectId) {
     const object = document.objects.find((entry) => entry.id === target.objectId);
     if (!object) return;
-    anchor = new THREE.Vector3().copy(object.transform.position).applyMatrix4(target.matrix.clone().invert());
-    const offset = anchor.clone().sub(pivot).multiply(change).applyMatrix3(basis);
-    applyParametricSelectionWorldDelta(document, object.id, "object", offset);
+    const previousTransform = structuredClone(object.transform);
+    const offset = pivot.clone().negate().multiply(change).applyMatrix3(basis);
+    for (const axis of axes) {
+      object.transform.position[axis] += offset[axis];
+      object.transform.scale[axis] *= factors[axis];
+    }
+    transformParametricObjectTopologyHints(document, object.id, previousTransform);
+    return;
   }
   for (const item of target.items) {
     const feature = document.features.find((entry) => entry.id === item.id);
@@ -189,7 +180,7 @@ export function applyParametricScale(document: ParametricDocument, target: Param
       }
       feature.distance *= factors.z;
     }
-    const delta = item.origin.clone().sub(anchor).multiply(change).applyMatrix3(basis);
+    const delta = item.origin.clone().sub(pivot).multiply(change).applyMatrix3(basis);
     applyParametricSelectionWorldDelta(document, feature.id, "feature", delta);
   }
 }
