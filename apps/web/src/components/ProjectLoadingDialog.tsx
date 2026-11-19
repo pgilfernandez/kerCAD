@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { HeaderToolbarIcon } from "@/components/icons";
 import { useAccessibleDialog } from "@/components/useAccessibleDialog";
 import { kercadTranslate, type KercadLocale } from "@/lib/kercadI18n";
-import { consumePreparedLoadingCampaign, peekPreparedLoadingCampaign, prepareProjectLoadingCampaign, projectLoadingCampaign } from "@/lib/projectLoadingCampaign";
+import { consumePreparedLoadingCampaign, prepareProjectLoadingCampaign, projectLoadingCampaign } from "@/lib/projectLoadingCampaign";
 import type { ParametricBuildProgress } from "@/lib/parametricBuildProgress";
 import "./projectLoadingDialog.css";
 
@@ -20,24 +20,17 @@ export function ProjectLoadingDialog({ projectName, locale, ready, progress, onF
 }) {
   const t = (key: Parameters<typeof kercadTranslate>[1]) => kercadTranslate(locale, key);
   const [minimumElapsed, setMinimumElapsed] = useState(false);
-  const [initialCampaign] = useState(peekPreparedLoadingCampaign);
-  const [campaign, setCampaign] = useState(initialCampaign ?? projectLoadingCampaign);
+  const [campaign, setCampaign] = useState(projectLoadingCampaign);
   const dialogRef = useAccessibleDialog<HTMLElement>(true, () => {});
   useEffect(() => {
     let active = true;
-    if (initialCampaign) {
-      consumePreparedLoadingCampaign(initialCampaign);
-      void prepareProjectLoadingCampaign("low");
-    } else {
-      void prepareProjectLoadingCampaign().then((loaded) => {
-        if (!active) return;
-        setCampaign(loaded);
-        consumePreparedLoadingCampaign(loaded);
-        void prepareProjectLoadingCampaign("low");
-      });
-    }
+    void prepareProjectLoadingCampaign("low").then((loaded) => {
+      if (!active) return;
+      setCampaign(loaded);
+      consumePreparedLoadingCampaign(loaded);
+    });
     return () => { active = false; };
-  }, [initialCampaign]);
+  }, []);
   useEffect(() => {
     const timer = window.setTimeout(() => setMinimumElapsed(true), MINIMUM_LOADING_MS);
     return () => window.clearTimeout(timer);

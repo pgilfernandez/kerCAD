@@ -57,7 +57,7 @@ export function prepareProjectLoadingCampaign(priority: "high" | "low" = "high")
         catalogue = Array.isArray(body.images) ? body.images.filter((src): src is string => typeof src === "string" && src.startsWith("/assets/kercad/sponsors/")) : [];
         catalogueLoadedAt = Date.now();
       }
-      const candidates = [...catalogue];
+      const candidates = catalogue.filter((src) => src.split("?")[0] !== projectLoadingCampaign.src);
       while (candidates.length) {
         const index = Math.floor(Math.random() * candidates.length);
         const [src] = candidates.splice(index, 1);
@@ -69,10 +69,6 @@ export function prepareProjectLoadingCampaign(priority: "high" | "low" = "high")
         } catch { /* Try another image if an added file cannot be decoded. */ }
       }
     } catch { /* The local fallback also works without the optional server API. */ }
-    if (projectLoadingCampaign.kind === "image") {
-      try { await preloadImage(projectLoadingCampaign.src, priority); }
-      catch { /* A missing fallback must not block the project either. */ }
-    }
     // Do not cache a fallback as a successful sponsor: an image may have been
     // added since startup, or the optional API may only have failed temporarily.
     prepared = null;
