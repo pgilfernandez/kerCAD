@@ -135,11 +135,12 @@ export async function enabledSharedProjectsDirectory() {
   }).catch(() => null);
 }
 
-export function deleteSharedProjects(expectedDirectory: string, expectedPasswordHash: string | undefined) {
+export function deleteSharedProjects(expectedDirectory: string | null, expectedPasswordHash: string | undefined) {
   return serial(async () => {
     const data = await state();
     const { directory, enabled } = sharedProjectsSettings(data);
-    if (enabled || directory !== expectedDirectory || data.adminPasswordHash !== expectedPasswordHash) return null;
+    if (enabled || data.adminPasswordHash !== expectedPasswordHash) return null;
+    if (expectedDirectory !== null && directory !== expectedDirectory) return null;
     return clearSharedProjects(directory);
   });
 }

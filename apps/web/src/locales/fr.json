@@ -4,7 +4,8 @@
   "direction": "ltr",
   "messages": {
     "admin.deleteShared": "Supprimer tous les projets partagés",
-    "admin.deleteSharedHint": "Connectez-vous et désactivez le partage pour pouvoir les supprimer.",
+    "admin.deleteSharedHint": "Désactivez le partage pour pouvoir supprimer les projets.",
+    "admin.deleteSharedConfirmWithoutPath": "Supprimer définitivement tous les projets du dossier partagé actuel ? Les copies locales seront conservées.",
     "admin.deleteSharedConfirm": "Supprimer définitivement tous les projets partagés de {directory} ? Les copies locales seront conservées.",
     "admin.deleteSharedResult": "Projets partagés supprimés : {deleted}. Non supprimés : {failed}.",
     "admin.sharedDirectory": "Dossier des projets partagés",

@@ -22,8 +22,9 @@ export async function POST(request: Request) {
   try { input = JSON.parse(text); } catch { return new Response(null, { status: 400 }); }
   if (input?.action === "delete-shared-projects") {
     const hash = await readAdminPasswordHash();
-    if ((hash === undefined && !configuredAdminKey()) || !await isAdminAuthorized(request, hash)) return new Response(null, { status: 401, headers });
-    if (typeof input.directory !== "string" || input.confirm !== true) return new Response(null, { status: 400, headers });
+    if (!await isAdminAuthorized(request, hash)) return new Response(null, { status: 401, headers });
+    const protectedPanel = hash !== undefined || Boolean(configuredAdminKey());
+    if (input.confirm !== true || (protectedPanel ? typeof input.directory !== "string" : input.directory !== null)) return new Response(null, { status: 400, headers });
     try {
       const result = await deleteSharedProjects(input.directory, hash);
       return result ? Response.json(result, { headers }) : new Response(null, { status: 409, headers });

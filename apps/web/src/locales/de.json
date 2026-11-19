@@ -4,7 +4,8 @@
   "direction": "ltr",
   "messages": {
     "admin.deleteShared": "Alle geteilten Projekte löschen",
-    "admin.deleteSharedHint": "Melde dich an und deaktiviere die Projektfreigabe, um Projekte zu löschen.",
+    "admin.deleteSharedHint": "Deaktiviere die Projektfreigabe, um Projekte zu löschen.",
+    "admin.deleteSharedConfirmWithoutPath": "Alle Projekte im aktuellen Freigabeordner endgültig löschen? Lokale Kopien bleiben erhalten.",
     "admin.deleteSharedConfirm": "Alle geteilten Projekte in {directory} endgültig löschen? Lokale Kopien bleiben erhalten.",
     "admin.deleteSharedResult": "Geteilte Projekte gelöscht: {deleted}. Nicht gelöscht: {failed}.",
     "admin.sharedDirectory": "Ordner für geteilte Projekte",

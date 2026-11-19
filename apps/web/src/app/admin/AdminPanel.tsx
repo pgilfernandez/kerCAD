@@ -124,9 +124,12 @@ export function AdminPanel({ slug, passwordRequired: initialPasswordRequired }: 
     finally { setSaving(false); }
   };
   const deleteAllSharedProjects = async () => {
-    const directory = metrics?.sharedProjectsEffectiveDirectory;
-    if (!key || !directory || metrics?.sharedProjectsEnabled || saving) return;
-    if (!window.confirm(uiText("admin.deleteSharedConfirm", { directory }, locale))) return;
+    const directory = passwordRequired ? metrics?.sharedProjectsEffectiveDirectory : null;
+    if (!metrics || metrics.sharedProjectsEnabled || saving || (passwordRequired && (!key || !directory))) return;
+    const confirmation = directory
+      ? uiText("admin.deleteSharedConfirm", { directory }, locale)
+      : uiText("admin.deleteSharedConfirmWithoutPath", {}, locale);
+    if (!window.confirm(confirmation)) return;
     setSaving(true);
     setDeleteResult(null);
     try {
@@ -214,7 +217,7 @@ export function AdminPanel({ slug, passwordRequired: initialPasswordRequired }: 
     <button className="kercad-admin-telemetry" type="button" role="switch" aria-checked={metrics?.sharedProjectsEnabled ?? false} disabled={!metrics?.sharedProjectsConfigured || saving} onClick={() => void updateSwitch("shared-projects", !metrics?.sharedProjectsEnabled)}>
       <span className="kercad-admin-switch" aria-hidden="true" />{uiText("admin.sharedProjects", {}, locale)} · {uiText(metrics && !metrics.sharedProjectsConfigured ? "admin.sharedProjectsUnconfigured" : metrics?.sharedProjectsEnabled ? "admin.enabled" : "admin.disabled", {}, locale)}
     </button>
-    <button className="kercad-admin-telemetry kercad-admin-danger" type="button" disabled={!key || !metrics?.sharedProjectsEffectiveDirectory || metrics.sharedProjectsEnabled || saving} title={uiText("admin.deleteSharedHint", {}, locale)} onClick={() => void deleteAllSharedProjects()}>
+    <button className="kercad-admin-telemetry kercad-admin-danger" type="button" disabled={!metrics || metrics.sharedProjectsEnabled || saving} title={uiText("admin.deleteSharedHint", {}, locale)} onClick={() => void deleteAllSharedProjects()}>
       {uiText("admin.deleteShared", {}, locale)}
     </button>
     </div>
