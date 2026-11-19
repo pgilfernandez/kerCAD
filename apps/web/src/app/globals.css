@@ -9536,7 +9536,7 @@ circle.sketch-preview-line {
 .kercad-challenge-step dl > div + div { border-top: 1px solid var(--theme-line-cbdbe6); }
 .kercad-challenge-step dl > div:first-child { border-top-left-radius: 7px; border-top-right-radius: 7px; }
 .kercad-challenge-step dl > div:last-child { border-bottom-left-radius: 7px; border-bottom-right-radius: 7px; }
-.kercad-challenge-step dt { font-size: 14px; font-weight: 750; }.kercad-challenge-step dd { margin: 0; padding: 2.8px 10px; color: var(--theme-dark-link, #29465d); background: var(--theme-bg-f7fafc); border: 1px solid var(--theme-line-cbdbe6); border-radius: 6px; font-weight: 800; }
+.kercad-challenge-step dt { font-size: 14px; font-weight: 750; }.kercad-challenge-step dd { font-size: 14px; margin: 0; padding: 2.8px 10px; color: var(--theme-dark-link, #29465d); background: var(--theme-line-cbdbe6); border: 1px solid var(--theme-line-cbdbe6); border-radius: 6px; font-weight: 600; }  
 .kercad-challenge-player > footer { padding: 12px 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: var(--theme-surface); border-top: 1px solid var(--theme-line-d7e2e9); }
 .kercad-challenge-player > footer button { min-height: 47px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; color: var(--theme-dark-link, #405e75); background: var(--theme-surface); border: 1px solid var(--theme-dark-border, #c8d7e1); border-radius: 9px; font: inherit; font-weight: 800; }
 .kercad-challenge-player > footer button.primary { color: #fff; background: var(--accent-solid); border-color: var(--theme-line-075acb); }.kercad-challenge-player > footer button:disabled { opacity: .42; }
