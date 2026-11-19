@@ -15,8 +15,11 @@ const planes = {
 } as const;
 const normal = (axis: ScaleAxis) => new THREE.Vector3().setComponent(axes.indexOf(axis), 1);
 const corners = Array.from({ length: 8 }, (_, index) => new THREE.Vector3(index & 1 ? 1 : -1, index & 2 ? 1 : -1, index & 4 ? 1 : -1));
-const handles = corners.flatMap((corner) => axes.map((axis) => ({ corner, axis })));
+const showPlanarHandles = false;
+const handleAxes: readonly (ScaleAxis | null)[] = showPlanarHandles ? [...axes, null] : [null];
+const handles = corners.flatMap((corner, vertexIndex) => handleAxes.map((axis) => ({ corner, vertexIndex, axis })));
 const handleSizePx = 34;
+const cornerHandleSizePx = 33.15;
 
 export function attachScaleManipulator(model: THREE.Group, camera: THREE.Camera, canvas: HTMLCanvasElement, controls: OrbitControls, target: ParametricScaleTarget, snap: number, invalidate: () => void, onCommit: (factors: THREE.Vector3, pivot: THREE.Vector3) => void) {
   const group = new THREE.Group();
@@ -42,9 +45,9 @@ export function attachScaleManipulator(model: THREE.Group, camera: THREE.Camera,
   const axisLength = new THREE.Vector3(...axes.map((axis) => normal(axis).applyMatrix3(new THREE.Matrix3().setFromMatrix4(target.matrix)).length()) as [number, number, number]);
   let hover = -1;
   const refreshAccent = () => {
-    tint.set(getComputedStyle(canvas).getPropertyValue("--accent-solid").trim() || "#1269eb");
-    squares.material.color.copy(tint).multiplyScalar(.68);
-    highlight.copy(tint).lerp(white, .18);
+    highlight.set(getComputedStyle(canvas).getPropertyValue("--accent-solid").trim() || "#1269eb");
+    squares.material.color.copy(highlight).multiplyScalar(.68);
+    tint.copy(highlight).lerp(white, .1);
     handles.forEach((_, index) => fills.setColorAt(index, index === hover ? highlight : tint));
     if (fills.instanceColor) fills.instanceColor.needsUpdate = true;
     invalidate();
@@ -60,6 +63,9 @@ export function attachScaleManipulator(model: THREE.Group, camera: THREE.Camera,
   const vertices = corners.map(() => new THREE.Vector3());
   const dimensions = new THREE.Vector3();
   const instance = new THREE.Object3D(), cameraPoint = new THREE.Vector3();
+  const viewRotation = new THREE.Quaternion();
+  const diamondRotation = new THREE.Quaternion().setFromAxisAngle(normal("z"), Math.PI / 4);
+  const worldCorner = new THREE.Vector3(), inverseGroup = new THREE.Matrix4(), cornerMatrix = new THREE.Matrix4();
   const positionSquares = () => {
     group.updateWorldMatrix(true, false);
     camera.updateMatrixWorld();
@@ -68,10 +74,18 @@ export function attachScaleManipulator(model: THREE.Group, camera: THREE.Camera,
       const depth = camera instanceof THREE.PerspectiveCamera ? -cameraPoint.copy(vertex).applyMatrix4(group.matrixWorld).applyMatrix4(camera.matrixWorldInverse).z : 1;
       return handleSizePx * unitsPerPixel * Math.max(.001, depth);
     });
-    handles.forEach(({ corner, axis }, index) => {
-      const [u, v] = planes[axis].axes;
-      const vertexIndex = Math.floor(index / 3);
+    inverseGroup.copy(group.matrixWorld).invert();
+    camera.getWorldQuaternion(viewRotation).multiply(diamondRotation);
+    handles.forEach(({ corner, axis, vertexIndex }, index) => {
       const size = sizes[vertexIndex];
+      if (axis === null) {
+        const side = size * cornerHandleSizePx / (handleSizePx * Math.SQRT2);
+        worldCorner.copy(vertices[vertexIndex]).applyMatrix4(group.matrixWorld);
+        cornerMatrix.compose(worldCorner, viewRotation, instance.scale.setScalar(side)).premultiply(inverseGroup);
+        squares.setMatrixAt(index, cornerMatrix);
+        return;
+      }
+      const [u, v] = planes[axis].axes;
       instance.position.copy(vertices[vertexIndex]);
       instance.position[u] -= corner[u] * Math.min(size / axisLength[u] * .62, dimensions[u] / 4);
       instance.position[v] -= corner[v] * Math.min(size / axisLength[v] * .62, dimensions[v] / 4);
@@ -98,14 +112,17 @@ export function attachScaleManipulator(model: THREE.Group, camera: THREE.Camera,
     positionSquares();
   };
   const raycaster = new THREE.Raycaster(), initialDimensions = target.bounds.getSize(new THREE.Vector3());
-  let drag: { id: number; index: number; plane: THREE.Plane; inverse: THREE.Matrix4; start: THREE.Vector3; pivot: THREE.Vector3; factors: THREE.Vector3; controlsEnabled: boolean; damping: boolean } | null = null;
+  type DragProjection = { plane: THREE.Plane; inverse: THREE.Matrix4; start: THREE.Vector3; proportional?: { startScreen: THREE.Vector2; diagonal: THREE.Vector2 } };
+  let drag: { id: number; index: number; projection: DragProjection; pivot: THREE.Vector3; factors: THREE.Vector3; controlsEnabled: boolean; damping: boolean } | null = null;
   const setRay = (event: PointerEvent) => {
     const rect = canvas.getBoundingClientRect();
     raycaster.setFromCamera(new THREE.Vector2((event.clientX - rect.left) / rect.width * 2 - 1, 1 - (event.clientY - rect.top) / rect.height * 2), camera);
   };
   const pick = () => raycaster.intersectObject(squares, false).find(({ instanceId }) => {
     if (instanceId === undefined) return false;
-    const n = normal(handles[instanceId].axis).applyNormalMatrix(new THREE.Matrix3().getNormalMatrix(group.matrixWorld));
+    const axis = handles[instanceId].axis;
+    if (axis === null) return true;
+    const n = normal(axis).applyNormalMatrix(new THREE.Matrix3().getNormalMatrix(group.matrixWorld));
     return Math.abs(n.dot(raycaster.ray.direction)) > .05;
   });
   const down = (event: PointerEvent) => {
@@ -114,11 +131,21 @@ export function attachScaleManipulator(model: THREE.Group, camera: THREE.Camera,
     const hit = pick();
     if (hit?.instanceId === undefined) return;
     const index = hit.instanceId;
-    const { corner, axis } = handles[index];
+    const { corner, axis, vertexIndex } = handles[index];
     const pivot = new THREE.Vector3(...axes.map((key) => corner[key] > 0 ? target.bounds.min[key] : target.bounds.max[key]) as [number, number, number]);
-    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal(axis).applyNormalMatrix(new THREE.Matrix3().getNormalMatrix(group.matrixWorld)), hit.point);
     const inverse = group.matrixWorld.clone().invert();
-    drag = { id: event.pointerId, index, plane, inverse, start: hit.point.clone().applyMatrix4(inverse), pivot, factors: new THREE.Vector3(1, 1, 1), controlsEnabled: controls.enabled, damping: controls.enableDamping };
+    const direction = axis === null ? camera.getWorldDirection(new THREE.Vector3()) : normal(axis).applyNormalMatrix(new THREE.Matrix3().getNormalMatrix(group.matrixWorld));
+    const projection: DragProjection = { plane: new THREE.Plane().setFromNormalAndCoplanarPoint(direction, hit.point), inverse, start: hit.point.clone().applyMatrix4(inverse) };
+    if (axis === null) {
+      const rect = canvas.getBoundingClientRect();
+      const project = (point: THREE.Vector3) => point.clone().applyMatrix4(group.matrixWorld).project(camera);
+      const screenDelta = project(vertices[vertexIndex]).sub(project(pivot));
+      const diagonal = new THREE.Vector2(screenDelta.x * rect.width / 2, -screenDelta.y * rect.height / 2);
+      // The projected corners can nearly overlap when viewed down the body diagonal.
+      if (diagonal.lengthSq() < 32 ** 2) diagonal.set(0, -Math.max(48, rect.height / 5));
+      projection.proportional = { startScreen: new THREE.Vector2(event.clientX, event.clientY), diagonal };
+    }
+    drag = { id: event.pointerId, index, projection, pivot, factors: new THREE.Vector3(1, 1, 1), controlsEnabled: controls.enabled, damping: controls.enableDamping };
     event.preventDefault();
     event.stopImmediatePropagation();
     controls.enabled = false;
@@ -132,21 +159,31 @@ export function attachScaleManipulator(model: THREE.Group, camera: THREE.Camera,
     if (event.pointerId !== drag.id) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    const point = raycaster.ray.intersectPlane(drag.plane, new THREE.Vector3());
-    if (!point) return;
     const { corner, axis } = handles[drag.index];
-    const delta = point.applyMatrix4(drag.inverse).sub(drag.start);
+    const projection = drag.projection;
     const factors = new THREE.Vector3(1, 1, 1);
-    for (const key of planes[axis].axes) {
-      if (target.linkedXY && axis !== "z" && key !== "z") continue;
-      const size = initialDimensions[key] + delta[key] * corner[key];
-      if (Math.abs(size - initialDimensions[key]) < 1e-8) continue;
-      const step = snap / axisLength[key];
-      factors[key] = Math.max(target.minimum[key], (step > 0 ? Math.round(size / step) * step : size) / initialDimensions[key]);
-    }
-    if (target.linkedXY && axis === "z") {
-      const factor = Math.abs(factors.x - 1) >= Math.abs(factors.y - 1) ? factors.x : factors.y;
-      factors.x = factors.y = Math.max(target.minimum.x, target.minimum.y, factor);
+    if (event.shiftKey && projection.proportional) {
+      const { startScreen, diagonal } = projection.proportional;
+      const delta = new THREE.Vector2(event.clientX, event.clientY).sub(startScreen);
+      let factor = 1 + delta.dot(diagonal) / diagonal.lengthSq();
+      const size = Math.max(...axes.map((key) => initialDimensions[key] * axisLength[key]));
+      if (snap > 0 && Math.abs(factor - 1) > 1e-8) factor = Math.round(size * factor / snap) * snap / size;
+      factors.setScalar(Math.max(target.minimum.x, target.minimum.y, target.minimum.z, factor));
+    } else {
+      const point = raycaster.ray.intersectPlane(projection.plane, new THREE.Vector3());
+      if (!point) return;
+      const delta = point.applyMatrix4(projection.inverse).sub(projection.start);
+      for (const key of axis === null ? axes : planes[axis].axes) {
+        if (target.linkedXY && axis !== null && axis !== "z" && key !== "z") continue;
+        const size = initialDimensions[key] + delta[key] * corner[key];
+        if (Math.abs(size - initialDimensions[key]) < 1e-8) continue;
+        const step = snap / axisLength[key];
+        factors[key] = Math.max(target.minimum[key], (step > 0 ? Math.round(size / step) * step : size) / initialDimensions[key]);
+      }
+      if (target.linkedXY && (axis === null || axis === "z")) {
+        const factor = Math.abs(factors.x - 1) >= Math.abs(factors.y - 1) ? factors.x : factors.y;
+        factors.x = factors.y = Math.max(target.minimum.x, target.minimum.y, factor);
+      }
     }
     drag.factors = factors;
     const scaled = (corner: THREE.Vector3) => corner.clone().sub(drag!.pivot).multiply(factors).add(drag!.pivot);

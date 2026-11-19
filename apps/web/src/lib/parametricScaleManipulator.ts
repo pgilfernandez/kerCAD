@@ -134,10 +134,12 @@ export function createParametricScaleTarget(document: ParametricDocument, select
 
 function resizePrimitive(feature: PrimitiveFeature, factors: THREE.Vector3) {
   const { x, y, z } = factors, originalRadius = feature.width / 2;
-  const thickness = originalRadius - (feature.innerRadius ?? 6);
+  const uniform = x === y && y === z;
+  const thickness = (originalRadius - (feature.innerRadius ?? 6)) * (uniform ? x : 1);
   feature.width *= x;
   feature.depth *= y;
   feature.height *= z;
+  if (feature.primitive === "roundedBox" && uniform) feature.cornerRadius = (feature.cornerRadius ?? 3) * x;
   if (feature.primitive === "cone" || feature.primitive === "pyramid") feature.topRadius = (feature.topRadius ?? 0) * x;
   if (feature.primitive === "gear") {
     feature.toothDepth = (feature.toothDepth ?? 2.5) * x;
