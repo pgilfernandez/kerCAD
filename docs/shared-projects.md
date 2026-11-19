@@ -33,7 +33,7 @@ This does not affect local browser copies or other folders. If a project is
 being modified or cannot be deleted, the result reports it as not deleted.
 
 1. Create or edit a local project and return to the dashboard.
-2. Choose **Save to shared** on the project card and confirm the file name and author.
+2. Choose **Save to shared** on the project card and confirm. kerCAD uses the project's existing name and author.
 3. Another browser can open it as a separate local copy.
 4. Use the same button on the local project card to publish changes explicitly. A stale revision is rejected; save under another name or open the current server file as another local copy. Existing local work is preserved.
 

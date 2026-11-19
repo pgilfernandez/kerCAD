@@ -745,7 +745,7 @@
     "dashboard.shared.project.deleted.local.copies.are.kept.be3c57": "Geteiltes Projekt „{name}“ gelöscht. Lokale Kopien werden aufbewahrt.",
     "dashboard.enter.your.name.before.sharing.bee702": "Geben Sie vor dem Teilen Ihren Namen ein.",
     "dashboard.choose.a.local.project.first.10f035": "Wählen Sie zunächst ein lokales Projekt.",
-    "dashboard.the.server.copy.has.changed.or.this.name.is.already.in..0521f7": "Die Serverkopie hat sich geändert oder dieser Name wird bereits verwendet. Ihre Arbeit vor Ort ist sicher. Speichern Sie unter einem anderen Namen oder öffnen Sie die Serverversion unten als separate lokale Kopie.",
+    "dashboard.the.server.copy.has.changed.or.this.name.is.already.in..0521f7": "Die Serverkopie hat sich geändert oder der Name ist bereits vergeben. Deine lokale Arbeit bleibt erhalten. Benenne das Projekt unter Projekte um oder öffne die Serverversion unter Geteilt.",
     "dashboard.could.not.share.the.project.6edd4f": "Das Projekt konnte nicht geteilt werden.",
     "dashboard.could.not.share.project.d19698": "Projekt konnte nicht geteilt werden.",
     "dashboard.project.saved.to.the.shared.library.b67eff": "Projekt in der gemeinsam genutzten Bibliothek gespeichert.",

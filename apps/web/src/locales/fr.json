@@ -745,7 +745,7 @@
     "dashboard.shared.project.deleted.local.copies.are.kept.be3c57": "Projet partagé « {name} » supprimé. Des copies locales sont conservées.",
     "dashboard.enter.your.name.before.sharing.bee702": "Entrez votre nom avant de partager.",
     "dashboard.choose.a.local.project.first.10f035": "Choisissez d'abord un projet local.",
-    "dashboard.the.server.copy.has.changed.or.this.name.is.already.in..0521f7": "La copie du serveur a changé ou ce nom est déjà utilisé. Votre travail local est sécuritaire. Enregistrez sous un autre nom ou ouvrez la version du serveur en tant que copie locale distincte ci-dessous.",
+    "dashboard.the.server.copy.has.changed.or.this.name.is.already.in..0521f7": "La copie du serveur a changé ou ce nom est déjà utilisé. Votre travail local est intact. Renommez le projet dans Projets ou ouvrez la version du serveur depuis Partagés.",
     "dashboard.could.not.share.the.project.6edd4f": "Impossible de partager le projet.",
     "dashboard.could.not.share.project.d19698": "Impossible de partager le projet.",
     "dashboard.project.saved.to.the.shared.library.b67eff": "Projet enregistré dans la bibliothèque partagée.",

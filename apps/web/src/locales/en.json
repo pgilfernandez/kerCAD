@@ -745,7 +745,7 @@
     "dashboard.shared.project.deleted.local.copies.are.kept.be3c57": "Shared project “{name}” deleted. Local copies are kept.",
     "dashboard.enter.your.name.before.sharing.bee702": "Enter your name before sharing.",
     "dashboard.choose.a.local.project.first.10f035": "Choose a local project first.",
-    "dashboard.the.server.copy.has.changed.or.this.name.is.already.in..0521f7": "The server copy has changed or this name is already in use. Your local work is safe. Save with another name, or open the server version as a separate local copy below.",
+    "dashboard.the.server.copy.has.changed.or.this.name.is.already.in..0521f7": "The server copy has changed or this name is already in use. Your local work is safe. Rename the project in Projects or open the server version from Shared.",
     "dashboard.could.not.share.the.project.6edd4f": "Could not share the project.",
     "dashboard.could.not.share.project.d19698": "Could not share project.",
     "dashboard.project.saved.to.the.shared.library.b67eff": "Project saved to the shared library.",

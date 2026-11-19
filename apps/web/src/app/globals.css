@@ -9777,7 +9777,9 @@ circle.sketch-preview-line {
 }
 
 .kercad-shared-description { margin: 0 0 18px; color: var(--theme-text-muted); line-height: 1.5; }
-.kercad-share-project-dialog p { margin: 10px 0; color: var(--theme-text-muted); }
+.kercad-new-document-dialog.kercad-share-project-dialog > p { overflow-wrap: anywhere; }
+.kercad-new-document-dialog.kercad-share-project-dialog > footer { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.kercad-new-document-dialog.kercad-share-project-dialog > footer button { min-width: 0; }
 .kercad-shared-library button:disabled { opacity: .5; cursor: default; }
 .kercad-shared-library :focus-visible { outline: 2px solid var(--accent-solid); outline-offset: 2px; }
 .kercad-shared-library .card-open:focus-visible { outline-offset: -3px; }

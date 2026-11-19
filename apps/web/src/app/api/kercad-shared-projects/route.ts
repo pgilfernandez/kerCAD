@@ -195,8 +195,8 @@ export async function POST(request: Request) {
     if (bytes.byteLength > KERCAD_PACKAGE_LIMITS.archiveBytes) return NextResponse.json({ error: ".kercad file exceeds the shared storage size limit" }, { status: 413 });
     const rawAuthor = decodeURIComponent(request.headers.get("x-kercad-author") ?? "");
     const updatedBy = rawAuthor.trim();
-    if (updatedBy.length > 80 || /[\u0000-\u001f\u007f]/.test(updatedBy)) {
-      return NextResponse.json({ error: "Author name must contain at most 80 characters and no control characters" }, { status: 400 });
+    if (updatedBy.length > 160 || /[\u0000-\u001f\u007f]/.test(updatedBy)) {
+      return NextResponse.json({ error: "Author name must contain at most 160 characters and no control characters" }, { status: 400 });
     }
     const summary = await importKercadProject(bytes);
     const requestUrl = new URL(request.url);
