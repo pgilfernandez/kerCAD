@@ -50,7 +50,8 @@ export function ThemedToolbarImage({ src, className = "", ...props }: ComponentP
   const { theme } = useAppTheme();
   const [image, setImage] = useState<{ src: string; themed: string } | null>(null);
   const eligible = /^\/assets\/kercad\/toolbar-(3d|sketch)\//.test(src)
-    || src.startsWith("/assets/kercad/toolbar-horizontal/annotations/");
+    || src.startsWith("/assets/kercad/toolbar-horizontal/annotations/")
+    || /^\/assets\/kercad\/toolbar-horizontal\/manipulator-[a-z-]+\.svg$/.test(src);
   useEffect(() => {
     if (theme !== "dark" || !eligible) return;
     let cancelled = false;
