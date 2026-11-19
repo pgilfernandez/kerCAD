@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, Brush, createLucideIcon, Hand, Maximize, Minus, Redo2, Square, Trash2, Undo2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowUpRight, Brush, createLucideIcon, Hand, Maximize, Minus, Plus, Redo2, Square, Trash2, Undo2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from "react";
 import { ACCENT_COLOR_PRESETS } from "@/components/AccentColorOptions";
 import { AdvancedNumberInput } from "@/components/AdvancedNumberFields";
@@ -82,7 +82,7 @@ export function ChallengeImageEditor({ image, onCancel, onSave }: { image: strin
   const frame = useRef(0);
   const { accent } = useAppAccent();
   const [tool, setTool] = useState<Tool | "pan">("brush");
-  const [width, setWidth] = useState(6);
+  const [width, setWidth] = useState(10);
   const [color, setColor] = useState(accent);
   const [alpha, setAlpha] = useState(100);
   const [size, setSize] = useState<Point>(origin);
@@ -230,8 +230,8 @@ export function ChallengeImageEditor({ image, onCancel, onSave }: { image: strin
       <div className={styles.group}>{(Object.keys(tools) as Tool[]).map((key) => button(key, tools[key], () => setTool(key), key === tool))}</div>
       <div className={styles.width}><AdvancedNumberInput ariaLabel={t("width")} value={width} min={1} max={100} unit="px" displayUnit="mm" step={1} onCommit={setWidth} /></div>
       <div className={styles.group}>{[...new Set([accent, ...ACCENT_COLOR_PRESETS])].map((swatch) => <button className={styles.swatch} key={swatch} type="button" style={{ backgroundColor: swatch }} title={swatch} aria-label={swatch} aria-pressed={color === swatch && alpha === 100} onClick={() => { setColor(swatch); setAlpha(100); }} />)}</div>
-      <div className={styles.group}><label className={styles.custom} title={t("custom")}><input type="color" aria-label={t("custom")} value={color} onChange={(event) => setColor(event.target.value)} /></label>
-        <div className={styles.width}><AdvancedNumberInput ariaLabel={t("opacity")} value={alpha} min={0} max={100} unit="%" displayUnit="mm" step={1} onCommit={setAlpha} /></div></div>
+      <div className={styles.group}><label className={styles.custom} title={t("custom")}><input type="color" aria-label={t("custom")} value={color} onChange={(event) => setColor(event.target.value)} /><Plus className={styles.customPlus} size={13} aria-hidden="true" /></label>
+        <div className={styles.opacity}><AdvancedNumberInput ariaLabel={t("opacity")} value={alpha} min={0} max={100} unit="%" displayUnit="mm" step={1} onCommit={setAlpha} /></div></div>
       <div className={styles.group}>{button("undo", Undo2, () => moveHistory(-1), undefined, history.index === 0)}{button("redo", Redo2, () => moveHistory(1), undefined, history.index === history.frames.length - 1)}{button("clear", Trash2, () => commit([]), undefined, !marks.length)}</div>
     </div>
     <div ref={viewport} className={styles.viewport} data-pan={tool === "pan"} onPointerDown={begin} onPointerMove={move} onPointerUp={(event) => end(event, true)} onPointerCancel={(event) => end(event, false)} onLostPointerCapture={(event) => end(event, false)}>
