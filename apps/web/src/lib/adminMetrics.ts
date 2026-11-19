@@ -3,7 +3,7 @@ import path from "node:path";
 
 export const metricEvents = ["project", "challenge", "documentation", "overview", "donate", "github"] as const;
 type Event = typeof metricEvents[number];
-type State = { enabled?: boolean; since: string; counts: Record<Event, number>; bytes: number; visitors: string[]; checkpoints?: Record<string, { bytes: number; at: number }> };
+type State = { enabled?: boolean; sponsorPopupEnabled?: boolean; since: string; counts: Record<Event, number>; bytes: number; visitors: string[]; checkpoints?: Record<string, { bytes: number; at: number }> };
 type Runtime = { state: State | null; queue: Promise<unknown>; sessions: Map<string, { at: number; touched: number; bytes: number }>; seen: Set<string> };
 const globalStore = globalThis as typeof globalThis & { kercadMetrics?: Runtime };
 const store = globalStore.kercadMetrics ??= { state: null, queue: Promise.resolve(), sessions: new Map(), seen: new Set() };
@@ -45,7 +45,19 @@ export function recordMetrics(input: { visitor: string; session: string; bytes: 
 export function readMetrics() {
   return serial(async () => {
     const data = await state();
-    return { enabled: data.enabled === true, since: data.since, counts: data.counts, bytes: data.bytes, visitors: data.visitors.length, active: data.enabled ? [...store.sessions.values()].filter((session) => Date.now() - session.at < 90000).length : 0 };
+    return { enabled: data.enabled === true, sponsorPopupEnabled: data.sponsorPopupEnabled !== false, since: data.since, counts: data.counts, bytes: data.bytes, visitors: data.visitors.length, active: data.enabled ? [...store.sessions.values()].filter((session) => Date.now() - session.at < 90000).length : 0 };
+  });
+}
+export function readSponsorPopupEnabled() {
+  return serial(async () => (await state()).sponsorPopupEnabled !== false);
+}
+
+export function setSponsorPopupEnabled(enabled: boolean) {
+  return serial(async () => {
+    const data = { ...await state(), sponsorPopupEnabled: enabled };
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    await fs.writeFile(`${file}.tmp`, JSON.stringify(data)); await fs.rename(`${file}.tmp`, file);
+    store.state = data;
   });
 }
 export function setMetricsEnabled(enabled: boolean) {

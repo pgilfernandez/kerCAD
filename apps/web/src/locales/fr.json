@@ -3,6 +3,7 @@
   "name": "Français",
   "direction": "ltr",
   "messages": {
+    "admin.sponsorPopup": "Fenêtre des sponsors",
     "challenge.exportPrefix": "defi",
     "admin.telemetry": "Télémétrie",
     "admin.enabled": "Activée",

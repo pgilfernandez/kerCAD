@@ -19,6 +19,15 @@ let catalogue: string[] | null = null;
 let catalogueLoadedAt = 0;
 const CATALOGUE_REFRESH_MS = 30_000;
 
+export async function isSponsorPopupEnabled(signal: AbortSignal) {
+  try {
+    const response = await fetch("/api/loading-sponsors?status", { cache: "no-store", signal });
+    return !response.ok || (await response.json()).enabled !== false;
+  } catch {
+    return true;
+  }
+}
+
 export function peekPreparedLoadingCampaign() {
   return prepared && Date.now() - preparedAt < CATALOGUE_REFRESH_MS ? prepared : null;
 }
@@ -53,7 +62,9 @@ export function prepareProjectLoadingCampaign(priority: "high" | "low" = "high")
       if (!catalogue?.length || Date.now() - catalogueLoadedAt >= CATALOGUE_REFRESH_MS) {
         const response = await fetch("/api/loading-sponsors", { cache: "no-store" });
         if (!response.ok) throw new Error("Sponsor catalogue unavailable.");
-        const body = await response.json() as { images?: unknown };
+        const body = await response.json() as { enabled?: boolean; images?: unknown };
+        if (body.enabled === false) return projectLoadingCampaign;
+        void preloadImage(projectLoadingCampaign.src, priority).catch(() => {});
         catalogue = Array.isArray(body.images) ? body.images.filter((src): src is string => typeof src === "string" && src.startsWith("/assets/kercad/sponsors/")) : [];
         catalogueLoadedAt = Date.now();
       }

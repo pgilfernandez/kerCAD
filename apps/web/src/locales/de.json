@@ -3,6 +3,7 @@
   "name": "Deutsch",
   "direction": "ltr",
   "messages": {
+    "admin.sponsorPopup": "Sponsoren-Popup",
     "challenge.exportPrefix": "aufgabe",
     "admin.telemetry": "Telemetrie",
     "admin.enabled": "Aktiviert",

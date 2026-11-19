@@ -35,6 +35,10 @@ volume, e.g. `KERCAD_METRICS_DIR=/data/metrics`. Back up that directory to retai
 totals. This initial file-backed implementation targets one server process;
 use a shared database before scaling to multiple processes/replicas.
 
+The sponsor popup switch is independent of telemetry and is on by default.
+Its setting is stored in the same file. When off, the editor still waits for
+its initial model, but skips the sponsor popup and its minimum display time.
+
 The admin page refreshes every 10 seconds. Browsers heartbeat every 30 seconds.
 There is no reset/delete endpoint. Historical usage before activation cannot be
 recovered by these counters. Exported project files are not counted as HTTP

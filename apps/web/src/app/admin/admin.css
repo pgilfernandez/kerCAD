@@ -1,5 +1,6 @@
 .kercad-admin { height: 100dvh; overflow-y: auto; color: var(--theme-text); background: var(--theme-page); }
 .kercad-admin-content { padding: clamp(18px, 4vw, 48px); }
+.kercad-admin-switches { display: flex; flex-wrap: wrap; gap: 10px; }
 html[data-theme="dark"] .kercad-admin-content {
   --theme-text: #fff;
   --theme-text-muted: #fff;

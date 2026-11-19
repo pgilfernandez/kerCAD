@@ -5,17 +5,17 @@ import { DashboardBrandLogo } from "@/components/DashboardBrandLogo";
 import { EditorHeaderActions } from "@/components/EditorHeaderActions";
 import { uiText } from "@/lib/kercadI18n";
 import "./admin.css";
-type Metrics = { enabled: boolean; since: string; active: number; visitors: number; bytes: number; counts: Record<string, number> };
+type Metrics = { enabled: boolean; sponsorPopupEnabled: boolean; since: string; active: number; visitors: number; bytes: number; counts: Record<string, number> };
 export default function AdminPage() {
   const [locale, setLocale] = useAppLocale();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
-  const toggleTelemetry = async () => {
+  const updateSwitch = async (action: "telemetry" | "sponsor-popup", enabled: boolean) => {
     if (!metrics || saving) return;
     setSaving(true);
     try {
-      const response = await fetch("/api/admin/metrics", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "telemetry", enabled: !metrics.enabled }) });
+      const response = await fetch("/api/admin/metrics", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, enabled }) });
       if (!response.ok) throw new Error();
       setMetrics(await response.json()); setError(false);
     } catch { setError(true); }
@@ -50,9 +50,14 @@ export default function AdminPage() {
     <p>{uiText("admin.explanation", {}, locale)}</p>
     <p>{uiText("admin.telemetryNote", {}, locale)}</p>
     {error && <p role="alert">{uiText("admin.error", {}, locale)}</p>}
-    <button className="kercad-admin-telemetry" type="button" role="switch" aria-checked={metrics?.enabled ?? false} disabled={!metrics || saving} onClick={() => void toggleTelemetry()}>
+    <div className="kercad-admin-switches">
+    <button className="kercad-admin-telemetry" type="button" role="switch" aria-checked={metrics?.enabled ?? false} disabled={!metrics || saving} onClick={() => void updateSwitch("telemetry", !metrics?.enabled)}>
       <span className="kercad-admin-switch" aria-hidden="true" />{uiText("admin.telemetry", {}, locale)} · {uiText(metrics?.enabled ? "admin.enabled" : "admin.disabled", {}, locale)}
     </button>
+    <button className="kercad-admin-telemetry" type="button" role="switch" aria-checked={metrics?.sponsorPopupEnabled ?? false} disabled={!metrics || saving} onClick={() => void updateSwitch("sponsor-popup", !metrics?.sponsorPopupEnabled)}>
+      <span className="kercad-admin-switch" aria-hidden="true" />{uiText("admin.sponsorPopup", {}, locale)} · {uiText(metrics?.sponsorPopupEnabled ? "admin.enabled" : "admin.disabled", {}, locale)}
+    </button>
+    </div>
     <div className="kercad-admin-cards">{cards.map(([key, value]) => <section key={key}><h2>{uiText(key, {}, locale)}</h2><strong>{value ?? "—"}</strong></section>)}</div>
     <footer><p>{uiText("admin.bytesNote", {}, locale)}</p>{metrics && <p>{uiText("admin.since", {}, locale)} {new Date(metrics.since).toLocaleString(locale)}</p>}</footer>
     </div>

@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { HeaderToolbarIcon } from "@/components/icons";
 import { useAccessibleDialog } from "@/components/useAccessibleDialog";
 import { kercadTranslate, type KercadLocale } from "@/lib/kercadI18n";
-import { consumePreparedLoadingCampaign, prepareProjectLoadingCampaign, projectLoadingCampaign } from "@/lib/projectLoadingCampaign";
+import { consumePreparedLoadingCampaign, isSponsorPopupEnabled, prepareProjectLoadingCampaign, projectLoadingCampaign } from "@/lib/projectLoadingCampaign";
 import type { ParametricBuildProgress } from "@/lib/parametricBuildProgress";
 import "./projectLoadingDialog.css";
 
@@ -20,9 +20,18 @@ export function ProjectLoadingDialog({ projectName, locale, ready, progress, onF
 }) {
   const t = (key: Parameters<typeof kercadTranslate>[1]) => kercadTranslate(locale, key);
   const [minimumElapsed, setMinimumElapsed] = useState(false);
+  const [enabled, setEnabled] = useState<boolean | null>(null);
   const [campaign, setCampaign] = useState(projectLoadingCampaign);
-  const dialogRef = useAccessibleDialog<HTMLElement>(true, () => {});
+  const dialogRef = useAccessibleDialog<HTMLElement>(enabled === true, () => {});
   useEffect(() => {
+    const controller = new AbortController();
+    void isSponsorPopupEnabled(controller.signal).then((value) => {
+      if (!controller.signal.aborted) setEnabled(value);
+    });
+    return () => controller.abort();
+  }, []);
+  useEffect(() => {
+    if (enabled !== true) return;
     let active = true;
     void prepareProjectLoadingCampaign("low").then((loaded) => {
       if (!active) return;
@@ -30,24 +39,24 @@ export function ProjectLoadingDialog({ projectName, locale, ready, progress, onF
       consumePreparedLoadingCampaign(loaded);
     });
     return () => { active = false; };
-  }, []);
+  }, [enabled]);
   useEffect(() => {
     const timer = window.setTimeout(() => setMinimumElapsed(true), MINIMUM_LOADING_MS);
     return () => window.clearTimeout(timer);
   }, []);
   useEffect(() => {
-    if (!ready || !minimumElapsed) return;
+    if (!ready || enabled === null || (enabled && !minimumElapsed)) return;
     // Let the viewport commit and paint its initial geometry before uncovering it.
     let secondFrame = 0;
     const firstFrame = window.requestAnimationFrame(() => {
       secondFrame = window.requestAnimationFrame(onFinished);
     });
     return () => { window.cancelAnimationFrame(firstFrame); window.cancelAnimationFrame(secondFrame); };
-  }, [ready, minimumElapsed, onFinished]);
+  }, [ready, enabled, minimumElapsed, onFinished]);
 
   const percent = ready ? 100 : progress ? Math.max(10, Math.min(99, Math.round(10 + 90 * progress.completed / Math.max(1, progress.total)))) : 10;
 
-  if (typeof document === "undefined") return null;
+  if (enabled !== true || typeof document === "undefined") return null;
 
   return createPortal(<div className="kercad-project-loading-backdrop">
     <section ref={dialogRef} className="kercad-project-loading-dialog" role="dialog" aria-modal="true" aria-labelledby="kercad-project-loading-title" tabIndex={-1} onKeyDown={(event) => event.stopPropagation()} onKeyUp={(event) => event.stopPropagation()}>

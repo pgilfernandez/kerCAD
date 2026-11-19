@@ -3,6 +3,7 @@
   "name": "Español",
   "direction": "ltr",
   "messages": {
+    "admin.sponsorPopup": "Popup de patrocinadores",
     "challenge.exportPrefix": "reto",
     "admin.telemetry": "Telemetría",
     "admin.enabled": "Activada",
