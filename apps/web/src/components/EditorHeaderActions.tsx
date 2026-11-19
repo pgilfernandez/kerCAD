@@ -14,9 +14,10 @@ import { uiText, getLanguageName } from "@/lib/kercadI18n";
 
 const GITHUB_URL = "https://github.com/pgilfernandez/SketchForge-3D-App/";
 
-export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onLaunchTutorial, showDocumentation = true, startDesigning = false, showDonation = false, compactInformation = false }: { locale: KercadLocale; onLocaleChange: (locale: KercadLocale) => void; onShowLanding?: () => void; onLaunchTutorial?: () => void; showDocumentation?: boolean; startDesigning?: boolean; showDonation?: boolean; compactInformation?: boolean }) {
+export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onLaunchTutorial, showDocumentation = true, startDesigning = false, startDesigningAfterDonation = false, showDonation = false, compactInformation = false }: { locale: KercadLocale; onLocaleChange: (locale: KercadLocale) => void; onShowLanding?: () => void; onLaunchTutorial?: () => void; showDocumentation?: boolean; startDesigning?: boolean; startDesigningAfterDonation?: boolean; showDonation?: boolean; compactInformation?: boolean }) {
   const t = (key: KercadTranslationKey) => kercadTranslate(locale, key);
   const donation = useDonationPopup();
+  const startDesigningButton = <button type="button" className="kercad-header-start-designing" aria-label={t("about.startDesigning")} title={t("about.startDesigning")} onClick={onShowLanding}><HeaderToolbarIcon file="square-pen" /><span>{t("about.startDesigning")}</span></button>;
   const { theme, setTheme } = useAppTheme();
   const [open, setOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -61,8 +62,9 @@ export function EditorHeaderActions({ locale, onLocaleChange, onShowLanding, onL
   }, [open, infoOpen, donation.open]);
   return <div ref={root} className={`kercad-header-actions${onShowLanding ? " dashboard-header-actions" : ""}`}>
     {onShowLanding && <>
-      {showDonation && startDesigning && <button type="button" className="kercad-header-start-designing" aria-label={t("about.startDesigning")} title={t("about.startDesigning")} onClick={onShowLanding}><HeaderToolbarIcon file="square-pen" /><span>{t("about.startDesigning")}</span></button>}
+      {showDonation && startDesigning && !startDesigningAfterDonation && startDesigningButton}
       {showDonation ? <button type="button" aria-haspopup="dialog" aria-label={t("about.donate")} title={t("about.donate")} onClick={(event) => { setOpen(false); setInfoOpen(false); donation.show(locale, event.currentTarget); }}><HeaderToolbarIcon file="donate" /><span>{t("about.donate")}</span></button> : <button type="button" className={startDesigning ? "kercad-header-start-designing" : undefined} aria-label={t(startDesigning ? "about.startDesigning" : "about.projectOverview")} title={t(startDesigning ? "about.startDesigning" : "about.projectOverview")} onClick={onShowLanding}><HeaderToolbarIcon file={startDesigning ? "square-pen" : "project-overview"} /><span>{t(startDesigning ? "about.startDesigning" : "about.projectOverview")}</span></button>}
+      {showDonation && startDesigning && startDesigningAfterDonation && startDesigningButton}
       {showDocumentation && <a data-tutorial="documentation" href={`/documentation?lang=${locale}`} target="_blank" rel="noopener noreferrer" title={t("about.documentation")}><HeaderToolbarIcon file="documentation" /><span>{uiText("ui.page.documentation.9e9cf3", {}, locale)}</span></a>}
     </>}
     <button ref={infoTriggerRef} type="button" aria-label={t("about.label")} title={t("about.title")} aria-expanded={infoOpen} aria-controls="kercad-about-panel" onClick={() => { setOpen(false); setInfoOpen((value) => !value); }}><HeaderToolbarIcon file="information" />{onShowLanding && !compactInformation && <span>{t("about.title")}</span>}</button>
