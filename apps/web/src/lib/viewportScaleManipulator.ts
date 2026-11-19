@@ -15,13 +15,13 @@ const planes = {
 const normal = (axis: ScaleAxis) => new THREE.Vector3().setComponent(axes.indexOf(axis), 1);
 const corners = Array.from({ length: 8 }, (_, index) => new THREE.Vector3(index & 1 ? 1 : -1, index & 2 ? 1 : -1, index & 4 ? 1 : -1));
 const handles = corners.flatMap((corner) => axes.map((axis) => ({ corner, axis })));
-const handleSizePx = 30;
+const handleSizePx = 34;
 
 export function attachScaleManipulator(model: THREE.Group, camera: THREE.Camera, canvas: HTMLCanvasElement, controls: OrbitControls, target: ParametricScaleTarget, snap: number, invalidate: () => void, onCommit: (factors: THREE.Vector3, pivot: THREE.Vector3) => void) {
   const group = new THREE.Group();
   group.matrixAutoUpdate = false;
   group.matrix.copy(target.matrix);
-  const outline = new LineSegments2(new LineSegmentsGeometry(), new LineMaterial({ color: 0x000000, linewidth: 2, dashed: true, dashSize: 3, gapSize: 2, opacity: .25, transparent: true, depthTest: false, depthWrite: false }));
+  const outline = new LineSegments2(new LineSegmentsGeometry(), new LineMaterial({ color: 0x000000, linewidth: 2, dashed: true, dashSize: 2, gapSize: 2, opacity: .25, transparent: true, depthTest: false, depthWrite: false }));
   outline.renderOrder = 40;
   const handleMaterial = () => new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, depthTest: false, depthWrite: false, toneMapped: false });
   // Both layers follow the same transforms; the inset fill leaves a coplanar border.
