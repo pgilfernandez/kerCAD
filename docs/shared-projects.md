@@ -26,9 +26,9 @@ or to the default folder if no environment setting exists.
 Changing the folder does not move or delete files in the previous one.
 
 1. Create or edit a local project and return to the dashboard.
-2. Open **Shared**, select the local project and choose **Save to shared**.
+2. Choose **Save to shared** on the project card and confirm the file name and author.
 3. Another browser can open it as a separate local copy.
-4. Return to Shared to publish changes explicitly. A stale revision is rejected; save under another name or open the current server file as another local copy. Existing local work is preserved.
+4. Use the same button on the local project card to publish changes explicitly. A stale revision is rejected; save under another name or open the current server file as another local copy. Existing local work is preserved.
 
 The server validates packages, bounds incoming data, uses atomic replacement and compares content revisions under a per-file lock. A request that cannot acquire the lock must never remove another writer's lock. Additional package assets are retained in local shared copies and subsequent shared saves.
 

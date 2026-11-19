@@ -730,7 +730,7 @@
     "dashboard.open.local.copy.09f82d": "Abrir copia local",
     "dashboard.delete.shared.c57ada": "Eliminar compartido",
     "dashboard.delete.shared.project.c74851": "Eliminar proyecto compartido {name}",
-    "dashboard.no.shared.projects.yet.choose.a.local.project.above.to..806f11": "Aún no hay proyectos compartidos. Elige un proyecto local arriba para compartir el primero.",
+    "dashboard.no.shared.projects.yet.choose.a.local.project.above.to..806f11": "Aún no hay proyectos compartidos. Usa Guardar en compartidos en una tarjeta de Proyectos para publicar uno.",
     "dashboard.shared.storage.is.unavailable.d66703": "El almacenamiento compartido no está disponible.",
     "dashboard.could.not.open.the.shared.project.refresh.the.library.a.2cc45c": "No se pudo abrir el proyecto compartido. Actualiza la biblioteca y vuelve a intentarlo.",
     "dashboard.the.server.did.not.provide.a.project.revision.2d0b2d": "El servidor no proporcionó una revisión del proyecto.",

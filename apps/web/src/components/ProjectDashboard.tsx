@@ -10,6 +10,7 @@ import { Copy, Download, FileArchive, Grid3X3, List, PencilRuler, Search, Trash2
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ToolbarEditOperationIcon } from "@/components/icons";
 import { SharedProjects } from "@/components/SharedProjects";
+import { ShareProjectDialog } from "@/components/ShareProjectDialog";
 import { EditorHeaderActions } from "@/components/EditorHeaderActions";
 import { EditorGettingStarted, resetStartupTutorials } from "@/components/EditorGettingStarted";
 import { ImportDesignDialog } from "@/components/ImportDesignDialog";
@@ -67,6 +68,8 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
   const [challengeSort, setChallengeSort] = useState<"recent" | "name">("recent");
   const [renaming, setRenaming] = useState<ProjectLibraryEntry | null>(null);
   const [deleting, setDeleting] = useState<ProjectLibraryEntry | null>(null);
+  const [sharing, setSharing] = useState<ProjectLibraryEntry | null>(null);
+  const [sharedNotice, setSharedNotice] = useState(false);
   const [renameDraft, setRenameDraft] = useState("");
   const [authorDraft, setAuthorDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -116,7 +119,7 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
         <button data-tutorial="dashboard-challenges" className={section === "challenges" ? "active" : ""} type="button" onClick={() => onSectionChange("challenges")}><ChallengeIcon size={23} /><span>{t("dashboard.challenges.ff3876")}</span></button>
       </aside>
       <section className="kercad-dashboard-main">
-        {sharedEnabled && section === "shared" ? <SharedProjects locale={locale} projects={projects} onOpen={onOpen} onSaved={onSharedSaved} /> : section === "challenges" ? <>
+        {sharedEnabled && section === "shared" ? <SharedProjects locale={locale} onOpen={onOpen} /> : section === "challenges" ? <>
           <header className="kercad-dashboard-project-heading kercad-challenges-heading">
             <div><h1>{t("dashboard.challenges.ff3876")}</h1><span>{t("dashboard.visible.4cd4ed", { count: visibleChallenges.length })} · {t("dashboard.installed.25f009", { count: challenges.length })}</span></div>
             <div className="kercad-dashboard-project-controls">
@@ -158,6 +161,7 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
             <div className="kercad-dashboard-view-toggle"><button className={view === "grid" ? "active" : ""} onClick={() => setView("grid")} aria-label={t("dashboard.card.view.5b36c5")} title={t("dashboard.card.view.5b36c5")}><Grid3X3 size={20} /></button><button className={view === "list" ? "active" : ""} onClick={() => setView("list")} aria-label={t("dashboard.list.view.694bbd")} title={t("dashboard.list.view.694bbd")}><List size={21} /></button></div>
           </div>
         </header>
+        {sharedNotice && <p className="kercad-shared-description" role="status">{t("dashboard.project.saved.to.the.shared.library.b67eff")}</p>}
         <div className={`kercad-dashboard-projects ${view}`}>
           {!query.trim() ? <article className="kercad-dashboard-card kercad-dashboard-new-card">
             <button className="card-open" type="button" onClick={onCreate}>
@@ -171,6 +175,7 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
               <span className="card-copy"><strong>{project.name}</strong><small>{updatedLabel(project.updatedAt, locale)} · {project.document.author?.trim() || project.document.creator?.trim() || t("dashboard.author.not.provided.a749ef")}</small></span>
             </button>
             <button className="card-rename" type="button" aria-label={t("dashboard.rename.c2729b", { name: project.name })} title={t("dashboard.rename.project.633018")} onClick={() => beginRename(project)}><ToolbarEditOperationIcon inheritColor /></button>
+            {sharedEnabled && <button className="card-share" type="button" disabled={busy} aria-label={`${t("dashboard.save.to.shared.5476e1")}: ${project.name}`} title={t("dashboard.save.to.shared.5476e1")} onClick={() => { setSharedNotice(false); setSharing(project); }}><Upload size={17} /></button>}
             <button className="card-duplicate" type="button" disabled={busy} aria-label={t("dashboard.duplicate.a4f35f", { name: project.name })} title={t("dashboard.duplicate.project.7c2f4c")} onClick={() => onDuplicate(project)}><Copy size={17} /></button>
             <button className="card-export" type="button" disabled={busy} aria-label={t("dashboard.export.63638e", { name: project.name })} title={t("dashboard.export.project.5eff3a")} onClick={() => onExport(project)}><Download size={17} /></button>
             <button className="card-delete" type="button" aria-label={t("dashboard.delete.1164a6", { name: project.name })} title={t("dashboard.delete.project.af1456")} onClick={() => setDeleting(project)}><Trash2 size={17} /></button>
@@ -195,6 +200,7 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
         <footer><button type="button" onClick={() => setDeleting(null)}>{t("dashboard.cancel.77dfd2")}</button><button className="danger" type="button" onClick={() => { onDelete(deleting); setDeleting(null); }}>{t("dashboard.delete.f6fdbe")}</button></footer>
       </section>
     </div> : null}
+    {sharing && sharedEnabled && <ShareProjectDialog key={sharing.id} project={sharing} locale={locale} onClose={() => setSharing(null)} onSaved={() => { setSharing(null); setSharedNotice(true); onSharedSaved(); }} />}
     {importOpen && <ImportDesignDialog locale={locale} newProject onClose={() => setImportOpen(false)} onBrowse={() => inputRef.current?.click()} onFile={(file) => { setImportOpen(false); onImport([file]); }} onFiles={(files) => { setImportOpen(false); onImport(files); }} />}
     <input ref={inputRef} hidden multiple type="file" accept={".kercad,.kercad.json,.json,.svg,.step,.stp,.stl,.obj,.jpg,.jpeg,.png,application/vnd.kercad.project+zip,application/json,image/svg+xml,model/step,model/stl,model/obj,image/jpeg,image/png ," + LEGACY_PROJECT_ACCEPT} onChange={(event) => { const files = Array.from(event.target.files ?? []); if (files.length) { setImportOpen(false); onImport(files); } event.target.value = ""; }} />
     <input ref={challengeInputRef} hidden multiple type="file" accept=".zip,application/zip" onChange={(event) => { const files = Array.from(event.target.files ?? []); if (files.length) onImportChallenge(files); event.target.value = ""; }} />

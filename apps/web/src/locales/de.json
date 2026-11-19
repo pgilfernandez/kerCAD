@@ -730,7 +730,7 @@
     "dashboard.open.local.copy.09f82d": "Lokale Kopie öffnen",
     "dashboard.delete.shared.c57ada": "Geteiltes Projekt löschen",
     "dashboard.delete.shared.project.c74851": "Gemeinsames Projekt {name} löschen",
-    "dashboard.no.shared.projects.yet.choose.a.local.project.above.to..806f11": "Noch keine geteilten Projekte. Wählen Sie oben ein lokales Projekt aus, um das erste zu teilen.",
+    "dashboard.no.shared.projects.yet.choose.a.local.project.above.to..806f11": "Noch keine geteilten Projekte. Verwende „Geteilt speichern“ auf einer Projektkarte, um ein Projekt zu veröffentlichen.",
     "dashboard.shared.storage.is.unavailable.d66703": "Der freigegebene Speicher ist nicht verfügbar.",
     "dashboard.could.not.open.the.shared.project.refresh.the.library.a.2cc45c": "Das freigegebene Projekt konnte nicht geöffnet werden. Aktualisieren Sie die Bibliothek und versuchen Sie es erneut.",
     "dashboard.the.server.did.not.provide.a.project.revision.2d0b2d": "Der Server hat keine Projektrevision bereitgestellt.",

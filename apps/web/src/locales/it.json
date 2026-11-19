@@ -730,7 +730,7 @@
     "dashboard.open.local.copy.09f82d": "Apri la copia locale",
     "dashboard.delete.shared.c57ada": "Elimina progetto condiviso",
     "dashboard.delete.shared.project.c74851": "Elimina il progetto condiviso {name}",
-    "dashboard.no.shared.projects.yet.choose.a.local.project.above.to..806f11": "Nessun progetto condiviso ancora. Scegli un progetto locale qui sopra per condividere il primo.",
+    "dashboard.no.shared.projects.yet.choose.a.local.project.above.to..806f11": "Non ci sono ancora progetti condivisi. Usa il pulsante di condivisione su una scheda in Progetti per pubblicarne uno.",
     "dashboard.shared.storage.is.unavailable.d66703": "Lo spazio di archiviazione condiviso non è disponibile.",
     "dashboard.could.not.open.the.shared.project.refresh.the.library.a.2cc45c": "Impossibile aprire il progetto condiviso. Aggiorna la libreria e riprova.",
     "dashboard.the.server.did.not.provide.a.project.revision.2d0b2d": "Il server non ha fornito una revisione del progetto.",

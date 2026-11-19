@@ -730,7 +730,7 @@
     "dashboard.open.local.copy.09f82d": "Open local copy",
     "dashboard.delete.shared.c57ada": "Delete shared",
     "dashboard.delete.shared.project.c74851": "Delete shared project {name}",
-    "dashboard.no.shared.projects.yet.choose.a.local.project.above.to..806f11": "No shared projects yet. Choose a local project above to share the first one.",
+    "dashboard.no.shared.projects.yet.choose.a.local.project.above.to..806f11": "No shared projects yet. Use Save to shared on a card in Projects to publish one.",
     "dashboard.shared.storage.is.unavailable.d66703": "Shared storage is unavailable.",
     "dashboard.could.not.open.the.shared.project.refresh.the.library.a.2cc45c": "Could not open the shared project. Refresh the library and try again.",
     "dashboard.the.server.did.not.provide.a.project.revision.2d0b2d": "The server did not provide a project revision.",
