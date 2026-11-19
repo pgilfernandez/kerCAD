@@ -1,19 +1,29 @@
 import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
+import type { Dirent } from "node:fs";
 import path from "node:path";
 import { PROJECT_FILE_PATTERN } from "@/lib/legacyBrand";
 import { acquireSharedProjectLock } from "@/lib/sharedProjectLock";
 import { forgetSharedRevision } from "@/lib/sharedProjectRevision";
 
-export async function clearSharedProjects(directory: string) {
-  const isMissing = (error: unknown) => (error as NodeJS.ErrnoException).code === "ENOENT";
+const isMissing = (error: unknown) => (error as NodeJS.ErrnoException).code === "ENOENT";
+const isSharedProject = (entry: Dirent) => entry.isFile() && PROJECT_FILE_PATTERN.test(entry.name);
+
+export async function countSharedProjects(directory: string) {
+  try {
+    return (await fs.readdir(directory, { withFileTypes: true })).filter(isSharedProject).length;
+  } catch (error) { return isMissing(error) ? 0 : null; }
+}
+
+export async function clearSharedProjects(directory: string, expectedCount: number) {
   const root = await fs.realpath(directory).catch((error) => {
     if (isMissing(error)) return null;
     throw error;
   });
-  if (!root) return { deleted: 0, failed: 0 };
+  if (!root) return null;
   if (root === path.parse(root).root) throw new Error("Refusing to clear the filesystem root");
-  const files = await fs.readdir(root, { withFileTypes: true });
+  const files = (await fs.readdir(root, { withFileTypes: true })).filter(isSharedProject);
+  if (files.length !== expectedCount) return null;
   const sidecars = await Promise.all([[".authors", ".json"], [".thumbnails", ".jpg"]].map(async ([folder, suffix]) => {
     const dir = path.join(root, folder);
     const stat = await fs.lstat(dir).catch(() => null);
@@ -23,7 +33,6 @@ export async function clearSharedProjects(directory: string) {
   let deleted = 0;
   let failed = 0;
   for (const entry of files) {
-    if (!entry.isFile() || !PROJECT_FILE_PATTERN.test(entry.name)) continue;
     const file = path.join(root, entry.name);
     let lock: Awaited<ReturnType<typeof acquireSharedProjectLock>> | undefined;
     try {

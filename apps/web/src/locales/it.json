@@ -4,9 +4,8 @@
   "direction": "ltr",
   "messages": {
     "admin.deleteShared": "Elimina tutti i progetti condivisi",
-    "admin.deleteSharedHint": "Disattiva la condivisione per poter eliminare i progetti.",
-    "admin.deleteSharedConfirmWithoutPath": "Eliminare definitivamente tutti i progetti della cartella condivisa attuale? Le copie locali non saranno eliminate.",
-    "admin.deleteSharedConfirm": "Eliminare definitivamente tutti i progetti condivisi in {directory}? Le copie locali non saranno eliminate.",
+    "admin.deleteSharedConfirmWithoutPath": "Eliminare definitivamente {count} progetti della cartella condivisa attuale? Le copie locali non saranno eliminate.",
+    "admin.deleteSharedConfirm": "Eliminare definitivamente {count} progetti condivisi in {directory}? Le copie locali non saranno eliminate.",
     "admin.deleteSharedResult": "Progetti condivisi eliminati: {deleted}. Non eliminati: {failed}.",
     "admin.sharedDirectory": "Cartella dei progetti condivisi",
     "admin.sharedDirectoryHint": "Inserisci un percorso assoluto sul server. Lascialo vuoto per usare l’impostazione del server o la cartella predefinita.",

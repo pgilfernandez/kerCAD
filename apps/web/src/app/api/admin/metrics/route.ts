@@ -24,9 +24,9 @@ export async function POST(request: Request) {
     const hash = await readAdminPasswordHash();
     if (!await isAdminAuthorized(request, hash)) return new Response(null, { status: 401, headers });
     const protectedPanel = hash !== undefined || Boolean(configuredAdminKey());
-    if (input.confirm !== true || (protectedPanel ? typeof input.directory !== "string" : input.directory !== null)) return new Response(null, { status: 400, headers });
+    if (input.confirm !== true || !Number.isSafeInteger(input.count) || input.count < 1 || (protectedPanel ? typeof input.directory !== "string" : input.directory !== null)) return new Response(null, { status: 400, headers });
     try {
-      const result = await deleteSharedProjects(input.directory, hash);
+      const result = await deleteSharedProjects(input.directory, input.count, hash);
       return result ? Response.json(result, { headers }) : new Response(null, { status: 409, headers });
     } catch {
       return new Response(null, { status: 500, headers });

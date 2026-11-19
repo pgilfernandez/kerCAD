@@ -4,9 +4,8 @@
   "direction": "ltr",
   "messages": {
     "admin.deleteShared": "Borrar todos los proyectos compartidos",
-    "admin.deleteSharedHint": "Desactiva los proyectos compartidos para poder borrarlos.",
-    "admin.deleteSharedConfirmWithoutPath": "¿Borrar permanentemente todos los proyectos de la carpeta compartida actual? Las copias locales no se borrarán.",
-    "admin.deleteSharedConfirm": "¿Borrar permanentemente todos los proyectos compartidos de {directory}? Las copias locales no se borrarán.",
+    "admin.deleteSharedConfirmWithoutPath": "¿Borrar permanentemente {count} proyectos de la carpeta compartida actual? Las copias locales no se borrarán.",
+    "admin.deleteSharedConfirm": "¿Borrar permanentemente {count} proyectos compartidos de {directory}? Las copias locales no se borrarán.",
     "admin.deleteSharedResult": "Proyectos compartidos borrados: {deleted}. No se pudieron borrar: {failed}.",
     "admin.sharedDirectory": "Carpeta de proyectos compartidos",
     "admin.sharedDirectoryHint": "Introduce una ruta absoluta del servidor. Déjala vacía para usar la configuración del servidor o la carpeta predeterminada.",

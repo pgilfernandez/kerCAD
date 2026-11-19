@@ -25,8 +25,8 @@ there first. Clear and save the field to fall back to the environment setting,
 or to the default folder if no environment setting exists.
 Changing the folder does not move or delete files in the previous one.
 
-To permanently empty the current shared library, turn off **Shared projects**
-in Administration, then use **Delete all shared projects** and confirm.
+To permanently empty the current shared library, use **Delete all shared projects**
+in Administration and confirm the number shown. Sharing can remain enabled.
 Sign in if the panel is protected. If the panel is open without a password,
 anyone who can reach it can also empty the shared library.
 This does not affect local browser copies or other folders. If a project is

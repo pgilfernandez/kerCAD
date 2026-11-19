@@ -1,7 +1,7 @@
 import { constants, promises as fs } from "node:fs";
 import path from "node:path";
 import { configuredAdminKey, normalizeAdminSlug } from "@/lib/adminAccess";
-import { clearSharedProjects } from "@/lib/clearSharedProjects";
+import { clearSharedProjects, countSharedProjects } from "@/lib/clearSharedProjects";
 
 export const metricEvents = ["project", "challenge", "documentation", "overview", "donate", "donateGithub", "donatePaypal", "github"] as const;
 type Event = typeof metricEvents[number];
@@ -101,7 +101,8 @@ export function readMetrics(includeDirectory = false) {
   return serial(async () => {
     const data = await state();
     const shared = sharedProjectsSettings(data);
-    return { enabled: data.enabled === true, sponsorPopupEnabled: data.sponsorPopupEnabled !== false, sharedProjectsConfigured: true, sharedProjectsEnabled: shared.enabled, ...(includeDirectory ? { sharedProjectsDirectory: data.sharedProjectsDirectory ?? "", sharedProjectsEffectiveDirectory: shared.directory } : {}), since: data.since, counts: data.counts, bytes: data.bytes, visitors: data.visitors.length, active: data.enabled ? [...store.sessions.values()].filter((session) => Date.now() - session.at < 90000).length : 0 };
+    const sharedProjectCount = await countSharedProjects(shared.directory);
+    return { enabled: data.enabled === true, sponsorPopupEnabled: data.sponsorPopupEnabled !== false, sharedProjectsConfigured: true, sharedProjectsEnabled: shared.enabled, sharedProjectCount, ...(includeDirectory ? { sharedProjectsDirectory: data.sharedProjectsDirectory ?? "", sharedProjectsEffectiveDirectory: shared.directory } : {}), since: data.since, counts: data.counts, bytes: data.bytes, visitors: data.visitors.length, active: data.enabled ? [...store.sessions.values()].filter((session) => Date.now() - session.at < 90000).length : 0 };
   });
 }
 export function readSponsorPopupEnabled() {
@@ -135,13 +136,13 @@ export async function enabledSharedProjectsDirectory() {
   }).catch(() => null);
 }
 
-export function deleteSharedProjects(expectedDirectory: string | null, expectedPasswordHash: string | undefined) {
+export function deleteSharedProjects(expectedDirectory: string | null, expectedCount: number, expectedPasswordHash: string | undefined) {
   return serial(async () => {
     const data = await state();
-    const { directory, enabled } = sharedProjectsSettings(data);
-    if (enabled || data.adminPasswordHash !== expectedPasswordHash) return null;
+    const { directory } = sharedProjectsSettings(data);
+    if (data.adminPasswordHash !== expectedPasswordHash) return null;
     if (expectedDirectory !== null && directory !== expectedDirectory) return null;
-    return clearSharedProjects(directory);
+    return clearSharedProjects(directory, expectedCount);
   });
 }
 

@@ -6,7 +6,7 @@ import { DashboardBrandLogo } from "@/components/DashboardBrandLogo";
 import { EditorHeaderActions } from "@/components/EditorHeaderActions";
 import { uiText, type KercadLocale } from "@/lib/kercadI18n";
 import "./admin.css";
-type Metrics = { enabled: boolean; sponsorPopupEnabled: boolean; sharedProjectsEnabled: boolean; sharedProjectsConfigured: boolean; sharedProjectsDirectory?: string; sharedProjectsEffectiveDirectory?: string | null; adminPasswordManagedByServer: boolean; since: string; active: number; visitors: number; bytes: number; counts: Record<string, number> };
+type Metrics = { enabled: boolean; sponsorPopupEnabled: boolean; sharedProjectsEnabled: boolean; sharedProjectsConfigured: boolean; sharedProjectCount: number | null; sharedProjectsDirectory?: string; sharedProjectsEffectiveDirectory?: string | null; adminPasswordManagedByServer: boolean; since: string; active: number; visitors: number; bytes: number; counts: Record<string, number> };
 
 function AdminPasswordField({ label, locale, title, ...inputProps }: ComponentPropsWithoutRef<"input"> & { label: string; locale: KercadLocale }) {
   const id = useId();
@@ -125,20 +125,27 @@ export function AdminPanel({ slug, passwordRequired: initialPasswordRequired }: 
   };
   const deleteAllSharedProjects = async () => {
     const directory = passwordRequired ? metrics?.sharedProjectsEffectiveDirectory : null;
-    if (!metrics || metrics.sharedProjectsEnabled || saving || (passwordRequired && (!key || !directory))) return;
+    const count = metrics?.sharedProjectCount ?? 0;
+    if (!count || saving || (passwordRequired && (!key || !directory))) return;
     const confirmation = directory
-      ? uiText("admin.deleteSharedConfirm", { directory }, locale)
-      : uiText("admin.deleteSharedConfirmWithoutPath", {}, locale);
+      ? uiText("admin.deleteSharedConfirm", { directory, count }, locale)
+      : uiText("admin.deleteSharedConfirmWithoutPath", { count }, locale);
     if (!window.confirm(confirmation)) return;
     setSaving(true);
     setDeleteResult(null);
     try {
       const response = await fetch("/api/admin/metrics", {
         method: "POST", headers: { ...authHeaders(key), "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "delete-shared-projects", directory, confirm: true }),
+        body: JSON.stringify({ action: "delete-shared-projects", directory, count, confirm: true }),
       });
+      if (response.status === 409) {
+        const refreshed = await fetch("/api/admin/metrics", { cache: "no-store", headers: authHeaders(key) });
+        if (refreshed.ok) setMetrics(await refreshed.json());
+      }
       if (!response.ok) throw new Error();
-      setDeleteResult(await response.json());
+      const result = await response.json() as { deleted: number; failed: number };
+      setDeleteResult(result);
+      setMetrics((current) => current ? { ...current, sharedProjectCount: Math.max(0, count - result.deleted) } : current);
       setError(false);
     } catch { setError(true); }
     finally { setSaving(false); }
@@ -217,8 +224,8 @@ export function AdminPanel({ slug, passwordRequired: initialPasswordRequired }: 
     <button className="kercad-admin-telemetry" type="button" role="switch" aria-checked={metrics?.sharedProjectsEnabled ?? false} disabled={!metrics?.sharedProjectsConfigured || saving} onClick={() => void updateSwitch("shared-projects", !metrics?.sharedProjectsEnabled)}>
       <span className="kercad-admin-switch" aria-hidden="true" />{uiText("admin.sharedProjects", {}, locale)} · {uiText(metrics && !metrics.sharedProjectsConfigured ? "admin.sharedProjectsUnconfigured" : metrics?.sharedProjectsEnabled ? "admin.enabled" : "admin.disabled", {}, locale)}
     </button>
-    <button className="kercad-admin-telemetry kercad-admin-danger" type="button" disabled={!metrics || metrics.sharedProjectsEnabled || saving} title={uiText("admin.deleteSharedHint", {}, locale)} onClick={() => void deleteAllSharedProjects()}>
-      {uiText("admin.deleteShared", {}, locale)}
+    <button className="kercad-admin-telemetry kercad-admin-danger" type="button" disabled={!metrics?.sharedProjectCount || saving} onClick={() => void deleteAllSharedProjects()}>
+      {uiText("admin.deleteShared", {}, locale)} ({metrics?.sharedProjectCount ?? "—"})
     </button>
     </div>
     {deleteResult && <p role={deleteResult.failed ? "alert" : "status"}>{uiText("admin.deleteSharedResult", deleteResult, locale)}</p>}
