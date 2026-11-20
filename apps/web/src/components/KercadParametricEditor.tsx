@@ -3947,7 +3947,7 @@ export function KercadParametricEditor({ initialProject, sharedFileName, onSaveS
           initialSnap={closestSketchGrid(document.workplane.snapSpacing, document.workplane.snapToGrid)}
           exactSnapStep={document.workplane.snapToGrid ? document.workplane.snapSpacing : 0}
           initialWorkspace={{ ...DEFAULT_WORKPLANE_WORKSPACE, ...displayUnitWorkspace(displayUnit), width: document.workplane.width, depth: document.workplane.depth, sizePreset: `${document.workplane.width} x ${document.workplane.depth} mm`, gridBlockSize: document.workplane.gridStep, gridBlockPreset: `${document.workplane.gridStep} mm`, showGrid: document.workplane.gridVisible }}
-          secondaryGridStep={document.workplane.sketchGridStep}
+          secondaryGridStep={document.workplane.sketchGridStep ?? 1}
           onPlanePoint={addSketchPoint}
           polygonSides={sketchPolygonSides}
           onAddPolygon={(center, radius, angle) => {
@@ -4625,7 +4625,7 @@ export function KercadParametricEditor({ initialProject, sharedFileName, onSaveS
           ]} step={1} unit="mm" displayUnit={displayUnit} locale={locale} onCommit={updateGridSettings} />
           <AdvancedNumberFields label={t("grid.step")} fields={[
             { key: "gridStep", label: `${t("grid.step")} (3D)`, caption: "3D", value: workplaneDraft.gridStep, min: 0.1, max: 200 },
-            { key: "sketchGridStep", label: t("grid.sketchViewLineSpacing"), caption: t("operation.sketch"), value: workplaneDraft.sketchGridStep ?? 0, min: 0, max: 200 },
+            { key: "sketchGridStep", label: t("grid.sketchViewLineSpacing"), caption: t("operation.sketch"), value: workplaneDraft.sketchGridStep ?? 1, min: 0, max: 200 },
           ]} step={0.1} unit="mm" displayUnit={displayUnit} locale={locale} onCommit={({ gridStep, sketchGridStep }) => updateGridSettings({
             ...(gridStep !== undefined ? { gridStep } : {}),
             ...(sketchGridStep !== undefined ? { sketchGridStep: sketchGridStep > 0 ? Math.max(0.1, sketchGridStep) : 0 } : {}),
