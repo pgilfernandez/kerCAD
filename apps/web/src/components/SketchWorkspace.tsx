@@ -751,6 +751,10 @@ export function SketchWorkspace({
   const contentAspect = width / depth;
   const viewWidth = viewportAspect > contentAspect ? depth * viewportAspect : width;
   const viewDepth = viewportAspect > contentAspect ? depth : width / viewportAspect;
+  const gridStep = clamp(workspace.gridBlockSize, 0.1, 200);
+  const visibleGridStep = secondaryGridStep > 0 && secondaryGridStep < gridStep ? Math.max(0.1, secondaryGridStep) : gridStep;
+  // At the maximum zoom even the longer side of the viewport fits one interval.
+  const maxZoom = Math.max(6, Math.max(viewWidth, viewDepth) * zoom / visibleGridStep);
   const screenUnit = useMemo(() => {
     const fittedScale = Math.min(
       svgSize.width > 0 ? svgSize.width / width : 0,
@@ -974,7 +978,6 @@ export function SketchWorkspace({
     : selected?.kind === "multiple" ? selected.pointIds.includes(`${segmentId}:center`) : false;
   const isReferencePointSelected = selected?.kind === "point" ? selected.id === SKETCH_ORIGIN_POINT_ID : selected?.kind === "multiple" ? selected.pointIds.includes(SKETCH_ORIGIN_POINT_ID) : false;
   const isReferenceAxisSelected = (axisId: string) => selected?.kind === "segment" ? selected.id === axisId : selected?.kind === "multiple" ? selected.segmentIds.includes(axisId) : false;
-  const gridStep = clamp(workspace.gridBlockSize, 0.1, 200);
   const secondaryGridPath = useMemo(() => {
     if (secondaryGridStep <= 0 || secondaryGridStep >= gridStep) return "";
     const step = Math.max(0.1, secondaryGridStep);
@@ -1294,7 +1297,7 @@ export function SketchWorkspace({
       || (Number.isInteger(event.deltaY) && Math.abs(event.deltaY) >= 40);
     if (event.ctrlKey || event.metaKey || physicalWheel) {
       const normalizedDelta = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? event.deltaY * 16 : event.deltaY;
-      const nextZoom = clamp(zoom * Math.exp(-normalizedDelta * 0.012), 0.75, 6);
+      const nextZoom = clamp(zoom * Math.exp(-normalizedDelta * 0.012), 0.75, maxZoom);
       const anchor = pointFromEvent(event, false, false);
       if (anchor) {
         const ratio = zoom / nextZoom;
@@ -1426,8 +1429,8 @@ export function SketchWorkspace({
       {operation === "revolve" ? <SketchRevolvePreview positions={revolvePreviewPositions} /> : null}
       <div className="camera-controls sketch-camera-controls" aria-label={uiText("ui.sketchworkspace.sketch.view.controls.909bec", {}, locale)}>
         <button aria-label={uiText("ui.sketchworkspace.reset.sketch.view.96427e", {}, locale)} onClick={() => { setZoom(1); setPan({ x: 0, z: 0 }); }}><Home size={28} /></button>
-        <button aria-label={uiText("camera.zoomIn", {}, locale)} onClick={() => setZoom((value) => clamp(value * 1.25, 0.75, 6))}><Plus size={33} /></button>
-        <button aria-label={uiText("camera.zoomOut", {}, locale)} onClick={() => setZoom((value) => clamp(value / 1.25, 0.75, 6))}><Minus size={33} /></button>
+        <button aria-label={uiText("camera.zoomIn", {}, locale)} onClick={() => setZoom((value) => clamp(value * 1.25, 0.75, maxZoom))}><Plus size={33} /></button>
+        <button aria-label={uiText("camera.zoomOut", {}, locale)} onClick={() => setZoom((value) => Math.max(0.75, value / 1.25))}><Minus size={33} /></button>
         <span className="camera-control-separator" />
         <button className={showDimensionLabels ? "active" : ""} type="button" aria-label={uiText("ui.sketchworkspace.show.or.hide.lengths.8f1aaa", {}, locale)} title={uiText("ui.sketchworkspace.show.or.hide.lengths.8f1aaa", {}, locale)} aria-pressed={showDimensionLabels} onClick={() => setShowDimensionLabels((visible) => !visible)}><ViewToolbarIcon file="toggle-lengths" /></button>
         <button data-tutorial="sketch-visibility" className={showAnnotations ? "active" : ""} type="button" aria-label={uiText("ui.sketchworkspace.show.or.hide.annotations.e7f82f", {}, locale)} title={uiText("ui.sketchworkspace.show.or.hide.annotations.e7f82f", {}, locale)} aria-pressed={showAnnotations} onClick={() => { setShowAnnotations((visible) => !visible); if (showAnnotations) { onSelectAnnotation?.(null); if (annotationTool) onCancelActiveTool?.(); } }}><ViewToolbarIcon file="toggle-dimensions" /></button>
@@ -1499,13 +1502,13 @@ export function SketchWorkspace({
             </g>
           ) : null}
           <g className="sketch-reference-axes" pointerEvents={tool === "select" ? "auto" : "none"}>
-            <line data-sketch-entity="reference-axis" className={`reference-axis axis-x ${isReferenceAxisSelected(SKETCH_X_AXIS_ID) ? "selected" : ""}`} x1={-viewWidth} y1={0} x2={viewWidth} y2={0} onPointerDown={(event) => {
+            <line data-sketch-entity="reference-axis" className={`reference-axis axis-x ${isReferenceAxisSelected(SKETCH_X_AXIS_ID) ? "selected" : ""}`} x1={pan.x - viewWidth / 2} y1={0} x2={pan.x + viewWidth / 2} y2={0} onPointerDown={(event) => {
               if (event.button !== 0) return;
               event.preventDefault();
               event.stopPropagation();
               onSelectSegment(SKETCH_X_AXIS_ID, true);
             }} />
-            <line data-sketch-entity="reference-axis" className={`reference-axis axis-y ${isReferenceAxisSelected(SKETCH_Y_AXIS_ID) ? "selected" : ""}`} x1={0} y1={-viewDepth} x2={0} y2={viewDepth} onPointerDown={(event) => {
+            <line data-sketch-entity="reference-axis" className={`reference-axis axis-y ${isReferenceAxisSelected(SKETCH_Y_AXIS_ID) ? "selected" : ""}`} x1={0} y1={pan.z - viewDepth / 2} x2={0} y2={pan.z + viewDepth / 2} onPointerDown={(event) => {
               if (event.button !== 0) return;
               event.preventDefault();
               event.stopPropagation();
