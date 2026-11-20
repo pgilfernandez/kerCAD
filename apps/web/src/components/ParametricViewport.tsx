@@ -4593,7 +4593,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
   }, [scaleTarget, workplane.snapToGrid, workplane.snapSpacing, projection, renderQuality, shadingMode, theme]);
 
   const faceExtrudeControls = faceExtrudeDraft ?? faceExtrudeHandle;
-  const straightSketchExtrude = floatingFeature?.kind === "extrude" && !floatingFeature.endSketchId && !floatingFeature.pathSketchId ? floatingFeature : null;
+  const straightSketchExtrude = floatingFeature?.kind === "extrude" && !floatingFeature.endSketchId && !floatingFeature.pathSketchId && selection?.shapeParameters?.shape !== "text" ? floatingFeature : null;
   const savedFaceExtrude = floatingFeature?.kind === "faceExtrude" ? floatingFeature : null;
   const taperValue = faceExtrudeControls?.taperAngle ?? straightSketchExtrude?.taperAngle ?? savedFaceExtrude?.taperAngle ?? 0;
   const showTaper = Boolean(faceExtrudeControls || straightSketchExtrude || savedFaceExtrude);

@@ -709,7 +709,7 @@ function ParametricFeatureInspector({
                 ...(primitiveSketch.profile.elliptical ? [{ key: "radius2", label: t("cylinder.radius2"), value: primitiveSketch.profile.radius2 ?? primitiveSketch.profile.diameter / 2, min: .01, max: 100, apply: (draft: ParametricFeature, value: number) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.radius2 = value; } }] : []),
               ] satisfies ShapeField<ParametricFeature>[]} onUpdate={(apply) => onUpdateFeature(primitiveSketch.id, apply)} />
             ) : null}
-            <BoundedNumberField label={t("extrude.taperAngle")} value={feature.taperAngle ?? 0} unit="°" step={1} min={-89} max={89} onChange={(value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.taperAngle = value; })} />
+            {!textGenerator && <BoundedNumberField label={t("extrude.taperAngle")} value={feature.taperAngle ?? 0} unit="°" step={1} min={-89} max={89} onChange={(value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.taperAngle = value; })} />}
             {primitiveSketch?.profile.shape !== "rectangle" && <BoundedNumberField caption="H" label={t("property.height")} value={feature.distance} min={-200} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "extrude" && Math.abs(value) >= 0.01) draft.distance = value; })} />}
             </>}
           </ShapeParametersSection>
