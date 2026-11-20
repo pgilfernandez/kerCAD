@@ -1480,6 +1480,12 @@ button {
 }
 
 .kercad-feature-card > label:last-child { border-bottom: 0; }
+.kercad-feature-card > .kercad-text-parameter-row { display: flex; min-height: 0; gap: 10px; border: 0; font-weight: 400; }
+.kercad-text-parameter-row .kercad-advanced-number-group { display: block; }
+.kercad-text-parameter-row .kercad-advanced-number-group > :is(input, select) { display: block; box-sizing: border-box; width: 100%; min-width: 0; height: 26px; margin: 0; padding: 0 7px; border: 0; border-radius: 0; outline: none; background: transparent; box-shadow: none; color: var(--theme-text); font-family: inherit; font-size: 13px; font-weight: 600; }
+.kercad-text-parameter-row .kercad-advanced-number-group:hover { background: color-mix(in srgb, var(--theme-active) 55%, var(--theme-field-surface, var(--theme-surface))); }
+.kercad-text-parameter-row .kercad-advanced-number-group:focus-within { background: var(--theme-active); }
+.kercad-text-parameter-row select { cursor: pointer; }
 .kercad-operation-mode-property {
   display: block;
   min-height: 42px;
