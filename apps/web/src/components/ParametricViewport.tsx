@@ -4621,7 +4621,14 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       bounds.set(new THREE.Vector3(x - width / 2, y - depth / 2, baseZ), new THREE.Vector3(x + width / 2, y + depth / 2, baseZ + Math.abs(height)));
     }
     if (bounds.isEmpty()) return;
-    const anchor = new THREE.Vector3(bounds.max.x, (bounds.min.y + bounds.max.y) / 2, bounds.max.z);
+    const taperAnchorX = (angle: number) => {
+      // The lower section still determines the overall bounds when a positive
+      // taper narrows the upper section. Approximate its inset at that height.
+      const height = bounds.max.z - bounds.min.z;
+      const inset = height * Math.tan(THREE.MathUtils.degToRad(Math.max(0, angle)));
+      return bounds.max.x - Math.min(inset, (bounds.max.x - bounds.min.x) / 2);
+    };
+    const anchor = new THREE.Vector3(taperAnchorX(taperValue), (bounds.min.y + bounds.max.y) / 2, bounds.max.z);
     const group = new THREE.Group();
     group.userData.viewportOverlay = true;
     const radius = 1.0625;
@@ -4667,8 +4674,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       event.preventDefault(); event.stopImmediatePropagation();
       const pixels = (event.clientX - drag.x) * drag.direction.x + (event.clientY - drag.y) * drag.direction.y;
       drag.angle = THREE.MathUtils.clamp(taperValue + Math.round(pixels / 4), -89, 89);
-      const span = Math.max(1, bounds.max.x - bounds.min.x);
-      handle.position.x = anchor.x - span * THREE.MathUtils.clamp((drag.angle - taperValue) / 90, -.5, .5);
+      handle.position.x = taperAnchorX(drag.angle);
       handle.updateMatrixWorld();
       setTaperPreview(drag.angle);
       repaint();
