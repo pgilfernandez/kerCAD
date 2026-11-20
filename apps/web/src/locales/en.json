@@ -3,6 +3,11 @@
   "name": "English",
   "direction": "ltr",
   "messages": {
+    "text.fontStyle": "Style",
+    "text.fontStyle.default": "Original",
+    "text.fontStyle.bold": "Bold",
+    "text.fontStyle.italic": "Italic",
+    "text.fontStyle.bold-italic": "Bold Italic",
     "grid.sketchSpacingHint": "Enter 0 to hide secondary grid lines in Sketch.",
     "extrude.taperAngle": "Taper angle",
     "extrude.invalidTaper": "The taper angle cannot be applied to this profile. Try a smaller angle or extrusion distance.",

@@ -3,7 +3,7 @@ import { createLocalId } from "@/lib/localIds";
 import { addParametricObject } from "@/lib/parametricObjects";
 import { objectPlacementForWorkplane } from "@/lib/parametricWorkplane";
 import type { ParametricDocument, SketchFeature } from "@/types/parametric";
-import type { SketchPoint, SketchProfile } from "@/types/workplane";
+import type { SketchPoint, SketchProfile, SolidTextFont, SolidTextStyle } from "@/types/workplane";
 import { SOLID_TEXT_FONT_NAMES } from "@/types/workplane";
 import { CubicBezierCurve, LineCurve, QuadraticBezierCurve, type Curve, type Vector2 } from "three";
 import { FontLoader, type Font, type FontData } from "three/examples/jsm/loaders/FontLoader.js";
@@ -23,6 +23,15 @@ import amaticsc from "./operation-fonts/amaticsc.typeface.json";
 import worksans from "./operation-fonts/worksans.typeface.json";
 import dmsans from "./operation-fonts/dmsans.typeface.json";
 import lora from "./operation-fonts/lora.typeface.json";
+import montserrat0 from "./operation-fonts/montserrat-bold.typeface.json";
+import montserrat1 from "./operation-fonts/montserrat-italic.typeface.json";
+import montserrat2 from "./operation-fonts/montserrat-bold-italic.typeface.json";
+import ubuntu0 from "./operation-fonts/ubuntu-bold.typeface.json";
+import ubuntu1 from "./operation-fonts/ubuntu-italic.typeface.json";
+import ubuntu2 from "./operation-fonts/ubuntu-bold-italic.typeface.json";
+import worksans0 from "./operation-fonts/worksans-bold.typeface.json";
+import worksans1 from "./operation-fonts/worksans-italic.typeface.json";
+import worksans2 from "./operation-fonts/worksans-bold-italic.typeface.json";
 
 export type ParametricTextSettings = Extract<NonNullable<SketchProfile["generator"]>, { kind: "text" }>;
 
@@ -45,16 +54,27 @@ const PARAMETRIC_WEB_FONT_DATA = {
   "DM Sans": dmsans as FontData,
   Lora: lora as FontData,
 } satisfies Record<ParametricTextSettings["font"], FontData>;
-const parsedFonts = new Map<ParametricTextSettings["font"], Font>();
+const fontVariants: Partial<Record<SolidTextFont, Partial<Record<SolidTextStyle, FontData>>>> = {
+  "Montserrat": { "bold": montserrat0 as FontData, "italic": montserrat1 as FontData, "bold-italic": montserrat2 as FontData },
+  "Ubuntu": { "bold": ubuntu0 as FontData, "italic": ubuntu1 as FontData, "bold-italic": ubuntu2 as FontData },
+  "Work Sans": { "bold": worksans0 as FontData, "italic": worksans1 as FontData, "bold-italic": worksans2 as FontData },
+};
+const parsedFonts = new Map<string, Font>();
 const cachedGlyphs = new Map<string, TextGlyph>();
 
 export const parametricTextFontNames = SOLID_TEXT_FONT_NAMES;
 
-function parametricWebFont(name: ParametricTextSettings["font"]) {
-  const cached = parsedFonts.get(name);
+export function parametricTextFontStyles(name: SolidTextFont): SolidTextStyle[] {
+  return fontVariants[name]?.bold ? ["default", "bold", "italic", "bold-italic"] : ["default", "italic"];
+}
+
+function parametricWebFont(name: SolidTextFont, style: SolidTextStyle) {
+  const variant = fontVariants[name]?.[style];
+  const key = variant ? `${name}:${style}` : name;
+  const cached = parsedFonts.get(key);
   if (cached) return cached;
-  const font = fontLoader.parse(PARAMETRIC_WEB_FONT_DATA[name]);
-  parsedFonts.set(name, font);
+  const font = fontLoader.parse(variant ?? PARAMETRIC_WEB_FONT_DATA[name]);
+  parsedFonts.set(key, font);
   return font;
 }
 
@@ -86,8 +106,8 @@ function textCurvePieces(curve: Curve<Vector2>): TextCurvePiece[] {
   return sampled.slice(1).map((end, index) => ({ start: sampled[index], end }));
 }
 
-function cachedTextGlyph(fontName: ParametricTextSettings["font"], font: Font, character: string): TextGlyph | null {
-  const key = `${fontName}:${character}`;
+function cachedTextGlyph(fontName: SolidTextFont, style: SolidTextStyle, font: Font, character: string): TextGlyph | null {
+  const key = `${fontName}:${style}:${character}`;
   const cached = cachedGlyphs.get(key);
   if (cached) return cached;
   const shapes = font.generateShapes(character, 1);
@@ -95,10 +115,18 @@ function cachedTextGlyph(fontName: ParametricTextSettings["font"], font: Font, c
   const bounds = loops.flatMap((loop) => loop.getPoints(5));
   const points = bounds.flat();
   if (!points.length) return null;
+  // Families without a separate italic face can use a slanted outline.
+  const shear = style === "italic" && !fontVariants[fontName]?.italic ? 0.22 : 0;
+  const slant = (point: Vector2) => point.clone().setX(point.x + point.y * shear);
+  const outline = loops.map((loop) => loop.curves.flatMap(textCurvePieces).filter((piece) => piece.start.distanceToSquared(piece.end) > 1e-14));
   const glyph = {
-    loops: loops.map((loop) => loop.curves.flatMap(textCurvePieces).filter((piece) => piece.start.distanceToSquared(piece.end) > 1e-14)),
-    minX: Math.min(...points.map((point) => point.x)),
-    maxX: Math.max(...points.map((point) => point.x)),
+    loops: shear ? outline.map((loop) => loop.map((piece) => ({
+      start: slant(piece.start), end: slant(piece.end),
+      control1: piece.control1 && slant(piece.control1),
+      control2: piece.control2 && slant(piece.control2),
+    }))) : outline,
+    minX: Math.min(...points.map((point) => point.x + point.y * shear)),
+    maxX: Math.max(...points.map((point) => point.x + point.y * shear)),
   };
   cachedGlyphs.set(key, glyph);
   return glyph;
@@ -134,13 +162,15 @@ export function parametricTextProfile(settings: ParametricTextSettings): SketchP
     align: settings.align ?? "center",
     verticalAlign: settings.verticalAlign ?? "center",
   };
-  const font = parametricWebFont(normalized.font);
+  const style = normalized.style && parametricTextFontStyles(normalized.font).includes(normalized.style) ? normalized.style : "default";
+  normalized.style = style === "default" ? undefined : style;
+  const font = parametricWebFont(normalized.font, style);
   const size = Math.max(1, normalized.size);
   const profile: SketchProfile = { points: [], segments: [], circles: [], images: [], constraints: [], generator: normalized };
   let cursor = 0;
   for (const character of normalized.text) {
     if (/\s/.test(character)) { cursor += size * 0.38 + Math.max(0, normalized.spacing); continue; }
-    const glyph = cachedTextGlyph(normalized.font, font, character);
+    const glyph = cachedTextGlyph(normalized.font, style, font, character);
     if (!glyph) { cursor += size * 0.55 + Math.max(0, normalized.spacing); continue; }
     const minX = glyph.minX * size;
     const maxX = glyph.maxX * size;

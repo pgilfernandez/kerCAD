@@ -1,5 +1,6 @@
 export const SOLID_TEXT_FONT_NAMES = ["Sans", "Serif", "Script", "Monospace", "Rounded", "Fredoka", "Barlow Condensed", "Alfa Slab One", "Stardos Stencil", "Oswald", "Montserrat", "Ubuntu", "Roboto", "Pacifico", "Gloria Hallelujah", "Great Vibes", "Amatic SC", "Work Sans", "DM Sans", "Lora"] as const;
 export type SolidTextFont = typeof SOLID_TEXT_FONT_NAMES[number];
+export type SolidTextStyle = "default" | "bold" | "italic" | "bold-italic";
 
 export type ShapeKind =
   | "box"
@@ -162,7 +163,7 @@ export type SketchProfile = {
   texts?: SketchText[];
   constraints?: SketchConstraint[];
   generator?:
-    | { kind: "text"; text: string; font: SolidTextFont; size: number; spacing: number; align: "left" | "center" | "right"; verticalAlign: "bottom" | "center" | "top" }
+    | { kind: "text"; text: string; font: SolidTextFont; style?: SolidTextStyle; size: number; spacing: number; align: "left" | "center" | "right"; verticalAlign: "bottom" | "center" | "top" }
     | { kind: "scribble"; smoothing: number; smooth?: boolean };
 };
 

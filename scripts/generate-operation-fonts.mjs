@@ -20,6 +20,11 @@ const sources = {
   dmsans: "DMSans[opsz,wght].ttf",
   lora: "Lora[wght].ttf",
 };
+const variants = {
+  montserrat: ["Montserrat-Bold", "Montserrat-Italic", "Montserrat-BoldItalic"],
+  ubuntu: ["Ubuntu-Bold", "Ubuntu-Italic", "Ubuntu-BoldItalic"],
+  worksans: ["WorkSans-Bold", "WorkSans-Italic", "WorkSans-BoldItalic"],
+};
 const output = new URL("../apps/web/src/lib/operation-fonts/", import.meta.url);
 const notices = new URL("../apps/web/public/assets/kercad/font-licenses/", import.meta.url);
 await Promise.all([mkdir(output, { recursive: true }), mkdir(notices, { recursive: true })]);
@@ -37,14 +42,11 @@ const download = async (family, file) => {
   if (!response.ok) throw new Error(`${family}/${file}: HTTP ${response.status}`);
   return response;
 };
-for (const [family, file] of Object.entries(sources)) {
-  if (process.argv.length > 2 && !process.argv.slice(2).includes(family)) continue;
+async function generateTypeface(family, file, outputName, styleName) {
   const data = loader.parse(await (await download(family, file)).arrayBuffer());
-  const licenseFile = family === "ubuntu" ? "UFL.txt" : "OFL.txt";
-  const license = await (await download(family, licenseFile)).text();
   data.original_font_information = { source: file };
   // Use an internal family name distinct from the original font's reserved names.
-  data.familyName = family === "ubuntu" ? "Ubuntu derivative kerCAD" : `kerCAD Outline ${Object.keys(sources).indexOf(family) + 1}`;
+  data.familyName = family === "ubuntu" ? `Ubuntu derivative kerCAD${styleName ? " " + styleName : ""}` : `kerCAD Outline ${Object.keys(sources).indexOf(family) + 1}${styleName ? " " + styleName : ""}`;
   // Keep generated files diffable without expanding every outline token.
   const { glyphs, ...metrics } = data;
   const lines = Object.entries(glyphs).map(([name, glyph]) => `    ${JSON.stringify(name)}: ${JSON.stringify({
@@ -53,6 +55,16 @@ for (const [family, file] of Object.entries(sources)) {
     x_max: Number.isFinite(glyph.x_max) ? glyph.x_max : 0,
   })}`);
   const json = JSON.stringify(metrics, null, 2).replace(/\n}$/, `,\n  "glyphs": {\n${lines.join(",\n")}\n  }\n}\n`);
-  await writeFile(new URL(`${family}.typeface.json`, output), json);
+  await writeFile(new URL(`${outputName}.typeface.json`, output), json);
+}
+for (const [family, file] of Object.entries(sources)) {
+  if (process.argv.length > 2 && !process.argv.slice(2).includes(family)) continue;
+  const licenseFile = family === "ubuntu" ? "UFL.txt" : "OFL.txt";
+  const license = await (await download(family, licenseFile)).text();
   await writeFile(new URL(`${family}.${licenseFile}`, notices), license.split(/\r?\n/).map((line) => line.trimEnd()).join("\n").trimEnd() + "\n");
+  await generateTypeface(family, file, family, "");
+  await Promise.all((variants[family] ?? []).map((name, index) => {
+    const style = ["bold", "italic", "bold-italic"][index];
+    return generateTypeface(family, `${name}.ttf`, `${family}-${style}`, style);
+  }));
 }

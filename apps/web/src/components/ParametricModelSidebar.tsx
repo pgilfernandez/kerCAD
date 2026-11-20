@@ -27,7 +27,7 @@ import {
 import { createContext, type CSSProperties, type MouseEvent, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { ANNOTATIONS_GROUP_ID, canReorderAnnotation, canReorderParametricSelection, canResetParametricFeature, OBJECT_COLOR_PALETTE, parametricObjectTree, sketchForExtrude, updateParametricTreeSelection, type ParametricTreeSelection } from "@/lib/parametricObjects";
 import { localizedParametricOperationDefinition, parametricOperationDefinition } from "@/lib/parametricOperationCatalog";
-import { parametricTextFontNames, updateParametricTextSketch } from "@/lib/parametricText";
+import { parametricTextFontNames, parametricTextFontStyles, updateParametricTextSketch } from "@/lib/parametricText";
 import { textFontNames } from "@/lib/textFonts";
 import { AnnotationEndSelector } from "@/components/AnnotationEndSelector";
 import { annotationEnding, setAnnotationEnding } from "@/lib/annotationEndings";
@@ -683,6 +683,10 @@ function ParametricFeatureInspector({
             {textGenerator && primitiveSketch ? <>
               <label className="kercad-advanced-number-row kercad-text-parameter-row"><span className="kercad-advanced-external-label">{localizedSidebarLiteral(locale, uiText("toolbar.text", {}, locale))}</span><span className="kercad-advanced-number-group"><DeferredTextInput value={textGenerator.text} maxLength={40} onCommit={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { text: value }); })} /></span></label>
               <label className="kercad-advanced-number-row kercad-text-parameter-row"><span className="kercad-advanced-external-label">{localizedSidebarLiteral(locale, uiText("sidebar.web.font", {}, locale))}</span><span className="kercad-advanced-number-group"><select value={textGenerator.font ?? "Sans"} onChange={(event) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { font: event.target.value as typeof textGenerator.font }); })}>{parametricTextFontNames.map((font) => <option key={font} value={font}>{font}</option>)}</select></span></label>
+              <label className="kercad-advanced-number-row kercad-text-parameter-row"><span className="kercad-advanced-external-label">{t("text.fontStyle")}</span><span className="kercad-advanced-number-group"><select value={textGenerator.style ?? "default"} onChange={(event) => {
+                const style = parametricTextFontStyles(textGenerator.font).find((option) => option === event.target.value);
+                if (style) onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { style }); });
+              }}>{parametricTextFontStyles(textGenerator.font).map((style) => <option key={style} value={style}>{t(`text.fontStyle.${style}`)}</option>)}</select></span></label>
               <BoundedNumberField label={t("property.size")} value={textGenerator.size} min={1} max={200} unit="mm" onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { size: value }); })} />
               <BoundedNumberField label={t("property.spacing")} value={textGenerator.spacing} min={0} max={100} unit="mm" onChange={(value) => onUpdateFeature(primitiveSketch.id, (draft) => { if (draft.kind === "sketch") updateParametricTextSketch(draft, { spacing: value }); })} />
               <div className="kercad-advanced-number-row">

@@ -5,6 +5,17 @@ import { updateParametricShapeParameter, viewportSelectionForFeature } from "@/l
 import { validateDrawnSketchProfile } from "@/lib/sketchProfileValidation";
 
 describe("parametric text", () => {
+  it.each([
+    ["Montserrat", "bold"], ["Ubuntu", "bold-italic"], ["Work Sans", "italic"], ["Lora", "italic"],
+  ] as const)("generates a different valid %s outline for %s", (font, style) => {
+    const settings = { kind: "text", text: "CAD", font, size: 20, spacing: 1, align: "center", verticalAlign: "center" } as const;
+    const original = parametricTextProfile(settings);
+    const styled = parametricTextProfile({ ...settings, style });
+    expect(styled.generator).toMatchObject({ font, style });
+    expect(styled.points.map(({ x, z }) => [x, z])).not.toEqual(original.points.map(({ x, z }) => [x, z]));
+    expect(validateDrawnSketchProfile(styled).valid).toBe(true);
+  });
+
   it.each(["Fredoka", "Barlow Condensed", "Alfa Slab One", "Stardos Stencil", "Oswald", "Montserrat", "Ubuntu", "Roboto", "Pacifico", "Gloria Hallelujah", "Great Vibes", "Amatic SC", "Work Sans", "DM Sans", "Lora"] as const)("keeps valid %s geometry and its font choice on reopen", (font) => {
     const document = createStarterDocument(123);
     const { sketchId } = addParametricText(document, document.objects[0].id);

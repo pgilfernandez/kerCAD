@@ -3,6 +3,11 @@
   "name": "Español",
   "direction": "ltr",
   "messages": {
+    "text.fontStyle": "Estilo",
+    "text.fontStyle.default": "Original",
+    "text.fontStyle.bold": "Negrita",
+    "text.fontStyle.italic": "Cursiva",
+    "text.fontStyle.bold-italic": "Negrita cursiva",
     "grid.sketchSpacingHint": "Introduce 0 para ocultar las líneas secundarias de la rejilla en bocetos.",
     "extrude.taperAngle": "Ángulo de conicidad",
     "extrude.invalidTaper": "No se puede aplicar el ángulo de conicidad a este perfil. Prueba con un ángulo o una distancia menor.",

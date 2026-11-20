@@ -3,6 +3,11 @@
   "name": "Français",
   "direction": "ltr",
   "messages": {
+    "text.fontStyle": "Style",
+    "text.fontStyle.default": "Original",
+    "text.fontStyle.bold": "Gras",
+    "text.fontStyle.italic": "Italique",
+    "text.fontStyle.bold-italic": "Gras italique",
     "grid.sketchSpacingHint": "Saisissez 0 pour masquer les lignes secondaires de la grille en mode esquisse.",
     "extrude.taperAngle": "Angle de dépouille",
     "extrude.invalidTaper": "Impossible d’appliquer cet angle de dépouille au profil. Essaie un angle ou une distance d’extrusion plus faible.",
