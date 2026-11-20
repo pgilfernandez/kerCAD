@@ -155,7 +155,10 @@ function sweepPathWire(brep: Brep, sketch: SketchFeature): Wire {
     const path = normalizeGeneratedPath(sketch.generatedPath);
     let wire: Wire;
     if (path.kind === "helix") {
-      wire = brep.helix(path.pitch, path.pitch * path.turns, path.radius, { lefthand: path.clockwise });
+      // The OCCT WASM adapter ignores the handedness option. Reflect the
+      // native helix across local XZ to reverse its winding without changing its rise.
+      const helix = brep.helix(path.pitch, path.pitch * path.turns, path.radius);
+      wire = path.clockwise ? brep.mirror(helix, { normal: [0, 1, 0] }) as Wire : helix;
     } else if (path.spiralType === "fibonacci") {
       wire = brep.unwrap(brep.wire(fibonacciPathArcs(path).map((arc) => {
         const vec = (t: number): [number, number, number] => { const p = arc.point(t); return [p.x, p.y, p.z]; };
