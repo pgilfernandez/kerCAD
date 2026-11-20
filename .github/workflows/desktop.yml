@@ -16,10 +16,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: macOS, arch: x64, runner: macos-15-intel, variant: current }
-          - { os: macOS, arch: arm64, runner: macos-15, variant: current }
+          - { os: macOS, arch: arm64, runner: macos-26, variant: current }
           - { os: macOS, arch: x64, runner: macos-15-intel, variant: legacy }
-          - { os: macOS, arch: arm64, runner: macos-15, variant: legacy }
           - { os: windows, arch: x64, runner: windows-latest, variant: current }
           - { os: linux, arch: x64, runner: ubuntu-24.04, variant: current }
           - { os: linux, arch: arm64, runner: ubuntu-24.04-arm, variant: current }

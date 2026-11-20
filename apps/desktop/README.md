@@ -100,7 +100,7 @@ bridge is not enabled. Unexpected server exit reports a native error and logs.
 ## GitHub artifacts and distribution status
 
 Run **Package desktop applications** manually in Actions. It packages natively
-for macOS Intel/Apple Silicon, Windows x64 and Linux x64/ARM64, uploading installers
+for macOS Intel (Legacy), macOS Apple Silicon (Current), Windows x64 and Linux x64/ARM64, uploading installers
 as 14-day artifacts. Merely uploading an artifact does not establish that its
 installer, WebGL, WASM workers or data persistence work on a target device.
 
