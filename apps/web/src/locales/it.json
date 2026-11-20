@@ -3,6 +3,7 @@
   "name": "Italiano",
   "direction": "ltr",
   "messages": {
+    "grid.sketchViewLineSpacing": "Spaziatura linee nella vista schizzo",
     "challenge.imageEditor.download": "Scarica immagine",
     "challenge.imageEditor.title": "Modifica immagine",
     "challenge.imageEditor.brush": "Pennello",

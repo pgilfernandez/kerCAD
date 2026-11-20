@@ -2818,7 +2818,7 @@ export function KercadParametricEditor({ initialProject, sharedFileName, onSaveS
     setWorkplaneOpen(false);
     setNotice({ type: "info", text: placingWorkplane ? t("notice.placementCancelled") : t("notice.workplanePlaceHint") });
   };
-  const updateGridSettings = (patch: Partial<Pick<ParametricDocument["workplane"], "width" | "depth" | "gridStep" | "snapSpacing" | "gridVisible">>) => {
+  const updateGridSettings = (patch: Partial<Pick<ParametricDocument["workplane"], "width" | "depth" | "gridStep" | "sketchGridStep" | "snapSpacing" | "gridVisible">>) => {
     setWorkplaneDraft((current) => ({ ...current, ...patch }));
     mutate((draft) => { Object.assign(draft.workplane, patch); });
   };
@@ -3944,6 +3944,7 @@ export function KercadParametricEditor({ initialProject, sharedFileName, onSaveS
           initialSnap={closestSketchGrid(document.workplane.snapSpacing, document.workplane.snapToGrid)}
           exactSnapStep={document.workplane.snapToGrid ? document.workplane.snapSpacing : 0}
           initialWorkspace={{ ...DEFAULT_WORKPLANE_WORKSPACE, ...displayUnitWorkspace(displayUnit), width: document.workplane.width, depth: document.workplane.depth, sizePreset: `${document.workplane.width} x ${document.workplane.depth} mm`, gridBlockSize: document.workplane.gridStep, gridBlockPreset: `${document.workplane.gridStep} mm`, showGrid: document.workplane.gridVisible }}
+          secondaryGridStep={document.workplane.sketchGridStep}
           onPlanePoint={addSketchPoint}
           polygonSides={sketchPolygonSides}
           onAddPolygon={(center, radius, angle) => {
@@ -4615,6 +4616,7 @@ export function KercadParametricEditor({ initialProject, sharedFileName, onSaveS
             { key: "depth", label: t("grid.depth"), caption: "Y", value: workplaneDraft.depth, min: 1, max: 2000 },
           ]} step={1} unit="mm" displayUnit={displayUnit} locale={locale} onCommit={updateGridSettings} />
           <AdvancedNumberInput label={t("grid.step")} value={workplaneDraft.gridStep} min={0.1} max={200} step={0.1} unit="mm" displayUnit={displayUnit} locale={locale} onCommit={(gridStep) => updateGridSettings({ gridStep })} />
+          <AdvancedNumberInput label={t("grid.sketchViewLineSpacing")} value={workplaneDraft.sketchGridStep ?? 0} min={0} max={200} step={0.1} unit="mm" displayUnit={displayUnit} locale={locale} onCommit={(step) => updateGridSettings({ sketchGridStep: step > 0 ? Math.max(0.1, step) : 0 })} />
           <AdvancedNumberInput label={t("grid.snapSpacing")} value={workplaneDraft.snapSpacing} min={0.1} max={10000} step={0.1} unit="mm" displayUnit={displayUnit} locale={locale} inputRef={(input) => { if (input && focusSnapSpacingRef.current) { focusSnapSpacingRef.current = false; input.focus(); input.select(); } }} onCommit={(snapSpacing) => updateGridSettings({ snapSpacing })} />
         </div> : null}
         <button

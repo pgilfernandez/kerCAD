@@ -5521,6 +5521,7 @@ html[data-theme="dark"] .kercad-export-panel .export-format-icon { color: color-
   vector-effect: non-scaling-stroke;
 }
 
+.sketch-grid .sketch-grid-secondary { fill: none; stroke: var(--theme-link); stroke-width: 1px; opacity: .14; }
 .sketch-grid .minor {
   stroke: color-mix(in srgb, var(--accent-shade-60cce7) 46%, transparent);
 }

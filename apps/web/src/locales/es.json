@@ -3,6 +3,7 @@
   "name": "Español",
   "direction": "ltr",
   "messages": {
+    "grid.sketchViewLineSpacing": "Paso de línea en bocetos",
     "challenge.imageEditor.download": "Descargar imagen",
     "challenge.imageEditor.title": "Editar imagen",
     "challenge.imageEditor.brush": "Pincel",

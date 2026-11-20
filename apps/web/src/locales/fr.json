@@ -3,6 +3,7 @@
   "name": "Français",
   "direction": "ltr",
   "messages": {
+    "grid.sketchViewLineSpacing": "Espacement des lignes en mode esquisse",
     "challenge.imageEditor.download": "Télécharger l’image",
     "challenge.imageEditor.title": "Modifier l’image",
     "challenge.imageEditor.brush": "Pinceau",

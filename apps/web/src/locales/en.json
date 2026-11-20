@@ -3,6 +3,7 @@
   "name": "English",
   "direction": "ltr",
   "messages": {
+    "grid.sketchViewLineSpacing": "Sketch view line spacing",
     "challenge.imageEditor.download": "Download image",
     "challenge.imageEditor.title": "Edit image",
     "challenge.imageEditor.brush": "Brush",

@@ -306,6 +306,7 @@ export type ParametricDocument = {
     width: number;
     depth: number;
     gridStep: number;
+    sketchGridStep?: number;
     snapSpacing: number;
     snapToGrid: boolean;
     gridVisible: boolean;

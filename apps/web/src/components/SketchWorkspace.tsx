@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronUp, CornerDownRight, Home, Link, Link2Off, Minus, Plus, Split, Trash2, Waves } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode, type PointerEvent as ReactPointerEvent } from "react";
 import { SketchAnnotationLayer, sketchAnnotationFromPicks } from "@/components/SketchAnnotationLayer";
 import type { AnnotationTool } from "@/lib/annotationPresets";
 import type { ParametricAnnotation } from "@/types/parametric";
@@ -87,6 +87,7 @@ type SketchWorkspaceProps = {
   initialSnap?: GridSize;
   exactSnapStep?: number;
   initialWorkspace?: WorkplaneWorkspaceSettings;
+  secondaryGridStep?: number;
   onPlanePoint: (point: { x: number; z: number }, handles?: { handleIn: { x: number; z: number }; handleOut: { x: number; z: number } }) => void;
   onFreehandContour?: (points: Array<{ x: number; z: number }>, smooth: boolean) => void;
   onAddRectangle?: (corners: Array<{ x: number; z: number }>) => void;
@@ -687,6 +688,7 @@ export function SketchWorkspace({
   onCancelActiveTool,
   showPointActions = true,
   showGridControls = true,
+  secondaryGridStep = 0,
 }: SketchWorkspaceProps) {
   const workspace = useMemo(() => normalizeWorkspaceSettings(initialWorkspace, DEFAULT_WORKPLANE_WORKSPACE), [initialWorkspace]);
   const [annotationPicks, setAnnotationPicks] = useState<Array<{ x: number; y: number }>>([]);
@@ -973,6 +975,17 @@ export function SketchWorkspace({
   const isReferencePointSelected = selected?.kind === "point" ? selected.id === SKETCH_ORIGIN_POINT_ID : selected?.kind === "multiple" ? selected.pointIds.includes(SKETCH_ORIGIN_POINT_ID) : false;
   const isReferenceAxisSelected = (axisId: string) => selected?.kind === "segment" ? selected.id === axisId : selected?.kind === "multiple" ? selected.segmentIds.includes(axisId) : false;
   const gridStep = clamp(workspace.gridBlockSize, 0.1, 200);
+  const secondaryGridId = useId();
+  const secondaryGridPath = useMemo(() => {
+    if (secondaryGridStep <= 0 || secondaryGridStep >= gridStep) return "";
+    const step = Math.max(0.1, secondaryGridStep);
+    const lines: string[] = [];
+    for (let i = 1; i * step < gridStep - 1e-6; i++) {
+      const offset = i * step;
+      lines.push(`M${offset} 0V${gridStep}M0 ${offset}H${gridStep}`);
+    }
+    return lines.join("");
+  }, [gridStep, secondaryGridStep]);
   const verticalLines = useMemo(() => {
     const lines: number[] = [];
     const start = Math.ceil((-workspace.width / 2) / gridStep) * gridStep;
@@ -1456,6 +1469,12 @@ export function SketchWorkspace({
           {pointerAction?.kind === "freehand" ? <polyline className="sketch-freehand-preview" points={[...pointerAction.points, pointerAction.current].map((point) => `${point.x},${point.z}`).join(" ")} /> : null}
           {workspace.showGrid ? (
             <g className="sketch-grid" pointerEvents="none">
+              {secondaryGridPath && <>
+                <defs><pattern id={secondaryGridId} patternUnits="userSpaceOnUse" width={gridStep} height={gridStep}>
+                  <path className="sketch-grid-secondary" d={secondaryGridPath} vectorEffect="non-scaling-stroke" />
+                </pattern></defs>
+                <rect x={-workspace.width / 2} y={-workspace.depth / 2} width={workspace.width} height={workspace.depth} fill={`url("#${secondaryGridId}")`} />
+              </>}
               {verticalLines.map((x, index) => <line className={Math.abs(x) < 0.0001 ? "axis" : index % WORKPLANE_MAJOR_GRID_INTERVAL === 0 ? "major" : "minor"} key={`x-${x}`} x1={x} y1={-workspace.depth / 2} x2={x} y2={workspace.depth / 2} />)}
               {horizontalLines.map((z, index) => <line className={Math.abs(z) < 0.0001 ? "axis" : index % WORKPLANE_MAJOR_GRID_INTERVAL === 0 ? "major" : "minor"} key={`z-${z}`} x1={-workspace.width / 2} y1={z} x2={workspace.width / 2} y2={z} />)}
               {(() => {
