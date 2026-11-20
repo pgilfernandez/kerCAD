@@ -4626,19 +4626,19 @@ export function KercadParametricEditor({ initialProject, sharedFileName, onSaveS
           {modelSidebarMode === "normal" ? <ChevronLeft size={23} /> : modelSidebarMode === "simplified" ? <ChevronDown size={23} /> : <ChevronRight size={23} />}
         </button>
         <div ref={cameraControlsScrollRef} className="camera-controls" aria-label={t("camera.controls")}>
-          <button aria-label={t("camera.home")} title={t("camera.home")} onClick={() => setCamera("home")}><Home size={24} /></button>
+          <button aria-label={t("camera.home")} title={t("camera.home")} onClick={() => setCamera("home")}><Home size={28} /></button>
           <span className="camera-control-separator" aria-hidden="true" />
           <button aria-label={projection === "orthographic" ? t("camera.perspective") : t("camera.orthographic")} title={projection === "orthographic" ? t("camera.perspective") : t("camera.orthographic")} onClick={() => setProjection((current) => current === "orthographic" ? "perspective" : "orthographic")}>
             {projection === "orthographic" ? <ToolbarPerspectiveIcon /> : <ToolbarOrthographicIcon />}
           </button>
           <button className={displayMode === "wireframe" ? "active" : ""} aria-label={t("camera.wireframe")} aria-pressed={displayMode === "wireframe"} title={t("camera.wireframe")} onClick={() => setDisplayMode((current) => current === "solid" ? "wireframe" : "solid")}>
-            <svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true"><path d="m12 2 8 4.5v11L12 22l-8-4.5v-11L12 2Zm0 0v9m8-4.5-8 4.5-8-4.5M12 11v11m-8-4.5 8-4.5 8 4.5" fill="none" stroke="currentColor" strokeWidth="1.55" strokeLinejoin="round" /></svg>
+            <svg viewBox="0 0 24 24" width="25" height="25" aria-hidden="true"><path d="m12 2 8 4.5v11L12 22l-8-4.5v-11L12 2Zm0 0v9m8-4.5-8 4.5-8-4.5M12 11v11m-8-4.5 8-4.5 8 4.5" fill="none" stroke="currentColor" strokeWidth="1.55" strokeLinejoin="round" /></svg>
           </button>
           <span className="camera-control-separator" aria-hidden="true" />
-          <button aria-label={t("camera.fit")} title={t("camera.fit")} onClick={() => setCamera("fit")}><Maximize2 size={21} /></button>
-          <button aria-label={t("camera.selection")} title={t("camera.selection")} disabled={!selectedBox} onClick={() => setCamera("selection")}><Focus size={21} /></button>
-          <button aria-label={t("camera.zoomIn")} title={t("camera.zoomIn")} onClick={() => setCamera("zoom-in")}><Plus size={28} /></button>
-          <button aria-label={t("camera.zoomOut")} title={t("camera.zoomOut")} onClick={() => setCamera("zoom-out")}><Minus size={28} /></button>
+          <button aria-label={t("camera.fit")} title={t("camera.fit")} onClick={() => setCamera("fit")}><Maximize2 size={26} /></button>
+          <button aria-label={t("camera.selection")} title={t("camera.selection")} disabled={!selectedBox} onClick={() => setCamera("selection")}><Focus size={26} /></button>
+          <button aria-label={t("camera.zoomIn")} title={t("camera.zoomIn")} onClick={() => setCamera("zoom-in")}><Plus size={33} /></button>
+          <button aria-label={t("camera.zoomOut")} title={t("camera.zoomOut")} onClick={() => setCamera("zoom-out")}><Minus size={33} /></button>
         </div>
         {build.warning && <div className="kercad-rebuild-error" role="alert" aria-live="assertive" aria-atomic="true"><strong>{t("history.stopped")}</strong><span>{build.warning}</span>{rebuildSuggestion ? <small><b>{t("rebuild.suggestionLabel")}:</b> {rebuildSuggestion}</small> : null}</div>}
         {notice && <div className={`kercad-reference-toast ${notice.type}`} role={notice.type === "error" ? "alert" : "status"} aria-live={notice.type === "error" ? "assertive" : "polite"} aria-atomic="true">{notice.text}</div>}
