@@ -4624,7 +4624,7 @@ export function KercadParametricEditor({ initialProject, sharedFileName, onSaveS
             { key: "depth", label: t("grid.depth"), caption: "Y", value: workplaneDraft.depth, min: 1, max: 2000 },
           ]} step={1} unit="mm" displayUnit={displayUnit} locale={locale} onCommit={updateGridSettings} />
           <AdvancedNumberInput label={t("grid.step")} value={workplaneDraft.gridStep} min={0.1} max={200} step={0.1} unit="mm" displayUnit={displayUnit} locale={locale} onCommit={(gridStep) => updateGridSettings({ gridStep })} />
-          <AdvancedNumberInput label={t("grid.sketchViewLineSpacing")} value={workplaneDraft.sketchGridStep ?? 0} min={0} max={200} step={0.1} unit="mm" displayUnit={displayUnit} locale={locale} onCommit={(step) => updateGridSettings({ sketchGridStep: step > 0 ? Math.max(0.1, step) : 0 })} />
+          <AdvancedNumberInput label={t("grid.step")} caption={t("operation.sketch")} ariaLabel={t("grid.sketchViewLineSpacing")} value={workplaneDraft.sketchGridStep ?? 0} min={0} max={200} step={0.1} unit="mm" displayUnit={displayUnit} locale={locale} onCommit={(step) => updateGridSettings({ sketchGridStep: step > 0 ? Math.max(0.1, step) : 0 })} />
           <AdvancedNumberInput label={t("grid.snapSpacing")} value={workplaneDraft.snapSpacing} min={0.1} max={10000} step={0.1} unit="mm" displayUnit={displayUnit} locale={locale} inputRef={(input) => { if (input && focusSnapSpacingRef.current) { focusSnapSpacingRef.current = false; input.focus(); input.select(); } }} onCommit={(snapSpacing) => updateGridSettings({ snapSpacing })} />
         </div> : null}
         <button
