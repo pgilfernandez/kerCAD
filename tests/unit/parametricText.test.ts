@@ -5,7 +5,7 @@ import { updateParametricShapeParameter, viewportSelectionForFeature } from "@/l
 import { validateDrawnSketchProfile } from "@/lib/sketchProfileValidation";
 
 describe("parametric text", () => {
-  it.each(["Fredoka", "Barlow Condensed", "Alfa Slab One", "Stardos Stencil"] as const)("keeps valid %s geometry and its font choice on reopen", (font) => {
+  it.each(["Fredoka", "Barlow Condensed", "Alfa Slab One", "Stardos Stencil", "Oswald", "Montserrat", "Ubuntu", "Roboto", "Pacifico", "Gloria Hallelujah", "Great Vibes", "Amatic SC"] as const)("keeps valid %s geometry and its font choice on reopen", (font) => {
     const document = createStarterDocument(123);
     const { sketchId } = addParametricText(document, document.objects[0].id);
     const sketch = document.features.find((feature) => feature.id === sketchId);

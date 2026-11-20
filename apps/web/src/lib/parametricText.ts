@@ -12,6 +12,14 @@ import fredoka from "./operation-fonts/fredoka.typeface.json";
 import barlowCondensed from "./operation-fonts/barlowcondensed.typeface.json";
 import alfaSlabOne from "./operation-fonts/alfaslabone.typeface.json";
 import stardosStencil from "./operation-fonts/stardosstencil.typeface.json";
+import oswald from "./operation-fonts/oswald.typeface.json";
+import montserrat from "./operation-fonts/montserrat.typeface.json";
+import ubuntu from "./operation-fonts/ubuntu.typeface.json";
+import roboto from "./operation-fonts/roboto.typeface.json";
+import pacifico from "./operation-fonts/pacifico.typeface.json";
+import gloriahallelujah from "./operation-fonts/gloriahallelujah.typeface.json";
+import greatvibes from "./operation-fonts/greatvibes.typeface.json";
+import amaticsc from "./operation-fonts/amaticsc.typeface.json";
 
 export type ParametricTextSettings = Extract<NonNullable<SketchProfile["generator"]>, { kind: "text" }>;
 
@@ -22,6 +30,14 @@ const PARAMETRIC_WEB_FONT_DATA = {
   "Barlow Condensed": barlowCondensed as FontData,
   "Alfa Slab One": alfaSlabOne as FontData,
   "Stardos Stencil": stardosStencil as FontData,
+  "Oswald": oswald as FontData,
+  "Montserrat": montserrat as FontData,
+  "Ubuntu": ubuntu as FontData,
+  "Roboto": roboto as FontData,
+  "Pacifico": pacifico as FontData,
+  "Gloria Hallelujah": gloriahallelujah as FontData,
+  "Great Vibes": greatvibes as FontData,
+  "Amatic SC": amaticsc as FontData,
 } satisfies Record<ParametricTextSettings["font"], FontData>;
 const parsedFonts = new Map<ParametricTextSettings["font"], Font>();
 const cachedGlyphs = new Map<string, TextGlyph>();
