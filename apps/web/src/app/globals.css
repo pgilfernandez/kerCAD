@@ -974,6 +974,9 @@ button {
 .kercad-topology-selection-count { margin: 8px 12px 0; color: var(--theme-dark-link, #405f6d); font-size: 11px; font-weight: 700; text-align: center; }
 .kercad-edit-topology-selection { width: calc(100% - 24px); margin: 0 12px 8px; padding: 8px 10px; border: 1px solid var(--accent-shade-66b8da); border-radius: 5px; background: var(--theme-dark-active, var(--accent-shade-eefaff)); color: var(--theme-dark-link, #236b89); font-size: 11px; font-weight: 800; cursor: pointer; }
 .kercad-edit-topology-selection:hover { background: var(--theme-dark-active, var(--accent-shade-ddf4fd)); }
+.kercad-edit-topology-selection.kercad-edit-sketch-button { border-color: var(--accent-solid); border-radius: 8px; background: var(--theme-active); color: var(--theme-link); font-size: 12px; font-weight: 600; }
+.kercad-edit-topology-selection.kercad-edit-sketch-button:hover { background: var(--accent-solid); color: #fff; }
+.kercad-edit-sketch-button:focus-visible { outline: 2px solid var(--theme-link); outline-offset: 2px; }
 .kercad-topology-selection-actions .kercad-edit-topology-selection { flex: 1; min-width: 0; width: auto; margin: 0 0 8px; }
 .kercad-topology-selection-summary { margin-top: 0; }
 

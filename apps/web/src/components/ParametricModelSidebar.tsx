@@ -646,7 +646,7 @@ function ParametricFeatureInspector({
 
       {feature.kind === "sketch" ? (
         <>
-          {!feature.generatedPath && <div className="kercad-feature-card"><button className="kercad-edit-topology-selection" type="button" onClick={() => onEditSketch(feature.id)}>{t("operation.editSketch")}</button></div>}
+          {!feature.generatedPath && <div className="kercad-feature-card"><button className="kercad-edit-topology-selection kercad-edit-sketch-button" type="button" onClick={() => onEditSketch(feature.id)}>{t("operation.editSketch")}</button></div>}
           {feature.generatedPath ? <ShapeParametersSection><GeneratedPathFields path={feature.generatedPath} onChange={(path) => onUpdate((draft) => { if (draft.kind === "sketch") draft.generatedPath = path; })} /></ShapeParametersSection> : feature.profile.shape === "drawn" ? <>
             
           </> : <ShapeParametersSection>
