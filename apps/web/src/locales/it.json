@@ -195,7 +195,7 @@
     "settings.noSnapshots": "Non ci sono ancora istantanee.",
     "settings.autosave": "Il progetto viene salvato automaticamente. Le preferenze visive vengono ricordate su questo dispositivo.",
     "grid.title": "Griglia",
-    "grid.showFloor": "Mostra il pavimento XY",
+    "grid.showFloor": "Mostra griglia",
     "grid.activeSize": "Dimensioni del piano attivo",
     "grid.size": "Misurare",
     "grid.width": "Larghezza (asse X)",

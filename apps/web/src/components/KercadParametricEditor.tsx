@@ -4610,7 +4610,7 @@ export function KercadParametricEditor({ initialProject, sharedFileName, onSaveS
         </div>
         {workplaneOpen ? <div data-kercad-popup="grid" className="kercad-workplane-popover">
           <header><div><strong>{t("grid.title")}</strong></div><button type="button" aria-label={t("common.close")} onClick={() => setWorkplaneOpen(false)}><X size={17} /></button></header>
-          <label><span>{t("grid.showFloor")}</span><input type="checkbox" checked={workplaneDraft.gridVisible} onChange={(event) => updateGridSettings({ gridVisible: event.target.checked })} /></label>
+          <label className="kercad-grid-visibility"><span>{t("grid.showFloor")}</span><input type="checkbox" role="switch" checked={workplaneDraft.gridVisible} onChange={(event) => updateGridSettings({ gridVisible: event.target.checked })} /></label>
           <AdvancedNumberFields label={t("grid.size")} fields={[
             { key: "width", label: t("grid.width"), caption: "X", value: workplaneDraft.width, min: 1, max: 2000 },
             { key: "depth", label: t("grid.depth"), caption: "Y", value: workplaneDraft.depth, min: 1, max: 2000 },

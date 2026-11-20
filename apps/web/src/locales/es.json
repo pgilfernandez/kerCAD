@@ -193,7 +193,7 @@
     "settings.noSnapshots": "Todavía no hay instantáneas.",
     "settings.autosave": "El proyecto se guarda automáticamente. Las preferencias visuales se recuerdan en este dispositivo.",
     "grid.title": "Rejilla",
-    "grid.showFloor": "Mostrar suelo XY",
+    "grid.showFloor": "Mostrar rejilla",
     "grid.activeSize": "Tamaño del plano activo",
     "grid.size": "Tamaño",
     "grid.width": "Ancho (eje X)",

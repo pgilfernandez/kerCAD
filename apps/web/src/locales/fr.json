@@ -195,7 +195,7 @@
     "settings.noSnapshots": "Aucun instantané pour le moment.",
     "settings.autosave": "Le projet est enregistré automatiquement. Les préférences visuelles sont mémorisées sur cet appareil.",
     "grid.title": "Grille",
-    "grid.showFloor": "Afficher le sol XY",
+    "grid.showFloor": "Afficher la grille",
     "grid.activeSize": "Taille du plan actif",
     "grid.size": "Taille",
     "grid.width": "Largeur (axe X)",

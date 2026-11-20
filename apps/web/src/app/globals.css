@@ -821,6 +821,12 @@ button {
 .kercad-workplane-popover > header button:hover { color: var(--theme-text-0d55bd); background: var(--theme-bg-effafe); border-color: var(--theme-line-83c5d9); }
 .kercad-workplane-popover > label { display: grid; min-height: 48px; grid-template-columns: minmax(100px, 1fr) 120px; align-items: center; gap: 10px; margin: 0 13px; color: var(--theme-text-muted); border-bottom: 1px solid var(--theme-line-edf1f4); font-size: 12px; font-weight: 500; }
 .kercad-workplane-popover > label:last-child { border-bottom: 0; }
+.kercad-workplane-popover > .kercad-grid-visibility { cursor: pointer; }
+.kercad-grid-visibility input[role="switch"] { appearance: none; box-sizing: border-box; display: flex; align-items: center; justify-self: end; width: 38px; height: 22px; margin: 0; padding: 2px; border: 1px solid var(--theme-line-cbd7df); border-radius: 999px; background: var(--theme-text-muted); cursor: pointer; }
+.kercad-grid-visibility input[role="switch"]::before { content: ""; width: 16px; height: 16px; border-radius: 50%; background: white; transition: transform .15s ease; }
+.kercad-grid-visibility input[role="switch"]:checked { background: var(--accent-solid); }
+.kercad-grid-visibility input[role="switch"]:checked::before { transform: translateX(16px); }
+.kercad-grid-visibility input[role="switch"]:focus-visible { outline: 2px solid var(--theme-link); outline-offset: 2px; }
 .kercad-workplane-popover .kercad-number-input input { box-sizing: border-box; width: 100%; min-width: 0; height: 36px; padding: 0 36px 0 10px; color: var(--theme-text-314c60); background: var(--theme-bg-ffffff-a950); border: 1px solid var(--theme-line-c5d6df); border-radius: 8px; font: inherit; font-size: 13px; font-weight: 400; }
 .kercad-workplane-popover .kercad-number-input input:hover { border-color: var(--theme-line-83c5d9); }
 .kercad-workplane-popover .kercad-number-input input:focus-visible,

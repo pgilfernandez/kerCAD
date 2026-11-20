@@ -195,7 +195,7 @@
     "settings.noSnapshots": "Noch keine Momentaufnahmen vorhanden.",
     "settings.autosave": "Das Projekt wird automatisch gespeichert. Visuelle Präferenzen werden auf diesem Gerät gespeichert.",
     "grid.title": "Raster",
-    "grid.showFloor": "XY-Boden anzeigen",
+    "grid.showFloor": "Raster anzeigen",
     "grid.activeSize": "Größe der aktiven Ebene",
     "grid.size": "Größe",
     "grid.width": "Breite (X-Achse)",

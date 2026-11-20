@@ -193,7 +193,7 @@
     "settings.noSnapshots": "There are no snapshots yet.",
     "settings.autosave": "The project is saved automatically. Visual preferences are remembered on this device.",
     "grid.title": "Grid",
-    "grid.showFloor": "Show XY floor",
+    "grid.showFloor": "Show grid",
     "grid.activeSize": "Active plane size",
     "grid.size": "Size",
     "grid.width": "Width (X axis)",
