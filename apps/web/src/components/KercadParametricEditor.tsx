@@ -411,7 +411,7 @@ export function KercadParametricEditor({ initialProject, sharedFileName, onSaveS
   const [pendingEdgeTreatment, setPendingEdgeTreatment] = useState<"fillet" | "chamfer" | null>(null);
   const [editingEdgeTreatmentId, setEditingEdgeTreatmentId] = useState<string | null>(null);
   const [edgeTreatmentRadius, setEdgeTreatmentRadius] = useState(2);
-  const [pendingFaceExtrude, setPendingFaceExtrude] = useState<{ operation: "add" | "cut"; distance: number } | null>(null);
+  const [pendingFaceExtrude, setPendingFaceExtrude] = useState<{ operation: "add" | "cut"; distance: number; taperAngle: number } | null>(null);
   const [editingFaceExtrudeId, setEditingFaceExtrudeId] = useState<string | null>(null);
   const [pendingShell, setPendingShell] = useState<{ thickness: number; cornerType: "rounded" | "sharp" } | null>(null);
   const [editingShellId, setEditingShellId] = useState<string | null>(null);
@@ -871,6 +871,7 @@ export function KercadParametricEditor({ initialProject, sharedFileName, onSaveS
       feature.objectId = reference.objectId;
       feature.operation = pendingFaceExtrude.operation;
       feature.distance = pendingFaceExtrude.distance;
+      feature.taperAngle = pendingFaceExtrude.taperAngle;
       feature.faceReferenceId = stored.id;
       preview.topologyReferences.push(stored);
       if (!existing) preview.features.push(feature);
@@ -3283,7 +3284,7 @@ export function KercadParametricEditor({ initialProject, sharedFileName, onSaveS
     setEditingShellId(null);
     setPendingRevolve(null);
     setEditingRevolveId(null);
-    setPendingFaceExtrude({ operation: feature?.kind === "faceExtrude" ? feature.operation : operation, distance: feature?.kind === "faceExtrude" ? feature.distance : 10 });
+    setPendingFaceExtrude({ operation: feature?.kind === "faceExtrude" ? feature.operation : operation, distance: feature?.kind === "faceExtrude" ? feature.distance : 10, taperAngle: feature?.kind === "faceExtrude" ? feature.taperAngle ?? 0 : 0 });
     setEditingFaceExtrudeId(featureId);
     setModelSidebarMode("normal");
     setSelectingTopologyFaces(true);
@@ -3319,6 +3320,7 @@ export function KercadParametricEditor({ initialProject, sharedFileName, onSaveS
       feature.objectId = reference.objectId;
       feature.operation = pendingFaceExtrude.operation;
       feature.distance = Math.max(0.01, pendingFaceExtrude.distance);
+      feature.taperAngle = pendingFaceExtrude.taperAngle;
       featureId = feature.id;
       const stored = { ...structuredClone(reference), id: `${feature.id}:face` };
       feature.faceReferenceId = stored.id;

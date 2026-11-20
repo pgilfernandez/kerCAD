@@ -3,6 +3,8 @@
   "name": "Français",
   "direction": "ltr",
   "messages": {
+    "extrude.taperAngle": "Angle de dépouille",
+    "extrude.invalidTaper": "Impossible d’appliquer cet angle de dépouille au profil. Essaie un angle ou une distance d’extrusion plus faible.",
     "grid.sketchViewLineSpacing": "Espacement des lignes en mode esquisse",
     "challenge.imageEditor.download": "Télécharger l’image",
     "challenge.imageEditor.title": "Modifier l’image",

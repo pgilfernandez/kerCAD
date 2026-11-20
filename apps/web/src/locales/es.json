@@ -3,6 +3,8 @@
   "name": "Español",
   "direction": "ltr",
   "messages": {
+    "extrude.taperAngle": "Ángulo de conicidad",
+    "extrude.invalidTaper": "No se puede aplicar el ángulo de conicidad a este perfil. Prueba con un ángulo o una distancia menor.",
     "grid.sketchViewLineSpacing": "Paso de línea en bocetos",
     "challenge.imageEditor.download": "Descargar imagen",
     "challenge.imageEditor.title": "Editar imagen",

@@ -209,6 +209,37 @@ function profileInOperationSpace<T extends Face | Wire>(brep: Brep, shape: T, so
   })) as T;
 }
 
+// Positive draft shrinks the outer boundary and grows holes in the direction
+// of extrusion. Use planar offsets, not scaling about a profile centroid.
+function taperedFaceExtrusion(brep: Brep, face: Face, vector: [number, number, number], angle: number): AnySolid {
+  const offset = Math.hypot(...vector) * Math.tan(THREE.MathUtils.degToRad(angle));
+  const area = (wire: Wire) => brep.unwrap(brep.measureArea(brep.unwrap(brep.face(wire as Parameters<Brep["face"]>[0]))));
+  const section = (wire: Wire, distance: number) => {
+    const originalArea = area(wire);
+    // Offset signs depend on the loop winding; holes often run in reverse.
+    for (const signedDistance of [distance, -distance]) {
+      try {
+        const offsetWire = brep.unwrap(brep.offsetWire2D(wire, signedDistance, "intersection"));
+        if (Math.sign(area(offsetWire) - originalArea) !== Math.sign(distance)) continue;
+        const endWire = brep.translate(offsetWire, vector) as Wire;
+        return brep.unwrap(brep.loft([wire, endWire], { ruled: true })) as AnySolid;
+      } catch { /* Try the other winding convention. */ }
+    }
+    throw new Error("Invalid offset section.");
+  };
+  try {
+    if (!Number.isFinite(angle) || Math.abs(angle) >= 90) throw new Error("Invalid taper angle.");
+    if (Math.abs(offset) < 1e-7) return brep.unwrap(brep.extrude(face as Parameters<Brep["extrude"]>[0], vector)) as AnySolid;
+    let solid = section(brep.outerWire(face), -offset);
+    for (const hole of brep.innerWires(face)) {
+      solid = refinedBooleanSolid(brep, brep.cut(solid, section(hole, offset)));
+    }
+    return solid;
+  } catch {
+    throw new Error(uiText("extrude.invalidTaper"));
+  }
+}
+
 function solidFromSketch(brep: Brep, sketch: SketchFeature, feature: ExtrudeFeature, document: ParametricDocument, sourceSolid?: AnySolid | null): AnySolid {
   if (feature.pathSketchId) {
     const path = document.features.find((item): item is SketchFeature => item.kind === "sketch" && item.id === feature.pathSketchId);
@@ -280,6 +311,19 @@ function solidFromSketch(brep: Brep, sketch: SketchFeature, feature: ExtrudeFeat
     return applyOperationTransform(brep, solid, feature.transform);
   }
   const profile = sketch.profile;
+  const taper = feature.taperAngle ?? 0;
+  if (taper) {
+    const normal = rotateDirection([0, 0, 1], sketch.rotation);
+    const distance = feature.symmetric ? Math.abs(feature.distance) / 2 : feature.distance;
+    const vector = normal.map((component) => component * distance) as [number, number, number];
+    const solids = facesFromSketch(brep, sketch).map((face) => {
+      const forward = taperedFaceExtrusion(brep, face, vector, taper);
+      if (!feature.symmetric) return forward;
+      const backward = taperedFaceExtrusion(brep, face, [-vector[0], -vector[1], -vector[2]], taper);
+      return refinedBooleanSolid(brep, brep.fuse(forward, backward));
+    });
+    return applyOperationTransform(brep, combineProfileSolids(brep, solids), feature.transform);
+  }
   if (profile.shape === "drawn") {
     const solid = applySketchTransform(brep, extrudePlanarProfile(brep, drawnSketchFaces(brep, sketch), feature.distance, feature.symmetric), sketch);
     return applyOperationTransform(brep, solid, feature.transform);
@@ -815,7 +859,8 @@ function applyFaceExtrudeFeature(brep: Brep, document: ParametricDocument, curre
   const length = Math.hypot(x, y, z) || 1;
   const sign = feature.operation === "cut" ? -1 : 1;
   const vector: [number, number, number] = [x / length * feature.distance * sign, y / length * feature.distance * sign, z / length * feature.distance * sign];
-  const tool = brep.unwrap(brep.extrude(face as Parameters<Brep["extrude"]>[0], vector)) as AnySolid;
+  const tool = feature.taperAngle ? taperedFaceExtrusion(brep, face, vector, feature.taperAngle)
+    : brep.unwrap(brep.extrude(face as Parameters<Brep["extrude"]>[0], vector)) as AnySolid;
   return feature.operation === "cut" ? refinedBooleanSolid(brep, brep.cut(current, tool)) : refinedBooleanSolid(brep, brep.fuse(current, tool));
 }
 

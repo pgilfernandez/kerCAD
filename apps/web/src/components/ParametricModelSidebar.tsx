@@ -93,8 +93,8 @@ type Props = {
   onEdgeTreatmentDraftChange: (update: Partial<{ treatment: "fillet" | "chamfer"; radius: number }>) => void;
   onAcceptEdgeTreatment: () => void;
   onCancelEdgeTreatment: () => void;
-  faceExtrudeDraft: { operation: "add" | "cut"; distance: number; faceCount: number; editing: boolean } | null;
-  onFaceExtrudeDraftChange: (update: Partial<{ operation: "add" | "cut"; distance: number }>) => void;
+  faceExtrudeDraft: { operation: "add" | "cut"; distance: number; taperAngle: number; faceCount: number; editing: boolean } | null;
+  onFaceExtrudeDraftChange: (update: Partial<{ operation: "add" | "cut"; distance: number; taperAngle: number }>) => void;
   onAcceptFaceExtrude: () => void;
   onCancelFaceExtrude: () => void;
   shellDraft: { thickness: number; cornerType?: "rounded" | "sharp"; faceCount: number; editing: boolean } | null;
@@ -700,6 +700,7 @@ function ParametricFeatureInspector({
                 ...(primitiveSketch.profile.elliptical ? [{ key: "radius2", label: t("cylinder.radius2"), value: primitiveSketch.profile.radius2 ?? primitiveSketch.profile.diameter / 2, min: .01, max: 100, apply: (draft: ParametricFeature, value: number) => { if (draft.kind === "sketch" && draft.profile.shape === "circle") draft.profile.radius2 = value; } }] : []),
               ] satisfies ShapeField<ParametricFeature>[]} onUpdate={(apply) => onUpdateFeature(primitiveSketch.id, apply)} />
             ) : null}
+            <BoundedNumberField label={t("extrude.taperAngle")} value={feature.taperAngle ?? 0} unit="°" step={1} min={-89} max={89} onChange={(value) => onUpdate((draft) => { if (draft.kind === "extrude") draft.taperAngle = value; })} />
             {primitiveSketch?.profile.shape !== "rectangle" && <BoundedNumberField caption="H" label={t("property.height")} value={feature.distance} min={-200} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "extrude" && Math.abs(value) >= 0.01) draft.distance = value; })} />}
             </>}
           </ShapeParametersSection>
@@ -850,7 +851,7 @@ function ParametricFeatureInspector({
 
       {feature.kind === "faceExtrude" ? (
         <>
-          <div className="kercad-feature-card"><h3>{t("model.operation")}</h3><OperationModeButtons addOnly={requiresAddOperation(document, feature)} value={feature.operation} includeCommon={false} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "faceExtrude" && operation !== "intersect") draft.operation = operation; })} /><BoundedNumberField label={t("property.length")} value={feature.distance} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "faceExtrude") draft.distance = Math.max(0.01, value); })} /></div>
+          <div className="kercad-feature-card"><h3>{t("model.operation")}</h3><OperationModeButtons addOnly={requiresAddOperation(document, feature)} value={feature.operation} includeCommon={false} onChange={(operation) => onUpdate((draft) => { if (draft.kind === "faceExtrude" && operation !== "intersect") draft.operation = operation; })} /><BoundedNumberField label={t("property.length")} value={feature.distance} min={0.01} max={200} onChange={(value) => onUpdate((draft) => { if (draft.kind === "faceExtrude") draft.distance = Math.max(0.01, value); })} /><BoundedNumberField label={t("extrude.taperAngle")} value={feature.taperAngle ?? 0} unit="°" step={1} min={-89} max={89} onChange={(value) => onUpdate((draft) => { if (draft.kind === "faceExtrude") draft.taperAngle = value; })} /></div>
           <button className="kercad-edit-topology-selection" type="button" onClick={() => onEditFaceExtrudeSelection(feature.id)}>{t("operation.editFace")}</button>
           <TransformSection description={uiText("sidebar.direction.normal.to.face", {}, locale)}><p className="kercad-transform-empty">{t("help.faceExtrude")}</p></TransformSection>
         </>

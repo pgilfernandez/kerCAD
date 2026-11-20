@@ -3,6 +3,8 @@
   "name": "English",
   "direction": "ltr",
   "messages": {
+    "extrude.taperAngle": "Taper angle",
+    "extrude.invalidTaper": "The taper angle cannot be applied to this profile. Try a smaller angle or extrusion distance.",
     "grid.sketchViewLineSpacing": "Sketch view line spacing",
     "challenge.imageEditor.download": "Download image",
     "challenge.imageEditor.title": "Edit image",

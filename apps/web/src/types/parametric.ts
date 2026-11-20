@@ -106,6 +106,7 @@ export type ExtrudeFeature = BaseFeature & {
   profileFaceReferenceId?: string;
   distance: number;
   symmetric: boolean;
+  taperAngle?: number;
   operation: "add" | "cut" | "intersect";
   transform: {
     position: ParametricVector3;
@@ -169,6 +170,7 @@ export type FaceExtrudeFeature = BaseFeature & {
   kind: "faceExtrude";
   operation: "add" | "cut";
   distance: number;
+  taperAngle?: number;
   faceReferenceId: string;
 };
 

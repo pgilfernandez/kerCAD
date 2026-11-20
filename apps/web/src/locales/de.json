@@ -3,6 +3,8 @@
   "name": "Deutsch",
   "direction": "ltr",
   "messages": {
+    "extrude.taperAngle": "Formschrägenwinkel",
+    "extrude.invalidTaper": "Die Formschräge kann nicht auf dieses Profil angewendet werden. Versuche einen kleineren Winkel oder eine kürzere Extrusion.",
     "grid.sketchViewLineSpacing": "Linienabstand in der Skizzenansicht",
     "challenge.imageEditor.download": "Bild herunterladen",
     "challenge.imageEditor.title": "Bild bearbeiten",

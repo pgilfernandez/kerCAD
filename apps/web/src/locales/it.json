@@ -3,6 +3,8 @@
   "name": "Italiano",
   "direction": "ltr",
   "messages": {
+    "extrude.taperAngle": "Angolo di sformo",
+    "extrude.invalidTaper": "Impossibile applicare l’angolo di sformo a questo profilo. Prova con un angolo o una distanza di estrusione minore.",
     "grid.sketchViewLineSpacing": "Spaziatura linee nella vista schizzo",
     "challenge.imageEditor.download": "Scarica immagine",
     "challenge.imageEditor.title": "Modifica immagine",
