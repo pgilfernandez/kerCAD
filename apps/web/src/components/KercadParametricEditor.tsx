@@ -4625,7 +4625,7 @@ export function KercadParametricEditor({ initialProject, sharedFileName, onSaveS
           ]} step={1} unit="mm" displayUnit={displayUnit} locale={locale} onCommit={updateGridSettings} />
           <AdvancedNumberFields label={t("grid.step")} fields={[
             { key: "gridStep", label: `${t("grid.step")} (3D)`, caption: "3D", value: workplaneDraft.gridStep, min: 0.1, max: 200 },
-            { key: "sketchGridStep", label: t("grid.sketchViewLineSpacing"), caption: t("operation.sketch"), value: workplaneDraft.sketchGridStep ?? 1, min: 0, max: 200 },
+            { key: "sketchGridStep", label: t("grid.sketchViewLineSpacing"), caption: t("operation.sketch"), tooltip: t("grid.sketchSpacingHint"), value: workplaneDraft.sketchGridStep ?? 1, min: 0, max: 200 },
           ]} step={0.1} unit="mm" displayUnit={displayUnit} locale={locale} onCommit={({ gridStep, sketchGridStep }) => updateGridSettings({
             ...(gridStep !== undefined ? { gridStep } : {}),
             ...(sketchGridStep !== undefined ? { sketchGridStep: sketchGridStep > 0 ? Math.max(0.1, sketchGridStep) : 0 } : {}),

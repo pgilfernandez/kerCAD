@@ -6,7 +6,7 @@ import { displayLengthToMillimeters, millimetersToDisplayLength, displayUnitLabe
 import { uiText, type KercadLocale } from "@/lib/kercadI18n";
 import "./advancedNumberFields.css";
 
-export type AdvancedNumberField = { key: string; value: number; caption?: string; label: string; min?: number; max?: number };
+export type AdvancedNumberField = { key: string; value: number; caption?: string; tooltip?: string; label: string; min?: number; max?: number };
 type Props = { fields: AdvancedNumberField[]; label?: string; unit: string; displayUnit: ParametricDisplayUnit; step: number; locale?: KercadLocale; expressionUnit?: string | number; format?: (value: number) => string; round?: boolean; inputRef?: (element: HTMLInputElement | null) => void; autoFocus?: boolean; onEditing?: (active: boolean) => void; onCommit: (values: Record<string, number>) => void };
 export function AdvancedNumberInput({ value, min, max, caption, ariaLabel, onCommit, ...props }: Omit<Props, "fields" | "onCommit"> & { value: number; min?: number; max?: number; caption?: string; ariaLabel?: string; onCommit: (value: number) => void }) {
   return <AdvancedNumberFields {...props} fields={[{ key: "value", value, min, max, caption, label: ariaLabel ?? props.label ?? props.unit }]} onCommit={({ value: next }) => { if (next !== undefined && Math.abs(next - value) > 1e-10) onCommit(next); }} />;
@@ -143,7 +143,7 @@ export function AdvancedNumberFields({ fields, label, unit, displayUnit, step, l
       {fields.map((field) => <div key={field.key} className={`kercad-advanced-number-field ${selected.includes(field.key) ? "selected" : ""}`} data-field-key={field.key}>
         <button type="button" tabIndex={-1} aria-label={uiText("input.decrement", {}, locale)} title={uiText("input.decrement", {}, locale)} onPointerDown={(event) => event.preventDefault()} onClick={() => nudge(field.key, -1)}><span className="kercad-advanced-direction left" aria-hidden="true" /></button>
         <span className="kercad-advanced-caption" aria-hidden="true">{field.caption}</span>
-        <input ref={inputRef} autoFocus={autoFocus} className="kercad-advanced-number-input" data-number-key={field.key} type="text" inputMode="text" aria-label={field.label} value={drafts[field.key] ?? shown(field.value)}
+        <input ref={inputRef} autoFocus={autoFocus} className="kercad-advanced-number-input" data-number-key={field.key} type="text" inputMode="text" aria-label={field.label} title={field.tooltip} value={drafts[field.key] ?? shown(field.value)}
           onFocus={(event) => { if (!selected.includes(field.key)) setSelected([field.key]); syncCaret(event.currentTarget); onEditing?.(true); }}
           onSelect={(event) => syncCaret(event.currentTarget)}
           onChange={(event) => { const next = { ...draftRef.current }; for (const key of keysFor(field.key)) next[key] = event.target.value; draftRef.current = next; setDrafts(next); event.target.setCustomValidity(""); }}

@@ -3,6 +3,7 @@
   "name": "Italiano",
   "direction": "ltr",
   "messages": {
+    "grid.sketchSpacingHint": "Inserisci 0 per nascondere le linee secondarie della griglia nello schizzo.",
     "extrude.taperAngle": "Angolo di sformo",
     "extrude.invalidTaper": "Impossibile applicare l’angolo di sformo a questo profilo. Prova con un angolo o una distanza di estrusione minore.",
     "grid.sketchViewLineSpacing": "Spaziatura linee nella vista schizzo",

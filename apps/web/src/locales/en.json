@@ -3,6 +3,7 @@
   "name": "English",
   "direction": "ltr",
   "messages": {
+    "grid.sketchSpacingHint": "Enter 0 to hide secondary grid lines in Sketch.",
     "extrude.taperAngle": "Taper angle",
     "extrude.invalidTaper": "The taper angle cannot be applied to this profile. Try a smaller angle or extrusion distance.",
     "grid.sketchViewLineSpacing": "Sketch view line spacing",

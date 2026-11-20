@@ -3,6 +3,7 @@
   "name": "Deutsch",
   "direction": "ltr",
   "messages": {
+    "grid.sketchSpacingHint": "0 blendet die zusätzlichen Rasterlinien in der Skizzenansicht aus.",
     "extrude.taperAngle": "Formschrägenwinkel",
     "extrude.invalidTaper": "Die Formschräge kann nicht auf dieses Profil angewendet werden. Versuche einen kleineren Winkel oder eine kürzere Extrusion.",
     "grid.sketchViewLineSpacing": "Linienabstand in der Skizzenansicht",
