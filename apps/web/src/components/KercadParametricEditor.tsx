@@ -1,6 +1,6 @@
 "use client";
 
-import { AdvancedNumberInput } from "@/components/AdvancedNumberFields";
+import { AdvancedNumberFields, AdvancedNumberInput } from "@/components/AdvancedNumberFields";
 
 import { ChallengeIcon } from "@/components/ChallengeIcon";
 import { CylinderProfileButtons } from "@/components/CylinderProfileButtons";
@@ -4610,10 +4610,10 @@ export function KercadParametricEditor({ initialProject, sharedFileName, onSaveS
         {workplaneOpen ? <div data-kercad-popup="grid" className="kercad-workplane-popover">
           <header><div><strong>{t("grid.title")}</strong></div><button type="button" aria-label={t("common.close")} onClick={() => setWorkplaneOpen(false)}><X size={17} /></button></header>
           <label><span>{t("grid.showFloor")}</span><input type="checkbox" checked={workplaneDraft.gridVisible} onChange={(event) => updateGridSettings({ gridVisible: event.target.checked })} /></label>
-          <div className="kercad-grid-size-row" role="group" aria-labelledby="kercad-grid-size-label">
-            <span id="kercad-grid-size-label">{t("grid.size")}</span>
-            {(["width", "depth"] as const).map((axis) => <AdvancedNumberInput key={axis} ariaLabel={t(axis === "width" ? "grid.width" : "grid.depth")} caption={axis === "width" ? "X" : "Y"} value={workplaneDraft[axis]} min={1} max={2000} step={1} unit="mm" displayUnit={displayUnit} locale={locale} onCommit={(value) => updateGridSettings({ [axis]: value })} />)}
-          </div>
+          <AdvancedNumberFields label={t("grid.size")} fields={[
+            { key: "width", label: t("grid.width"), caption: "X", value: workplaneDraft.width, min: 1, max: 2000 },
+            { key: "depth", label: t("grid.depth"), caption: "Y", value: workplaneDraft.depth, min: 1, max: 2000 },
+          ]} step={1} unit="mm" displayUnit={displayUnit} locale={locale} onCommit={updateGridSettings} />
           <AdvancedNumberInput label={t("grid.step")} value={workplaneDraft.gridStep} min={0.1} max={200} step={0.1} unit="mm" displayUnit={displayUnit} locale={locale} onCommit={(gridStep) => updateGridSettings({ gridStep })} />
           <AdvancedNumberInput label={t("grid.snapSpacing")} value={workplaneDraft.snapSpacing} min={0.1} max={10000} step={0.1} unit="mm" displayUnit={displayUnit} locale={locale} inputRef={(input) => { if (input && focusSnapSpacingRef.current) { focusSnapSpacingRef.current = false; input.focus(); input.select(); } }} onCommit={(snapSpacing) => updateGridSettings({ snapSpacing })} />
         </div> : null}

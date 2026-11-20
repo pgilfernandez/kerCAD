@@ -821,8 +821,6 @@ button {
 .kercad-workplane-popover > header button:hover { color: var(--theme-text-0d55bd); background: var(--theme-bg-effafe); border-color: var(--theme-line-83c5d9); }
 .kercad-workplane-popover > label { display: grid; min-height: 48px; grid-template-columns: minmax(100px, 1fr) 120px; align-items: center; gap: 10px; margin: 0 13px; color: var(--theme-text-muted); border-bottom: 1px solid var(--theme-line-edf1f4); font-size: 12px; font-weight: 500; }
 .kercad-workplane-popover > label:last-child { border-bottom: 0; }
-.kercad-workplane-popover > .kercad-grid-size-row { display: grid; min-height: 48px; grid-template-columns: minmax(0, .7fr) repeat(2, minmax(0, 1fr)); align-items: center; gap: 8px; margin: 0 13px; color: var(--theme-text-muted); border-bottom: 1px solid var(--theme-line-edf1f4); font-size: 12px; font-weight: 500; }
-.kercad-grid-size-row > .kercad-number-input { min-width: 0; }
 .kercad-workplane-popover .kercad-number-input input { box-sizing: border-box; width: 100%; min-width: 0; height: 36px; padding: 0 36px 0 10px; color: var(--theme-text-314c60); background: var(--theme-bg-ffffff-a950); border: 1px solid var(--theme-line-c5d6df); border-radius: 8px; font: inherit; font-size: 13px; font-weight: 400; }
 .kercad-workplane-popover .kercad-number-input input:hover { border-color: var(--theme-line-83c5d9); }
 .kercad-workplane-popover .kercad-number-input input:focus-visible,
@@ -9114,7 +9112,6 @@ circle.sketch-preview-line {
   }
 
   .kercad-workplane-popover > label { grid-template-columns: minmax(90px, 1fr) minmax(94px, 112px); margin-inline: 10px; }
-  .kercad-workplane-popover > .kercad-grid-size-row { margin-inline: 10px; }
   .kercad-settings-panel label { align-items: flex-start; flex-direction: column; gap: 5px; padding-block: 8px; }
   .kercad-settings-panel select,
   .kercad-settings-panel input[type="text"],
