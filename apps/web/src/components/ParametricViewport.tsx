@@ -4621,13 +4621,12 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       bounds.set(new THREE.Vector3(x - width / 2, y - depth / 2, baseZ), new THREE.Vector3(x + width / 2, y + depth / 2, baseZ + Math.abs(height)));
     }
     if (bounds.isEmpty()) return;
-    const taperAnchorX = (angle: number) => {
-      // The lower section still determines the overall bounds when a positive
-      // taper narrows the upper section. Approximate its inset at that height.
-      const height = bounds.max.z - bounds.min.z;
-      const inset = height * Math.tan(THREE.MathUtils.degToRad(Math.max(0, angle)));
-      return bounds.max.x - Math.min(inset, (bounds.max.x - bounds.min.x) / 2);
-    };
+    const height = bounds.max.z - bounds.min.z;
+    const taperOffset = (angle: number) => height * Math.tan(THREE.MathUtils.degToRad(angle));
+    // For negative taper, the committed bounds already include the wider
+    // section. Remove that expansion before previewing the new angle.
+    const baseEdgeX = bounds.max.x + (taperBounds ? taperOffset(Math.min(0, taperValue)) : 0);
+    const taperAnchorX = (angle: number) => baseEdgeX - Math.min(taperOffset(angle), (bounds.max.x - bounds.min.x) / 2);
     const anchor = new THREE.Vector3(taperAnchorX(taperValue), (bounds.min.y + bounds.max.y) / 2, bounds.max.z);
     const group = new THREE.Group();
     group.userData.viewportOverlay = true;
