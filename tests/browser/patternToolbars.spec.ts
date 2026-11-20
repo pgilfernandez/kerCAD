@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import sharp from "sharp";
+import { openProjectDashboard } from "../fixtures/editorBrowserSession";
 import { createLinearPatternFeature, createPolarPatternFeature, createStarterDocument } from "../../apps/web/src/lib/parametricDocument";
 
 // Find the dense yellow disc, not the thin yellow guide, in the rendered view.
@@ -42,8 +43,7 @@ test("Pattern controls and yellow distance/angle handles update the model", asyn
   polar.count = 3;
   polar.angle = 180;
   document.features.push(linear, polar);
-  await page.addInitScript((stored) => localStorage.setItem("kercad.parametric.document.v1", JSON.stringify(stored)), document);
-  await page.goto("/");
+  await openProjectDashboard(page, document);
   await page.locator(".card-open").filter({ hasText: "Pattern controls" }).click();
   const idle = async () => {
     await expect(page.locator(".kercad-background-process")).toHaveCount(0, { timeout: 90_000 });
@@ -56,7 +56,7 @@ test("Pattern controls and yellow distance/angle handles update the model", asyn
   await toolbar.getByRole("textbox", { name: "Repetitions", exact: true }).fill("4");
   await toolbar.getByRole("textbox", { name: "Repetitions", exact: true }).press("Enter");
   await idle();
-  const spacing = inspector.locator("label").filter({ has: page.getByText("Spacing", { exact: true }) }).locator("input").first();
+  const spacing = inspector.getByRole("textbox", { name: "Spacing", exact: true });
   await expect(spacing).toHaveValue("30");
   let point = await yellowHandle(page);
   await page.mouse.move(point.x, point.y);
@@ -77,7 +77,7 @@ test("Pattern controls and yellow distance/angle handles update the model", asyn
   await toolbar.getByRole("combobox", { name: "Source", exact: true }).selectOption(document.features[1].id);
   await expect(inspector.locator("select").first()).toHaveValue(document.features[1].id);
   await idle();
-  const angle = inspector.locator("label").filter({ has: page.getByText("Total angle", { exact: true }) }).locator("input").first();
+  const angle = inspector.getByRole("textbox", { name: "Total angle", exact: true });
   await expect(angle).toHaveValue("180");
   point = await yellowHandle(page);
   await page.mouse.move(point.x, point.y);

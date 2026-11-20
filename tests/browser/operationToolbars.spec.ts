@@ -1,11 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { operationToolbarDocument } from "../fixtures/operationToolbarDocument";
+import { openProjectDashboard } from "../fixtures/editorBrowserSession";
 
 test("Shell and Boolean controls work in both operation panels", async ({ page }) => {
   test.setTimeout(180_000);
   const document = operationToolbarDocument();
-  await page.addInitScript((stored) => localStorage.setItem("kercad.parametric.document.v1", JSON.stringify(stored)), document);
-  await page.goto("/");
+  await openProjectDashboard(page, document);
   await page.locator(".card-open").filter({ hasText: "Operation controls" }).click();
   await expect(page.locator(".kercad-background-process")).toHaveCount(0, { timeout: 90_000 });
   await expect(page.locator(".kercad-rebuild-error")).toHaveCount(0);
@@ -30,7 +30,7 @@ test("Shell and Boolean controls work in both operation panels", async ({ page }
   await page.screenshot({ path: test.info().outputPath("shell-controls.png") });
 
   await page.locator(".kercad-operation-select").filter({ hasText: /boolean/i }).click();
-  await expect(toolbar.getByRole("button")).toHaveCount(3);
+  for (const mode of ["Add", "Hole", "Common"]) await expect(toolbar.getByRole("button", { name: mode, exact: true })).toBeVisible();
   await toolbar.getByRole("button", { name: "Hole", exact: true }).click();
   await expect(inspector.getByRole("button", { name: "Hole", exact: true })).toHaveAttribute("aria-pressed", "true");
   await toolbar.getByRole("combobox", { name: "Object", exact: true }).selectOption(document.objects[2].id);

@@ -6,6 +6,7 @@ node_modules/
 # Next.js
 .next/
 .next-dev/
+.next-browser-test/
 .next-export/
 out/
 build/

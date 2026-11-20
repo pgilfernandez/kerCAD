@@ -7,7 +7,8 @@ const localChromePath = process.platform === "darwin" && existsSync(macChromePat
 export default defineConfig({
   testDir: "./tests/browser",
   fullyParallel: true,
-  workers: 2,
+  // Headless WebGL and the CAD WASM kernel compete for CPU on hosted runners.
+  workers: process.env.CI ? 1 : 2,
   timeout: 90_000,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
@@ -26,6 +27,7 @@ export default defineConfig({
   ],
   webServer: {
     command: "npm run dev -- --hostname 127.0.0.1 --port 3100",
+    env: { KERCAD_BROWSER_TEST: "1", KERCAD_CANONICAL_HOST: "off", KERCAD_METRICS_DIR: "apps/web/.next-browser-test/metrics" },
     url: "http://127.0.0.1:3100",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
