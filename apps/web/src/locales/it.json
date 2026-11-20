@@ -3,6 +3,8 @@
   "name": "Italiano",
   "direction": "ltr",
   "messages": {
+    "text.fontStyle.light": "Leggero",
+    "text.fontStyle.regular": "Normale",
     "text.fontStyle": "Stile",
     "text.fontStyle.default": "Originale",
     "text.fontStyle.bold": "Grassetto",

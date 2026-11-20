@@ -3,6 +3,8 @@
   "name": "Deutsch",
   "direction": "ltr",
   "messages": {
+    "text.fontStyle.light": "Leicht",
+    "text.fontStyle.regular": "Normal",
     "text.fontStyle": "Stil",
     "text.fontStyle.default": "Original",
     "text.fontStyle.bold": "Fett",

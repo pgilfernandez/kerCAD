@@ -1,5 +1,6 @@
 // Regenerate the local typeface data used by the Text CAD operation.
 import { mkdir, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 import { TTFLoader } from "three/examples/jsm/loaders/TTFLoader.js";
 
 const revision = "869789e84da92782c144d83d69b64cec54905b5f";
@@ -25,6 +26,19 @@ const variants = {
   ubuntu: ["Ubuntu-Bold", "Ubuntu-Italic", "Ubuntu-BoldItalic"],
   worksans: ["WorkSans-Bold", "WorkSans-Italic", "WorkSans-BoldItalic"],
 };
+const extraVariants = {
+  montserrat: { light: "Montserrat-Light.ttf" },
+  ubuntu: { light: "Ubuntu-Light.ttf" },
+  worksans: { light: "WorkSans-Light.ttf" },
+  barlowcondensed: { light: "BarlowCondensed-Light.ttf", regular: "BarlowCondensed-Regular.ttf", italic: "BarlowCondensed-Italic.ttf", "bold-italic": "BarlowCondensed-BoldItalic.ttf" },
+  amaticsc: { regular: "AmaticSC-Regular.ttf" },
+  stardosstencil: { regular: "StardosStencil-Regular.ttf" },
+  fredoka: { regular: ["Fredoka[wdth,wght].ttf", 400], bold: ["Fredoka[wdth,wght].ttf", 700] },
+  oswald: { light: ["Oswald[wght].ttf", 300], bold: ["Oswald[wght].ttf", 700] },
+  roboto: { light: ["Roboto[wdth,wght].ttf", 300], bold: ["Roboto[wdth,wght].ttf", 700], italic: ["Roboto-Italic[wdth,wght].ttf", 400], "bold-italic": ["Roboto-Italic[wdth,wght].ttf", 700] },
+  dmsans: { light: ["DMSans[opsz,wght].ttf", 300], bold: ["DMSans[opsz,wght].ttf", 700], italic: ["DMSans-Italic[opsz,wght].ttf", 400], "bold-italic": ["DMSans-Italic[opsz,wght].ttf", 700] },
+  lora: { bold: ["Lora[wght].ttf", 700], italic: ["Lora-Italic[wght].ttf", 400], "bold-italic": ["Lora-Italic[wght].ttf", 700] },
+};
 const output = new URL("../apps/web/src/lib/operation-fonts/", import.meta.url);
 const notices = new URL("../apps/web/public/assets/kercad/font-licenses/", import.meta.url);
 await Promise.all([mkdir(output, { recursive: true }), mkdir(notices, { recursive: true })]);
@@ -42,8 +56,27 @@ const download = async (family, file) => {
   if (!response.ok) throw new Error(`${family}/${file}: HTTP ${response.status}`);
   return response;
 };
-async function generateTypeface(family, file, outputName, styleName) {
-  const data = loader.parse(await (await download(family, file)).arrayBuffer());
+// Variable faces need a static instance before Three.js can read their contours.
+// Set KERCAD_FONT_PYTHON to a Python interpreter with fontTools installed.
+function instantiateWeight(bytes, weight) {
+  const script = [
+    "import io,sys",
+    "from fontTools.ttLib import TTFont",
+    "from fontTools.varLib.instancer import instantiateVariableFont",
+    "font=TTFont(io.BytesIO(sys.stdin.buffer.read()))",
+    "axes={axis.axisTag:axis.defaultValue for axis in font['fvar'].axes}",
+    "axes['wght']=int(sys.argv[1])",
+    "out=io.BytesIO()",
+    "instantiateVariableFont(font, axes, inplace=True).save(out)",
+    "sys.stdout.buffer.write(out.getvalue())",
+  ].join("\n");
+  const result = spawnSync(process.env.KERCAD_FONT_PYTHON || "python3", ["-c", script, String(weight)], { input: Buffer.from(bytes), maxBuffer: 16 * 1024 * 1024 });
+  if (result.status !== 0) throw new Error(result.error?.message ?? result.stderr.toString());
+  return result.stdout.buffer.slice(result.stdout.byteOffset, result.stdout.byteOffset + result.stdout.byteLength);
+}
+async function generateTypeface(family, file, outputName, styleName, weight) {
+  const bytes = await (await download(family, file)).arrayBuffer();
+  const data = loader.parse(weight === undefined ? bytes : instantiateWeight(bytes, weight));
   data.original_font_information = { source: file };
   // Use an internal family name distinct from the original font's reserved names.
   data.familyName = family === "ubuntu" ? `Ubuntu derivative kerCAD${styleName ? " " + styleName : ""}` : `kerCAD Outline ${Object.keys(sources).indexOf(family) + 1}${styleName ? " " + styleName : ""}`;
@@ -66,5 +99,9 @@ for (const [family, file] of Object.entries(sources)) {
   await Promise.all((variants[family] ?? []).map((name, index) => {
     const style = ["bold", "italic", "bold-italic"][index];
     return generateTypeface(family, `${name}.ttf`, `${family}-${style}`, style);
+  }));
+  await Promise.all(Object.entries(extraVariants[family] ?? {}).map(([style, source]) => {
+    const [name, weight] = Array.isArray(source) ? source : [source];
+    return generateTypeface(family, name, `${family}-${style}`, style, weight);
   }));
 }

@@ -7,6 +7,11 @@ import { validateDrawnSketchProfile } from "@/lib/sketchProfileValidation";
 describe("parametric text", () => {
   it.each([
     ["Montserrat", "bold"], ["Ubuntu", "bold-italic"], ["Work Sans", "italic"], ["Lora", "italic"],
+    ["Fredoka", "bold"], ["Oswald", "bold"], ["Roboto", "bold-italic"], ["DM Sans", "bold-italic"], ["Lora", "bold-italic"],
+    ["Barlow Condensed", "bold-italic"], ["Amatic SC", "regular"], ["Stardos Stencil", "regular"],
+    ["Sans", "regular"], ["Serif", "regular"], ["Script", "regular"], ["Rounded", "regular"],
+    ["Montserrat", "light"], ["Ubuntu", "light"], ["Work Sans", "light"], ["Barlow Condensed", "light"],
+    ["Fredoka", "regular"], ["Oswald", "light"], ["Roboto", "light"], ["DM Sans", "light"],
   ] as const)("generates a different valid %s outline for %s", (font, style) => {
     const settings = { kind: "text", text: "CAD", font, size: 20, spacing: 1, align: "center", verticalAlign: "center" } as const;
     const original = parametricTextProfile(settings);

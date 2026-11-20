@@ -3,6 +3,8 @@
   "name": "Français",
   "direction": "ltr",
   "messages": {
+    "text.fontStyle.light": "Léger",
+    "text.fontStyle.regular": "Normal",
     "text.fontStyle": "Style",
     "text.fontStyle.default": "Original",
     "text.fontStyle.bold": "Gras",

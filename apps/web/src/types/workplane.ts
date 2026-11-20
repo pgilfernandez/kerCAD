@@ -1,6 +1,6 @@
 export const SOLID_TEXT_FONT_NAMES = ["Sans", "Serif", "Script", "Monospace", "Rounded", "Fredoka", "Barlow Condensed", "Alfa Slab One", "Stardos Stencil", "Oswald", "Montserrat", "Ubuntu", "Roboto", "Pacifico", "Gloria Hallelujah", "Great Vibes", "Amatic SC", "Work Sans", "DM Sans", "Lora"] as const;
 export type SolidTextFont = typeof SOLID_TEXT_FONT_NAMES[number];
-export type SolidTextStyle = "default" | "bold" | "italic" | "bold-italic";
+export type SolidTextStyle = "default" | "regular" | "light" | "bold" | "italic" | "bold-italic";
 
 export type ShapeKind =
   | "box"

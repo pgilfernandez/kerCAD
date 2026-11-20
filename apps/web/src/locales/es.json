@@ -3,6 +3,8 @@
   "name": "Español",
   "direction": "ltr",
   "messages": {
+    "text.fontStyle.light": "Ligera",
+    "text.fontStyle.regular": "Normal",
     "text.fontStyle": "Estilo",
     "text.fontStyle.default": "Original",
     "text.fontStyle.bold": "Negrita",

@@ -32,6 +32,34 @@ import ubuntu2 from "./operation-fonts/ubuntu-bold-italic.typeface.json";
 import worksans0 from "./operation-fonts/worksans-bold.typeface.json";
 import worksans1 from "./operation-fonts/worksans-italic.typeface.json";
 import worksans2 from "./operation-fonts/worksans-bold-italic.typeface.json";
+import montserrat_light from "./operation-fonts/montserrat-light.typeface.json";
+import ubuntu_light from "./operation-fonts/ubuntu-light.typeface.json";
+import worksans_light from "./operation-fonts/worksans-light.typeface.json";
+import barlowcondensed_light from "./operation-fonts/barlowcondensed-light.typeface.json";
+import barlowcondensed_regular from "./operation-fonts/barlowcondensed-regular.typeface.json";
+import barlowcondensed_italic from "./operation-fonts/barlowcondensed-italic.typeface.json";
+import barlowcondensed_bold_italic from "./operation-fonts/barlowcondensed-bold-italic.typeface.json";
+import amaticsc_regular from "./operation-fonts/amaticsc-regular.typeface.json";
+import stardosstencil_regular from "./operation-fonts/stardosstencil-regular.typeface.json";
+import fredoka_regular from "./operation-fonts/fredoka-regular.typeface.json";
+import fredoka_bold from "./operation-fonts/fredoka-bold.typeface.json";
+import oswald_light from "./operation-fonts/oswald-light.typeface.json";
+import oswald_bold from "./operation-fonts/oswald-bold.typeface.json";
+import roboto_light from "./operation-fonts/roboto-light.typeface.json";
+import roboto_bold from "./operation-fonts/roboto-bold.typeface.json";
+import roboto_italic from "./operation-fonts/roboto-italic.typeface.json";
+import roboto_bold_italic from "./operation-fonts/roboto-bold-italic.typeface.json";
+import dmsans_light from "./operation-fonts/dmsans-light.typeface.json";
+import dmsans_bold from "./operation-fonts/dmsans-bold.typeface.json";
+import dmsans_italic from "./operation-fonts/dmsans-italic.typeface.json";
+import dmsans_bold_italic from "./operation-fonts/dmsans-bold-italic.typeface.json";
+import lora_bold from "./operation-fonts/lora-bold.typeface.json";
+import lora_italic from "./operation-fonts/lora-italic.typeface.json";
+import lora_bold_italic from "./operation-fonts/lora-bold-italic.typeface.json";
+import sansRegular from "three/examples/fonts/droid/droid_sans_regular.typeface.json";
+import serifRegular from "three/examples/fonts/droid/droid_serif_regular.typeface.json";
+import scriptRegular from "three/examples/fonts/gentilis_regular.typeface.json";
+import roundedRegular from "three/examples/fonts/optimer_regular.typeface.json";
 
 export type ParametricTextSettings = Extract<NonNullable<SketchProfile["generator"]>, { kind: "text" }>;
 
@@ -55,9 +83,21 @@ const PARAMETRIC_WEB_FONT_DATA = {
   Lora: lora as FontData,
 } satisfies Record<ParametricTextSettings["font"], FontData>;
 const fontVariants: Partial<Record<SolidTextFont, Partial<Record<SolidTextStyle, FontData>>>> = {
-  "Montserrat": { "bold": montserrat0 as FontData, "italic": montserrat1 as FontData, "bold-italic": montserrat2 as FontData },
-  "Ubuntu": { "bold": ubuntu0 as FontData, "italic": ubuntu1 as FontData, "bold-italic": ubuntu2 as FontData },
-  "Work Sans": { "bold": worksans0 as FontData, "italic": worksans1 as FontData, "bold-italic": worksans2 as FontData },
+  "Montserrat": { "light": montserrat_light as FontData, bold: montserrat0 as FontData, italic: montserrat1 as FontData, "bold-italic": montserrat2 as FontData },
+  "Ubuntu": { "light": ubuntu_light as FontData, bold: ubuntu0 as FontData, italic: ubuntu1 as FontData, "bold-italic": ubuntu2 as FontData },
+  "Work Sans": { "light": worksans_light as FontData, bold: worksans0 as FontData, italic: worksans1 as FontData, "bold-italic": worksans2 as FontData },
+  "Barlow Condensed": { "light": barlowcondensed_light as FontData, "regular": barlowcondensed_regular as FontData, "italic": barlowcondensed_italic as FontData, "bold-italic": barlowcondensed_bold_italic as FontData },
+  "Amatic SC": { "regular": amaticsc_regular as FontData },
+  "Stardos Stencil": { "regular": stardosstencil_regular as FontData },
+  "Fredoka": { "regular": fredoka_regular as FontData, "bold": fredoka_bold as FontData },
+  "Oswald": { "light": oswald_light as FontData, "bold": oswald_bold as FontData },
+  "Roboto": { "light": roboto_light as FontData, "bold": roboto_bold as FontData, "italic": roboto_italic as FontData, "bold-italic": roboto_bold_italic as FontData },
+  "DM Sans": { "light": dmsans_light as FontData, "bold": dmsans_bold as FontData, "italic": dmsans_italic as FontData, "bold-italic": dmsans_bold_italic as FontData },
+  "Lora": { "bold": lora_bold as FontData, "italic": lora_italic as FontData, "bold-italic": lora_bold_italic as FontData },
+  Sans: { regular: sansRegular as FontData },
+  Serif: { regular: serifRegular as FontData },
+  Script: { regular: scriptRegular as FontData },
+  Rounded: { regular: roundedRegular as FontData },
 };
 const parsedFonts = new Map<string, Font>();
 const cachedGlyphs = new Map<string, TextGlyph>();
@@ -65,7 +105,14 @@ const cachedGlyphs = new Map<string, TextGlyph>();
 export const parametricTextFontNames = [...SOLID_TEXT_FONT_NAMES].sort((a, b) => a.localeCompare(b, "en"));
 
 export function parametricTextFontStyles(name: SolidTextFont): SolidTextStyle[] {
-  return fontVariants[name]?.bold ? ["default", "bold", "italic", "bold-italic"] : ["default", "italic"];
+  const variants = fontVariants[name];
+  return (["light", "regular", "default", "bold", "italic", "bold-italic"] as const)
+    .filter((style) => style === "default" || style === "italic" || Boolean(variants?.[style]));
+}
+
+export function parametricTextOriginalStyle(name: SolidTextFont): SolidTextStyle {
+  if (name === "Fredoka") return "light";
+  return fontVariants[name]?.regular ? "bold" : "default";
 }
 
 function parametricWebFont(name: SolidTextFont, style: SolidTextStyle) {

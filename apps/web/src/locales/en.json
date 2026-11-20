@@ -3,6 +3,8 @@
   "name": "English",
   "direction": "ltr",
   "messages": {
+    "text.fontStyle.light": "Light",
+    "text.fontStyle.regular": "Regular",
     "text.fontStyle": "Style",
     "text.fontStyle.default": "Original",
     "text.fontStyle.bold": "Bold",
