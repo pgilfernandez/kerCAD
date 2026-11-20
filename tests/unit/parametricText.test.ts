@@ -1,10 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { createStarterDocument } from "@/lib/parametricDocument";
+import { createStarterDocument, normalizeParametricDocument } from "@/lib/parametricDocument";
 import { addParametricText, parametricTextProfile, updateParametricTextSketch } from "@/lib/parametricText";
 import { updateParametricShapeParameter, viewportSelectionForFeature } from "@/lib/parametricObjects";
 import { validateDrawnSketchProfile } from "@/lib/sketchProfileValidation";
 
 describe("parametric text", () => {
+  it.each(["Fredoka", "Barlow Condensed", "Alfa Slab One", "Stardos Stencil"] as const)("keeps valid %s geometry and its font choice on reopen", (font) => {
+    const document = createStarterDocument(123);
+    const { sketchId } = addParametricText(document, document.objects[0].id);
+    const sketch = document.features.find((feature) => feature.id === sketchId);
+    if (sketch?.kind !== "sketch" || sketch.profile.shape !== "drawn") throw new Error("Missing text sketch");
+    expect(updateParametricTextSketch(sketch, { text: "Año 3D", font })).toBe(true);
+    expect(validateDrawnSketchProfile(sketch.profile.geometry).valid).toBe(true);
+    const saved = normalizeParametricDocument(document).features.find((feature) => feature.id === sketchId);
+    expect(saved).toMatchObject({ profile: { geometry: { generator: { font } } } });
+  });
+
   it("creates a valid profile from bundled web-font outlines", () => {
     const profile = parametricTextProfile({ kind: "text", text: "kerCAD 3D á", font: "Sans", size: 20, spacing: 1, align: "center", verticalAlign: "center" });
     expect(profile.generator).toMatchObject({ kind: "text", text: "kerCAD 3D á", font: "Sans", align: "center", verticalAlign: "center" });

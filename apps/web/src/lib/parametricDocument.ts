@@ -32,6 +32,7 @@ import { globalParametricWorkplanePlacement, normalizeParametricWorkplanePlaceme
 import { circleSketchPointId } from "@/lib/sketchConstraints";
 import { PARAMETRIC_IMPORT_LIMITS } from "@/lib/parametricImportLimits";
 import { legacyParametricVersion } from "@/lib/legacyBrand";
+import { SOLID_TEXT_FONT_NAMES } from "@/types/workplane";
 
 let localCounter = 0;
 export const CURRENT_PARAMETRIC_SCHEMA = "kercad-parametric/v2" as const;
@@ -498,7 +499,7 @@ export function normalizeParametricDocument(document: ParametricDocument): Param
         geometry.images ??= [];
         geometry.texts ??= [];
         if (geometry.generator?.kind === "text") {
-          geometry.generator.font = ["Sans", "Serif", "Script", "Monospace", "Rounded"].includes(geometry.generator.font) ? geometry.generator.font : "Sans";
+          geometry.generator.font = SOLID_TEXT_FONT_NAMES.includes(geometry.generator.font) ? geometry.generator.font : "Sans";
           geometry.generator.align = geometry.generator.align === "left" || geometry.generator.align === "right" ? geometry.generator.align : "center";
           geometry.generator.verticalAlign = geometry.generator.verticalAlign === "bottom" || geometry.generator.verticalAlign === "top" ? geometry.generator.verticalAlign : "center";
         }

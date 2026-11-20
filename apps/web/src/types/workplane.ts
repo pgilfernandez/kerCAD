@@ -1,3 +1,6 @@
+export const SOLID_TEXT_FONT_NAMES = ["Sans", "Serif", "Script", "Monospace", "Rounded", "Fredoka", "Barlow Condensed", "Alfa Slab One", "Stardos Stencil"] as const;
+export type SolidTextFont = typeof SOLID_TEXT_FONT_NAMES[number];
+
 export type ShapeKind =
   | "box"
   | "cylinder"
@@ -159,7 +162,7 @@ export type SketchProfile = {
   texts?: SketchText[];
   constraints?: SketchConstraint[];
   generator?:
-    | { kind: "text"; text: string; font: "Sans" | "Serif" | "Script" | "Monospace" | "Rounded"; size: number; spacing: number; align: "left" | "center" | "right"; verticalAlign: "bottom" | "center" | "top" }
+    | { kind: "text"; text: string; font: SolidTextFont; size: number; spacing: number; align: "left" | "center" | "right"; verticalAlign: "bottom" | "center" | "top" }
     | { kind: "scribble"; smoothing: number; smooth?: boolean };
 };
 

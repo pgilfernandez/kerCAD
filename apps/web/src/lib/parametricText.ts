@@ -4,18 +4,29 @@ import { addParametricObject } from "@/lib/parametricObjects";
 import { objectPlacementForWorkplane } from "@/lib/parametricWorkplane";
 import type { ParametricDocument, SketchFeature } from "@/types/parametric";
 import type { SketchPoint, SketchProfile } from "@/types/workplane";
+import { SOLID_TEXT_FONT_NAMES } from "@/types/workplane";
 import { CubicBezierCurve, LineCurve, QuadraticBezierCurve, type Curve, type Vector2 } from "three";
 import { FontLoader, type Font, type FontData } from "three/examples/jsm/loaders/FontLoader.js";
 import { textFonts, textFontNames } from "@/lib/textFonts";
+import fredoka from "./operation-fonts/fredoka.typeface.json";
+import barlowCondensed from "./operation-fonts/barlowcondensed.typeface.json";
+import alfaSlabOne from "./operation-fonts/alfaslabone.typeface.json";
+import stardosStencil from "./operation-fonts/stardosstencil.typeface.json";
 
 export type ParametricTextSettings = Extract<NonNullable<SketchProfile["generator"]>, { kind: "text" }>;
 
 const fontLoader = new FontLoader();
-const PARAMETRIC_WEB_FONT_DATA = Object.fromEntries(textFontNames.map((name) => [name, textFonts[name].geometry])) as Record<ParametricTextSettings["font"], FontData>;
+const PARAMETRIC_WEB_FONT_DATA = {
+  ...Object.fromEntries(textFontNames.map((name) => [name, textFonts[name].geometry])) as Record<typeof textFontNames[number], FontData>,
+  Fredoka: fredoka as FontData,
+  "Barlow Condensed": barlowCondensed as FontData,
+  "Alfa Slab One": alfaSlabOne as FontData,
+  "Stardos Stencil": stardosStencil as FontData,
+} satisfies Record<ParametricTextSettings["font"], FontData>;
 const parsedFonts = new Map<ParametricTextSettings["font"], Font>();
 const cachedGlyphs = new Map<string, TextGlyph>();
 
-export const parametricTextFontNames = textFontNames;
+export const parametricTextFontNames = SOLID_TEXT_FONT_NAMES;
 
 function parametricWebFont(name: ParametricTextSettings["font"]) {
   const cached = parsedFonts.get(name);
