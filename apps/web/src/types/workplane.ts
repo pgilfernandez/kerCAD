@@ -1,4 +1,4 @@
-export const SOLID_TEXT_FONT_NAMES = ["Sans", "Serif", "Script", "Monospace", "Rounded", "Fredoka", "Barlow Condensed", "Alfa Slab One", "Stardos Stencil", "Oswald", "Montserrat", "Ubuntu", "Roboto", "Pacifico", "Gloria Hallelujah", "Great Vibes", "Amatic SC"] as const;
+export const SOLID_TEXT_FONT_NAMES = ["Sans", "Serif", "Script", "Monospace", "Rounded", "Fredoka", "Barlow Condensed", "Alfa Slab One", "Stardos Stencil", "Oswald", "Montserrat", "Ubuntu", "Roboto", "Pacifico", "Gloria Hallelujah", "Great Vibes", "Amatic SC", "Work Sans", "DM Sans", "Lora"] as const;
 export type SolidTextFont = typeof SOLID_TEXT_FONT_NAMES[number];
 
 export type ShapeKind =

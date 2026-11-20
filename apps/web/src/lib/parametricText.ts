@@ -20,6 +20,9 @@ import pacifico from "./operation-fonts/pacifico.typeface.json";
 import gloriahallelujah from "./operation-fonts/gloriahallelujah.typeface.json";
 import greatvibes from "./operation-fonts/greatvibes.typeface.json";
 import amaticsc from "./operation-fonts/amaticsc.typeface.json";
+import worksans from "./operation-fonts/worksans.typeface.json";
+import dmsans from "./operation-fonts/dmsans.typeface.json";
+import lora from "./operation-fonts/lora.typeface.json";
 
 export type ParametricTextSettings = Extract<NonNullable<SketchProfile["generator"]>, { kind: "text" }>;
 
@@ -38,6 +41,9 @@ const PARAMETRIC_WEB_FONT_DATA = {
   "Gloria Hallelujah": gloriahallelujah as FontData,
   "Great Vibes": greatvibes as FontData,
   "Amatic SC": amaticsc as FontData,
+  "Work Sans": worksans as FontData,
+  "DM Sans": dmsans as FontData,
+  Lora: lora as FontData,
 } satisfies Record<ParametricTextSettings["font"], FontData>;
 const parsedFonts = new Map<ParametricTextSettings["font"], Font>();
 const cachedGlyphs = new Map<string, TextGlyph>();

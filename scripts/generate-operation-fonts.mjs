@@ -16,15 +16,22 @@ const sources = {
   gloriahallelujah: "GloriaHallelujah.ttf",
   greatvibes: "GreatVibes-Regular.ttf",
   amaticsc: "AmaticSC-Bold.ttf",
+  worksans: "WorkSans-Regular.ttf",
+  dmsans: "DMSans[opsz,wght].ttf",
+  lora: "Lora[wght].ttf",
 };
 const output = new URL("../apps/web/src/lib/operation-fonts/", import.meta.url);
 const notices = new URL("../apps/web/public/assets/kercad/font-licenses/", import.meta.url);
 await Promise.all([mkdir(output, { recursive: true }), mkdir(notices, { recursive: true })]);
 const loader = new TTFLoader();
+const staticSources = {
+  montserrat: "JulietaUla/Montserrat/555facfb2a18c72c3c0380f0d9c0f060453a9058",
+  worksans: "weiweihuanghuang/Work-Sans/b35c81086186162164947bd39574683073d9b268",
+};
 const download = async (family, file) => {
   const root = family === "ubuntu" ? "ufl" : "ofl";
-  const url = family === "montserrat"
-    ? `https://raw.githubusercontent.com/JulietaUla/Montserrat/555facfb2a18c72c3c0380f0d9c0f060453a9058/${file.endsWith(".ttf") ? "fonts/ttf/" : ""}${file}`
+  const url = staticSources[family]
+    ? `https://raw.githubusercontent.com/${staticSources[family]}/${file.endsWith(".ttf") ? "fonts/ttf/" : ""}${file}`
     : `https://raw.githubusercontent.com/google/fonts/${revision}/${root}/${family}/${encodeURIComponent(file)}`;
   const response = await fetch(url);
   if (!response.ok) throw new Error(`${family}/${file}: HTTP ${response.status}`);
