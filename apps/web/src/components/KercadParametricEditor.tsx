@@ -4623,8 +4623,13 @@ export function KercadParametricEditor({ initialProject, sharedFileName, onSaveS
             { key: "width", label: t("grid.width"), caption: "X", value: workplaneDraft.width, min: 1, max: 2000 },
             { key: "depth", label: t("grid.depth"), caption: "Y", value: workplaneDraft.depth, min: 1, max: 2000 },
           ]} step={1} unit="mm" displayUnit={displayUnit} locale={locale} onCommit={updateGridSettings} />
-          <AdvancedNumberInput label={t("grid.step")} value={workplaneDraft.gridStep} min={0.1} max={200} step={0.1} unit="mm" displayUnit={displayUnit} locale={locale} onCommit={(gridStep) => updateGridSettings({ gridStep })} />
-          <AdvancedNumberInput label={t("grid.step")} caption={t("operation.sketch")} ariaLabel={t("grid.sketchViewLineSpacing")} value={workplaneDraft.sketchGridStep ?? 0} min={0} max={200} step={0.1} unit="mm" displayUnit={displayUnit} locale={locale} onCommit={(step) => updateGridSettings({ sketchGridStep: step > 0 ? Math.max(0.1, step) : 0 })} />
+          <AdvancedNumberFields label={t("grid.step")} fields={[
+            { key: "gridStep", label: `${t("grid.step")} (3D)`, caption: "3D", value: workplaneDraft.gridStep, min: 0.1, max: 200 },
+            { key: "sketchGridStep", label: t("grid.sketchViewLineSpacing"), caption: t("operation.sketch"), value: workplaneDraft.sketchGridStep ?? 0, min: 0, max: 200 },
+          ]} step={0.1} unit="mm" displayUnit={displayUnit} locale={locale} onCommit={({ gridStep, sketchGridStep }) => updateGridSettings({
+            ...(gridStep !== undefined ? { gridStep } : {}),
+            ...(sketchGridStep !== undefined ? { sketchGridStep: sketchGridStep > 0 ? Math.max(0.1, sketchGridStep) : 0 } : {}),
+          })} />
           <AdvancedNumberInput label={t("grid.snapSpacing")} value={workplaneDraft.snapSpacing} min={0.1} max={10000} step={0.1} unit="mm" displayUnit={displayUnit} locale={locale} inputRef={(input) => { if (input && focusSnapSpacingRef.current) { focusSnapSpacingRef.current = false; input.focus(); input.select(); } }} onCommit={(snapSpacing) => updateGridSettings({ snapSpacing })} />
         </div> : null}
         <button
