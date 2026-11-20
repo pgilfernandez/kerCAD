@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronUp, CornerDownRight, Home, Link, Link2Off, Minus, Plus, Split, Trash2, Waves } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type PointerEvent as ReactPointerEvent } from "react";
 import { SketchAnnotationLayer, sketchAnnotationFromPicks } from "@/components/SketchAnnotationLayer";
 import type { AnnotationTool } from "@/lib/annotationPresets";
 import type { ParametricAnnotation } from "@/types/parametric";
@@ -975,17 +975,27 @@ export function SketchWorkspace({
   const isReferencePointSelected = selected?.kind === "point" ? selected.id === SKETCH_ORIGIN_POINT_ID : selected?.kind === "multiple" ? selected.pointIds.includes(SKETCH_ORIGIN_POINT_ID) : false;
   const isReferenceAxisSelected = (axisId: string) => selected?.kind === "segment" ? selected.id === axisId : selected?.kind === "multiple" ? selected.segmentIds.includes(axisId) : false;
   const gridStep = clamp(workspace.gridBlockSize, 0.1, 200);
-  const secondaryGridId = useId();
   const secondaryGridPath = useMemo(() => {
     if (secondaryGridStep <= 0 || secondaryGridStep >= gridStep) return "";
     const step = Math.max(0.1, secondaryGridStep);
     const lines: string[] = [];
-    for (let i = 1; i * step < gridStep - 1e-6; i++) {
-      const offset = i * step;
-      lines.push(`M${offset} 0V${gridStep}M0 ${offset}H${gridStep}`);
-    }
+    // Draw directly in the sketch SVG: non-scaling strokes inside a pattern
+    // can rasterize at the wrong scale when the viewBox is first mounted.
+    const width = workspace.width / 2, depth = workspace.depth / 2;
+    const addAxis = (half: number, line: (at: number) => string) => {
+      for (let cell = Math.floor(-half / gridStep); cell * gridStep < half; cell++) {
+        const start = cell * gridStep;
+        for (let i = Math.max(1, Math.ceil((-half - start) / step)); i * step < gridStep - 1e-6; i++) {
+          const at = start + i * step;
+          if (at > half) break;
+          lines.push(line(Number(at.toFixed(6))));
+        }
+      }
+    };
+    addAxis(width, (x) => `M${x} ${-depth}V${depth}`);
+    addAxis(depth, (y) => `M${-width} ${y}H${width}`);
     return lines.join("");
-  }, [gridStep, secondaryGridStep]);
+  }, [gridStep, secondaryGridStep, workspace.width, workspace.depth]);
   const verticalLines = useMemo(() => {
     const lines: number[] = [];
     const start = Math.ceil((-workspace.width / 2) / gridStep) * gridStep;
@@ -1469,12 +1479,7 @@ export function SketchWorkspace({
           {pointerAction?.kind === "freehand" ? <polyline className="sketch-freehand-preview" points={[...pointerAction.points, pointerAction.current].map((point) => `${point.x},${point.z}`).join(" ")} /> : null}
           {workspace.showGrid ? (
             <g className="sketch-grid" pointerEvents="none">
-              {secondaryGridPath && <>
-                <defs><pattern id={secondaryGridId} patternUnits="userSpaceOnUse" width={gridStep} height={gridStep}>
-                  <path className="sketch-grid-secondary" d={secondaryGridPath} vectorEffect="non-scaling-stroke" />
-                </pattern></defs>
-                <rect x={-workspace.width / 2} y={-workspace.depth / 2} width={workspace.width} height={workspace.depth} fill={`url("#${secondaryGridId}")`} />
-              </>}
+              {secondaryGridPath && <path className="sketch-grid-secondary" d={secondaryGridPath} vectorEffect="non-scaling-stroke" />}
               {verticalLines.map((x, index) => <line className={Math.abs(x) < 0.0001 ? "axis" : index % WORKPLANE_MAJOR_GRID_INTERVAL === 0 ? "major" : "minor"} key={`x-${x}`} x1={x} y1={-workspace.depth / 2} x2={x} y2={workspace.depth / 2} />)}
               {horizontalLines.map((z, index) => <line className={Math.abs(z) < 0.0001 ? "axis" : index % WORKPLANE_MAJOR_GRID_INTERVAL === 0 ? "major" : "minor"} key={`z-${z}`} x1={-workspace.width / 2} y1={z} x2={workspace.width / 2} y2={z} />)}
               {(() => {
