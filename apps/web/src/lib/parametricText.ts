@@ -62,7 +62,7 @@ const fontVariants: Partial<Record<SolidTextFont, Partial<Record<SolidTextStyle,
 const parsedFonts = new Map<string, Font>();
 const cachedGlyphs = new Map<string, TextGlyph>();
 
-export const parametricTextFontNames = SOLID_TEXT_FONT_NAMES;
+export const parametricTextFontNames = [...SOLID_TEXT_FONT_NAMES].sort((a, b) => a.localeCompare(b, "en"));
 
 export function parametricTextFontStyles(name: SolidTextFont): SolidTextStyle[] {
   return fontVariants[name]?.bold ? ["default", "bold", "italic", "bold-italic"] : ["default", "italic"];
