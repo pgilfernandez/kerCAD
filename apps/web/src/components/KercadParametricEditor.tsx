@@ -2698,6 +2698,7 @@ export function KercadParametricEditor({ initialProject, sharedFileName, onSaveS
       origin: { x: hint.centroid[0], y: hint.centroid[1], z: hint.centroid[2] },
       normal: { x: hint.normal[0], y: hint.normal[1], z: hint.normal[2] },
       distance: pendingFaceExtrude?.distance ?? (selectedFeature?.kind === "faceExtrude" ? selectedFeature.distance : 0),
+      taperAngle: pendingFaceExtrude?.taperAngle ?? (selectedFeature?.kind === "faceExtrude" ? selectedFeature.taperAngle : 0),
       operation: pendingFaceExtrude?.operation ?? (selectedFeature?.kind === "faceExtrude" ? selectedFeature.operation : "add" as const),
       featureId: selectedFeature?.kind === "faceExtrude" ? selectedFeature.id : null,
     };
@@ -4415,6 +4416,10 @@ export function KercadParametricEditor({ initialProject, sharedFileName, onSaveS
           historicalTopologySelections={editingEdgeTreatmentId || editingFaceExtrudeId || editingShellId || editingRevolveId || operationContext?.detailMesh ? [] : historicalTopologyReferences}
           historicalTopologyRecords={editingEdgeTreatmentId || editingFaceExtrudeId || editingShellId || editingRevolveId || operationContext?.detailMesh ? [] : historicalTopologyRecords}
           faceExtrudeHandle={alignOpen ? null : faceExtrudeHandle}
+          onFaceExtrudeTaperChange={(taperAngle) => {
+            if (pendingFaceExtrude) setPendingFaceExtrude((current) => current ? { ...current, taperAngle } : current);
+            else if (faceExtrudeHandle?.featureId) updateFeature(faceExtrudeHandle.featureId, (feature) => { if (feature.kind === "faceExtrude") feature.taperAngle = taperAngle; });
+          }}
           onFaceExtrudeDistanceChange={(distance, operation) => {
             if (pendingFaceExtrude) setPendingFaceExtrude((current) => current ? { ...current, distance, operation } : current);
             else if (faceExtrudeHandle?.featureId) updateFeature(faceExtrudeHandle.featureId, (feature) => { if (feature.kind === "faceExtrude") { feature.distance = distance; feature.operation = operation; } });
@@ -4501,6 +4506,7 @@ export function KercadParametricEditor({ initialProject, sharedFileName, onSaveS
           onEditRevolveAxis={beginRevolveAxisEdit}
           onEditMirrorPlane={beginMirrorPlaneSelection}
           onFloatingFeatureChange={(featureId, update) => updateFeature(featureId, (feature) => {
+            if ((feature.kind === "extrude" || feature.kind === "faceExtrude") && update.taperAngle !== undefined) feature.taperAngle = update.taperAngle;
             if (feature.kind === "linearPattern" || feature.kind === "polarPattern") {
               if (update.count !== undefined) feature.count = Math.min(50, Math.max(2, Math.round(update.count)));
               if (feature.kind === "polarPattern") {

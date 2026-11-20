@@ -365,7 +365,7 @@ export type BuildResult = {
     reusedObjectIds: string[];
     activeObjects: Array<Omit<ParametricObjectRenderRecord, "mesh">>;
   };
-  operationContext: { featureId: string; objectId: string; color: string; mesh: RenderMesh; selectionMesh?: RenderMesh; detailMesh?: RenderMesh; detailColor?: "green" | "red" } | null;
+  operationContext: { featureId: string; objectId: string; color: string; mesh: RenderMesh; selectionMesh?: RenderMesh; detailMesh?: RenderMesh; detailColor?: "green" | "red"; extrusionBounds?: { xMin: number; xMax: number; yMin: number; yMax: number; zMin: number; zMax: number } } | null;
   completedFeatureIds: string[];
   failedFeatureId: string | null;
   warning: string | null;

@@ -839,7 +839,7 @@ function applyFilletFeature(brep: Brep, document: ParametricDocument, current: A
     : selection ? brep.fillet(current, selection, feature.radius) : brep.fillet(current, feature.radius));
 }
 
-function applyFaceExtrudeFeature(brep: Brep, document: ParametricDocument, current: AnySolid, feature: Extract<ParametricDocument["features"][number], { kind: "faceExtrude" }>) {
+function applyFaceExtrudeFeature(brep: Brep, document: ParametricDocument, current: AnySolid, feature: Extract<ParametricDocument["features"][number], { kind: "faceExtrude" }>, onTool?: (tool: AnySolid) => void) {
   const stored = document.topologyReferences.find((reference) => reference.id === feature.faceReferenceId);
   if (!stored || stored.reference.hint.entityType !== "face") throw new Error(`${feature.name}: selected face no longer exists.`);
   const face = resolveStoredFace(brep, document, current, stored, feature.name);
@@ -861,6 +861,7 @@ function applyFaceExtrudeFeature(brep: Brep, document: ParametricDocument, curre
   const vector: [number, number, number] = [x / length * feature.distance * sign, y / length * feature.distance * sign, z / length * feature.distance * sign];
   const tool = feature.taperAngle ? taperedFaceExtrusion(brep, face, vector, feature.taperAngle)
     : brep.unwrap(brep.extrude(face as Parameters<Brep["extrude"]>[0], vector)) as AnySolid;
+  onTool?.(tool);
   return feature.operation === "cut" ? refinedBooleanSolid(brep, brep.cut(current, tool)) : refinedBooleanSolid(brep, brep.fuse(current, tool));
 }
 
@@ -1152,6 +1153,8 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
             objectId,
             color: objects.get(objectId)?.color ?? "#d41721",
             mesh: meshShape(brep, applyObjectTransform(brep, selectedResult, objects.get(objectId))),
+            extrusionBounds: feature.kind === "extrude" && !feature.endSketchId && !feature.pathSketchId
+              ? brep.getBounds(applyObjectTransform(brep, tool, objects.get(objectId))) : undefined,
           } : null;
           if (stopAtContext) return { mesh: null, objectRecords: [], operationContext, completedFeatureIds, failedFeatureId: null, warning: null };
         }
@@ -1193,6 +1196,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         markFeatureCompleted(feature.id);
         continue;
       }
+      let extrusionBounds: NonNullable<BuildResult["operationContext"]>["extrusionBounds"];
       if (feature.kind === "fillet") {
         if (feature.radius <= 0) throw new Error(`${feature.name}: radius must be greater than zero.`);
         current = applyFilletFeature(brep, document, current, feature);
@@ -1200,7 +1204,9 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
         markFeatureCompleted(feature.id);
       } else if (feature.kind === "faceExtrude") {
         if (feature.distance <= 0) throw new Error(`${feature.name}: length must be greater than zero.`);
-        current = applyFaceExtrudeFeature(brep, document, current, feature);
+        current = applyFaceExtrudeFeature(brep, document, current, feature, feature.id === contextFeatureId ? (tool) => {
+          extrusionBounds = brep.getBounds(applyObjectTransform(brep, tool, objects.get(objectId)));
+        } : undefined);
         solids.set(objectId, current);
         markFeatureCompleted(feature.id);
       } else if (feature.kind === "shell") {
@@ -1268,6 +1274,7 @@ async function buildParametricModelInternal(document: ParametricDocument, contex
           color: objects.get(objectId)?.color ?? "#d41721",
           mesh: meshShape(brep, applyObjectTransform(brep, selectedResult, objects.get(objectId))),
           selectionMesh,
+          extrusionBounds,
           detailMesh: detail ? meshShape(brep, applyObjectTransform(brep, detail, objects.get(objectId))) : undefined,
           detailColor: feature.kind === "shell" || (feature.kind === "faceExtrude" && feature.operation === "cut") ? "red" : "green",
         } : null;

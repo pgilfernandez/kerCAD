@@ -170,7 +170,7 @@ type Props = {
   selectedObjectOriginId?: string | null;
   selectedOperationOriginId?: string | null;
   selectedObjectIds?: string[];
-  operationContext?: { color: string; mesh: RenderMesh; opacity: number; selectionMesh?: RenderMesh; detailMesh?: RenderMesh; detailColor?: "green" | "red" } | null;
+  operationContext?: { color: string; mesh: RenderMesh; opacity: number; selectionMesh?: RenderMesh; detailMesh?: RenderMesh; detailColor?: "green" | "red"; extrusionBounds?: { xMin: number; xMax: number; yMin: number; yMax: number; zMin: number; zMax: number } } | null;
   isolatedHistoryObjectId?: string | null;
   color: string;
   workplane?: ParametricDocument["workplane"];
@@ -231,9 +231,10 @@ type Props = {
   topologyMultiSelection?: boolean;
   historicalTopologySelections?: ParametricTopologyReference[];
   historicalTopologyRecords?: ParametricObjectRenderRecord[];
-  faceExtrudeHandle?: { origin: { x: number; y: number; z: number }; normal: { x: number; y: number; z: number }; distance: number; operation: "add" | "cut" } | null;
+  faceExtrudeHandle?: { origin: { x: number; y: number; z: number }; normal: { x: number; y: number; z: number }; distance: number; operation: "add" | "cut"; taperAngle?: number } | null;
+  onFaceExtrudeTaperChange?: (angle: number) => void;
   onFaceExtrudeDistanceChange?: (distance: number, operation: "add" | "cut") => void;
-  faceExtrudeDraft?: { distance: number; operation: "add" | "cut" } | null;
+  faceExtrudeDraft?: { distance: number; operation: "add" | "cut"; taperAngle?: number } | null;
   onFaceExtrudeAccept?: () => void;
   onFaceExtrudeCancel?: () => void;
   faceExtrudeCanAccept?: boolean;
@@ -278,7 +279,7 @@ type Props = {
   onEditRevolveFace?: (featureId: string) => void;
   onEditRevolveAxis?: (featureId: string) => void;
   onEditMirrorPlane?: (featureId: string) => void;
-  onFloatingFeatureChange?: (featureId: string, update: Partial<{ distance: number; angle: number; thickness: number; cornerType: "rounded" | "sharp"; duplicate: boolean; operation: "add" | "cut" | "intersect"; sourceObjectId: string; count: number; axis: "x" | "y" | "z"; sourceFeatureId: string }>) => void;
+  onFloatingFeatureChange?: (featureId: string, update: Partial<{ distance: number; angle: number; taperAngle: number; thickness: number; cornerType: "rounded" | "sharp"; duplicate: boolean; operation: "add" | "cut" | "intersect"; sourceObjectId: string; count: number; axis: "x" | "y" | "z"; sourceFeatureId: string }>) => void;
   projectName?: string;
   onProjectRename?: () => void;
   onThumbnail?: (dataUrl: string) => void;
@@ -592,7 +593,7 @@ function objectOriginMarker(targetId: string, editable: boolean, targetKind: "ob
   return marker;
 }
 
-export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = null, referenceImageSelection = null, onReferenceImageScale, onSectionPlaneSelect, captureFrameActive = false, onCaptureFrame, onCancelCaptureFrame, visualSection = null, onUpdateAnnotation, onCircleAnnotationRadius, onAnnotationSelect, annotationsVisible = true, onMoveAnnotationEndpoint, selectedAnnotationEndpoint = null, onSelectAnnotationEndpoint, annotationTool = null, editingAnnotationId = null, onPlaceAnnotation, onFinishAnnotation, onEditAnnotation, onCancelAnnotationTool, annotations, selectedAnnotationId = null, onProjectRename, mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, scaleTarget = null, onParametricScale, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, faceExtrudeDraft = null, onFaceExtrudeAccept, onFaceExtrudeCancel, faceExtrudeCanAccept = true, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, revolveDraft = null, onRevolveDraftChange, onRevolveAccept, onRevolveCancel, revolveCanAccept = true, distanceHandle = null, onDistanceParameterDragStart, onDistanceParameterPreview, onDistanceParameterChange, onDistanceParameterCancel, shellDraft = null, onShellDraftChange, onShellCornerTypeChange, onShellAccept, onShellCancel, shellCanAccept = true, floatingFeature = null, booleanObjects = [], patternSources = [], booleanAddOnly = false, operationModesVisible = true, contextToolbarVisible, manipulatorControls, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = uiText("ui.parametricviewport.untitled.design.13ef08", {}, locale), onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions, alignmentActive = false, alignmentBusy = false, alignmentTargets = [], alignmentReference = null, onAlignmentSelect, onAlign }: Props) {
+export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = null, referenceImageSelection = null, onReferenceImageScale, onSectionPlaneSelect, captureFrameActive = false, onCaptureFrame, onCancelCaptureFrame, visualSection = null, onUpdateAnnotation, onCircleAnnotationRadius, onAnnotationSelect, annotationsVisible = true, onMoveAnnotationEndpoint, selectedAnnotationEndpoint = null, onSelectAnnotationEndpoint, annotationTool = null, editingAnnotationId = null, onPlaceAnnotation, onFinishAnnotation, onEditAnnotation, onCancelAnnotationTool, annotations, selectedAnnotationId = null, onProjectRename, mesh, objectRecords = [], objectColors, objectOrigins = [], operationOrigins = [], sketchOverlays = [], editableOriginId = null, selectedObjectOriginId = null, selectedOperationOriginId = null, selectedObjectIds = [], operationContext = null, isolatedHistoryObjectId = null, color, workplane = { width: 200, depth: 200, gridStep: 5, snapSpacing: 1, snapToGrid: true, gridVisible: true, origin: { x: 0, y: 0, z: 0 }, xAxis: { x: 1, y: 0, z: 0 }, yAxis: { x: 0, y: 1, z: 0 }, normal: { x: 0, y: 0, z: 1 } }, view, projection = "orthographic", renderQuality = "normal", displayMode = "solid", shadingMode = "shadows", displayUnit = "mm", locale = "en", parameterHandlesVisible = true, scaleTarget = null, onParametricScale, selection = null, snap = 1, onShapeParameterChange, onOperationModeChange, onObjectOriginMove, onObjectAxisMove, onObjectRotate, onOperationAxisMove, onOperationRotate, onCameraOrientation, onObjectSelect, onObjectsSelect, onEmptySelect, workplaneFaceSelection = false, onWorkplaneFaceSelect, topologyFaceSelection = false, onTopologyFaceSelect, topologyEdgeSelection = false, onTopologyEdgeSelect, topologySelections = [], topologyMultiSelection = true, historicalTopologySelections = [], historicalTopologyRecords = [], faceExtrudeHandle = null, onFaceExtrudeDistanceChange, onFaceExtrudeTaperChange, faceExtrudeDraft = null, onFaceExtrudeAccept, onFaceExtrudeCancel, faceExtrudeCanAccept = true, edgeTreatmentHandle = null, onEdgeTreatmentRadiusChange, onEdgeTreatmentTypeChange, onEdgeTreatmentAccept, onEdgeTreatmentCancel, edgeTreatmentCanAccept = true, revolveHandle = null, onRevolveAngleDragStart, onRevolveAnglePreview, onRevolveAngleChange, onRevolveAngleCancel, revolveDraft = null, onRevolveDraftChange, onRevolveAccept, onRevolveCancel, revolveCanAccept = true, distanceHandle = null, onDistanceParameterDragStart, onDistanceParameterPreview, onDistanceParameterChange, onDistanceParameterCancel, shellDraft = null, onShellDraftChange, onShellCornerTypeChange, onShellAccept, onShellCancel, shellCanAccept = true, floatingFeature = null, booleanObjects = [], patternSources = [], booleanAddOnly = false, operationModesVisible = true, contextToolbarVisible, manipulatorControls, onEditSketch, onEditEdgeTreatmentSelection, onEditFaceExtrudeSelection, onEditShellSelection, onEditRevolveFace, onEditRevolveAxis, onEditMirrorPlane, onFloatingFeatureChange, projectName = uiText("ui.parametricviewport.untitled.design.13ef08", {}, locale), onThumbnail, thumbnailRequestToken = 0, thumbnailRequestOptions, alignmentActive = false, alignmentBusy = false, alignmentTargets = [], alignmentReference = null, onAlignmentSelect, onAlign }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const presentationRef = useRef({ locale, displayUnit });
   presentationRef.current = { locale, displayUnit };
@@ -643,6 +644,8 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
   const projectionChangeRef = useRef<((projection: CameraProjection) => void) | null>(null);
   const cameraTransitionRef = useRef<number | null>(null);
   const referenceImageHandleRef = useRef<ReturnType<typeof attachReferenceImageHandle> | null>(null);
+  const taperHandleRef = useRef<THREE.Group | null>(null);
+  const [taperPreview, setTaperPreview] = useState<number | null>(null);
   const scaleManipulatorRef = useRef<ReturnType<typeof attachScaleManipulator> | null>(null);
   const scaleCommitRef = useRef(onParametricScale);
   scaleCommitRef.current = onParametricScale;
@@ -918,6 +921,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       });
       updateRoot(selectionVisualRootRef.current);
       updateRoot(faceExtrudeHandleRef.current);
+      updateRoot(taperHandleRef.current);
       updateRoot(edgeTreatmentHandleRef.current);
       updateRoot(revolveHandleRef.current);
       updateRoot(distanceHandleRef.current);
@@ -981,6 +985,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
           originLayerRef.current,
           selectionRootRef.current,
           faceExtrudeHandleRef.current,
+          taperHandleRef.current,
           edgeTreatmentHandleRef.current,
           operationContextRef.current,
           workplaneSelectionPlanesRef.current,
@@ -4588,6 +4593,122 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
   }, [scaleTarget, workplane.snapToGrid, workplane.snapSpacing, projection, renderQuality, shadingMode, theme]);
 
   const faceExtrudeControls = faceExtrudeDraft ?? faceExtrudeHandle;
+  const straightSketchExtrude = floatingFeature?.kind === "extrude" && !floatingFeature.endSketchId && !floatingFeature.pathSketchId ? floatingFeature : null;
+  const savedFaceExtrude = floatingFeature?.kind === "faceExtrude" ? floatingFeature : null;
+  const taperValue = faceExtrudeControls?.taperAngle ?? straightSketchExtrude?.taperAngle ?? savedFaceExtrude?.taperAngle ?? 0;
+  const showTaper = Boolean(faceExtrudeControls || straightSketchExtrude || savedFaceExtrude);
+  const taperCommit = useRef<(angle: number) => void>(() => {});
+  taperCommit.current = (angle) => {
+    if (faceExtrudeControls) onFaceExtrudeTaperChange?.(angle);
+    else if (straightSketchExtrude || savedFaceExtrude) onFloatingFeatureChange?.((straightSketchExtrude ?? savedFaceExtrude)!.id, { taperAngle: angle });
+  };
+  const taperToolId = straightSketchExtrude?.id ?? savedFaceExtrude?.id ?? (faceExtrudeHandle ? "face-draft" : null);
+  const taperDetail = operationContext?.detailMesh;
+  const taperBounds = operationContext?.extrusionBounds;
+  useEffect(() => {
+    const model = modelRef.current, camera = cameraRef.current, controls = controlsRef.current;
+    const canvas = rendererRef.current?.domElement;
+    if (!showTaper || !taperToolId || !parameterHandlesVisible || !model || !camera || !controls || !canvas) return;
+    const bounds = new THREE.Box3();
+    if (taperBounds) {
+      const { xMin, xMax, yMin, yMax, zMin, zMax } = taperBounds;
+      bounds.set(new THREE.Vector3(xMin, yMin, zMin), new THREE.Vector3(xMax, yMax, zMax));
+    } else if (taperDetail?.positions.length) {
+      const point = new THREE.Vector3();
+      for (let i = 0; i < taperDetail.positions.length; i += 3) bounds.expandByPoint(point.fromArray(taperDetail.positions, i));
+    } else if (selection && straightSketchExtrude) {
+      const { x, y, baseZ, width, depth, height } = selection;
+      bounds.set(new THREE.Vector3(x - width / 2, y - depth / 2, baseZ), new THREE.Vector3(x + width / 2, y + depth / 2, baseZ + Math.abs(height)));
+    }
+    if (bounds.isEmpty()) return;
+    const anchor = new THREE.Vector3(bounds.max.x, (bounds.min.y + bounds.max.y) / 2, bounds.max.z);
+    const group = new THREE.Group();
+    group.userData.viewportOverlay = true;
+    const radius = 1.0625;
+    const material = new THREE.MeshBasicMaterial({ color: 0xf0b83f, depthTest: false, depthWrite: false, transparent: true, opacity: 0.92 });
+    const handle = new THREE.Mesh(new THREE.SphereGeometry(radius, 18, 12), material);
+    handle.position.copy(anchor);
+    handle.renderOrder = PARAMETER_HANDLE_RENDER_ORDER;
+    handle.userData.taperHandle = true;
+    handle.userData.yellowManipulatorBaseRadius = radius;
+    handle.userData.yellowManipulatorDiameterPixels = 28;
+    addYellowManipulatorOutline(handle, radius);
+    group.add(handle);
+    model.add(group);
+    taperHandleRef.current = group;
+    const raycaster = new THREE.Raycaster();
+    let drag: { id: number; x: number; y: number; direction: THREE.Vector2; angle: number; enabled: boolean } | null = null;
+    const hit = (event: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      raycaster.setFromCamera(new THREE.Vector2((event.clientX - rect.left) / rect.width * 2 - 1, 1 - (event.clientY - rect.top) / rect.height * 2), camera);
+      return raycaster.intersectObject(handle).length > 0;
+    };
+    const repaint = () => invalidateRef.current();
+    const down = (event: PointerEvent) => {
+      if (event.button !== 0 || drag || !hit(event)) return;
+      const start = model.localToWorld(anchor.clone()).project(camera);
+      const end = model.localToWorld(anchor.clone().add(new THREE.Vector3(-1, 0, 0))).project(camera);
+      const direction = new THREE.Vector2((end.x - start.x) * canvas.clientWidth, (start.y - end.y) * canvas.clientHeight);
+      if (direction.lengthSq() < 0.01) direction.set(-1, 0);
+      drag = { id: event.pointerId, x: event.clientX, y: event.clientY, direction: direction.normalize(), angle: taperValue, enabled: controls.enabled };
+      event.preventDefault(); event.stopImmediatePropagation();
+      controls.enabled = false;
+      canvas.setPointerCapture(event.pointerId);
+      setTaperPreview(taperValue);
+      repaint();
+    };
+    const move = (event: PointerEvent) => {
+      if (!drag) {
+        const color = hit(event) ? 0xffd300 : 0xf0b83f;
+        if (material.color.getHex() !== color) { material.color.setHex(color); repaint(); }
+        return;
+      }
+      if (event.pointerId !== drag.id) return;
+      event.preventDefault(); event.stopImmediatePropagation();
+      const pixels = (event.clientX - drag.x) * drag.direction.x + (event.clientY - drag.y) * drag.direction.y;
+      drag.angle = THREE.MathUtils.clamp(taperValue + Math.round(pixels / 4), -89, 89);
+      const span = Math.max(1, bounds.max.x - bounds.min.x);
+      handle.position.x = anchor.x - span * THREE.MathUtils.clamp((drag.angle - taperValue) / 90, -.5, .5);
+      handle.updateMatrixWorld();
+      setTaperPreview(drag.angle);
+      repaint();
+    };
+    const finish = (event: PointerEvent) => {
+      if (!drag || event.pointerId !== drag.id) return;
+      const { enabled, angle } = drag;
+      drag = null;
+      event.preventDefault(); event.stopImmediatePropagation();
+      controls.enabled = enabled;
+      handle.position.copy(anchor);
+      if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+      setTaperPreview(null);
+      if (event.type === "pointerup" && angle !== taperValue) taperCommit.current(angle);
+      repaint();
+    };
+    canvas.addEventListener("pointerdown", down, true);
+    canvas.addEventListener("pointermove", move, true);
+    canvas.addEventListener("pointerup", finish, true);
+    canvas.addEventListener("pointercancel", finish, true);
+    canvas.addEventListener("lostpointercapture", finish, true);
+    repaint();
+    return () => {
+      canvas.removeEventListener("pointerdown", down, true);
+      canvas.removeEventListener("pointermove", move, true);
+      canvas.removeEventListener("pointerup", finish, true);
+      canvas.removeEventListener("pointercancel", finish, true);
+      canvas.removeEventListener("lostpointercapture", finish, true);
+      if (drag) { controls.enabled = drag.enabled; setTaperPreview(null); }
+      taperHandleRef.current = null;
+      group.removeFromParent();
+      group.traverse((node) => {
+        if (node instanceof THREE.Mesh) {
+          node.geometry.dispose();
+          if (node.material instanceof THREE.Material) node.material.dispose();
+        }
+      });
+      repaint();
+    };
+  }, [showTaper, taperToolId, taperDetail, taperBounds, taperValue, selection, straightSketchExtrude, parameterHandlesVisible, projection, renderQuality, shadingMode]);
   const floatingBoolean = floatingFeature?.kind === "objectBoolean" ? floatingFeature : null;
   const showOperationModes = !faceExtrudeControls && !revolveDraft && !shellDraft && (Boolean(floatingBoolean) || operationModesVisible && Boolean(selection?.operationPreview));
   const showEdgeTreatmentControls = Boolean(edgeTreatmentHandle);
@@ -4653,6 +4774,10 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
       name: uiText("sidebar.depth", {}, locale), value: faceExtrudeHandleRef.current?.userData.parameterLabelValue ?? faceExtrudeHandle.distance,
       color: axisColor(faceExtrudeHandle.normal), unit: "length", min: .01,
       onCommit: (value) => faceExtrudeDistanceChangeRef.current?.(value, faceExtrudeHandle.operation),
+    });
+    if (showTaper) addSpecial(taperHandleRef.current, "taperHandle", null, {
+      name: uiText("extrude.taperAngle", {}, locale), value: taperPreview ?? taperValue, unit: "angle", color: "other", min: -89, max: 89,
+      onCommit: (value) => taperCommit.current(value),
     });
     if (edgeTreatmentHandle) addSpecial(edgeTreatmentHandleRef.current, "edgeTreatmentRadiusHandle", "edgeTreatmentRadiusTarget", {
       name: uiText("sidebar.radius", {}, locale), value: edgeTreatmentRadiusPreview ?? edgeTreatmentHandle.radius,
@@ -4819,6 +4944,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
           return <button key={mode} type="button" className={`mode-${mode} ${faceExtrudeControls.operation === mode ? "active" : ""}`} aria-label={label} title={label} aria-pressed={faceExtrudeControls.operation === mode} onClick={() => onFaceExtrudeDistanceChange?.(faceExtrudeControls.distance, mode)}><ToolbarBooleanModeIcon mode={mode === "cut" ? "hole" : "add"} /></button>;
         })}
         <ViewportFloatingNumberInput locale={locale} value={faceExtrudeControls.distance * (faceExtrudeControls.operation === "cut" ? -1 : 1)} unit="length" displayUnit={displayUnit} snap={snap} label={uiText("sidebar.depth", {}, locale)} min={-200} max={200} onCommit={(distance) => onFaceExtrudeDistanceChange?.(Math.max(0.01, Math.abs(distance)), distance < 0 ? "cut" : "add")} />
+        <ViewportFloatingNumberInput locale={locale} value={taperPreview ?? taperValue} unit="angle" displayUnit={displayUnit} snap={snap} label={uiText("extrude.taperAngle", {}, locale)} min={-89} max={89} onCommit={(angle) => taperCommit.current(angle)} />
         {onFaceExtrudeCancel && onFaceExtrudeAccept ? <><button type="button" className="cancel" aria-label={uiText("dashboard.cancel.77dfd2", {}, locale)} title={uiText("dashboard.cancel.77dfd2", {}, locale)} onClick={onFaceExtrudeCancel}><X /></button><button type="button" className="accept" disabled={!faceExtrudeCanAccept} aria-label={uiText("common.accept", {}, locale)} title={uiText("common.accept", {}, locale)} onClick={onFaceExtrudeAccept}><Check /></button></> : null}
       </div> : null}
       {revolveDraft ? <div className="kercad-context-toolbar-group" aria-label={uiText("operation.revolve", {}, locale)}>
@@ -4854,6 +4980,7 @@ export function ParametricViewport({ workplaneGeometryBounds: workplaneBounds = 
         {floatingFeature?.kind === "sketch" && !floatingFeature.generatedPath ? <button type="button" aria-label={uiText("operation.editSketch", {}, locale)} title={uiText("operation.editSketch", {}, locale)} onClick={() => onEditSketch?.(floatingFeature.id)}><ToolbarEditOperationIcon /></button> : null}
         {floatingFeature?.kind === "faceExtrude" ? <button type="button" aria-label={uiText("operation.editFace", {}, locale)} title={uiText("operation.editFace", {}, locale)} onClick={() => onEditFaceExtrudeSelection?.(floatingFeature.id)}><ToolbarEditOperationIcon /></button> : null}
         {floatingFeature?.kind === "extrude" && !floatingFeature.endSketchId && !floatingFeature.pathSketchId ? <ViewportFloatingNumberInput locale={locale} value={floatingFeature.distance} unit="length" displayUnit={displayUnit} snap={snap} label={uiText("sidebar.depth", {}, locale)} min={-200} max={200} onCommit={(distance) => onFloatingFeatureChange?.(floatingFeature.id, { distance })} /> : null}
+        {showTaper && !faceExtrudeControls ? <ViewportFloatingNumberInput locale={locale} value={taperPreview ?? taperValue} unit="angle" displayUnit={displayUnit} snap={snap} label={uiText("extrude.taperAngle", {}, locale)} min={-89} max={89} onCommit={(angle) => taperCommit.current(angle)} /> : null}
         {floatingFeature?.kind === "revolve" ? <><button type="button" aria-label={uiText("operation.editFace", {}, locale)} title={uiText("operation.editFace", {}, locale)} onClick={() => onEditRevolveFace?.(floatingFeature.id)}><ToolbarEditOperationIcon /><small>F</small></button><button type="button" aria-label={uiText("operation.editAxis", {}, locale)} title={uiText("operation.editAxis", {}, locale)} onClick={() => onEditRevolveAxis?.(floatingFeature.id)}><ToolbarEditOperationIcon /><small>A</small></button><ViewportFloatingNumberInput locale={locale} value={revolveAnglePreview ?? floatingFeature.angle} unit="angle" displayUnit={displayUnit} snap={snap} label={uiText("sketch.angle", {}, locale)} min={-360} max={360} onCommit={(angle) => onFloatingFeatureChange?.(floatingFeature.id, { angle: Math.abs(angle) < 1 ? (angle < 0 ? -1 : 1) : angle })} /></> : null}
         {floatingFeature?.kind === "shell" ? <><ShellCornerButtons value={floatingFeature.cornerType} locale={locale} onChange={(cornerType) => onFloatingFeatureChange?.(floatingFeature.id, { cornerType })} /><button type="button" aria-label={uiText("ui.parametricviewport.edit.faces.17d360", {}, locale)} title={uiText("ui.parametricviewport.edit.faces.17d360", {}, locale)} onClick={() => onEditShellSelection?.(floatingFeature.id)}><ToolbarEditOperationIcon /></button><ViewportFloatingNumberInput locale={locale} value={distanceParameterPreview ?? floatingFeature.thickness} unit="length" displayUnit={displayUnit} snap={snap} label={uiText("property.thickness", {}, locale)} min={0.01} max={50} onCommit={(thickness) => onFloatingFeatureChange?.(floatingFeature.id, { thickness })} /></> : null}
         {floatingFeature?.kind === "mirror" ? <><button type="button" className={floatingFeature.duplicate ? "active" : ""} aria-label={uiText("value.duplicate", {}, locale)} title={uiText("value.duplicate", {}, locale)} onClick={() => onFloatingFeatureChange?.(floatingFeature.id, { duplicate: true })}><strong>D</strong></button><button type="button" className={!floatingFeature.duplicate ? "active" : ""} aria-label={uiText("model.transform", {}, locale)} title={uiText("model.transform", {}, locale)} onClick={() => onFloatingFeatureChange?.(floatingFeature.id, { duplicate: false })}><strong>T</strong></button><button type="button" aria-label={uiText("ui.parametricviewport.edit.plane.9af53b", {}, locale)} title={uiText("ui.parametricviewport.edit.plane.9af53b", {}, locale)} onClick={() => onEditMirrorPlane?.(floatingFeature.id)}><ToolbarEditOperationIcon /></button></> : null}
