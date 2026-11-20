@@ -4809,7 +4809,7 @@ export function KercadParametricEditor({ initialProject, sharedFileName, onSaveS
           <label><span>{t("settings.shading")}</span><select value={shadingMode} onChange={(event) => setShadingMode(event.target.value as ViewportShadingMode)}><option value="shadows">{t("settings.shadows")}</option><option value="basic">{t("settings.basicShadows")}</option><option value="noShadows">{t("settings.noShadows")}</option></select></label>
           <label><span>{t("settings.units")}</span><select value={displayUnit} onChange={(event) => { const next = cloneDocument(latestDocumentRef.current); next.displayUnit = normalizeDisplayUnit(event.target.value); commit(next); }}><option value="mm">{t("settings.millimeters")}</option><option value="cm">{t("settings.centimeters")}</option><option value="m">{t("settings.meters")}</option><option value="in">{t("settings.inches")}</option><option value="ft">{t("settings.feet")}</option></select></label>
           {/* <p>{t("settings.unitsHint")}</p> */}
-          <label className="kercad-settings-toggle"><span>{t("settings.showFps")}</span><input type="checkbox" checked={showFps} onChange={(event) => setShowFps(event.target.checked)} /></label>
+          <label className="kercad-settings-toggle"><span>{t("settings.showFps")}</span><input type="checkbox" role="switch" checked={showFps} onChange={(event) => setShowFps(event.target.checked)} /><span className="kercad-grid-switch-track" aria-hidden="true" /></label>
           {/* <p>{t("settings.autosave")}</p> */}
         </aside>
       )}
