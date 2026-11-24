@@ -148,7 +148,6 @@ export function ProjectDashboard({ projects, sharedEnabled = false, onSharedSave
                 <button className="challenge-delete" type="button" title={t("dashboard.remove.challenge.8354b7")} aria-label={t("dashboard.remove.df7193", { name: challenge.title })} onClick={() => onDeleteChallenge(challenge)}><Trash2 size={17} /></button>
               </nav>
             </article>)}
-            {!challenges.length ? <button className="kercad-challenge-empty" type="button" onClick={() => challengeInputRef.current?.click()}><Upload size={34} /><strong>{t("dashboard.install.your.first.challenge.94f9b2")}</strong><span>{t("dashboard.choose.an.kercad.challenge.zip.from.your.computer.c64cea")}</span></button> : null}
             {challenges.length > 0 && !visibleChallenges.length ? <div className="kercad-dashboard-empty"><strong>{t("dashboard.no.matching.challenges.c3eeae")}</strong><span>{t("dashboard.try.another.search.1824b9")}</span></div> : null}
           </div>
         </> : <>
