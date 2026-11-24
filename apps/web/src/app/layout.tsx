@@ -11,10 +11,21 @@ import { DonationPopupProvider } from "@/components/DonationPopup";
 import { LoadingCampaignPreloader } from "@/components/LoadingCampaignPreloader";
 import { APP_LOCALE_INITIAL_SCRIPT, uiText } from "@/lib/kercadI18n";
 
+const title = uiText("ui.layout.kercad.parametric.cad.for.learning.9bfd81");
+const description = uiText("ui.layout.local.open.source.parametric.cad.editor.designed.e15816");
+const previewImage = "/assets/kercad/kercad_web_thumbnail.jpg";
+
 export const metadata: Metadata = {
+  metadataBase: new URL("https://kercad.org"),
   icons: { icon: { url: "/assets/kercad/kercad_favicon.svg", type: "image/svg+xml" } },
-  title: uiText("ui.layout.kercad.parametric.cad.for.learning.9bfd81"),
-  description: uiText("ui.layout.local.open.source.parametric.cad.editor.designed.e15816"),
+  title,
+  description,
+  openGraph: {
+    type: "website",
+    title,
+    description,
+    images: [{ url: previewImage, width: 1200, height: 630, type: "image/jpeg" }],
+  },
 };
 
 export default function RootLayout({
